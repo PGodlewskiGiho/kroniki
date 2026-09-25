@@ -33,16 +33,17 @@ test('garnizon rośnie z odległością od gracza i z poziomem trudności', asyn
   assert.ok(sum(hard) > sum(easy) * 2, 'poziom Niemożliwy ma dużo silniejsze garnizony niż Łatwy');
 });
 
-test('mury dają obrońcom miasta premię do obrony', async () => {
+test('mury miasta stoją na polu bitwy (oblężenie), bez dodatkowej premii do obrony', async () => {
   await newGame(page, { mapSize: 'M' }, 8);
   const r = await page.evaluate(() => {
     const st = G.state, t = st.towns[1], out = [];
     for (const walls of [[], ['fort'], ['fort', 'citadel'], ['fort', 'citadel', 'castle']]) {
-      t.built = ['hall1', ...walls]; const B = createBattle(st, hero(st), t); out.push(sideDef(B, 1));
+      t.built = ['hall1', ...walls]; const B = createBattle(st, hero(st), t);
+      out.push([sideDef(B, 1), B.walls ? B.walls.size : 0, B.units.filter(u => u.cid === 'arrowTower').length]);
     }
     return out;
   });
-  assert.deepEqual(r, [0, 2, 4, 6]);
+  assert.deepEqual(r, [[0, 0, 0], [0, 9, 0], [0, 9, 1], [0, 9, 2]]);
 });
 
 test('wejście do niezależnego miasta: okno oblężenia, wygrana, zdobycie i wejście do miasta', async () => {

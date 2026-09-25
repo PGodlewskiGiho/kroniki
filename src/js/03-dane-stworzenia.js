@@ -88,5 +88,10 @@ Object.assign(CREATURES, {
   firstAid: mkU('Namiot medyka', 'Namioty medyka', 'namiotów medyka', 0, 0, 0, 0, 0, 75, 0, 0, 300, { gold: 750 }, { abil: ['machine'], desc: 'co rundę leczy 1–25 życia pierwszego stwora w najbardziej rannym oddziale', look: { kind: 'tent', cloth: '#e8e0cc', trim: '#c83a2a' } }),
   ammoCart: mkU('Wóz z amunicją', 'Wozy z amunicją', 'wozów z amunicją', 0, 0, 5, 0, 0, 100, 0, 0, 400, { gold: 1000 }, { abil: ['machine'], desc: 'póki stoi, twoi strzelcy nie tracą strzał', look: { kind: 'cart', wood: '#7a4a22', cloth: '#b8a070' } }),
 });
-const MACHINES = ['ballista', 'firstAid', 'ammoCart'];
-const isMachine = u => MACHINES.includes(u.cid);
+// Oblężenie (tylko w bitwie o miasto z murami): katapulta atakującego i wieże strzelnicze obrońcy
+Object.assign(CREATURES, {
+  catapult: mkU('Katapulta', 'Katapulty', 'katapult', 0, 10, 10, 0, 0, 350, 0, 0, 500, null, { abil: ['machine'], desc: 'co rundę rzuca głazem w mury miasta', look: { kind: 'catapult', wood: '#7a4a22' } }),
+  arrowTower: mkU('Wieża strzelnicza', 'Wieże strzelnicze', 'wież strzelniczych', 0, 10, 10, 3, 5, 999, 0, 0, 0, null, { shots: 99, abil: ['machine'], desc: 'strzela co rundę; im więcej siedlisk w mieście, tym mocniej', look: { kind: 'tower', stone: '#9a948a' } }),
+});
+const MACHINES = ['ballista', 'firstAid', 'ammoCart'], SIEGE_UNITS = ['catapult', 'arrowTower'];
+const isMachine = u => MACHINES.includes(u.cid) || SIEGE_UNITS.includes(u.cid);

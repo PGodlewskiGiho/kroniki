@@ -73,7 +73,8 @@
    surowce, budowa i rekrutacja liczone dla właściciela (playerOf), nie tylko dla gracza-człowieka.
    Krok 13: miasta niezależne w pozostałych miejscach startowych (createNeutralTown: losowa frakcja, garnizon
    rośnie z odległością i trudnością), zdobywanie miast (startTownAssault; puste zajmuje się bez walki),
-   mury Fortu/Cytadeli/Zamku dają obrońcom premię do obrony (TOWN_WALL_DEF).
+   mury Fortu/Cytadeli/Zamku dają obrońcom premię do obrony (TOWN_WALL_DEF; od etapu 2 krok 9 tylko szacunek siły SI,
+   w bitwie mury stoją na polu: oblężenie z bramą, wieżami i katapultą, setupSiege).
    Krok 14: tawerna (tavernOffer/hireHero: dwóch chętnych na tydzień, HERO_COST, najwyżej MAX_HEROES),
    wielu bohaterów: blokują sobie drogę, kliknięcie własnego wybiera go, wejście na wrogiego = bitwa,
    ruch wszystkich bohaterów w pętli ekranu mapy, przewijana lista w panelu (panelItems, listScroll).

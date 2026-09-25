@@ -502,6 +502,34 @@ function drawCart(ctx, L, P) {
   for (const ax of [-5, -1, 3, 7]) limb(ctx, ax, -18, ax + 1.5, -22.5, 1, '#5a3a1a');
   for (const wx of [-6, 7]) { circ(ctx, wx, -4, 4, DK(w, 0.45)); circ(ctx, wx, -4, 2.6, DK(w, 0.2)); circ(ctx, wx, -4, 1, '#9aa0a8'); }
 }
+// --- oblężenie: katapulta, wieża strzelnicza, fragmenty muru ---
+function drawCatapult(ctx, L, P) {
+  const w = L.wood, a = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) : 0;
+  for (const wx of [-8, 7]) { circ(ctx, wx, -3.5, 3.5, DK(w, 0.45)); circ(ctx, wx, -3.5, 1.2, '#9aa0a8'); }
+  fillPoly(ctx, [[-12, -6], [11, -6], [9, -9], [-10, -9]], DK(w)); limb(ctx, -5, -8, 0, -20, 2.2, w); limb(ctx, 5, -8, 0, -20, 2.2, w);
+  ctx.save(); ctx.translate(0, -12); ctx.rotate(-0.9 + a * 1.7); limb(ctx, 0, 0, -16, 0, 1.8, LT(w)); circ(ctx, -16, 0, 3, '#5a3a1a');
+  if (a < 0.5) circ(ctx, -16, -2, 2.4, '#8a847a'); ctx.restore();
+}
+function drawTowerUnit(ctx, L, P) {
+  const c = L.stone;
+  fillPoly(ctx, [[-11, 0], [-10, -34], [10, -34], [11, 0]], c); fillPoly(ctx, [[3, -34], [10, -34], [11, 0], [4, 0]], DK(c, 0.2));
+  ctx.fillStyle = LT(c, 0.1); for (let y = -28; y < 0; y += 7) ctx.fillRect(-10, y, 20, 1);
+  ctx.fillStyle = c; ctx.fillRect(-12, -39, 24, 5); for (const bx of [-12, -5, 2, 8]) ctx.fillRect(bx, -42, 4, 3);
+  ctx.fillStyle = '#1e1a24'; ctx.fillRect(-2, -26, 4, 7); ctx.fillRect(-2, -13, 4, 6);
+  const bob = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 1.5 : 0; circ(ctx, 3 + bob, -44, 2.2, '#d8a878'); limb(ctx, 5 + bob, -46, 6 + bob, -39, 0.8, '#6a4424');
+  fillPoly(ctx, [[1 + bob, -45], [3 + bob, -49], [5 + bob, -45]], '#4a5a8a');
+}
+// Fragment muru na polu bitwy: state 'ok', 'hit' (spękany), 'down' (gruzy); brama to drewniane wrota
+function drawWallSeg(ctx, kind, state) {
+  const c = '#9a948a', dk = DK(c, 0.25);
+  if (state === 'down') { for (const [x, y, r] of [[-9, -3, 5], [-2, -5, 6], [6, -3, 5], [1, -1, 4], [-6, 0, 3]]) { circ(ctx, x, y, r, x > 0 ? dk : c); } if (kind === 'gate') { limb(ctx, -10, -2, 2, -6, 1.6, '#5a3a1a'); limb(ctx, 4, -1, 11, -5, 1.6, '#5a3a1a'); } return; }
+  fillPoly(ctx, [[-14, 0], [-14, -28], [14, -28], [14, 0]], c); fillPoly(ctx, [[8, -28], [14, -28], [14, 0], [8, 0]], dk);
+  ctx.fillStyle = LT(c, 0.1); for (let y = -24; y < 0; y += 6) ctx.fillRect(-14, y, 28, 1);
+  ctx.fillStyle = c; for (const bx of [-14, -7, 0, 7]) ctx.fillRect(bx, -32, 5, 4);
+  if (kind === 'gate') { ctx.fillStyle = '#5a3a1a'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-8, -16); ctx.arc(0, -16, 8, Math.PI, 0); ctx.lineTo(8, 0); ctx.fill(); ctx.fillStyle = '#3a2412'; ctx.fillRect(-0.5, -23, 1, 23); ctx.fillStyle = '#9aa0a8'; ctx.fillRect(-8, -12, 16, 1.2); ctx.fillRect(-8, -5, 16, 1.2); }
+  if (state === 'hit') { ctx.strokeStyle = '#3a342c'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -28); ctx.lineTo(-2, -18); ctx.lineTo(-7, -10); ctx.moveTo(5, -26); ctx.lineTo(9, -16); ctx.stroke(); fillPoly(ctx, [[-14, -28], [-8, -28], [-12, -22]], '#2a2622'); }
+}
+const wallSprite = (kind, state) => sprite(`wall_${kind}_${state}`, 76, 88, 38, 72, p => drawWallSeg(p, kind, state), OUTLINE, 1);
 // x, y = punkt na ziemi pod stworzeniem; s = skala, dir = 1 w prawo / -1 w lewo; P = poza (domyślnie spoczynek w chwili t)
 function drawCreature(ctx, cid, x, y, s, dir, t, P) {
   const L = CREATURES[cid].look; P = P || { t };
@@ -521,6 +549,8 @@ function drawCreature(ctx, cid, x, y, s, dir, t, P) {
     case 'ballista': drawBallista(ctx, L, P); break;
     case 'tent': drawTent(ctx, L, P); break;
     case 'cart': drawCart(ctx, L, P); break;
+    case 'catapult': drawCatapult(ctx, L, P); break;
+    case 'tower': drawTowerUnit(ctx, L, P); break;
     case 'rider': {
       const rear = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 0.12 : 0;
       horse(ctx, 0, 0, 1, L.horse, L.mane || '#2a1a0e', P, { rear, barding: L.barding, trim: L.trim });
@@ -607,7 +637,7 @@ function drawFlag(ctx, px, py, len, hgt, t, col) {
 // --- miasto na mapie przygody -------------------------------------------------------------------
 // 3×2 pola, (x0, y0) = lewy górny róg, wejście pośrodku dolnego rzędu.
 // Poziom umocnień jak w widoku miasta: 0 osada bez murów, 1 fort, 2 cytadela, 3 zamek.
-// Premia do obrony oddziałów broniących miasta za mury: brak, Fort, Cytadela, Zamek
+// Umocnienia w szacunku siły miasta dla SI (townPower): brak, Fort, Cytadela, Zamek; w bitwie mury są na polu (setupSiege)
 const TOWN_WALL_DEF = [0, 2, 4, 6];
 const townLevel = t => hasB(t, 'castle') ? 3 : hasB(t, 'citadel') ? 2 : hasB(t, 'fort') ? 1 : 0;
 // szczyty dachów, na których powiewają flagi właściciela [x, y] względem (x0, y0)

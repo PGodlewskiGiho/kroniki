@@ -180,7 +180,8 @@ const BattleFX = {
     for (const p of this.projs) {
       const [x, y] = projPos(p), [nx, ny] = projPos({ ...p, t: Math.min(p.dur, p.t + 0.02) }), ang = Math.atan2(ny - y, nx - x);
       ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
-      if (p.kind === 'arrow') { limb(ctx, -9, 0, 7, 0, 2, '#6a4424'); fillPoly(ctx, [[7, -3], [12, 0], [7, 3]], '#d8dce4'); fillPoly(ctx, [[-9, 0], [-12, -3], [-7, 0], [-12, 3]], '#e8e0cc'); }
+      if (p.kind === 'rock') { circ(ctx, 0, 0, 6, '#6e6a62'); circ(ctx, -1.5, -1.5, 3.5, '#9a948a'); }
+      else if (p.kind === 'arrow') { limb(ctx, -9, 0, 7, 0, 2, '#6a4424'); fillPoly(ctx, [[7, -3], [12, 0], [7, 3]], '#d8dce4'); fillPoly(ctx, [[-9, 0], [-12, -3], [-7, 0], [-12, 3]], '#e8e0cc'); }
       else { ctx.globalCompositeOperation = 'lighter'; const r = p.kind === 'fireball' ? 13 : 7, gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.2); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.3, p.col); gr.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, TAU); ctx.fill(); fillPoly(ctx, [[0, -r * 0.6], [-r * 2.2, 0], [0, r * 0.6]], p.col); }
       ctx.restore();

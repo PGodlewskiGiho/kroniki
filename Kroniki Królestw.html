@@ -96,7 +96,8 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    surowce, budowa i rekrutacja liczone dla właściciela (playerOf), nie tylko dla gracza-człowieka.
    Krok 13: miasta niezależne w pozostałych miejscach startowych (createNeutralTown: losowa frakcja, garnizon
    rośnie z odległością i trudnością), zdobywanie miast (startTownAssault; puste zajmuje się bez walki),
-   mury Fortu/Cytadeli/Zamku dają obrońcom premię do obrony (TOWN_WALL_DEF).
+   mury Fortu/Cytadeli/Zamku dają obrońcom premię do obrony (TOWN_WALL_DEF; od etapu 2 krok 9 tylko szacunek siły SI,
+   w bitwie mury stoją na polu: oblężenie z bramą, wieżami i katapultą, setupSiege).
    Krok 14: tawerna (tavernOffer/hireHero: dwóch chętnych na tydzień, HERO_COST, najwyżej MAX_HEROES),
    wielu bohaterów: blokują sobie drogę, kliknięcie własnego wybiera go, wejście na wrogiego = bitwa,
    ruch wszystkich bohaterów w pętli ekranu mapy, przewijana lista w panelu (panelItems, listScroll).
@@ -282,8 +283,13 @@ Object.assign(CREATURES, {
   firstAid: mkU('Namiot medyka', 'Namioty medyka', 'namiotów medyka', 0, 0, 0, 0, 0, 75, 0, 0, 300, { gold: 750 }, { abil: ['machine'], desc: 'co rundę leczy 1–25 życia pierwszego stwora w najbardziej rannym oddziale', look: { kind: 'tent', cloth: '#e8e0cc', trim: '#c83a2a' } }),
   ammoCart: mkU('Wóz z amunicją', 'Wozy z amunicją', 'wozów z amunicją', 0, 0, 5, 0, 0, 100, 0, 0, 400, { gold: 1000 }, { abil: ['machine'], desc: 'póki stoi, twoi strzelcy nie tracą strzał', look: { kind: 'cart', wood: '#7a4a22', cloth: '#b8a070' } }),
 });
-const MACHINES = ['ballista', 'firstAid', 'ammoCart'];
-const isMachine = u => MACHINES.includes(u.cid);
+// Oblężenie (tylko w bitwie o miasto z murami): katapulta atakującego i wieże strzelnicze obrońcy
+Object.assign(CREATURES, {
+  catapult: mkU('Katapulta', 'Katapulty', 'katapult', 0, 10, 10, 0, 0, 350, 0, 0, 500, null, { abil: ['machine'], desc: 'co rundę rzuca głazem w mury miasta', look: { kind: 'catapult', wood: '#7a4a22' } }),
+  arrowTower: mkU('Wieża strzelnicza', 'Wieże strzelnicze', 'wież strzelniczych', 0, 10, 10, 3, 5, 999, 0, 0, 0, null, { shots: 99, abil: ['machine'], desc: 'strzela co rundę; im więcej siedlisk w mieście, tym mocniej', look: { kind: 'tower', stone: '#9a948a' } }),
+});
+const MACHINES = ['ballista', 'firstAid', 'ammoCart'], SIEGE_UNITS = ['catapult', 'arrowTower'];
+const isMachine = u => MACHINES.includes(u.cid) || SIEGE_UNITS.includes(u.cid);
 // ==================== DANE: FRAKCJE, BOHATEROWIE, BUDOWLE, KOPALNIE =====================
 // Wszystko, co różni frakcje, jest w FACTIONS. BUILDINGS opisuje budowle wspólne dla frakcji.
 // Klasy bohaterów. look = wygląd wspólny dla postaci na mapie i portretu w panelu.
@@ -1446,6 +1452,34 @@ function drawCart(ctx, L, P) {
   for (const ax of [-5, -1, 3, 7]) limb(ctx, ax, -18, ax + 1.5, -22.5, 1, '#5a3a1a');
   for (const wx of [-6, 7]) { circ(ctx, wx, -4, 4, DK(w, 0.45)); circ(ctx, wx, -4, 2.6, DK(w, 0.2)); circ(ctx, wx, -4, 1, '#9aa0a8'); }
 }
+// --- oblężenie: katapulta, wieża strzelnicza, fragmenty muru ---
+function drawCatapult(ctx, L, P) {
+  const w = L.wood, a = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) : 0;
+  for (const wx of [-8, 7]) { circ(ctx, wx, -3.5, 3.5, DK(w, 0.45)); circ(ctx, wx, -3.5, 1.2, '#9aa0a8'); }
+  fillPoly(ctx, [[-12, -6], [11, -6], [9, -9], [-10, -9]], DK(w)); limb(ctx, -5, -8, 0, -20, 2.2, w); limb(ctx, 5, -8, 0, -20, 2.2, w);
+  ctx.save(); ctx.translate(0, -12); ctx.rotate(-0.9 + a * 1.7); limb(ctx, 0, 0, -16, 0, 1.8, LT(w)); circ(ctx, -16, 0, 3, '#5a3a1a');
+  if (a < 0.5) circ(ctx, -16, -2, 2.4, '#8a847a'); ctx.restore();
+}
+function drawTowerUnit(ctx, L, P) {
+  const c = L.stone;
+  fillPoly(ctx, [[-11, 0], [-10, -34], [10, -34], [11, 0]], c); fillPoly(ctx, [[3, -34], [10, -34], [11, 0], [4, 0]], DK(c, 0.2));
+  ctx.fillStyle = LT(c, 0.1); for (let y = -28; y < 0; y += 7) ctx.fillRect(-10, y, 20, 1);
+  ctx.fillStyle = c; ctx.fillRect(-12, -39, 24, 5); for (const bx of [-12, -5, 2, 8]) ctx.fillRect(bx, -42, 4, 3);
+  ctx.fillStyle = '#1e1a24'; ctx.fillRect(-2, -26, 4, 7); ctx.fillRect(-2, -13, 4, 6);
+  const bob = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 1.5 : 0; circ(ctx, 3 + bob, -44, 2.2, '#d8a878'); limb(ctx, 5 + bob, -46, 6 + bob, -39, 0.8, '#6a4424');
+  fillPoly(ctx, [[1 + bob, -45], [3 + bob, -49], [5 + bob, -45]], '#4a5a8a');
+}
+// Fragment muru na polu bitwy: state 'ok', 'hit' (spękany), 'down' (gruzy); brama to drewniane wrota
+function drawWallSeg(ctx, kind, state) {
+  const c = '#9a948a', dk = DK(c, 0.25);
+  if (state === 'down') { for (const [x, y, r] of [[-9, -3, 5], [-2, -5, 6], [6, -3, 5], [1, -1, 4], [-6, 0, 3]]) { circ(ctx, x, y, r, x > 0 ? dk : c); } if (kind === 'gate') { limb(ctx, -10, -2, 2, -6, 1.6, '#5a3a1a'); limb(ctx, 4, -1, 11, -5, 1.6, '#5a3a1a'); } return; }
+  fillPoly(ctx, [[-14, 0], [-14, -28], [14, -28], [14, 0]], c); fillPoly(ctx, [[8, -28], [14, -28], [14, 0], [8, 0]], dk);
+  ctx.fillStyle = LT(c, 0.1); for (let y = -24; y < 0; y += 6) ctx.fillRect(-14, y, 28, 1);
+  ctx.fillStyle = c; for (const bx of [-14, -7, 0, 7]) ctx.fillRect(bx, -32, 5, 4);
+  if (kind === 'gate') { ctx.fillStyle = '#5a3a1a'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-8, -16); ctx.arc(0, -16, 8, Math.PI, 0); ctx.lineTo(8, 0); ctx.fill(); ctx.fillStyle = '#3a2412'; ctx.fillRect(-0.5, -23, 1, 23); ctx.fillStyle = '#9aa0a8'; ctx.fillRect(-8, -12, 16, 1.2); ctx.fillRect(-8, -5, 16, 1.2); }
+  if (state === 'hit') { ctx.strokeStyle = '#3a342c'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -28); ctx.lineTo(-2, -18); ctx.lineTo(-7, -10); ctx.moveTo(5, -26); ctx.lineTo(9, -16); ctx.stroke(); fillPoly(ctx, [[-14, -28], [-8, -28], [-12, -22]], '#2a2622'); }
+}
+const wallSprite = (kind, state) => sprite(`wall_${kind}_${state}`, 76, 88, 38, 72, p => drawWallSeg(p, kind, state), OUTLINE, 1);
 // x, y = punkt na ziemi pod stworzeniem; s = skala, dir = 1 w prawo / -1 w lewo; P = poza (domyślnie spoczynek w chwili t)
 function drawCreature(ctx, cid, x, y, s, dir, t, P) {
   const L = CREATURES[cid].look; P = P || { t };
@@ -1465,6 +1499,8 @@ function drawCreature(ctx, cid, x, y, s, dir, t, P) {
     case 'ballista': drawBallista(ctx, L, P); break;
     case 'tent': drawTent(ctx, L, P); break;
     case 'cart': drawCart(ctx, L, P); break;
+    case 'catapult': drawCatapult(ctx, L, P); break;
+    case 'tower': drawTowerUnit(ctx, L, P); break;
     case 'rider': {
       const rear = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 0.12 : 0;
       horse(ctx, 0, 0, 1, L.horse, L.mane || '#2a1a0e', P, { rear, barding: L.barding, trim: L.trim });
@@ -1551,7 +1587,7 @@ function drawFlag(ctx, px, py, len, hgt, t, col) {
 // --- miasto na mapie przygody -------------------------------------------------------------------
 // 3×2 pola, (x0, y0) = lewy górny róg, wejście pośrodku dolnego rzędu.
 // Poziom umocnień jak w widoku miasta: 0 osada bez murów, 1 fort, 2 cytadela, 3 zamek.
-// Premia do obrony oddziałów broniących miasta za mury: brak, Fort, Cytadela, Zamek
+// Umocnienia w szacunku siły miasta dla SI (townPower): brak, Fort, Cytadela, Zamek; w bitwie mury są na polu (setupSiege)
 const TOWN_WALL_DEF = [0, 2, 4, 6];
 const townLevel = t => hasB(t, 'castle') ? 3 : hasB(t, 'citadel') ? 2 : hasB(t, 'fort') ? 1 : 0;
 // szczyty dachów, na których powiewają flagi właściciela [x, y] względem (x0, y0)
@@ -2124,7 +2160,7 @@ function createTown(st, x, y, owner, fac = 'haven') {
   return t;
 }
 // Miasto niezależne w miejscu startowym: losowa frakcja, garnizon tym silniejszy, im dalej od gracza
-// (i im wyższy poziom trudności). Daleko stoją też mury, które dają obrońcom premię (TOWN_WALL_DEF).
+// (i im wyższy poziom trudności). Daleko stoją też mury (oblężenie w bitwie).
 function createNeutralTown(st, site, rng) {
   const n = st.map.n, dd = clamp(Math.hypot(site.x - st.map.start.x, site.y - st.map.start.y) / (n * 0.75), 0, 1);
   const fac = FACTIONS[Math.floor(rng() * FACTIONS.length)].id, t = createTown(st, site.x, site.y, -1, fac), F = factionOf(fac);
@@ -2703,10 +2739,46 @@ function placeMachines(B, side, h) {
   const ms = MACHINES.filter(id => h && (h.machines || []).includes(id)), rows = [0, BROWS - 1, 1, BROWS - 2, 2, 6, 3, 5, 4];
   for (const cid of ms) {
     let spot = null;
-    for (let c = 0; c < 3 && !spot; c++) for (const y of rows) { const x = side === 0 ? c : BCOLS - 1 - c; if (isFree(B, x, y)) { spot = [x, y]; break; } }
+    for (let c = 0; c < 3 && !spot; c++) for (const y of rows) { const x = side === 0 ? c : BCOLS - 1 - c; if (isFree(B, x, y, side)) { spot = [x, y]; break; } }
     if (!spot) continue; const cr = CREATURES[cid];
     B.units.push({ id: B.units.length, side, cid, n: 1, n0: 1, hp: cr.hp, shots: cr.shots || 0, x: spot[0], y: spot[1], src: 'machine', slot: null, retaliated: false, defending: false, waited: false, dead: false, buffs: {} });
   }
+}
+// --- oblężenie: mur z bramą w kolumnie SIEGE_X (Fort i wyżej), wieże strzelnicze (Cytadela: jedna, Zamek: dwie)
+// i katapulta atakującego, która co rundę rzuca głazem w mur. Brama przepuszcza tylko obrońców; lotnicy przelatują.
+const SIEGE_X = 9, GATE_Y = 4;
+const wallAt = (B, x, y) => (B.walls ? B.walls.get(hexKey(x, y)) : null);
+const walled = (B, x, y, side) => { const w = wallAt(B, x, y); return !!w && w.hp > 0 && (w.kind !== 'gate' || side !== 1); };
+const targetable = u => u.cid !== 'arrowTower'; // wież nie da się zaatakować
+function addFixed(B, side, cid, x, y, n, src) {
+  const cr = CREATURES[cid];
+  B.units.push({ id: B.units.length, side, cid, n, n0: n, hp: cr.hp, shots: cr.shots || 0, x, y, src, slot: null, retaliated: false, defending: false, waited: false, dead: false, buffs: {} });
+}
+function freeSpot(B, side, rows) {
+  for (let c = 0; c < 3; c++) for (const y of rows) { const x = side === 0 ? c : BCOLS - 1 - c; if (isFree(B, x, y, side)) return [x, y]; }
+  return null;
+}
+function setupSiege(B, t) {
+  const L = townLevel(t); if (!L) return;
+  const hp = L >= 2 ? 3 : 2, towers = L >= 3 ? [0, BROWS - 1] : L >= 2 ? [0] : [];
+  B.walls = new Map(); B.siege = { level: L };
+  for (let y = 0; y < BROWS; y++) {
+    const tower = towers.includes(y);
+    B.walls.set(hexKey(SIEGE_X, y), { x: SIEGE_X, y, kind: tower ? 'tower' : y === GATE_Y ? 'gate' : 'wall', hp: tower ? Infinity : hp, max: hp });
+    if (tower) addFixed(B, 1, 'arrowTower', SIEGE_X, y, 1 + dwellingLevels(t).length, 'siege'); // siła wieży rośnie z liczbą siedlisk
+  }
+  const spot = freeSpot(B, 0, [BROWS - 1, 0, BROWS - 2, 1, 7, 2, 6, 3, 5, 4]); if (spot) addFixed(B, 0, 'catapult', spot[0], spot[1], 1, 'siege');
+}
+// Katapulta: głaz w bramę (co drugi rzut) albo w losowy fragment muru; trafia 3 razy na 4
+function actCatapult(B, u) {
+  u.acted = true;
+  const segs = [...B.walls.values()].filter(w => w.kind !== 'tower' && w.hp > 0);
+  if (!segs.length) { B.log.push('Katapulta: mury już leżą w gruzach.'); return; }
+  const gate = segs.find(w => w.kind === 'gate'), w = gate && B.rng() < 0.5 ? gate : segs[Math.floor(B.rng() * segs.length)], hit = B.rng() < 0.75;
+  if (hit) w.hp--;
+  const what = w.kind === 'gate' ? 'brama' : 'mur';
+  B.log.push(hit ? (w.hp <= 0 ? `Katapulta: ${what} ${w.kind === 'gate' ? 'rozbita' : 'runął'}!` : `Katapulta trafia: ${what} słabnie.`) : 'Katapulta chybia.');
+  if (B.fx) B.fx.push({ kind: 'siege', a: u, x: w.x, y: w.y, hit, broken: hit && w.hp <= 0 });
 }
 // foe: potwór z mapy, bohater albo miasto
 function createBattle(st, h, foe) {
@@ -2716,12 +2788,14 @@ function createBattle(st, h, foe) {
     rng: mulberry32(st.seed ^ (st.dayTotal * 7919) ^ (D.key * 104729)), prevPos: h.prev ? [...h.prev] : null };
   placeSide(B, 0, armyEntries(h.army, 'hero'));
   placeSide(B, 1, D.stacks);
+  if (D.town) setupSiege(B, D.town);
   placeMachines(B, 0, h); placeMachines(B, 1, D.hero);
   B.morale = [sideMorale(B, 0), sideMorale(B, 1)]; B.luck = [sideLuck(B, 0), sideLuck(B, 1)];
   // przeszkody ze środka pola: te same drzewa i skały co na mapie przygody (typ + wariant rysunku)
   const cnt = 3 + Math.floor(B.rng() * 4);
+  const xMax = B.walls ? SIEGE_X - 2 : BCOLS - 3; // przy oblężeniu przeszkody tylko przed murem
   for (let k = 0, tries = 0; k < cnt && tries < 60; tries++) {
-    const x = 2 + Math.floor(B.rng() * (BCOLS - 4)), y = Math.floor(B.rng() * BROWS), key = hexKey(x, y);
+    const x = 2 + Math.floor(B.rng() * (xMax - 1)), y = Math.floor(B.rng() * BROWS), key = hexKey(x, y);
     if (B.obst.has(key)) continue; B.obst.set(key, { o: B.rng() < 0.55 ? OBST.TREE : OBST.ROCK, v: Math.floor(B.rng() * 4) }); k++;
   }
   return B;
@@ -2750,8 +2824,9 @@ const fighters = (B, side) => alive(B, side).filter(u => !isMachine(u));
 const hasCart = (B, side) => alive(B, side).some(u => u.cid === 'ammoCart');
 const unitAt = (B, x, y) => B.units.find(u => !u.dead && u.x === x && u.y === y) || null;
 const hasAb = (u, a) => (CREATURES[u.cid].abil || []).includes(a);
-const isFree = (B, x, y) => !B.obst.has(hexKey(x, y)) && !unitAt(B, x, y);
-const canShoot = (B, u) => u.cid === 'ballista' || u.shots > 0 && !alive(B, 1 - u.side).some(e => hexAdjacent(u, e));
+const isFree = (B, x, y, side) => !B.obst.has(hexKey(x, y)) && !walled(B, x, y, side) && !unitAt(B, x, y);
+const endlessShots = u => u.cid === 'ballista' || u.cid === 'arrowTower';
+const canShoot = (B, u) => endlessShots(u) || u.shots > 0 && !alive(B, 1 - u.side).some(e => hexAdjacent(u, e));
 // Współrzędne sześcienne heksu (do odległości i kierunków); układ odd-r
 const toCube = (x, y) => { const q = x - (y - (y & 1)) / 2; return [q, y, -q - y]; };
 const fromCube = (q, r) => [q + (r - (r & 1)) / 2, r];
@@ -2767,7 +2842,7 @@ function battleDist(B, u, limit = Infinity) {
   const dist = new Map([[hexKey(u.x, u.y), 0]]), prev = new Map();
   if (hasAb(u, 'fly')) {
     for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) {
-      const d = hexDistance(u, { x, y }); if (d > 0 && d <= limit && isFree(B, x, y)) { dist.set(hexKey(x, y), d); prev.set(hexKey(x, y), hexKey(u.x, u.y)); }
+      const d = hexDistance(u, { x, y }); if (d > 0 && d <= limit && isFree(B, x, y, u.side)) { dist.set(hexKey(x, y), d); prev.set(hexKey(x, y), hexKey(u.x, u.y)); }
     }
     return { dist, prev, fly: true };
   }
@@ -2775,7 +2850,7 @@ function battleDist(B, u, limit = Infinity) {
   while (q.length) {
     const [x, y] = q.shift(), d = dist.get(hexKey(x, y)); if (d >= limit) continue;
     for (const [nx, ny] of hexNeighbors(x, y)) {
-      const k = hexKey(nx, ny); if (dist.has(k) || !isFree(B, nx, ny)) continue;
+      const k = hexKey(nx, ny); if (dist.has(k) || !isFree(B, nx, ny, u.side)) continue;
       dist.set(k, d + 1); prev.set(k, hexKey(x, y)); q.push([nx, ny]);
     }
   }
@@ -2789,7 +2864,7 @@ function pathTo({ prev }, u, x, y) {
 // Premie bohatera do ataku i obrony swoich oddziałów (strona bez bohatera: 0)
 const sideHero = (B, side) => B.sides[side].hero;
 const sideAtt = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'att') : 0);
-const sideDef = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'def') : 0) + (B.sides[side].town ? TOWN_WALL_DEF[townLevel(B.sides[side].town)] : 0);
+const sideDef = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'def') : 0); // mury miasta chronią fizycznie (oblężenie)
 // Którą stroną dowodzi człowiek (resztą SI). Na razie człowiek zawsze atakuje, więc to strona 0.
 const humanSide = (B, side) => B.sides[side].owner === ME;
 // Obrażenia jak w oryginale: podstawa × (1 + 5% za każdy punkt przewagi ataku), albo −2,5% za punkt przewagi obrony.
@@ -2802,6 +2877,8 @@ function damageRoll(B, a, t, ranged, moved = 0) {
   let mult = A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
   if (!ranged && ca.shots > 0 && !hasAb(a, 'noMeleePenalty')) mult *= 0.5;
   if (!ranged && hasAb(a, 'jousting')) mult *= 1 + 0.05 * moved;
+  // strzał atakującego zza muru w obrońcę za murem: połowa obrażeń, dopóki ten fragment muru stoi
+  if (ranged && B.walls && a.side === 0 && a.x < SIEGE_X && t.x > SIEGE_X) { const w = wallAt(B, SIEGE_X, t.y); if (w && w.hp > 0) mult *= 0.5; }
   // umiejętności bohaterów: Atak / Łucznictwo napastnika, Zbroja obrońcy
   mult *= (1 + skillVal(sideHero(B, a.side), ranged ? 'archery' : 'offense') / 100) * (1 - skillVal(sideHero(B, t.side), 'armorer') / 100);
   return Math.max(1, Math.floor(base * mult));
@@ -2849,7 +2926,7 @@ function actMoveAttack(B, u, path, target) {
 }
 // Strzały: wóz z amunicją uzupełnia je na bieżąco, balista ma ich bez liku
 function actShoot(B, u, target) {
-  const use = () => { if (u.cid !== 'ballista' && !hasCart(B, u.side)) u.shots--; };
+  const use = () => { if (!endlessShots(u) && !hasCart(B, u.side)) u.shots--; };
   u.acted = true; use(); strike(B, u, target, true);
   if (hasAb(u, 'doubleShot') && u.shots > 0 && !target.dead) { use(); strike(B, u, target, true); }
 }
@@ -2882,8 +2959,9 @@ function tradeValue(B, u, e, ranged, moved) {
 // a gdy nikogo nie sięgnie, zbliża się do najcenniejszego celu. Strzelców wroga ceni wyżej.
 function aiAct(B, u) {
   if (u.cid === 'firstAid') { actFirstAid(B, u); return; }
-  if (isMachine(u) && u.cid !== 'ballista') { actDefend(B, u); return; }
-  const foes = alive(B, 1 - u.side);
+  if (u.cid === 'catapult') { actCatapult(B, u); return; }
+  if (isMachine(u) && !endlessShots(u)) { actDefend(B, u); return; }
+  const foes = alive(B, 1 - u.side).filter(targetable);
   if (canShoot(B, u)) {
     const t = foes.reduce((a, b) => (tradeValue(B, u, b, true, 0) > tradeValue(B, u, a, true, 0) ? b : a));
     actShoot(B, u, t); return;
@@ -2902,6 +2980,10 @@ function aiAct(B, u) {
   const far = battleDist(B, u, reach.fly ? spd : Infinity); let goal = null;
   if (reach.fly) { for (const k of far.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS), d = hexDistance({ x, y }, target); if (!goal || d < goal.d) goal = { d, nx: x, ny: y }; } }
   else for (const e of [target, ...foes]) { for (const [nx, ny] of hexNeighbors(e.x, e.y)) { const d = far.dist.get(hexKey(nx, ny)); if (d != null && (!goal || d < goal.d)) goal = { d, nx, ny }; } if (goal) break; }
+  if (!goal && B.walls && !reach.fly) { // mur zamknięty: podejdź pod bramę i czekaj na wyłom
+    for (const k of far.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS), d = hexDistance({ x, y }, { x: SIEGE_X, y: GATE_Y }); if (!goal || d < goal.d) goal = { d, nx: x, ny: y }; }
+    if (goal && goal.nx === u.x && goal.ny === u.y) goal = null;
+  }
   if (!goal) { actDefend(B, u); return; }
   const path = reach.fly ? [[goal.nx, goal.ny]] : pathTo(far, u, goal.nx, goal.ny).slice(0, spd);
   actMoveAttack(B, u, path, null);
@@ -2948,7 +3030,7 @@ const casterSide = B => (B.active ? B.active.side : 0);
 const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => SPELLS[id].cost <= h.mana)); };
 // Czy cel pasuje do czaru (u = oddział albo null dla czaru na pole); „swoi” = strona rzucającego
 function spellTargetOk(B, id, u) {
-  const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex') return true; if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead'))) return false;
+  const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex') return true; if (u && !targetable(u)) return false; if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead'))) return false;
   return t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : false;
 }
 // Obrażenia czaru z Czarnoksięstwem bohatera
@@ -2960,7 +3042,7 @@ function castBattle(B, id, x, y) {
   h.mana -= S.cost; B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
   if (B.fx) B.fx.push({ kind: 'spell', id, x, y });
   if (S.dmg) for (const [ax, ay] of spellArea(id, x, y)) {
-    const v = unitAt(B, ax, ay); if (!v) continue; const d = spellDamage(h, S, sp), k = applyDamage(v, d);
+    const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue; const d = spellDamage(h, S, sp), k = applyDamage(v, d);
     B.log.push(`${CREATURES[v.cid].plural}: ${d} obrażeń${k ? `, tracą ${k}` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: v, dmg: d, killed: k });
   }
   if (S.heal && tu) {
@@ -2977,11 +3059,11 @@ function aiHeroCast(B) {
   const s = casterSide(B), h = sideHero(B, s), sp = heroStat(h, 'sp'); let best = null;
   for (const id of battleSpells(h)) {
     const S = SPELLS[id]; if (!S.dmg || S.cost > h.mana) continue;
-    const cells = S.target === 'hex' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : alive(B, 1 - s).map(u => [u.x, u.y]);
+    const cells = S.target === 'hex' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : alive(B, 1 - s).filter(targetable).map(u => [u.x, u.y]);
     for (const [x, y] of cells) {
       let val = 0;
       for (const [ax, ay] of spellArea(id, x, y)) {
-        const v = unitAt(B, ax, ay); if (!v) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = spellDamage(h, S, sp);
+        const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = spellDamage(h, S, sp);
         const k = d >= pool ? v.n : v.n - Math.ceil((pool - d) / hp); val += (v.side !== s ? 1 : -1.5) * k * CREATURES[v.cid].value;
       }
       if (val > 0 && (!best || val > best.val)) best = { val, id, x, y };
@@ -3001,10 +3083,11 @@ function writeBackSide(B, side) {
   const S = B.sides[side], units = B.units.filter(u => u.side === side);
   if (S.monster) { S.monster.count = units.reduce((s, u) => s + (u.dead ? 0 : u.n), 0); return; }
   for (const u of units) {
+    if (u.src === 'siege') continue; // katapulta i wieże należą do bitwy, nie do armii
     if (u.src === 'machine') { if (u.dead) S.hero.machines = S.hero.machines.filter(id => id !== u.cid); continue; } // zniszczona machina przepada
     const a = u.src === 'garrison' ? S.town.garrison : S.hero.army; a[u.slot] = u.n > 0 && !u.dead ? { cid: u.cid, n: u.n } : null; }
 }
-const sideLosses = (B, side) => B.units.filter(u => u.side === side && u.n < u.n0).map(u => `${CREATURES[u.cid].plural.toLowerCase()} −${u.n0 - u.n}`);
+const sideLosses = (B, side) => B.units.filter(u => u.side === side && u.n < u.n0 && u.src !== 'siege').map(u => `${CREATURES[u.cid].plural.toLowerCase()} −${u.n0 - u.n}`);
 const killedHp = (B, side) => B.units.filter(u => u.side === side).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
 // Pokonany bohater znika z mapy. Wybór bohatera gracza przesuwa się tak, żeby wskazywał tego samego (albo pierwszego).
 function removeHero(st, h) {
@@ -5604,7 +5687,8 @@ const BattleFX = {
     for (const p of this.projs) {
       const [x, y] = projPos(p), [nx, ny] = projPos({ ...p, t: Math.min(p.dur, p.t + 0.02) }), ang = Math.atan2(ny - y, nx - x);
       ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
-      if (p.kind === 'arrow') { limb(ctx, -9, 0, 7, 0, 2, '#6a4424'); fillPoly(ctx, [[7, -3], [12, 0], [7, 3]], '#d8dce4'); fillPoly(ctx, [[-9, 0], [-12, -3], [-7, 0], [-12, 3]], '#e8e0cc'); }
+      if (p.kind === 'rock') { circ(ctx, 0, 0, 6, '#6e6a62'); circ(ctx, -1.5, -1.5, 3.5, '#9a948a'); }
+      else if (p.kind === 'arrow') { limb(ctx, -9, 0, 7, 0, 2, '#6a4424'); fillPoly(ctx, [[7, -3], [12, 0], [7, 3]], '#d8dce4'); fillPoly(ctx, [[-9, 0], [-12, -3], [-7, 0], [-12, 3]], '#e8e0cc'); }
       else { ctx.globalCompositeOperation = 'lighter'; const r = p.kind === 'fireball' ? 13 : 7, gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.2); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.3, p.col); gr.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, TAU); ctx.fill(); fillPoly(ctx, [[0, -r * 0.6], [-r * 2.2, 0], [0, r * 0.6]], p.col); }
       ctx.restore();
@@ -5753,12 +5837,12 @@ G.screens.battle = {
   startPlay(fx) {
     const sp = this.B.auto ? 0.55 : 1, S = fx.kind === 'spell' ? SPELL_FX[fx.id] || {} : null;
     const dur = fx.kind === 'move' ? (fx.fly ? 0.35 + 0.07 * hexDistance({ x: fx.path[0][0], y: fx.path[0][1] }, { x: fx.u.x, y: fx.u.y }) : 0.17 * (fx.path.length - 1))
-      : fx.kind === 'hit' ? (fx.a ? 0.62 : 0.3) : fx.kind === 'shot' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
+      : fx.kind === 'hit' ? (fx.a ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
     const now = G.time;
     if (fx.kind === 'move') fx.u.anim = { pose: 'walk', t0: now, dur: this.play.dur };
     if (fx.kind === 'hit' && fx.a) fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur };
-    if (fx.kind === 'shot') fx.a.anim = { pose: 'attack', t0: now, dur: 0.55 * sp };
+    if (fx.kind === 'shot' || fx.kind === 'siege') fx.a.anim = { pose: 'attack', t0: now, dur: 0.55 * sp };
   },
   // Trafienie: błysk, odrzut, iskry, liczba obrażeń; zabity oddział przewraca się
   impact(tg, dmg, killed, col = '#ffe8a0') {
@@ -5787,6 +5871,14 @@ G.screens.battle = {
       }
       if (p.launched && !p.landed && p.t >= p.hitAt) { p.landed = true; this.impact(p.tg, p.dmg, p.killed, orb ? col : '#ffe8a0'); if (orb) BattleFX.emit(p.tg.px, p.tg.py - 16, { n: 14, col: [col, '#ffffff'], spd: 90, life: 0.4, size: 3, glow: true }); }
       if (p.hitAt) p.dur = Math.max(p.dur, p.hitAt + 0.15);
+    } else if (p.kind === 'siege') { // głaz z katapulty w mur
+      const [tx, ty] = hexCenter(p.x, p.y);
+      if (!p.launched && f >= 0.4) { p.launched = true; p.pr = BattleFX.proj('rock', p.a.px, p.a.py - 26, tx + (p.hit ? 0 : 20), ty - 20, 0.5 * p.sp, '#8a847a', 90); p.hitAt = p.t + p.pr.dur; }
+      if (p.launched && !p.landed && p.t >= p.hitAt) {
+        p.landed = true; BattleFX.emit(tx, ty - 16, { n: p.broken ? 40 : 18, col: ['#9a948a', '#6e6a62', '#c8c0b0'], spd: 120, up: -60, g: 300, life: 0.7, size: 4, jx: 20 });
+        BattleFX.shake = Math.max(BattleFX.shake, p.broken ? 6 : 3); this.floats.push({ x: tx, y: ty - 50, text: p.hit ? (p.broken ? 'Wyłom!' : 'Trafienie!') : 'Pudło', t: G.time, col: '#e8e0cc', small: true });
+      }
+      if (p.hitAt) p.dur = Math.max(p.dur, p.hitAt + 0.2);
     } else if (p.kind === 'heal') {
       if (!p.landed) { p.landed = true; const u = p.u;
         if (p.label) this.floats.push({ x: u.px, y: u.py - 50, text: p.label, t: G.time, col: '#ffe08a', small: true });
@@ -5813,7 +5905,7 @@ G.screens.battle = {
   unitLook(u) {
     const d = u.side === 0 ? 1 : -1, now = G.time, a = u.anim && now - u.anim.t0 < u.anim.dur ? u.anim : null;
     let pose = 'idle', i = Math.floor(now * 3.5 + u.id * 1.37) % BATTLE_FRAMES.idle, ox = 0;
-    if (this.phase === 'intro') { pose = 'walk'; i = Math.floor(now * 10) % BATTLE_FRAMES.walk; ox = -d * (1 - ease(clamp(this.intro.t / this.intro.dur, 0, 1))) * 110; }
+    if (this.phase === 'intro' && u.cid !== 'arrowTower') { pose = 'walk'; i = Math.floor(now * 10) % BATTLE_FRAMES.walk; ox = -d * (1 - ease(clamp(this.intro.t / this.intro.dur, 0, 1))) * 110; }
     else if (a) {
       const f = clamp((now - a.t0) / a.dur, 0, 1); pose = a.pose;
       i = pose === 'walk' ? Math.floor(now * 10) % BATTLE_FRAMES.walk : pose === 'attack' ? Math.min(BATTLE_FRAMES.attack - 1, Math.floor(f * BATTLE_FRAMES.attack)) : 0;
@@ -5831,7 +5923,7 @@ G.screens.battle = {
       this.preview = spellTargetOk(B, id, tu) ? { kind: 'cast', id, x: hx.x, y: hx.y, target: tu } : { kind: 'nocast', id }; return;
     }
     const occ = unitAt(B, hx.x, hx.y), k = hexKey(hx.x, hx.y);
-    if (occ && occ.side !== u.side) {
+    if (occ && occ.side !== u.side && targetable(occ)) {
       if (canShoot(B, u)) { this.preview = { kind: 'shoot', target: occ, est: estimateStrike(B, u, occ, true) }; return; }
       let best = null;
       for (const [nx, ny] of hexNeighbors(occ.x, occ.y)) {
@@ -5851,7 +5943,9 @@ G.screens.battle = {
     else if (p.kind === 'move') this.player(u => actMoveAttack(B, u, pathTo(this.reach, u, ...p.to), null));
   },
   rightInfo(x, y) {
-    const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y); if (!u) return null;
+    const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y), w = hx && wallAt(this.B, hx.x, hx.y);
+    if (w && !u) return w.hp <= 0 ? `${w.kind === 'gate' ? 'Rozbita brama' : 'Wyłom w murze'}: można tędy przejść.` : w.kind === 'gate' ? `Brama miasta (wytrzymałość ${w.hp}/${w.max}): przepuszcza tylko obrońców. Rozbija ją katapulta.` : `Mur miasta (wytrzymałość ${w.hp}/${w.max}). Strzały zza muru tracą połowę siły; katapulta robi wyłomy.`;
+    if (!u) return null;
     const c = CREATURES[u.cid];
     const ab = abilText(c);
     return `${c.plural}: ${u.n} (${humanSide(this.B, u.side) ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''} Morale ${signed(unitMorale(this.B, u))}, szczęście ${signed(unitLuck(this.B, u))}.${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
@@ -5879,7 +5973,9 @@ G.screens.battle = {
     // oddziały i przeszkody (od góry ekranu w dół, żeby niższe zasłaniały wyższe)
     const shown = B.units.filter(u => !u.dead || u.dieT == null || G.time - u.dieT <= 0.45);
     const obst = [...B.obst].map(([k, o]) => { const x = k % BCOLS, y = Math.floor(k / BCOLS), [px, py] = hexCenter(x, y); return { obst: o, px, py }; });
-    for (const u of [...shown, ...obst].sort((a, b) => a.py - b.py)) {
+    const walls = B.walls ? [...B.walls.values()].map(w => { const [px, py] = hexCenter(w.x, w.y); return { wall: w, px, py: py - 0.1 }; }) : [];
+    for (const u of [...shown, ...obst, ...walls].sort((a, b) => a.py - b.py)) {
+      if (u.wall) { const w = u.wall; drawSprite(ctx, wallSprite(w.kind === 'tower' ? 'wall' : w.kind, w.hp <= 0 ? 'down' : w.hp < w.max ? 'hit' : 'ok'), u.px, u.py + 14, 1); continue; }
       if (u.obst) { drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
       const L = this.unitLook(u), gx = u.px + L.ox, gy = u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
       ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15 * sz, 5 * sz, 0, 0, TAU); ctx.fill();

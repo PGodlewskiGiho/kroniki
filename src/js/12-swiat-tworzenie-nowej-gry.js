@@ -192,7 +192,7 @@ function createTown(st, x, y, owner, fac = 'haven') {
   return t;
 }
 // Miasto niezależne w miejscu startowym: losowa frakcja, garnizon tym silniejszy, im dalej od gracza
-// (i im wyższy poziom trudności). Daleko stoją też mury, które dają obrońcom premię (TOWN_WALL_DEF).
+// (i im wyższy poziom trudności). Daleko stoją też mury (oblężenie w bitwie).
 function createNeutralTown(st, site, rng) {
   const n = st.map.n, dd = clamp(Math.hypot(site.x - st.map.start.x, site.y - st.map.start.y) / (n * 0.75), 0, 1);
   const fac = FACTIONS[Math.floor(rng() * FACTIONS.length)].id, t = createTown(st, site.x, site.y, -1, fac), F = factionOf(fac);
