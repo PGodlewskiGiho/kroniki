@@ -33,6 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # gra to jeden plik; na stronie ma być pod adresem głównym, więc kopiujemy go jako index.html
+      - run: node build.js --check
       - run: mkdir _site && cp "Kroniki Królestw.html" _site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

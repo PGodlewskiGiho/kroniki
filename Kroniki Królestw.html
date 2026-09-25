@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Plik zbudowany przez build.js ze źródeł w src/. Zmieniaj src/, potem: npm run build -->
 <html lang="pl">
 <head>
 <meta charset="utf-8">
@@ -109,6 +110,8 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    (ekran bitwy: this.me, onDone). doEndTurn() bez opcji (testy) liczy wszystko od razu, z obroną automatyczną.
    Spotkanie bohaterów (showMeeting). Mgła wojny dla SI: reveal(…, owner) odkrywa teren każdemu graczowi,
    aiReach i aiPickTarget widzą tylko odkryte pola, a bez lepszego celu bohater SI idzie na zwiad (cel explore).
+   Podział pliku: źródła w src/ (szablon.html + src/js/NN-dział.js, jeden plik na dział), build.js skleja je
+   w „Kroniki Królestw.html” (npm run build / watch), a npm test najpierw sprawdza, czy plik jest aktualny.
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
