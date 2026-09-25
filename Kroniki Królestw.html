@@ -109,7 +109,7 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
 // Stałe gry, surowce, poziomy trudności, rozmiary map, kolory graczy, bonusy.
 const W = 800, H = 600;
-const VERSION = 'krok 15 z 15';
+const VERSION = '1.1';
 // Plan rozwoju: gdzie w interfejsie obiecujemy przyszłe funkcje. Zmiana planu = zmiana tylko tutaj.
 const ROADMAP = {
   later: 'w dalszym kroku',
@@ -4221,7 +4221,7 @@ const EMBERS = (() => { const r = mulberry32(9); return Array.from({ length: 28 
 function ridge(c, seed, base, amp, col) {
   const r = mulberry32(seed); const p1 = r() * 6, p2 = r() * 6, p3 = r() * 6;
   c.beginPath(); c.moveTo(0, H);
-  for (let x = 0; x <= W; x += 6) {
+  for (let x = 0; x <= W + 6; x += 6) { // o krok za brzeg, żeby przy prawej krawędzi nie prześwitywało niebo
     const n = Math.sin(x * 0.009 + p1) * 0.5 + Math.sin(x * 0.023 + p2) * 0.3 + Math.sin(x * 0.061 + p3) * 0.15 + (r() - 0.5) * 0.08;
     c.lineTo(x, base - amp * (0.55 + n * 0.6));
   }
@@ -4238,7 +4238,7 @@ function paintSky(c) {
   c.fillStyle = '#f6ecd0'; c.beginPath(); c.arc(470, 170, 24, 0, TAU); c.fill();
   c.fillStyle = 'rgba(190,170,140,.35)'; for (const [x, y, rad] of [[462, 164, 5], [478, 180, 4], [476, 160, 3]]) { c.beginPath(); c.arc(x, y, rad, 0, TAU); c.fill(); }
   const sg = c.createRadialGradient(300, 420, 10, 300, 420, 320); sg.addColorStop(0, 'rgba(255,190,110,.5)'); sg.addColorStop(1, 'rgba(255,190,110,0)');
-  c.fillStyle = sg; c.fillRect(0, 150, W, 320);
+  c.fillStyle = sg; c.fillRect(0, 0, W, H);
   ridge(c, 31, 405, 150, '#4b3358');
   const hz = c.createLinearGradient(0, 330, 0, 430); hz.addColorStop(0, 'rgba(240,140,100,0)'); hz.addColorStop(1, 'rgba(240,140,100,.28)');
   c.fillStyle = hz; c.fillRect(0, 330, W, 100);
@@ -4264,14 +4264,17 @@ function paintCastle(c) {
   tower(240, 190, 40, 80, 70);
   c.fillStyle = body; c.fillRect(150, 345, 220, 52); cren(150, 345, 220, 11);
   tower(135, 325, 26, 72, 0); tower(360, 325, 26, 72, 0);
-  c.fillStyle = 'rgba(255,150,100,.16)';
-  for (const [x, y, h] of [[213, 235, 125], [333, 235, 125], [278, 190, 80], [313, 265, 95], [159, 325, 72], [384, 325, 72]]) c.fillRect(x, y, 2, h);
   c.fillStyle = '#07060c'; c.beginPath(); c.moveTo(245, 397); c.lineTo(245, 374); c.arc(260, 374, 15, Math.PI, 0); c.lineTo(275, 397); c.closePath(); c.fill();
   c.fillStyle = '#0a0810'; for (const [x, y, w, h] of CASTLE_WINDOWS) c.fillRect(x, y, w, h);
 }
 function paintLand(c) {
   c.fillStyle = '#17122a'; c.beginPath(); c.moveTo(-10, H); c.lineTo(-10, 455);
   c.bezierCurveTo(70, 410, 150, 396, 260, 396); c.bezierCurveTo(370, 396, 450, 420, 560, 470); c.lineTo(560, H); c.closePath(); c.fill();
+  // skalny kopiec pod zamkiem: wzgórze opada na boki, a mury muszą na czymś stać
+  c.beginPath(); c.moveTo(80, 470); c.bezierCurveTo(100, 425, 118, 400, 132, 394); c.lineTo(390, 394);
+  c.bezierCurveTo(408, 402, 428, 425, 460, 470); c.closePath(); c.fill();
+  const rk = mulberry32(33); c.fillStyle = '#211a36';
+  for (let i = 0; i < 18; i++) { const x = 118 + rk() * 285, y = 400 + rk() * 26; c.beginPath(); c.ellipse(x, y, 6 + rk() * 9, 2 + rk() * 3, 0, 0, TAU); c.fill(); }
   paintCastle(c);
   c.fillStyle = 'rgba(140,100,80,.22)'; c.beginPath(); c.moveTo(250, 397); c.lineTo(270, 397);
   c.bezierCurveTo(300, 440, 330, 470, 360, 525); c.lineTo(305, 525); c.bezierCurveTo(290, 470, 265, 430, 250, 397); c.fill();
@@ -4289,27 +4292,43 @@ function drawCloud(ctx, x, y, s, a) {
   ctx.globalAlpha = a * 0.6; ctx.fillStyle = '#e0906a'; ctx.beginPath(); ctx.ellipse(34, 10, 62, 4, 0, 0, TAU); ctx.fill();
   ctx.restore();
 }
-function drawMenuScene(ctx, lsc) {
-  const t = G.time;
-  ctx.drawImage(Layers.get('menuSky', W, H, paintSky, lsc), 0, 0, W, H);
-  for (const c of CLOUDS) drawCloud(ctx, ((c.x + t * c.v) % 1100) - 150, c.y, c.s, c.a);
-  ctx.drawImage(Layers.get('menuLand', W, H, paintLand, lsc), 0, 0, W, H);
+// Jeździec zjeżdżający drogą od bramy zamku (ten sam sprite co bohater na mapie); pętla co MENU_RIDE s
+const MENU_RIDE = 16, MENU_ROAD = [[260, 400], [288, 440], [312, 470], [334, 530]];
+function menuRider(b, t) {
+  const u = (t % MENU_RIDE) / MENU_RIDE, v = 1 - u, [p0, p1, p2, p3] = MENU_ROAD;
+  const x = v * v * v * p0[0] + 3 * v * v * u * p1[0] + 3 * v * u * u * p2[0] + u * u * u * p3[0];
+  const y = v * v * v * p0[1] + 3 * v * v * u * p1[1] + 3 * v * u * u * p2[1] + u * u * u * p3[1];
+  const s = heroSprite({ cls: 'knight', dir: 1, anim: {} }, colorHex(G.settings.color)), k = 0.45 + 0.75 * u;
+  b.save(); b.globalAlpha = clamp(u * 8, 0, 1) * clamp((1 - u) * 6, 0, 1);
+  b.drawImage(s.c, x - s.ax * 2 * k, y - s.ay * 2 * k, s.c.width * 2 * k, s.c.height * 2 * k); b.restore();
+}
+// Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize)
+// i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
+function drawMenuScene(ctx) {
+  const t = G.time, pb = pixBuf('menuScene', W / 2, H / 2, true), b = pb._ctx;
+  b.setTransform(0.5, 0, 0, 0.5, 0, 0); b.imageSmoothingEnabled = false;
+  b.drawImage(Layers.get('menuSky', W, H, paintSky, 0.5), 0, 0, W, H);
+  for (const c of CLOUDS) drawCloud(b, ((c.x + t * c.v) % 1100) - 150, c.y, c.s, c.a);
+  b.drawImage(Layers.get('menuLand', W, H, paintLand, 0.5), 0, 0, W, H);
   for (const [x, y, w, h, p] of CASTLE_WINDOWS) {
     const f = clamp(0.55 + 0.35 * Math.sin(t * 2.3 + p) + 0.1 * Math.sin(t * 7.1 + p * 3), 0.15, 1);
-    ctx.fillStyle = `rgba(255,170,70,${(f * 0.2).toFixed(3)})`; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w * 1.8, 0, TAU); ctx.fill();
-    ctx.fillStyle = `rgba(255,200,100,${f.toFixed(3)})`; ctx.fillRect(x, y, w, h);
+    b.fillStyle = `rgba(255,170,70,${(f * 0.18).toFixed(3)})`; b.fillRect(x - 2, y - 2, w + 4, h + 4);
+    b.fillStyle = `rgba(255,200,100,${f.toFixed(3)})`; b.fillRect(x, y, w, h);
   }
   const col = colorHex(G.settings.color);
-  drawFlag(ctx, 260, 96, 26, 12, t, col); drawFlag(ctx, 200, 168, 14, 7, t + 1, col); drawFlag(ctx, 320, 168, 14, 7, t + 2, col);
+  drawFlag(b, 260, 96, 26, 12, t, col); drawFlag(b, 200, 168, 14, 7, t + 1, col); drawFlag(b, 320, 168, 14, 7, t + 2, col);
+  menuRider(b, t);
   for (let i = 0; i < 4; i++) {
-    const x = ((i * 320 + t * 9) % 1280) - 240; ctx.save(); ctx.translate(x, 448 + (i % 2) * 18); ctx.scale(3.2, 0.45);
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 100); g.addColorStop(0, 'rgba(210,170,200,.14)'); g.addColorStop(1, 'rgba(210,170,200,0)');
-    ctx.fillStyle = g; ctx.fillRect(-100, -100, 200, 200); ctx.restore();
+    const x = ((i * 320 + t * 9) % 1280) - 240; b.save(); b.translate(x, 448 + (i % 2) * 18); b.scale(3.2, 0.45);
+    const g = b.createRadialGradient(0, 0, 0, 0, 0, 100); g.addColorStop(0, 'rgba(210,170,200,.14)'); g.addColorStop(1, 'rgba(210,170,200,0)');
+    b.fillStyle = g; b.fillRect(-100, -100, 200, 200); b.restore();
   }
   for (const e of EMBERS) {
-    const y = 430 + (((e.y - 430 - t * e.v) % 170) + 170) % 170, x = e.x + Math.sin(t * 0.9 + e.p) * 10, a = 0.35 + 0.35 * Math.sin(t * 3 + e.p);
-    ctx.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; ctx.beginPath(); ctx.arc(x, y, e.r, 0, TAU); ctx.fill();
+    const y = 430 + (((e.y - 430 - t * e.v) % 170) + 170) % 170, x = e.x + Math.sin(t * 0.9 + e.p) * 10, a = 0.45 + 0.35 * Math.sin(t * 3 + e.p);
+    b.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; b.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
   }
+  pixelQuantize(pb, 14);
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(pb, 0, 0, W, H); ctx.restore();
 }
 function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.fillRect(0, 0, W, H); }
 function askQuit() {
@@ -4325,17 +4344,12 @@ G.screens.menu = {
   setMode(m) {
     this.mode = m; let y = 196;
     const B = (label, act, o = {}) => { const b = new Button(540, y, 220, 48, label, act, Object.assign({ size: 17 }, o)); y += 64; return b; };
-    this.buttons = m === 'main' ? [
-      B('Nowa gra', () => this.setMode('new'), { key: 'n' }),
+    this.buttons = [
+      B('Nowa gra', () => G.go('setup'), { key: 'n' }),
       B('Wczytaj grę', () => G.go('load', { mode: 'load' }), { key: 'l' }),
       B('Najlepsze wyniki', () => G.go('scores'), { key: 'h' }),
       B('Twórcy', () => G.go('credits'), { key: 'c' }),
       B('Wyjście', () => askQuit(), { key: 'q' }),
-    ] : [
-      B('Scenariusz', () => G.go('setup'), { key: 's', sub: 'pojedyncza gra' }),
-      B('Kampania', null, { disabled: true, sub: 'wkrótce' }),
-      B('Samouczek', null, { disabled: true, sub: 'wkrótce' }),
-      B('Wróć', () => this.setMode('main'), { key: 'escape' }),
     ];
 
   },
@@ -4346,7 +4360,7 @@ G.screens.menu = {
     this.buttons.forEach(b => b.draw(ctx));
     goldText(ctx, 'KRONIKI KRÓLESTW', W / 2, 62, 44);
     text(ctx, 'Czas bohaterów', W / 2, 104, { size: 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
-    text(ctx, 'Kroniki Królestw, ' + VERSION, 12, H - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
+    text(ctx, `Kroniki Królestw · wersja ${VERSION}`, 12, H - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
   },
 };
 G.screens.setup = {
@@ -4361,7 +4375,7 @@ G.screens.setup = {
     [1, 2, 3].forEach((k, i) => B.push(new Button(628 + i * 38, 440, 34, 44, String(k), () => { S.opponents = k; }, { selected: () => (S.opponents || 1) === k, size: 17,
       tip: 'Liczba przeciwników komputerowych. Na małej mapie zmieszczą się najwyżej dwaj.' })));
     B.push(new Button(150, 506, 200, 46, 'Rozpocznij', () => startNewGame(), { key: 'enter', size: 19 }));
-    B.push(new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu', { mode: 'new' }), { key: 'escape', size: 19 }));
+    B.push(new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
     this.buttons = B;
   },
   draw(ctx) {
