@@ -102,12 +102,17 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    dokupowanie surowców na rynku, werbunek, najem, cele z mapy odległości aiReach, próbna walka aiWorthFight,
    rozejm AI_PEACE_DAYS zależny od trudności), koniec gry (gameResult: wygrana po pokonaniu rywali, porażka bez
    miast i bohaterów albo po NO_TOWN_DAYS dniach bez miasta), najlepsze wyniki (recordScore), wybór liczby rywali.
+   Po kroku 15 (etap 1): rynek dla gracza (marketLot/trade, okno showMarket; kurs zależy od liczby rynków,
+   te same zasady dla SI w buyMissing). Menu w stylu pikselowym.
+   Tura przeciwnika na żywo: aiAllTurns to generator akcji (kroki, obrona), ekran mapy odtwarza go w updateAi
+   (widoczne ruchy z animacją), atak na gracza pyta o walkę (askDefense) i otwiera bitwę z graczem po prawej
+   (ekran bitwy: this.me, onDone). doEndTurn() bez opcji (testy) liczy wszystko od razu, z obroną automatyczną.
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
 // Stałe gry, surowce, poziomy trudności, rozmiary map, kolory graczy, bonusy.
 const W = 800, H = 600;
-const VERSION = 'krok 15 z 15';
+const VERSION = '1.1';
 // Plan rozwoju: gdzie w interfejsie obiecujemy przyszłe funkcje. Zmiana planu = zmiana tylko tutaj.
 const ROADMAP = {
   later: 'w dalszym kroku',
@@ -314,7 +319,7 @@ const BUILDINGS = [
   { id: 'citadel', name: 'Cytadela', slot: 1, cost: { gold: 2500, wood: 5, ore: 5 }, req: ['fort'], emblem: 'wall', desc: 'Mocniejsze mury i wieża strzelnicza. Przyrost jednostek we wszystkich siedliskach większy o połowę.' },
   { id: 'castle', name: 'Zamek', slot: 1, cost: { gold: 5000, wood: 10, ore: 10 }, req: ['citadel'], emblem: 'wall', desc: 'Najmocniejsze mury. Przyrost jednostek we wszystkich siedliskach podwojony.' },
   { id: 'tavern', name: 'Tawerna', slot: 12, cost: { gold: 500, wood: 5 }, req: [], emblem: 'mug', desc: 'Najem bohaterów: co tydzień dwóch nowych chętnych.' },
-  { id: 'market', name: 'Rynek', slot: 13, cost: { gold: 500, wood: 5 }, req: [], emblem: 'scale', desc: `Pozwala wymieniać zasoby (handel ${ROADMAP.later}).` },
+  { id: 'market', name: 'Rynek', slot: 13, cost: { gold: 500, wood: 5 }, req: [], emblem: 'scale', desc: 'Handel surowcami. Każdy kolejny rynek w królestwie daje lepszy kurs.' },
   { id: 'silo', name: 'Skarbiec zasobów', slot: 9, cost: { gold: 5000, ore: 5 }, req: ['market'], emblem: 'barrel', desc: 'Codziennie dodaje 1 drewna i 1 rudy.' },
   { id: 'smith', name: 'Kuźnia', slot: 8, cost: { gold: 1000, ore: 5 }, req: [], emblem: 'anvil', desc: `Wyposaża armię w machiny wojenne (${ROADMAP.later}).` },
   { id: 'guild1', slot: 2, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['tavern'], emblem: 'book', desc: 'Uczy bohaterów czarów 1 poziomu i odnawia im manę.' },
@@ -1498,6 +1503,85 @@ function showRecruit(st, t, L, onDone, backToList) {
   };
 }
 // Przegląd wszystkich siedlisk miasta
+// Okno rynku: po lewej, co oddajesz, po prawej, co dostajesz; liczba transakcji jak przy werbunku
+function showMarket(st, owner, onDone) {
+  const x = 150, y = 70, w = 500, hh = 450, R = playerOf(st, owner).resources, col = (i, right) => x + (right ? 282 : 28) + (i % 4) * 48, row = (i) => y + 90 + Math.floor(i / 4) * 60;
+  let from = 'gold', to = 'wood', n = 0;
+  const lot = () => marketLot(st, owner, from, to), max = () => marketMax(st, owner, from, to), set = v => { n = clamp(v, 0, max()); };
+  const pick = (right) => RESOURCES.map((r, i) => new Button(col(i, right), row(i), 44, 44, r.name, () => { if (right) to = r.id; else from = r.id; set(Math.min(n, max()) || (max() ? 1 : 0)); },
+    { selected: () => (right ? to : from) === r.id, icon: (ctx, cx, cy) => resIcon(ctx, r.id, cx, cy, 26), tip: `${r.name}: masz ${R[r.id]}.` }));
+  const qy = y + 300;
+  const bMinus = new Button(x + 150, qy, 36, 30, 'Mniej', () => set(n - 1), { icon: iconMinus, key: '-' });
+  const bPlus = new Button(x + 284, qy, 36, 30, 'Więcej', () => set(n + 1), { icon: iconPlus, key: '+' });
+  const bMax = new Button(x + 330, qy, 80, 30, 'Maks', () => set(max()), { size: 14, key: 'm' });
+  const bTrade = new Button(x + 90, y + hh - 56, 130, 40, 'Handluj', () => {
+    const L = lot(), err = trade(st, owner, from, to, n); if (err) { onDone(err); return; }
+    onDone(`Wymiana: ${resName(from)} ${L.give * n} → ${resName(to)} ${L.get * n}`); set(Math.min(n, max()));
+  }, { key: 'enter', size: 17 });
+  const bClose = new Button(x + 280, y + hh - 56, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
+  const btns = [...pick(false), ...pick(true), bMinus, bPlus, bMax, bTrade, bClose];
+  G.modal = {
+    buttons: btns, market: { get from() { return from; }, get to() { return to; }, get n() { return n; }, set: v => set(v) }, // podgląd w testach
+    draw(ctx) {
+      const L = lot(), m = marketCount(st, owner);
+      bTrade.disabled = !L || n <= 0; bMinus.disabled = n <= 0; bPlus.disabled = bMax.disabled = n >= max();
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      text(ctx, 'Rynek', W / 2, y + 32, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, `Rynków w królestwie: ${m}${m < 4 ? ' (kolejne poprawiają kurs)' : ''}`, W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: '#6a4418' });
+      text(ctx, 'Oddajesz', col(0, false), y + 80, { size: 15, color: '#3a1e08', fam: 'title' }); text(ctx, 'Dostajesz', col(0, true), y + 80, { size: 15, color: '#3a1e08', fam: 'title' });
+      btns.forEach(b => b.draw(ctx));
+      for (const right of [false, true]) RESOURCES.forEach((r, i) => text(ctx, String(R[r.id]), col(i, right) + 22, row(i) + 52, { size: 12, align: 'center', weight: 700, color: '#3a1e08' }));
+      const rate = !L ? (from === to ? 'Wybierz dwa różne surowce.' : 'Brak rynku.') : `Kurs: ${resName(from)} ${L.give} → ${resName(to)} ${L.get}`;
+      text(ctx, rate, W / 2, y + 232, { size: 16, align: 'center', weight: 700, color: '#2a1606' });
+      text(ctx, 'Wymian:', x + 90, qy + 16, { size: 15, weight: 500, color: '#5a3814' });
+      ctx.fillStyle = 'rgba(255,248,220,.6)'; rr(ctx, x + 192, qy, 86, 30, 3); ctx.fill(); ctx.strokeStyle = 'rgba(90,55,20,.5)'; ctx.lineWidth = 1; ctx.stroke();
+      text(ctx, String(n), x + 235, qy + 16, { size: 18, align: 'center', color: '#2a1606', fam: 'title' });
+      if (L && n > 0) text(ctx, `Oddasz ${L.give * n}, dostaniesz ${L.get * n}`, W / 2, qy + 52, { size: 15, align: 'center', weight: 500, color: '#5a3814' });
+      else if (L && !max()) text(ctx, `Za mało na jedną wymianę (${resName(from)}: ${R[from]})`, W / 2, qy + 52, { size: 14, align: 'center', italic: true, weight: 500, color: '#8a4a2a' });
+    },
+  };
+}
+// Spotkanie dwóch bohaterów gracza (stoją obok siebie): wymiana oddziałów i artefaktów z plecaka.
+// Oddział: kliknij go, potem miejsce w dowolnej z dwóch armii (przeniesienie, połączenie albo zamiana).
+function showMeeting(st, a, b, onMsg) {
+  const x = 60, y = 70, w = 680, hh = 460, heroes = [a, b], rows = [y + 96, y + 290], armies = [a.army, b.army];
+  let sel = null, msg = ''; const say = m => { msg = m; if (onMsg) onMsg(m); };
+  let armyRects = [[], []], bagRects = [[], []];
+  const bClose = new Button(x + w / 2 - 65, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
+  const armyAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(armyRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
+  const bagAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(bagRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
+  G.modal = {
+    buttons: [bClose], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
+    onClick(px, py) {
+      const s = armyAt(px, py), g = bagAt(px, py);
+      if (s) {
+        if (!sel) { if (armies[s.k][s.i]) { sel = s; msg = ''; } return; }
+        const err = armyMove(armies[sel.k], sel.i, armies[s.k], s.i, armies); sel = null; if (err) say(err); return;
+      }
+      if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
+      sel = null;
+    },
+    rightInfo(px, py) {
+      const s = armyAt(px, py); if (s) return armies[s.k][s.i] ? stackInfo(armies[s.k][s.i]) : 'Wolne miejsce.';
+      const g = bagAt(px, py); if (g) return `${artInfo(heroes[g.k].bag[g.i])} Kliknij, aby oddać drugiemu bohaterowi.`;
+      return null;
+    },
+    draw(ctx) {
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      text(ctx, 'Spotkanie bohaterów', W / 2, y + 30, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, msg || 'Kliknij oddział, a potem miejsce, aby go przenieść. Kliknij artefakt, aby go oddać.', W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: msg ? '#8a3a1a' : '#6a4418' });
+      heroes.forEach((h, k) => {
+        const ry = rows[k]; drawHeroPortrait(ctx, x + 24, ry - 26, h, ownerColor(st, h.owner));
+        text(ctx, heroTitle(h), x + 68, ry - 12, { size: 16, color: '#3a1e08', fam: 'title' });
+        text(ctx, `Armia: siła ${armyStrength(h)}`, x + w - 24, ry - 12, { size: 13, align: 'right', weight: 500, color: '#5a3814' });
+        armyRects[k] = drawArmyRow(ctx, h.army, x + 24, ry + 16, { light: true, sel: sel && sel.k === k ? sel.i : null, w: 84, gap: 6 });
+        text(ctx, h.bag.length ? 'Plecak:' : 'Plecak pusty', x + 24, ry + 92, { size: 13, weight: 500, color: '#5a3814' });
+        bagRects[k] = h.bag.slice(0, 12).map((id, i) => { const bx = x + 90 + i * 46; drawSprite(ctx, artSprite(id), bx + 20, ry + 92, 1); return { x: bx, y: ry + 72, w: 40, h: 40, i }; });
+      });
+      bClose.draw(ctx);
+    },
+  };
+}
 function showRecruitList(st, t, onDone) {
   const levels = dwellingLevels(t), F = factionOf(t.faction), w = 500, hh = 120 + levels.length * 52 + 60, x = (W - w) / 2, y = Math.max(20, (H - hh) / 2);
   const open = L => showRecruit(st, t, L, onDone, () => showRecruitList(st, t, onDone));
@@ -2169,6 +2253,26 @@ function buildIn(st, t, B) {
   const gm = /^guild(\d)$/.exec(B.id); if (gm) rollGuildLevel(st, t, +gm[1]);
   const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1]); // nowe siedlisko od razu daje przyrost
 }
+// --- rynek: handel surowcami ---------------------------------------------------------------
+// Wartość surowca w złocie; kupno drożeje, a sprzedaż tanieje, im mniej rynków ma gracz (jak w oryginale).
+const RES_VALUE = { wood: 250, ore: 250, mercury: 500, sulfur: 500, crystal: 500, gems: 500, gold: 1 };
+const marketCount = (st, owner) => st.towns.filter(t => t.owner === owner && hasB(t, 'market')).length;
+const MARKET_BUY = [0, 1, 0.85, 0.75, 0.65], MARKET_SELL = [0, 0.2, 0.3, 0.4, 0.5];
+// Najmniejsza transakcja: oddajesz give sztuk `from`, dostajesz get sztuk `to` (null bez rynku albo dla tej samej rzeczy)
+function marketLot(st, owner, from, to) {
+  const m = Math.min(4, marketCount(st, owner)); if (!m || from === to) return null;
+  const val = from === 'gold' ? 1 : RES_VALUE[from] * MARKET_SELL[m], cost = to === 'gold' ? 1 : RES_VALUE[to] * MARKET_BUY[m], r = cost / val;
+  return r >= 1 ? { give: Math.ceil(r - 1e-9), get: 1 } : { give: 1, get: Math.floor(1 / r + 1e-9) };
+}
+// Ile transakcji stać gracza
+const marketMax = (st, owner, from, to) => { const L = marketLot(st, owner, from, to); return L ? Math.floor(playerOf(st, owner).resources[from] / L.give) : 0; };
+// Wymiana `lots` transakcji. Zwraca błąd albo null.
+function trade(st, owner, from, to, lots) {
+  const L = marketLot(st, owner, from, to); if (!L) return 'Brak rynku';
+  if (!(lots > 0)) return 'Wybierz ilość';
+  if (lots > marketMax(st, owner, from, to)) return 'Brakuje surowców na tę wymianę';
+  const R = playerOf(st, owner).resources; R[from] -= L.give * lots; R[to] += L.get * lots; return null;
+}
 // --- tawerna: najem bohaterów ---------------------------------------------------------------
 const HERO_COST = 2500, MAX_HEROES = 8;
 const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
@@ -2498,7 +2602,7 @@ function resolveBattle(B, fled) {
     if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; removeHero(st, D.hero); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
   } else {
-    if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); gainExp(st, D.hero, res.foeExp); }
+    if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie
     if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
     else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
       const towns = st.towns.filter(t => t.owner === h.owner), t = towns.find(t => !heroAt(st, t.x, t.y)) || (towns.length && st.heroes.filter(o => o.owner === h.owner).length === 1 ? towns[0] : null);
@@ -2517,15 +2621,13 @@ function resolveBattle(B, fled) {
 // z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do news.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
   'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u'];
-// Rynek: cena surowca w złocie (drewno i ruda taniej, rzadkie drożej). Na razie handluje tylko SI.
-const MARKET_PRICE = r => (r === 'wood' || r === 'ore' ? 250 : 500);
-// Dokupuje brakujące surowce na koszt cost, jeśli gracz ma rynek i starczy złota. Zwraca, czy kupił.
+// Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
 function buyMissing(st, owner, cost) {
-  if (!st.towns.some(t => t.owner === owner && hasB(t, 'market'))) return false;
-  const R = playerOf(st, owner).resources; let gold = cost.gold || 0; const need = {};
-  for (const r of RESOURCES) if (r.id !== 'gold' && (cost[r.id] || 0) > R[r.id]) { need[r.id] = cost[r.id] - R[r.id]; gold += need[r.id] * MARKET_PRICE(r.id); }
-  if (!Object.keys(need).length || R.gold < gold) return false;
-  for (const [r, k] of Object.entries(need)) { R[r] += k; R.gold -= k * MARKET_PRICE(r); }
+  if (!marketCount(st, owner)) return false;
+  const R = playerOf(st, owner).resources, deals = []; let gold = cost.gold || 0;
+  for (const r of RESOURCES) if (r.id !== 'gold' && (cost[r.id] || 0) > R[r.id]) { const k = cost[r.id] - R[r.id], L = marketLot(st, owner, 'gold', r.id); deals.push([r.id, k, L]); gold += Math.ceil(k / L.get) * L.give; }
+  if (!deals.length || R.gold < gold) return false;
+  for (const [r, k, L] of deals) trade(st, owner, 'gold', r, Math.ceil(k / L.get));
   return true;
 }
 const aiMaxHeroes = st => (st.map.n >= 108 ? 3 : 2);
@@ -2625,49 +2727,68 @@ function aiPickTarget(st, h, R) {
   }
   return null;
 }
-// Walka SI bez ekranu; wieść dla człowieka, gdy walka go dotyczy
-function aiBattle(st, h, foe, news) {
+// Tura SI to generator akcji: kroki bohaterów ({ kind: 'step' }, już wykonane w stanie, ekran może je
+// odtworzyć), atak na człowieka ({ kind: 'defend' }: wynik bitwy wraca przez gen.next(res)) i początek tury gracza.
+// Bez ekranu (testy, symulacje, szybka tura) generator rozgrywa runAiSync: obrona jest wtedy automatyczna.
+function* aiBattle(st, h, foe, news) {
   const defOwner = foe.type === 'monster' ? -1 : foe.owner, defName = foe.type === 'monster' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
-  const res = resolveBattle(simulateBattle(createBattle(st, h, foe)), false);
+  let res;
+  if (defOwner === ME) {
+    const act = { kind: 'defend', h, foe }; res = yield act;
+    if (!act.shown) news.push(`${h.name} (${ownerName(st, h.owner)}) atakuje: ${defName}. ${res.outcome === 'win' ? (res.captured ? 'Miasto przepadło.' : 'Twój bohater poległ.') : 'Obrona się udała!'}`);
+  } else res = resolveBattle(simulateBattle(createBattle(st, h, foe)), false);
   if (res.outcome === 'win') gainExp(st, h, res.exp);
-  if (defOwner === ME) news.push(`${h.name} (${ownerName(st, h.owner)}) atakuje: ${defName}. ${res.outcome === 'win' ? (res.captured ? 'Miasto przepadło.' : 'Twój bohater poległ.') : 'Obrona się udała!'}`);
   return res.outcome === 'win';
 }
 // Wejście na pole celu (tak jak visitObject u człowieka, ale bez okien)
-function aiVisit(st, h, i, news) {
+function* aiVisit(st, h, i, news) {
   const n = st.map.n, R = playerOf(st, h.owner).resources, x = i % n, y = (i / n) | 0;
   const guard = st.guard[i] && st.objects[st.guard[i] - 1];
-  if (guard && !guard.dead && !aiBattle(st, h, guard, news)) return;
+  if (guard && !guard.dead && !(yield* aiBattle(st, h, guard, news))) return;
   if (h.x !== x || h.y !== y) return; // przegrana odesłała bohatera do domu
   const other = st.heroes.find(o => o !== h && o.x === x && o.y === y), ob = objectAt(st, i);
   if (ob && ob.type === 'town') {
     const t = st.towns[ob.townId];
     if (t.owner === h.owner) { armyTransfer(t.garrison, h.army); return; }
     if (!armySize(t.garrison) && !heroInTown(st, t)) { if (t.owner === ME) news.push(`${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
-    else aiBattle(st, h, t, news);
+    else yield* aiBattle(st, h, t, news);
     return;
   }
-  if (other && other.owner !== h.owner) { aiBattle(st, h, other, news); return; }
+  if (other && other.owner !== h.owner) { yield* aiBattle(st, h, other, news); return; }
   if (!ob) return;
   if (ob.type === 'res') { R[ob.res] += ob.amount; removeObject(st, ob); }
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
   else if (ob.type === 'mine') { if (ob.owner === ME) news.push(`Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
-function aiMoveHero(st, h, news) {
+function* aiMoveHero(st, h, news) {
   for (let plan = 0; plan < 12 && st.heroes.includes(h); plan++) {
     const R = aiReach(st, h), target = aiPickTarget(st, h, R); if (!target) return;
     const path = R.path(target.i); if (!path.length) return;
-    for (const [nx, ny] of path) { const c = stepCost(st.map, h.x, h.y, nx, ny); if (c > h.mp) return; h.mp -= c; h.prev = [h.x, h.y]; h.x = nx; h.y = ny; }
-    aiVisit(st, h, target.i, news); h.prev = null;
+    for (const [nx, ny] of path) {
+      const c = stepCost(st.map, h.x, h.y, nx, ny); if (c > h.mp) return;
+      const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
+      yield { kind: 'step', h, fx, fy };
+    }
+    yield* aiVisit(st, h, target.i, news); h.prev = null;
     if (!st.heroes.includes(h) || !armySize(h.army) && target.what !== 'reinforce') return;
   }
 }
-function aiTurn(st, p, news) {
+function* aiTurn(st, p, news) {
+  yield { kind: 'player', p };
   for (const t of st.towns.filter(t => t.owner === p.id)) aiManageTown(st, p, t);
-  for (const h of st.heroes.filter(h => h.owner === p.id)) aiMoveHero(st, h, news);
+  for (const h of st.heroes.filter(h => h.owner === p.id)) yield* aiMoveHero(st, h, news);
   for (const t of st.towns.filter(t => t.owner === p.id)) { const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army); }
 }
+function* aiAllTurns(st, news) { for (const p of st.players) if (!p.human && !p.out) yield* aiTurn(st, p, news); }
+// Obrona człowieka bez ekranu bitwy: walka automatyczna, doświadczenie dla obrońcy
+function autoDefend(st, act) {
+  const D = act.foe.garrison ? heroInTown(st, act.foe) : act.foe, res = resolveBattle(simulateBattle(createBattle(st, act.h, act.foe)), false);
+  if (res.outcome !== 'win' && D && res.foeExp) gainExp(st, D, res.foeExp);
+  return res;
+}
+function runAiSync(st, gen) { let input; for (;;) { const r = gen.next(input); input = undefined; if (r.done) return; if (r.value.kind === 'defend') input = autoDefend(st, r.value); } }
+
 // --- koniec gry: gracz odpada, gdy nie ma miast ani bohaterów albo przez 7 dni nie ma żadnego miasta ---
 const NO_TOWN_DAYS = 7;
 const playerAlive = (st, p) => !p.out && (st.towns.some(t => t.owner === p.id) || st.heroes.some(h => h.owner === p.id));
@@ -2739,7 +2860,7 @@ function saveMeta(st) {
   const h = st.heroes.find(x => x.owner === ME);
   return { hero: h ? h.name : '', faction: factionOf(human(st).faction).name, date: dateText(st), size: (MAP_SIZES.find(m => m.id === st.settings.mapSize) || MAP_SIZES[0]).name, at: Date.now() };
 }
-const canSaveNow = st => !!st && !st.heroes.some(h => h.moving || h.anim || h.pending);
+const canSaveNow = st => !!st && !st.heroes.some(h => h.moving || h.anim || h.pending) && !(G.screens.adventure && G.screens.adventure.aiRun);
 // Miejsce zapisu. Na opublikowanej stronie: db (dokumenty data/users/<id>/save_<slot>, widoczne tylko
 // dla danego gracza). Bez db (plik otwarty lokalnie, podgląd): localStorage tej przeglądarki.
 const SaveStore = {
@@ -4163,7 +4284,7 @@ const EMBERS = (() => { const r = mulberry32(9); return Array.from({ length: 28 
 function ridge(c, seed, base, amp, col) {
   const r = mulberry32(seed); const p1 = r() * 6, p2 = r() * 6, p3 = r() * 6;
   c.beginPath(); c.moveTo(0, H);
-  for (let x = 0; x <= W; x += 6) {
+  for (let x = 0; x <= W + 6; x += 6) { // o krok za brzeg, żeby przy prawej krawędzi nie prześwitywało niebo
     const n = Math.sin(x * 0.009 + p1) * 0.5 + Math.sin(x * 0.023 + p2) * 0.3 + Math.sin(x * 0.061 + p3) * 0.15 + (r() - 0.5) * 0.08;
     c.lineTo(x, base - amp * (0.55 + n * 0.6));
   }
@@ -4180,7 +4301,7 @@ function paintSky(c) {
   c.fillStyle = '#f6ecd0'; c.beginPath(); c.arc(470, 170, 24, 0, TAU); c.fill();
   c.fillStyle = 'rgba(190,170,140,.35)'; for (const [x, y, rad] of [[462, 164, 5], [478, 180, 4], [476, 160, 3]]) { c.beginPath(); c.arc(x, y, rad, 0, TAU); c.fill(); }
   const sg = c.createRadialGradient(300, 420, 10, 300, 420, 320); sg.addColorStop(0, 'rgba(255,190,110,.5)'); sg.addColorStop(1, 'rgba(255,190,110,0)');
-  c.fillStyle = sg; c.fillRect(0, 150, W, 320);
+  c.fillStyle = sg; c.fillRect(0, 0, W, H);
   ridge(c, 31, 405, 150, '#4b3358');
   const hz = c.createLinearGradient(0, 330, 0, 430); hz.addColorStop(0, 'rgba(240,140,100,0)'); hz.addColorStop(1, 'rgba(240,140,100,.28)');
   c.fillStyle = hz; c.fillRect(0, 330, W, 100);
@@ -4206,14 +4327,17 @@ function paintCastle(c) {
   tower(240, 190, 40, 80, 70);
   c.fillStyle = body; c.fillRect(150, 345, 220, 52); cren(150, 345, 220, 11);
   tower(135, 325, 26, 72, 0); tower(360, 325, 26, 72, 0);
-  c.fillStyle = 'rgba(255,150,100,.16)';
-  for (const [x, y, h] of [[213, 235, 125], [333, 235, 125], [278, 190, 80], [313, 265, 95], [159, 325, 72], [384, 325, 72]]) c.fillRect(x, y, 2, h);
   c.fillStyle = '#07060c'; c.beginPath(); c.moveTo(245, 397); c.lineTo(245, 374); c.arc(260, 374, 15, Math.PI, 0); c.lineTo(275, 397); c.closePath(); c.fill();
   c.fillStyle = '#0a0810'; for (const [x, y, w, h] of CASTLE_WINDOWS) c.fillRect(x, y, w, h);
 }
 function paintLand(c) {
   c.fillStyle = '#17122a'; c.beginPath(); c.moveTo(-10, H); c.lineTo(-10, 455);
   c.bezierCurveTo(70, 410, 150, 396, 260, 396); c.bezierCurveTo(370, 396, 450, 420, 560, 470); c.lineTo(560, H); c.closePath(); c.fill();
+  // skalny kopiec pod zamkiem: wzgórze opada na boki, a mury muszą na czymś stać
+  c.beginPath(); c.moveTo(80, 470); c.bezierCurveTo(100, 425, 118, 400, 132, 394); c.lineTo(390, 394);
+  c.bezierCurveTo(408, 402, 428, 425, 460, 470); c.closePath(); c.fill();
+  const rk = mulberry32(33); c.fillStyle = '#211a36';
+  for (let i = 0; i < 18; i++) { const x = 118 + rk() * 285, y = 400 + rk() * 26; c.beginPath(); c.ellipse(x, y, 6 + rk() * 9, 2 + rk() * 3, 0, 0, TAU); c.fill(); }
   paintCastle(c);
   c.fillStyle = 'rgba(140,100,80,.22)'; c.beginPath(); c.moveTo(250, 397); c.lineTo(270, 397);
   c.bezierCurveTo(300, 440, 330, 470, 360, 525); c.lineTo(305, 525); c.bezierCurveTo(290, 470, 265, 430, 250, 397); c.fill();
@@ -4231,27 +4355,43 @@ function drawCloud(ctx, x, y, s, a) {
   ctx.globalAlpha = a * 0.6; ctx.fillStyle = '#e0906a'; ctx.beginPath(); ctx.ellipse(34, 10, 62, 4, 0, 0, TAU); ctx.fill();
   ctx.restore();
 }
-function drawMenuScene(ctx, lsc) {
-  const t = G.time;
-  ctx.drawImage(Layers.get('menuSky', W, H, paintSky, lsc), 0, 0, W, H);
-  for (const c of CLOUDS) drawCloud(ctx, ((c.x + t * c.v) % 1100) - 150, c.y, c.s, c.a);
-  ctx.drawImage(Layers.get('menuLand', W, H, paintLand, lsc), 0, 0, W, H);
+// Jeździec zjeżdżający drogą od bramy zamku (ten sam sprite co bohater na mapie); pętla co MENU_RIDE s
+const MENU_RIDE = 16, MENU_ROAD = [[260, 400], [288, 440], [312, 470], [334, 530]];
+function menuRider(b, t) {
+  const u = (t % MENU_RIDE) / MENU_RIDE, v = 1 - u, [p0, p1, p2, p3] = MENU_ROAD;
+  const x = v * v * v * p0[0] + 3 * v * v * u * p1[0] + 3 * v * u * u * p2[0] + u * u * u * p3[0];
+  const y = v * v * v * p0[1] + 3 * v * v * u * p1[1] + 3 * v * u * u * p2[1] + u * u * u * p3[1];
+  const s = heroSprite({ cls: 'knight', dir: 1, anim: {} }, colorHex(G.settings.color)), k = 0.45 + 0.75 * u;
+  b.save(); b.globalAlpha = clamp(u * 8, 0, 1) * clamp((1 - u) * 6, 0, 1);
+  b.drawImage(s.c, x - s.ax * 2 * k, y - s.ay * 2 * k, s.c.width * 2 * k, s.c.height * 2 * k); b.restore();
+}
+// Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize)
+// i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
+function drawMenuScene(ctx) {
+  const t = G.time, pb = pixBuf('menuScene', W / 2, H / 2, true), b = pb._ctx;
+  b.setTransform(0.5, 0, 0, 0.5, 0, 0); b.imageSmoothingEnabled = false;
+  b.drawImage(Layers.get('menuSky', W, H, paintSky, 0.5), 0, 0, W, H);
+  for (const c of CLOUDS) drawCloud(b, ((c.x + t * c.v) % 1100) - 150, c.y, c.s, c.a);
+  b.drawImage(Layers.get('menuLand', W, H, paintLand, 0.5), 0, 0, W, H);
   for (const [x, y, w, h, p] of CASTLE_WINDOWS) {
     const f = clamp(0.55 + 0.35 * Math.sin(t * 2.3 + p) + 0.1 * Math.sin(t * 7.1 + p * 3), 0.15, 1);
-    ctx.fillStyle = `rgba(255,170,70,${(f * 0.2).toFixed(3)})`; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w * 1.8, 0, TAU); ctx.fill();
-    ctx.fillStyle = `rgba(255,200,100,${f.toFixed(3)})`; ctx.fillRect(x, y, w, h);
+    b.fillStyle = `rgba(255,170,70,${(f * 0.18).toFixed(3)})`; b.fillRect(x - 2, y - 2, w + 4, h + 4);
+    b.fillStyle = `rgba(255,200,100,${f.toFixed(3)})`; b.fillRect(x, y, w, h);
   }
   const col = colorHex(G.settings.color);
-  drawFlag(ctx, 260, 96, 26, 12, t, col); drawFlag(ctx, 200, 168, 14, 7, t + 1, col); drawFlag(ctx, 320, 168, 14, 7, t + 2, col);
+  drawFlag(b, 260, 96, 26, 12, t, col); drawFlag(b, 200, 168, 14, 7, t + 1, col); drawFlag(b, 320, 168, 14, 7, t + 2, col);
+  menuRider(b, t);
   for (let i = 0; i < 4; i++) {
-    const x = ((i * 320 + t * 9) % 1280) - 240; ctx.save(); ctx.translate(x, 448 + (i % 2) * 18); ctx.scale(3.2, 0.45);
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 100); g.addColorStop(0, 'rgba(210,170,200,.14)'); g.addColorStop(1, 'rgba(210,170,200,0)');
-    ctx.fillStyle = g; ctx.fillRect(-100, -100, 200, 200); ctx.restore();
+    const x = ((i * 320 + t * 9) % 1280) - 240; b.save(); b.translate(x, 448 + (i % 2) * 18); b.scale(3.2, 0.45);
+    const g = b.createRadialGradient(0, 0, 0, 0, 0, 100); g.addColorStop(0, 'rgba(210,170,200,.14)'); g.addColorStop(1, 'rgba(210,170,200,0)');
+    b.fillStyle = g; b.fillRect(-100, -100, 200, 200); b.restore();
   }
   for (const e of EMBERS) {
-    const y = 430 + (((e.y - 430 - t * e.v) % 170) + 170) % 170, x = e.x + Math.sin(t * 0.9 + e.p) * 10, a = 0.35 + 0.35 * Math.sin(t * 3 + e.p);
-    ctx.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; ctx.beginPath(); ctx.arc(x, y, e.r, 0, TAU); ctx.fill();
+    const y = 430 + (((e.y - 430 - t * e.v) % 170) + 170) % 170, x = e.x + Math.sin(t * 0.9 + e.p) * 10, a = 0.45 + 0.35 * Math.sin(t * 3 + e.p);
+    b.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; b.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
   }
+  pixelQuantize(pb, 14);
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(pb, 0, 0, W, H); ctx.restore();
 }
 function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.fillRect(0, 0, W, H); }
 function askQuit() {
@@ -4267,17 +4407,12 @@ G.screens.menu = {
   setMode(m) {
     this.mode = m; let y = 196;
     const B = (label, act, o = {}) => { const b = new Button(540, y, 220, 48, label, act, Object.assign({ size: 17 }, o)); y += 64; return b; };
-    this.buttons = m === 'main' ? [
-      B('Nowa gra', () => this.setMode('new'), { key: 'n' }),
+    this.buttons = [
+      B('Nowa gra', () => G.go('setup'), { key: 'n' }),
       B('Wczytaj grę', () => G.go('load', { mode: 'load' }), { key: 'l' }),
       B('Najlepsze wyniki', () => G.go('scores'), { key: 'h' }),
       B('Twórcy', () => G.go('credits'), { key: 'c' }),
       B('Wyjście', () => askQuit(), { key: 'q' }),
-    ] : [
-      B('Scenariusz', () => G.go('setup'), { key: 's', sub: 'pojedyncza gra' }),
-      B('Kampania', null, { disabled: true, sub: 'wkrótce' }),
-      B('Samouczek', null, { disabled: true, sub: 'wkrótce' }),
-      B('Wróć', () => this.setMode('main'), { key: 'escape' }),
     ];
 
   },
@@ -4288,7 +4423,7 @@ G.screens.menu = {
     this.buttons.forEach(b => b.draw(ctx));
     goldText(ctx, 'KRONIKI KRÓLESTW', W / 2, 62, 44);
     text(ctx, 'Czas bohaterów', W / 2, 104, { size: 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
-    text(ctx, 'Kroniki Królestw, ' + VERSION, 12, H - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
+    text(ctx, `Kroniki Królestw · wersja ${VERSION}`, 12, H - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
   },
 };
 G.screens.setup = {
@@ -4303,7 +4438,7 @@ G.screens.setup = {
     [1, 2, 3].forEach((k, i) => B.push(new Button(628 + i * 38, 440, 34, 44, String(k), () => { S.opponents = k; }, { selected: () => (S.opponents || 1) === k, size: 17,
       tip: 'Liczba przeciwników komputerowych. Na małej mapie zmieszczą się najwyżej dwaj.' })));
     B.push(new Button(150, 506, 200, 46, 'Rozpocznij', () => startNewGame(), { key: 'enter', size: 19 }));
-    B.push(new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu', { mode: 'new' }), { key: 'escape', size: 19 }));
+    B.push(new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
     this.buttons = B;
   },
   draw(ctx) {
@@ -4500,6 +4635,7 @@ function buildPanelButtons(scr, st) {
   ];
 }
 function panelInfoText(st, scr) {
+  if (scr.aiRun) { const p = scr.aiRun.who; return { text: p ? `Tura przeciwnika: ${ownerName(st, p.id)} (${factionOf(p.faction).name})…` : 'Tura przeciwników…', col: '#ffd970' }; }
   if (scr.flashMsg && G.time - scr.flashMsg.t < 2.2) return { text: scr.flashMsg.text, col: '#ff9a7a' };
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, VIEW) && !G.modal) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y); return { text: tileInfo(st, tx, ty), col: '#ecd9a8' };
@@ -4549,6 +4685,8 @@ G.screens.adventure = {
     MapRender.reset(st.map, human(st).explored);
     if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
     buildPanelButtons(this, st);
+    if (this.aiRun && this.aiRun.st !== st) this.aiRun = null; // tura z poprzedniej gry
+    if (this.aiRun) this.lockButtons(true); // powrót z bitwy obronnej w trakcie tury przeciwnika
     if (p.flash) this.flash(p.flash);
     if (p.after) p.after();
     if (p.welcome) {
@@ -4567,7 +4705,7 @@ G.screens.adventure = {
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
   autosave(st) { SaveStore.write('auto', st).catch(() => { if (G.state === st) this.flash('Autozapis się nie udał'); }); },
-  onKey(k) { const h = hero(G.state); if (!h) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); },
+  onKey(k) { const h = hero(G.state); if (!h || this.aiRun) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); },
   selectHero(h) {
     const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
     const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
@@ -4626,7 +4764,8 @@ G.screens.adventure = {
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
     // kliknięcie w budynek miasta albo kopalni oznacza jego wejście
     const ob = objectAt(st, ty * n + tx); if (ob && ob.blocks && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
-    const other = heroAt(st, tx, ty); if (other && other !== h && other.owner === ME) { this.selectHero(other); return; } // własny bohater: wybór
+    const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = wybór
+    if (other && other !== h && other.owner === ME) { if (Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) showMeeting(st, h, other); else this.selectHero(other); return; }
     if (tx === h.x && ty === h.y) {
       const here = objectAt(st, ty * n + tx);
       if (here && here.type === 'town' && here.owner === h.owner) G.go('town', { townId: here.townId }); else this.heroInfo();
@@ -4637,14 +4776,61 @@ G.screens.adventure = {
     if (p) { h.path = p; h.dest = [tx, ty]; } else { h.path = null; h.dest = null; this.flash('Nie można tam dotrzeć'); }
   },
   endTurn() {
-    const st = G.state; if (st.heroes.some(h => h.moving || h.anim)) return;
+    const st = G.state; if (this.aiRun || st.heroes.some(h => h.moving || h.anim)) return;
     const idle = myHeroes(st).filter(h => !h.asleep && heroCanStillMove(st, h));
-    if (idle.length) showDialog(`${idle.length > 1 ? 'Niektórzy bohaterowie mogą' : `${idle[0].name} może`} się jeszcze poruszyć. Czy na pewno zakończyć turę?`, [{ label: 'Tak', key: 'enter', action: () => this.doEndTurn() }, { label: 'Nie', key: 'escape' }]);
-    else this.doEndTurn();
+    if (idle.length) showDialog(`${idle.length > 1 ? 'Niektórzy bohaterowie mogą' : `${idle[0].name} może`} się jeszcze poruszyć. Czy na pewno zakończyć turę?`, [{ label: 'Tak', key: 'enter', action: () => this.doEndTurn({ live: true }) }, { label: 'Nie', key: 'escape' }]);
+    else this.doEndTurn({ live: true });
   },
-  doEndTurn() {
-    const st = G.state, news = [];
-    for (const p of st.players) if (!p.human && !p.out) aiTurn(st, p, news); // tura przeciwników, zanim zacznie się nowy dzień
+  // Koniec dnia: najpierw tura przeciwników, potem nowy dzień (finishDay).
+  // { live: true } (przycisk) odtwarza turę SI na mapie i pyta o obronę; bez opcji (testy, symulacje) wszystko dzieje się od razu.
+  doEndTurn(opts = {}) {
+    const st = G.state, news = [], gen = aiAllTurns(st, news);
+    if (!opts.live) { runAiSync(st, gen); this.finishDay(st, news); return; }
+    this.aiRun = { st, gen, news, input: undefined, wait: false, who: null, anim: null, seen: new Set() }; this.lockButtons(true);
+  },
+  lockButtons(on) { for (const b of this.buttons) { if (on) { b._was = b.disabled; b.disabled = true; } else if (b._was !== undefined) { b.disabled = b._was; delete b._was; } } },
+  // Odtwarzanie tury SI: widoczne kroki (na odkrytej mapie) z animacją i kamerą, reszta od razu; atak na gracza czeka na jego decyzję
+  updateAi(st, dt) {
+    const R = this.aiRun;
+    if (R.anim) {
+      const h = R.anim; h.anim.t += dt;
+      const [hx, hy] = heroDrawPos(h), k = Math.min(1, dt * 6);
+      st.cam.x += (hx * T + T / 2 - VIEW.w / 2 - st.cam.x) * k; st.cam.y += (hy * T + T / 2 - VIEW.h / 2 - st.cam.y) * k; camClamp(st);
+      if (h.anim.t < STEP_TIME) return; h.anim = null; R.anim = null;
+    }
+    if (R.wait || G.modal || G.fade.next) return;
+    const ex = human(st).explored, n = st.map.n;
+    for (let k = 0; k < 2000; k++) {
+      const r = R.gen.next(R.input); R.input = undefined;
+      if (r.done) { this.aiRun = null; this.lockButtons(false); this.finishDay(st, R.news); return; }
+      const a = r.value;
+      if (a.kind === 'player') { R.who = a.p; continue; }
+      if (a.kind === 'step') {
+        if (!st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
+        if (!R.seen.has(a.h)) { R.seen.add(a.h); centerCam(st, a.fx, a.fy); }
+        a.h.anim = { fx: a.fx, fy: a.fy, t: 0 }; R.anim = a.h; return;
+      }
+      if (a.kind === 'defend') { R.wait = true; this.askDefense(st, a, res => { R.input = res; R.wait = false; }); return; }
+    }
+  },
+  // Przeciwnik atakuje bohatera albo miasto gracza: walka na ekranie bitwy (gracz po prawej) albo automatyczna
+  askDefense(st, a, done) {
+    const t = a.foe.garrison ? a.foe : null, D = t ? heroInTown(st, t) : a.foe; a.shown = true; centerCam(st, a.foe.x, a.foe.y);
+    const who = `${a.h.name} (${ownerName(st, a.h.owner)}) atakuje ${t ? `twoje miasto ${t.name}` : `twojego bohatera: ${heroTitle(D)}`}!`;
+    const after = res => this.defenseResult(st, a, D, res, done);
+    showDialog(`${who} (siła: twoja ${t ? townPower(st, t) : armyStrength(D)}, wroga ${armyStrength(a.h)})`, [
+      { label: 'Walcz', key: 'enter', action: () => G.go('battle', { battle: createBattle(st, a.h, a.foe), onDone: res => G.go('adventure', { after: () => after(res) }) }) },
+      { label: 'Automatycznie', key: 'a', action: () => after(resolveBattle(simulateBattle(createBattle(st, a.h, a.foe)), false)) },
+    ], { locked: true, iconH: 84, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, a.h, ownerColor(st, a.h.owner), 2) });
+  },
+  defenseResult(st, a, D, res, done) {
+    const held = res.outcome !== 'win', mine = res.foeLost.length ? `Twoje straty: ${res.foeLost.join(', ')}.` : 'Bez strat.';
+    const msg = held ? `Obrona udana! ${a.h.name} zostaje odparty. ${mine}${D && res.foeExp ? ` Doświadczenie: +${res.foeExp}.` : ''}`
+      : `Porażka w obronie.${res.captured ? ` Miasto ${res.captured} przepada.` : ''}${res.heroDefeated ? ` ${res.heroDefeated.name} ${res.heroDefeated.female ? 'poległa' : 'poległ'}.` : ''} ${mine}`;
+    showDialog(msg, [{ label: 'OK', key: 'enter', action: () => { if (held && D && res.foeExp && st.heroes.includes(D)) gainExp(st, D, res.foeExp); } }]);
+    done(res);
+  },
+  finishDay(st, news) {
     st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
     if (st.day > 7) { st.day = 1; st.week++; newWeek = true; if (st.week > 4) { st.week = 1; st.month++; newMonth = true; } }
     for (const h of st.heroes) {
@@ -4678,6 +4864,7 @@ G.screens.adventure = {
       else if (w.moving && !G.modal) heroStep(st, w);
       if (w.anim) walker = w;
     }
+    if (this.aiRun) { this.updateAi(st, dt); return; }
     this.checkGameEnd(st);
     const h = walker || hero(st);
     this.btnMove.disabled = !(hero(st) && hero(st).path);
@@ -4713,6 +4900,7 @@ G.screens.adventure = {
   onPointerUp() { const d = this.drag; this.drag = null; return !!(d && (d.mode === 'mini' || d.moved)); }, // przeciągnięcie listy to nie kliknięcie
   miniJump(x, y) { const st = G.state, n = st.map.n; centerCam(st, clamp((x - MINI.x) / MINI.s * n, 0, n) - 0.5, clamp((y - MINI.y) / MINI.s * n, 0, n) - 0.5); },
   onClick(x, y) {
+    if (this.aiRun) return; // tura przeciwnika: mapę można tylko oglądać
     if (clickButtons(this.buttons, x, y)) return;
     const st = G.state;
     if (inRect(x, y, LIST)) {
@@ -4968,7 +5156,8 @@ function estimateStrike(B, a, t, ranged, moved = 0) {
 G.screens.battle = {
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
-    const B = this.B = p.battle; B.fx = []; this.play = null; this.floats = []; this.preview = null; this.timer = 0;
+    const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null;
+    this.me = B.sides[0].owner === ME ? 0 : 1; // strona gracza: 0 gdy atakuje, 1 gdy się broni this.floats = []; this.preview = null; this.timer = 0;
     this.terr = B.st.map.terrain[B.h.y * B.st.map.n + B.h.x] || TER.GRASS;
     for (const u of B.units) { [u.px, u.py] = hexCenter(u.x, u.y); u.anim = null; u.dieT = null; u.flashT = null; }
     BattleFX.reset(); this.intro = { t: 0, dur: 0.9 };
@@ -4982,12 +5171,13 @@ G.screens.battle = {
     this.bCast = mk(2, 0, 'Czar', () => this.openBook(), { key: 'c', tip: 'Księga czarów bohatera: jeden czar na rundę, przed ruchem oddziału (klawisz C).' });
     this.bInfo = mk(2, 1, 'Mana', null, { disabled: true, tip: 'Mana bohatera. Odnawia się o 1 dziennie, a w pełni w mieście z gildią magów.' });
     this.casting = null; this.resume = false;
+    if (this.me === 1) { this.bFlee.disabled = true; this.bFlee.tip = 'Obrońca nie może uciec z pola bitwy.'; }
     this.buttons = [this.bWait, this.bDef, this.bAuto, this.bFlee, this.bCast, this.bInfo];
     this.phase = 'intro';
   },
   onBack() {
     if (this.casting) { this.casting = null; this.preview = null; return; } // Esc anuluje wybór celu czaru
-    if (this.phase !== 'input' && !this.B.auto) return;
+    if (this.phase !== 'input' && !this.B.auto || this.me === 1) return;
     showDialog('Wycofać się z bitwy? Ocalałe oddziały zostaną z bohaterem, ale na dziś koniec marszu.', [{ label: 'Uciekaj', key: 'enter', action: () => this.finish(true) }, { label: 'Walcz dalej', key: 'escape' }]);
   },
   nextTurn() {
@@ -5006,12 +5196,14 @@ G.screens.battle = {
   player(fn) { if (this.phase !== 'input') return; this.casting = null; fn(this.B.active); this.phase = 'play'; },
   openBook() {
     if (this.phase !== 'input') return; const B = this.B;
-    if (B.cast[0]) { B.log.push('W tej rundzie bohater już rzucił czar.'); return; }
-    showSpellbook(B.h, 'battle', id => { this.casting = id; this.onPointerMove(G.mouse.x, G.mouse.y); });
+    const mh = sideHero(B, this.me); if (!mh) return;
+    if (B.cast[this.me]) { B.log.push('W tej rundzie bohater już rzucił czar.'); return; }
+    showSpellbook(mh, 'battle', id => { this.casting = id; this.onPointerMove(G.mouse.x, G.mouse.y); });
   },
   finish(fled) {
     const B = this.B, st = B.st, h = B.h, res = resolveBattle(B, fled);
-    G.go('adventure', { after: () => showBattleResult(st, h, res) });
+    if (this.onDone) { const f = this.onDone; this.onDone = null; f(res); } // bitwa obronna: wynik wraca do tury przeciwnika
+    else G.go('adventure', { after: () => showBattleResult(st, h, res) });
     this.phase = 'done';
   },
   update(dt) {
@@ -5132,7 +5324,7 @@ G.screens.battle = {
     const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y); if (!u) return null;
     const c = CREATURES[u.cid];
     const ab = abilText(c);
-    return `${c.plural}: ${u.n} (${u.side === 0 ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''}${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
+    return `${c.plural}: ${u.n} (${humanSide(this.B, u.side) ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''}${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
   },
   draw(ctx) {
     const B = this.B, st = B.st, u0 = B.active, col = ownerColor(st, B.h.owner);
@@ -5191,14 +5383,14 @@ G.screens.battle = {
     text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: '#ecd9a8', fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
-    let tip = this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && u0.side === 1 ? 'Ruch przeciwnika…' : '';
-    if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(heroStat(B.h, 'sp'))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
+    let tip = this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
+    if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(heroStat(sideHero(B, this.me) || B.h, 'sp'))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
     else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';
     let tfs = 15; ctx.font = font(tfs, 700, 'body'); while (tfs > 11 && ctx.measureText(tip).width > 440) { tfs--; ctx.font = font(tfs, 700, 'body'); }
     text(ctx, tip, 20, 508, { size: tfs, weight: 700, color: '#ffd970' });
     B.log.slice(-4).forEach((l, i) => text(ctx, l, 20, 532 + i * 18, { size: 13, weight: 500, color: 'rgba(236,217,168,.85)' }));
-    this.bCast.disabled = this.phase !== 'input' || !canCastNow(B); this.bInfo.label = `Mana ${B.h.mana}`;
+    this.bCast.disabled = this.phase !== 'input' || !canCastNow(B); this.bInfo.label = sideHero(B, this.me) ? `Mana ${sideHero(B, this.me).mana}` : 'Bez bohatera';
     this.buttons.forEach(b => b.draw(ctx));
   },
 };
@@ -5296,6 +5488,7 @@ G.screens.town = {
     const dw = B && /^dw(\d)u?$/.exec(B.id); if (dw) return showRecruit(st, t, +dw[1], m => this.say(m)); // siedlisko: werbunek
     if (B && /^guild/.test(B.id) && !(next && reqMet(t, next))) return this.showGuild();
     if (B && B.id === 'tavern') return this.showTavern();
+    if (B && B.id === 'market' && !(next && reqMet(t, next))) return showMarket(st, t.owner, m => this.say(m));
     if (next && reqMet(t, next)) this.tryBuild(next);
     else if (next) showDialog(`${bInfo(next, fac).name} wymaga wcześniej: ${next.req.map(r => bInfo(BUILD_BY_ID[r], fac).name).join(', ')}.`, [{ label: 'OK', key: 'enter' }]);
     else if (B) showDialog(`${bInfo(B, fac).name}. ${bInfo(B, fac).desc}`, [{ label: 'OK', key: 'enter' }]);
@@ -5306,7 +5499,7 @@ G.screens.town = {
     const slot = this.armySlotAt(x, y);
     if (slot) return slot.a[slot.i] ? stackInfo(slot.a[slot.i]) : 'Wolne miejsce. Kliknij oddział, a potem miejsce, aby go przenieść, połączyć z takim samym albo zamienić.';
     const i = this.slotAt(x, y); if (i === null) return resourceBarInfo(G.state, x, y);
-    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : ''); }
+    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'market' ? ' Kliknij, aby handlować.' : ''); }
     const next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id)); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }
     return null;
   },
