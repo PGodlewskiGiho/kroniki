@@ -102,6 +102,8 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    dokupowanie surowców na rynku, werbunek, najem, cele z mapy odległości aiReach, próbna walka aiWorthFight,
    rozejm AI_PEACE_DAYS zależny od trudności), koniec gry (gameResult: wygrana po pokonaniu rywali, porażka bez
    miast i bohaterów albo po NO_TOWN_DAYS dniach bez miasta), najlepsze wyniki (recordScore), wybór liczby rywali.
+   Po kroku 15 (etap 1): rynek dla gracza (marketLot/trade, okno showMarket; kurs zależy od liczby rynków,
+   te same zasady dla SI w buyMissing).
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
@@ -314,7 +316,7 @@ const BUILDINGS = [
   { id: 'citadel', name: 'Cytadela', slot: 1, cost: { gold: 2500, wood: 5, ore: 5 }, req: ['fort'], emblem: 'wall', desc: 'Mocniejsze mury i wieża strzelnicza. Przyrost jednostek we wszystkich siedliskach większy o połowę.' },
   { id: 'castle', name: 'Zamek', slot: 1, cost: { gold: 5000, wood: 10, ore: 10 }, req: ['citadel'], emblem: 'wall', desc: 'Najmocniejsze mury. Przyrost jednostek we wszystkich siedliskach podwojony.' },
   { id: 'tavern', name: 'Tawerna', slot: 12, cost: { gold: 500, wood: 5 }, req: [], emblem: 'mug', desc: 'Najem bohaterów: co tydzień dwóch nowych chętnych.' },
-  { id: 'market', name: 'Rynek', slot: 13, cost: { gold: 500, wood: 5 }, req: [], emblem: 'scale', desc: `Pozwala wymieniać zasoby (handel ${ROADMAP.later}).` },
+  { id: 'market', name: 'Rynek', slot: 13, cost: { gold: 500, wood: 5 }, req: [], emblem: 'scale', desc: 'Handel surowcami. Każdy kolejny rynek w królestwie daje lepszy kurs.' },
   { id: 'silo', name: 'Skarbiec zasobów', slot: 9, cost: { gold: 5000, ore: 5 }, req: ['market'], emblem: 'barrel', desc: 'Codziennie dodaje 1 drewna i 1 rudy.' },
   { id: 'smith', name: 'Kuźnia', slot: 8, cost: { gold: 1000, ore: 5 }, req: [], emblem: 'anvil', desc: `Wyposaża armię w machiny wojenne (${ROADMAP.later}).` },
   { id: 'guild1', slot: 2, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['tavern'], emblem: 'book', desc: 'Uczy bohaterów czarów 1 poziomu i odnawia im manę.' },
@@ -1498,6 +1500,44 @@ function showRecruit(st, t, L, onDone, backToList) {
   };
 }
 // Przegląd wszystkich siedlisk miasta
+// Okno rynku: po lewej, co oddajesz, po prawej, co dostajesz; liczba transakcji jak przy werbunku
+function showMarket(st, owner, onDone) {
+  const x = 150, y = 70, w = 500, hh = 450, R = playerOf(st, owner).resources, col = (i, right) => x + (right ? 282 : 28) + (i % 4) * 48, row = (i) => y + 90 + Math.floor(i / 4) * 60;
+  let from = 'gold', to = 'wood', n = 0;
+  const lot = () => marketLot(st, owner, from, to), max = () => marketMax(st, owner, from, to), set = v => { n = clamp(v, 0, max()); };
+  const pick = (right) => RESOURCES.map((r, i) => new Button(col(i, right), row(i), 44, 44, r.name, () => { if (right) to = r.id; else from = r.id; set(Math.min(n, max()) || (max() ? 1 : 0)); },
+    { selected: () => (right ? to : from) === r.id, icon: (ctx, cx, cy) => resIcon(ctx, r.id, cx, cy, 26), tip: `${r.name}: masz ${R[r.id]}.` }));
+  const qy = y + 300;
+  const bMinus = new Button(x + 150, qy, 36, 30, 'Mniej', () => set(n - 1), { icon: iconMinus, key: '-' });
+  const bPlus = new Button(x + 284, qy, 36, 30, 'Więcej', () => set(n + 1), { icon: iconPlus, key: '+' });
+  const bMax = new Button(x + 330, qy, 80, 30, 'Maks', () => set(max()), { size: 14, key: 'm' });
+  const bTrade = new Button(x + 90, y + hh - 56, 130, 40, 'Handluj', () => {
+    const L = lot(), err = trade(st, owner, from, to, n); if (err) { onDone(err); return; }
+    onDone(`Wymiana: ${resName(from)} ${L.give * n} → ${resName(to)} ${L.get * n}`); set(Math.min(n, max()));
+  }, { key: 'enter', size: 17 });
+  const bClose = new Button(x + 280, y + hh - 56, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
+  const btns = [...pick(false), ...pick(true), bMinus, bPlus, bMax, bTrade, bClose];
+  G.modal = {
+    buttons: btns, market: { get from() { return from; }, get to() { return to; }, get n() { return n; }, set: v => set(v) }, // podgląd w testach
+    draw(ctx) {
+      const L = lot(), m = marketCount(st, owner);
+      bTrade.disabled = !L || n <= 0; bMinus.disabled = n <= 0; bPlus.disabled = bMax.disabled = n >= max();
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      text(ctx, 'Rynek', W / 2, y + 32, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, `Rynków w królestwie: ${m}${m < 4 ? ' (kolejne poprawiają kurs)' : ''}`, W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: '#6a4418' });
+      text(ctx, 'Oddajesz', col(0, false), y + 80, { size: 15, color: '#3a1e08', fam: 'title' }); text(ctx, 'Dostajesz', col(0, true), y + 80, { size: 15, color: '#3a1e08', fam: 'title' });
+      btns.forEach(b => b.draw(ctx));
+      for (const right of [false, true]) RESOURCES.forEach((r, i) => text(ctx, String(R[r.id]), col(i, right) + 22, row(i) + 52, { size: 12, align: 'center', weight: 700, color: '#3a1e08' }));
+      const rate = !L ? (from === to ? 'Wybierz dwa różne surowce.' : 'Brak rynku.') : `Kurs: ${resName(from)} ${L.give} → ${resName(to)} ${L.get}`;
+      text(ctx, rate, W / 2, y + 232, { size: 16, align: 'center', weight: 700, color: '#2a1606' });
+      text(ctx, 'Wymian:', x + 90, qy + 16, { size: 15, weight: 500, color: '#5a3814' });
+      ctx.fillStyle = 'rgba(255,248,220,.6)'; rr(ctx, x + 192, qy, 86, 30, 3); ctx.fill(); ctx.strokeStyle = 'rgba(90,55,20,.5)'; ctx.lineWidth = 1; ctx.stroke();
+      text(ctx, String(n), x + 235, qy + 16, { size: 18, align: 'center', color: '#2a1606', fam: 'title' });
+      if (L && n > 0) text(ctx, `Oddasz ${L.give * n}, dostaniesz ${L.get * n}`, W / 2, qy + 52, { size: 15, align: 'center', weight: 500, color: '#5a3814' });
+      else if (L && !max()) text(ctx, `Za mało na jedną wymianę (${resName(from)}: ${R[from]})`, W / 2, qy + 52, { size: 14, align: 'center', italic: true, weight: 500, color: '#8a4a2a' });
+    },
+  };
+}
 function showRecruitList(st, t, onDone) {
   const levels = dwellingLevels(t), F = factionOf(t.faction), w = 500, hh = 120 + levels.length * 52 + 60, x = (W - w) / 2, y = Math.max(20, (H - hh) / 2);
   const open = L => showRecruit(st, t, L, onDone, () => showRecruitList(st, t, onDone));
@@ -2169,6 +2209,26 @@ function buildIn(st, t, B) {
   const gm = /^guild(\d)$/.exec(B.id); if (gm) rollGuildLevel(st, t, +gm[1]);
   const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1]); // nowe siedlisko od razu daje przyrost
 }
+// --- rynek: handel surowcami ---------------------------------------------------------------
+// Wartość surowca w złocie; kupno drożeje, a sprzedaż tanieje, im mniej rynków ma gracz (jak w oryginale).
+const RES_VALUE = { wood: 250, ore: 250, mercury: 500, sulfur: 500, crystal: 500, gems: 500, gold: 1 };
+const marketCount = (st, owner) => st.towns.filter(t => t.owner === owner && hasB(t, 'market')).length;
+const MARKET_BUY = [0, 1, 0.85, 0.75, 0.65], MARKET_SELL = [0, 0.2, 0.3, 0.4, 0.5];
+// Najmniejsza transakcja: oddajesz give sztuk `from`, dostajesz get sztuk `to` (null bez rynku albo dla tej samej rzeczy)
+function marketLot(st, owner, from, to) {
+  const m = Math.min(4, marketCount(st, owner)); if (!m || from === to) return null;
+  const val = from === 'gold' ? 1 : RES_VALUE[from] * MARKET_SELL[m], cost = to === 'gold' ? 1 : RES_VALUE[to] * MARKET_BUY[m], r = cost / val;
+  return r >= 1 ? { give: Math.ceil(r - 1e-9), get: 1 } : { give: 1, get: Math.floor(1 / r + 1e-9) };
+}
+// Ile transakcji stać gracza
+const marketMax = (st, owner, from, to) => { const L = marketLot(st, owner, from, to); return L ? Math.floor(playerOf(st, owner).resources[from] / L.give) : 0; };
+// Wymiana `lots` transakcji. Zwraca błąd albo null.
+function trade(st, owner, from, to, lots) {
+  const L = marketLot(st, owner, from, to); if (!L) return 'Brak rynku';
+  if (!(lots > 0)) return 'Wybierz ilość';
+  if (lots > marketMax(st, owner, from, to)) return 'Brakuje surowców na tę wymianę';
+  const R = playerOf(st, owner).resources; R[from] -= L.give * lots; R[to] += L.get * lots; return null;
+}
 // --- tawerna: najem bohaterów ---------------------------------------------------------------
 const HERO_COST = 2500, MAX_HEROES = 8;
 const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
@@ -2517,15 +2577,13 @@ function resolveBattle(B, fled) {
 // z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do news.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
   'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u'];
-// Rynek: cena surowca w złocie (drewno i ruda taniej, rzadkie drożej). Na razie handluje tylko SI.
-const MARKET_PRICE = r => (r === 'wood' || r === 'ore' ? 250 : 500);
-// Dokupuje brakujące surowce na koszt cost, jeśli gracz ma rynek i starczy złota. Zwraca, czy kupił.
+// Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
 function buyMissing(st, owner, cost) {
-  if (!st.towns.some(t => t.owner === owner && hasB(t, 'market'))) return false;
-  const R = playerOf(st, owner).resources; let gold = cost.gold || 0; const need = {};
-  for (const r of RESOURCES) if (r.id !== 'gold' && (cost[r.id] || 0) > R[r.id]) { need[r.id] = cost[r.id] - R[r.id]; gold += need[r.id] * MARKET_PRICE(r.id); }
-  if (!Object.keys(need).length || R.gold < gold) return false;
-  for (const [r, k] of Object.entries(need)) { R[r] += k; R.gold -= k * MARKET_PRICE(r); }
+  if (!marketCount(st, owner)) return false;
+  const R = playerOf(st, owner).resources, deals = []; let gold = cost.gold || 0;
+  for (const r of RESOURCES) if (r.id !== 'gold' && (cost[r.id] || 0) > R[r.id]) { const k = cost[r.id] - R[r.id], L = marketLot(st, owner, 'gold', r.id); deals.push([r.id, k, L]); gold += Math.ceil(k / L.get) * L.give; }
+  if (!deals.length || R.gold < gold) return false;
+  for (const [r, k, L] of deals) trade(st, owner, 'gold', r, Math.ceil(k / L.get));
   return true;
 }
 const aiMaxHeroes = st => (st.map.n >= 108 ? 3 : 2);
@@ -5296,6 +5354,7 @@ G.screens.town = {
     const dw = B && /^dw(\d)u?$/.exec(B.id); if (dw) return showRecruit(st, t, +dw[1], m => this.say(m)); // siedlisko: werbunek
     if (B && /^guild/.test(B.id) && !(next && reqMet(t, next))) return this.showGuild();
     if (B && B.id === 'tavern') return this.showTavern();
+    if (B && B.id === 'market' && !(next && reqMet(t, next))) return showMarket(st, t.owner, m => this.say(m));
     if (next && reqMet(t, next)) this.tryBuild(next);
     else if (next) showDialog(`${bInfo(next, fac).name} wymaga wcześniej: ${next.req.map(r => bInfo(BUILD_BY_ID[r], fac).name).join(', ')}.`, [{ label: 'OK', key: 'enter' }]);
     else if (B) showDialog(`${bInfo(B, fac).name}. ${bInfo(B, fac).desc}`, [{ label: 'OK', key: 'enter' }]);
@@ -5306,7 +5365,7 @@ G.screens.town = {
     const slot = this.armySlotAt(x, y);
     if (slot) return slot.a[slot.i] ? stackInfo(slot.a[slot.i]) : 'Wolne miejsce. Kliknij oddział, a potem miejsce, aby go przenieść, połączyć z takim samym albo zamienić.';
     const i = this.slotAt(x, y); if (i === null) return resourceBarInfo(G.state, x, y);
-    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : ''); }
+    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'market' ? ' Kliknij, aby handlować.' : ''); }
     const next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id)); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }
     return null;
   },
