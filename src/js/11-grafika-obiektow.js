@@ -510,31 +510,19 @@ function drawCatapult(ctx, L, P) {
   ctx.save(); ctx.translate(0, -12); ctx.rotate(-0.9 + a * 1.7); limb(ctx, 0, 0, -16, 0, 1.8, LT(w)); circ(ctx, -16, 0, 3, '#5a3a1a');
   if (a < 0.5) circ(ctx, -16, -2, 2.4, '#8a847a'); ctx.restore();
 }
+// Strzelec na ganku wieży (samą wieżę rysuje drawSiegePiece; ekran bitwy stawia go w towerPost())
 function drawTowerUnit(ctx, L, P) {
-  const c = L.stone;
-  fillPoly(ctx, [[-11, 0], [-10, -34], [10, -34], [11, 0]], c); fillPoly(ctx, [[3, -34], [10, -34], [11, 0], [4, 0]], DK(c, 0.2));
-  ctx.fillStyle = LT(c, 0.1); for (let y = -28; y < 0; y += 7) ctx.fillRect(-10, y, 20, 1);
-  ctx.fillStyle = c; ctx.fillRect(-12, -39, 24, 5); for (const bx of [-12, -5, 2, 8]) ctx.fillRect(bx, -42, 4, 3);
-  ctx.fillStyle = '#1e1a24'; ctx.fillRect(-2, -26, 4, 7); ctx.fillRect(-2, -13, 4, 6);
-  const bob = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 1.5 : 0; circ(ctx, 3 + bob, -44, 2.2, '#d8a878'); limb(ctx, 5 + bob, -46, 6 + bob, -39, 0.8, '#6a4424');
-  fillPoly(ctx, [[1 + bob, -45], [3 + bob, -49], [5 + bob, -45]], '#4a5a8a');
+  const bob = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 1.5 : 0, y = 0;
+  fillPoly(ctx, [[-3, y], [3, y], [2.4, y - 7], [-2.4, y - 7]], '#4a5a8a');
+  circ(ctx, 0, y - 9, 2.4, '#d8a878'); fillPoly(ctx, [[-2.8, y - 9.4], [2.8, y - 9.4], [0, y - 13]], '#9aa0a8');
+  ctx.strokeStyle = '#6a4424'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(2.5 + bob, y - 6, 4.5, -1.2, 1.2); ctx.stroke();
+  limb(ctx, 0, y - 6, 2.5 + bob, y - 6, 0.9, '#d8a878');
 }
-// Fragment muru na polu bitwy: state 'ok', 'hit' (spękany), 'down' (gruzy); brama to drewniane wrota
-function drawWallSeg(ctx, kind, state) {
-  const c = '#9a948a', dk = DK(c, 0.25);
-  if (state === 'down') { for (const [x, y, r] of [[-9, -3, 5], [-2, -5, 6], [6, -3, 5], [1, -1, 4], [-6, 0, 3]]) { circ(ctx, x, y, r, x > 0 ? dk : c); } if (kind === 'gate') { limb(ctx, -10, -2, 2, -6, 1.6, '#5a3a1a'); limb(ctx, 4, -1, 11, -5, 1.6, '#5a3a1a'); } return; }
-  fillPoly(ctx, [[-14, 0], [-14, -28], [14, -28], [14, 0]], c); fillPoly(ctx, [[8, -28], [14, -28], [14, 0], [8, 0]], dk);
-  ctx.fillStyle = LT(c, 0.1); for (let y = -24; y < 0; y += 6) ctx.fillRect(-14, y, 28, 1);
-  ctx.fillStyle = c; for (const bx of [-14, -7, 0, 7]) ctx.fillRect(bx, -32, 5, 4);
-  if (kind === 'gate') { ctx.fillStyle = '#5a3a1a'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-8, -16); ctx.arc(0, -16, 8, Math.PI, 0); ctx.lineTo(8, 0); ctx.fill(); ctx.fillStyle = '#3a2412'; ctx.fillRect(-0.5, -23, 1, 23); ctx.fillStyle = '#9aa0a8'; ctx.fillRect(-8, -12, 16, 1.2); ctx.fillRect(-8, -5, 16, 1.2); }
-  if (state === 'hit') { ctx.strokeStyle = '#3a342c'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -28); ctx.lineTo(-2, -18); ctx.lineTo(-7, -10); ctx.moveTo(5, -26); ctx.lineTo(9, -16); ctx.stroke(); fillPoly(ctx, [[-14, -28], [-8, -28], [-12, -22]], '#2a2622'); }
-}
-const wallSprite = (kind, state) => sprite(`wall_${kind}_${state}`, 76, 88, 38, 72, p => drawWallSeg(p, kind, state), OUTLINE, 1);
 // x, y = punkt na ziemi pod stworzeniem; s = skala, dir = 1 w prawo / -1 w lewo; P = poza (domyślnie spoczynek w chwili t)
 function drawCreature(ctx, cid, x, y, s, dir, t, P) {
   const L = CREATURES[cid].look; P = P || { t };
   ctx.save(); ctx.translate(x, y); ctx.scale(dir * s, s);
-  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 0, 10, 3.5, 0, 0, TAU); ctx.fill();
+  if (L.kind !== 'tower') { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 0, 10, 3.5, 0, 0, TAU); ctx.fill(); }
   if (L.kind !== 'hum' && L.kind !== 'treant') ctx.scale(L.size || 1, L.size || 1);
   const hover = Math.sin((P.t || 0) * 2.5) * 1.2;
   switch (L.kind) {
@@ -605,26 +593,6 @@ function drawHeroSprite(ctx, x, y, dir, col, t, moving, look = HERO_CLASSES.knig
   for (let i = 6; i >= 0; i--) ctx.lineTo(-5 - i * 2, ry - 19 + Math.sin(t * 5 - i * 0.9) * 1.2 * i / 6);
   ctx.closePath(); ctx.fill();
   ctx.restore();
-}
-// Popiersie 36×36 jednostek: ten sam hełm/kaptur, zbroja i kolor gracza co postać na mapie
-function drawHeroBust(ctx, look, col) {
-  ctx.fillStyle = shadeHex(col, -0.25); ctx.fillRect(0, 0, 36, 36);
-  ctx.fillStyle = shadeHex(col, -0.5); ctx.beginPath(); ctx.moveTo(0, 36); ctx.lineTo(36, 10); ctx.lineTo(36, 36); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = look.armor; ctx.beginPath(); ctx.ellipse(18, 40, 16, 12, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = col; ctx.fillRect(14, 30, 8, 6); ctx.fillStyle = '#e0b24a'; ctx.fillRect(17.5, 30, 1.5, 6);
-  if (look.hood) {
-    const dk = shadeHex(look.hood, -0.45);
-    ctx.fillStyle = look.hood; ctx.beginPath(); ctx.moveTo(6, 33); ctx.quadraticCurveTo(4, 9, 18, 4); ctx.quadraticCurveTo(32, 9, 30, 33); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = dk; ctx.beginPath(); ctx.ellipse(18, 21, 8.5, 10, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = look.skin; ctx.beginPath(); ctx.ellipse(18, 23.5, 6.2, 7.5, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = dk; ctx.fillRect(12, 14.5, 12, 4.5);
-    ctx.fillStyle = '#1a1a22'; ctx.fillRect(14.5, 21, 2.5, 2); ctx.fillRect(19, 21, 2.5, 2);
-  } else {
-    ctx.fillStyle = look.helm; ctx.beginPath(); ctx.arc(18, 19, 11, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.fillRect(7, 19, 22, 9);
-    ctx.fillStyle = '#2a2e38'; ctx.fillRect(9, 20, 18, 4);
-    ctx.fillStyle = shadeHex(look.helm, -0.25); ctx.fillRect(17, 11, 2, 17);
-    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(18, 8); ctx.quadraticCurveTo(27, 1, 31, 10); ctx.quadraticCurveTo(24, 5, 18, 11); ctx.closePath(); ctx.fill();
-  }
 }
 function drawFlag(ctx, px, py, len, hgt, t, col) {
   ctx.strokeStyle = '#0c0a10'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px, py + hgt + 14); ctx.lineTo(px, py - 2); ctx.stroke();
@@ -702,7 +670,6 @@ function heroSprite(h, col) {
   const moving = !!h.anim, fr = Math.floor(G.time * (moving ? 12 : 4)) % 4, tk = moving ? fr * TAU / 88 : fr * TAU / 20;
   return sprite(`hero_${h.cls}_${col}_${h.dir}_${moving ? 1 : 0}_${fr}`, 26, 26, 13, 17, p => drawHeroSprite(p, 0, 0, h.dir, col, tk, moving, heroClass(h).look));
 }
-const bustSprite = (h, col) => sprite(`bust_${h.cls}_${col}`, 18, 18, 0, 0, p => drawHeroBust(p, heroClass(h).look, col), null);
 function flagSprite(col, len, hgt) {
   const fr = Math.floor(G.time * 6) % 4;
   return sprite(`fl_${col}_${len}_${fr}`, Math.ceil(len / 2) + 6, Math.ceil((hgt + 18) / 2) + 4, 2, 3, p => {
@@ -1010,9 +977,4 @@ function showSpellbook(h, mode, onPick) {
 // --- rysowanie obiektów w interfejsie (te same sprite'y co na mapie) ----------------------------
 // size = rozmiar ikony w px logicznych; 24 = dokładnie jak na mapie
 function resIcon(ctx, id, cx, cy, size = 24) { drawSprite(ctx, resSprite(id), cx, cy, size / 24); }
-function drawHeroPortrait(ctx, x, y, h, col, k = 1) {
-  const s = 36 * k; drawSprite(ctx, bustSprite(h, col), x, y, k);
-  if (h.asleep) { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x, y, s, s); text(ctx, 'z z', x + s / 2, y + s / 2, { size: 14, align: 'center', color: '#ecd9a8', fam: 'title' }); }
-  ctx.lineWidth = 2; ctx.strokeStyle = '#b8913f'; ctx.strokeRect(x, y, s, s);
-}
 
