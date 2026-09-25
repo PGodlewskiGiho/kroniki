@@ -125,13 +125,14 @@ G.screens.battle = {
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
     const now = G.time;
     if (fx.kind === 'move') fx.u.anim = { pose: 'walk', t0: now, dur: this.play.dur };
-    if (fx.kind === 'hit' && fx.a) fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur };
+    if (fx.kind === 'hit' && fx.a) { fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur }; Sound.play('swing'); }
+    Sound.play(fx.kind === 'shot' ? 'bow' : fx.kind === 'siege' ? 'catapult' : fx.kind === 'spell' ? spellSfx(fx.id) : fx.kind === 'heal' && !fx.label ? 'heal' : '');
     if (fx.kind === 'shot' || fx.kind === 'siege') fx.a.anim = { pose: 'attack', t0: now, dur: 0.55 * sp };
   },
   // Trafienie: błysk, odrzut, iskry, liczba obrażeń; zabity oddział przewraca się
   impact(tg, dmg, killed, col = '#ffe8a0') {
     const now = G.time, [tx, ty] = [tg.px, tg.py];
-    tg.flashT = now; tg.anim = { pose: 'hurt', t0: now, dur: 0.28 }; BattleFX.glow(tx, ty - 10, 26, col, 0.25);
+    tg.flashT = now; tg.anim = { pose: 'hurt', t0: now, dur: 0.28 }; Sound.play(tg.dead ? 'death' : 'hit'); BattleFX.glow(tx, ty - 10, 26, col, 0.25);
     BattleFX.emit(tx, ty - 8, { n: 10 + Math.min(20, Math.round(dmg / 8)), col: [col, '#ffffff', hasAb(tg, 'undead') ? '#e8e2cc' : '#b8302a'], spd: 110, up: -40, g: 260, life: 0.55, size: 3 });
     this.floats.push({ x: tx, y: ty - 44, text: `-${dmg}`, t: now, big: dmg >= 50 });
     if (killed) { this.floats.push({ x: tx, y: ty - 26, text: `†${killed}`, t: now + 0.05, col: '#e8e0cc', small: true }); BattleFX.shake = Math.max(BattleFX.shake, 2 + Math.min(4, killed)); }
@@ -307,6 +308,7 @@ G.screens.battle = {
 // Okno po bitwie (pokazywane już na mapie przygody)
 function showBattleResult(st, h, res) {
   const lost = res.lost.length ? `Straty: ${res.lost.join(', ')}.` : 'Bez strat.';
+  Sound.play(res.outcome === 'win' ? 'victory' : 'defeat');
   if (res.outcome === 'win') {
     const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '');
     showDialog(`Zwycięstwo!${extra} ${lost}${raisedText(res.raised)} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {

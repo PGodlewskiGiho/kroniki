@@ -1,6 +1,6 @@
 // ==================== SILNIK: pętla, wejście, przejścia =================================
 // Nie zawiera logiki gry. Ekran to obiekt z metodami enter/draw/update/onClick/... (patrz nagłówek).
-function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; if (G.screen.enter) G.screen.enter(params || {}); }
+function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; if (G.screen.enter) G.screen.enter(params || {}); Sound.screen(name); }
 G.go = function (name, params) { if (G.fade.next) return; G.fade.next = { name, params }; G.fade.target = 1; };
 function activeButtons() { return G.modal ? G.modal.buttons : (G.screen.buttons || []); }
 function updateHover() {
@@ -13,10 +13,11 @@ function handleClick(x, y) {
   if (G.screen.onClick) G.screen.onClick(x, y); else clickButtons(G.screen.buttons || [], x, y);
 }
 function onKey(e) {
+  Sound.unlock();
   const k = e.key.toLowerCase(); G.keys.add(k);
   if (G.fade.next) return;
   const b = activeButtons().find(b => !b.disabled && b.key === k);
-  if (b) { e.preventDefault(); if (b.action) b.action(); return; }
+  if (b) { e.preventDefault(); Sound.play('click'); if (b.action) b.action(); return; }
   if (k === 'escape') { if (G.modal) { if (!G.modal.locked) G.modal = null; } else if (G.screen.onBack) G.screen.onBack(); }
   else if (!G.modal && G.screen.onKey) G.screen.onKey(k, e);
 }
@@ -35,6 +36,7 @@ function bindInput() {
     if (!G.modal && G.screen && G.screen.onPointerMove) G.screen.onPointerMove(p.x, p.y, e);
   });
   c.addEventListener('pointerdown', e => {
+    Sound.unlock();
     if (e.button === 2) {
       e.preventDefault(); const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; updateHover();
       const txt = rightInfoAt(p.x, p.y); if (txt) G.popup = { text: txt, x: p.vx, y: p.vy };

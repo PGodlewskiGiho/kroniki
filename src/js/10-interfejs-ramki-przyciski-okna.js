@@ -94,7 +94,7 @@ class Button {
 }
 function clickButtons(list, x, y) {
   const b = list.find(b => !b.disabled && b.hit(x, y));
-  if (b && b === G.downTarget) { if (b.action) b.action(); return true; }
+  if (b && b === G.downTarget) { Sound.play('click'); if (b.action) b.action(); return true; }
   return false;
 }
 // opts: [{label, key, action, sub, tip}]; extra: icon, iconH, locked (Esc nie zamyka), bw (szerokość przycisków)

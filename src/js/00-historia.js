@@ -13,6 +13,7 @@
      STAN GRY I USTAWIENIA           G (program), skróty do G.state: human, hero, ownerColor...
      NARZĘDZIA                       losowość, szum, A*, kolory
      RYSOWANIE: PODSTAWY I PIXEL ART tekst, cache warstw, sprite(), drawSprite(), blit()
+     DŹWIĘK                          Web Audio bez plików: Sound.play(efekt), Sound.music(motyw), SFX, MUSIC
      INTERFEJS                       kamień, pergamin, Button, showDialog, drawCost, pasek surowców
      GRAFIKA OBIEKTÓW                jeden rysunek na obiekt: surowce, kopalnie, stwory, bohater, miasto
      GRAFIKA: PORTRETY BOHATERÓW     pixel art 36×36, wygląd z HERO_LOOKS albo losowany z imienia
@@ -108,5 +109,12 @@
    Etap 2, krok 10: czary 4. i 5. poziomu (deszcz meteorów, modlitwa, wskrzeszenie, implozja, armagedon,
    przyspieszenie armii), gildie IV i V (GUILD_MAX), cele 'livingAlly', 'all' i 'allies' (spellArea z B),
    księga czarów w trzech kolumnach, gdy czarów jest wiele.
+   Grafika mapy: ruda jako ciemne bryłki, góry/drzewa/skały ze ściankami (8 wariantów gór), ozdoby na pustych polach.
+   Dźwięk: efekty i muzyka syntezowane w Web Audio (DŹWIĘK), motyw zależny od ekranu i frakcji, głośność w menu.
+
+   PLAN (kolejność ustalona z graczem; krok 13 „warunki zwycięstwa” pominięty)
+   1. Dźwięk. 2. 4. frakcja. 3. Statki (stocznia, woda, wyspy). 4. Hot-seat (2–4 ludzi, zasłona między turami).
+   5. Samouczek (wyłączalne podpowiedzi). 6. Porządki: migracja starych zapisów, testy balansu frakcji.
+   7. Grafika: animowana woda, wyraźniejsze sosny i ozdoby, obiekty mapy w stylu rudy, tła bitew zależne od terenu.
    ===================================================================================== */
 
