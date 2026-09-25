@@ -173,7 +173,7 @@ G.screens.setup = {
     MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 118, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}` })));
     DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 180, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
     PLAYER_COLORS.forEach((c, i) => B.push(new Button(230 + i * 128, 276, 118, 40, c.name, () => { S.color = c.id; }, { selected: () => S.color === c.id, size: 13, swatch: c.hex })));
-    FACTIONS.forEach((f, i) => B.push(new Button(230 + i * 164, 330, 154, 40, f.name, () => { S.faction = f.id; }, { selected: () => S.faction === f.id, size: 16 })));
+    const fw = Math.min(154, Math.floor(506 / FACTIONS.length) - 6); FACTIONS.forEach((f, i) => B.push(new Button(230 + i * (fw + 6), 330, fw, 40, f.name, () => { S.faction = f.id; }, { selected: () => S.faction === f.id, size: fw < 110 ? 14 : 16 })));
     BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 440, 100, 44, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, sub: b.sub })));
     [1, 2, 3].forEach((k, i) => B.push(new Button(628 + i * 38, 440, 34, 44, String(k), () => { S.opponents = k; }, { selected: () => (S.opponents || 1) === k, size: 17,
       tip: 'Liczba przeciwników komputerowych. Na małej mapie zmieszczą się najwyżej dwaj.' })));

@@ -8,7 +8,7 @@
 // Cały mur to jeden sprite (pixel art), rysowany zanim staną oddziały.
 const SIEGE_WX = 532, SIEGE_HALF = 23.5, TOWER_H = 56;
 const WALL = { face: 13, walk: 50, depth: 16 }; // lico 0..face, chodnik face..walk; depth: wysokość czoła muru widocznego od południa
-const SIEGE_STONE = { haven: '#b8ae98', sylvan: '#9aa086', barrow: '#6c6676' };
+const SIEGE_STONE = { haven: '#b8ae98', sylvan: '#9aa086', barrow: '#6c6676', fortress: '#8e8a6a', inferno: '#5e403c' };
 function stonePal(fac) {
   const c = SIEGE_STONE[fac] || SIEGE_STONE.haven;
   return { top: LT(c, 0.22), lit: LT(c, 0.08), base: c, sh: DK(c, 0.25), dk: DK(c, 0.45), mortar: DK(c, 0.34), crack: '#201a1a', moss: fac === 'sylvan' ? '#5a7a34' : fac === 'barrow' ? '#3e4e3a' : '#6a7a44' };
@@ -143,4 +143,4 @@ function castleSprite(fac, col, walls) {
   }, OUTLINE, 0.5);
 }
 // Bruk dziedzińca za murem (tło bitwy): kolor płyt [jasny, ciemny] wg frakcji
-const SIEGE_PAVE = { haven: [[176, 164, 140], [142, 130, 108]], sylvan: [[140, 146, 118], [108, 116, 90]], barrow: [[104, 98, 114], [78, 74, 88]] };
+const SIEGE_PAVE = { haven: [[176, 164, 140], [142, 130, 108]], sylvan: [[140, 146, 118], [108, 116, 90]], barrow: [[104, 98, 114], [78, 74, 88]], fortress: [[132, 126, 98], [102, 98, 74]], inferno: [[96, 64, 58], [70, 44, 40]] };

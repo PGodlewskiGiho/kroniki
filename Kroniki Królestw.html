@@ -41,12 +41,14 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
      GRAFIKA OBIEKTÓW                jeden rysunek na obiekt: surowce, kopalnie, stwory, bohater, miasto
      GRAFIKA: PORTRETY BOHATERÓW     pixel art 36×36, wygląd z HERO_LOOKS albo losowany z imienia
      GRAFIKA: OBLĘŻENIE              mur, brama i wieże na polu bitwy (castleSprite), bruk dziedzińca
+     GRAFIKA: STWORY TWIERDZY I INFERNA  ciała 'insect', 'lizard', 'bull', 'hydra'
      ŚWIAT: TWORZENIE NOWEJ GRY      generateMap, placeObjects, createTown, createHero, createNewGame
      ZASADY GRY                      ruch, ścieżki, obiekty, potyczki, armie, rekrutacja, dochód, budowa
      BITWA: ZASADY                   pole heksów, obrażenia, kolejka, SI, simulateBattle, resolveBattle
      ZAPIS I ODCZYT GRY              serializeGame/deserializeGame, SaveStore (konto Claude albo przeglądarka)
      MAPA PRZYGODY: RENDEROWANIE     teren piksel po pikselu, minimapa, mgła, kamera
      MIASTO: GRAFIKA                 style frakcji, budowle, sceny w perspektywie, efekty
+     MIASTO: TWIERDZA I INFERNO      style, budowle i sceny dwóch nowych frakcji
      EKRANY / MAPA / BOHATER / BITWA / MIASTO  menu, listy, mapa, ekran bohatera, bitwa, widok miasta
      SILNIK                          pętla, wejście (mysz, dotyk, klawiatura, kółko), przejścia
 
@@ -134,9 +136,11 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    księga czarów w trzech kolumnach, gdy czarów jest wiele.
    Grafika mapy: ruda jako ciemne bryłki, góry/drzewa/skały ze ściankami (8 wariantów gór), ozdoby na pustych polach.
    Dźwięk: efekty i muzyka syntezowane w Web Audio (DŹWIĘK), motyw zależny od ekranu i frakcji, głośność w menu.
+   Nowe frakcje: Twierdza (bagna: gnolle, jaszczuroludzie, ważki, bazyliszki, gorgony, wywerny, hydry) i Inferno (lawa:
+   chochliki, gogi, ogary, demony, czarty, ifryty, diabły); klasy beastmaster/witch i demoniac/heretic, portrety, miasta, muzyka.
 
    PLAN (kolejność ustalona z graczem; krok 13 „warunki zwycięstwa” pominięty)
-   1. Dźwięk. 2. 4. frakcja. 3. Statki (stocznia, woda, wyspy). 4. Hot-seat (2–4 ludzi, zasłona między turami).
+   1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (stocznia, woda, wyspy). 4. Hot-seat (2–4 ludzi, zasłona między turami).
    5. Samouczek (wyłączalne podpowiedzi). 6. Porządki: migracja starych zapisów, testy balansu frakcji.
    7. Grafika: animowana woda, wyraźniejsze sosny i ozdoby, obiekty mapy w stylu rudy, tła bitew zależne od terenu.
    ===================================================================================== */
@@ -211,7 +215,7 @@ const STEP_TIME = 0.14, HERO_SIGHT = 5;
 
 // ==================== DANE: STWORZENIA ==================================================
 // Statystyki i wygląd (look) wszystkich jednostek. look.kind wybiera rysunek w sekcji GRAFIKA OBIEKTÓW.
-// look.kind: 'hum' (postać), 'wolf', 'griffin', 'rider' (jeździec), 'centaur', 'unicorn', 'phoenix', 'ghost', 'dragon', 'treant'.
+// look.kind: 'hum' (postać), 'wolf', 'griffin', 'rider' (jeździec), 'centaur', 'unicorn', 'phoenix', 'ghost', 'dragon', 'treant', 'insect', 'lizard', 'bull', 'hydra'.
 // Postać: weapon (spear/halberd/lance/sword/axe/club/bow/staff/none), helm (helm/greathelm/horn/hood/cap/crown/skull), armor, cape,
 // shield, robe, hair, longHair, beard, ears, tusks, wings, halo, bony, hunch, claws, eyes, orb, glow.
 // abil: zdolności bitewne (opisy w ABILITIES, działanie w BITWA: ZASADY)
@@ -306,6 +310,41 @@ Object.assign(CREATURES, {
 });
 const MACHINES = ['ballista', 'firstAid', 'ammoCart'], SIEGE_UNITS = ['catapult', 'arrowTower'];
 const isMachine = u => MACHINES.includes(u.cid) || SIEGE_UNITS.includes(u.cid);
+// Jednostki frakcji Twierdza (bagna). Nowe rodzaje ciała: 'insect' (ważka), 'lizard' (bazyliszek), 'bull' (gorgona), 'hydra'.
+// Postać: tail (ogon), snout (pysk), horns (rogi na gołej głowie), flame (dół ciała z ognia, ifryt).
+Object.assign(CREATURES, {
+  gnoll: mkU('Gnoll', 'Gnolle', 'gnolli', 1, 3, 5, 2, 3, 6, 4, 12, 70, { gold: 50 }, { faction: 'fortress', up: 'gnollMarauder', look: { kind: 'hum', skin: '#9a7a4a', cloth: '#5a4a2a', leather: '#3a2a18', size: 0.95, weapon: 'club', ears: true, snout: true, tusks: true, shield: '#6a4a2a', shieldMark: '#c8a050' } }),
+  gnollMarauder: mkU('Gnoll maruder', 'Gnolle maruderzy', 'gnolli maruderów', 1, 4, 6, 2, 3, 6, 5, 12, 90, { gold: 70 }, { faction: 'fortress', look: { kind: 'hum', skin: '#8a6a3a', cloth: '#6a3a2a', leather: '#2a1a10', size: 1, weapon: 'axe', ears: true, snout: true, tusks: true, helm: 'cap', helmCol: '#5a4a3a', shield: '#5a3a1a', shieldMark: '#b8b0a0', metal: '#9a948a' } }),
+  lizardman: mkU('Jaszczuroczłek', 'Jaszczuroludzie', 'jaszczuroludzi', 2, 5, 6, 2, 3, 14, 4, 9, 126, { gold: 110 }, { shots: 12, faction: 'fortress', up: 'lizardWarrior', look: { kind: 'hum', skin: '#5a8a4a', cloth: '#5a4a2a', size: 1, weapon: 'bow', snout: true, tail: '#4a7a3e', eyes: '#f0d040' } }),
+  lizardWarrior: mkU('Jaszczurzy wojownik', 'Jaszczurzy wojownicy', 'jaszczurzych wojowników', 2, 6, 7, 2, 4, 15, 5, 9, 195, { gold: 140 }, { abil: ['noMeleePenalty'], shots: 24, faction: 'fortress', look: { kind: 'hum', skin: '#4a7a5a', cloth: '#3a4a2a', size: 1.05, weapon: 'bow', snout: true, tail: '#3e6a4a', helm: 'cap', helmCol: '#6a4a2a', feather: '#c83a2a', eyes: '#f0d040' } }),
+  dragonfly: mkU('Ważka', 'Ważki', 'ważek', 3, 7, 10, 1, 3, 20, 9, 8, 268, { gold: 220 }, { abil: ['fly'], fly: true, faction: 'fortress', up: 'venomFly', look: { kind: 'insect', fur: '#3a7ac8', wing: '#d0ecff', eyes: '#a0f070', size: 1.2 } }),
+  venomFly: mkU('Ważka jadowita', 'Ważki jadowite', 'ważek jadowitych', 3, 8, 10, 2, 5, 20, 13, 8, 312, { gold: 240 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'fortress', look: { kind: 'insect', fur: '#5aa83a', wing: '#e8f8c8', eyes: '#ff5a3a', size: 1.3 } }),
+  basilisk: mkU('Bazyliszek', 'Bazyliszki', 'bazyliszków', 4, 11, 11, 6, 10, 35, 5, 4, 552, { gold: 325 }, { abil: ['noRetal'], faction: 'fortress', up: 'greatBasilisk', look: { kind: 'lizard', fur: '#6a7a3a', spikes: '#3a4a1e', eyes: '#f0e040' } }),
+  greatBasilisk: mkU('Wielki bazyliszek', 'Wielkie bazyliszki', 'wielkich bazyliszków', 4, 12, 12, 6, 10, 40, 7, 4, 714, { gold: 400 }, { abil: ['noRetal'], faction: 'fortress', look: { kind: 'lizard', fur: '#8a8a4a', spikes: '#6a2a1a', eyes: '#ff9a2a', size: 1.12 } }),
+  gorgon: mkU('Gorgona', 'Gorgony', 'gorgon', 5, 10, 12, 12, 16, 70, 5, 3, 850, { gold: 525 }, { faction: 'fortress', up: 'mightyGorgon', look: { kind: 'bull', fur: '#6a7a5a', horn: '#e8e0cc' } }),
+  mightyGorgon: mkU('Potężna gorgona', 'Potężne gorgony', 'potężnych gorgon', 5, 11, 14, 12, 16, 70, 6, 3, 980, { gold: 600 }, { abil: ['breath'], faction: 'fortress', look: { kind: 'bull', fur: '#5a6a7a', horn: '#f0d890', breath: '#a0f0a0', size: 1.08 } }),
+  wyvern: mkU('Wywern', 'Wywerny', 'wywern', 6, 14, 14, 14, 18, 70, 7, 2, 1350, { gold: 800 }, { abil: ['fly'], fly: true, faction: 'fortress', up: 'wyvernKing', look: { kind: 'dragon', fur: '#7a8a3a', horn: '#d8c890', size: 0.92 } }),
+  wyvernKing: mkU('Król wywern', 'Królowie wywern', 'królów wywern', 6, 14, 14, 18, 22, 70, 11, 2, 1518, { gold: 1100 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'fortress', look: { kind: 'dragon', fur: '#9a6a2a', horn: '#f0e0a0' } }),
+  hydra: mkU('Hydra', 'Hydry', 'hydr', 7, 16, 18, 25, 45, 160, 5, 1, 3900, { gold: 2200, sulfur: 1 }, { abil: ['noRetal', 'regen'], faction: 'fortress', up: 'chaosHydra', look: { kind: 'hydra', fur: '#4a7a4a', heads: 5 } }),
+  chaosHydra: mkU('Hydra chaosu', 'Hydry chaosu', 'hydr chaosu', 7, 18, 20, 25, 45, 220, 7, 1, 5600, { gold: 3500, sulfur: 1 }, { abil: ['noRetal', 'regen', 'breath'], faction: 'fortress', look: { kind: 'hydra', fur: '#6a4a7a', heads: 7, size: 1.08 } }),
+});
+// Jednostki frakcji Inferno (lawa)
+Object.assign(CREATURES, {
+  imp: mkU('Chochlik', 'Chochliki', 'chochlików', 1, 2, 3, 1, 2, 5, 5, 15, 55, { gold: 50 }, { faction: 'inferno', up: 'familiar', look: { kind: 'hum', skin: '#c83a2a', size: 0.72, weapon: 'none', claws: true, horns: '#2a1a14', tail: '#b0302a', ears: true, eyes: '#ffd040', cloth: '#8a2a1a' } }),
+  familiar: mkU('Diablik', 'Diabliki', 'diablików', 1, 4, 4, 1, 3, 6, 7, 15, 75, { gold: 60 }, { faction: 'inferno', look: { kind: 'hum', skin: '#d84a2a', size: 0.76, weapon: 'none', claws: true, horns: '#1a1010', tail: '#c0402a', ears: true, wings: '#6a2a2a', eyes: '#ffe060', cloth: '#6a1a1a' } }),
+  gog: mkU('Gog', 'Gogi', 'gogów', 2, 6, 4, 2, 4, 15, 4, 8, 170, { gold: 125 }, { shots: 12, faction: 'inferno', up: 'magog', look: { kind: 'hum', skin: '#a8603a', cloth: '#4a2a22', size: 1.02, weapon: 'staff', orb: '#ff8a2a', eyes: '#ffcc40', horns: '#3a2418', robe: true } }),
+  magog: mkU('Magog', 'Magogi', 'magogów', 2, 7, 4, 2, 5, 16, 6, 8, 255, { gold: 175 }, { abil: ['noMeleePenalty'], shots: 24, faction: 'inferno', look: { kind: 'hum', skin: '#b85030', cloth: '#2a1a1a', size: 1.06, weapon: 'staff', orb: '#ffd040', eyes: '#ffe060', horns: '#1a1010', robe: true, cape: '#6a1a10' } }),
+  hellHound: mkU('Piekielny ogar', 'Piekielne ogary', 'piekielnych ogarów', 3, 10, 7, 2, 7, 28, 7, 5, 380, { gold: 200 }, { faction: 'inferno', up: 'cerberus', look: { kind: 'wolf', fur: '#5a2418', flame: '#ff7a2a', eyes: '#ffd040' } }),
+  cerberus: mkU('Cerber', 'Cerbery', 'cerberów', 3, 10, 8, 2, 7, 30, 8, 5, 430, { gold: 250 }, { abil: ['noRetal'], faction: 'inferno', look: { kind: 'wolf', fur: '#4a1a14', flame: '#ffb040', eyes: '#ffe060', heads: 3, size: 1.1 } }),
+  demon: mkU('Demon', 'Demony', 'demonów', 4, 10, 10, 7, 9, 40, 5, 4, 480, { gold: 250 }, { faction: 'inferno', up: 'hornedDemon', look: { kind: 'hum', skin: '#b8402a', cloth: '#3a1a14', size: 1.2, weapon: 'none', claws: true, horns: '#e8d8c0', tail: '#a8382a', hunch: true, eyes: '#ffd040' } }),
+  hornedDemon: mkU('Rogaty demon', 'Rogate demony', 'rogatych demonów', 4, 12, 12, 7, 9, 45, 6, 4, 600, { gold: 300 }, { faction: 'inferno', look: { kind: 'hum', skin: '#a02a1e', cloth: '#2a1010', size: 1.28, weapon: 'club', horns: '#f0e8d0', tail: '#8a2418', hunch: true, eyes: '#ffe060', armor: true, metal: '#4a3a3a' } }),
+  pitFiend: mkU('Czart', 'Czarty', 'czartów', 5, 13, 13, 13, 17, 55, 6, 3, 850, { gold: 500 }, { faction: 'inferno', up: 'pitLord', look: { kind: 'hum', skin: '#8a2a2a', cloth: '#2a1414', size: 1.25, weapon: 'sword', horns: '#2a1a14', tail: '#7a2020', wings: '#4a1a1a', eyes: '#ffd040', metal: '#c8a070', glow: '#ff8a2a' } }),
+  pitLord: mkU('Władca otchłani', 'Władcy otchłani', 'władców otchłani', 5, 13, 13, 13, 17, 60, 7, 3, 1300, { gold: 700 }, { abil: ['lifeDrain'], faction: 'inferno', look: { kind: 'hum', skin: '#6a1a1e', cloth: '#1a0a0a', size: 1.3, weapon: 'axe', horns: '#f0e0c0', tail: '#5a1418', wings: '#3a0e0e', eyes: '#ff5030', armor: true, metal: '#3a2a2a', helm: 'crown' } }),
+  efreet: mkU('Ifryt', 'Ifryty', 'ifrytów', 6, 16, 12, 16, 24, 95, 9, 2, 1720, { gold: 900 }, { abil: ['fly'], fly: true, faction: 'inferno', up: 'efreetSultan', look: { kind: 'hum', skin: '#e0602a', cloth: '#ff9a3a', size: 1.2, weapon: 'none', claws: true, robe: true, flame: '#ffb040', horns: '#ffd060', eyes: '#fff0a0', glow: '#ffb040' } }),
+  efreetSultan: mkU('Sułtan ifrytów', 'Sułtani ifrytów', 'sułtanów ifrytów', 6, 16, 15, 16, 24, 100, 13, 2, 2450, { gold: 1100 }, { abil: ['fly', 'unlimitedRetal'], fly: true, faction: 'inferno', look: { kind: 'hum', skin: '#e84a1a', cloth: '#ffc040', size: 1.26, weapon: 'sword', robe: true, flame: '#ffe070', helm: 'crown', eyes: '#ffffff', metal: '#ffd060', glow: '#ffe070' } }),
+  devil: mkU('Diabeł', 'Diabły', 'diabłów', 7, 19, 21, 30, 40, 180, 11, 1, 5400, { gold: 2700, mercury: 1 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'inferno', up: 'archDevil', look: { kind: 'hum', skin: '#7a1a1a', cloth: '#1a0808', size: 1.38, weapon: 'spear', horns: '#1a1010', tail: '#6a1414', wings: '#2a0a0a', eyes: '#ffd040', metal: '#c8c0b0', cape: '#4a0e0e' } }),
+  archDevil: mkU('Arcydiabeł', 'Arcydiabły', 'arcydiabłów', 7, 24, 24, 30, 40, 220, 17, 1, 7400, { gold: 4500, mercury: 2 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'inferno', look: { kind: 'hum', skin: '#5a0e14', cloth: '#0e0406', size: 1.45, weapon: 'halberd', horns: '#f0e0c0', tail: '#4a0a10', wings: '#1a0406', eyes: '#ff4020', metal: '#ffd060', cape: '#8a0a0a', glow: '#ff6a2a', armor: true, helm: 'crown' } }),
+});
 // ==================== DANE: FRAKCJE, BOHATEROWIE, BUDOWLE, KOPALNIE =====================
 // Wszystko, co różni frakcje, jest w FACTIONS. BUILDINGS opisuje budowle wspólne dla frakcji.
 // Klasy bohaterów. look = wygląd wspólny dla postaci na mapie i portretu w panelu.
@@ -317,6 +356,10 @@ const HERO_CLASSES = {
   druid: { name: 'Druid', nameF: 'Druidka', look: { horse: '#c8b890', mane: '#6a5a3a', armor: '#7a6a3a', hood: '#6a8a3a', skin: '#e8c8a0' } },
   deathKnight: { name: 'Rycerz śmierci', nameF: 'Rycerka śmierci', look: { horse: '#2e2a36', mane: '#a6f0a8', armor: '#5a5468', helm: '#6e6880', skin: '#c8c0b0' } },
   necro: { name: 'Nekromanta', nameF: 'Nekromantka', look: { horse: '#3a3440', mane: '#c8c0ac', armor: '#4a3a5a', hood: '#2a1e36', skin: '#c8c0b0' } },
+  beastmaster: { name: 'Władca bestii', nameF: 'Władczyni bestii', look: { horse: '#6a5a3a', mane: '#2a2010', armor: '#7a5a34', helm: '#8a6a3a', skin: '#c89a6a' } },
+  witch: { name: 'Szaman', nameF: 'Wiedźma', look: { horse: '#5a6a4a', mane: '#2a3a20', armor: '#4a5a3a', hood: '#3a5a3a', skin: '#d8b890' } },
+  demoniac: { name: 'Piekielny rycerz', nameF: 'Piekielna rycerka', look: { horse: '#2a1a1a', mane: '#ff6a2a', armor: '#6a2a24', helm: '#4a1e1a', skin: '#d8a888' } },
+  heretic: { name: 'Heretyk', nameF: 'Heretyczka', look: { horse: '#3a2020', mane: '#c83a1a', armor: '#5a1e1e', hood: '#2a0e10', skin: '#d8b090' } },
 };
 // Wszystko, co wyróżnia frakcję. dw: siedliska [nazwa, jednostka], emb: symbole siedlisk poziomów 1–7.
 const FACTIONS = [
@@ -357,6 +400,32 @@ const FACTIONS = [
       dw3: ['Nawiedzona kaplica', 'wraith'], dw3u: ['Wieża zawodzenia', 'banshee'], dw4: ['Krypta', 'vampire'], dw4u: ['Mroczna krypta', 'vampireLord'],
       dw5: ['Wieża nekromanty', 'necromancer'], dw5u: ['Czarna biblioteka', 'archNecro'], dw6: ['Mroczne stajnie', 'doomKnight'], dw6u: ['Stajnie zagłady', 'dreadLord'],
       dw7: ['Kościana grań', 'boneWyvern'], dw7u: ['Upiorna grań', 'ghostWyvern'],
+    },
+  },
+  {
+    id: 'fortress', name: 'Twierdza', terrain: TER.SWAMP,
+    desc: 'Bagienna warownia: gnolle, jaszczuroludzie, ważki, bazyliszki, gorgony, wywerny i hydry.',
+    heroes: [['Borzywoj', 'beastmaster'], ['Wilga', 'witch', 1], ['Mszar', 'witch'], ['Dobrawa', 'beastmaster', 1]],
+    towns: ['Mokradła', 'Trzcinowy Gród', 'Czarny Staw', 'Grząski Bród', 'Żabi Kamień', 'Olszowa Warownia', 'Sitowie'],
+    guild: 'Chata wiedźmy', emb: ['spear', 'bow', 'wing', 'eye', 'horn', 'dragon', 'skull'],
+    dw: {
+      dw1: ['Nora gnolli', 'gnoll'], dw1u: ['Obóz gnolli', 'gnollMarauder'], dw2: ['Chaty jaszczurów', 'lizardman'], dw2u: ['Strażnica jaszczurów', 'lizardWarrior'],
+      dw3: ['Rój ważek', 'dragonfly'], dw3u: ['Gniazdo ważek', 'venomFly'], dw4: ['Jama bazyliszków', 'basilisk'], dw4u: ['Leże bazyliszków', 'greatBasilisk'],
+      dw5: ['Zagroda gorgon', 'gorgon'], dw5u: ['Żelazna zagroda', 'mightyGorgon'], dw6: ['Gniazdo wywern', 'wyvern'], dw6u: ['Turnia wywern', 'wyvernKing'],
+      dw7: ['Bagno hydr', 'hydra'], dw7u: ['Otchłań chaosu', 'chaosHydra'],
+    },
+  },
+  {
+    id: 'inferno', name: 'Inferno', terrain: TER.LAVA,
+    desc: 'Piekielne miasto: chochliki, gogi, piekielne ogary, demony, czarty, ifryty i diabły.',
+    heroes: [['Azgar', 'demoniac'], ['Kalida', 'demoniac', 1], ['Moloch', 'heretic'], ['Wiera Popiół', 'heretic', 1]],
+    towns: ['Siarkogród', 'Płonąca Brama', 'Popielisko', 'Czerwona Otchłań', 'Żarnowiec', 'Smolna Twierdza', 'Kotlina Dymów'],
+    guild: 'Świątynia ognia', emb: ['bat', 'sun', 'horn', 'skull', 'flame', 'sun', 'fork'],
+    dw: {
+      dw1: ['Krąg chochlików', 'imp'], dw1u: ['Klatka diablików', 'familiar'], dw2: ['Hala gogów', 'gog'], dw2u: ['Kuźnia magogów', 'magog'],
+      dw3: ['Psiarnia', 'hellHound'], dw3u: ['Legowisko cerberów', 'cerberus'], dw4: ['Brama demonów', 'demon'], dw4u: ['Wrota rogatych', 'hornedDemon'],
+      dw5: ['Szyb czartów', 'pitFiend'], dw5u: ['Otchłań władców', 'pitLord'], dw6: ['Pałac ifrytów', 'efreet'], dw6u: ['Pałac sułtanów', 'efreetSultan'],
+      dw7: ['Wrota piekieł', 'devil'], dw7u: ['Tron ognia', 'archDevil'],
     },
   },
 ];
@@ -423,6 +492,8 @@ const CLASS_GROWTH = {
   knight: { base: [2, 2, 1, 1], grow: [35, 45, 10, 10] }, cleric: { base: [1, 0, 2, 2], grow: [20, 15, 30, 35] },
   ranger: { base: [1, 3, 1, 1], grow: [30, 45, 10, 15] }, druid: { base: [0, 2, 1, 2], grow: [10, 20, 35, 35] },
   deathKnight: { base: [1, 2, 2, 1], grow: [30, 25, 25, 20] }, necro: { base: [1, 0, 2, 2], grow: [15, 15, 35, 35] },
+  beastmaster: { base: [0, 4, 1, 1], grow: [30, 50, 10, 10] }, witch: { base: [0, 1, 2, 2], grow: [5, 15, 40, 40] },
+  demoniac: { base: [2, 2, 1, 1], grow: [40, 35, 15, 10] }, heretic: { base: [1, 1, 2, 1], grow: [15, 15, 40, 30] },
 };
 // Umiejętności drugorzędne (jak w oryginale): bohater ma ich najwyżej MAX_SKILLS, każdą na poziomie 1–3.
 // v: wartość na poziomach 1–3 (działanie w ZASADY GRY i BITWA: ZASADY), desc: opis dla wartości.
@@ -448,6 +519,8 @@ const CLASS_SKILLS = {
   knight: [['leadership', 1], ['archery', 1]], cleric: [['intelligence', 1], ['estates', 1]],
   ranger: [['pathfinding', 1], ['archery', 1]], druid: [['luck', 1], ['mysticism', 1]],
   deathKnight: [['necromancy', 1], ['offense', 1]], necro: [['necromancy', 1], ['sorcery', 1]],
+  beastmaster: [['armorer', 1], ['pathfinding', 1]], witch: [['mysticism', 1], ['learning', 1]],
+  demoniac: [['offense', 1], ['logistics', 1]], heretic: [['sorcery', 1], ['intelligence', 1]],
 };
 const NECRO_CLASSES = ['deathKnight', 'necro'];
 // Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
@@ -532,7 +605,7 @@ const BAD_BUFFS = ['slow', 'weakness'];
 const GUILD_OFFER = { 1: 3, 2: 2, 3: 2, 4: 2, 5: 1 };
 const GUILD_MAX = 5;
 // Czar startowy klas magicznych
-const CLASS_SPELLS = { cleric: ['bless'], druid: ['cure'], necro: ['magicArrow'] };
+const CLASS_SPELLS = { cleric: ['bless'], druid: ['cure'], necro: ['magicArrow'], witch: ['slow'], heretic: ['magicArrow'] };
 
 
 // ==================== DANE: OBIEKTY MAPY =================================================
@@ -921,6 +994,10 @@ const MUSIC = {
   town_haven: { bpm: 84, root: 55, scale: [0, 2, 4, 5, 7, 9, 11], prog: [0, 4, 5, 3, 0, 4, 3, 4], lead: 'horn', arp: 'harp', seed: 51 },
   town_sylvan: { bpm: 80, root: 52, scale: [0, 2, 3, 5, 7, 9, 10], prog: [0, 3, 6, 0, 5, 3, 4, 0], lead: 'harp', arp: 'harp', seed: 61 },
   town_barrow: { bpm: 64, root: 45, scale: [0, 1, 3, 5, 7, 8, 10], prog: [0, 1, 0, 5, 0, 1, 6, 4], lead: 'bell', arp: null, seed: 71 },
+  map_fortress: { bpm: 80, root: 48, scale: [0, 2, 3, 5, 7, 8, 10], prog: [0, 3, 0, 6, 5, 3, 4, 4], lead: 'flute', arp: 'harp', seed: 91 },
+  town_fortress: { bpm: 90, root: 50, scale: [0, 2, 3, 5, 7, 9, 10], prog: [0, 0, 6, 3, 0, 5, 6, 4], lead: 'horn', arp: null, drums: true, seed: 95 },
+  map_inferno: { bpm: 76, root: 47, scale: [0, 1, 4, 5, 7, 8, 10], prog: [0, 1, 0, 6, 0, 1, 5, 4], lead: 'horn', arp: null, seed: 101 },
+  town_inferno: { bpm: 68, root: 45, scale: [0, 1, 4, 5, 7, 8, 10], prog: [0, 5, 1, 0, 6, 5, 1, 4], lead: 'bell', arp: null, drums: true, seed: 105 },
   battle: { bpm: 132, root: 52, scale: [0, 2, 3, 5, 7, 8, 10], prog: [0, 0, 5, 6, 0, 0, 3, 4], lead: 'horn', arp: null, drums: true, seed: 81 },
 };
 // Układa 8 taktów po 8 ósemek: akord (pad), bas, arpeggio, melodia z prostym motywem (A A' powtórzone) i bębny w bitwie
@@ -1395,6 +1472,11 @@ function drawHumanoid(ctx, L, P = {}) {
   };
   if (L.mounted) { limb(ctx, 1, hipY, 3.5, hipY + 5, 2.6, legCol); ctx.fillStyle = boot; rr(ctx, 2, hipY + 4, 4, 2.4, 0.8); ctx.fill(); }
   else if (!L.robe) leg(-1.8, -sw * 3.6, true);
+  if (L.tail) { // ogon: od bioder do tyłu, lekko falujący; diabły mają grot na końcu
+    const tw = Math.sin(t * 3 + (walking ? ph : 0)) * 1.6, e1 = [-7, hipY + 4 + tw * 0.5], e2 = [-12, hipY - 1 + tw];
+    limb(ctx, -2, hipY, ...e1, 2.2, DK(L.tail, 0.1)); limb(ctx, ...e1, ...e2, 1.4, L.tail);
+    if (L.horns && !L.snout) fillPoly(ctx, [[e2[0] - 2.5, e2[1] - 1], [e2[0] + 0.5, e2[1] - 2.5], [e2[0] + 0.2, e2[1] + 1.5]], DK(L.tail, 0.3));
+  }
   ctx.save(); ctx.translate(0, hipY); ctx.rotate(lean); ctx.translate(0, -hipY);
   if (L.wings) { // skrzydła za plecami, lekko falujące
     const fl = Math.sin(t * 3 + (walking ? ph : 0)) * 0.12 + (walking ? 0.3 * Math.sin(ph) : 0);
@@ -1422,7 +1504,11 @@ function drawHumanoid(ctx, L, P = {}) {
     fillPoly(ctx, [[-5, shY], [5, shY], [wB, bottom], [-wB, bottom]], cl);
     fillPoly(ctx, [[-5, shY], [-1, shY], [-1.5, bottom], [-wB, bottom]], DK(cl, 0.22));
     fillPoly(ctx, [[2.2, shY + 0.5], [4.6, shY + 0.5], [4.1, shY + 6], [2.6, shY + 6]], LT(cl));
-    if (L.robe) { limb(ctx, -5.5, bottom - 0.5, 5.5, bottom - 0.5, 1, DK(cl, 0.4)); }
+    if (L.robe && !L.flame) { limb(ctx, -5.5, bottom - 0.5, 5.5, bottom - 0.5, 1, DK(cl, 0.4)); }
+    if (L.flame) for (let i = 0; i < 5; i++) { // języki ognia zamiast nóg
+      const fx0 = -5 + i * 2.5, fl = Math.sin(t * 9 + i * 1.9) * 1.6;
+      fillPoly(ctx, [[fx0 - 1.8, hipY + 1], [fx0 + 1.8, hipY + 1], [fx0 + 0.5 + fl, 1 - (i % 2) * 3]], i % 2 ? L.flame : LT(L.flame, 0.35));
+    }
     if (L.armor) {
       fillPoly(ctx, [[-4.3, shY + 0.6], [4.3, shY + 0.6], [3.7, hipY - 1.6], [-3.7, hipY - 1.6]], met);
       fillPoly(ctx, [[-4.3, shY + 0.6], [-0.6, shY + 0.6], [-0.9, hipY - 1.6], [-3.7, hipY - 1.6]], DK(met, 0.22));
@@ -1444,8 +1530,10 @@ function drawHumanoid(ctx, L, P = {}) {
     ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1, 1.3, 1.3);
     if (L.beard) fillPoly(ctx, [[hx - 1, hy + 1.5], [hx + 4, hy + 1.2], [hx + 2.5, hy + 6], [hx - 0.5, hy + 4.5]], L.beard);
     if (L.hair && !L.helm) fillPoly(ctx, [[hx - 4.1, hy + 1], [hx - 3.4, hy - 3.2], [hx + 0.5, hy - 4.6], [hx + 3.6, hy - 2.6], [hx + 1, hy - 2.2], [hx - 1.2, hy + 1.8]], L.hair);
-    if (L.tusks) { ctx.fillStyle = '#f0ead8'; ctx.fillRect(hx + 2.4, hy + 1.8, 0.9, 1.6); }
+    if (L.snout) { fillPoly(ctx, [[hx + 2, hy - 1], [hx + 7.5, hy + 0.2], [hx + 7.2, hy + 2.8], [hx + 2.2, hy + 3.4]], sk); fillPoly(ctx, [[hx + 2.2, hy + 2.2], [hx + 7.2, hy + 2], [hx + 7, hy + 2.8], [hx + 2.2, hy + 3.4]], DK(sk, 0.25)); ctx.fillStyle = '#1a1210'; ctx.fillRect(hx + 6.4, hy + 0.2, 1, 1); ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1.6, 1.3, 1.3); }
+    if (L.tusks) { ctx.fillStyle = '#f0ead8'; ctx.fillRect(hx + (L.snout ? 5 : 2.4), hy + (L.snout ? 2.6 : 1.8), 0.9, 1.6); }
   }
+  if (L.horns) { fillPoly(ctx, [[hx - 2.4, hy - 2.8], [hx - 5.5, hy - 7.5], [hx - 4.8, hy - 9.5], [hx - 0.6, hy - 3.6]], DK(L.horns, 0.2)); fillPoly(ctx, [[hx + 1.2, hy - 3.6], [hx + 3.6, hy - 8.8], [hx + 5, hy - 9.6], [hx + 3.4, hy - 2.8]], L.horns); }
   const hm = L.helm;
   if (hm === 'helm' || hm === 'greathelm' || hm === 'horn') {
     const hc = L.helmCol || met;
@@ -1477,7 +1565,7 @@ function drawHumanoid(ctx, L, P = {}) {
   if (style === 'cast' && P.atk != null && P.atk > 0.3 && P.atk < 0.7) circ(ctx, hd[0] + Math.sin(wAng) * 18.5, hd[1] - Math.cos(wAng) * 18.5, 4, L.orb || '#f0d890');
   ctx.restore();
   if (!L.robe && !L.mounted) leg(1.8, sw * 3.6, false);
-  if (L.robe && !L.mounted) { ctx.fillStyle = boot; ctx.fillRect(1 + sw * 1.5, -2.4, 3.6, 2.4); }
+  if (L.robe && !L.mounted && !L.flame) { ctx.fillStyle = boot; ctx.fillRect(1 + sw * 1.5, -2.4, 3.6, 2.4); }
   ctx.restore();
 }
 // Czworonóg (koń, jednorożec, centaur, wilk, gryf): nogi w chodzie w parach po przekątnej
@@ -1527,10 +1615,18 @@ function drawWolfBody(ctx, L, P = {}) {
   quadLegs(ctx, [[-7, 0, true], [6, Math.PI, true]], -6, 6, f, P, 1.9);
   const wag = Math.sin(t * 4) * 1.5; fillPoly(ctx, [[-9, -9], [-16, -12 + wag], [-17, -8 + wag], [-10, -6.5]], f); fillPoly(ctx, [[-15, -11 + wag], [-17.5, -10 + wag], [-17, -8 + wag]], lt);
   oval(ctx, 0, -8.5, 10, 4.4, f); oval(ctx, 0.5, -6.3, 8, 1.8, dk); oval(ctx, -1, -11.5, 7, 1.3, lt);
-  const hy = -11 - lunge * -2; fillPoly(ctx, [[6, -12], [11, hy - 3], [15, hy - 2.5], [18.5, hy + 0.5], [17, hy + 2], [12, hy + 2.5], [7, -6]], f);
-  fillPoly(ctx, [[10, hy - 2.5], [11, hy - 7], [13, hy - 3]], f); fillPoly(ctx, [[11, hy - 3], [11.4, hy - 5.5], [12.4, hy - 3]], dk);
-  if (atk != null && lunge > 0.3) { fillPoly(ctx, [[14, hy + 1.5], [18.5, hy + 2.5], [15, hy + 4]], '#5a1a1a'); ctx.fillStyle = '#f0ead8'; ctx.fillRect(16, hy + 1.8, 0.8, 1); }
-  circ(ctx, 13.3, hy - 1, 0.8, '#f0d060'); circ(ctx, 18.4, hy + 0.6, 0.7, '#1a1a1a');
+  if (L.flame) for (let i = 0; i < 5; i++) { const fl = Math.sin(t * 8 + i * 1.7) * 1.4; fillPoly(ctx, [[-7 + i * 3.2, -12], [-4 + i * 3.2, -12.4], [-6.5 + i * 3.2 + fl, -16.5 - (i % 2) * 2]], i % 2 ? L.flame : LT(L.flame, 0.4)); }
+  const head = (ox, oy, col) => {
+    const hy = -11 - lunge * -2 + oy, d = col === f ? dk : DK(col, 0.2);
+    ctx.save(); ctx.translate(ox, 0);
+    fillPoly(ctx, [[6, -12 + oy * 0.5], [11, hy - 3], [15, hy - 2.5], [18.5, hy + 0.5], [17, hy + 2], [12, hy + 2.5], [7, -6]], col);
+    fillPoly(ctx, [[10, hy - 2.5], [11, hy - 7], [13, hy - 3]], col); fillPoly(ctx, [[11, hy - 3], [11.4, hy - 5.5], [12.4, hy - 3]], d);
+    if (atk != null && lunge > 0.3) { fillPoly(ctx, [[14, hy + 1.5], [18.5, hy + 2.5], [15, hy + 4]], '#5a1a1a'); ctx.fillStyle = '#f0ead8'; ctx.fillRect(16, hy + 1.8, 0.8, 1); }
+    circ(ctx, 13.3, hy - 1, 0.8, L.eyes || '#f0d060'); circ(ctx, 18.4, hy + 0.6, 0.7, '#1a1a1a');
+    ctx.restore();
+  };
+  if (L.heads > 1) { head(-2.5, -5, DK(f, 0.15)); head(1.5, 3.5, DK(f, 0.08)); }
+  head(0, 0, f);
   quadLegs(ctx, [[-5, Math.PI, false], [8, 0, false]], -6, 6, f, P, 2);
   ctx.restore();
 }
@@ -1694,6 +1790,10 @@ function drawCreature(ctx, cid, x, y, s, dir, t, P) {
     case 'ghost': ghost(ctx, 0, -8 + hover, 1.3, L.fur, P, L); break;
     case 'dragon': drawDragon(ctx, L, P); break;
     case 'treant': drawTreant(ctx, L, P); break;
+    case 'insect': drawInsect(ctx, L, P); break;
+    case 'lizard': drawLizard(ctx, L, P); break;
+    case 'bull': drawBull(ctx, L, P); break;
+    case 'hydra': drawHydra(ctx, L, P); break;
     case 'ballista': drawBallista(ctx, L, P); break;
     case 'tent': drawTent(ctx, L, P); break;
     case 'cart': drawCart(ctx, L, P); break;
@@ -2155,7 +2255,11 @@ function resIcon(ctx, id, cx, cy, size = 24) { drawSprite(ctx, resSprite(id), cx
 // Peleryna ma kolor gracza. Na ekranie 1 piksel = 1 px logiczny (k = 1) albo 2 px, jak piksel mapy (k = 2).
 const PORTRAIT_N = 36;
 const PORTRAITS = new Map();
-const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058' };
+const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058',
+  beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e' };
+// Nowe klasy korzystają z ubioru klasy o podobnym stroju (zbroja, skóry, szaty)
+const PORTRAIT_DRESS = { beastmaster: 'ranger', witch: 'druid', demoniac: 'knight', heretic: 'necro' };
+const INFERNAL = ['demoniac', 'heretic'];
 const PORTRAIT_HAIR = ['#241a14', '#3e2a1a', '#5e3e22', '#7c4c26', '#a0602c', '#c89450', '#e2c47e', '#8e8a86', '#d8d4cc'];
 const PORTRAIT_SKIN = ['#f0c8a0', '#e2b28a', '#d09c74', '#b07c56', '#8e603e'];
 const PORTRAIT_EYES = ['#3c64a8', '#3a6e3a', '#6a4424', '#6c8098', '#3a2a1a'];
@@ -2175,6 +2279,14 @@ const HERO_LOOKS = {
   'Raga': { hair: '#241a14', style: 'long', head: 'cowl', eyes: 'glow', mouth: 'smirk', marks: ['tattoo'], robe: '#3e2438', bg: 'fire', flip: true },
   'Sir Kruk': { head: 'skullhelm', armor: '#3e3a48', bg: 'night', flip: true },
   'Zofia Czarna': { hair: '#241a14', style: 'crop', head: 'spikecrown', eyes: 'glow', brow: 'angry', mouth: 'frown', marks: ['scar'], armor: '#5a4a50', bg: 'fire', flip: false },
+  'Borzywoj': { age: 'adult', skin: '#b07c56', hair: '#3e2a1a', style: 'long', beard: 'full', head: 'horned', brow: 'bushy', nose: 'broad', mouth: 'frown', marks: ['paint'], robe: '#6a5030', bg: 'forest', flip: false },
+  'Wilga': { hair: '#5e3e22', style: 'braid', head: 'flowers', brow: 'thin', eyes: 'narrow', mouth: 'smirk', marks: ['tattoo'], robe: '#3e5a3a', bg: 'night', flip: true },
+  'Mszar': { age: 'old', hair: '#8e8a86', style: 'long', beard: 'long', head: 'antlers', brow: 'bushy', nose: 'hooked', mouth: 'neutral', marks: ['mole'], robe: '#4a5a34', bg: 'forest', flip: true },
+  'Dobrawa': { skin: '#d09c74', hair: '#241a14', style: 'ponytail', head: 'feather', brow: 'angry', mouth: 'neutral', marks: ['scarCheek'], robe: '#7a5a34', bg: 'sky', flip: false },
+  'Azgar': { hair: '#241a14', style: 'crop', beard: 'goatee', head: 'horned', eyes: 'glow', brow: 'angry', mouth: 'smirk', marks: ['scar'], armor: '#6a2a24', bg: 'fire', flip: false },
+  'Kalida': { hair: '#e2c47e', style: 'long', head: 'spikecrown', eyes: 'glow', brow: 'arched', mouth: 'smirk', armor: '#7a3a2a', bg: 'fire', flip: true },
+  'Moloch': { age: 'old', style: 'bald', beard: 'mustache', hair: '#d8d4cc', head: 'horned', eyes: 'glow', nose: 'long', mouth: 'frown', marks: ['tattoo'], robe: '#4a1414', bg: 'night', flip: true },
+  'Wiera Popiół': { hair: '#8e8a86', style: 'bun', head: 'circlet', eyes: 'glow', brow: 'thin', mouth: 'neutral', marks: ['mole'], robe: '#2a1418', bg: 'fire', flip: false },
 };
 function heroLookSeed(h) { let s = 2166136261; for (const ch of String(h.name || '')) s = Math.imul(s ^ ch.charCodeAt(0), 16777619); return s >>> 0; }
 // Pełny opis wyglądu: HERO_LOOKS + cechy losowane z imienia
@@ -2189,10 +2301,13 @@ function heroFace(h) {
   F.style = f ? pick(['long', 'braid', 'bun', 'ponytail', 'curly']) : pick(['short', 'crop', 'swept', 'long', 'curly', age === 'old' ? 'bald' : 'short']);
   F.beard = f ? 'none' : pick(['none', 'none', 'stubble', 'goatee', 'full', 'mustache', ...(age === 'old' ? ['full', 'long'] : [])]);
   F.head = { knight: ['helm', 'crest', 'none', 'circlet'], cleric: ['diadem', 'veil', 'mitre', 'none'], ranger: ['hood', 'feather', 'headband', 'none'],
-    druid: ['wreath', 'antlers', 'flowers'], necro: ['cowl', 'skullcrown', 'none'], deathKnight: ['horned', 'skullhelm', 'spikecrown'] }[cls][Math.floor(r() * 4) % (cls === 'druid' || cls === 'necro' || cls === 'deathKnight' ? 3 : 4)];
+    druid: ['wreath', 'antlers', 'flowers'], necro: ['cowl', 'skullcrown', 'none'], deathKnight: ['horned', 'skullhelm', 'spikecrown'],
+    beastmaster: ['horned', 'feather', 'headband', 'none'], witch: ['hood', 'flowers', 'antlers'], demoniac: ['horned', 'spikecrown', 'helm'], heretic: ['cowl', 'horned', 'circlet'] }[cls][Math.floor(r() * 4) % (['druid', 'necro', 'deathKnight', 'witch', 'demoniac', 'heretic'].includes(cls) ? 3 : 4)];
   F.brow = pick(['straight', 'arched', 'angry', 'bushy', 'thin']); F.eyes = undead ? 'glow' : pick(['normal', 'normal', 'narrow', 'wide']);
   F.nose = pick(['small', 'long', 'hooked', 'broad']); F.mouth = pick(['neutral', 'smile', 'frown', 'smirk']); F.face = pick(['oval', 'oval', 'round', 'long']);
   F.armor = pick(['#a8b2c4', '#c8b070', '#8a9ab8', '#b8c0cc']); F.robe = pick({ cleric: ['#e6dcc2', '#f0ead8', '#d8e0f0'], ranger: ['#7a5a34', '#5e4a2a'], druid: ['#6e5a34', '#6e7a34'], necro: ['#3a2c52', '#2a2236', '#3e2438'] }[cls] || ['#6e5a34']);
+  if (INFERNAL.includes(cls)) { F.eyes = r() < 0.6 ? 'glow' : F.eyes; F.armor = pick(['#6a2a24', '#5a1e1e', '#7a3a2a']); F.robe = pick(['#4a1414', '#2a1418', '#5a1e1e']); }
+  if (cls === 'beastmaster') F.robe = pick(['#6a5030', '#7a5a34', '#5a4a2a']); if (cls === 'witch') F.robe = pick(['#3e5a3a', '#4a5a34', '#34503e']);
   F.bg = pick(['plain', 'sky', 'window', 'night', 'fire', 'forest']); F.flip = r() < 0.5;
   Object.assign(F, HERO_LOOKS[h.name] || {});
   if (F.undead && !HERO_LOOKS[h.name]) F.skin = pick(['#cac6b6', '#b8beb0', '#d2c8c0']);
@@ -2330,7 +2445,7 @@ function paintPortrait(h, F, col) {
 // Oczy, brwi, nos, usta, zmarszczki i znaki szczególne
 function paintFacePx(P, F, face, S, HR) {
   const cls = F.cls, lid = pxMix(S[4], [20, 10, 8], 0.5), white = F.eyes === 'glow' ? [26, 20, 28] : [238, 230, 214];
-  const glow = cls === 'deathKnight' ? [255, 110, 70] : [170, 250, 170], iris = F.eyes === 'glow' ? glow : hexRgb(F.eye);
+  const glow = cls === 'deathKnight' || INFERNAL.includes(cls) ? [255, 110, 70] : [170, 250, 170], iris = F.eyes === 'glow' ? glow : hexRgb(F.eye);
   for (const [x0, i] of [[13, 14], [20, 21]]) {
     const shade = x0 === 13 ? white : pxMix(white, S[2], 0.5);
     if (F.eyes === 'narrow') { P.dots([[x0, 15], [x0 + 2, 15]], lid); P.set(i, 15, iris); P.dots([[x0, 14], [x0 + 1, 14], [x0 + 2, 14]], S[3]); }
@@ -2398,7 +2513,7 @@ function paintHairPx(P, F, face, S, HR, tex) {
 }
 
 function paintTorsoPx(P, F, look, CL) {
-  const cls = F.cls;
+  const cls = PORTRAIT_DRESS[F.cls] || F.cls;
   if (cls === 'knight' || cls === 'deathKnight') {
     const M = pxRamp(F.armor || (cls === 'knight' ? '#a8b2c4' : '#4c485c')), trim = cls === 'knight' ? [232, 196, 90] : [150, 40, 40];
     P.shape(mEll(18, 37, 14.5, 10.5), M, { cx: 13, cy: 29, rx: 16, ry: 10 });
@@ -2511,7 +2626,7 @@ function paintHeadgearPx(P, F, face, S, CL, look) {
 // Cały mur to jeden sprite (pixel art), rysowany zanim staną oddziały.
 const SIEGE_WX = 532, SIEGE_HALF = 23.5, TOWER_H = 56;
 const WALL = { face: 13, walk: 50, depth: 16 }; // lico 0..face, chodnik face..walk; depth: wysokość czoła muru widocznego od południa
-const SIEGE_STONE = { haven: '#b8ae98', sylvan: '#9aa086', barrow: '#6c6676' };
+const SIEGE_STONE = { haven: '#b8ae98', sylvan: '#9aa086', barrow: '#6c6676', fortress: '#8e8a6a', inferno: '#5e403c' };
 function stonePal(fac) {
   const c = SIEGE_STONE[fac] || SIEGE_STONE.haven;
   return { top: LT(c, 0.22), lit: LT(c, 0.08), base: c, sh: DK(c, 0.25), dk: DK(c, 0.45), mortar: DK(c, 0.34), crack: '#201a1a', moss: fac === 'sylvan' ? '#5a7a34' : fac === 'barrow' ? '#3e4e3a' : '#6a7a44' };
@@ -2646,7 +2761,86 @@ function castleSprite(fac, col, walls) {
   }, OUTLINE, 0.5);
 }
 // Bruk dziedzińca za murem (tło bitwy): kolor płyt [jasny, ciemny] wg frakcji
-const SIEGE_PAVE = { haven: [[176, 164, 140], [142, 130, 108]], sylvan: [[140, 146, 118], [108, 116, 90]], barrow: [[104, 98, 114], [78, 74, 88]] };
+const SIEGE_PAVE = { haven: [[176, 164, 140], [142, 130, 108]], sylvan: [[140, 146, 118], [108, 116, 90]], barrow: [[104, 98, 114], [78, 74, 88]], fortress: [[132, 126, 98], [102, 98, 74]], inferno: [[96, 64, 58], [70, 44, 40]] };
+// ==================== GRAFIKA: STWORY TWIERDZY I INFERNA =================================
+// Rodzaje ciała spoza postaci i czworonogów: ważka ('insect'), bazyliszek ('lizard'), gorgona ('bull'), hydra ('hydra').
+// Jak pozostałe stwory: (0,0) = ziemia pod stworem, przód w stronę +x, P = { t, walk, atk, hurt }.
+const lungeOf = P => (P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) : 0);
+// Ważka: długi odwłok, cztery skrzydła w szybkim trzepocie, wielkie oczy; atak = pchnięcie odwłokiem
+function drawInsect(ctx, L, P = {}) {
+  const f = L.fur, t = P.t || 0, lunge = lungeOf(P), dk = DK(f, 0.3), lt = LT(f, 0.3), bob = Math.sin(t * 3) * 1.5;
+  ctx.save(); ctx.translate(lunge * 5, -20 + bob); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const buzz = P.walk != null ? Math.sin(P.walk * TAU * 4) : Math.sin(t * 20);
+  const wingP = (ang, len, col) => { ctx.save(); ctx.rotate(ang); fillPoly(ctx, [[0, 0], [-len * 0.3, -3], [-len, -2.5], [-len * 1.05, 0], [-len * 0.6, 1.8]], col); limb(ctx, 0, -0.5, -len, -1.2, 0.5, DK(L.wing, 0.3)); ctx.restore(); };
+  wingP(-0.6 - buzz * 0.35, 17, DK(L.wing, 0.12)); wingP(-0.25 - buzz * 0.3, 15, DK(L.wing, 0.18));
+  for (let i = 0; i < 3; i++) limb(ctx, 1 + i * 2, 2, i * 2 - 1, 7 + (i % 2), 0.7, '#2a2a1a'); // nogi
+  const curl = lunge * 6; // odwłok: segmenty od tułowia do tyłu, przy ataku podgina się
+  for (let i = 0; i < 7; i++) { const x = -4 - i * 3.2, y = 0.5 + i * 0.25 + (i > 3 ? curl * (i - 3) * 0.25 : 0); oval(ctx, x, y, 2.2 - i * 0.12, 1.7 - i * 0.1, i % 2 ? f : dk); }
+  oval(ctx, 0, 0, 4.2, 3.2, f); oval(ctx, -0.5, -1.3, 3, 1.2, lt);
+  circ(ctx, 5, -0.8, 3, dk); circ(ctx, 5.8, -1.8, 2.4, L.eyes); circ(ctx, 5.2, -2.4, 0.8, '#ffffff');
+  wingP(-0.1 + buzz * 0.4, 18, L.wing); wingP(0.25 + buzz * 0.3, 15, LT(L.wing, 0.1));
+  ctx.restore();
+}
+// Bazyliszek: niski gad z długim ogonem, kolce na grzbiecie, świecące oczy (spojrzenie zamienia w kamień)
+function drawLizard(ctx, L, P = {}) {
+  const f = L.fur, t = P.t || 0, lunge = lungeOf(P), dk = DK(f, 0.3), lt = LT(f, 0.25), sp = L.spikes || dk;
+  ctx.save(); ctx.translate(lunge * 4, 0); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  quadLegs(ctx, [[-8, 0, true], [7, Math.PI, true]], -5, 5, f, P, 2.2);
+  const sw = Math.sin(t * 2.5) * 1.5; // ogon
+  fillPoly(ctx, [[-10, -9], [-18, -6 + sw * 0.5], [-26, -3 + sw], [-19, -3 + sw * 0.5], [-10, -4]], f); fillPoly(ctx, [[-10, -5], [-19, -3.5 + sw * 0.5], [-26, -3 + sw], [-19, -2.5], [-10, -3.5]], dk);
+  oval(ctx, 0, -7, 12, 4.8, f); oval(ctx, 0.5, -4.4, 10, 1.8, dk); oval(ctx, -1, -10, 8, 1.4, lt);
+  for (let i = 0; i < 6; i++) fillPoly(ctx, [[-10 + i * 3.6, -11], [-8.6 + i * 3.6, -15 - (i % 2) * 1.5], [-7 + i * 3.6, -11]], sp);
+  const jaw = lunge * 3, hy = -9 - lunge * 1.5; // głowa: klin z grzebieniem
+  fillPoly(ctx, [[9, -12], [15, hy - 3], [21, hy - 1], [22, hy + 1], [15, hy + 1.5], [9, -4]], f);
+  fillPoly(ctx, [[15, hy + 1.5], [21.5, hy + 1 + jaw], [15, hy + 3 + jaw]], dk);
+  if (jaw > 1) fillPoly(ctx, [[16, hy + 1.8], [21, hy + 1.3 + jaw * 0.6], [16.5, hy + 2.6 + jaw * 0.6]], '#6a1a1a');
+  for (let i = 0; i < 3; i++) fillPoly(ctx, [[10 + i * 2.5, hy - 2.5], [11 + i * 2.5, hy - 6 + i], [12.5 + i * 2.5, hy - 2.8]], sp);
+  circ(ctx, 17, hy - 1.2, 1.3, L.eyes); ctx.fillStyle = '#1a1a10'; ctx.fillRect(17, hy - 1.8, 0.6, 1.3);
+  if (lunge > 0.4) { ctx.globalAlpha = lunge * 0.6; circ(ctx, 24, hy - 1, 3 + lunge * 2, L.eyes); ctx.globalAlpha = 1; }
+  quadLegs(ctx, [[-6, Math.PI, false], [9, 0, false]], -5, 5, f, P, 2.4);
+  ctx.restore();
+}
+// Gorgona: ciężki byk w żelaznych łuskach, rogi do przodu; potężna zieje zielonym oddechem
+function drawBull(ctx, L, P = {}) {
+  const f = L.fur, t = P.t || 0, lunge = lungeOf(P), dk = DK(f, 0.35), lt = LT(f, 0.3), horn = L.horn || '#e8e0cc';
+  ctx.save(); ctx.translate(lunge * 5, 0); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  quadLegs(ctx, [[-9, 0, true], [8, Math.PI, true]], -10, 10, f, P, 3);
+  const sw = Math.sin(t * 2) * 1.2; limb(ctx, -12, -17, -16, -9 + sw, 1.2, dk); fillPoly(ctx, [[-16.5, -10 + sw], [-14.5, -10 + sw], [-15.5, -6 + sw]], '#2a2420');
+  oval(ctx, 0, -16, 13, 7.5, f); oval(ctx, 0.5, -12, 11, 2.8, dk); oval(ctx, -1, -21.5, 9, 1.8, lt);
+  for (let i = 0; i < 5; i++) for (let j = 0; j < 2; j++) { ctx.strokeStyle = dk; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.arc(-9 + i * 4.5 + j * 2, -18 + j * 4, 2.2, 0.2, Math.PI - 0.2); ctx.stroke(); } // łuski
+  oval(ctx, 9, -18, 5.5, 7, f); // kark
+  const hy = -15 + lunge * 3; // głowa pochylona do ataku
+  fillPoly(ctx, [[10, hy - 6], [17, hy - 4], [21, hy + 2], [19, hy + 5], [13, hy + 4], [10, hy]], f); fillPoly(ctx, [[13, hy + 4], [19, hy + 5], [21, hy + 2], [18, hy + 2.5]], dk);
+  circ(ctx, 19.5, hy + 3.2, 0.7, '#1a1410'); circ(ctx, 15.5, hy - 2.3, 1.1, '#f0e060');
+  fillPoly(ctx, [[12, hy - 5], [9, hy - 10], [14, hy - 13], [13, hy - 9], [14.5, hy - 5]], horn); fillPoly(ctx, [[15, hy - 4.5], [16, hy - 9], [21, hy - 11], [18, hy - 7.5], [17, hy - 4]], LT(horn, 0.15));
+  if (L.breath && lunge > 0.3) { ctx.globalAlpha = 0.7 * lunge; for (let i = 0; i < 4; i++) circ(ctx, 23 + i * 4, hy + 3 - i * 0.5, 2 + i * 1.2, i % 2 ? L.breath : LT(L.breath, 0.4)); ctx.globalAlpha = 1; }
+  quadLegs(ctx, [[-7, Math.PI, false], [10, 0, false]], -10, 10, f, P, 3.2);
+  ctx.restore();
+}
+// Hydra: ciężkie cielsko na krótkich łapach i wachlarz szyj z głowami; przy ataku wszystkie głowy kąsają
+function drawHydra(ctx, L, P = {}) {
+  const f = L.fur, t = P.t || 0, lunge = lungeOf(P), dk = DK(f, 0.3), lt = LT(f, 0.25), n = L.heads || 5;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  quadLegs(ctx, [[-9, 0, true], [7, Math.PI, true]], -6, 6, f, P, 3);
+  const sw = Math.sin(t * 2) * 1.5; fillPoly(ctx, [[-12, -12], [-20, -8 + sw * 0.5], [-27, -4 + sw], [-20, -3], [-12, -5]], dk);
+  oval(ctx, -1, -11, 14, 7, f); oval(ctx, -0.5, -6.5, 12, 2.4, dk); oval(ctx, -3, -16, 9, 1.8, lt);
+  const heads = [];
+  for (let i = 0; i < n; i++) { // szyje rozchodzą się wachlarzem, dalsze ciemniejsze
+    const a = -1.25 + i / (n - 1) * 1.1, sway = Math.sin(t * 2.2 + i * 1.3) * 1.8, len = 17 + (i % 2) * 3;
+    heads.push({ i, x: 5 + Math.cos(a) * len + lunge * 8, y: -15 + Math.sin(a) * len + sway + lunge * 3, far: i % 2 === 0 });
+  }
+  const neck = h => { ctx.strokeStyle = h.far ? dk : f; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(4, -14); ctx.quadraticCurveTo(h.x - 6, h.y + 4, h.x, h.y); ctx.stroke(); };
+  const headAt = h => {
+    const c = h.far ? dk : f, jaw = lunge * 2;
+    fillPoly(ctx, [[h.x - 2, h.y - 2.5], [h.x + 4, h.y - 2], [h.x + 6.5, h.y], [h.x + 4, h.y + 1.5 + jaw], [h.x - 2, h.y + 2]], c);
+    fillPoly(ctx, [[h.x - 1, h.y - 2.4], [h.x - 3, h.y - 5], [h.x + 0.5, h.y - 2.6]], DK(c, 0.25));
+    circ(ctx, h.x + 2, h.y - 0.8, 0.8, '#f0e060');
+  };
+  heads.filter(h => h.far).forEach(h => { neck(h); headAt(h); });
+  heads.filter(h => !h.far).forEach(h => { neck(h); headAt(h); });
+  quadLegs(ctx, [[-7, Math.PI, false], [9, 0, false]], -6, 6, f, P, 3.2);
+  ctx.restore();
+}
 // ==================== ŚWIAT: TWORZENIE NOWEJ GRY ========================================
 // Generator mapy, rozmieszczanie obiektów, miasta i bohaterowie startowi.
 function smoothTerrain(ter, n) {
@@ -4590,6 +4784,8 @@ function drawEmblem(ctx, kind, cx, cy, s, col) {
     case 'ghost': ctx.beginPath(); ctx.arc(0, -3, 7, Math.PI, 0); ctx.lineTo(7, 9); ctx.lineTo(3.5, 6); ctx.lineTo(0, 9); ctx.lineTo(-3.5, 6); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill(); ctx.fillStyle = dark; ctx.fillRect(-3.5, -4, 2.2, 3); ctx.fillRect(1.3, -4, 2.2, 3); break;
     case 'bat': ctx.beginPath(); [[0, -3], [3, -7], [4, -3], [10, -7], [9, 1], [6, -1], [3, 4], [0, 1], [-3, 4], [-6, -1], [-9, 1], [-10, -7], [-4, -3], [-3, -7]].forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); ctx.fill(); break;
     case 'moon': ctx.beginPath(); ctx.arc(0, 0, 9, 0.9, TAU - 0.9); ctx.arc(5, 0, 7.5, TAU - 1.25, 1.25, true); ctx.closePath(); ctx.fill(); break;
+    case 'eye': ctx.beginPath(); ctx.ellipse(0, 0, 10, 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(0, 0, 2, 5, 0, 0, TAU); ctx.fill(); break;
+    case 'fork': ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(0, -4); ctx.moveTo(-6, -9); ctx.lineTo(-6, -3); ctx.quadraticCurveTo(0, 2, 6, -3); ctx.lineTo(6, -9); ctx.moveTo(0, -4); ctx.lineTo(0, -10); ctx.stroke(); break;
   }
   ctx.restore();
 }
@@ -4660,6 +4856,22 @@ function plotArt(c, A, s, emblem) {
   signArt(c, A, emblem, cx, b - 26, 24, true);
 }
 function propArt(c, fac, kind, x, b, r, fx) {
+  if (kind === 'tree' && fac === 'fortress') { // bagienna wierzba: krzywy pień, zwisający mech
+    c.strokeStyle = '#3a2e1c'; c.lineCap = 'round'; c.lineWidth = 5; c.beginPath(); c.moveTo(x - 4, b); c.quadraticCurveTo(x + 4, b - 14, x - 1, b - 28); c.stroke();
+    limb(c, x - 1, b - 3, x - 9, b + 1, 2, '#3a2e1c'); limb(c, x, b - 3, x + 8, b + 1, 2, '#3a2e1c');
+    circ(c, x, b - 34, 13, '#2a3a1e'); circ(c, x - 7, b - 31, 9, '#34462a'); circ(c, x + 7, b - 30, 9, '#304226'); circ(c, x - 3, b - 40, 6, '#4a5e34');
+    c.strokeStyle = '#6a7a4a'; c.lineWidth = 1.2; for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(x + i * 3.5, b - 28); c.lineTo(x + i * 3.8, b - 14 - Math.abs(i) * 2); c.stroke(); }
+    return;
+  }
+  if (kind === 'tree' && fac === 'inferno') { // zwęglone drzewo z żarzącymi się pęknięciami
+    c.strokeStyle = '#1a0e0c'; c.lineCap = 'round'; c.lineWidth = 4.5; c.beginPath(); c.moveTo(x, b); c.lineTo(x + 1, b - 38); c.stroke(); c.lineWidth = 2;
+    for (const [a, l] of [[-1, 15], [-0.4, 19], [0.4, 13], [1, 17]]) { c.beginPath(); c.moveTo(x + 1, b - 22 - l * 0.4); c.lineTo(x + 1 + Math.sin(a) * l, b - 28 - Math.cos(a) * l); c.stroke(); }
+    c.strokeStyle = '#ff6a1a'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, b - 4); c.lineTo(x + 1, b - 12); c.lineTo(x, b - 18); c.stroke(); if (fx) fx.glows.push([x, b - 10, 10, '#ff6a1a']);
+    return;
+  }
+  if (kind === 'reeds') { for (let i = -4; i <= 4; i++) { const h = 14 + ((i * 7 + 20) % 9); c.strokeStyle = i % 2 ? '#5a7a3a' : '#6a8a44'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x + i * 2.4, b); c.lineTo(x + i * 2.8, b - h); c.stroke(); if (i % 3 === 0) { c.fillStyle = '#6a4424'; c.fillRect(x + i * 2.8 - 1, b - h - 1, 2.4, 6); } } return; }
+  if (kind === 'spike') { c.fillStyle = '#1e1216'; c.beginPath(); c.moveTo(x - 7, b); c.lineTo(x - 1, b - 30); c.lineTo(x + 6, b); c.closePath(); c.fill(); c.fillStyle = '#3a2226'; c.beginPath(); c.moveTo(x - 7, b); c.lineTo(x - 1, b - 30); c.lineTo(x - 2, b); c.closePath(); c.fill(); c.fillStyle = '#ff5a1a'; c.fillRect(x - 2, b - 12, 1.5, 6); return; }
+  if (kind === 'brazier') { c.fillStyle = '#2a1a16'; c.fillRect(x - 1.5, b - 18, 3, 18); c.beginPath(); c.moveTo(x - 7, b - 22); c.lineTo(x + 7, b - 22); c.lineTo(x + 4, b - 17); c.lineTo(x - 4, b - 17); c.closePath(); c.fill(); c.fillStyle = '#ffa030'; c.beginPath(); c.moveTo(x - 5, b - 22); c.quadraticCurveTo(x, b - 36, x + 5, b - 22); c.fill(); if (fx) fx.glows.push([x, b - 26, 22, '#ff8a2a']); return; }
   if (kind === 'tree') {
     if (fac === 'barrow') { c.strokeStyle = '#1e1824'; c.lineCap = 'round'; c.lineWidth = 4; c.beginPath(); c.moveTo(x, b); c.lineTo(x + 2, b - 40); c.stroke(); c.lineWidth = 2;
       for (const [a, l] of [[-0.9, 16], [-0.3, 20], [0.5, 14], [1.1, 18]]) { c.beginPath(); c.moveTo(x + 1, b - 26 - l * 0.4); c.lineTo(x + 1 + Math.sin(a) * l, b - 30 - Math.cos(a) * l); c.stroke(); } return; }
@@ -4667,9 +4879,9 @@ function propArt(c, fac, kind, x, b, r, fx) {
     const base = fac === 'sylvan' ? '#2e6a30' : '#3a7a2c';
     circ(c, x, b - 32, 14, shadeHex(base, -0.25)); circ(c, x - 6, b - 36, 10, base); circ(c, x + 6, b - 30, 9, base); circ(c, x - 3, b - 42, 7, shadeHex(base, 0.2));
   } else if (kind === 'bush') {
-    const base = fac === 'barrow' ? '#3a3a30' : fac === 'sylvan' ? '#3a7a34' : '#4a8a34';
+    const base = fac === 'barrow' ? '#3a3a30' : fac === 'inferno' ? '#3a2220' : fac === 'fortress' ? '#3e5a2e' : fac === 'sylvan' ? '#3a7a34' : '#4a8a34';
     circ(c, x, b - 7, 9, shadeHex(base, -0.2)); circ(c, x - 8, b - 4, 7, base); circ(c, x + 8, b - 4, 7, base); circ(c, x - 2, b - 10, 5, shadeHex(base, 0.2));
-    if (fac !== 'barrow' && r() < 0.6) for (let i = 0; i < 4; i++) circ(c, x - 8 + r() * 16, b - 4 - r() * 8, 1.5, fac === 'sylvan' ? '#f8e070' : '#f07a8a');
+    if (fac !== 'barrow' && r() < 0.6) for (let i = 0; i < 4; i++) circ(c, x - 8 + r() * 16, b - 4 - r() * 8, 1.5, fac === 'sylvan' ? '#f8e070' : fac === 'inferno' ? '#ff6a1a' : fac === 'fortress' ? '#c080e0' : '#f07a8a');
   } else if (kind === 'lamp') {
     c.fillStyle = '#2a2420'; c.fillRect(x - 1.5, b - 30, 3, 30); c.fillRect(x - 5, b - 2, 10, 2);
     c.fillStyle = '#3a3028'; c.fillRect(x - 4, b - 38, 8, 9); winArt(c, TOWN_ART[fac] || TOWN_ART.haven, x - 2.5, b - 36.5, 5, 6, fx);
@@ -4679,8 +4891,8 @@ function propArt(c, fac, kind, x, b, r, fx) {
   } else if (kind === 'mushroom') {
     for (const [dx, sc] of [[0, 1], [7, 0.7]]) { c.fillStyle = '#e8dcc0'; c.fillRect(x + dx - 1.5 * sc, b - 7 * sc, 3 * sc, 7 * sc); c.fillStyle = '#c8402a'; c.beginPath(); c.ellipse(x + dx, b - 7 * sc, 6 * sc, 4 * sc, 0, Math.PI, 0); c.fill(); circ(c, x + dx - 2 * sc, b - 9 * sc, 1 * sc, '#fff'); }
   } else if (kind === 'fence') {
-    c.fillStyle = fac === 'barrow' ? '#1e1a24' : '#6a4a2a';
-    for (let i = 0; i < 5; i++) { c.fillRect(x + i * 7, b - 14, 2.5, 14); if (fac === 'barrow') { c.beginPath(); c.moveTo(x + i * 7 - 1, b - 14); c.lineTo(x + i * 7 + 1.2, b - 19); c.lineTo(x + i * 7 + 3.5, b - 14); c.fill(); } }
+    const spiky = fac === 'barrow' || fac === 'inferno' || fac === 'fortress'; c.fillStyle = fac === 'barrow' ? '#1e1a24' : fac === 'inferno' ? '#2a1612' : fac === 'fortress' ? '#4e3a22' : '#6a4a2a';
+    for (let i = 0; i < 5; i++) { c.fillRect(x + i * 7, b - 14, 2.5, 14); if (spiky) { c.beginPath(); c.moveTo(x + i * 7 - 1, b - 14); c.lineTo(x + i * 7 + 1.2, b - 19); c.lineTo(x + i * 7 + 3.5, b - 14); c.fill(); } }
     c.fillRect(x - 2, b - 10, 34, 2); c.fillRect(x - 2, b - 5, 34, 2);
   }
 }
@@ -5338,9 +5550,9 @@ function hillArt(c, Hl, hazeCol) {
 }
 function riverArt(c, Rv, hazeCol) {
   const pts = subdiv(Rv.pts, 6), [L, R] = ribbon(pts, Rv.w), yF = Math.min(...L.map(p => p[1]), ...R.map(p => p[1])), yN = Math.max(...L.map(p => p[1]), ...R.map(p => p[1]));
-  ribbonPath(c, L, R); const g = c.createLinearGradient(0, yF, 0, yN); g.addColorStop(0, Rv.chasm ? '#2a2034' : '#7890a4'); g.addColorStop(1, Rv.chasm ? '#040308' : '#1e3c58'); c.fillStyle = g; c.fill();
-  if (Rv.chasm) { const mid = pts.map(p => proj(p[0], p[1])); c.strokeStyle = 'rgba(120,255,150,.3)'; c.lineWidth = 1.5; c.beginPath(); mid.forEach(([x, y], i) => i ? c.lineTo(x, y + 2) : c.moveTo(x, y + 2)); c.stroke(); c.strokeStyle = 'rgba(90,70,110,.8)'; c.lineWidth = 2; for (const E of [L, R]) { c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); } return; }
-  c.strokeStyle = 'rgba(200,215,210,.45)'; c.lineWidth = 1.4; for (const E of [L, R]) { c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); }
+  ribbonPath(c, L, R); const g = c.createLinearGradient(0, yF, 0, yN); const RC = Rv.cols || (Rv.chasm ? ['#2a2034', '#040308'] : ['#7890a4', '#1e3c58']); g.addColorStop(0, RC[0]); g.addColorStop(1, RC[1]); c.fillStyle = g; c.fill();
+  if (Rv.chasm) { const mid = pts.map(p => proj(p[0], p[1])); c.strokeStyle = Rv.line || 'rgba(120,255,150,.3)'; c.lineWidth = 1.5; c.beginPath(); mid.forEach(([x, y], i) => i ? c.lineTo(x, y + 2) : c.moveTo(x, y + 2)); c.stroke(); c.strokeStyle = Rv.edge || 'rgba(90,70,110,.8)'; c.lineWidth = 2; for (const E of [L, R]) { c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); } return; }
+  c.strokeStyle = Rv.edge || 'rgba(200,215,210,.45)'; c.lineWidth = 1.4; for (const E of [L, R]) { c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); }
   const r = mulberry32(61); c.strokeStyle = 'rgba(230,240,245,.35)';
   for (let i = 0; i < 70; i++) { const k = r() * (pts.length - 1), i0 = Math.floor(k), p = pts[i0], q = pts[i0 + 1], f = k - i0, off = (r() - 0.5) * Rv.w * 0.8; const [x, y, s] = proj(p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f + off / 300); c.lineWidth = Math.max(0.6, s); c.beginPath(); c.moveTo(x - 6 * s, y); c.lineTo(x + 6 * s, y); c.stroke(); }
   c.fillStyle = 'rgba(70,90,50,.55)'; for (const E of [L, R]) for (let i = 0; i < E.length; i += 2) { const [x, y] = E[i]; c.fillRect(x - 1, y - 5, 1.2, 5); c.fillRect(x + 2, y - 4, 1.2, 4); }
@@ -5367,7 +5579,7 @@ function boneBridgeArt(g) {
   skullAt(g, 0, 0, 0.8); skullAt(g, 76, 0, 0.8);
 }
 function bridgeArt(g, A) {
-  wallRect(g, A, 0, 6, 76, 26); g.fillStyle = '#1e3a54'; g.beginPath(); g.ellipse(38, 32, 24, 19, 0, Math.PI, 0); g.fill();
+  wallRect(g, A, 0, 6, 76, 26); g.fillStyle = A.under || '#1e3a54'; g.beginPath(); g.ellipse(38, 32, 24, 19, 0, Math.PI, 0); g.fill();
   g.strokeStyle = shadeHex(A.wall[1], -0.3); g.lineWidth = 3; g.beginPath(); g.ellipse(38, 32, 25.5, 20.5, 0, Math.PI, 0); g.stroke();
   g.fillStyle = A.wall[0]; g.fillRect(-3, 0, 82, 7); g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(-3, 5, 82, 2);
 }
@@ -5405,13 +5617,14 @@ function forestFrame(c) {
 // Kurhan: zielona mgła w przepaści
 function chasmGlow(c, Rv) {
   const pts = subdiv(Rv.pts, 4);
-  for (const p of pts) { const [x, y, s] = proj(p[0], p[1]); const r = (p[3] || Rv.w) * s * 0.45, g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(90,255,140,.08)'); g.addColorStop(1, 'rgba(90,255,140,0)'); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
+  for (const p of pts) { const [x, y, s] = proj(p[0], p[1]); const r = (p[3] || Rv.w) * s * 0.45, g = c.createRadialGradient(x, y, 0, x, y, r); const gc = Rv.glow || '90,255,140'; g.addColorStop(0, `rgba(${gc},${Rv.glowA || 0.08})`); g.addColorStop(1, `rgba(${gc},0)`); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
 }
 function drawCreaturesFX(ctx, LL, tm) {
   for (const F of (LL.floaters || [])) for (let i = 0; i < F.n; i++) {
     const ph = i * 2.3 + (F.seed || 0), X = F.X + Math.sin(tm * 0.3 + ph) * F.spread, Z = F.Z + Math.cos(tm * 0.23 + ph * 1.7) * F.spreadZ, e = F.e + Math.sin(tm * 1.1 + ph) * 8;
     const [x, y, sc] = proj(X, Z, e);
-    if (F.kind === 'wisp') { const a = 0.55 + 0.35 * Math.sin(tm * 3 + ph); ctx.fillStyle = `rgba(170,255,200,${(a * 0.3).toFixed(2)})`; ctx.beginPath(); ctx.arc(x, y, 7 * sc, 0, TAU); ctx.fill(); circ(ctx, x, y, 1.8 * sc + 0.8, `rgba(230,255,220,${a.toFixed(2)})`); }
+    if (F.kind === 'ember') { const u = ((tm * 0.25 + ph * 0.37) % 1), [ex, ey] = proj(X, Z, F.e + u * 120); circ(ctx, ex, ey, (1.8 - u) * sc + 0.6, `rgba(255,${150 + Math.round(90 * (1 - u))},60,${(1 - u).toFixed(2)})`); }
+    else if (F.kind === 'wisp') { const a = 0.55 + 0.35 * Math.sin(tm * 3 + ph); ctx.fillStyle = `rgba(170,255,200,${(a * 0.3).toFixed(2)})`; ctx.beginPath(); ctx.arc(x, y, 7 * sc, 0, TAU); ctx.fill(); circ(ctx, x, y, 1.8 * sc + 0.8, `rgba(230,255,220,${a.toFixed(2)})`); }
     else { ctx.globalAlpha = 0.5 + 0.25 * Math.sin(tm * 2 + ph); ghost(ctx, x, y, sc * 1.2); ctx.globalAlpha = 1; }
   }
   if (LL.skeletons) LL.skeletons.forEach((pts, k) => { for (let j = 0; j < 2; j++) {
@@ -5582,7 +5795,7 @@ function drawTownFX(ctx, t, fx) {
   drawCreaturesFX(ctx, LL, tm);
   if (LL.guardSkel) for (const [gX, gZ, gE] of LL.guardSkel) { const [gx, gy, sc] = proj(gX, gZ, gE); drawSkeleton(ctx, gx, gy, sc * 1.15, 0, 1, true); }
   if (LL.guardsW) for (const [gX, gZ, gE] of LL.guardsW) {
-    const [gx, gy, sc] = proj(gX, gZ, gE); drawWalker(ctx, gx, gy, sc * 1.1, t.faction === 'barrow' ? '#c8c0ac' : t.faction === 'sylvan' ? '#3a6a3a' : '#7a8494', 0, 1);
+    const [gx, gy, sc] = proj(gX, gZ, gE); drawWalker(ctx, gx, gy, sc * 1.1, LL.guardCol || (t.faction === 'barrow' ? '#c8c0ac' : t.faction === 'sylvan' ? '#3a6a3a' : '#7a8494'), 0, 1);
     ctx.strokeStyle = '#5a3a1e'; ctx.lineWidth = 1.2 * sc; ctx.beginPath(); ctx.moveTo(gx + 4 * sc, gy); ctx.lineTo(gx + 4 * sc, gy - 22 * sc); ctx.stroke();
   }
   if (LL.birds) for (let i = 0; i < 4; i++) {
@@ -5593,6 +5806,14 @@ function drawTownFX(ctx, t, fx) {
     const x = 20 + ((i * 97 + Math.sin(tm * 0.4 + i) * 30) % 550), y = 150 + ((i * 53) % 260) + Math.sin(tm * 0.9 + i * 1.7) * 10, a = 0.4 + 0.4 * Math.sin(tm * 3 + i);
     circ(ctx, x, y, 1.6, `rgba(255,250,170,${a.toFixed(3)})`);
   }
+  if (LL.mist) for (let i = 0; i < 4; i++) { // bagienna mgła przy ziemi
+    const x = ((i * 220 + tm * 9) % 900) - 150, y = 330 + i * 26, g = ctx.createRadialGradient(x, y, 0, x, y, 160); g.addColorStop(0, 'rgba(200,220,180,.16)'); g.addColorStop(1, 'rgba(200,220,180,0)');
+    ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.25); ctx.translate(-x, -y); ctx.fillStyle = g; ctx.fillRect(x - 160, y - 160, 320, 320); ctx.restore();
+  }
+  if (LL.embers) { // żar unoszący się nad całym miastem i drżące powietrze nad lawą
+    for (let i = 0; i < 30; i++) { const u = (tm * 0.12 + i * 0.137) % 1, x = 20 + ((i * 83) % 560) + Math.sin(tm + i) * 8, y = 430 - u * 360; circ(ctx, x, y, 1.2, `rgba(255,${130 + (i % 5) * 20},50,${(0.8 * (1 - u)).toFixed(2)})`); }
+    const g = ctx.createLinearGradient(0, 300, 0, 440); g.addColorStop(0, 'rgba(255,90,20,0)'); g.addColorStop(1, `rgba(255,90,20,${(0.1 + 0.04 * Math.sin(tm * 2)).toFixed(3)})`); ctx.fillStyle = g; ctx.fillRect(8, 300, 576, 140);
+  }
   if (fac === 'barrow') {
     for (let i = 0; i < 3; i++) { const x = ((i * 260 + tm * 12) % 900) - 150, y = 300 + i * 45; const g = ctx.createRadialGradient(x, y, 0, x, y, 140); g.addColorStop(0, 'rgba(190,180,220,.16)'); g.addColorStop(1, 'rgba(190,180,220,0)'); ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.3); ctx.translate(-x, -y); ctx.fillStyle = g; ctx.fillRect(x - 140, y - 140, 280, 280); ctx.restore(); }
     for (let i = 0; i < 3; i++) { const x = 100 + ((tm * 40 + i * 180) % 500), y = 60 + i * 25 + Math.sin(tm * 2 + i) * 12, f = Math.sin(tm * 14 + i) * 4;
@@ -5601,6 +5822,287 @@ function drawTownFX(ctx, t, fx) {
   ctx.restore();
 }
 
+// ==================== MIASTO: TWIERDZA I INFERNO ==========================================
+// Style, budowle i sceny dwóch frakcji dodanych po kroku 10. Budowla dostaje s = { x, b, w, h } (podstawa b)
+// i poziom (tier); wspólne klocki (wallRect, roofArt, archWin, doorArt, bannerArt…) są w MIASTO: GRAFIKA.
+TOWN_ART.fortress = {
+  sky: ['#4a6a5a', '#9aa070', '#d8c890'], far: ['#4a5a44', '#5e6e54'], back: ['#44583a', '#34462c'], mid: ['#4e6240', '#3a4c30'], front: ['#566a44', '#3e5034'],
+  path: ['#8a7a58', '#66583e'], wall: ['#9a8660', '#5e4e34'], mortar: 'rgba(40,28,12,.4)', roof: { hall: '#8a7a3e', dw: '#7a6a34', util: '#6a5a30', tower: '#5a6a34', wall: '#6e5e34' },
+  roofShape: 'gable', tex: 'planks', glow: '#d8f078', door: '#241a0c', trim: '#c8b060', under: '#1e2a1a',
+};
+TOWN_ART.inferno = {
+  sky: ['#2a0808', '#7a1e0a', '#d86a2a'], far: ['#3a1a14', '#4a2218'], back: ['#3a2622', '#2a1a18'], mid: ['#40282a', '#2e1c1c'], front: ['#482e2a', '#34201e'],
+  path: ['#5a3a34', '#3e2826'], wall: ['#5a3c38', '#2e1c1c'], mortar: 'rgba(0,0,0,.5)', roof: { hall: '#8a1e16', dw: '#6a1a14', util: '#4a2a26', tower: '#5a1210', wall: '#4a1a16' },
+  roofShape: 'spire', tex: 'blocks', glow: '#ff9a3a', door: '#140604', trim: '#ffb040', under: '#5a1606',
+};
+// --- klocki Twierdzy: pale, chaty z trzciny, totemy, bajorka ---
+function stilts(c, x, b, w, h, col = '#4a3a22') {
+  c.fillStyle = col; for (let px = x + 3; px < x + w - 2; px += Math.max(8, w / 5)) c.fillRect(px, b - h, 3, h);
+  c.fillStyle = shadeHex(col, 0.15); c.fillRect(x - 2, b - h - 3, w + 4, 4); c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(x - 2, b - h, w + 4, 1.5);
+}
+function stiltHut(c, A, x, b, w, h, ph, roof, fx) {
+  stilts(c, x, b, w, ph); const top = b - ph - h; wallRect(c, A, x, top, w, h);
+  doorArt(c, A, x + w / 2 - 6, b - ph - 3, 12, Math.min(16, h - 4)); if (w > 36) winArt(c, A, x + w - 12, top + 7, 6, 6, fx);
+  roofArt(c, A, roof, x, top, w, Math.max(14, h * 0.7));
+  c.strokeStyle = '#4a3a22'; c.lineWidth = 2; c.beginPath(); c.moveTo(x + w / 2 - 6, b - ph); c.lineTo(x + w / 2 - 12, b); c.stroke(); // drabina
+}
+function totem(c, x, b, h, col = '#6a4a2a', eye = '#d8f078') {
+  for (let i = 0; i < 3; i++) { const y = b - (i + 1) * h / 3; c.fillStyle = i % 2 ? shadeHex(col, -0.15) : col; c.fillRect(x - 5, y, 10, h / 3); c.fillStyle = '#1a1208'; c.fillRect(x - 3, y + 3, 2, 2); c.fillRect(x + 1, y + 3, 2, 2); c.fillRect(x - 2, y + h / 3 - 4, 4, 1.5); }
+  c.fillStyle = eye; c.fillRect(x - 3, b - h + 3, 2, 2); c.fillRect(x + 1, b - h + 3, 2, 2);
+  c.fillStyle = '#c83a2a'; c.beginPath(); c.moveTo(x - 9, b - h + 2); c.lineTo(x, b - h - 6); c.lineTo(x + 9, b - h + 2); c.closePath(); c.fill();
+}
+function bogPool(c, cx, b, rx, ry, col = '#2a3a26') {
+  c.fillStyle = '#4a5a34'; c.beginPath(); c.ellipse(cx, b, rx + 4, ry + 2, 0, 0, TAU); c.fill();
+  c.fillStyle = col; c.beginPath(); c.ellipse(cx, b, rx, ry, 0, 0, TAU); c.fill(); c.fillStyle = 'rgba(200,230,160,.25)'; c.fillRect(cx - rx * 0.5, b - 1, rx * 0.5, 1.2);
+  c.fillStyle = '#5a8a3a'; for (const [dx, dy] of [[-0.5, 0.2], [0.35, -0.3], [0.1, 0.4]]) { c.beginPath(); c.ellipse(cx + dx * rx, b + dy * ry, 3, 1.4, 0, 0, TAU); c.fill(); }
+}
+function palisade(c, x0, x1, b, h, col = '#5a4428') {
+  for (let px = x0; px < x1; px += 5) { const hh = h + ((px * 7) % 5); c.fillStyle = (px / 5) % 2 ? col : shadeHex(col, -0.15); c.fillRect(px, b - hh, 4.4, hh); c.beginPath(); c.moveTo(px, b - hh); c.lineTo(px + 2.2, b - hh - 5); c.lineTo(px + 4.4, b - hh); c.closePath(); c.fill(); }
+  c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(x0, b - h * 0.55, x1 - x0, 2); c.fillRect(x0, b - h * 0.2, x1 - x0, 2);
+}
+const FORTRESS_ART = {
+  hall(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s, cx = x + w / 2;
+    if (tier >= 2) for (const side of [0, 1]) stiltHut(c, A, side ? x + w - w * 0.26 : x, b, w * 0.26, h * 0.26, h * 0.14, A.roof.dw, fx);
+    const bw = w * 0.52, ph = h * 0.16, bh = h * (0.34 + tier * 0.04); stiltHut(c, A, cx - bw / 2, b, bw, bh, ph, A.roof.hall, fx);
+    for (let i = 0; i < 2; i++) winArt(c, A, cx - bw / 2 + 10 + i * (bw - 26), b - ph - bh + 10, 7, 8, fx);
+    if (tier >= 3) { totem(c, cx - bw / 2 - 8, b, h * 0.62); totem(c, cx + bw / 2 + 8, b, h * 0.62); }
+    if (tier === 4) { const tw = 22, th = h * 0.9; for (const tx of [x + 4, x + w - tw - 4]) { stilts(c, tx, b, tw, th * 0.5); wallRect(c, A, tx, b - th, tw, th * 0.5); roofArt(c, A, A.roof.tower, tx, b - th, tw, 18); } }
+    bannerArt(c, cx, b - ph - bh - Math.max(14, bh * 0.7) - 20, col);
+  },
+  fort(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s, cx = x + w / 2;
+    if (tier >= 2) { const kw = tier >= 3 ? 64 : 50, kh = h * (tier >= 3 ? 0.98 : 0.78), kx = cx - kw / 2; wallRect(c, { ...A, tex: 'blocks', wall: ['#8a8a6a', '#50503e'] }, kx, b - kh, kw, kh - 14); for (let r = 0; r < tier; r++) archWin(c, kx + kw / 2 - 4, b - kh + 10 + r * 18, 8, 12, A.glow, fx); roofArt(c, A, A.roof.wall, kx, b - kh, kw, tier >= 3 ? 36 : 26); bannerArt(c, cx, b - kh - (tier >= 3 ? 56 : 44), col); }
+    palisade(c, x + 14, x + w - 14, b, h * 0.34);
+    for (const tx of [x, x + w - 28]) { const th = h * (tier >= 3 ? 0.66 : 0.56); stilts(c, tx, b, 28, th * 0.45); wallRect(c, A, tx, b - th, 28, th * 0.55); winArt(c, A, tx + 11, b - th + 8, 6, 7, fx); roofArt(c, A, A.roof.tower, tx, b - th, 28, 22); }
+    c.fillStyle = '#1a1208'; c.fillRect(cx - 10, b - 22, 20, 22); c.fillStyle = '#5a4428'; for (let i = 0; i < 4; i++) c.fillRect(cx - 9 + i * 5, b - 21, 3.5, 21); totem(c, cx, b - 22, 20);
+  },
+  guild(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.62, th = h * (0.3 + Math.min(tier, 5) * 0.08);
+    stilts(c, cx - tw / 2, b, tw, h * 0.16); const top = b - h * 0.16 - th; wallRect(c, A, cx - tw / 2, top, tw, th);
+    for (let i = 1; i < tier; i++) { c.fillStyle = '#4a3a22'; c.fillRect(cx - tw / 2 - 3, top + i * th / tier, tw + 6, 2.5); }
+    for (let i = 0; i < tier; i++) archWin(c, cx - 4, top + 6 + i * th / tier, 7, 9, '#b8f070', fx);
+    roofArt(c, A, A.roof.tower, cx - tw / 2, top, tw, 26 + tier * 3);
+    for (const dx of [-tw / 2 - 5, tw / 2 + 5]) { c.fillStyle = '#4a3a22'; c.fillRect(cx + dx - 1, b - h * 0.5, 2, h * 0.5); skullAt(c, cx + dx, b - h * 0.5 - 3, 0.55); }
+    c.fillStyle = '#1a1a14'; c.beginPath(); c.ellipse(cx + tw / 2 + 12, b - 5, 8, 5, 0, 0, TAU); c.fill(); circ(c, cx + tw / 2 + 12, b - 9, 5, '#8ad040'); fx.glows.push([cx + tw / 2 + 12, b - 12, 18, '#a0f060']); fx.smokes.push([cx + tw / 2 + 12, b - 14, 0.6]);
+  },
+  tavern(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s; stiltHut(c, A, x + 4, b, w * 0.64, h * 0.4, h * 0.14, A.roof.util, fx);
+    c.fillStyle = '#3a2a18'; c.fillRect(x + w * 0.5, b - h * 0.8, 6, h * 0.3); fx.smokes.push([x + w * 0.5 + 3, b - h * 0.8]);
+    signArt(c, A, 'mug', x + w * 0.8, b - h * 0.62, h * 0.62, false); barrel(c, x + w - 12, b); barrel(c, x + w - 24, b);
+  },
+  market(c, A, s, tier, col, fx) {
+    c.fillStyle = '#5a5a3a'; c.beginPath(); c.ellipse(s.x + s.w / 2, s.b - 5, s.w / 2, 9, 0, 0, TAU); c.fill();
+    stalls(c, s, [['#6a7a3a', '#3a4a22'], ['#8a5a2a', '#4a3018'], ['#3a6a5a', '#223e34']], ['#c8a040', '#5a8a3a', '#e0d8c4', '#8a3a2a', '#a060c0'], '#3a2a18');
+  },
+  smith(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s, bw = w * 0.7, top = b - h * 0.55; wallRect(c, A, x + 2, top, bw, h * 0.55);
+    c.fillStyle = '#140c06'; c.fillRect(x + 10, b - h * 0.36, bw * 0.5, h * 0.36); const gx = x + 10 + bw * 0.25; circ(c, gx, b - 8, 5, '#ffb040'); fx.glows.push([gx, b - 10, 22, '#ff9a3a']);
+    roofArt(c, A, A.roof.util, x + 2, top, bw, h * 0.3); c.fillStyle = '#3a3026'; c.fillRect(x + bw * 0.7, top - h * 0.3, 7, h * 0.3); fx.smokes.push([x + bw * 0.7 + 3.5, top - h * 0.31]);
+    drawEmblem(c, 'anvil', x + w - 10, b - 7, 16, '#5a5a50');
+  },
+  silo(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s; stiltHut(c, A, x + 2, b, w * 0.6, h * 0.36, h * 0.16, A.roof.util, fx); barrel(c, x + w - 10, b); crate(c, x + w - 24, b, 10);
+  },
+  dw1(c, A, s, tier, col, fx) { // nora gnolli: kopiec z wejściem, kości, włócznie
+    const { x, b, w, h } = s; rockMound(c, x + 4, b, w * 0.62, h * 0.52, '#6a5a3a', 21);
+    c.fillStyle = '#140c06'; c.beginPath(); c.ellipse(x + 4 + w * 0.31, b - 2, 10, 12, 0, Math.PI, 0); c.fill();
+    for (const px of [x + w * 0.72, x + w * 0.84]) { c.strokeStyle = '#5a3a1e'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(px, b); c.lineTo(px + 3, b - 26); c.stroke(); fillPoly(c, [[px + 2, b - 26], [px + 3.5, b - 32], [px + 5, b - 25]], '#b8b0a0'); }
+    extraProp(c, 'fortress', 'bones', x + w * 0.2, b, mulberry32(3), fx); if (tier >= 2) { stiltHut(c, A, x + w * 0.6, b, w * 0.36, h * 0.28, h * 0.12, A.roof.dw, fx); }
+    drawCreature(c, 'gnoll', x + w * 0.9, b, 0.9, -1, 0);
+  },
+  dw2(c, A, s, tier, col, fx) { // chaty jaszczurów nad wodą
+    const { x, b, w, h } = s; bogPool(c, x + w / 2, b - 3, w * 0.48, 8);
+    stiltHut(c, A, x + 6, b - 2, w * 0.34, h * 0.36, h * 0.2, A.roof.dw, fx); stiltHut(c, A, x + w * 0.56, b - 2, w * 0.3, h * 0.3, h * 0.24, A.roof.dw, fx);
+    if (tier >= 2) { const tx = x + w * 0.43; c.fillStyle = '#4a3a22'; c.fillRect(tx, b - h * 1.1, 3, h * 1.1); c.fillRect(tx - 7, b - h * 1.1, 17, 3); fillPoly(c, [[tx - 8, b - h * 1.1], [tx + 1.5, b - h * 1.1 - 12], [tx + 11, b - h * 1.1]], A.roof.tower); }
+    propArt(c, 'fortress', 'reeds', x + 8, b, null, fx); propArt(c, 'fortress', 'reeds', x + w - 8, b, null, fx);
+  },
+  dw3(c, A, s, tier, col, fx) { // rój ważek: wielkie gniazdo w trzcinach
+    const { x, b, w, h } = s, cx = x + w / 2; for (let i = -3; i <= 3; i++) { c.strokeStyle = i % 2 ? '#5a7a3a' : '#6a8a44'; c.lineWidth = 2; c.beginPath(); c.moveTo(cx + i * 5, b); c.quadraticCurveTo(cx + i * 7, b - h * 0.5, cx + i * 3, b - h * 0.85); c.stroke(); }
+    const ny = b - h * 0.7; c.fillStyle = '#8a7a4a'; c.beginPath(); c.ellipse(cx, ny, w * 0.3, h * 0.2, 0, 0, TAU); c.fill(); c.fillStyle = '#6a5a34'; for (let i = 0; i < 4; i++) c.fillRect(cx - w * 0.28, ny - h * 0.12 + i * h * 0.08, w * 0.56, 1.6);
+    for (const [dx, dy] of [[-0.1, -0.05], [0.12, 0.06], [-0.02, 0.1]]) { c.fillStyle = '#1a1208'; c.beginPath(); c.arc(cx + dx * w, ny + dy * h, 2.5, 0, TAU); c.fill(); }
+    if (tier >= 2) { fx.glows.push([cx, ny, 26, '#b8f070']); drawCreature(c, 'venomFly', cx + w * 0.3, ny - 6, 0.8, -1, 0); }
+    drawCreature(c, 'dragonfly', cx - w * 0.3, ny + 4, 0.8, 1, 0);
+  },
+  dw4(c, A, s, tier, col, fx) { // jama bazyliszków: krąg kamieni, skamieniali wojownicy
+    const { x, b, w, h } = s, cx = x + w / 2; c.fillStyle = '#2a2a1e'; c.beginPath(); c.ellipse(cx, b - 6, w * 0.4, 9, 0, 0, TAU); c.fill();
+    for (let i = 0; i < 7; i++) { const a = Math.PI + i / 6 * Math.PI, sx = cx + Math.cos(a) * w * 0.44; menhir(c, sx, b - 6 + Math.sin(a) * -4, 8, 16 + (i % 2) * 6 + (tier >= 2 ? 6 : 0), '#7a7a6a', '#f0e040'); }
+    c.save(); c.globalAlpha = 0.9; drawCreature(c, 'pikeman', cx - w * 0.2, b - 2, 0.9, 1, 0); c.restore(); c.fillStyle = 'rgba(150,150,140,.75)'; c.fillRect(cx - w * 0.2 - 6, b - 24, 12, 22); // posąg
+    circ(c, cx + 6, b - 8, 1.6, '#f0e040'); circ(c, cx + 11, b - 8, 1.6, '#f0e040'); fx.wins.push([cx + 4, b - 10, 9, 4, '#f0e040']);
+  },
+  dw5(c, A, s, tier, col, fx) { // zagroda gorgon
+    const { x, b, w, h } = s; c.fillStyle = '#4a5234'; c.beginPath(); c.ellipse(x + w / 2, b - 4, w * 0.48, 10, 0, 0, TAU); c.fill();
+    stiltHut(c, A, x + 2, b, w * 0.36, h * 0.3, h * 0.08, A.roof.dw, fx);
+    drawCreature(c, tier >= 2 ? 'mightyGorgon' : 'gorgon', x + w * 0.66, b - 2, 1.1, -1, 0);
+    fence(c, x + w * 0.4, x + w - 2, b + 2, '#5a4428', 10); if (tier >= 2) { c.fillStyle = '#5a5a5a'; c.fillRect(x + w * 0.4, b - 12, w * 0.58, 2); }
+  },
+  dw6(c, A, s, tier, col, fx) { // gniazdo wywern na skalnej iglicy
+    const { x, b, w, h } = s, cx = x + w * 0.45; rockMound(c, cx - w * 0.2, b, w * 0.4, h * 0.95, '#5a5a4a', 31);
+    const ny = b - h * 0.95; c.fillStyle = '#6a5030'; c.beginPath(); c.ellipse(cx, ny + 2, 16, 5, 0, 0, TAU); c.fill(); c.strokeStyle = '#4a3820'; c.lineWidth = 1.5; for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(cx + i * 4, ny); c.lineTo(cx + i * 5, ny + 6); c.stroke(); }
+    circ(c, cx - 4, ny - 1, 2.5, '#e8e0cc'); circ(c, cx + 2, ny - 1.5, 2.5, '#e8e0cc');
+    drawCreature(c, tier >= 2 ? 'wyvernKing' : 'wyvern', x + w * 0.8, b - h * 0.45, 0.9, -1, 0.5);
+  },
+  dw7(c, A, s, tier, col, fx) { // bagno hydr
+    const { x, b, w, h } = s, cx = x + w / 2; bogPool(c, cx, b - 5, w * 0.48, 12, tier >= 2 ? '#2a1e36' : '#1e2e1c');
+    rockMound(c, x + 2, b, w * 0.24, h * 0.32, '#4a4e3a', 41); rockMound(c, x + w * 0.76, b, w * 0.22, h * 0.26, '#4a4e3a', 43);
+    drawCreature(c, tier >= 2 ? 'chaosHydra' : 'hydra', cx, b - 6, 1.35, -1, 0.3);
+    propArt(c, 'fortress', 'reeds', x + w * 0.3, b, null, fx); if (tier >= 2) fx.glows.push([cx, b - 12, 40, '#a080ff']);
+  },
+};
+BUILD_ART.fortress = FORTRESS_ART;
+// --- klocki Inferna: bazalt, iglice, lawa, ogień ---
+function lavaPool(c, cx, b, rx, ry, fx) {
+  c.fillStyle = '#1a0c0a'; c.beginPath(); c.ellipse(cx, b, rx + 4, ry + 2, 0, 0, TAU); c.fill();
+  const g = c.createRadialGradient(cx, b, 1, cx, b, rx); g.addColorStop(0, '#ffe070'); g.addColorStop(0.5, '#ff7a1a'); g.addColorStop(1, '#7a1a06'); c.fillStyle = g; c.beginPath(); c.ellipse(cx, b, rx, ry, 0, 0, TAU); c.fill();
+  if (fx) fx.glows.push([cx, b - 4, rx * 1.4, '#ff7a1a']);
+}
+function spireTower(c, A, x, b, w, h, roof, fx) {
+  wallRect(c, A, x, b - h, w, h); archWin(c, x + w / 2 - 3, b - h + 8, 6, 10, A.glow, fx); roofArt(c, A, roof, x, b - h, w, w * 1.2);
+  for (const sx of [x - 2, x + w - 1]) { c.fillStyle = '#1a0e0c'; c.beginPath(); c.moveTo(sx, b - h + 4); c.lineTo(sx + 1.5, b - h - 8); c.lineTo(sx + 3, b - h + 4); c.closePath(); c.fill(); }
+}
+function hornArch(c, x, b, w, h, col = '#2a1a18') {
+  c.fillStyle = col; c.beginPath(); c.moveTo(x, b); c.quadraticCurveTo(x - w * 0.1, b - h * 0.7, x + w * 0.2, b - h); c.lineTo(x + w * 0.3, b - h * 0.9); c.quadraticCurveTo(x + w * 0.12, b - h * 0.55, x + w * 0.16, b); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(x + w, b); c.quadraticCurveTo(x + w * 1.1, b - h * 0.7, x + w * 0.8, b - h); c.lineTo(x + w * 0.7, b - h * 0.9); c.quadraticCurveTo(x + w * 0.88, b - h * 0.55, x + w * 0.84, b); c.closePath(); c.fill();
+}
+function portal(c, cx, cy, rx, ry, col, fx) {
+  c.fillStyle = '#140404'; c.beginPath(); c.ellipse(cx, cy, rx + 3, ry + 3, 0, 0, TAU); c.fill();
+  const g = c.createRadialGradient(cx, cy, 1, cx, cy, Math.max(rx, ry)); g.addColorStop(0, '#fff0a0'); g.addColorStop(0.4, col); g.addColorStop(1, '#3a0404'); c.fillStyle = g; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, TAU); c.fill();
+  c.strokeStyle = 'rgba(255,230,160,.5)'; c.lineWidth = 1; for (let i = 1; i < 4; i++) { c.beginPath(); c.ellipse(cx, cy, rx * i / 4, ry * i / 4, i, 0.5, 4); c.stroke(); }
+  if (fx) fx.glows.push([cx, cy, Math.max(rx, ry) * 1.6, col]);
+}
+const INFERNO_ART = {
+  hall(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s, cx = x + w / 2;
+    if (tier >= 2) for (const tx of [x + 4, x + w - 26]) spireTower(c, A, tx, b, 22, h * 0.5, A.roof.dw, fx);
+    const bw = w * 0.5, bh = h * (0.44 + tier * 0.05), bx = cx - bw / 2; wallRect(c, A, bx, b - bh, bw, bh);
+    for (let i = 0; i < 3; i++) archWin(c, bx + bw * (0.2 + i * 0.3) - 4, b - bh + 12, 8, 15, A.glow, fx);
+    doorArt(c, A, cx - 9, b, 18, 24); lavaPool(c, cx, b + 2, 12, 2.5, fx);
+    roofArt(c, A, A.roof.hall, bx, b - bh, bw, bh * 0.75);
+    if (tier >= 3) hornArch(c, bx - 6, b - bh + 2, bw + 12, bh * 0.7, '#e8d8c0');
+    for (const px of [bx - 10, bx + bw + 10]) propArt(c, 'inferno', 'brazier', px, b, null, fx);
+    bannerArt(c, cx, b - bh - bh * 0.75 - 22, col);
+  },
+  fort(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s, cx = x + w / 2;
+    if (tier >= 2) { const kw = tier >= 3 ? 60 : 48, kh = h * (tier >= 3 ? 1.0 : 0.8); spireTower(c, A, cx - kw / 2, b - 14, kw, kh - 14, A.roof.wall, fx); bannerArt(c, cx, b - kh - kw * 1.2 - 14, col); }
+    const wh = h * 0.36; wallRect(c, A, x + 14, b - wh, w - 28, wh); c.fillStyle = '#1a0e0c'; for (let px = x + 16; px < x + w - 16; px += 9) { c.beginPath(); c.moveTo(px, b - wh); c.lineTo(px + 2, b - wh - 10); c.lineTo(px + 4, b - wh); c.closePath(); c.fill(); }
+    for (const tx of [x, x + w - 28]) spireTower(c, A, tx, b, 28, h * (tier >= 3 ? 0.66 : 0.56), A.roof.tower, fx);
+    c.fillStyle = '#140604'; c.beginPath(); c.moveTo(cx - 11, b); c.lineTo(cx - 11, b - 18); c.lineTo(cx, b - 28); c.lineTo(cx + 11, b - 18); c.lineTo(cx + 11, b); c.closePath(); c.fill(); portal(c, cx, b - 12, 7, 10, '#ff6a1a', fx);
+    lavaPool(c, cx, b + 4, w * 0.4, 3, fx);
+  },
+  guild(c, A, s, tier, col, fx) { // zigurat z ogniem na szczycie
+    const { x, b, w, h } = s, cx = x + w / 2, steps = Math.min(tier, 5) + 1, sh = h * 0.8 / (steps + 1);
+    for (let i = 0; i < steps; i++) { const sw = w * (0.86 - i * 0.12), y = b - (i + 1) * sh; wallRect(c, A, cx - sw / 2, y, sw, sh); c.fillStyle = '#1a0c0a'; c.fillRect(cx - sw / 2, y, sw, 2); if (i < steps - 1) archWin(c, cx - 3, y + sh * 0.3, 6, sh * 0.5, A.glow, fx); }
+    const ty = b - (steps + 0.2) * sh; c.fillStyle = '#ffb040'; c.beginPath(); c.moveTo(cx - 7, ty); c.quadraticCurveTo(cx - 4, ty - 16, cx, ty - 24); c.quadraticCurveTo(cx + 4, ty - 16, cx + 7, ty); c.fill(); fx.glows.push([cx, ty - 10, 30, '#ff9a3a']);
+  },
+  tavern(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s, bw = w * 0.66, top = b - h * 0.5; wallRect(c, A, x + 4, top, bw, h * 0.5); roofArt(c, A, A.roof.util, x + 4, top, bw, h * 0.34);
+    doorArt(c, A, x + 4 + bw / 2 - 8, b, 16, 20); winArt(c, A, x + 12, top + 10, 8, 8, fx); winArt(c, A, x + bw - 12, top + 10, 8, 8, fx);
+    c.fillStyle = '#2a1a16'; c.fillRect(x + bw * 0.8, top - h * 0.3, 7, h * 0.3); fx.smokes.push([x + bw * 0.8 + 3.5, top - h * 0.31]);
+    signArt(c, A, 'mug', x + w - 12, top + 2, h * 0.5 - 2, false);
+  },
+  market(c, A, s, tier, col, fx) {
+    c.fillStyle = '#3a2422'; c.beginPath(); c.ellipse(s.x + s.w / 2, s.b - 5, s.w / 2, 9, 0, 0, TAU); c.fill();
+    stalls(c, s, [['#8a1a14', '#4a0e0a'], ['#5a2a2a', '#2e1614'], ['#8a5a1a', '#4a2e0e']], ['#ffd040', '#ff6a1a', '#e0d8c4', '#8a3a8a', '#d0c040'], '#1e1210');
+    for (const dx of [10, s.w - 10]) propArt(c, 'inferno', 'brazier', s.x + dx, s.b, null, fx);
+  },
+  smith(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s, bw = w * 0.7, top = b - h * 0.6; wallRect(c, A, x + 2, top, bw, h * 0.6);
+    c.fillStyle = '#0a0404'; c.fillRect(x + 10, b - h * 0.42, bw * 0.56, h * 0.42); lavaPool(c, x + 10 + bw * 0.28, b - 5, 9, 3, fx);
+    roofArt(c, A, A.roof.util, x + 2, top, bw, h * 0.4); c.fillStyle = '#2a1a16'; c.fillRect(x + bw * 0.72, top - h * 0.3, 8, h * 0.3); fx.smokes.push([x + bw * 0.72 + 4, top - h * 0.31]);
+    drawEmblem(c, 'anvil', x + w - 10, b - 7, 16, '#4a3a3a');
+  },
+  silo(c, A, s, tier, col, fx) {
+    const { x, b, w, h } = s, bw = w * 0.56, top = b - h * 0.5; wallRect(c, A, x + 2, top, bw, h * 0.5); roofArt(c, A, A.roof.util, x + 2, top, bw, h * 0.4); doorArt(c, A, x + 2 + bw / 2 - 7, b, 14, 18);
+    c.fillStyle = '#d8c030'; c.beginPath(); c.moveTo(x + w * 0.62, b); c.lineTo(x + w * 0.78, b - 14); c.lineTo(x + w * 0.96, b); c.closePath(); c.fill(); c.fillStyle = '#a89020'; c.beginPath(); c.moveTo(x + w * 0.78, b - 14); c.lineTo(x + w * 0.96, b); c.lineTo(x + w * 0.8, b); c.closePath(); c.fill();
+  },
+  dw1(c, A, s, tier, col, fx) { // tygiel chochlików
+    const { x, b, w, h } = s, cx = x + w * 0.42; c.fillStyle = '#1a1212'; c.beginPath(); c.moveTo(cx - 20, b - 24); c.quadraticCurveTo(cx - 22, b, cx, b); c.quadraticCurveTo(cx + 22, b, cx + 20, b - 24); c.closePath(); c.fill();
+    c.fillStyle = '#3a2626'; c.fillRect(cx - 22, b - 26, 44, 4); lavaPool(c, cx, b - 26, 18, 3, fx); fx.smokes.push([cx, b - 30, 0.8]);
+    drawCreature(c, 'imp', cx - 10, b - 26, 0.9, 1, 0); drawCreature(c, tier >= 2 ? 'familiar' : 'imp', x + w * 0.84, b, 1, -1, 0.4);
+    if (tier >= 2) { c.strokeStyle = '#3a2a2a'; c.lineWidth = 2; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(x + w * 0.72 + i * 6, b); c.lineTo(x + w * 0.72 + i * 6, b - 30); c.stroke(); } c.fillRect(x + w * 0.7, b - 32, 26, 3); }
+  },
+  dw2(c, A, s, tier, col, fx) { // hala gogów z kulą ognia
+    const { x, b, w, h } = s, bw = w * 0.62, top = b - h * 0.62; wallRect(c, A, x + 4, top, bw, h * 0.62); roofArt(c, A, A.roof.dw, x + 4, top, bw, h * 0.4);
+    doorArt(c, A, x + 4 + bw / 2 - 8, b, 16, 20); for (const dx of [10, bw - 10]) archWin(c, x + 4 + dx - 3, top + 10, 6, 10, A.glow, fx);
+    const oy = top - h * 0.4 - 12; circ(c, x + 4 + bw / 2, oy, tier >= 2 ? 8 : 6, '#ff8a2a'); circ(c, x + 2 + bw / 2, oy - 2, 3, '#ffe070'); fx.glows.push([x + 4 + bw / 2, oy, 26, '#ff8a2a']);
+    drawCreature(c, tier >= 2 ? 'magog' : 'gog', x + w * 0.86, b, 1, -1, 0);
+  },
+  dw3(c, A, s, tier, col, fx) { // psiarnia: klatki z ogarami
+    const { x, b, w, h } = s, bw = w * 0.9, top = b - h * 0.4; wallRect(c, A, x + 4, top, bw, h * 0.4); roofArt(c, A, A.roof.dw, x + 4, top, bw, h * 0.3);
+    c.fillStyle = '#0a0404'; c.fillRect(x + 10, b - h * 0.3, bw - 12, h * 0.3); drawCreature(c, tier >= 2 ? 'cerberus' : 'hellHound', x + w * 0.5, b - 1, 0.95, 1, 0);
+    c.fillStyle = '#4a3a36'; for (let px = x + 10; px < x + bw; px += 6) c.fillRect(px, b - h * 0.3, 1.8, h * 0.3);
+  },
+  dw4(c, A, s, tier, col, fx) { // brama demonów: łuk z rogów i czerwony portal
+    const { x, b, w, h } = s, cx = x + w / 2; c.fillStyle = '#2a1a18'; c.fillRect(cx - w * 0.36, b - 8, w * 0.72, 8);
+    portal(c, cx, b - h * 0.36, w * 0.2, h * 0.3, tier >= 2 ? '#ff3a2a' : '#c8401a', fx);
+    hornArch(c, cx - w * 0.36, b - 6, w * 0.72, h * (tier >= 2 ? 1.05 : 0.9), '#e0d0b8');
+    drawCreature(c, tier >= 2 ? 'hornedDemon' : 'demon', x + w * 0.88, b, 0.9, -1, 0);
+  },
+  dw5(c, A, s, tier, col, fx) { // szyb czartów: otwór z łuną i kolumny
+    const { x, b, w, h } = s, cx = x + w / 2; lavaPool(c, cx, b - 6, w * 0.34, 8, fx);
+    for (const dx of [-w * 0.4, w * 0.4]) { wallRect(c, A, cx + dx - 6, b - h * 0.7, 12, h * 0.7); c.fillStyle = '#1a0e0c'; c.fillRect(cx + dx - 8, b - h * 0.72, 16, 4); propArt(c, 'inferno', 'brazier', cx + dx, b - h * 0.72, null, fx); }
+    drawCreature(c, tier >= 2 ? 'pitLord' : 'pitFiend', cx, b - 10, 0.9, -1, 0);
+  },
+  dw6(c, A, s, tier, col, fx) { // pałac ifrytów: złote kopuły w płomieniach
+    const { x, b, w, h } = s, cx = x + w / 2, bw = w * 0.6, top = b - h * 0.5; wallRect(c, { ...A, wall: ['#8a5a3a', '#4a2a1e'] }, cx - bw / 2, top, bw, h * 0.5);
+    for (let i = 0; i < 3; i++) archWin(c, cx - bw / 2 + bw * (0.2 + i * 0.3) - 3, top + 10, 6, 11, '#ffe070', fx);
+    const dome = (dx, r, y) => { c.fillStyle = '#d8a030'; c.beginPath(); c.moveTo(dx - r, y); c.quadraticCurveTo(dx - r, y - r * 1.4, dx, y - r * 2); c.quadraticCurveTo(dx + r, y - r * 1.4, dx + r, y); c.closePath(); c.fill(); c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.moveTo(dx, y - r * 2); c.quadraticCurveTo(dx + r, y - r * 1.4, dx + r, y); c.lineTo(dx, y); c.closePath(); c.fill(); };
+    dome(cx, bw * 0.28, top); if (tier >= 2) { dome(cx - bw * 0.4, 9, top + 8); dome(cx + bw * 0.4, 9, top + 8); }
+    fx.glows.push([cx, top - bw * 0.5, 34, '#ffb040']); drawCreature(c, tier >= 2 ? 'efreetSultan' : 'efreet', x + w * 0.9, b - 4, 0.85, -1, 0.2);
+  },
+  dw7(c, A, s, tier, col, fx) { // wrota piekieł: rogaty portal na skale
+    const { x, b, w, h } = s, cx = x + w / 2; rockMound(c, x, b, w, h * 0.35, '#2a1a18', 51);
+    portal(c, cx, b - h * 0.62, w * 0.24, h * 0.32, tier >= 2 ? '#ffb040' : '#ff5a1a', fx);
+    hornArch(c, cx - w * 0.34, b - h * 0.3, w * 0.68, h * 0.72, '#1a0e0c'); hornArch(c, cx - w * 0.3, b - h * 0.3, w * 0.6, h * 0.62, '#e0d0b8');
+    if (tier >= 2) drawCreature(c, 'archDevil', x + w * 0.82, b - h * 0.3, 0.85, -1, 0);
+  },
+};
+BUILD_ART.inferno = INFERNO_ART;
+// --- sceny: Twierdza nad mętną rzeką, Inferno nad przepaścią lawy ---
+TOWN_LAYOUTS.fortress = {
+  sky: { top: '#141c16', mid: '#3a4a36', hor: '#b8a060', sun: [420, 140], cloudDark: 'rgba(40,52,40,.7)', cloudLit: 'rgba(200,190,120,.45)' },
+  mountains: ['#4a5446', '#3a4438'], forest: ['#2a3a24', '#26341e', '#30422a'],
+  ground: ['#5a6040', '#3e4a2c', '#24301c'], haze: '#8a9470', desat: 0.22, tuft: ['rgba(20,30,10,.45)', 'rgba(170,180,110,.2)'],
+  hills: [{ X: -300, Z: 2.3, rx: 320, h: 34, cols: ['#4a5a36', '#34422a'] }, { X: 520, Z: 2.62, rx: 330, h: 70, cols: ['#5a5e4a', '#3e4234'], rock: true }],
+  river: { w: 80, cols: ['#6a7a52', '#1e2a1a'], edge: 'rgba(160,180,120,.4)', pts: [[-820, 2.05], [-500, 1.82], [-250, 1.7], [-80, 1.63], [100, 1.6], [300, 1.64], [600, 1.75], [900, 1.9]] },
+  roads: [
+    { w: 40, planks: true, pts: [[26, 0.8, 0, 50], [15, 0.9], [2, 1.02], [-12, 1.15], [-20, 1.25, 0, 40]] },
+    { w: 34, planks: true, pts: [[-70, 1.27], [-130, 1.31], [-170, 1.42], [-190, 1.55], [-200, 1.66], [-214, 1.76], [-226, 1.86], [-236, 1.95], [-240, 1.99]] },
+  ],
+  plaza: { X: -40, Z: 1.27, r: 100 },
+  bridge: { X: -200, Z: 1.665, w: 64 },
+  slots: TOWN_LAYOUTS.haven.slots.map((S, i) => ({ ...S, e: i === 1 ? 10 : S.e })),
+  props: [
+    ['tree', -540, 1.78, 0, 1.3], ['tree', -470, 1.95, 0, 1.3], ['tree', -620, 2.25, 0, 1.4], ['tree', 380, 2.2, 0, 1.4], ['tree', 720, 2.1, 0, 1.4], ['tree', 660, 1.85, 0, 1.3],
+    ['tree', -560, 1.3, 0, 1.2], ['tree', -470, 1.05, 0, 1.3], ['tree', 440, 1.06, 0, 1.2], ['tree', 400, 1.55, 0, 1.2], ['tree', 80, 2.45, 0, 1.3],
+    ['reeds', -300, 1.62], ['reeds', 40, 1.56], ['reeds', 250, 1.6], ['reeds', -120, 1.58], ['reeds', 480, 1.7], ['bush', -150, 0.88], ['bush', 520, 1.4],
+    ['lamp', -25, 0.82], ['lamp', 42, 1.06], ['mushroom', -80, 0.9], ['fence', 330, 1.02], ['fence', -350, 1.0],
+  ],
+  walksW: [[[26, 0.82], [15, 0.9], [2, 1.02], [-12, 1.15], [-20, 1.26]], [[-100, 1.27], [-40, 1.28], [30, 1.27]]], walkCols: ['#5a7a3a', '#7a6a3a', '#4a6a4a', '#8a5a2a'],
+  guardsW: [[-262, 1.985, 10], [-218, 1.985, 10]], guardCol: '#5a7a3a',
+  floaters: [{ kind: 'wisp', X: -100, Z: 1.62, e: 14, n: 5, spread: 260, spreadZ: 0.08 }], birds: true, birdCol: 'rgba(20,28,16,.85)', mist: true,
+};
+TOWN_LAYOUTS.inferno = {
+  pj: { hor: 40, d: 330 },
+  sky: { top: '#0a0202', mid: '#3a0a06', hor: '#c8401a', sun: [296, 60], moon: true, moonR: 30, cloudDark: 'rgba(30,6,4,.75)', cloudLit: 'rgba(255,120,40,.35)' },
+  mountains: ['#2a0e0a', '#1a0806'], forest: ['#1e0c0a', '#2a100c', '#160806'],
+  ground: ['#4a2a24', '#2e1a16', '#160c0a'], haze: '#6a2a1a', desat: 0.08, tuft: ['rgba(0,0,0,.4)', 'rgba(255,120,40,.12)'],
+  hills: [{ X: 0, Z: 2.55, rx: 200, h: 90, cols: ['#3a1e1a', '#1e0e0c'], rock: true }, { X: 440, Z: 2.85, rx: 260, h: 80, cols: ['#3a1e1a', '#1e0e0c'], rock: true }, { X: -440, Z: 2.9, rx: 260, h: 70, cols: ['#361a16', '#1a0c0a'], rock: true }],
+  river: { w: 150, chasm: true, cols: ['#ff9a3a', '#6a0e04'], line: 'rgba(255,240,160,.6)', edge: 'rgba(40,10,6,.9)', glow: '255,120,30', glowA: 0.2,
+    pts: [[0, 0.78, 0, 170], [10, 1.0, 0, 150], [-10, 1.3, 0, 130], [15, 1.6, 0, 110], [0, 1.95, 0, 90], [0, 2.2, 0, 50]] },
+  roads: TOWN_LAYOUTS.barrow.roads,
+  bridge: { X: 0, Z: 1.46, w: 170 },
+  slots: TOWN_LAYOUTS.barrow.slots,
+  props: [
+    ['tree', -420, 2.3, 0, 1.3], ['tree', 380, 2.35, 0, 1.3], ['tree', -360, 1.5, 0, 1.2], ['tree', 360, 1.2, 0, 1.2], ['tree', -260, 0.95, 0, 1.1],
+    ['spike', -110, 0.95], ['spike', 110, 0.98], ['spike', 96, 1.12], ['spike', -90, 1.9], ['spike', -60, 2.0, 0, 1.4], ['spike', 60, 2.05, 0, 1.4],
+    ['brazier', -85, 1.42], ['brazier', 85, 1.42], ['brazier', -100, 1.95], ['brazier', 100, 1.95], ['fence', 330, 1.05], ['fence', -390, 1.3], ['rock', -200, 1.1],
+  ],
+  walksW: [[[-190, 1.62], [-130, 1.52], [-80, 1.46], [80, 1.46], [150, 1.52], [220, 1.66]]], walkCols: ['#8a2a1a', '#5a1a14', '#a0402a', '#6a2a20'],
+  guardsW: [[-26, 2.47, 76], [26, 2.47, 76]], guardCol: '#6a1a14',
+  floaters: [{ kind: 'ember', X: 0, Z: 1.3, e: 10, n: 10, spread: 90, spreadZ: 0.4 }], birds: true, birdCol: 'rgba(20,4,2,.9)', embers: true,
+};
 // ==================== EKRANY: MENU, NOWA GRA, LISTY =====================================
 // Scena tytułowa i ekrany poza rozgrywką.
 const CASTLE_WINDOWS = [
@@ -5776,7 +6278,7 @@ G.screens.setup = {
     MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 118, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}` })));
     DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 180, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
     PLAYER_COLORS.forEach((c, i) => B.push(new Button(230 + i * 128, 276, 118, 40, c.name, () => { S.color = c.id; }, { selected: () => S.color === c.id, size: 13, swatch: c.hex })));
-    FACTIONS.forEach((f, i) => B.push(new Button(230 + i * 164, 330, 154, 40, f.name, () => { S.faction = f.id; }, { selected: () => S.faction === f.id, size: 16 })));
+    const fw = Math.min(154, Math.floor(506 / FACTIONS.length) - 6); FACTIONS.forEach((f, i) => B.push(new Button(230 + i * (fw + 6), 330, fw, 40, f.name, () => { S.faction = f.id; }, { selected: () => S.faction === f.id, size: fw < 110 ? 14 : 16 })));
     BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 440, 100, 44, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, sub: b.sub })));
     [1, 2, 3].forEach((k, i) => B.push(new Button(628 + i * 38, 440, 34, 44, String(k), () => { S.opponents = k; }, { selected: () => (S.opponents || 1) === k, size: 17,
       tip: 'Liczba przeciwników komputerowych. Na małej mapie zmieszczą się najwyżej dwaj.' })));

@@ -241,6 +241,11 @@ function drawHumanoid(ctx, L, P = {}) {
   };
   if (L.mounted) { limb(ctx, 1, hipY, 3.5, hipY + 5, 2.6, legCol); ctx.fillStyle = boot; rr(ctx, 2, hipY + 4, 4, 2.4, 0.8); ctx.fill(); }
   else if (!L.robe) leg(-1.8, -sw * 3.6, true);
+  if (L.tail) { // ogon: od bioder do tyłu, lekko falujący; diabły mają grot na końcu
+    const tw = Math.sin(t * 3 + (walking ? ph : 0)) * 1.6, e1 = [-7, hipY + 4 + tw * 0.5], e2 = [-12, hipY - 1 + tw];
+    limb(ctx, -2, hipY, ...e1, 2.2, DK(L.tail, 0.1)); limb(ctx, ...e1, ...e2, 1.4, L.tail);
+    if (L.horns && !L.snout) fillPoly(ctx, [[e2[0] - 2.5, e2[1] - 1], [e2[0] + 0.5, e2[1] - 2.5], [e2[0] + 0.2, e2[1] + 1.5]], DK(L.tail, 0.3));
+  }
   ctx.save(); ctx.translate(0, hipY); ctx.rotate(lean); ctx.translate(0, -hipY);
   if (L.wings) { // skrzydła za plecami, lekko falujące
     const fl = Math.sin(t * 3 + (walking ? ph : 0)) * 0.12 + (walking ? 0.3 * Math.sin(ph) : 0);
@@ -268,7 +273,11 @@ function drawHumanoid(ctx, L, P = {}) {
     fillPoly(ctx, [[-5, shY], [5, shY], [wB, bottom], [-wB, bottom]], cl);
     fillPoly(ctx, [[-5, shY], [-1, shY], [-1.5, bottom], [-wB, bottom]], DK(cl, 0.22));
     fillPoly(ctx, [[2.2, shY + 0.5], [4.6, shY + 0.5], [4.1, shY + 6], [2.6, shY + 6]], LT(cl));
-    if (L.robe) { limb(ctx, -5.5, bottom - 0.5, 5.5, bottom - 0.5, 1, DK(cl, 0.4)); }
+    if (L.robe && !L.flame) { limb(ctx, -5.5, bottom - 0.5, 5.5, bottom - 0.5, 1, DK(cl, 0.4)); }
+    if (L.flame) for (let i = 0; i < 5; i++) { // języki ognia zamiast nóg
+      const fx0 = -5 + i * 2.5, fl = Math.sin(t * 9 + i * 1.9) * 1.6;
+      fillPoly(ctx, [[fx0 - 1.8, hipY + 1], [fx0 + 1.8, hipY + 1], [fx0 + 0.5 + fl, 1 - (i % 2) * 3]], i % 2 ? L.flame : LT(L.flame, 0.35));
+    }
     if (L.armor) {
       fillPoly(ctx, [[-4.3, shY + 0.6], [4.3, shY + 0.6], [3.7, hipY - 1.6], [-3.7, hipY - 1.6]], met);
       fillPoly(ctx, [[-4.3, shY + 0.6], [-0.6, shY + 0.6], [-0.9, hipY - 1.6], [-3.7, hipY - 1.6]], DK(met, 0.22));
@@ -290,8 +299,10 @@ function drawHumanoid(ctx, L, P = {}) {
     ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1, 1.3, 1.3);
     if (L.beard) fillPoly(ctx, [[hx - 1, hy + 1.5], [hx + 4, hy + 1.2], [hx + 2.5, hy + 6], [hx - 0.5, hy + 4.5]], L.beard);
     if (L.hair && !L.helm) fillPoly(ctx, [[hx - 4.1, hy + 1], [hx - 3.4, hy - 3.2], [hx + 0.5, hy - 4.6], [hx + 3.6, hy - 2.6], [hx + 1, hy - 2.2], [hx - 1.2, hy + 1.8]], L.hair);
-    if (L.tusks) { ctx.fillStyle = '#f0ead8'; ctx.fillRect(hx + 2.4, hy + 1.8, 0.9, 1.6); }
+    if (L.snout) { fillPoly(ctx, [[hx + 2, hy - 1], [hx + 7.5, hy + 0.2], [hx + 7.2, hy + 2.8], [hx + 2.2, hy + 3.4]], sk); fillPoly(ctx, [[hx + 2.2, hy + 2.2], [hx + 7.2, hy + 2], [hx + 7, hy + 2.8], [hx + 2.2, hy + 3.4]], DK(sk, 0.25)); ctx.fillStyle = '#1a1210'; ctx.fillRect(hx + 6.4, hy + 0.2, 1, 1); ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1.6, 1.3, 1.3); }
+    if (L.tusks) { ctx.fillStyle = '#f0ead8'; ctx.fillRect(hx + (L.snout ? 5 : 2.4), hy + (L.snout ? 2.6 : 1.8), 0.9, 1.6); }
   }
+  if (L.horns) { fillPoly(ctx, [[hx - 2.4, hy - 2.8], [hx - 5.5, hy - 7.5], [hx - 4.8, hy - 9.5], [hx - 0.6, hy - 3.6]], DK(L.horns, 0.2)); fillPoly(ctx, [[hx + 1.2, hy - 3.6], [hx + 3.6, hy - 8.8], [hx + 5, hy - 9.6], [hx + 3.4, hy - 2.8]], L.horns); }
   const hm = L.helm;
   if (hm === 'helm' || hm === 'greathelm' || hm === 'horn') {
     const hc = L.helmCol || met;
@@ -323,7 +334,7 @@ function drawHumanoid(ctx, L, P = {}) {
   if (style === 'cast' && P.atk != null && P.atk > 0.3 && P.atk < 0.7) circ(ctx, hd[0] + Math.sin(wAng) * 18.5, hd[1] - Math.cos(wAng) * 18.5, 4, L.orb || '#f0d890');
   ctx.restore();
   if (!L.robe && !L.mounted) leg(1.8, sw * 3.6, false);
-  if (L.robe && !L.mounted) { ctx.fillStyle = boot; ctx.fillRect(1 + sw * 1.5, -2.4, 3.6, 2.4); }
+  if (L.robe && !L.mounted && !L.flame) { ctx.fillStyle = boot; ctx.fillRect(1 + sw * 1.5, -2.4, 3.6, 2.4); }
   ctx.restore();
 }
 // Czworonóg (koń, jednorożec, centaur, wilk, gryf): nogi w chodzie w parach po przekątnej
@@ -373,10 +384,18 @@ function drawWolfBody(ctx, L, P = {}) {
   quadLegs(ctx, [[-7, 0, true], [6, Math.PI, true]], -6, 6, f, P, 1.9);
   const wag = Math.sin(t * 4) * 1.5; fillPoly(ctx, [[-9, -9], [-16, -12 + wag], [-17, -8 + wag], [-10, -6.5]], f); fillPoly(ctx, [[-15, -11 + wag], [-17.5, -10 + wag], [-17, -8 + wag]], lt);
   oval(ctx, 0, -8.5, 10, 4.4, f); oval(ctx, 0.5, -6.3, 8, 1.8, dk); oval(ctx, -1, -11.5, 7, 1.3, lt);
-  const hy = -11 - lunge * -2; fillPoly(ctx, [[6, -12], [11, hy - 3], [15, hy - 2.5], [18.5, hy + 0.5], [17, hy + 2], [12, hy + 2.5], [7, -6]], f);
-  fillPoly(ctx, [[10, hy - 2.5], [11, hy - 7], [13, hy - 3]], f); fillPoly(ctx, [[11, hy - 3], [11.4, hy - 5.5], [12.4, hy - 3]], dk);
-  if (atk != null && lunge > 0.3) { fillPoly(ctx, [[14, hy + 1.5], [18.5, hy + 2.5], [15, hy + 4]], '#5a1a1a'); ctx.fillStyle = '#f0ead8'; ctx.fillRect(16, hy + 1.8, 0.8, 1); }
-  circ(ctx, 13.3, hy - 1, 0.8, '#f0d060'); circ(ctx, 18.4, hy + 0.6, 0.7, '#1a1a1a');
+  if (L.flame) for (let i = 0; i < 5; i++) { const fl = Math.sin(t * 8 + i * 1.7) * 1.4; fillPoly(ctx, [[-7 + i * 3.2, -12], [-4 + i * 3.2, -12.4], [-6.5 + i * 3.2 + fl, -16.5 - (i % 2) * 2]], i % 2 ? L.flame : LT(L.flame, 0.4)); }
+  const head = (ox, oy, col) => {
+    const hy = -11 - lunge * -2 + oy, d = col === f ? dk : DK(col, 0.2);
+    ctx.save(); ctx.translate(ox, 0);
+    fillPoly(ctx, [[6, -12 + oy * 0.5], [11, hy - 3], [15, hy - 2.5], [18.5, hy + 0.5], [17, hy + 2], [12, hy + 2.5], [7, -6]], col);
+    fillPoly(ctx, [[10, hy - 2.5], [11, hy - 7], [13, hy - 3]], col); fillPoly(ctx, [[11, hy - 3], [11.4, hy - 5.5], [12.4, hy - 3]], d);
+    if (atk != null && lunge > 0.3) { fillPoly(ctx, [[14, hy + 1.5], [18.5, hy + 2.5], [15, hy + 4]], '#5a1a1a'); ctx.fillStyle = '#f0ead8'; ctx.fillRect(16, hy + 1.8, 0.8, 1); }
+    circ(ctx, 13.3, hy - 1, 0.8, L.eyes || '#f0d060'); circ(ctx, 18.4, hy + 0.6, 0.7, '#1a1a1a');
+    ctx.restore();
+  };
+  if (L.heads > 1) { head(-2.5, -5, DK(f, 0.15)); head(1.5, 3.5, DK(f, 0.08)); }
+  head(0, 0, f);
   quadLegs(ctx, [[-5, Math.PI, false], [8, 0, false]], -6, 6, f, P, 2);
   ctx.restore();
 }
@@ -540,6 +559,10 @@ function drawCreature(ctx, cid, x, y, s, dir, t, P) {
     case 'ghost': ghost(ctx, 0, -8 + hover, 1.3, L.fur, P, L); break;
     case 'dragon': drawDragon(ctx, L, P); break;
     case 'treant': drawTreant(ctx, L, P); break;
+    case 'insect': drawInsect(ctx, L, P); break;
+    case 'lizard': drawLizard(ctx, L, P); break;
+    case 'bull': drawBull(ctx, L, P); break;
+    case 'hydra': drawHydra(ctx, L, P); break;
     case 'ballista': drawBallista(ctx, L, P); break;
     case 'tent': drawTent(ctx, L, P); break;
     case 'cart': drawCart(ctx, L, P); break;

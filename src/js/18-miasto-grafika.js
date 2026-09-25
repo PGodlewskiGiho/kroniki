@@ -39,6 +39,8 @@ function drawEmblem(ctx, kind, cx, cy, s, col) {
     case 'ghost': ctx.beginPath(); ctx.arc(0, -3, 7, Math.PI, 0); ctx.lineTo(7, 9); ctx.lineTo(3.5, 6); ctx.lineTo(0, 9); ctx.lineTo(-3.5, 6); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill(); ctx.fillStyle = dark; ctx.fillRect(-3.5, -4, 2.2, 3); ctx.fillRect(1.3, -4, 2.2, 3); break;
     case 'bat': ctx.beginPath(); [[0, -3], [3, -7], [4, -3], [10, -7], [9, 1], [6, -1], [3, 4], [0, 1], [-3, 4], [-6, -1], [-9, 1], [-10, -7], [-4, -3], [-3, -7]].forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); ctx.fill(); break;
     case 'moon': ctx.beginPath(); ctx.arc(0, 0, 9, 0.9, TAU - 0.9); ctx.arc(5, 0, 7.5, TAU - 1.25, 1.25, true); ctx.closePath(); ctx.fill(); break;
+    case 'eye': ctx.beginPath(); ctx.ellipse(0, 0, 10, 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(0, 0, 2, 5, 0, 0, TAU); ctx.fill(); break;
+    case 'fork': ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(0, -4); ctx.moveTo(-6, -9); ctx.lineTo(-6, -3); ctx.quadraticCurveTo(0, 2, 6, -3); ctx.lineTo(6, -9); ctx.moveTo(0, -4); ctx.lineTo(0, -10); ctx.stroke(); break;
   }
   ctx.restore();
 }
@@ -109,6 +111,22 @@ function plotArt(c, A, s, emblem) {
   signArt(c, A, emblem, cx, b - 26, 24, true);
 }
 function propArt(c, fac, kind, x, b, r, fx) {
+  if (kind === 'tree' && fac === 'fortress') { // bagienna wierzba: krzywy pień, zwisający mech
+    c.strokeStyle = '#3a2e1c'; c.lineCap = 'round'; c.lineWidth = 5; c.beginPath(); c.moveTo(x - 4, b); c.quadraticCurveTo(x + 4, b - 14, x - 1, b - 28); c.stroke();
+    limb(c, x - 1, b - 3, x - 9, b + 1, 2, '#3a2e1c'); limb(c, x, b - 3, x + 8, b + 1, 2, '#3a2e1c');
+    circ(c, x, b - 34, 13, '#2a3a1e'); circ(c, x - 7, b - 31, 9, '#34462a'); circ(c, x + 7, b - 30, 9, '#304226'); circ(c, x - 3, b - 40, 6, '#4a5e34');
+    c.strokeStyle = '#6a7a4a'; c.lineWidth = 1.2; for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(x + i * 3.5, b - 28); c.lineTo(x + i * 3.8, b - 14 - Math.abs(i) * 2); c.stroke(); }
+    return;
+  }
+  if (kind === 'tree' && fac === 'inferno') { // zwęglone drzewo z żarzącymi się pęknięciami
+    c.strokeStyle = '#1a0e0c'; c.lineCap = 'round'; c.lineWidth = 4.5; c.beginPath(); c.moveTo(x, b); c.lineTo(x + 1, b - 38); c.stroke(); c.lineWidth = 2;
+    for (const [a, l] of [[-1, 15], [-0.4, 19], [0.4, 13], [1, 17]]) { c.beginPath(); c.moveTo(x + 1, b - 22 - l * 0.4); c.lineTo(x + 1 + Math.sin(a) * l, b - 28 - Math.cos(a) * l); c.stroke(); }
+    c.strokeStyle = '#ff6a1a'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, b - 4); c.lineTo(x + 1, b - 12); c.lineTo(x, b - 18); c.stroke(); if (fx) fx.glows.push([x, b - 10, 10, '#ff6a1a']);
+    return;
+  }
+  if (kind === 'reeds') { for (let i = -4; i <= 4; i++) { const h = 14 + ((i * 7 + 20) % 9); c.strokeStyle = i % 2 ? '#5a7a3a' : '#6a8a44'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x + i * 2.4, b); c.lineTo(x + i * 2.8, b - h); c.stroke(); if (i % 3 === 0) { c.fillStyle = '#6a4424'; c.fillRect(x + i * 2.8 - 1, b - h - 1, 2.4, 6); } } return; }
+  if (kind === 'spike') { c.fillStyle = '#1e1216'; c.beginPath(); c.moveTo(x - 7, b); c.lineTo(x - 1, b - 30); c.lineTo(x + 6, b); c.closePath(); c.fill(); c.fillStyle = '#3a2226'; c.beginPath(); c.moveTo(x - 7, b); c.lineTo(x - 1, b - 30); c.lineTo(x - 2, b); c.closePath(); c.fill(); c.fillStyle = '#ff5a1a'; c.fillRect(x - 2, b - 12, 1.5, 6); return; }
+  if (kind === 'brazier') { c.fillStyle = '#2a1a16'; c.fillRect(x - 1.5, b - 18, 3, 18); c.beginPath(); c.moveTo(x - 7, b - 22); c.lineTo(x + 7, b - 22); c.lineTo(x + 4, b - 17); c.lineTo(x - 4, b - 17); c.closePath(); c.fill(); c.fillStyle = '#ffa030'; c.beginPath(); c.moveTo(x - 5, b - 22); c.quadraticCurveTo(x, b - 36, x + 5, b - 22); c.fill(); if (fx) fx.glows.push([x, b - 26, 22, '#ff8a2a']); return; }
   if (kind === 'tree') {
     if (fac === 'barrow') { c.strokeStyle = '#1e1824'; c.lineCap = 'round'; c.lineWidth = 4; c.beginPath(); c.moveTo(x, b); c.lineTo(x + 2, b - 40); c.stroke(); c.lineWidth = 2;
       for (const [a, l] of [[-0.9, 16], [-0.3, 20], [0.5, 14], [1.1, 18]]) { c.beginPath(); c.moveTo(x + 1, b - 26 - l * 0.4); c.lineTo(x + 1 + Math.sin(a) * l, b - 30 - Math.cos(a) * l); c.stroke(); } return; }
@@ -116,9 +134,9 @@ function propArt(c, fac, kind, x, b, r, fx) {
     const base = fac === 'sylvan' ? '#2e6a30' : '#3a7a2c';
     circ(c, x, b - 32, 14, shadeHex(base, -0.25)); circ(c, x - 6, b - 36, 10, base); circ(c, x + 6, b - 30, 9, base); circ(c, x - 3, b - 42, 7, shadeHex(base, 0.2));
   } else if (kind === 'bush') {
-    const base = fac === 'barrow' ? '#3a3a30' : fac === 'sylvan' ? '#3a7a34' : '#4a8a34';
+    const base = fac === 'barrow' ? '#3a3a30' : fac === 'inferno' ? '#3a2220' : fac === 'fortress' ? '#3e5a2e' : fac === 'sylvan' ? '#3a7a34' : '#4a8a34';
     circ(c, x, b - 7, 9, shadeHex(base, -0.2)); circ(c, x - 8, b - 4, 7, base); circ(c, x + 8, b - 4, 7, base); circ(c, x - 2, b - 10, 5, shadeHex(base, 0.2));
-    if (fac !== 'barrow' && r() < 0.6) for (let i = 0; i < 4; i++) circ(c, x - 8 + r() * 16, b - 4 - r() * 8, 1.5, fac === 'sylvan' ? '#f8e070' : '#f07a8a');
+    if (fac !== 'barrow' && r() < 0.6) for (let i = 0; i < 4; i++) circ(c, x - 8 + r() * 16, b - 4 - r() * 8, 1.5, fac === 'sylvan' ? '#f8e070' : fac === 'inferno' ? '#ff6a1a' : fac === 'fortress' ? '#c080e0' : '#f07a8a');
   } else if (kind === 'lamp') {
     c.fillStyle = '#2a2420'; c.fillRect(x - 1.5, b - 30, 3, 30); c.fillRect(x - 5, b - 2, 10, 2);
     c.fillStyle = '#3a3028'; c.fillRect(x - 4, b - 38, 8, 9); winArt(c, TOWN_ART[fac] || TOWN_ART.haven, x - 2.5, b - 36.5, 5, 6, fx);
@@ -128,8 +146,8 @@ function propArt(c, fac, kind, x, b, r, fx) {
   } else if (kind === 'mushroom') {
     for (const [dx, sc] of [[0, 1], [7, 0.7]]) { c.fillStyle = '#e8dcc0'; c.fillRect(x + dx - 1.5 * sc, b - 7 * sc, 3 * sc, 7 * sc); c.fillStyle = '#c8402a'; c.beginPath(); c.ellipse(x + dx, b - 7 * sc, 6 * sc, 4 * sc, 0, Math.PI, 0); c.fill(); circ(c, x + dx - 2 * sc, b - 9 * sc, 1 * sc, '#fff'); }
   } else if (kind === 'fence') {
-    c.fillStyle = fac === 'barrow' ? '#1e1a24' : '#6a4a2a';
-    for (let i = 0; i < 5; i++) { c.fillRect(x + i * 7, b - 14, 2.5, 14); if (fac === 'barrow') { c.beginPath(); c.moveTo(x + i * 7 - 1, b - 14); c.lineTo(x + i * 7 + 1.2, b - 19); c.lineTo(x + i * 7 + 3.5, b - 14); c.fill(); } }
+    const spiky = fac === 'barrow' || fac === 'inferno' || fac === 'fortress'; c.fillStyle = fac === 'barrow' ? '#1e1a24' : fac === 'inferno' ? '#2a1612' : fac === 'fortress' ? '#4e3a22' : '#6a4a2a';
+    for (let i = 0; i < 5; i++) { c.fillRect(x + i * 7, b - 14, 2.5, 14); if (spiky) { c.beginPath(); c.moveTo(x + i * 7 - 1, b - 14); c.lineTo(x + i * 7 + 1.2, b - 19); c.lineTo(x + i * 7 + 3.5, b - 14); c.fill(); } }
     c.fillRect(x - 2, b - 10, 34, 2); c.fillRect(x - 2, b - 5, 34, 2);
   }
 }
@@ -787,9 +805,9 @@ function hillArt(c, Hl, hazeCol) {
 }
 function riverArt(c, Rv, hazeCol) {
   const pts = subdiv(Rv.pts, 6), [L, R] = ribbon(pts, Rv.w), yF = Math.min(...L.map(p => p[1]), ...R.map(p => p[1])), yN = Math.max(...L.map(p => p[1]), ...R.map(p => p[1]));
-  ribbonPath(c, L, R); const g = c.createLinearGradient(0, yF, 0, yN); g.addColorStop(0, Rv.chasm ? '#2a2034' : '#7890a4'); g.addColorStop(1, Rv.chasm ? '#040308' : '#1e3c58'); c.fillStyle = g; c.fill();
-  if (Rv.chasm) { const mid = pts.map(p => proj(p[0], p[1])); c.strokeStyle = 'rgba(120,255,150,.3)'; c.lineWidth = 1.5; c.beginPath(); mid.forEach(([x, y], i) => i ? c.lineTo(x, y + 2) : c.moveTo(x, y + 2)); c.stroke(); c.strokeStyle = 'rgba(90,70,110,.8)'; c.lineWidth = 2; for (const E of [L, R]) { c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); } return; }
-  c.strokeStyle = 'rgba(200,215,210,.45)'; c.lineWidth = 1.4; for (const E of [L, R]) { c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); }
+  ribbonPath(c, L, R); const g = c.createLinearGradient(0, yF, 0, yN); const RC = Rv.cols || (Rv.chasm ? ['#2a2034', '#040308'] : ['#7890a4', '#1e3c58']); g.addColorStop(0, RC[0]); g.addColorStop(1, RC[1]); c.fillStyle = g; c.fill();
+  if (Rv.chasm) { const mid = pts.map(p => proj(p[0], p[1])); c.strokeStyle = Rv.line || 'rgba(120,255,150,.3)'; c.lineWidth = 1.5; c.beginPath(); mid.forEach(([x, y], i) => i ? c.lineTo(x, y + 2) : c.moveTo(x, y + 2)); c.stroke(); c.strokeStyle = Rv.edge || 'rgba(90,70,110,.8)'; c.lineWidth = 2; for (const E of [L, R]) { c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); } return; }
+  c.strokeStyle = Rv.edge || 'rgba(200,215,210,.45)'; c.lineWidth = 1.4; for (const E of [L, R]) { c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); }
   const r = mulberry32(61); c.strokeStyle = 'rgba(230,240,245,.35)';
   for (let i = 0; i < 70; i++) { const k = r() * (pts.length - 1), i0 = Math.floor(k), p = pts[i0], q = pts[i0 + 1], f = k - i0, off = (r() - 0.5) * Rv.w * 0.8; const [x, y, s] = proj(p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f + off / 300); c.lineWidth = Math.max(0.6, s); c.beginPath(); c.moveTo(x - 6 * s, y); c.lineTo(x + 6 * s, y); c.stroke(); }
   c.fillStyle = 'rgba(70,90,50,.55)'; for (const E of [L, R]) for (let i = 0; i < E.length; i += 2) { const [x, y] = E[i]; c.fillRect(x - 1, y - 5, 1.2, 5); c.fillRect(x + 2, y - 4, 1.2, 4); }
@@ -816,7 +834,7 @@ function boneBridgeArt(g) {
   skullAt(g, 0, 0, 0.8); skullAt(g, 76, 0, 0.8);
 }
 function bridgeArt(g, A) {
-  wallRect(g, A, 0, 6, 76, 26); g.fillStyle = '#1e3a54'; g.beginPath(); g.ellipse(38, 32, 24, 19, 0, Math.PI, 0); g.fill();
+  wallRect(g, A, 0, 6, 76, 26); g.fillStyle = A.under || '#1e3a54'; g.beginPath(); g.ellipse(38, 32, 24, 19, 0, Math.PI, 0); g.fill();
   g.strokeStyle = shadeHex(A.wall[1], -0.3); g.lineWidth = 3; g.beginPath(); g.ellipse(38, 32, 25.5, 20.5, 0, Math.PI, 0); g.stroke();
   g.fillStyle = A.wall[0]; g.fillRect(-3, 0, 82, 7); g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(-3, 5, 82, 2);
 }
@@ -854,13 +872,14 @@ function forestFrame(c) {
 // Kurhan: zielona mgła w przepaści
 function chasmGlow(c, Rv) {
   const pts = subdiv(Rv.pts, 4);
-  for (const p of pts) { const [x, y, s] = proj(p[0], p[1]); const r = (p[3] || Rv.w) * s * 0.45, g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(90,255,140,.08)'); g.addColorStop(1, 'rgba(90,255,140,0)'); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
+  for (const p of pts) { const [x, y, s] = proj(p[0], p[1]); const r = (p[3] || Rv.w) * s * 0.45, g = c.createRadialGradient(x, y, 0, x, y, r); const gc = Rv.glow || '90,255,140'; g.addColorStop(0, `rgba(${gc},${Rv.glowA || 0.08})`); g.addColorStop(1, `rgba(${gc},0)`); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
 }
 function drawCreaturesFX(ctx, LL, tm) {
   for (const F of (LL.floaters || [])) for (let i = 0; i < F.n; i++) {
     const ph = i * 2.3 + (F.seed || 0), X = F.X + Math.sin(tm * 0.3 + ph) * F.spread, Z = F.Z + Math.cos(tm * 0.23 + ph * 1.7) * F.spreadZ, e = F.e + Math.sin(tm * 1.1 + ph) * 8;
     const [x, y, sc] = proj(X, Z, e);
-    if (F.kind === 'wisp') { const a = 0.55 + 0.35 * Math.sin(tm * 3 + ph); ctx.fillStyle = `rgba(170,255,200,${(a * 0.3).toFixed(2)})`; ctx.beginPath(); ctx.arc(x, y, 7 * sc, 0, TAU); ctx.fill(); circ(ctx, x, y, 1.8 * sc + 0.8, `rgba(230,255,220,${a.toFixed(2)})`); }
+    if (F.kind === 'ember') { const u = ((tm * 0.25 + ph * 0.37) % 1), [ex, ey] = proj(X, Z, F.e + u * 120); circ(ctx, ex, ey, (1.8 - u) * sc + 0.6, `rgba(255,${150 + Math.round(90 * (1 - u))},60,${(1 - u).toFixed(2)})`); }
+    else if (F.kind === 'wisp') { const a = 0.55 + 0.35 * Math.sin(tm * 3 + ph); ctx.fillStyle = `rgba(170,255,200,${(a * 0.3).toFixed(2)})`; ctx.beginPath(); ctx.arc(x, y, 7 * sc, 0, TAU); ctx.fill(); circ(ctx, x, y, 1.8 * sc + 0.8, `rgba(230,255,220,${a.toFixed(2)})`); }
     else { ctx.globalAlpha = 0.5 + 0.25 * Math.sin(tm * 2 + ph); ghost(ctx, x, y, sc * 1.2); ctx.globalAlpha = 1; }
   }
   if (LL.skeletons) LL.skeletons.forEach((pts, k) => { for (let j = 0; j < 2; j++) {
@@ -1031,7 +1050,7 @@ function drawTownFX(ctx, t, fx) {
   drawCreaturesFX(ctx, LL, tm);
   if (LL.guardSkel) for (const [gX, gZ, gE] of LL.guardSkel) { const [gx, gy, sc] = proj(gX, gZ, gE); drawSkeleton(ctx, gx, gy, sc * 1.15, 0, 1, true); }
   if (LL.guardsW) for (const [gX, gZ, gE] of LL.guardsW) {
-    const [gx, gy, sc] = proj(gX, gZ, gE); drawWalker(ctx, gx, gy, sc * 1.1, t.faction === 'barrow' ? '#c8c0ac' : t.faction === 'sylvan' ? '#3a6a3a' : '#7a8494', 0, 1);
+    const [gx, gy, sc] = proj(gX, gZ, gE); drawWalker(ctx, gx, gy, sc * 1.1, LL.guardCol || (t.faction === 'barrow' ? '#c8c0ac' : t.faction === 'sylvan' ? '#3a6a3a' : '#7a8494'), 0, 1);
     ctx.strokeStyle = '#5a3a1e'; ctx.lineWidth = 1.2 * sc; ctx.beginPath(); ctx.moveTo(gx + 4 * sc, gy); ctx.lineTo(gx + 4 * sc, gy - 22 * sc); ctx.stroke();
   }
   if (LL.birds) for (let i = 0; i < 4; i++) {
@@ -1041,6 +1060,14 @@ function drawTownFX(ctx, t, fx) {
   if (fac === 'sylvan') for (let i = 0; i < 26; i++) {
     const x = 20 + ((i * 97 + Math.sin(tm * 0.4 + i) * 30) % 550), y = 150 + ((i * 53) % 260) + Math.sin(tm * 0.9 + i * 1.7) * 10, a = 0.4 + 0.4 * Math.sin(tm * 3 + i);
     circ(ctx, x, y, 1.6, `rgba(255,250,170,${a.toFixed(3)})`);
+  }
+  if (LL.mist) for (let i = 0; i < 4; i++) { // bagienna mgła przy ziemi
+    const x = ((i * 220 + tm * 9) % 900) - 150, y = 330 + i * 26, g = ctx.createRadialGradient(x, y, 0, x, y, 160); g.addColorStop(0, 'rgba(200,220,180,.16)'); g.addColorStop(1, 'rgba(200,220,180,0)');
+    ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.25); ctx.translate(-x, -y); ctx.fillStyle = g; ctx.fillRect(x - 160, y - 160, 320, 320); ctx.restore();
+  }
+  if (LL.embers) { // żar unoszący się nad całym miastem i drżące powietrze nad lawą
+    for (let i = 0; i < 30; i++) { const u = (tm * 0.12 + i * 0.137) % 1, x = 20 + ((i * 83) % 560) + Math.sin(tm + i) * 8, y = 430 - u * 360; circ(ctx, x, y, 1.2, `rgba(255,${130 + (i % 5) * 20},50,${(0.8 * (1 - u)).toFixed(2)})`); }
+    const g = ctx.createLinearGradient(0, 300, 0, 440); g.addColorStop(0, 'rgba(255,90,20,0)'); g.addColorStop(1, `rgba(255,90,20,${(0.1 + 0.04 * Math.sin(tm * 2)).toFixed(3)})`); ctx.fillStyle = g; ctx.fillRect(8, 300, 576, 140);
   }
   if (fac === 'barrow') {
     for (let i = 0; i < 3; i++) { const x = ((i * 260 + tm * 12) % 900) - 150, y = 300 + i * 45; const g = ctx.createRadialGradient(x, y, 0, x, y, 140); g.addColorStop(0, 'rgba(190,180,220,.16)'); g.addColorStop(1, 'rgba(190,180,220,0)'); ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.3); ctx.translate(-x, -y); ctx.fillStyle = g; ctx.fillRect(x - 140, y - 140, 280, 280); ctx.restore(); }
