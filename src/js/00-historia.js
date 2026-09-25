@@ -15,6 +15,8 @@
      RYSOWANIE: PODSTAWY I PIXEL ART tekst, cache warstw, sprite(), drawSprite(), blit()
      INTERFEJS                       kamień, pergamin, Button, showDialog, drawCost, pasek surowców
      GRAFIKA OBIEKTÓW                jeden rysunek na obiekt: surowce, kopalnie, stwory, bohater, miasto
+     GRAFIKA: PORTRETY BOHATERÓW     pixel art 36×36, wygląd z HERO_LOOKS albo losowany z imienia
+     GRAFIKA: OBLĘŻENIE              mur, brama i wieże na polu bitwy (castleSprite), bruk dziedzińca
      ŚWIAT: TWORZENIE NOWEJ GRY      generateMap, placeObjects, createTown, createHero, createNewGame
      ZASADY GRY                      ruch, ścieżki, obiekty, potyczki, armie, rekrutacja, dochód, budowa
      BITWA: ZASADY                   pole heksów, obrażenia, kolejka, SI, simulateBattle, resolveBattle
@@ -100,5 +102,11 @@
    z dwóch (skillOffer: ulepszenie + nowa), SI wybiera wg AI_SKILL_ORDER. Działanie: skillVal() w ruchu, widzeniu,
    manie, dochodzie, koszcie terenu (baseCost z bohaterem), obrażeniach (damageRoll, spellDamage), morale,
    szczęściu, doświadczeniu i nekromancji (raiseDead po zwycięstwie).
+   Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
+   w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
+   okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
+   Etap 2, krok 10: czary 4. i 5. poziomu (deszcz meteorów, modlitwa, wskrzeszenie, implozja, armagedon,
+   przyspieszenie armii), gildie IV i V (GUILD_MAX), cele 'livingAlly', 'all' i 'allies' (spellArea z B),
+   księga czarów w trzech kolumnach, gdy czarów jest wiele.
    ===================================================================================== */
 

@@ -136,6 +136,10 @@ const SPELL_FX = {
   bless: { aura: 'fall', col: '#ffe08a' }, stoneSkin: { aura: 'orbit', col: '#c8b898' }, haste: { aura: 'wind', col: '#a8f0ff' },
   cure: { aura: 'rise', col: '#8af07a' }, slow: { aura: 'fall', col: '#9a7ad8' }, weakness: { aura: 'drip', col: '#9aa060' },
   bloodlust: { aura: 'rise', col: '#ff5a4a' }, animateDead: { aura: 'rise', col: '#a6f0a8', column: true },
+  meteorShower: { meteor: true, col: '#ff6a3a', burst: '#ffd060', boom: true, flash: 0.3, shake: 10 },
+  prayer: { aura: 'fall', col: '#fff0b0', column: true }, resurrection: { aura: 'rise', col: '#fff8d0', column: true },
+  implosion: { aura: 'orbit', col: '#c05aff', burst: '#f0c0ff', flash: 0.35, shake: 7 },
+  armageddon: { aura: 'fall', col: '#ff4a1a', burst: '#ffd060', flash: 0.6, shake: 12 }, massHaste: { aura: 'wind', col: '#a8f0ff' },
 };
 const BattleFX = {
   reset() { this.parts = []; this.rings = []; this.bolts = []; this.projs = []; this.glows = []; this.flash = null; this.shake = 0; },

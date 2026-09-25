@@ -228,7 +228,7 @@ function rollGuildLevel(st, t, L) {
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
   if (!t.guild) t.guild = {}; t.guild[L] = pool.slice(0, GUILD_OFFER[L] || 1);
 }
-const guildLevel = t => (hasB(t, 'guild3') ? 3 : hasB(t, 'guild2') ? 2 : hasB(t, 'guild1') ? 1 : 0);
+const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild' + L)) return L; return 0; };
 // Bohater w mieście z gildią: poznaje jej czary i odzyskuje całą manę. Zwraca nowo poznane czary.
 function visitGuild(st, t, h) {
   const L = guildLevel(t); if (!L) return [];

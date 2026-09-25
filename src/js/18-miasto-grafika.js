@@ -286,7 +286,7 @@ const HAVEN_ART = {
     }
   },
   guild(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.6, th = h * (0.48 + tier * 0.1), top = b - th;
+    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.6, th = h * (0.48 + Math.min(tier, 3) * 0.1 + Math.max(0, tier - 3) * 0.05), top = b - th;
     if (tier >= 3) { c.fillStyle = A.wall[1]; c.fillRect(cx + tw / 2 - 2, top + 18, 14, 4); circ(c, cx + tw / 2 + 8, top + 14, 7, '#6f9ab8'); c.strokeStyle = '#3a3a44'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(cx + tw / 2 + 6, top + 12); c.lineTo(cx + tw / 2 + 18, top); c.stroke(); }
     wallRect(c, A, cx - tw / 2, top, tw, th);
     c.fillStyle = shadeHex(A.wall[1], -0.2); for (let i = 1; i <= tier; i++) c.fillRect(cx - tw / 2 - 2, top + i * th / (tier + 1), tw + 4, 3);
@@ -584,7 +584,7 @@ const BARROW_ART = {
     c.fillStyle = '#0a0810'; c.beginPath(); c.moveTo(cx - 11, b); c.lineTo(cx - 11, b - 18); c.lineTo(cx, b - 28); c.lineTo(cx + 11, b - 18); c.lineTo(cx + 11, b); c.closePath(); c.fill(); skullAt(c, cx, b - 34, 1);
   },
   guild(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.5, th = h * (0.46 + tier * 0.1), top = b - th;
+    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.5, th = h * (0.46 + Math.min(tier, 3) * 0.1 + Math.max(0, tier - 3) * 0.05), top = b - th;
     wallRect(c, A, cx - tw / 2, top, tw, th); c.fillStyle = shadeHex(A.wall[1], -0.2); for (let i = 1; i <= tier; i++) c.fillRect(cx - tw / 2 - 2, top + i * th / (tier + 1), tw + 4, 3);
     for (let i = 0; i <= tier; i++) archWin(c, cx - 4, top + 8 + i * th / (tier + 1), 8, 12, '#a6f0a8', fx);
     doorArt(c, A, cx - 7, b, 14, 18);
