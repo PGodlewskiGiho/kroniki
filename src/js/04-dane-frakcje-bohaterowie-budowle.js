@@ -1,0 +1,104 @@
+// ==================== DANE: FRAKCJE, BOHATEROWIE, BUDOWLE, KOPALNIE =====================
+// Wszystko, co różni frakcje, jest w FACTIONS. BUILDINGS opisuje budowle wspólne dla frakcji.
+// Klasy bohaterów. look = wygląd wspólny dla postaci na mapie i portretu w panelu.
+// helm: kolor hełmu (klasy siły) albo hood: kolor kaptura (klasy magii).
+const HERO_CLASSES = {
+  knight: { name: 'Rycerz', nameF: 'Rycerka', look: { horse: '#7a4a26', mane: '#2a1a0e', armor: '#b8c0cc', helm: '#c8d0da', skin: '#e0b890' } },
+  cleric: { name: 'Kapłan', nameF: 'Kapłanka', look: { horse: '#e8e0d0', mane: '#8a8078', armor: '#c8b88a', hood: '#f0ead8', skin: '#e0b890' } },
+  ranger: { name: 'Strażnik', nameF: 'Strażniczka', look: { horse: '#9a6a3a', mane: '#3a2410', armor: '#6a5a34', hood: '#3a6a3a', skin: '#e8c8a0' } },
+  druid: { name: 'Druid', nameF: 'Druidka', look: { horse: '#c8b890', mane: '#6a5a3a', armor: '#7a6a3a', hood: '#6a8a3a', skin: '#e8c8a0' } },
+  deathKnight: { name: 'Rycerz śmierci', nameF: 'Rycerka śmierci', look: { horse: '#2e2a36', mane: '#a6f0a8', armor: '#5a5468', helm: '#6e6880', skin: '#c8c0b0' } },
+  necro: { name: 'Nekromanta', nameF: 'Nekromantka', look: { horse: '#3a3440', mane: '#c8c0ac', armor: '#4a3a5a', hood: '#2a1e36', skin: '#c8c0b0' } },
+};
+// Wszystko, co wyróżnia frakcję. dw: siedliska [nazwa, jednostka], emb: symbole siedlisk poziomów 1–7.
+const FACTIONS = [
+  {
+    id: 'haven', name: 'Przystań', terrain: TER.GRASS,
+    desc: 'Królestwo ludzi: pikinierzy, łucznicy, gryfy, miecznicy, mnisi, kawaleria i Strażnicy Światła.',
+    heroes: [['Sir Rolan', 'knight'], ['Weronika', 'cleric', 1], ['Bernard', 'cleric'], ['Idalia', 'knight', 1], ['Kasjan', 'knight'], ['Mirela', 'cleric', 1]],
+    towns: ['Jaworzyn', 'Białogród', 'Złote Pole', 'Dębowa Góra', 'Srebrny Bród', 'Wysoka Grań', 'Lipowiec', 'Kamienna Straż'],
+    guild: 'Gildia magów', emb: ['spear', 'bow', 'wing', 'sword', 'cross', 'horse', 'sun'],
+    dw: {
+      dw1: ['Koszary', 'pikeman'], dw1u: ['Ćwiczebnia', 'halberdier'], dw2: ['Strzelnica', 'archer'], dw2u: ['Wieża kuszników', 'marksman'],
+      dw3: ['Wieża gryfów', 'griffin'], dw3u: ['Gniazdo królewskie', 'royalGriffin'], dw4: ['Koszary miecznicze', 'swordsman'], dw4u: ['Kaplica krzyżowców', 'crusader'],
+      dw5: ['Klasztor', 'monk'], dw5u: ['Katedra', 'priest'], dw6: ['Ujeżdżalnia', 'cavalier'], dw6u: ['Arena czempionów', 'champion'],
+      dw7: ['Portal Światła', 'lightGuard'], dw7u: ['Wieża Świtu', 'dawnbringer'],
+    },
+  },
+  {
+    id: 'sylvan', name: 'Knieja', terrain: TER.GRASS,
+    desc: 'Leśne ostępy: driady, elfi łucznicy, centaury, drzewce, jednorożce, feniksy i szmaragdowe smoki.',
+    heroes: [['Elandra', 'ranger', 1], ['Tarwen', 'druid'], ['Lirien', 'druid', 1], ['Gawen', 'ranger']],
+    towns: ['Zielony Gaj', 'Srebrny Liść', 'Cicha Knieja', 'Jasna Polana', 'Szumiący Bór', 'Złota Paproć'],
+    guild: 'Krąg druidów', emb: ['leaf', 'bow', 'horse', 'tree', 'horn', 'flame', 'dragon'],
+    dw: {
+      dw1: ['Gaj driad', 'dryad'], dw1u: ['Święty gaj', 'nymph'], dw2: ['Elfia strażnica', 'elfArcher'], dw2u: ['Wieża strzelców', 'elfSharp'],
+      dw3: ['Zagroda centaurów', 'centaur'], dw3u: ['Obóz wodzów', 'centaurChief'], dw4: ['Stary las', 'treant'], dw4u: ['Pradawny las', 'elderTreant'],
+      dw5: ['Polana jednorożców', 'unicorn'], dw5u: ['Srebrna polana', 'silverUnicorn'], dw6: ['Gniazdo feniksa', 'phoenix'], dw6u: ['Słoneczne gniazdo', 'sunPhoenix'],
+      dw7: ['Szmaragdowa grota', 'emeraldDragon'], dw7u: ['Nefrytowa grota', 'jadeDragon'],
+    },
+  },
+  {
+    id: 'barrow', name: 'Kurhan', terrain: TER.DIRT,
+    desc: 'Ziemie umarłych: kościotrupy, ghule, zjawy, wampiry, nekromanci, Rycerze Zagłady i kościste wywerny.',
+    heroes: [['Mortis', 'necro'], ['Raga', 'necro', 1], ['Sir Kruk', 'deathKnight'], ['Zofia Czarna', 'deathKnight', 1]],
+    towns: ['Czarny Kurhan', 'Mglista Krypta', 'Upiorna Dolina', 'Kościeniec', 'Wroni Jar', 'Szary Całun'],
+    guild: 'Gildia nekromantów', emb: ['skull', 'grave', 'ghost', 'bat', 'moon', 'horse', 'dragon'],
+    dw: {
+      dw1: ['Kostnica', 'boneWarrior'], dw1u: ['Ossuarium', 'boneGuard'], dw2: ['Zapomniany cmentarz', 'ghoul'], dw2u: ['Morowy cmentarz', 'plagueGhoul'],
+      dw3: ['Nawiedzona kaplica', 'wraith'], dw3u: ['Wieża zawodzenia', 'banshee'], dw4: ['Krypta', 'vampire'], dw4u: ['Mroczna krypta', 'vampireLord'],
+      dw5: ['Wieża nekromanty', 'necromancer'], dw5u: ['Czarna biblioteka', 'archNecro'], dw6: ['Mroczne stajnie', 'doomKnight'], dw6u: ['Stajnie zagłady', 'dreadLord'],
+      dw7: ['Kościana grań', 'boneWyvern'], dw7u: ['Upiorna grań', 'ghostWyvern'],
+    },
+  },
+];
+const factionOf = id => FACTIONS.find(f => f.id === id) || FACTIONS[0];
+// Budowle wspólne dla frakcji. Nazwy siedlisk i gildii bierze z FACTIONS funkcja bInfo().
+const BUILDINGS = [
+  { id: 'hall1', name: 'Ratusz', slot: 0, cost: {}, req: [], gold: 500, emblem: 'coin', desc: 'Przynosi 500 złota dziennie.' },
+  { id: 'hall2', name: 'Ratusz miejski', slot: 0, cost: { gold: 2500 }, req: ['hall1'], gold: 1000, emblem: 'coin', desc: 'Przynosi 1000 złota dziennie.' },
+  { id: 'hall3', name: 'Magistrat', slot: 0, cost: { gold: 5000, wood: 10, ore: 10 }, req: ['hall2', 'guild1'], gold: 2000, emblem: 'coin', desc: 'Przynosi 2000 złota dziennie.' },
+  { id: 'hall4', name: 'Kapitol', slot: 0, cost: { gold: 10000, wood: 10, ore: 10 }, req: ['hall3', 'castle'], gold: 4000, emblem: 'coin', desc: 'Przynosi 4000 złota dziennie.' },
+  { id: 'fort', name: 'Fort', slot: 1, cost: { gold: 5000, wood: 20, ore: 20 }, req: [], emblem: 'wall', desc: 'Mury obronne miasta. Otwiera drogę do silniejszych siedlisk.' },
+  { id: 'citadel', name: 'Cytadela', slot: 1, cost: { gold: 2500, wood: 5, ore: 5 }, req: ['fort'], emblem: 'wall', desc: 'Mocniejsze mury i wieża strzelnicza. Przyrost jednostek we wszystkich siedliskach większy o połowę.' },
+  { id: 'castle', name: 'Zamek', slot: 1, cost: { gold: 5000, wood: 10, ore: 10 }, req: ['citadel'], emblem: 'wall', desc: 'Najmocniejsze mury. Przyrost jednostek we wszystkich siedliskach podwojony.' },
+  { id: 'tavern', name: 'Tawerna', slot: 12, cost: { gold: 500, wood: 5 }, req: [], emblem: 'mug', desc: 'Najem bohaterów: co tydzień dwóch nowych chętnych.' },
+  { id: 'market', name: 'Rynek', slot: 13, cost: { gold: 500, wood: 5 }, req: [], emblem: 'scale', desc: 'Handel surowcami. Każdy kolejny rynek w królestwie daje lepszy kurs.' },
+  { id: 'silo', name: 'Skarbiec zasobów', slot: 9, cost: { gold: 5000, ore: 5 }, req: ['market'], emblem: 'barrel', desc: 'Codziennie dodaje 1 drewna i 1 rudy.' },
+  { id: 'smith', name: 'Kuźnia', slot: 8, cost: { gold: 1000, ore: 5 }, req: [], emblem: 'anvil', desc: `Wyposaża armię w machiny wojenne (${ROADMAP.later}).` },
+  { id: 'guild1', slot: 2, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['tavern'], emblem: 'book', desc: 'Uczy bohaterów czarów 1 poziomu i odnawia im manę.' },
+  { id: 'guild2', slot: 2, cost: { gold: 1000, wood: 5, ore: 5 }, req: ['guild1'], emblem: 'book', desc: 'Dodaje czary 2 poziomu.' },
+  { id: 'guild3', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 4, crystal: 4 }, req: ['guild2', 'hall2'], emblem: 'book', desc: 'Dodaje czary 3 poziomu.' },
+  { id: 'dw1', slot: 10, cost: { gold: 500 }, req: [] },
+  { id: 'dw1u', slot: 10, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
+  { id: 'dw2', slot: 11, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
+  { id: 'dw2u', slot: 11, cost: { gold: 1500, wood: 5, ore: 5 }, req: ['dw2'] },
+  { id: 'dw3', slot: 7, cost: { gold: 1000, ore: 5 }, req: ['fort'] },
+  { id: 'dw3u', slot: 7, cost: { gold: 1500, ore: 5 }, req: ['dw3', 'citadel'] },
+  { id: 'dw4', slot: 6, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['fort', 'dw2'] },
+  { id: 'dw4u', slot: 6, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['dw4', 'smith'] },
+  { id: 'dw5', slot: 5, cost: { gold: 3000, wood: 10, ore: 10 }, req: ['guild1'] },
+  { id: 'dw5u', slot: 5, cost: { gold: 2000, mercury: 5 }, req: ['dw5', 'guild2'] },
+  { id: 'dw6', slot: 4, cost: { gold: 5000, wood: 10, ore: 20 }, req: ['citadel', 'dw4'] },
+  { id: 'dw6u', slot: 4, cost: { gold: 3000, ore: 10, crystal: 5 }, req: ['dw6'] },
+  { id: 'dw7', slot: 3, cost: { gold: 15000, wood: 20, ore: 20, gems: 10 }, req: ['castle', 'dw6'] },
+  { id: 'dw7u', slot: 3, cost: { gold: 10000, gems: 10, crystal: 10 }, req: ['dw7', 'guild3'] },
+];
+const BUILD_BY_ID = Object.fromEntries(BUILDINGS.map(b => [b.id, b]));
+// Nazwa, jednostka, symbol i opis budowli dla danej frakcji
+function bInfo(B, fac) {
+  const F = factionOf(fac), m = /^dw(\d)(u?)$/.exec(B.id);
+  if (m) {
+    const [name, unit] = F.dw[B.id], c = CREATURES[unit];
+    return { name, unit, emblem: F.emb[+m[1] - 1], desc: `${m[2] ? 'Ulepszone siedlisko' : 'Siedlisko'}: ${c.plural.toLowerCase()} (poziom ${m[1]}).` };
+  }
+  if (B.id.startsWith('guild')) return { name: F.guild + ({ guild1: '', guild2: ' II', guild3: ' III' })[B.id], emblem: B.emblem, desc: B.desc };
+  return { name: B.name, emblem: B.emblem, desc: B.desc };
+}
+const MINES = {
+  wood: { name: 'Tartak', income: 2 }, ore: { name: 'Kopalnia rudy', income: 2 }, mercury: { name: 'Laboratorium alchemiczne', income: 1 },
+  sulfur: { name: 'Kopalnia siarki', income: 1 }, crystal: { name: 'Grota kryształów', income: 1 }, gems: { name: 'Staw klejnotów', income: 1 },
+  gold: { name: 'Kopalnia złota', income: 1000 },
+};
+const RARE = ['mercury', 'sulfur', 'crystal', 'gems'];
+

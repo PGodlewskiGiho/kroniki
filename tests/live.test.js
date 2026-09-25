@@ -68,6 +68,7 @@ async function ambush() {
     me.x = spot[0]; me.y = spot[1]; me.army = emptyArmy(); me.army[0] = { cid: 'pikeman', n: 2 };
     st.towns[0].garrison = emptyArmy(); st.towns[0].garrison[0] = { cid: 'lightGuard', n: 30 }; // miasto za silne, celem jest bohater
     foe.x = me.x + 1; foe.y = me.y; foe.army = emptyArmy(); foe.army[0] = { cid: 'vampireLord', n: 20 };
+    reveal(st, foe.x, foe.y, HERO_SIGHT, foe.owner); // SI widzi tylko odkryty teren
     G.screens.adventure.enter({}); G.modal = null;
   });
 }
