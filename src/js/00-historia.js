@@ -92,5 +92,7 @@
    Okno dopasowane do ekranu: logiczne okno VW×VH (co najmniej W×H, do VW_MAX×VH_MAX) zamiast stałego 4:3.
    Mapa przygody (fill: true) wypełnia całe okno (layoutAdventure), menu maluje scenę na całą szerokość,
    pozostałe ekrany i okna dialogowe są wyśrodkowane (OX, OY) na tle drawBackdrop / screen.backdrop.
+   Krok 6: morale i szczęście (armyMorale, heroLuck; B.morale / B.luck liczone w createBattle). Morale dodatnie
+   daje drugi ruch po ataku (nextActive), ujemne wahanie i utratę tury; szczęście podwaja, pech połowi obrażenia (strike).
    ===================================================================================== */
 

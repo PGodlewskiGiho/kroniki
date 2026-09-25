@@ -23,7 +23,7 @@ const EQUIP_SLOTS = [
   { id: 'misc1', kind: 'misc', name: 'Różne', x: 432, y: 300 }, { id: 'misc2', kind: 'misc', name: 'Różne', x: 716, y: 300 },
 ];
 const RARITY = { treasure: 'skarb', minor: 'pomniejszy', major: 'potężny' };
-// bonus: att/def/sp/kn (cechy), mp (punkty ruchu), sight (zasięg widzenia), gold (złoto dziennie)
+// bonus: att/def/sp/kn (cechy), mp (punkty ruchu), sight (zasięg widzenia), gold (złoto dziennie), morale, luck (szczęście)
 // icon: rodzaj rysunku w drawArtifact(); col/gem: kolory
 const ARTIFACTS = {
   noviceSword: { name: 'Miecz nowicjusza', kind: 'weapon', rarity: 'treasure', bonus: { att: 1 }, icon: 'sword', col: '#b8c0cc', gem: '#8a5a2a' },
@@ -33,17 +33,17 @@ const ARTIFACTS = {
   scoutRing: { name: 'Pierścień zwiadowcy', kind: 'ring', rarity: 'treasure', bonus: { sight: 1 }, icon: 'ring', col: '#c8a050', gem: '#4aa0e0' },
   wandererBoots: { name: 'Buty wędrowca', kind: 'feet', rarity: 'treasure', bonus: { mp: 200 }, icon: 'boots', col: '#7a4a26', gem: '#c8a050' },
   merchantPurse: { name: 'Sakiewka kupca', kind: 'misc', rarity: 'treasure', bonus: { gold: 250 }, icon: 'bag', col: '#9a6a3a', gem: '#f0c040' },
-  luckyHorseshoe: { name: 'Szczęśliwa podkowa', kind: 'misc', rarity: 'treasure', bonus: { mp: 100 }, icon: 'horseshoe', col: '#aab2bc', gem: '#6a7280' },
+  luckyHorseshoe: { name: 'Szczęśliwa podkowa', kind: 'misc', rarity: 'treasure', bonus: { luck: 1 }, icon: 'horseshoe', col: '#aab2bc', gem: '#6a7280' },
   steppeAxe: { name: 'Topór stepowego wodza', kind: 'weapon', rarity: 'minor', bonus: { att: 2 }, icon: 'axe', col: '#b0b8c4', gem: '#6a4424' },
-  lionShield: { name: 'Tarcza lwiej straży', kind: 'shield', rarity: 'minor', bonus: { def: 2 }, icon: 'shield', col: '#c8a040', gem: '#a8302a' },
-  mistCloak: { name: 'Płaszcz z mgły', kind: 'cloak', rarity: 'minor', bonus: { def: 1, sp: 1 }, icon: 'cloak', col: '#8aa0c0', gem: '#dce6f4' },
+  lionShield: { name: 'Tarcza lwiej straży', kind: 'shield', rarity: 'minor', bonus: { def: 1, morale: 1 }, icon: 'shield', col: '#c8a040', gem: '#a8302a' },
+  mistCloak: { name: 'Płaszcz z mgły', kind: 'cloak', rarity: 'minor', bonus: { def: 1, luck: 1 }, icon: 'cloak', col: '#8aa0c0', gem: '#dce6f4' },
   wardenMail: { name: 'Kolczuga strażnika', kind: 'torso', rarity: 'minor', bonus: { def: 1, kn: 1 }, icon: 'armor', col: '#a8b0bc', gem: '#6a7280' },
   clarityRing: { name: 'Pierścień jasności', kind: 'ring', rarity: 'minor', bonus: { kn: 2 }, icon: 'ring', col: '#d8dce4', gem: '#a060e0' },
   emberOrb: { name: 'Kula żaru', kind: 'misc', rarity: 'minor', bonus: { sp: 2 }, icon: 'orb', col: '#ff7a2a', gem: '#6a4424' },
   windBoots: { name: 'Buty wiatru', kind: 'feet', rarity: 'minor', bonus: { mp: 400 }, icon: 'boots', col: '#6a8aa8', gem: '#e8f0f8' },
   dragonfangBlade: { name: 'Ostrze smoczego kła', kind: 'weapon', rarity: 'major', bonus: { att: 4 }, icon: 'sword', col: '#e8e0c8', gem: '#3aa060' },
-  mountainShield: { name: 'Tarcza górskiego rodu', kind: 'shield', rarity: 'major', bonus: { def: 4 }, icon: 'shield', col: '#6a7a8a', gem: '#f0c040' },
-  sageDiadem: { name: 'Diadem mędrca', kind: 'head', rarity: 'major', bonus: { kn: 3, sp: 1 }, icon: 'crown', col: '#f0c040', gem: '#4aa0e0' },
+  mountainShield: { name: 'Tarcza górskiego rodu', kind: 'shield', rarity: 'major', bonus: { def: 3, morale: 2 }, icon: 'shield', col: '#6a7a8a', gem: '#f0c040' },
+  sageDiadem: { name: 'Diadem mędrca', kind: 'head', rarity: 'major', bonus: { kn: 3, sp: 1, luck: 1 }, icon: 'crown', col: '#f0c040', gem: '#4aa0e0' },
   runeBook: { name: 'Księga run', kind: 'misc', rarity: 'major', bonus: { sp: 3, kn: 1 }, icon: 'book', col: '#6a2a2a', gem: '#f0c040' },
   hornOfPlenty: { name: 'Mieszek obfitości', kind: 'misc', rarity: 'major', bonus: { gold: 750 }, icon: 'bag', col: '#6a3a6a', gem: '#f0c040' },
 };
@@ -52,6 +52,7 @@ const ARTS_BY_RARITY = rar => Object.keys(ARTIFACTS).filter(id => ARTIFACTS[id].
 function artBonusText(b) {
   const out = [];
   for (const p of PRIMARY) if (b[p.id]) out.push(`+${b[p.id]} do ${p.gen}`);
+  if (b.morale) out.push(`${signed(b.morale)} do morale`); if (b.luck) out.push(`${signed(b.luck)} do szczęścia`);
   if (b.mp) out.push(`+${b.mp} punktów ruchu`); if (b.sight) out.push(`+${b.sight} do zasięgu widzenia`); if (b.gold) out.push(`+${b.gold} złota dziennie`);
   return out.join(', ');
 }

@@ -115,6 +115,8 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    Okno dopasowane do ekranu: logiczne okno VW×VH (co najmniej W×H, do VW_MAX×VH_MAX) zamiast stałego 4:3.
    Mapa przygody (fill: true) wypełnia całe okno (layoutAdventure), menu maluje scenę na całą szerokość,
    pozostałe ekrany i okna dialogowe są wyśrodkowane (OX, OY) na tle drawBackdrop / screen.backdrop.
+   Krok 6: morale i szczęście (armyMorale, heroLuck; B.morale / B.luck liczone w createBattle). Morale dodatnie
+   daje drugi ruch po ataku (nextActive), ujemne wahanie i utratę tury; szczęście podwaja, pech połowi obrażenia (strike).
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
@@ -395,7 +397,7 @@ const EQUIP_SLOTS = [
   { id: 'misc1', kind: 'misc', name: 'Różne', x: 432, y: 300 }, { id: 'misc2', kind: 'misc', name: 'Różne', x: 716, y: 300 },
 ];
 const RARITY = { treasure: 'skarb', minor: 'pomniejszy', major: 'potężny' };
-// bonus: att/def/sp/kn (cechy), mp (punkty ruchu), sight (zasięg widzenia), gold (złoto dziennie)
+// bonus: att/def/sp/kn (cechy), mp (punkty ruchu), sight (zasięg widzenia), gold (złoto dziennie), morale, luck (szczęście)
 // icon: rodzaj rysunku w drawArtifact(); col/gem: kolory
 const ARTIFACTS = {
   noviceSword: { name: 'Miecz nowicjusza', kind: 'weapon', rarity: 'treasure', bonus: { att: 1 }, icon: 'sword', col: '#b8c0cc', gem: '#8a5a2a' },
@@ -405,17 +407,17 @@ const ARTIFACTS = {
   scoutRing: { name: 'Pierścień zwiadowcy', kind: 'ring', rarity: 'treasure', bonus: { sight: 1 }, icon: 'ring', col: '#c8a050', gem: '#4aa0e0' },
   wandererBoots: { name: 'Buty wędrowca', kind: 'feet', rarity: 'treasure', bonus: { mp: 200 }, icon: 'boots', col: '#7a4a26', gem: '#c8a050' },
   merchantPurse: { name: 'Sakiewka kupca', kind: 'misc', rarity: 'treasure', bonus: { gold: 250 }, icon: 'bag', col: '#9a6a3a', gem: '#f0c040' },
-  luckyHorseshoe: { name: 'Szczęśliwa podkowa', kind: 'misc', rarity: 'treasure', bonus: { mp: 100 }, icon: 'horseshoe', col: '#aab2bc', gem: '#6a7280' },
+  luckyHorseshoe: { name: 'Szczęśliwa podkowa', kind: 'misc', rarity: 'treasure', bonus: { luck: 1 }, icon: 'horseshoe', col: '#aab2bc', gem: '#6a7280' },
   steppeAxe: { name: 'Topór stepowego wodza', kind: 'weapon', rarity: 'minor', bonus: { att: 2 }, icon: 'axe', col: '#b0b8c4', gem: '#6a4424' },
-  lionShield: { name: 'Tarcza lwiej straży', kind: 'shield', rarity: 'minor', bonus: { def: 2 }, icon: 'shield', col: '#c8a040', gem: '#a8302a' },
-  mistCloak: { name: 'Płaszcz z mgły', kind: 'cloak', rarity: 'minor', bonus: { def: 1, sp: 1 }, icon: 'cloak', col: '#8aa0c0', gem: '#dce6f4' },
+  lionShield: { name: 'Tarcza lwiej straży', kind: 'shield', rarity: 'minor', bonus: { def: 1, morale: 1 }, icon: 'shield', col: '#c8a040', gem: '#a8302a' },
+  mistCloak: { name: 'Płaszcz z mgły', kind: 'cloak', rarity: 'minor', bonus: { def: 1, luck: 1 }, icon: 'cloak', col: '#8aa0c0', gem: '#dce6f4' },
   wardenMail: { name: 'Kolczuga strażnika', kind: 'torso', rarity: 'minor', bonus: { def: 1, kn: 1 }, icon: 'armor', col: '#a8b0bc', gem: '#6a7280' },
   clarityRing: { name: 'Pierścień jasności', kind: 'ring', rarity: 'minor', bonus: { kn: 2 }, icon: 'ring', col: '#d8dce4', gem: '#a060e0' },
   emberOrb: { name: 'Kula żaru', kind: 'misc', rarity: 'minor', bonus: { sp: 2 }, icon: 'orb', col: '#ff7a2a', gem: '#6a4424' },
   windBoots: { name: 'Buty wiatru', kind: 'feet', rarity: 'minor', bonus: { mp: 400 }, icon: 'boots', col: '#6a8aa8', gem: '#e8f0f8' },
   dragonfangBlade: { name: 'Ostrze smoczego kła', kind: 'weapon', rarity: 'major', bonus: { att: 4 }, icon: 'sword', col: '#e8e0c8', gem: '#3aa060' },
-  mountainShield: { name: 'Tarcza górskiego rodu', kind: 'shield', rarity: 'major', bonus: { def: 4 }, icon: 'shield', col: '#6a7a8a', gem: '#f0c040' },
-  sageDiadem: { name: 'Diadem mędrca', kind: 'head', rarity: 'major', bonus: { kn: 3, sp: 1 }, icon: 'crown', col: '#f0c040', gem: '#4aa0e0' },
+  mountainShield: { name: 'Tarcza górskiego rodu', kind: 'shield', rarity: 'major', bonus: { def: 3, morale: 2 }, icon: 'shield', col: '#6a7a8a', gem: '#f0c040' },
+  sageDiadem: { name: 'Diadem mędrca', kind: 'head', rarity: 'major', bonus: { kn: 3, sp: 1, luck: 1 }, icon: 'crown', col: '#f0c040', gem: '#4aa0e0' },
   runeBook: { name: 'Księga run', kind: 'misc', rarity: 'major', bonus: { sp: 3, kn: 1 }, icon: 'book', col: '#6a2a2a', gem: '#f0c040' },
   hornOfPlenty: { name: 'Mieszek obfitości', kind: 'misc', rarity: 'major', bonus: { gold: 750 }, icon: 'bag', col: '#6a3a6a', gem: '#f0c040' },
 };
@@ -424,6 +426,7 @@ const ARTS_BY_RARITY = rar => Object.keys(ARTIFACTS).filter(id => ARTIFACTS[id].
 function artBonusText(b) {
   const out = [];
   for (const p of PRIMARY) if (b[p.id]) out.push(`+${b[p.id]} do ${p.gen}`);
+  if (b.morale) out.push(`${signed(b.morale)} do morale`); if (b.luck) out.push(`${signed(b.luck)} do szczęścia`);
   if (b.mp) out.push(`+${b.mp} punktów ruchu`); if (b.sight) out.push(`+${b.sight} do zasięgu widzenia`); if (b.gold) out.push(`+${b.gold} złota dziennie`);
   return out.join(', ');
 }
@@ -2371,6 +2374,7 @@ function createBattle(st, h, foe) {
     rng: mulberry32(st.seed ^ (st.dayTotal * 7919) ^ (D.key * 104729)), prevPos: h.prev ? [...h.prev] : null };
   placeSide(B, 0, armyEntries(h.army, 'hero'));
   placeSide(B, 1, D.stacks);
+  B.morale = [sideMorale(B, 0), sideMorale(B, 1)]; B.luck = [sideLuck(B, 0), sideLuck(B, 1)];
   // przeszkody ze środka pola: te same drzewa i skały co na mapie przygody (typ + wariant rysunku)
   const cnt = 3 + Math.floor(B.rng() * 4);
   for (let k = 0, tries = 0; k < cnt && tries < 60; tries++) {
@@ -2379,6 +2383,24 @@ function createBattle(st, h, foe) {
   }
   return B;
 }
+// --- morale i szczęście (jak w oryginale, od −3 do +3; liczone raz, na początku bitwy) ---
+// Morale strony: armia z jednej frakcji +1, z dwóch 0, z trzech −1, z więcej −2; nieumarli w armii −1 dla żywych;
+// artefakty bohatera; obrońcy miasta z tawerną +1. Potwory z mapy walczą bez morale i szczęścia.
+function armyMorale(cids, hero, town) {
+  const facs = new Set(cids.map(cid => CREATURES[cid].faction)).size;
+  let m = facs <= 1 ? 1 : facs === 2 ? 0 : facs === 3 ? -1 : -2;
+  if (cids.some(cid => (CREATURES[cid].abil || []).includes('undead'))) m -= 1;
+  if (hero) m += heroBonus(hero, 'morale');
+  if (town && hasB(town, 'tavern')) m += 1;
+  return clamp(m, -3, 3);
+}
+const heroLuck = h => clamp(h ? heroBonus(h, 'luck') : 0, -3, 3);
+function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side).map(u => u.cid), S.hero, S.town); }
+const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
+// Nieumarli nie znają strachu ani zapału: morale zawsze 0
+const unitMorale = (B, u) => (hasAb(u, 'undead') || !B.morale ? 0 : B.morale[u.side]);
+const unitLuck = (B, u) => (B.luck ? B.luck[u.side] : 0);
+const signed = v => (v > 0 ? `+${v}` : String(v));
 const alive = (B, side) => B.units.filter(u => !u.dead && (side == null || u.side === side));
 const unitAt = (B, x, y) => B.units.find(u => !u.dead && u.x === x && u.y === y) || null;
 const hasAb = (u, a) => (CREATURES[u.cid].abil || []).includes(a);
@@ -2445,8 +2467,12 @@ function healUnit(u, amount) {
   const hp = CREATURES[u.cid].hp, max = u.n0 * hp, total = Math.min(max, (u.n - 1) * hp + u.hp + amount), before = u.n;
   u.n = Math.ceil(total / hp); u.hp = total - (u.n - 1) * hp; return u.n - before;
 }
+// Szczęście: szansa L/24 na podwójne obrażenia; pech: |L|/12 na połowę
 function strike(B, a, t, ranged, moved = 0) {
-  const dmg = damageRoll(B, a, t, ranged, moved), killed = applyDamage(t, dmg);
+  let dmg = damageRoll(B, a, t, ranged, moved); const L = unitLuck(B, a);
+  if (L > 0 && B.rng() < L / 24) { dmg *= 2; B.log.push(`Szczęście! ${CREATURES[a.cid].plural} zadają podwójne obrażenia.`); if (B.fx) B.fx.push({ kind: 'heal', u: a, label: 'Szczęście!' }); }
+  else if (L < 0 && B.rng() < -L / 12) { dmg = Math.max(1, Math.floor(dmg / 2)); B.log.push(`Pech! ${CREATURES[a.cid].plural} zadają połowę obrażeń.`); if (B.fx) B.fx.push({ kind: 'heal', u: a, label: 'Pech!' }); }
+  const killed = applyDamage(t, dmg);
   B.log.push(`${CREATURES[a.cid].plural} (${a.n}) zadają ${dmg} obrażeń${killed ? `. ${CREATURES[t.cid].plural} tracą ${killed}` : ''}.`);
   if (B.fx) B.fx.push({ kind: ranged ? 'shot' : 'hit', a, tg: t, dmg, killed });
   if (hasAb(a, 'lifeDrain') && !hasAb(t, 'undead')) {
@@ -2461,7 +2487,7 @@ function strike(B, a, t, ranged, moved = 0) {
 }
 // Wykonanie akcji; ruch i ataki od razu zmieniają stan, a ekran odtwarza je z listy B.fx (gdy istnieje)
 function actMoveAttack(B, u, path, target) {
-  let moved = 0;
+  let moved = 0; u.acted = true; // ruch albo atak: szansa na drugi ruch z morale
   if (path.length) {
     const [x, y] = path[path.length - 1]; moved = hexDistance(u, { x, y });
     if (B.fx) B.fx.push({ kind: 'move', u, path: [[u.x, u.y], ...path], fly: hasAb(u, 'fly') }); u.x = x; u.y = y;
@@ -2473,7 +2499,7 @@ function actMoveAttack(B, u, path, target) {
   if (hasAb(u, 'doubleStrike') && !u.dead && !target.dead) strike(B, u, target, false, 0);
 }
 function actShoot(B, u, target) {
-  u.shots--; strike(B, u, target, true);
+  u.acted = true; u.shots--; strike(B, u, target, true);
   if (hasAb(u, 'doubleShot') && u.shots > 0 && !target.dead) { u.shots--; strike(B, u, target, true); }
 }
 function actWait(B, u) { u.waited = true; B.waitQ.push(u); B.log.push(`${CREATURES[u.cid].plural} czekają.`); }
@@ -2519,20 +2545,35 @@ function aiAct(B, u) {
   actMoveAttack(B, u, path, null);
 }
 // Kolejka: w każdej rundzie od najszybszych; kto czekał, rusza na końcu (najwolniejsi pierwsi)
+// Kolejny oddział. Morale: po ataku albo ruchu oddział z dodatnim morale M ma szansę M/24 na drugi ruch
+// w tej rundzie; z ujemnym, na początku swojej tury, szansę |M|/12, że się zawaha i straci turę.
 function nextActive(B) {
+  const prev = B.active;
+  if (prev && prev.acted) {
+    prev.acted = false; const m = unitMorale(B, prev);
+    if (!prev.dead && !prev.moraleBonus && m > 0 && alive(B, 0).length && alive(B, 1).length && B.rng() < m / 24) {
+      prev.moraleBonus = true; B.log.push(`Wysokie morale! ${CREATURES[prev.cid].plural} ruszają ponownie.`);
+      if (B.fx) B.fx.push({ kind: 'heal', u: prev, label: 'Morale!' }); return prev;
+    }
+  }
   for (;;) {
     if (!alive(B, 0).length || !alive(B, 1).length) { B.over = alive(B, 0).length ? 'win' : 'lose'; B.active = null; return null; }
     if (!B.order.length && B.waitQ.length) { B.order = B.waitQ.filter(u => !u.dead).sort((a, b) => unitSpd(a) - unitSpd(b)); B.waitQ = []; }
     if (!B.order.length) {
       B.round++; B.cast = [false, false];
       for (const u of B.units) {
-        u.retaliated = false; u.defending = false; u.waited = false;
+        u.retaliated = false; u.defending = false; u.waited = false; u.moraleBonus = false; u.moraleRolled = false;
         for (const k of Object.keys(u.buffs)) if (--u.buffs[k] <= 0) delete u.buffs[k];
         if (!u.dead && hasAb(u, 'regen') && u.hp < CREATURES[u.cid].hp) { const amt = CREATURES[u.cid].hp - u.hp; u.hp += amt; if (B.fx) B.fx.push({ kind: 'heal', u, amount: amt }); }
       }
       B.order = alive(B).sort((a, b) => unitSpd(b) - unitSpd(a) || a.side - b.side);
     }
-    const u = B.order.shift(); if (u && !u.dead) { B.active = u; if (u.defending) u.defending = false; return u; }
+    const u = B.order.shift(); if (!u || u.dead) continue;
+    if (!u.moraleRolled) {
+      u.moraleRolled = true; const m = unitMorale(B, u);
+      if (m < 0 && B.rng() < -m / 12) { B.log.push(`Niskie morale: ${CREATURES[u.cid].plural.toLowerCase()} wahają się i tracą turę.`); if (B.fx) B.fx.push({ kind: 'heal', u, label: 'Wahanie' }); continue; }
+    }
+    B.active = u; if (u.defending) u.defending = false; return u;
   }
 }
 // --- czary w bitwie: bohater rzuca jeden czar na rundę, zanim ruszy oddział ---
@@ -5065,8 +5106,9 @@ G.screens.hero = {
     [`Ruch: ${h.mp} z ${heroMaxMP(h)}${mpB ? ` (+${mpB} z artefaktów)` : ''}`,
      `Zasięg widzenia: ${heroSight(h)}${sB ? ` (+${sB})` : ''} · mana ${h.mana} / ${heroMaxMana(h)} · czary: ${(h.spells || []).length}`,
      `Siła armii: ${Math.round(armyPower(h.army) * heroFactor(h))} (premia bohatera +${Math.round((heroFactor(h) - 1) * 100)}%)`,
+     `Morale: ${signed(armyMorale(armyStacks(h.army).map(s => s.cid), h, null))} · Szczęście: ${signed(heroLuck(h))}`,
      gold ? `Złoto z artefaktów: +${gold} dziennie` : null].filter(Boolean)
-      .forEach((l, i) => text(ctx, l, 32, 286 + i * 24, { size: 15, weight: 500, color: '#2a1606' }));
+      .forEach((l, i) => text(ctx, l, 32, 286 + i * 22, { size: 15, weight: 500, color: '#2a1606' }));
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });
     text(ctx, 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
@@ -5401,7 +5443,7 @@ G.screens.battle = {
     const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y); if (!u) return null;
     const c = CREATURES[u.cid];
     const ab = abilText(c);
-    return `${c.plural}: ${u.n} (${humanSide(this.B, u.side) ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''}${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
+    return `${c.plural}: ${u.n} (${humanSide(this.B, u.side) ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''} Morale ${signed(unitMorale(this.B, u))}, szczęście ${signed(unitLuck(this.B, u))}.${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
   },
   draw(ctx) {
     const B = this.B, st = B.st, u0 = B.active, col = ownerColor(st, B.h.owner);

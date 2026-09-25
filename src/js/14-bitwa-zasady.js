@@ -45,6 +45,7 @@ function createBattle(st, h, foe) {
     rng: mulberry32(st.seed ^ (st.dayTotal * 7919) ^ (D.key * 104729)), prevPos: h.prev ? [...h.prev] : null };
   placeSide(B, 0, armyEntries(h.army, 'hero'));
   placeSide(B, 1, D.stacks);
+  B.morale = [sideMorale(B, 0), sideMorale(B, 1)]; B.luck = [sideLuck(B, 0), sideLuck(B, 1)];
   // przeszkody ze środka pola: te same drzewa i skały co na mapie przygody (typ + wariant rysunku)
   const cnt = 3 + Math.floor(B.rng() * 4);
   for (let k = 0, tries = 0; k < cnt && tries < 60; tries++) {
@@ -53,6 +54,24 @@ function createBattle(st, h, foe) {
   }
   return B;
 }
+// --- morale i szczęście (jak w oryginale, od −3 do +3; liczone raz, na początku bitwy) ---
+// Morale strony: armia z jednej frakcji +1, z dwóch 0, z trzech −1, z więcej −2; nieumarli w armii −1 dla żywych;
+// artefakty bohatera; obrońcy miasta z tawerną +1. Potwory z mapy walczą bez morale i szczęścia.
+function armyMorale(cids, hero, town) {
+  const facs = new Set(cids.map(cid => CREATURES[cid].faction)).size;
+  let m = facs <= 1 ? 1 : facs === 2 ? 0 : facs === 3 ? -1 : -2;
+  if (cids.some(cid => (CREATURES[cid].abil || []).includes('undead'))) m -= 1;
+  if (hero) m += heroBonus(hero, 'morale');
+  if (town && hasB(town, 'tavern')) m += 1;
+  return clamp(m, -3, 3);
+}
+const heroLuck = h => clamp(h ? heroBonus(h, 'luck') : 0, -3, 3);
+function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side).map(u => u.cid), S.hero, S.town); }
+const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
+// Nieumarli nie znają strachu ani zapału: morale zawsze 0
+const unitMorale = (B, u) => (hasAb(u, 'undead') || !B.morale ? 0 : B.morale[u.side]);
+const unitLuck = (B, u) => (B.luck ? B.luck[u.side] : 0);
+const signed = v => (v > 0 ? `+${v}` : String(v));
 const alive = (B, side) => B.units.filter(u => !u.dead && (side == null || u.side === side));
 const unitAt = (B, x, y) => B.units.find(u => !u.dead && u.x === x && u.y === y) || null;
 const hasAb = (u, a) => (CREATURES[u.cid].abil || []).includes(a);
@@ -119,8 +138,12 @@ function healUnit(u, amount) {
   const hp = CREATURES[u.cid].hp, max = u.n0 * hp, total = Math.min(max, (u.n - 1) * hp + u.hp + amount), before = u.n;
   u.n = Math.ceil(total / hp); u.hp = total - (u.n - 1) * hp; return u.n - before;
 }
+// Szczęście: szansa L/24 na podwójne obrażenia; pech: |L|/12 na połowę
 function strike(B, a, t, ranged, moved = 0) {
-  const dmg = damageRoll(B, a, t, ranged, moved), killed = applyDamage(t, dmg);
+  let dmg = damageRoll(B, a, t, ranged, moved); const L = unitLuck(B, a);
+  if (L > 0 && B.rng() < L / 24) { dmg *= 2; B.log.push(`Szczęście! ${CREATURES[a.cid].plural} zadają podwójne obrażenia.`); if (B.fx) B.fx.push({ kind: 'heal', u: a, label: 'Szczęście!' }); }
+  else if (L < 0 && B.rng() < -L / 12) { dmg = Math.max(1, Math.floor(dmg / 2)); B.log.push(`Pech! ${CREATURES[a.cid].plural} zadają połowę obrażeń.`); if (B.fx) B.fx.push({ kind: 'heal', u: a, label: 'Pech!' }); }
+  const killed = applyDamage(t, dmg);
   B.log.push(`${CREATURES[a.cid].plural} (${a.n}) zadają ${dmg} obrażeń${killed ? `. ${CREATURES[t.cid].plural} tracą ${killed}` : ''}.`);
   if (B.fx) B.fx.push({ kind: ranged ? 'shot' : 'hit', a, tg: t, dmg, killed });
   if (hasAb(a, 'lifeDrain') && !hasAb(t, 'undead')) {
@@ -135,7 +158,7 @@ function strike(B, a, t, ranged, moved = 0) {
 }
 // Wykonanie akcji; ruch i ataki od razu zmieniają stan, a ekran odtwarza je z listy B.fx (gdy istnieje)
 function actMoveAttack(B, u, path, target) {
-  let moved = 0;
+  let moved = 0; u.acted = true; // ruch albo atak: szansa na drugi ruch z morale
   if (path.length) {
     const [x, y] = path[path.length - 1]; moved = hexDistance(u, { x, y });
     if (B.fx) B.fx.push({ kind: 'move', u, path: [[u.x, u.y], ...path], fly: hasAb(u, 'fly') }); u.x = x; u.y = y;
@@ -147,7 +170,7 @@ function actMoveAttack(B, u, path, target) {
   if (hasAb(u, 'doubleStrike') && !u.dead && !target.dead) strike(B, u, target, false, 0);
 }
 function actShoot(B, u, target) {
-  u.shots--; strike(B, u, target, true);
+  u.acted = true; u.shots--; strike(B, u, target, true);
   if (hasAb(u, 'doubleShot') && u.shots > 0 && !target.dead) { u.shots--; strike(B, u, target, true); }
 }
 function actWait(B, u) { u.waited = true; B.waitQ.push(u); B.log.push(`${CREATURES[u.cid].plural} czekają.`); }
@@ -193,20 +216,35 @@ function aiAct(B, u) {
   actMoveAttack(B, u, path, null);
 }
 // Kolejka: w każdej rundzie od najszybszych; kto czekał, rusza na końcu (najwolniejsi pierwsi)
+// Kolejny oddział. Morale: po ataku albo ruchu oddział z dodatnim morale M ma szansę M/24 na drugi ruch
+// w tej rundzie; z ujemnym, na początku swojej tury, szansę |M|/12, że się zawaha i straci turę.
 function nextActive(B) {
+  const prev = B.active;
+  if (prev && prev.acted) {
+    prev.acted = false; const m = unitMorale(B, prev);
+    if (!prev.dead && !prev.moraleBonus && m > 0 && alive(B, 0).length && alive(B, 1).length && B.rng() < m / 24) {
+      prev.moraleBonus = true; B.log.push(`Wysokie morale! ${CREATURES[prev.cid].plural} ruszają ponownie.`);
+      if (B.fx) B.fx.push({ kind: 'heal', u: prev, label: 'Morale!' }); return prev;
+    }
+  }
   for (;;) {
     if (!alive(B, 0).length || !alive(B, 1).length) { B.over = alive(B, 0).length ? 'win' : 'lose'; B.active = null; return null; }
     if (!B.order.length && B.waitQ.length) { B.order = B.waitQ.filter(u => !u.dead).sort((a, b) => unitSpd(a) - unitSpd(b)); B.waitQ = []; }
     if (!B.order.length) {
       B.round++; B.cast = [false, false];
       for (const u of B.units) {
-        u.retaliated = false; u.defending = false; u.waited = false;
+        u.retaliated = false; u.defending = false; u.waited = false; u.moraleBonus = false; u.moraleRolled = false;
         for (const k of Object.keys(u.buffs)) if (--u.buffs[k] <= 0) delete u.buffs[k];
         if (!u.dead && hasAb(u, 'regen') && u.hp < CREATURES[u.cid].hp) { const amt = CREATURES[u.cid].hp - u.hp; u.hp += amt; if (B.fx) B.fx.push({ kind: 'heal', u, amount: amt }); }
       }
       B.order = alive(B).sort((a, b) => unitSpd(b) - unitSpd(a) || a.side - b.side);
     }
-    const u = B.order.shift(); if (u && !u.dead) { B.active = u; if (u.defending) u.defending = false; return u; }
+    const u = B.order.shift(); if (!u || u.dead) continue;
+    if (!u.moraleRolled) {
+      u.moraleRolled = true; const m = unitMorale(B, u);
+      if (m < 0 && B.rng() < -m / 12) { B.log.push(`Niskie morale: ${CREATURES[u.cid].plural.toLowerCase()} wahają się i tracą turę.`); if (B.fx) B.fx.push({ kind: 'heal', u, label: 'Wahanie' }); continue; }
+    }
+    B.active = u; if (u.defending) u.defending = false; return u;
   }
 }
 // --- czary w bitwie: bohater rzuca jeden czar na rundę, zanim ruszy oddział ---
