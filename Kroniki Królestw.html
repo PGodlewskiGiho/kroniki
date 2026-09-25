@@ -117,6 +117,10 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    pozostałe ekrany i okna dialogowe są wyśrodkowane (OX, OY) na tle drawBackdrop / screen.backdrop.
    Krok 6: morale i szczęście (armyMorale, heroLuck; B.morale / B.luck liczone w createBattle). Morale dodatnie
    daje drugi ruch po ataku (nextActive), ujemne wahanie i utratę tury; szczęście podwaja, pech połowi obrażenia (strike).
+   Krok 7: umiejętności drugorzędne (SKILLS, h.skills = [{ id, lv }], najwyżej 8, poziomy 1–3). Awans daje wybór
+   z dwóch (skillOffer: ulepszenie + nowa), SI wybiera wg AI_SKILL_ORDER. Działanie: skillVal() w ruchu, widzeniu,
+   manie, dochodzie, koszcie terenu (baseCost z bohaterem), obrażeniach (damageRoll, spellDamage), morale,
+   szczęściu, doświadczeniu i nekromancji (raiseDead po zwycięstwie).
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
@@ -384,6 +388,34 @@ const CLASS_GROWTH = {
   ranger: { base: [1, 3, 1, 1], grow: [30, 45, 10, 15] }, druid: { base: [0, 2, 1, 2], grow: [10, 20, 35, 35] },
   deathKnight: { base: [1, 2, 2, 1], grow: [30, 25, 25, 20] }, necro: { base: [1, 0, 2, 2], grow: [15, 15, 35, 35] },
 };
+// Umiejętności drugorzędne (jak w oryginale): bohater ma ich najwyżej MAX_SKILLS, każdą na poziomie 1–3.
+// v: wartość na poziomach 1–3 (działanie w ZASADY GRY i BITWA: ZASADY), desc: opis dla wartości.
+const MAX_SKILLS = 8, SKILL_LEVELS = ['', 'podstawowe', 'zaawansowane', 'eksperckie'];
+const SKILLS = {
+  leadership: { name: 'Przywództwo', v: [1, 2, 3], desc: v => `+${v} do morale armii` },
+  luck: { name: 'Szczęście', v: [1, 2, 3], desc: v => `+${v} do szczęścia armii` },
+  offense: { name: 'Atak', v: [10, 20, 30], desc: v => `+${v}% obrażeń w walce wręcz` },
+  archery: { name: 'Łucznictwo', v: [10, 25, 50], desc: v => `+${v}% obrażeń strzelców` },
+  armorer: { name: 'Zbroja', v: [5, 10, 15], desc: v => `armia otrzymuje o ${v}% mniej obrażeń` },
+  logistics: { name: 'Logistyka', v: [10, 20, 30], desc: v => `+${v}% punktów ruchu` },
+  pathfinding: { name: 'Znajdowanie drogi', v: [25, 50, 100], desc: v => `trudny teren spowalnia o ${v}% mniej` },
+  scouting: { name: 'Zwiad', v: [1, 2, 3], desc: v => `+${v} do zasięgu widzenia` },
+  sorcery: { name: 'Czarnoksięstwo', v: [10, 20, 30], desc: v => `+${v}% obrażeń od czarów` },
+  intelligence: { name: 'Inteligencja', v: [25, 50, 100], desc: v => `+${v}% maksymalnej many` },
+  mysticism: { name: 'Mistycyzm', v: [2, 3, 4], desc: v => `+${v} many dziennie` },
+  estates: { name: 'Majątek', v: [125, 250, 500], desc: v => `+${v} złota dziennie` },
+  learning: { name: 'Nauka', v: [5, 10, 15], desc: v => `+${v}% doświadczenia` },
+  necromancy: { name: 'Nekromancja', v: [10, 20, 30], desc: v => `po zwycięstwie z ${v}% życia poległych żywych wrogów powstają kościotrupy` },
+};
+// Umiejętności startowe klas; nekromancję mogą poznać tylko klasy Kurhanu
+const CLASS_SKILLS = {
+  knight: [['leadership', 1], ['archery', 1]], cleric: [['intelligence', 1], ['estates', 1]],
+  ranger: [['pathfinding', 1], ['archery', 1]], druid: [['luck', 1], ['mysticism', 1]],
+  deathKnight: [['necromancy', 1], ['offense', 1]], necro: [['necromancy', 1], ['sorcery', 1]],
+};
+const NECRO_CLASSES = ['deathKnight', 'necro'];
+// Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
+const AI_SKILL_ORDER = ['offense', 'necromancy', 'leadership', 'armorer', 'archery', 'logistics', 'luck', 'pathfinding', 'estates', 'sorcery', 'intelligence', 'learning', 'mysticism', 'scouting'];
 // Doświadczenie potrzebne do poziomu 2, 3, ... (dalej każdy poziom +20%)
 const LEVEL_EXP = [0, 0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600, 24320];
 const expForLevel = L => (L < LEVEL_EXP.length ? LEVEL_EXP[L] : Math.round(expForLevel(L - 1) * 1.2));
@@ -784,12 +816,13 @@ function clickButtons(list, x, y) {
   if (b && b === G.downTarget) { if (b.action) b.action(); return true; }
   return false;
 }
-// opts: [{label, key, action}]
+// opts: [{label, key, action, sub, tip}]; extra: icon, iconH, locked (Esc nie zamyka), bw (szerokość przycisków)
 function showDialog(msg, opts, extra = {}) {
-  const w = Math.max(400, opts.length * 144 + 36); G.ctx.font = font(20, 500, 'body'); const lines = wrapText(G.ctx, msg, w - 70);
-  const iconH = extra.icon ? (extra.iconH || 56) : 0, h = 130 + lines.length * 26 + iconH, x = (W - w) / 2, y = (H - h) / 2;
-  const bw = 120, gap = 24, total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
-  const buttons = opts.map(o => { const b = new Button(bx, y + h - 64, bw, 40, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key }); bx += bw + gap; return b; });
+  const bw = extra.bw || 120, gap = 24, bh = opts.some(o => o.sub) ? 50 : 40;
+  const w = Math.max(400, opts.length * (bw + gap) + 36); G.ctx.font = font(20, 500, 'body'); const lines = wrapText(G.ctx, msg, w - 70);
+  const iconH = extra.icon ? (extra.iconH || 56) : 0, h = 120 + bh + lines.length * 26 + iconH, x = (W - w) / 2, y = (H - h) / 2;
+  const total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
+  const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip }); bx += bw + gap; return b; });
   G.modal = {
     msg, buttons, locked: !!extra.locked, // msg: treść okna (podgląd w testach)
     draw(ctx) {
@@ -1982,7 +2015,7 @@ function startNewGame() { saveSettings(); G.state = createNewGame(G.settings); G
 // Ruch, odkrywanie mapy, obiekty, potyczki, dochód, budowanie.
 // Dzienny limit ruchu zależy od najwolniejszej jednostki w armii (jak w oryginale)
 function mpBySpeed(s) { return s <= 3 ? 1500 : s >= 11 ? 2000 : [1560, 1630, 1700, 1760, 1830, 1900, 1960][s - 4]; }
-function heroMaxMP(h) { return mpBySpeed(armySlowest(h.army)) + heroBonus(h, 'mp'); }
+function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100)) + heroBonus(h, 'mp'); }
 // Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
 function reveal(st, cx, cy, r, owner = ME) {
   const P = playerOf(st, owner); if (!P || !P.explored) return;
@@ -1998,8 +2031,13 @@ function passableTile(st, x, y) {
   const i = y * n + x; return !!human(st).explored[i] && map.terrain[i] !== TER.WATER && !map.obst[i];
 }
 // Koszt kroku liczony wg terenu, z którego bohater wychodzi; droga działa, gdy oba pola mają drogę.
-function baseCost(map, i, j) { return (map.road[i] && map.road[j]) ? ROADS[map.road[i]].cost : TERRAINS[map.terrain[i]].cost; }
-function stepCost(map, fx, fy, tx, ty) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
+// Znajdowanie drogi (h) zmniejsza narzut trudnego terenu ponad 100.
+function baseCost(map, i, j, h) {
+  if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
+  const c = TERRAINS[map.terrain[i]].cost, pf = h ? skillVal(h, 'pathfinding') : 0;
+  return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
+}
+function stepCost(map, fx, fy, tx, ty, h) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx, h); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
 function heroDrawPos(h) {
   if (!h.anim) return [h.x, h.y]; const k = clamp(h.anim.t / STEP_TIME, 0, 1);
   return [h.anim.fx + (h.x - h.anim.fx) * k, h.anim.fy + (h.y - h.anim.fy) * k];
@@ -2028,13 +2066,13 @@ function computePath(st, h, tx, ty) {
   if (!passableTile(st, tx, ty)) return null; const map = st.map, n = map.n, t = ty * n + tx;
   if (objBlocks(st, t, t)) return null;
   const tob = objectAt(st, t), tg = tob && tob.type === 'monster' ? tob.id + 1 : 0;
-  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j) : Infinity, 50);
+  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j, h) : Infinity, 50);
   return p && p.length > 1 ? p.slice(1).map(i => [i % n, (i / n) | 0]) : null;
 }
 function heroCanStillMove(st, h) {
   if (!armySize(h.army)) return false;
   const n = st.map.n;
-  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y) <= h.mp) return true; }
+  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y, h) <= h.mp) return true; }
   return false;
 }
 function heroStep(st, h) {
@@ -2044,7 +2082,7 @@ function heroStep(st, h) {
   if (ob && ob.type === 'monster') { halt(); h.prev = null; startEncounter(st, h, ob); return false; }
   const other = heroAt(st, nx, ny); // bohater w bramie miasta broni się razem z miastem (startTownAssault)
   if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } return false; }
-  const cost = stepCost(st.map, h.x, h.y, nx, ny); if (h.mp < cost) { h.moving = false; return false; }
+  const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
   if (!h.path.length) { h.path = null; h.dest = null; }
@@ -2121,28 +2159,58 @@ function initHeroProgress(h) {
   if (!h.bag) h.bag = [];
   if (!h.level) h.level = 1;
   if (!h.spells) h.spells = [...(CLASS_SPELLS[h.cls] || [])];
+  if (!h.skills) h.skills = (CLASS_SKILLS[h.cls] || []).map(([id, lv]) => ({ id, lv }));
   if (h.mana == null) h.mana = heroMaxMana(h);
 }
+// --- umiejętności drugorzędne ---
+const heroSkill = (h, id) => { const s = h && h.skills && h.skills.find(s => s.id === id); return s ? s.lv : 0; };
+const skillVal = (h, id) => { const L = heroSkill(h, id); return L ? SKILLS[id].v[L - 1] : 0; };
+const skillText = (id, L) => `${SKILLS[id].name} (${SKILL_LEVELS[L]}): ${SKILLS[id].desc(SKILLS[id].v[L - 1])}`;
+// Propozycja przy awansie na poziom L (jak w oryginale): ulepszenie znanej umiejętności i nowa umiejętność;
+// gdy którejś grupy brak, obie z drugiej. Losowanie powtarzalne (ziarno gry, bohater, poziom).
+function skillOffer(st, h, L) {
+  const up = (h.skills || []).filter(s => s.lv < 3).map(s => s.id);
+  const fresh = (h.skills || []).length < MAX_SKILLS ? Object.keys(SKILLS).filter(id => !heroSkill(h, id) && (id !== 'necromancy' || NECRO_CLASSES.includes(h.cls))) : [];
+  const r = mulberry32(thash(h.id, L, st.seed) ^ 0x5a1d), pick = a => (a.length ? a.splice(Math.floor(r() * a.length), 1)[0] : null);
+  return [pick(up) || pick(fresh), pick(fresh) || pick(up)].filter(Boolean);
+}
+function learnSkill(h, id) {
+  const s = h.skills.find(s => s.id === id);
+  if (s) s.lv = Math.min(3, s.lv + 1); else if (h.skills.length < MAX_SKILLS) h.skills.push({ id, lv: 1 });
+  h.mana = Math.min(h.mana, heroMaxMana(h));
+}
+const aiPickSkill = offer => offer.slice().sort((a, b) => AI_SKILL_ORDER.indexOf(a) - AI_SKILL_ORDER.indexOf(b))[0];
 // Suma premii z założonych artefaktów (plecak nie działa)
 const heroBonus = (h, key) => Object.values(h.equip || {}).reduce((s, id) => s + (id ? ARTIFACTS[id].bonus[key] || 0 : 0), 0);
 const heroStat = (h, key) => h.stats[key] + heroBonus(h, key);
-const heroSight = h => h.sight + heroBonus(h, 'sight');
+const heroSight = h => h.sight + heroBonus(h, 'sight') + skillVal(h, 'scouting');
 // Premia bohatera do siły armii w potyczce: +5% za każdy punkt ataku i obrony
 const heroFactor = h => 1 + 0.05 * (heroStat(h, 'att') + heroStat(h, 'def'));
 // Doświadczenie z awansami. Wzrost cechy losowany deterministycznie (ziarno gry, bohater, poziom).
-// then(): co zrobić po zamknięciu okna awansu (np. obejrzeć obiekt, na którym stoi bohater)
+// Każdy awans daje też wybór umiejętności: SI wybiera od razu, człowiek w oknie (po kolei, gdy awansów jest kilka).
+// then(): co zrobić po zamknięciu okien awansu (np. obejrzeć obiekt, na którym stoi bohater)
 function gainExp(st, h, amount, then) {
-  h.exp += amount; const ups = [];
+  h.exp += Math.round(amount * (1 + skillVal(h, 'learning') / 100)); const ups = [];
   while (h.exp >= expForLevel(h.level + 1)) {
     h.level++; const g = (CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight).grow, r = thash(h.id, h.level, st.seed) % 100;
     let acc = 0, k = 0; for (; k < 3; k++) { acc += g[k]; if (r < acc) break; }
-    h.stats[PRIMARY[k].id]++; ups.push(PRIMARY[k]);
+    h.stats[PRIMARY[k].id]++; ups.push({ level: h.level, stat: PRIMARY[k] });
   }
-  if (!ups.length || h.owner !== ME) { if (then) then(); return ups.length; }
-  const gains = PRIMARY.map(p => [p, ups.filter(u => u === p).length]).filter(([, k]) => k).map(([p, k]) => `+${k} do ${p.gen}`);
-  showDialog(`${h.name} osiąga poziom ${h.level}! ${gains.join(', ')}.`, [{ label: 'Wspaniale', key: 'enter', action: then }],
-    { iconH: 76, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) });
-  return ups.length;
+  if (h.owner !== ME || !ups.length) {
+    for (const u of ups) { const offer = skillOffer(st, h, u.level); if (offer.length) learnSkill(h, aiPickSkill(offer)); }
+    if (then) then(); return ups.length;
+  }
+  const next = i => {
+    if (i >= ups.length) { if (then) then(); return; }
+    const u = ups[i], offer = skillOffer(st, h, u.level), icon = { iconH: 76, locked: offer.length > 0, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) };
+    const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`;
+    if (!offer.length) { showDialog(msg, [{ label: 'Wspaniale', key: 'enter', action: () => next(i + 1) }], icon); return; }
+    showDialog(`${msg} Wybierz umiejętność:`, offer.map((id, k) => {
+      const L = heroSkill(h, id) + 1;
+      return { label: SKILLS[id].name, sub: SKILL_LEVELS[L], tip: skillText(id, L) + '.', key: String(k + 1), action: () => { learnSkill(h, id); next(i + 1); } };
+    }), Object.assign(icon, { bw: 200 }));
+  };
+  next(0); return ups.length;
 }
 // Zakłada artefakt z plecaka (indeks) na pasujące miejsce: najpierw wolne, inaczej zamiana z pierwszym pasującym
 function equipFromBag(h, bi) {
@@ -2159,7 +2227,7 @@ function giveArtifact(h, id) {
 }
 
 // --- czary: mana, nauka w gildii, czary na mapie -----------------------------------------------
-const heroMaxMana = h => 10 * heroStat(h, 'kn');
+const heroMaxMana = h => Math.floor(10 * heroStat(h, 'kn') * (1 + skillVal(h, 'intelligence') / 100));
 const knows = (h, id) => (h.spells || []).includes(id);
 // Czary gildii losowane raz, gdy powstaje dany poziom (deterministycznie z ziarna gry i miasta)
 function rollGuildLevel(st, t, L) {
@@ -2256,7 +2324,7 @@ function dailyIncomeAll(st, owner = ME) {
   const inc = Object.fromEntries(RESOURCES.map(r => [r.id, 0]));
   for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === owner) inc[ob.kind] += MINES[ob.kind].income;
   for (const t of st.towns) if (t.owner === owner) { inc.gold += townGold(t); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; } }
-  for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold');
+  for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates');
   return inc;
 }
 const dailyIncome = (st, res) => dailyIncomeAll(st)[res];
@@ -2390,11 +2458,11 @@ function armyMorale(cids, hero, town) {
   const facs = new Set(cids.map(cid => CREATURES[cid].faction)).size;
   let m = facs <= 1 ? 1 : facs === 2 ? 0 : facs === 3 ? -1 : -2;
   if (cids.some(cid => (CREATURES[cid].abil || []).includes('undead'))) m -= 1;
-  if (hero) m += heroBonus(hero, 'morale');
+  if (hero) m += heroBonus(hero, 'morale') + skillVal(hero, 'leadership');
   if (town && hasB(town, 'tavern')) m += 1;
   return clamp(m, -3, 3);
 }
-const heroLuck = h => clamp(h ? heroBonus(h, 'luck') : 0, -3, 3);
+const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') : 0, -3, 3);
 function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side).map(u => u.cid), S.hero, S.town); }
 const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
 // Nieumarli nie znają strachu ani zapału: morale zawsze 0
@@ -2455,6 +2523,8 @@ function damageRoll(B, a, t, ranged, moved = 0) {
   let mult = A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
   if (!ranged && ca.shots > 0 && !hasAb(a, 'noMeleePenalty')) mult *= 0.5;
   if (!ranged && hasAb(a, 'jousting')) mult *= 1 + 0.05 * moved;
+  // umiejętności bohaterów: Atak / Łucznictwo napastnika, Zbroja obrońcy
+  mult *= (1 + skillVal(sideHero(B, a.side), ranged ? 'archery' : 'offense') / 100) * (1 - skillVal(sideHero(B, t.side), 'armorer') / 100);
   return Math.max(1, Math.floor(base * mult));
 }
 function applyDamage(t, dmg) {
@@ -2589,6 +2659,8 @@ function spellTargetOk(B, id, u) {
   const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex') return true; if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead'))) return false;
   return t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : false;
 }
+// Obrażenia czaru z Czarnoksięstwem bohatera
+const spellDamage = (h, S, sp) => Math.floor(S.dmg(sp) * (1 + skillVal(h, 'sorcery') / 100));
 // Pola trafione czarem (kula ognia: pole + sąsiedzi)
 const spellArea = (id, x, y) => (SPELLS[id].target === 'hex' ? [[x, y], ...hexNeighbors(x, y)] : [[x, y]]);
 function castBattle(B, id, x, y) {
@@ -2596,7 +2668,7 @@ function castBattle(B, id, x, y) {
   h.mana -= S.cost; B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
   if (B.fx) B.fx.push({ kind: 'spell', id, x, y });
   if (S.dmg) for (const [ax, ay] of spellArea(id, x, y)) {
-    const v = unitAt(B, ax, ay); if (!v) continue; const d = S.dmg(sp), k = applyDamage(v, d);
+    const v = unitAt(B, ax, ay); if (!v) continue; const d = spellDamage(h, S, sp), k = applyDamage(v, d);
     B.log.push(`${CREATURES[v.cid].plural}: ${d} obrażeń${k ? `, tracą ${k}` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: v, dmg: d, killed: k });
   }
   if (S.heal && tu) {
@@ -2617,7 +2689,7 @@ function aiHeroCast(B) {
     for (const [x, y] of cells) {
       let val = 0;
       for (const [ax, ay] of spellArea(id, x, y)) {
-        const v = unitAt(B, ax, ay); if (!v) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = S.dmg(sp);
+        const v = unitAt(B, ax, ay); if (!v) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = spellDamage(h, S, sp);
         const k = d >= pool ? v.n : v.n - Math.ceil((pool - d) / hp); val += (v.side !== s ? 1 : -1.5) * k * CREATURES[v.cid].value;
       }
       if (val > 0 && (!best || val > best.val)) best = { val, id, x, y };
@@ -2653,17 +2725,28 @@ function captureTown(st, t, owner) {
   MapRender.miniDirty = true;
 }
 // Zapisuje wynik w stanie gry i zwraca opis dla okna podsumowania (z punktu widzenia atakującego, strona 0)
+// Nekromancja zwycięzcy: z pct% życia poległych żywych wrogów wstają kościotrupy w armii bohatera (gdy jest miejsce)
+function raiseDead(B, side) {
+  const h = sideHero(B, side), pct = skillVal(h, 'necromancy'); if (!pct) return 0;
+  const hp = B.units.filter(u => u.side !== side && !hasAb(u, 'undead')).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
+  const n = Math.floor(hp * pct / 100 / CREATURES.boneWarrior.hp);
+  const i = h.army.findIndex(s => s && s.cid === 'boneWarrior'), k = i >= 0 ? i : h.army.findIndex(s => !s);
+  if (!n || k < 0) return 0;
+  if (h.army[k]) h.army[k].n += n; else h.army[k] = { cid: 'boneWarrior', n };
+  return n;
+}
+const raisedText = n => (n ? ` Nekromancja: ${n === 1 ? 'wstaje 1 kościotrup' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? `wstają ${n} kościotrupy` : `wstaje ${n} kościotrupów`}.` : '');
 function resolveBattle(B, fled) {
   const { st, h } = B, D = B.sides[1], outcome = fled ? 'fled' : B.over;
   const res = { outcome, lost: sideLosses(B, 0), foeLost: sideLosses(B, 1), exp: 0, foeExp: 0, captured: null, heroDefeated: null };
   writeBackSide(B, 0); writeBackSide(B, 1);
   if (outcome === 'win') {
-    res.exp = killedHp(B, 1);
+    res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);
     if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; removeHero(st, D.hero); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
   } else {
-    if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie
+    if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); res.foeRaised = raiseDead(B, 1); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie
     if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
     else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
       const towns = st.towns.filter(t => t.owner === h.owner), t = towns.find(t => !heroAt(st, t.x, t.y)) || (towns.length && st.heroes.filter(o => o.owner === h.owner).length === 1 ? towns[0] : null);
@@ -2738,7 +2821,7 @@ function aiReach(st, h) {
       const nx = x + DX8[k], ny = y + DY8[k]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
       const j = ny * n + nx; if (!ex[j] || map.terrain[j] === TER.WATER || map.obst[j]) continue;
       const ob = objectAt(st, j); if (ob && ob.blocks && j !== ob.y * n + ob.x) continue; // bok miasta/kopalni: tylko przez wejście
-      const nd = d + stepCost(map, x, y, nx, ny); if (nd < dist[j]) { dist[j] = nd; prev[j] = i; push([nd, j]); }
+      const nd = d + stepCost(map, x, y, nx, ny, h); if (nd < dist[j]) { dist[j] = nd; prev[j] = i; push([nd, j]); }
     }
   }
   return { dist, prev, path(j) { const out = []; while (j !== start && j >= 0) { out.unshift([j % n, (j / n) | 0]); j = prev[j]; } return out; } };
@@ -2840,7 +2923,7 @@ function* aiMoveHero(st, h, news) {
     const R = aiReach(st, h), target = aiPickTarget(st, h, R); if (!target) return;
     const path = R.path(target.i); if (!path.length) return;
     for (const [nx, ny] of path) {
-      const c = stepCost(st.map, h.x, h.y, nx, ny); if (c > h.mp) return;
+      const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
       reveal(st, nx, ny, heroSight(h), h.owner);
       yield { kind: 'step', h, fx, fy };
@@ -3200,7 +3283,7 @@ function drawMinimap(ctx, st) {
 function drawPathPixel(b, st, h, ox, oy) {
   if (!h.path || !h.path.length) return; let mp = h.mp, px = h.x, py = h.y;
   h.path.forEach(([x, y], k) => {
-    mp -= stepCost(st.map, px, py, x, y); const col = mp >= 0 ? '#3ad14c' : '#e03a3a', last = k === h.path.length - 1;
+    mp -= stepCost(st.map, px, py, x, y, h); const col = mp >= 0 ? '#3ad14c' : '#e03a3a', last = k === h.path.length - 1;
     blit(b, last ? markSprite(col, 'x', 0) : markSprite(col, h.path[k + 1][0] - x, h.path[k + 1][1] - y), ox + x * T + 16, oy + y * T + 16); px = x; py = y;
   });
 }
@@ -4861,7 +4944,7 @@ G.screens.adventure = {
     const st = G.state, h = hero(st); if (!h || !h.path || h.moving || h.anim) return;
     if (!armySize(h.army)) { this.flash('Bohater nie ma armii. Zwerbuj jednostki w mieście.'); return; }
     const [nx, ny] = h.path[0];
-    if (stepCost(st.map, h.x, h.y, nx, ny) > h.mp) { this.flash('Bohater nie ma już dziś punktów ruchu'); return; }
+    if (stepCost(st.map, h.x, h.y, nx, ny, h) > h.mp) { this.flash('Bohater nie ma już dziś punktów ruchu'); return; }
     h.stop = false; h.moving = true;
   },
   tileClick(tx, ty) {
@@ -4931,7 +5014,7 @@ G.screens.adventure = {
   },
   defenseResult(st, a, D, res, done) {
     const held = res.outcome !== 'win', mine = res.foeLost.length ? `Twoje straty: ${res.foeLost.join(', ')}.` : 'Bez strat.';
-    const msg = held ? `Obrona udana! ${a.h.name} zostaje odparty. ${mine}${D && res.foeExp ? ` Doświadczenie: +${res.foeExp}.` : ''}`
+    const msg = held ? `Obrona udana! ${a.h.name} zostaje odparty. ${mine}${raisedText(res.foeRaised)}${D && res.foeExp ? ` Doświadczenie: +${res.foeExp}.` : ''}`
       : `Porażka w obronie.${res.captured ? ` Miasto ${res.captured} przepada.` : ''}${res.heroDefeated ? ` ${res.heroDefeated.name} ${res.heroDefeated.female ? 'poległa' : 'poległ'}.` : ''} ${mine}`;
     showDialog(msg, [{ label: 'OK', key: 'enter', action: () => { if (held && D && res.foeExp && st.heroes.includes(D)) gainExp(st, D, res.foeExp); } }]);
     done(res);
@@ -4942,7 +5025,7 @@ G.screens.adventure = {
     for (const h of st.heroes) {
       h.mp = heroMaxMP(h);
       const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
-      if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1);
+      if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
     }
     collectIncome(st);
     for (const t of st.towns) t.builtToday = false;
@@ -5053,6 +5136,9 @@ G.screens.hero = {
   say(m) { this.msg = m; this.msgT = G.time; },
   equipAt(x, y) { return EQUIP_SLOTS.find(s => x >= s.x && x <= s.x + SLOT_BOX && y >= s.y && y <= s.y + SLOT_BOX) || null; },
   bagAt(x, y) { for (let i = 0; i < BAG_VIEW; i++) { const bx = 432 + i * 58; if (x >= bx && x <= bx + SLOT_BOX && y >= 386 && y <= 386 + SLOT_BOX) return this.bagPage * BAG_VIEW + i; } return -1; },
+  // Umiejętności: 8 pól (4 × 2) w prawym panelu pod premiami z artefaktów
+  skillRect: i => ({ x: 424 + (i % 4) * 90, y: 512 + Math.floor(i / 4) * 32, w: 86, h: 28 }),
+  skillAt(x, y) { for (let i = 0; i < MAX_SKILLS; i++) if (inRect(x, y, this.skillRect(i))) return i; return -1; },
   statAt(x, y) { if (y < 164 || y > 244) return null; const i = Math.floor((x - 32) / 90); return i >= 0 && i < 4 && x - 32 - i * 90 <= 84 ? PRIMARY[i] : null; },
   onClick(x, y) {
     if (clickButtons(this.buttons, x, y)) return;
@@ -5071,6 +5157,8 @@ G.screens.hero = {
     if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id])} Kliknij, aby zdjąć.` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
     if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
+    const si = this.skillAt(x, y);
+    if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
       att: 'Atak: dodaje się do ataku każdego twojego oddziału w bitwie (+5% obrażeń za punkt przewagi).',
       def: 'Obrona: dodaje się do obrony każdego twojego oddziału w bitwie (mniej otrzymywanych obrażeń).',
@@ -5134,8 +5222,16 @@ G.screens.hero = {
     if (pages > 1) text(ctx, `${this.bagPage + 1} / ${pages}`, 602, 461, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const all = {}; for (const id of Object.values(h.equip)) if (id) for (const [k, v] of Object.entries(ARTIFACTS[id].bonus)) all[k] = (all[k] || 0) + v;
     ctx.font = font(13, 500, 'body');
-    wrapText(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 340).slice(0, 3)
-      .forEach((l, i) => text(ctx, l, 602, 494 + i * 18, { size: 13, weight: 500, align: 'center', color: '#c8b68a' }));
+    wrapText(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 350).slice(0, 2)
+      .forEach((l, i) => text(ctx, l, 602, 482 + i * 16, { size: 12, weight: 500, align: 'center', color: '#c8b68a' }));
+    for (let i = 0; i < MAX_SKILLS; i++) {
+      const r = this.skillRect(i), sk = h.skills[i], hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
+      ctx.fillStyle = sk ? 'rgba(90,60,20,.45)' : 'rgba(0,0,0,.3)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
+      ctx.strokeStyle = hot ? '#ffd970' : sk ? '#b8913f' : '#4a3e2c'; ctx.lineWidth = hot ? 1.8 : 1; ctx.stroke();
+      if (!sk) continue;
+      text(ctx, SKILLS[sk.id].name, r.x + r.w / 2, r.y + 10, { size: SKILLS[sk.id].name.length > 13 ? 10 : 11, weight: 700, align: 'center', color: '#f0e4c0' });
+      for (let k = 0; k < 3; k++) { ctx.fillStyle = k < sk.lv ? '#ffd970' : 'rgba(240,228,192,.2)'; ctx.fillRect(r.x + r.w / 2 - 17 + k * 12, r.y + 19, 10, 4); }
+    }
     this.buttons.forEach(b => b.draw(ctx));
     if (this.msg && G.time - this.msgT < 2.5) text(ctx, this.msg, 300, 580, { size: 14, weight: 500, align: 'center', color: '#ffd970' });
   },
@@ -5518,7 +5614,7 @@ function showBattleResult(st, h, res) {
   const lost = res.lost.length ? `Straty: ${res.lost.join(', ')}.` : 'Bez strat.';
   if (res.outcome === 'win') {
     const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '');
-    showDialog(`Zwycięstwo!${extra} ${lost} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
+    showDialog(`Zwycięstwo!${extra} ${lost}${raisedText(res.raised)} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
       advFloat(`+${res.exp} dośw.`, h.x, h.y);
       gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster') visitObject(st, h, here); });
     } }]);

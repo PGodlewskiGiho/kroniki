@@ -184,7 +184,7 @@ G.screens.adventure = {
     const st = G.state, h = hero(st); if (!h || !h.path || h.moving || h.anim) return;
     if (!armySize(h.army)) { this.flash('Bohater nie ma armii. Zwerbuj jednostki w mieście.'); return; }
     const [nx, ny] = h.path[0];
-    if (stepCost(st.map, h.x, h.y, nx, ny) > h.mp) { this.flash('Bohater nie ma już dziś punktów ruchu'); return; }
+    if (stepCost(st.map, h.x, h.y, nx, ny, h) > h.mp) { this.flash('Bohater nie ma już dziś punktów ruchu'); return; }
     h.stop = false; h.moving = true;
   },
   tileClick(tx, ty) {
@@ -254,7 +254,7 @@ G.screens.adventure = {
   },
   defenseResult(st, a, D, res, done) {
     const held = res.outcome !== 'win', mine = res.foeLost.length ? `Twoje straty: ${res.foeLost.join(', ')}.` : 'Bez strat.';
-    const msg = held ? `Obrona udana! ${a.h.name} zostaje odparty. ${mine}${D && res.foeExp ? ` Doświadczenie: +${res.foeExp}.` : ''}`
+    const msg = held ? `Obrona udana! ${a.h.name} zostaje odparty. ${mine}${raisedText(res.foeRaised)}${D && res.foeExp ? ` Doświadczenie: +${res.foeExp}.` : ''}`
       : `Porażka w obronie.${res.captured ? ` Miasto ${res.captured} przepada.` : ''}${res.heroDefeated ? ` ${res.heroDefeated.name} ${res.heroDefeated.female ? 'poległa' : 'poległ'}.` : ''} ${mine}`;
     showDialog(msg, [{ label: 'OK', key: 'enter', action: () => { if (held && D && res.foeExp && st.heroes.includes(D)) gainExp(st, D, res.foeExp); } }]);
     done(res);
@@ -265,7 +265,7 @@ G.screens.adventure = {
     for (const h of st.heroes) {
       h.mp = heroMaxMP(h);
       const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
-      if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1);
+      if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
     }
     collectIncome(st);
     for (const t of st.towns) t.builtToday = false;

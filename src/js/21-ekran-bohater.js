@@ -24,6 +24,9 @@ G.screens.hero = {
   say(m) { this.msg = m; this.msgT = G.time; },
   equipAt(x, y) { return EQUIP_SLOTS.find(s => x >= s.x && x <= s.x + SLOT_BOX && y >= s.y && y <= s.y + SLOT_BOX) || null; },
   bagAt(x, y) { for (let i = 0; i < BAG_VIEW; i++) { const bx = 432 + i * 58; if (x >= bx && x <= bx + SLOT_BOX && y >= 386 && y <= 386 + SLOT_BOX) return this.bagPage * BAG_VIEW + i; } return -1; },
+  // Umiejętności: 8 pól (4 × 2) w prawym panelu pod premiami z artefaktów
+  skillRect: i => ({ x: 424 + (i % 4) * 90, y: 512 + Math.floor(i / 4) * 32, w: 86, h: 28 }),
+  skillAt(x, y) { for (let i = 0; i < MAX_SKILLS; i++) if (inRect(x, y, this.skillRect(i))) return i; return -1; },
   statAt(x, y) { if (y < 164 || y > 244) return null; const i = Math.floor((x - 32) / 90); return i >= 0 && i < 4 && x - 32 - i * 90 <= 84 ? PRIMARY[i] : null; },
   onClick(x, y) {
     if (clickButtons(this.buttons, x, y)) return;
@@ -42,6 +45,8 @@ G.screens.hero = {
     if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id])} Kliknij, aby zdjąć.` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
     if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
+    const si = this.skillAt(x, y);
+    if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
       att: 'Atak: dodaje się do ataku każdego twojego oddziału w bitwie (+5% obrażeń za punkt przewagi).',
       def: 'Obrona: dodaje się do obrony każdego twojego oddziału w bitwie (mniej otrzymywanych obrażeń).',
@@ -105,8 +110,16 @@ G.screens.hero = {
     if (pages > 1) text(ctx, `${this.bagPage + 1} / ${pages}`, 602, 461, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const all = {}; for (const id of Object.values(h.equip)) if (id) for (const [k, v] of Object.entries(ARTIFACTS[id].bonus)) all[k] = (all[k] || 0) + v;
     ctx.font = font(13, 500, 'body');
-    wrapText(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 340).slice(0, 3)
-      .forEach((l, i) => text(ctx, l, 602, 494 + i * 18, { size: 13, weight: 500, align: 'center', color: '#c8b68a' }));
+    wrapText(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 350).slice(0, 2)
+      .forEach((l, i) => text(ctx, l, 602, 482 + i * 16, { size: 12, weight: 500, align: 'center', color: '#c8b68a' }));
+    for (let i = 0; i < MAX_SKILLS; i++) {
+      const r = this.skillRect(i), sk = h.skills[i], hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
+      ctx.fillStyle = sk ? 'rgba(90,60,20,.45)' : 'rgba(0,0,0,.3)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
+      ctx.strokeStyle = hot ? '#ffd970' : sk ? '#b8913f' : '#4a3e2c'; ctx.lineWidth = hot ? 1.8 : 1; ctx.stroke();
+      if (!sk) continue;
+      text(ctx, SKILLS[sk.id].name, r.x + r.w / 2, r.y + 10, { size: SKILLS[sk.id].name.length > 13 ? 10 : 11, weight: 700, align: 'center', color: '#f0e4c0' });
+      for (let k = 0; k < 3; k++) { ctx.fillStyle = k < sk.lv ? '#ffd970' : 'rgba(240,228,192,.2)'; ctx.fillRect(r.x + r.w / 2 - 17 + k * 12, r.y + 19, 10, 4); }
+    }
     this.buttons.forEach(b => b.draw(ctx));
     if (this.msg && G.time - this.msgT < 2.5) text(ctx, this.msg, 300, 580, { size: 14, weight: 500, align: 'center', color: '#ffd970' });
   },

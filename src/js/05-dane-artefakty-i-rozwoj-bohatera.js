@@ -10,6 +10,34 @@ const CLASS_GROWTH = {
   ranger: { base: [1, 3, 1, 1], grow: [30, 45, 10, 15] }, druid: { base: [0, 2, 1, 2], grow: [10, 20, 35, 35] },
   deathKnight: { base: [1, 2, 2, 1], grow: [30, 25, 25, 20] }, necro: { base: [1, 0, 2, 2], grow: [15, 15, 35, 35] },
 };
+// Umiejętności drugorzędne (jak w oryginale): bohater ma ich najwyżej MAX_SKILLS, każdą na poziomie 1–3.
+// v: wartość na poziomach 1–3 (działanie w ZASADY GRY i BITWA: ZASADY), desc: opis dla wartości.
+const MAX_SKILLS = 8, SKILL_LEVELS = ['', 'podstawowe', 'zaawansowane', 'eksperckie'];
+const SKILLS = {
+  leadership: { name: 'Przywództwo', v: [1, 2, 3], desc: v => `+${v} do morale armii` },
+  luck: { name: 'Szczęście', v: [1, 2, 3], desc: v => `+${v} do szczęścia armii` },
+  offense: { name: 'Atak', v: [10, 20, 30], desc: v => `+${v}% obrażeń w walce wręcz` },
+  archery: { name: 'Łucznictwo', v: [10, 25, 50], desc: v => `+${v}% obrażeń strzelców` },
+  armorer: { name: 'Zbroja', v: [5, 10, 15], desc: v => `armia otrzymuje o ${v}% mniej obrażeń` },
+  logistics: { name: 'Logistyka', v: [10, 20, 30], desc: v => `+${v}% punktów ruchu` },
+  pathfinding: { name: 'Znajdowanie drogi', v: [25, 50, 100], desc: v => `trudny teren spowalnia o ${v}% mniej` },
+  scouting: { name: 'Zwiad', v: [1, 2, 3], desc: v => `+${v} do zasięgu widzenia` },
+  sorcery: { name: 'Czarnoksięstwo', v: [10, 20, 30], desc: v => `+${v}% obrażeń od czarów` },
+  intelligence: { name: 'Inteligencja', v: [25, 50, 100], desc: v => `+${v}% maksymalnej many` },
+  mysticism: { name: 'Mistycyzm', v: [2, 3, 4], desc: v => `+${v} many dziennie` },
+  estates: { name: 'Majątek', v: [125, 250, 500], desc: v => `+${v} złota dziennie` },
+  learning: { name: 'Nauka', v: [5, 10, 15], desc: v => `+${v}% doświadczenia` },
+  necromancy: { name: 'Nekromancja', v: [10, 20, 30], desc: v => `po zwycięstwie z ${v}% życia poległych żywych wrogów powstają kościotrupy` },
+};
+// Umiejętności startowe klas; nekromancję mogą poznać tylko klasy Kurhanu
+const CLASS_SKILLS = {
+  knight: [['leadership', 1], ['archery', 1]], cleric: [['intelligence', 1], ['estates', 1]],
+  ranger: [['pathfinding', 1], ['archery', 1]], druid: [['luck', 1], ['mysticism', 1]],
+  deathKnight: [['necromancy', 1], ['offense', 1]], necro: [['necromancy', 1], ['sorcery', 1]],
+};
+const NECRO_CLASSES = ['deathKnight', 'necro'];
+// Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
+const AI_SKILL_ORDER = ['offense', 'necromancy', 'leadership', 'armorer', 'archery', 'logistics', 'luck', 'pathfinding', 'estates', 'sorcery', 'intelligence', 'learning', 'mysticism', 'scouting'];
 // Doświadczenie potrzebne do poziomu 2, 3, ... (dalej każdy poziom +20%)
 const LEVEL_EXP = [0, 0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600, 24320];
 const expForLevel = L => (L < LEVEL_EXP.length ? LEVEL_EXP[L] : Math.round(expForLevel(L - 1) * 1.2));

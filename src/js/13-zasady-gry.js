@@ -2,7 +2,7 @@
 // Ruch, odkrywanie mapy, obiekty, potyczki, dochód, budowanie.
 // Dzienny limit ruchu zależy od najwolniejszej jednostki w armii (jak w oryginale)
 function mpBySpeed(s) { return s <= 3 ? 1500 : s >= 11 ? 2000 : [1560, 1630, 1700, 1760, 1830, 1900, 1960][s - 4]; }
-function heroMaxMP(h) { return mpBySpeed(armySlowest(h.army)) + heroBonus(h, 'mp'); }
+function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100)) + heroBonus(h, 'mp'); }
 // Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
 function reveal(st, cx, cy, r, owner = ME) {
   const P = playerOf(st, owner); if (!P || !P.explored) return;
@@ -18,8 +18,13 @@ function passableTile(st, x, y) {
   const i = y * n + x; return !!human(st).explored[i] && map.terrain[i] !== TER.WATER && !map.obst[i];
 }
 // Koszt kroku liczony wg terenu, z którego bohater wychodzi; droga działa, gdy oba pola mają drogę.
-function baseCost(map, i, j) { return (map.road[i] && map.road[j]) ? ROADS[map.road[i]].cost : TERRAINS[map.terrain[i]].cost; }
-function stepCost(map, fx, fy, tx, ty) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
+// Znajdowanie drogi (h) zmniejsza narzut trudnego terenu ponad 100.
+function baseCost(map, i, j, h) {
+  if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
+  const c = TERRAINS[map.terrain[i]].cost, pf = h ? skillVal(h, 'pathfinding') : 0;
+  return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
+}
+function stepCost(map, fx, fy, tx, ty, h) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx, h); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
 function heroDrawPos(h) {
   if (!h.anim) return [h.x, h.y]; const k = clamp(h.anim.t / STEP_TIME, 0, 1);
   return [h.anim.fx + (h.x - h.anim.fx) * k, h.anim.fy + (h.y - h.anim.fy) * k];
@@ -48,13 +53,13 @@ function computePath(st, h, tx, ty) {
   if (!passableTile(st, tx, ty)) return null; const map = st.map, n = map.n, t = ty * n + tx;
   if (objBlocks(st, t, t)) return null;
   const tob = objectAt(st, t), tg = tob && tob.type === 'monster' ? tob.id + 1 : 0;
-  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j) : Infinity, 50);
+  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j, h) : Infinity, 50);
   return p && p.length > 1 ? p.slice(1).map(i => [i % n, (i / n) | 0]) : null;
 }
 function heroCanStillMove(st, h) {
   if (!armySize(h.army)) return false;
   const n = st.map.n;
-  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y) <= h.mp) return true; }
+  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y, h) <= h.mp) return true; }
   return false;
 }
 function heroStep(st, h) {
@@ -64,7 +69,7 @@ function heroStep(st, h) {
   if (ob && ob.type === 'monster') { halt(); h.prev = null; startEncounter(st, h, ob); return false; }
   const other = heroAt(st, nx, ny); // bohater w bramie miasta broni się razem z miastem (startTownAssault)
   if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } return false; }
-  const cost = stepCost(st.map, h.x, h.y, nx, ny); if (h.mp < cost) { h.moving = false; return false; }
+  const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
   if (!h.path.length) { h.path = null; h.dest = null; }
@@ -141,28 +146,58 @@ function initHeroProgress(h) {
   if (!h.bag) h.bag = [];
   if (!h.level) h.level = 1;
   if (!h.spells) h.spells = [...(CLASS_SPELLS[h.cls] || [])];
+  if (!h.skills) h.skills = (CLASS_SKILLS[h.cls] || []).map(([id, lv]) => ({ id, lv }));
   if (h.mana == null) h.mana = heroMaxMana(h);
 }
+// --- umiejętności drugorzędne ---
+const heroSkill = (h, id) => { const s = h && h.skills && h.skills.find(s => s.id === id); return s ? s.lv : 0; };
+const skillVal = (h, id) => { const L = heroSkill(h, id); return L ? SKILLS[id].v[L - 1] : 0; };
+const skillText = (id, L) => `${SKILLS[id].name} (${SKILL_LEVELS[L]}): ${SKILLS[id].desc(SKILLS[id].v[L - 1])}`;
+// Propozycja przy awansie na poziom L (jak w oryginale): ulepszenie znanej umiejętności i nowa umiejętność;
+// gdy którejś grupy brak, obie z drugiej. Losowanie powtarzalne (ziarno gry, bohater, poziom).
+function skillOffer(st, h, L) {
+  const up = (h.skills || []).filter(s => s.lv < 3).map(s => s.id);
+  const fresh = (h.skills || []).length < MAX_SKILLS ? Object.keys(SKILLS).filter(id => !heroSkill(h, id) && (id !== 'necromancy' || NECRO_CLASSES.includes(h.cls))) : [];
+  const r = mulberry32(thash(h.id, L, st.seed) ^ 0x5a1d), pick = a => (a.length ? a.splice(Math.floor(r() * a.length), 1)[0] : null);
+  return [pick(up) || pick(fresh), pick(fresh) || pick(up)].filter(Boolean);
+}
+function learnSkill(h, id) {
+  const s = h.skills.find(s => s.id === id);
+  if (s) s.lv = Math.min(3, s.lv + 1); else if (h.skills.length < MAX_SKILLS) h.skills.push({ id, lv: 1 });
+  h.mana = Math.min(h.mana, heroMaxMana(h));
+}
+const aiPickSkill = offer => offer.slice().sort((a, b) => AI_SKILL_ORDER.indexOf(a) - AI_SKILL_ORDER.indexOf(b))[0];
 // Suma premii z założonych artefaktów (plecak nie działa)
 const heroBonus = (h, key) => Object.values(h.equip || {}).reduce((s, id) => s + (id ? ARTIFACTS[id].bonus[key] || 0 : 0), 0);
 const heroStat = (h, key) => h.stats[key] + heroBonus(h, key);
-const heroSight = h => h.sight + heroBonus(h, 'sight');
+const heroSight = h => h.sight + heroBonus(h, 'sight') + skillVal(h, 'scouting');
 // Premia bohatera do siły armii w potyczce: +5% za każdy punkt ataku i obrony
 const heroFactor = h => 1 + 0.05 * (heroStat(h, 'att') + heroStat(h, 'def'));
 // Doświadczenie z awansami. Wzrost cechy losowany deterministycznie (ziarno gry, bohater, poziom).
-// then(): co zrobić po zamknięciu okna awansu (np. obejrzeć obiekt, na którym stoi bohater)
+// Każdy awans daje też wybór umiejętności: SI wybiera od razu, człowiek w oknie (po kolei, gdy awansów jest kilka).
+// then(): co zrobić po zamknięciu okien awansu (np. obejrzeć obiekt, na którym stoi bohater)
 function gainExp(st, h, amount, then) {
-  h.exp += amount; const ups = [];
+  h.exp += Math.round(amount * (1 + skillVal(h, 'learning') / 100)); const ups = [];
   while (h.exp >= expForLevel(h.level + 1)) {
     h.level++; const g = (CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight).grow, r = thash(h.id, h.level, st.seed) % 100;
     let acc = 0, k = 0; for (; k < 3; k++) { acc += g[k]; if (r < acc) break; }
-    h.stats[PRIMARY[k].id]++; ups.push(PRIMARY[k]);
+    h.stats[PRIMARY[k].id]++; ups.push({ level: h.level, stat: PRIMARY[k] });
   }
-  if (!ups.length || h.owner !== ME) { if (then) then(); return ups.length; }
-  const gains = PRIMARY.map(p => [p, ups.filter(u => u === p).length]).filter(([, k]) => k).map(([p, k]) => `+${k} do ${p.gen}`);
-  showDialog(`${h.name} osiąga poziom ${h.level}! ${gains.join(', ')}.`, [{ label: 'Wspaniale', key: 'enter', action: then }],
-    { iconH: 76, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) });
-  return ups.length;
+  if (h.owner !== ME || !ups.length) {
+    for (const u of ups) { const offer = skillOffer(st, h, u.level); if (offer.length) learnSkill(h, aiPickSkill(offer)); }
+    if (then) then(); return ups.length;
+  }
+  const next = i => {
+    if (i >= ups.length) { if (then) then(); return; }
+    const u = ups[i], offer = skillOffer(st, h, u.level), icon = { iconH: 76, locked: offer.length > 0, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) };
+    const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`;
+    if (!offer.length) { showDialog(msg, [{ label: 'Wspaniale', key: 'enter', action: () => next(i + 1) }], icon); return; }
+    showDialog(`${msg} Wybierz umiejętność:`, offer.map((id, k) => {
+      const L = heroSkill(h, id) + 1;
+      return { label: SKILLS[id].name, sub: SKILL_LEVELS[L], tip: skillText(id, L) + '.', key: String(k + 1), action: () => { learnSkill(h, id); next(i + 1); } };
+    }), Object.assign(icon, { bw: 200 }));
+  };
+  next(0); return ups.length;
 }
 // Zakłada artefakt z plecaka (indeks) na pasujące miejsce: najpierw wolne, inaczej zamiana z pierwszym pasującym
 function equipFromBag(h, bi) {
@@ -179,7 +214,7 @@ function giveArtifact(h, id) {
 }
 
 // --- czary: mana, nauka w gildii, czary na mapie -----------------------------------------------
-const heroMaxMana = h => 10 * heroStat(h, 'kn');
+const heroMaxMana = h => Math.floor(10 * heroStat(h, 'kn') * (1 + skillVal(h, 'intelligence') / 100));
 const knows = (h, id) => (h.spells || []).includes(id);
 // Czary gildii losowane raz, gdy powstaje dany poziom (deterministycznie z ziarna gry i miasta)
 function rollGuildLevel(st, t, L) {
@@ -276,7 +311,7 @@ function dailyIncomeAll(st, owner = ME) {
   const inc = Object.fromEntries(RESOURCES.map(r => [r.id, 0]));
   for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === owner) inc[ob.kind] += MINES[ob.kind].income;
   for (const t of st.towns) if (t.owner === owner) { inc.gold += townGold(t); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; } }
-  for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold');
+  for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates');
   return inc;
 }
 const dailyIncome = (st, res) => dailyIncomeAll(st)[res];

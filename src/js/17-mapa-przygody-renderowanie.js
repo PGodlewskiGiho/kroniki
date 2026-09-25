@@ -216,7 +216,7 @@ function drawMinimap(ctx, st) {
 function drawPathPixel(b, st, h, ox, oy) {
   if (!h.path || !h.path.length) return; let mp = h.mp, px = h.x, py = h.y;
   h.path.forEach(([x, y], k) => {
-    mp -= stepCost(st.map, px, py, x, y); const col = mp >= 0 ? '#3ad14c' : '#e03a3a', last = k === h.path.length - 1;
+    mp -= stepCost(st.map, px, py, x, y, h); const col = mp >= 0 ? '#3ad14c' : '#e03a3a', last = k === h.path.length - 1;
     blit(b, last ? markSprite(col, 'x', 0) : markSprite(col, h.path[k + 1][0] - x, h.path[k + 1][1] - y), ox + x * T + 16, oy + y * T + 16); px = x; py = y;
   });
 }
