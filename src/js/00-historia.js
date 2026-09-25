@@ -105,5 +105,8 @@
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
+   Etap 2, krok 10: czary 4. i 5. poziomu (deszcz meteorów, modlitwa, wskrzeszenie, implozja, armagedon,
+   przyspieszenie armii), gildie IV i V (GUILD_MAX), cele 'livingAlly', 'all' i 'allies' (spellArea z B),
+   księga czarów w trzech kolumnach, gdy czarów jest wiele.
    ===================================================================================== */
 

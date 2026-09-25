@@ -69,6 +69,8 @@ const BUILDINGS = [
   { id: 'guild1', slot: 2, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['tavern'], emblem: 'book', desc: 'Uczy bohaterów czarów 1 poziomu i odnawia im manę.' },
   { id: 'guild2', slot: 2, cost: { gold: 1000, wood: 5, ore: 5 }, req: ['guild1'], emblem: 'book', desc: 'Dodaje czary 2 poziomu.' },
   { id: 'guild3', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 4, crystal: 4 }, req: ['guild2', 'hall2'], emblem: 'book', desc: 'Dodaje czary 3 poziomu.' },
+  { id: 'guild4', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 6, sulfur: 6, crystal: 6, gems: 6 }, req: ['guild3'], emblem: 'book', desc: 'Dodaje czary 4 poziomu.' },
+  { id: 'guild5', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 10, sulfur: 10, crystal: 10, gems: 10 }, req: ['guild4', 'hall3'], emblem: 'book', desc: 'Dodaje czary 5 poziomu.' },
   { id: 'dw1', slot: 10, cost: { gold: 500 }, req: [] },
   { id: 'dw1u', slot: 10, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
   { id: 'dw2', slot: 11, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
@@ -92,7 +94,7 @@ function bInfo(B, fac) {
     const [name, unit] = F.dw[B.id], c = CREATURES[unit];
     return { name, unit, emblem: F.emb[+m[1] - 1], desc: `${m[2] ? 'Ulepszone siedlisko' : 'Siedlisko'}: ${c.plural.toLowerCase()} (poziom ${m[1]}).` };
   }
-  if (B.id.startsWith('guild')) return { name: F.guild + ({ guild1: '', guild2: ' II', guild3: ' III' })[B.id], emblem: B.emblem, desc: B.desc };
+  if (B.id.startsWith('guild')) return { name: F.guild + ({ guild1: '', guild2: ' II', guild3: ' III', guild4: ' IV', guild5: ' V' })[B.id], emblem: B.emblem, desc: B.desc };
   return { name: B.name, emblem: B.emblem, desc: B.desc };
 }
 const MINES = {

@@ -937,13 +937,20 @@ function drawSpellIcon(c, id) {
     case 'fireball': c.beginPath(); c.arc(0, 2, 5.5, 0, TAU); c.fill(); poly([[-5, 0], [-3, -8], [0, -3], [3, -8], [5, 0]]); break;
     case 'animateDead': c.beginPath(); c.arc(0, -1, 6, 0, TAU); c.fill(); c.fillRect(-4, 3, 8, 4); c.fillStyle = dk; c.fillRect(-3.5, -3, 2.5, 2.5); c.fillRect(1, -3, 2.5, 2.5); break;
     case 'townPortal': c.lineWidth = 2.2; c.beginPath(); c.ellipse(0, 0, 5, 8, 0, 0, TAU); c.stroke(); c.beginPath(); c.arc(0, 0, 2, 0, TAU); c.fill(); break;
+    case 'meteorShower': for (const [x, y, r] of [[-3, -3, 3], [4, 1, 2.5], [-1, 5, 2]]) { c.lineWidth = 1.5; c.beginPath(); c.moveTo(x - 4, y - 4); c.lineTo(x, y); c.stroke(); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); } break;
+    case 'prayer': c.fillRect(-1.5, -8, 3, 16); c.fillRect(-6, -4, 12, 3); c.lineWidth = 1.2; c.beginPath(); c.arc(0, -2.5, 7, 0, TAU); c.stroke(); break;
+    case 'resurrection': c.beginPath(); c.moveTo(0, -8); c.lineTo(-6, -1); c.lineTo(-2, -1); c.lineTo(-2, 7); c.lineTo(2, 7); c.lineTo(2, -1); c.lineTo(6, -1); c.closePath(); c.fill(); break;
+    case 'implosion': c.lineWidth = 1.6; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; c.beginPath(); c.moveTo(Math.cos(a) * 8, Math.sin(a) * 8); c.lineTo(Math.cos(a) * 3.5, Math.sin(a) * 3.5); c.stroke(); } c.fillStyle = dk; c.beginPath(); c.arc(0, 0, 2.5, 0, TAU); c.fill(); break;
+    case 'armageddon': poly([[-8, 7], [-6, -1], [-3, 3], [0, -8], [3, 3], [6, -1], [8, 7]]); c.fillStyle = '#ffd060'; poly([[-4, 7], [0, -1], [4, 7]]); break;
+    case 'massHaste': for (const dx of [-4, 4]) poly([[dx - 4, 2], [dx + 1, -7], [dx, -1], [dx + 4, -2], [dx - 1, 7], [dx, 1]]); break;
   }
 }
 const spellSprite = id => sprite(`sp_${id}`, 16, 16, 8, 8, p => drawSpellIcon(p, id));
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
 function showSpellbook(h, mode, onPick) {
   const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), list = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
-  const cell = i => ({ x: x + 24 + (i % 2) * 272, y: y + 76 + Math.floor(i / 2) * 50, w: 262, h: 46 });
+  const cols = list.length > 14 ? 3 : 2, cw = (w - 48) / cols, fs = cols > 2 ? 13 : 15, rh = cols > 2 ? 44 : 50; // przy wielu czarach trzy kolumny
+  const cell = i => ({ x: x + 24 + (i % cols) * cw, y: y + 76 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
   const usable = id => mode !== 'view' && SPELLS[id].kind === mode && SPELLS[id].cost <= h.mana;
   const close = new Button(W / 2 - 70, y + hh - 54, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   let hover = -1;
@@ -961,9 +968,9 @@ function showSpellbook(h, mode, onPick) {
         const r = cell(i), S = SPELLS[id], ok = usable(id);
         ctx.fillStyle = ok && hover === i ? 'rgba(160,100,30,.3)' : 'rgba(90,55,20,.12)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
         ctx.save(); if (mode !== 'view' && !ok) ctx.globalAlpha = 0.45;
-        drawSprite(ctx, spellSprite(id), r.x + 24, r.y + 23, 1);
-        text(ctx, S.name, r.x + 46, r.y + 16, { size: 15, color: '#2a1606', fam: 'title' });
-        text(ctx, `${S.level} poz. · ${S.cost} many · ${S.kind === 'battle' ? 'bitwa' : 'mapa'}`, r.x + 46, r.y + 34, { size: 12, weight: 500, color: '#5a3814' });
+        drawSprite(ctx, spellSprite(id), r.x + 24, r.y + r.h / 2, 1);
+        text(ctx, S.name, r.x + 46, r.y + r.h / 2 - 7, { size: fs, color: '#2a1606', fam: 'title' });
+        text(ctx, cols > 2 ? `${S.level} poz. · ${S.cost} many` : `${S.level} poz. · ${S.cost} many · ${S.kind === 'battle' ? 'bitwa' : 'mapa'}`, r.x + 46, r.y + r.h / 2 + 11, { size: 12, weight: 500, color: '#5a3814' });
         ctx.restore();
       });
       const hs = hover >= 0 ? SPELLS[list[hover]] : null;

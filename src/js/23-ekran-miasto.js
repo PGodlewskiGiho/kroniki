@@ -50,7 +50,7 @@ G.screens.town = {
   showGuild() {
     const t = this.town(), L = guildLevel(t), F = factionOf(t.faction);
     const lines = []; for (let k = 1; k <= L; k++) lines.push(`poziom ${k}: ${((t.guild || {})[k] || []).map(id => SPELLS[id].name).join(', ')}`);
-    showDialog(`${F.guild}${L > 1 ? ` ${'I'.repeat(L)}` : ''}. Czary: ${lines.join('; ')}. Bohater, który tu wejdzie, pozna je wszystkie i odnowi manę.`, [{ label: 'OK', key: 'enter' }]);
+    showDialog(`${F.guild}${L > 1 ? ` ${['', '', 'II', 'III', 'IV', 'V'][L]}` : ''}. Czary: ${lines.join('; ')}. Bohater, który tu wejdzie, pozna je wszystkie i odnowi manę.`, [{ label: 'OK', key: 'enter' }]);
   },
   tryBuild(B) {
     const st = G.state, t = this.town(), info = bInfo(B, t.faction);

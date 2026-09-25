@@ -121,7 +121,7 @@ G.screens.battle = {
   startPlay(fx) {
     const sp = this.B.auto ? 0.55 : 1, S = fx.kind === 'spell' ? SPELL_FX[fx.id] || {} : null;
     const dur = fx.kind === 'move' ? (fx.fly ? 0.35 + 0.07 * hexDistance({ x: fx.path[0][0], y: fx.path[0][1] }, { x: fx.u.x, y: fx.u.y }) : 0.17 * (fx.path.length - 1))
-      : fx.kind === 'hit' ? (fx.a ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
+      : fx.kind === 'hit' ? (fx.a ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj || S.meteor ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
     const now = G.time;
     if (fx.kind === 'move') fx.u.anim = { pose: 'walk', t0: now, dur: this.play.dur };
@@ -172,8 +172,9 @@ G.screens.battle = {
       if (!p.launched) {
         p.launched = true; BattleFX.ring(24, 19, S.col || '#ffffff', 26, 0.5, 2);
         if (S.proj) { p.pr = BattleFX.proj(S.proj, 40, 34, aim[0], aim[1], 0.5 * p.sp, S.col, 40); p.hitAt = p.pr.dur; }
+        else if (S.meteor) { for (let i = 0; i < 3; i++) p.pr = BattleFX.proj('fireball', tx - 140 + i * 50, -30 - i * 20, aim[0] + (i - 1) * 14, aim[1], (0.4 + i * 0.08) * p.sp, S.col); p.hitAt = p.pr.dur; }
         else if (S.strike) { BattleFX.bolt(tx + (Math.random() - 0.5) * 60, 0, aim[0], aim[1], S.col); BattleFX.bolt(tx + (Math.random() - 0.5) * 80, 0, aim[0], aim[1], S.col); p.hitAt = 0.05; }
-        else { for (const [ax, ay] of spellArea(p.id, p.x, p.y)) { const [cx, cy] = hexCenter(ax, ay); spellAura(cx, cy, S); } p.hitAt = 0.3; }
+        else { for (const [ax, ay] of p.area || spellArea(p.id, p.x, p.y, this.B)) { const [cx, cy] = hexCenter(ax, ay); spellAura(cx, cy, S); } p.hitAt = 0.3; }
       }
       if (!p.landed && p.t >= p.hitAt) {
         p.landed = true;
@@ -203,7 +204,7 @@ G.screens.battle = {
     const B = this.B; this.preview = null; if (this.phase !== 'input' || G.modal) return;
     const u = B.active, hx = hexAt(x, y); if (!hx) return;
     if (this.casting) {
-      const id = this.casting, S = SPELLS[id], tu = B.units.find(v => v.x === hx.x && v.y === hx.y && (!v.dead || S.raise)) || null;
+      const id = this.casting, tu = spellUnitAt(B, id, hx.x, hx.y);
       this.preview = spellTargetOk(B, id, tu) ? { kind: 'cast', id, x: hx.x, y: hx.y, target: tu } : { kind: 'nocast', id }; return;
     }
     const occ = unitAt(B, hx.x, hx.y), k = hexKey(hx.x, hx.y);
@@ -240,7 +241,7 @@ G.screens.battle = {
     const sh = BattleFX.shake; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, 490); ctx.clip(); if (sh > 0) ctx.translate((Math.random() - 0.5) * sh * 2, (Math.random() - 0.5) * sh * 2);
     if (this.phase === 'input' && this.casting) {
       const p = this.preview;
-      if (p && p.kind === 'cast') { ctx.fillStyle = 'rgba(160,200,255,.3)'; for (const [ax, ay] of spellArea(p.id, p.x, p.y)) { hexPath(ctx, ax, ay, 2); ctx.fill(); } }
+      if (p && p.kind === 'cast') { ctx.fillStyle = 'rgba(160,200,255,.3)'; for (const [ax, ay] of spellArea(p.id, p.x, p.y, B)) { hexPath(ctx, ax, ay, 2); ctx.fill(); } }
     } else if (this.phase === 'input' && u0) {
       ctx.fillStyle = 'rgba(255,240,200,.16)';
       for (const k of this.reach.dist.keys()) { hexPath(ctx, k % BCOLS, Math.floor(k / BCOLS), 2); ctx.fill(); }

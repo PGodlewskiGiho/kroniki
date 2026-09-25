@@ -3,7 +3,7 @@
 // SI widzi całą mapę. Kolejność: miasta (budowa, werbunek, najem), potem bohaterowie wybierają cele
 // z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do news.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
-  'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u'];
+  'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u', 'guild4', 'guild5'];
 // Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
 function buyMissing(st, owner, cost) {
   if (!marketCount(st, owner)) return false;

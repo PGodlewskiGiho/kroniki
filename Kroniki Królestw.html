@@ -128,6 +128,9 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
+   Etap 2, krok 10: czary 4. i 5. poziomu (deszcz meteorów, modlitwa, wskrzeszenie, implozja, armagedon,
+   przyspieszenie armii), gildie IV i V (GUILD_MAX), cele 'livingAlly', 'all' i 'allies' (spellArea z B),
+   księga czarów w trzech kolumnach, gdy czarów jest wiele.
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
@@ -366,6 +369,8 @@ const BUILDINGS = [
   { id: 'guild1', slot: 2, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['tavern'], emblem: 'book', desc: 'Uczy bohaterów czarów 1 poziomu i odnawia im manę.' },
   { id: 'guild2', slot: 2, cost: { gold: 1000, wood: 5, ore: 5 }, req: ['guild1'], emblem: 'book', desc: 'Dodaje czary 2 poziomu.' },
   { id: 'guild3', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 4, crystal: 4 }, req: ['guild2', 'hall2'], emblem: 'book', desc: 'Dodaje czary 3 poziomu.' },
+  { id: 'guild4', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 6, sulfur: 6, crystal: 6, gems: 6 }, req: ['guild3'], emblem: 'book', desc: 'Dodaje czary 4 poziomu.' },
+  { id: 'guild5', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 10, sulfur: 10, crystal: 10, gems: 10 }, req: ['guild4', 'hall3'], emblem: 'book', desc: 'Dodaje czary 5 poziomu.' },
   { id: 'dw1', slot: 10, cost: { gold: 500 }, req: [] },
   { id: 'dw1u', slot: 10, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
   { id: 'dw2', slot: 11, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
@@ -389,7 +394,7 @@ function bInfo(B, fac) {
     const [name, unit] = F.dw[B.id], c = CREATURES[unit];
     return { name, unit, emblem: F.emb[+m[1] - 1], desc: `${m[2] ? 'Ulepszone siedlisko' : 'Siedlisko'}: ${c.plural.toLowerCase()} (poziom ${m[1]}).` };
   }
-  if (B.id.startsWith('guild')) return { name: F.guild + ({ guild1: '', guild2: ' II', guild3: ' III' })[B.id], emblem: B.emblem, desc: B.desc };
+  if (B.id.startsWith('guild')) return { name: F.guild + ({ guild1: '', guild2: ' II', guild3: ' III', guild4: ' IV', guild5: ' V' })[B.id], emblem: B.emblem, desc: B.desc };
   return { name: B.name, emblem: B.emblem, desc: B.desc };
 }
 const MINES = {
@@ -488,7 +493,8 @@ function artBonusText(b) {
 const artInfo = id => { const A = ARTIFACTS[id]; return `${A.name} (${RARITY[A.rarity]}): ${artBonusText(A.bonus)}.`; };
 
 // ==================== DANE: CZARY =======================================================
-// kind: 'battle' (w bitwie, raz na rundę) albo 'adv' (na mapie). target: 'enemy', 'ally', 'undeadAlly', 'hex', 'none'.
+// kind: 'battle' (w bitwie, raz na rundę) albo 'adv' (na mapie). target: 'enemy', 'ally', 'undeadAlly', 'livingAlly' (także poległy),
+// 'hex' (pole i sąsiedzi), 'all' (wszystkie oddziały na polu bitwy), 'allies' (wszyscy swoi), 'none' (czar mapy).
 // sp = moc czarów bohatera; efekty liczą funkcje w polach dmg/heal/rounds, opis w desc(sp).
 const SPELL_ROUNDS = sp => Math.max(1, sp + 1);
 const SPELLS = {
@@ -505,11 +511,18 @@ const SPELLS = {
   fireball: { name: 'Kula ognia', level: 3, cost: 15, kind: 'battle', target: 'hex', col: '#ff8a2a', dmg: sp => 15 + 10 * sp, desc: sp => `${15 + 10 * sp} obrażeń na polu i wokół niego (także swoim!)` },
   animateDead: { name: 'Ożywienie umarłych', level: 3, cost: 15, kind: 'battle', target: 'undeadAlly', col: '#a6f0a8', heal: sp => 30 + 50 * sp, raise: true, desc: sp => `przywraca ${30 + 50 * sp} życia nieumarłym, także poległym w tej bitwie` },
   townPortal: { name: 'Powrót do miasta', level: 3, cost: 16, kind: 'adv', target: 'none', col: '#c8a0ff', desc: () => 'przenosi bohatera do najbliższego własnego miasta (kosztuje 300 punktów ruchu)' },
+  meteorShower: { name: 'Deszcz meteorów', level: 4, cost: 16, kind: 'battle', target: 'hex', col: '#ff6a3a', dmg: sp => 25 + 25 * sp, desc: sp => `${25 + 25 * sp} obrażeń na polu i wokół niego (także swoim!)` },
+  prayer: { name: 'Modlitwa', level: 4, cost: 16, kind: 'battle', target: 'ally', col: '#fff0b0', buff: 'prayer', desc: sp => `+2 do ataku, obrony i szybkości sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  resurrection: { name: 'Wskrzeszenie', level: 4, cost: 20, kind: 'battle', target: 'livingAlly', col: '#fff8d0', heal: sp => 40 + 20 * sp, raise: true, desc: sp => `przywraca ${40 + 20 * sp} życia żywym sojusznikom, także poległym w tej bitwie` },
+  implosion: { name: 'Implozja', level: 5, cost: 30, kind: 'battle', target: 'enemy', col: '#c05aff', dmg: sp => 100 + 75 * sp, desc: sp => `${100 + 75 * sp} obrażeń jednemu wrogowi` },
+  armageddon: { name: 'Armagedon', level: 5, cost: 24, kind: 'battle', target: 'all', col: '#ff4a1a', dmg: sp => 30 + 50 * sp, desc: sp => `${30 + 50 * sp} obrażeń każdemu oddziałowi na polu bitwy, także swoim` },
+  massHaste: { name: 'Przyspieszenie armii', level: 5, cost: 20, kind: 'battle', target: 'allies', col: '#a8f0ff', buff: 'haste', desc: sp => `+3 do szybkości wszystkich sojuszników przez ${SPELL_ROUNDS(sp)} rund` },
 };
-const BUFF_NAMES = { bless: 'błogosławieństwo', stoneSkin: 'kamienna skóra', haste: 'przyspieszenie', slow: 'spowolnienie', weakness: 'osłabienie', bloodlust: 'żądza krwi' };
+const BUFF_NAMES = { bless: 'błogosławieństwo', stoneSkin: 'kamienna skóra', haste: 'przyspieszenie', slow: 'spowolnienie', weakness: 'osłabienie', bloodlust: 'żądza krwi', prayer: 'modlitwa' };
 const BAD_BUFFS = ['slow', 'weakness'];
 // Ile czarów danego poziomu oferuje gildia
-const GUILD_OFFER = { 1: 3, 2: 2, 3: 2 };
+const GUILD_OFFER = { 1: 3, 2: 2, 3: 2, 4: 2, 5: 1 };
+const GUILD_MAX = 5;
 // Czar startowy klas magicznych
 const CLASS_SPELLS = { cleric: ['bless'], druid: ['cure'], necro: ['magicArrow'] };
 
@@ -1892,13 +1905,20 @@ function drawSpellIcon(c, id) {
     case 'fireball': c.beginPath(); c.arc(0, 2, 5.5, 0, TAU); c.fill(); poly([[-5, 0], [-3, -8], [0, -3], [3, -8], [5, 0]]); break;
     case 'animateDead': c.beginPath(); c.arc(0, -1, 6, 0, TAU); c.fill(); c.fillRect(-4, 3, 8, 4); c.fillStyle = dk; c.fillRect(-3.5, -3, 2.5, 2.5); c.fillRect(1, -3, 2.5, 2.5); break;
     case 'townPortal': c.lineWidth = 2.2; c.beginPath(); c.ellipse(0, 0, 5, 8, 0, 0, TAU); c.stroke(); c.beginPath(); c.arc(0, 0, 2, 0, TAU); c.fill(); break;
+    case 'meteorShower': for (const [x, y, r] of [[-3, -3, 3], [4, 1, 2.5], [-1, 5, 2]]) { c.lineWidth = 1.5; c.beginPath(); c.moveTo(x - 4, y - 4); c.lineTo(x, y); c.stroke(); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); } break;
+    case 'prayer': c.fillRect(-1.5, -8, 3, 16); c.fillRect(-6, -4, 12, 3); c.lineWidth = 1.2; c.beginPath(); c.arc(0, -2.5, 7, 0, TAU); c.stroke(); break;
+    case 'resurrection': c.beginPath(); c.moveTo(0, -8); c.lineTo(-6, -1); c.lineTo(-2, -1); c.lineTo(-2, 7); c.lineTo(2, 7); c.lineTo(2, -1); c.lineTo(6, -1); c.closePath(); c.fill(); break;
+    case 'implosion': c.lineWidth = 1.6; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; c.beginPath(); c.moveTo(Math.cos(a) * 8, Math.sin(a) * 8); c.lineTo(Math.cos(a) * 3.5, Math.sin(a) * 3.5); c.stroke(); } c.fillStyle = dk; c.beginPath(); c.arc(0, 0, 2.5, 0, TAU); c.fill(); break;
+    case 'armageddon': poly([[-8, 7], [-6, -1], [-3, 3], [0, -8], [3, 3], [6, -1], [8, 7]]); c.fillStyle = '#ffd060'; poly([[-4, 7], [0, -1], [4, 7]]); break;
+    case 'massHaste': for (const dx of [-4, 4]) poly([[dx - 4, 2], [dx + 1, -7], [dx, -1], [dx + 4, -2], [dx - 1, 7], [dx, 1]]); break;
   }
 }
 const spellSprite = id => sprite(`sp_${id}`, 16, 16, 8, 8, p => drawSpellIcon(p, id));
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
 function showSpellbook(h, mode, onPick) {
   const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), list = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
-  const cell = i => ({ x: x + 24 + (i % 2) * 272, y: y + 76 + Math.floor(i / 2) * 50, w: 262, h: 46 });
+  const cols = list.length > 14 ? 3 : 2, cw = (w - 48) / cols, fs = cols > 2 ? 13 : 15, rh = cols > 2 ? 44 : 50; // przy wielu czarach trzy kolumny
+  const cell = i => ({ x: x + 24 + (i % cols) * cw, y: y + 76 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
   const usable = id => mode !== 'view' && SPELLS[id].kind === mode && SPELLS[id].cost <= h.mana;
   const close = new Button(W / 2 - 70, y + hh - 54, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   let hover = -1;
@@ -1916,9 +1936,9 @@ function showSpellbook(h, mode, onPick) {
         const r = cell(i), S = SPELLS[id], ok = usable(id);
         ctx.fillStyle = ok && hover === i ? 'rgba(160,100,30,.3)' : 'rgba(90,55,20,.12)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
         ctx.save(); if (mode !== 'view' && !ok) ctx.globalAlpha = 0.45;
-        drawSprite(ctx, spellSprite(id), r.x + 24, r.y + 23, 1);
-        text(ctx, S.name, r.x + 46, r.y + 16, { size: 15, color: '#2a1606', fam: 'title' });
-        text(ctx, `${S.level} poz. · ${S.cost} many · ${S.kind === 'battle' ? 'bitwa' : 'mapa'}`, r.x + 46, r.y + 34, { size: 12, weight: 500, color: '#5a3814' });
+        drawSprite(ctx, spellSprite(id), r.x + 24, r.y + r.h / 2, 1);
+        text(ctx, S.name, r.x + 46, r.y + r.h / 2 - 7, { size: fs, color: '#2a1606', fam: 'title' });
+        text(ctx, cols > 2 ? `${S.level} poz. · ${S.cost} many` : `${S.level} poz. · ${S.cost} many · ${S.kind === 'battle' ? 'bitwa' : 'mapa'}`, r.x + 46, r.y + r.h / 2 + 11, { size: 12, weight: 500, color: '#5a3814' });
         ctx.restore();
       });
       const hs = hover >= 0 ? SPELLS[list[hover]] : null;
@@ -2911,7 +2931,7 @@ function rollGuildLevel(st, t, L) {
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
   if (!t.guild) t.guild = {}; t.guild[L] = pool.slice(0, GUILD_OFFER[L] || 1);
 }
-const guildLevel = t => (hasB(t, 'guild3') ? 3 : hasB(t, 'guild2') ? 2 : hasB(t, 'guild1') ? 1 : 0);
+const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild' + L)) return L; return 0; };
 // Bohater w mieście z gildią: poznaje jej czary i odzyskuje całą manę. Zwraca nowo poznane czary.
 function visitGuild(st, t, h) {
   const L = guildLevel(t); if (!L) return [];
@@ -3489,37 +3509,52 @@ function nextActive(B) {
   }
 }
 // --- czary w bitwie: bohater rzuca jeden czar na rundę, zanim ruszy oddział ---
-const unitAtt = u => CREATURES[u.cid].att + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0);
-const unitDef = u => CREATURES[u.cid].def + (u.buffs.stoneSkin ? 3 : 0);
-const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0)));
+const unitAtt = u => CREATURES[u.cid].att + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
+const unitDef = u => CREATURES[u.cid].def + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
+const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
 const battleSpells = h => (h.spells || []).filter(id => SPELLS[id].kind === 'battle');
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
 const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => SPELLS[id].cost <= h.mana)); };
+// Czary bez celu: działają na całe pole (armagedon) albo na wszystkich swoich (przyspieszenie armii)
+const MASS_TARGETS = ['all', 'allies'];
+// Żywy (nie nieumarły, nie machina) oddział rzucającego, także poległy: cel wskrzeszenia
+const livingAlly = (u, s) => u.side === s && !hasAb(u, 'undead') && !isMachine(u) && u.src !== 'siege';
+// Oddział na polu jako cel czaru: żywy, a dla czarów wskrzeszających także poległy (gdy pole jest wolne)
+const spellUnitAt = (B, id, x, y) => unitAt(B, x, y) || (SPELLS[id].raise && B.units.find(u => u.dead && u.x === x && u.y === y)) || null;
 // Czy cel pasuje do czaru (u = oddział albo null dla czaru na pole); „swoi” = strona rzucającego
 function spellTargetOk(B, id, u) {
-  const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex') return true; if (u && !targetable(u)) return false; if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead'))) return false;
-  return t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : false;
+  const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex' || MASS_TARGETS.includes(t)) return true; if (u && !targetable(u)) return false;
+  if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead') || t === 'livingAlly' && livingAlly(u, s))) return false;
+  return t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : t === 'livingAlly' ? livingAlly(u, s) : false;
 }
 // Obrażenia czaru z Czarnoksięstwem bohatera
 const spellDamage = (h, S, sp) => Math.floor(S.dmg(sp) * (1 + skillVal(h, 'sorcery') / 100));
-// Pola trafione czarem (kula ognia: pole + sąsiedzi)
-const spellArea = (id, x, y) => (SPELLS[id].target === 'hex' ? [[x, y], ...hexNeighbors(x, y)] : [[x, y]]);
+// Pola trafione czarem (kula ognia: pole + sąsiedzi; armagedon: każdy oddział; czary armii: wszyscy swoi)
+function spellArea(id, x, y, B) {
+  const t = SPELLS[id].target;
+  if (MASS_TARGETS.includes(t)) return B ? B.units.filter(u => !u.dead && targetable(u) && (t === 'all' || u.side === casterSide(B))).map(u => [u.x, u.y]) : [];
+  return t === 'hex' ? [[x, y], ...hexNeighbors(x, y)] : [[x, y]];
+}
 function castBattle(B, id, x, y) {
-  const s = casterSide(B), h = sideHero(B, s), S = SPELLS[id], sp = heroStat(h, 'sp'), tu = B.units.find(u => u.x === x && u.y === y && (!u.dead || S.raise)) || null;
+  const s = casterSide(B), h = sideHero(B, s), S = SPELLS[id], sp = heroStat(h, 'sp'), tu = spellUnitAt(B, id, x, y);
+  const area = spellArea(id, x, y, B);
   h.mana -= S.cost; B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
-  if (B.fx) B.fx.push({ kind: 'spell', id, x, y });
-  if (S.dmg) for (const [ax, ay] of spellArea(id, x, y)) {
+  if (B.fx) B.fx.push({ kind: 'spell', id, x, y, area });
+  if (S.dmg) for (const [ax, ay] of area) {
     const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue; const d = spellDamage(h, S, sp), k = applyDamage(v, d);
     B.log.push(`${CREATURES[v.cid].plural}: ${d} obrażeń${k ? `, tracą ${k}` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: v, dmg: d, killed: k });
   }
   if (S.heal && tu) {
     if (tu.dead) { tu.dead = false; tu.n = 1; tu.hp = 0; tu.dieT = null; } // ożywienie poległego oddziału
     const back = S.raise ? healUnit(tu, S.heal(sp)) : (tu.hp = Math.min(CREATURES[tu.cid].hp, tu.hp + S.heal(sp)), 0);
-    if (!S.raise) for (const b of BAD_BUFFS) delete tu.buffs[b];
+    if (!S.raise || id === 'resurrection') for (const b of BAD_BUFFS) delete tu.buffs[b];
     if (back) B.log.push(`Wraca do walki: ${back}.`); if (B.fx) B.fx.push({ kind: 'heal', u: tu, amount: S.heal(sp) });
   }
-  if (S.buff && tu) { tu.buffs[S.buff] = SPELL_ROUNDS(sp); if (B.fx) B.fx.push({ kind: 'heal', u: tu, amount: 0, label: SPELLS[id].name }); }
+  if (S.buff) {
+    const targets = MASS_TARGETS.includes(S.target) ? area.map(([ax, ay]) => unitAt(B, ax, ay)).filter(Boolean) : tu ? [tu] : [];
+    for (const u of targets) { u.buffs[S.buff] = SPELL_ROUNDS(sp); if (B.fx) B.fx.push({ kind: 'heal', u, amount: 0, label: SPELLS[id].name }); }
+  }
 }
 // SI bohatera (tryb Auto i walka automatyczna): czar zadający najwięcej wartości, jeśli jakiś się opłaca
 function aiHeroCast(B) {
@@ -3527,10 +3562,10 @@ function aiHeroCast(B) {
   const s = casterSide(B), h = sideHero(B, s), sp = heroStat(h, 'sp'); let best = null;
   for (const id of battleSpells(h)) {
     const S = SPELLS[id]; if (!S.dmg || S.cost > h.mana) continue;
-    const cells = S.target === 'hex' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : alive(B, 1 - s).filter(targetable).map(u => [u.x, u.y]);
+    const cells = S.target === 'hex' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : MASS_TARGETS.includes(S.target) ? [[0, 0]] : alive(B, 1 - s).filter(targetable).map(u => [u.x, u.y]);
     for (const [x, y] of cells) {
       let val = 0;
-      for (const [ax, ay] of spellArea(id, x, y)) {
+      for (const [ax, ay] of spellArea(id, x, y, B)) {
         const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = spellDamage(h, S, sp);
         const k = d >= pool ? v.n : v.n - Math.ceil((pool - d) / hp); val += (v.side !== s ? 1 : -1.5) * k * CREATURES[v.cid].value;
       }
@@ -3610,7 +3645,7 @@ function resolveBattle(B, fled) {
 // SI widzi całą mapę. Kolejność: miasta (budowa, werbunek, najem), potem bohaterowie wybierają cele
 // z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do news.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
-  'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u'];
+  'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u', 'guild4', 'guild5'];
 // Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
 function buyMissing(st, owner, cost) {
   if (!marketCount(st, owner)) return false;
@@ -4536,7 +4571,7 @@ const HAVEN_ART = {
     }
   },
   guild(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.6, th = h * (0.48 + tier * 0.1), top = b - th;
+    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.6, th = h * (0.48 + Math.min(tier, 3) * 0.1 + Math.max(0, tier - 3) * 0.05), top = b - th;
     if (tier >= 3) { c.fillStyle = A.wall[1]; c.fillRect(cx + tw / 2 - 2, top + 18, 14, 4); circ(c, cx + tw / 2 + 8, top + 14, 7, '#6f9ab8'); c.strokeStyle = '#3a3a44'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(cx + tw / 2 + 6, top + 12); c.lineTo(cx + tw / 2 + 18, top); c.stroke(); }
     wallRect(c, A, cx - tw / 2, top, tw, th);
     c.fillStyle = shadeHex(A.wall[1], -0.2); for (let i = 1; i <= tier; i++) c.fillRect(cx - tw / 2 - 2, top + i * th / (tier + 1), tw + 4, 3);
@@ -4834,7 +4869,7 @@ const BARROW_ART = {
     c.fillStyle = '#0a0810'; c.beginPath(); c.moveTo(cx - 11, b); c.lineTo(cx - 11, b - 18); c.lineTo(cx, b - 28); c.lineTo(cx + 11, b - 18); c.lineTo(cx + 11, b); c.closePath(); c.fill(); skullAt(c, cx, b - 34, 1);
   },
   guild(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.5, th = h * (0.46 + tier * 0.1), top = b - th;
+    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.5, th = h * (0.46 + Math.min(tier, 3) * 0.1 + Math.max(0, tier - 3) * 0.05), top = b - th;
     wallRect(c, A, cx - tw / 2, top, tw, th); c.fillStyle = shadeHex(A.wall[1], -0.2); for (let i = 1; i <= tier; i++) c.fillRect(cx - tw / 2 - 2, top + i * th / (tier + 1), tw + 4, 3);
     for (let i = 0; i <= tier; i++) archWin(c, cx - 4, top + 8 + i * th / (tier + 1), 8, 12, '#a6f0a8', fx);
     doorArt(c, A, cx - 7, b, 14, 18);
@@ -6111,6 +6146,10 @@ const SPELL_FX = {
   bless: { aura: 'fall', col: '#ffe08a' }, stoneSkin: { aura: 'orbit', col: '#c8b898' }, haste: { aura: 'wind', col: '#a8f0ff' },
   cure: { aura: 'rise', col: '#8af07a' }, slow: { aura: 'fall', col: '#9a7ad8' }, weakness: { aura: 'drip', col: '#9aa060' },
   bloodlust: { aura: 'rise', col: '#ff5a4a' }, animateDead: { aura: 'rise', col: '#a6f0a8', column: true },
+  meteorShower: { meteor: true, col: '#ff6a3a', burst: '#ffd060', boom: true, flash: 0.3, shake: 10 },
+  prayer: { aura: 'fall', col: '#fff0b0', column: true }, resurrection: { aura: 'rise', col: '#fff8d0', column: true },
+  implosion: { aura: 'orbit', col: '#c05aff', burst: '#f0c0ff', flash: 0.35, shake: 7 },
+  armageddon: { aura: 'fall', col: '#ff4a1a', burst: '#ffd060', flash: 0.6, shake: 12 }, massHaste: { aura: 'wind', col: '#a8f0ff' },
 };
 const BattleFX = {
   reset() { this.parts = []; this.rings = []; this.bolts = []; this.projs = []; this.glows = []; this.flash = null; this.shake = 0; },
@@ -6310,7 +6349,7 @@ G.screens.battle = {
   startPlay(fx) {
     const sp = this.B.auto ? 0.55 : 1, S = fx.kind === 'spell' ? SPELL_FX[fx.id] || {} : null;
     const dur = fx.kind === 'move' ? (fx.fly ? 0.35 + 0.07 * hexDistance({ x: fx.path[0][0], y: fx.path[0][1] }, { x: fx.u.x, y: fx.u.y }) : 0.17 * (fx.path.length - 1))
-      : fx.kind === 'hit' ? (fx.a ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
+      : fx.kind === 'hit' ? (fx.a ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj || S.meteor ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
     const now = G.time;
     if (fx.kind === 'move') fx.u.anim = { pose: 'walk', t0: now, dur: this.play.dur };
@@ -6361,8 +6400,9 @@ G.screens.battle = {
       if (!p.launched) {
         p.launched = true; BattleFX.ring(24, 19, S.col || '#ffffff', 26, 0.5, 2);
         if (S.proj) { p.pr = BattleFX.proj(S.proj, 40, 34, aim[0], aim[1], 0.5 * p.sp, S.col, 40); p.hitAt = p.pr.dur; }
+        else if (S.meteor) { for (let i = 0; i < 3; i++) p.pr = BattleFX.proj('fireball', tx - 140 + i * 50, -30 - i * 20, aim[0] + (i - 1) * 14, aim[1], (0.4 + i * 0.08) * p.sp, S.col); p.hitAt = p.pr.dur; }
         else if (S.strike) { BattleFX.bolt(tx + (Math.random() - 0.5) * 60, 0, aim[0], aim[1], S.col); BattleFX.bolt(tx + (Math.random() - 0.5) * 80, 0, aim[0], aim[1], S.col); p.hitAt = 0.05; }
-        else { for (const [ax, ay] of spellArea(p.id, p.x, p.y)) { const [cx, cy] = hexCenter(ax, ay); spellAura(cx, cy, S); } p.hitAt = 0.3; }
+        else { for (const [ax, ay] of p.area || spellArea(p.id, p.x, p.y, this.B)) { const [cx, cy] = hexCenter(ax, ay); spellAura(cx, cy, S); } p.hitAt = 0.3; }
       }
       if (!p.landed && p.t >= p.hitAt) {
         p.landed = true;
@@ -6392,7 +6432,7 @@ G.screens.battle = {
     const B = this.B; this.preview = null; if (this.phase !== 'input' || G.modal) return;
     const u = B.active, hx = hexAt(x, y); if (!hx) return;
     if (this.casting) {
-      const id = this.casting, S = SPELLS[id], tu = B.units.find(v => v.x === hx.x && v.y === hx.y && (!v.dead || S.raise)) || null;
+      const id = this.casting, tu = spellUnitAt(B, id, hx.x, hx.y);
       this.preview = spellTargetOk(B, id, tu) ? { kind: 'cast', id, x: hx.x, y: hx.y, target: tu } : { kind: 'nocast', id }; return;
     }
     const occ = unitAt(B, hx.x, hx.y), k = hexKey(hx.x, hx.y);
@@ -6429,7 +6469,7 @@ G.screens.battle = {
     const sh = BattleFX.shake; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, 490); ctx.clip(); if (sh > 0) ctx.translate((Math.random() - 0.5) * sh * 2, (Math.random() - 0.5) * sh * 2);
     if (this.phase === 'input' && this.casting) {
       const p = this.preview;
-      if (p && p.kind === 'cast') { ctx.fillStyle = 'rgba(160,200,255,.3)'; for (const [ax, ay] of spellArea(p.id, p.x, p.y)) { hexPath(ctx, ax, ay, 2); ctx.fill(); } }
+      if (p && p.kind === 'cast') { ctx.fillStyle = 'rgba(160,200,255,.3)'; for (const [ax, ay] of spellArea(p.id, p.x, p.y, B)) { hexPath(ctx, ax, ay, 2); ctx.fill(); } }
     } else if (this.phase === 'input' && u0) {
       ctx.fillStyle = 'rgba(255,240,200,.16)';
       for (const k of this.reach.dist.keys()) { hexPath(ctx, k % BCOLS, Math.floor(k / BCOLS), 2); ctx.fill(); }
@@ -6558,7 +6598,7 @@ G.screens.town = {
   showGuild() {
     const t = this.town(), L = guildLevel(t), F = factionOf(t.faction);
     const lines = []; for (let k = 1; k <= L; k++) lines.push(`poziom ${k}: ${((t.guild || {})[k] || []).map(id => SPELLS[id].name).join(', ')}`);
-    showDialog(`${F.guild}${L > 1 ? ` ${'I'.repeat(L)}` : ''}. Czary: ${lines.join('; ')}. Bohater, który tu wejdzie, pozna je wszystkie i odnowi manę.`, [{ label: 'OK', key: 'enter' }]);
+    showDialog(`${F.guild}${L > 1 ? ` ${['', '', 'II', 'III', 'IV', 'V'][L]}` : ''}. Czary: ${lines.join('; ')}. Bohater, który tu wejdzie, pozna je wszystkie i odnowi manę.`, [{ label: 'OK', key: 'enter' }]);
   },
   tryBuild(B) {
     const st = G.state, t = this.town(), info = bInfo(B, t.faction);
