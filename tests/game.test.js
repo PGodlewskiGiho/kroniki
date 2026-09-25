@@ -70,7 +70,7 @@ for (const faction of ['haven', 'sylvan', 'barrow']) {
 }
 
 test('ten sam seed daje ten sam świat, inny seed inny', async () => {
-  const snap = seed => page.evaluate(seed => JSON.stringify(serializeGame(createNewGame(Object.assign({}, G.settings, { mapSize: 'M' }), seed))), seed);
+  const snap = seed => page.evaluate(seed => JSON.stringify(serializeGame(createNewGame(Object.assign({}, G.settings, { slots: null,  mapSize: 'M' }), seed))), seed);
   const a = await snap(42), b = await snap(42), c = await snap(43);
   assert.equal(a, b);
   assert.notEqual(a, c);

@@ -30,7 +30,10 @@ const MAP_SIZES = [
 const PLAYER_COLORS = [
   { id: 'red', name: 'Czerwony', hex: '#c42a2a' }, { id: 'blue', name: 'Niebieski', hex: '#2f5bd0' },
   { id: 'green', name: 'Zielony', hex: '#2f8f3a' }, { id: 'purple', name: 'Fioletowy', hex: '#8040b0' },
+  { id: 'orange', name: 'Pomarańczowy', hex: '#e07818' }, { id: 'teal', name: 'Turkusowy', hex: '#1f9a9a' },
+  { id: 'pink', name: 'Różowy', hex: '#d0508e' }, { id: 'tan', name: 'Płowy', hex: '#a88450' },
 ];
+const MAX_PLAYERS = 8; // hot-seat: do 8 graczy (ludzie i komputer) na jednej mapie, każdy w innym kolorze
 const NEUTRAL_COLOR = '#d8d4c8'; // flagi i znaczniki obiektów bez właściciela (mapa, minimapa, interfejs)
 const BONUSES = [
   { id: 'gold', name: 'Złoto', sub: '500–1000' },

@@ -6,7 +6,7 @@ const G = {
   mouse: { x: -1, y: -1, down: false },
   hover: null, downTarget: null, modal: null, keys: new Set(), popup: null, pressTimer: 0, longPress: false,
   fade: { a: 1, target: 0, next: null },
-  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, sfx: 0.7, mus: 0.7 }, rs: 1,
+  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, sfx: 0.7, mus: 0.7 }, rs: 1,
   state: null,
 };
 function loadSettings() {
@@ -19,14 +19,38 @@ function loadSettings() {
   if (!BONUSES.some(b => b.id === S.bonus)) S.bonus = 'gold';
   if (!FACTIONS.some(f => f.id === S.faction)) S.faction = 'haven';
   for (const [k, d] of [['sfx', 0.7], ['mus', 0.7]]) if (!SOUND_LEVELS.includes(S[k])) S[k] = d;
+  S.slots = validSlots(S.slots) || legacySlots(S);
 }
+// Miejsca graczy na ekranie nowej gry: 8 miejsc { type: 'human' | 'ai' | 'off', color, faction ('random' = losowa) }.
+// Kolejność miejsc = kolejność tur. Stare ustawienia (kolor, frakcja, liczba rywali) zamieniamy na miejsca.
+const SLOT_TYPES = ['human', 'ai', 'off'];
+function validSlots(a) {
+  if (!Array.isArray(a) || a.length !== MAX_PLAYERS) return null;
+  const used = new Set(), out = a.map(o => ({ type: SLOT_TYPES.includes(o && o.type) ? o.type : 'off', color: o && o.color, faction: o && (o.faction === 'random' || FACTIONS.some(f => f.id === o.faction)) ? o.faction : 'random' }));
+  for (const o of out) { if (!PLAYER_COLORS.some(c => c.id === o.color) || used.has(o.color)) o.color = null; else used.add(o.color); }
+  for (const o of out) if (!o.color) { o.color = PLAYER_COLORS.find(c => !used.has(c.id)).id; used.add(o.color); }
+  if (!out.some(o => o.type === 'human')) out[0].type = 'human';
+  return out;
+}
+function legacySlots(S) {
+  const colors = [S.color || 'red', ...PLAYER_COLORS.map(c => c.id).filter(id => id !== (S.color || 'red'))], foes = S.opponents == null ? 1 : S.opponents;
+  return colors.map((color, i) => ({ type: i === 0 ? 'human' : i <= foes ? 'ai' : 'off', color, faction: i === 0 ? S.faction || 'haven' : 'random' }));
+}
+// Aktywne miejsca do createNewGame. Bez S.slots (testy, stare ustawienia) liczą się kolor, frakcja i liczba rywali.
+const playerSlots = S => (validSlots(S.slots) || legacySlots(S)).filter(o => o.type !== 'off');
 function saveSettings() { try { localStorage.setItem('kk_settings', JSON.stringify(G.settings)); } catch (e) {} }
 const colorHex = id => (PLAYER_COLORS.find(c => c.id === id) || PLAYER_COLORS[0]).hex;
 // --- skróty do stanu rozgrywki (st = G.state) ---
-const ME = 0; // indeks gracza-człowieka; przeciwnicy komputerowi dostaną kolejne numery
+// ME = numer gracza-człowieka, który teraz gra (w hot-seat zmienia się co turę: setViewer). Mgła, surowce i „ty” w tekstach dotyczą jego.
+let ME = 0;
 const human = st => st.players[ME];
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const humanCount = st => st.players.filter(p => p.human).length;
+const hotseat = st => humanCount(st) > 1; // gra hot-seat (zwycięzca = ostatni gracz na placu)
+const sharedScreen = st => st.players.filter(p => p.human && !p.out).length > 1; // zasłona między turami: przy ekranie więcej niż jeden człowiek
+const playerName = (st, id) => `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[id].color) || PLAYER_COLORS[0]).name.toLowerCase()}`;
 const playerOf = (st, owner) => st.players[owner]; // gracz o danym numerze (surowce, frakcja, odkryta mapa)
-const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[owner].color) || PLAYER_COLORS[0]).name.toLowerCase()}` : 'nikt');
+const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? playerName(st, owner) : 'nikt');
 const ownerColor = (st, owner) => (st.players[owner] ? colorHex(st.players[owner].color) : NEUTRAL_COLOR);
 // Wybrany bohater gracza-człowieka; null, gdy gracz nie ma już bohaterów (może wtedy nająć nowego w tawernie)
 const hero = st => { const h = st.heroes[st.selHero || 0]; return h && h.owner === ME ? h : st.heroes.find(o => o.owner === ME) || null; };

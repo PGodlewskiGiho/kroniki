@@ -1,7 +1,7 @@
 // ==================== GRACZE KOMPUTEROWI ================================================
 // Tura przeciwnika dzieje się natychmiast (bez animacji), po turze człowieka, a przed nowym dniem.
 // SI widzi całą mapę. Kolejność: miasta (budowa, werbunek, najem), potem bohaterowie wybierają cele
-// z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do news.
+// z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do jego skrzynki (tell), zobaczy je na początku swojej tury.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
   'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u', 'guild4', 'guild5'];
 // Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
@@ -16,7 +16,7 @@ function buyMissing(st, owner, cost) {
 const aiMaxHeroes = st => (st.map.n >= 108 ? 3 : 2);
 // Rozejm: przez tyle dni SI nie atakuje miast ani bohaterów człowieka (Łatwy 21, Normalny 14, Trudny 7, wyżej 0)
 const AI_PEACE_DAYS = [21, 14, 7, 0, 0];
-const aiPeace = (st, owner) => owner === ME && st.dayTotal <= AI_PEACE_DAYS[st.settings.difficulty];
+const aiPeace = (st, owner) => owner >= 0 && playerOf(st, owner).human && st.dayTotal <= AI_PEACE_DAYS[st.settings.difficulty];
 // Daily bonus złota SI na wyższych poziomach trudności (Trudny +300, Ekspert +600, Niemożliwy +1000)
 const aiGoldBonus = st => Math.max(0, DIFFICULTIES[st.settings.difficulty].rating - 100) * 10;
 const armyStrength = h => Math.round(armyPower(h.army) * heroFactor(h));
@@ -87,7 +87,7 @@ function aiPickTarget(st, h, R) {
     const i = t.y * n + t.x, occupant = heroAt(st, t.x, t.y);
     if (t.owner === h.owner) { if (!occupant && armyPower(t.garrison) > 0) add(i, armyPower(t.garrison) * (hasArmy ? 3 : 20), 'reinforce'); continue; }
     if (!hasArmy || aiPeace(st, t.owner)) continue;
-    const tp = townPower(st, t); if (power > tp * 0.8) add(i, (t.owner === ME ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
+    const tp = townPower(st, t); if (power > tp * 0.8) add(i, (t.owner >= 0 && playerOf(st, t.owner).human ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
   }
   if (hasArmy) {
     for (const ob of st.objects) {
@@ -106,7 +106,7 @@ function aiPickTarget(st, h, R) {
       else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob); if (v > 0) add(i, v, 'site'); }
       else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
     }
-    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, o.owner === ME ? 15000 : 8000, 'hero', o);
+    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, playerOf(st, o.owner).human ? 15000 : 8000, 'hero', o);
     // zwiad: wolne pole na skraju odkrytego terenu, tym cenniejsze, im więcej mgły wokół
     const r = 3, m = n + 1, S = new Int32Array(m * m); let best = -1, bestScore = 0; // sumy prefiksowe nieodkrytych pól
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) S[(y + 1) * m + x + 1] = (ex[y * n + x] ? 0 : 1) + S[y * m + x + 1] + S[(y + 1) * m + x] - S[y * m + x];
@@ -133,9 +133,9 @@ function aiPickTarget(st, h, R) {
 function* aiBattle(st, h, foe, news) {
   const defOwner = foe.type === 'monster' ? -1 : foe.owner, defName = foe.type === 'monster' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
   let res;
-  if (defOwner === ME) {
-    const act = { kind: 'defend', h, foe }; res = yield act;
-    if (!act.shown) news.push(`${h.name} (${ownerName(st, h.owner)}) atakuje: ${defName}. ${res.outcome === 'win' ? (res.captured ? 'Miasto przepadło.' : 'Twój bohater poległ.') : 'Obrona się udała!'}`);
+  if (defOwner >= 0 && playerOf(st, defOwner).human) {
+    const act = { kind: 'defend', h, foe, owner: defOwner }; res = yield act;
+    if (!act.shown) tell(st, defOwner, `${h.name} (${ownerName(st, h.owner)}) atakuje: ${defName}. ${res.outcome === 'win' ? (res.captured ? 'Miasto przepadło.' : 'Twój bohater poległ.') : 'Obrona się udała!'}`);
   } else res = resolveBattle(simulateBattle(createBattle(st, h, foe)), false);
   if (res.outcome === 'win') gainExp(st, h, res.exp);
   return res.outcome === 'win';
@@ -158,7 +158,7 @@ function* aiVisit(st, h, i, news) {
   if (ob && ob.type === 'town') {
     const t = st.towns[ob.townId];
     if (t.owner === h.owner) { armyTransfer(t.garrison, h.army); return; }
-    if (!armySize(t.garrison) && !heroInTown(st, t)) { if (t.owner === ME) news.push(`${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
+    if (!armySize(t.garrison) && !heroInTown(st, t)) { tell(st, t.owner, `${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
     else yield* aiBattle(st, h, t, news);
     return;
   }
@@ -168,7 +168,7 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
   else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); }
-  else if (ob.type === 'mine') { if (ob.owner === ME) news.push(`Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
+  else if (ob.type === 'mine') { tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
 function* aiMoveHero(st, h, news) {
   for (let plan = 0; plan < 12 && st.heroes.includes(h); plan++) {
@@ -190,36 +190,71 @@ function* aiTurn(st, p, news) {
   for (const h of st.heroes.filter(h => h.owner === p.id)) yield* aiMoveHero(st, h, news);
   for (const t of st.towns.filter(t => t.owner === p.id)) { const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army); }
 }
-function* aiAllTurns(st, news) { for (const p of st.players) if (!p.human && !p.out) yield* aiTurn(st, p, news); }
+// Kolejka tur po graczu `from`: komputery po kolei, przy przejściu przez koniec listy nowy dzień ({ kind: 'day' }),
+// aż do następnego człowieka w grze. Wartość zwracana = numer człowieka, który gra teraz (przy jednym człowieku znowu from).
+function* turnsAfter(st, from, news) {
+  const N = st.players.length;
+  for (let k = 1; k <= N; k++) {
+    const id = (from + k) % N;
+    if (id === 0) { const d = advanceDay(st); yield { kind: 'day', newWeek: d.newWeek }; }
+    const p = st.players[id]; if (p.out) continue;
+    if (!playerAlive(st, p)) { p.out = true; continue; } // bez miast i bohaterów: odpada (ogłasza to ekran)
+    if (p.human) return id;
+    yield* aiTurn(st, p, news);
+  }
+  return from;
+}
+// Nowy dzień dla wszystkich: data, ruch i mana bohaterów, dochód, tydzień; wieści trafiają do skrzynek ludzi
+function advanceDay(st) {
+  st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
+  if (st.day > 7) { st.day = 1; st.week++; newWeek = true; if (st.week > 4) { st.week = 1; st.month++; newMonth = true; } }
+  for (const h of st.heroes) {
+    h.mp = heroMaxMP(h);
+    const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
+    if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
+  }
+  collectIncome(st);
+  for (const t of st.towns) t.builtToday = false;
+  if (newWeek) tell(st, -1, startWeek(st, newMonth));
+  dailyTownCheck(st); rebuildObjIndex(st); MapRender.miniDirty = true;
+  return { newWeek };
+}
 // Obrona człowieka bez ekranu bitwy: walka automatyczna, doświadczenie dla obrońcy
 function autoDefend(st, act) {
   const D = act.foe.garrison ? heroInTown(st, act.foe) : act.foe, res = resolveBattle(simulateBattle(createBattle(st, act.h, act.foe)), false);
   if (res.outcome !== 'win' && D && res.foeExp) gainExp(st, D, res.foeExp);
   return res;
 }
-function runAiSync(st, gen) { let input; for (;;) { const r = gen.next(input); input = undefined; if (r.done) return; if (r.value.kind === 'defend') input = autoDefend(st, r.value); } }
+function runAiSync(st, gen) { let input; for (;;) { const r = gen.next(input); input = undefined; if (r.done) return r.value; if (r.value.kind === 'defend') input = autoDefend(st, r.value); } }
 
 // --- koniec gry: gracz odpada, gdy nie ma miast ani bohaterów albo przez 7 dni nie ma żadnego miasta ---
 const NO_TOWN_DAYS = 7;
 const playerAlive = (st, p) => !p.out && (st.towns.some(t => t.owner === p.id) || st.heroes.some(h => h.owner === p.id));
 function eliminate(st, p) { p.out = true; for (const h of st.heroes.filter(h => h.owner === p.id)) removeHero(st, h); }
-// Po każdym dniu: licznik dni bez miasta. Zwraca wieści dla człowieka.
+// Po każdym dniu: licznik dni bez miasta; ostrzeżenia i wieści trafiają do skrzynek ludzi
 function dailyTownCheck(st) {
-  const news = [];
   for (const p of st.players) {
     if (p.out) continue;
     if (st.towns.some(t => t.owner === p.id)) { p.noTownDays = 0; continue; }
     p.noTownDays = (p.noTownDays || 0) + 1;
-    if (p.noTownDays >= NO_TOWN_DAYS) { eliminate(st, p); if (!p.human) news.push(`Gracz ${ownerName(st, p.id).replace('gracz ', '')} nie odzyskał miasta i odpada z gry.`); }
-    else if (p.human) news.push(`Nie masz żadnego miasta! Zdobądź je w ciągu ${NO_TOWN_DAYS - p.noTownDays + 1} dni, inaczej przegrasz.`);
+    if (p.noTownDays >= NO_TOWN_DAYS) { eliminate(st, p); tell(st, -1, `Gracz ${playerName(st, p.id).replace('gracz ', '')} nie odzyskał miasta i odpada z gry.`); }
+    else tell(st, p.id, `Nie masz żadnego miasta! Zdobądź je w ciągu ${NO_TOWN_DAYS - p.noTownDays + 1} dni, inaczej przegrasz.`);
   }
-  return news;
 }
+// Skrzynka wieści gracza-człowieka (to = -1: wszyscy ludzie w grze). Komputer wieści nie potrzebuje.
+function tell(st, to, text) { for (const p of st.players) if (p.human && !p.out && (to < 0 || p.id === to)) (p.inbox = p.inbox || []).push(text); }
+function takeInbox(p) { const a = p.inbox || []; p.inbox = []; return a; }
 // Wynik gry: 'win', 'lose' albo null. Bez przeciwników (tryb swobodny) nie ma zwycięstwa.
+// Hot-seat: 'lose', gdy odpadli wszyscy ludzie; 'win', gdy został jeden gracz i jest człowiekiem (st.winner).
 function gameResult(st) {
-  const me = human(st); if (me.out || !playerAlive(st, me)) return 'lose';
+  for (const p of st.players) if (!p.out && !playerAlive(st, p)) p.out = true;
+  if (hotseat(st)) {
+    const left = st.players.filter(p => !p.out);
+    if (!left.some(p => p.human)) return 'lose';
+    if (left.length === 1) { st.winner = left[0].id; return 'win'; }
+    return null;
+  }
+  const me = human(st); if (me.out) return 'lose';
   const foes = st.players.filter(p => !p.human); if (!foes.length) return null;
-  for (const p of foes) if (!p.out && !playerAlive(st, p)) p.out = true;
   return foes.every(p => p.out) ? 'win' : null;
 }
-

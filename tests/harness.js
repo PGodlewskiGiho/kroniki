@@ -26,7 +26,7 @@ async function openGame() {
 // Domyślnie bez przeciwników komputerowych (tryb swobodny), żeby testy zasad nie zależały od ruchów SI.
 async function newGame(page, settings = {}, seed = 12345) {
   return page.evaluate(([settings, seed]) => {
-    const S = Object.assign({}, G.settings, { mapSize: 'S', difficulty: 1, faction: 'haven', bonus: 'gold', opponents: 0 }, settings);
+    const S = Object.assign({}, G.settings, { mapSize: 'S', difficulty: 1, faction: 'haven', bonus: 'gold', opponents: 0, slots: null }, settings);
     G.state = createNewGame(S, seed);
     setScreen('adventure', {});
     return { players: G.state.players.length, towns: G.state.towns.length, heroes: G.state.heroes.length, objects: G.state.objects.length };

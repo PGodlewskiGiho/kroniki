@@ -24,7 +24,7 @@ const visit = (id, who = null) => page.evaluate(([id, who]) => {
 
 test('nowa gra: miejsca na mapie w liczbie zależnej od rozmiaru, na dostępnych polach', async () => {
   const r = await page.evaluate(() => ['S', 'M', 'XL'].map(ms => {
-    const st = createNewGame(Object.assign({}, G.settings, { mapSize: ms, opponents: 1 }), 21), n = st.map.n, sites = st.objects.filter(o => o.type === 'site');
+    const st = createNewGame(Object.assign({}, G.settings, { slots: null,  mapSize: ms, opponents: 1 }), 21), n = st.map.n, sites = st.objects.filter(o => o.type === 'site');
     return { ms, n: sites.length, kinds: new Set(sites.map(o => o.kind)).size, ok: sites.every(o => st.map.terrain[o.y * n + o.x] !== TER.WATER && !st.map.obst[o.y * n + o.x]),
       shrines: sites.filter(o => o.kind === 'shrine').every(o => SPELLS[o.spell]), mills: sites.filter(o => o.kind === 'windmill').every(o => RARE.includes(o.res)) };
   }));

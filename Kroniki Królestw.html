@@ -33,7 +33,7 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
      DANE: ARTEFAKTY I ROZWÓJ...     PRIMARY, CLASS_GROWTH, poziomy, EQUIP_SLOTS, ARTIFACTS
      DANE: CZARY                     SPELLS, efekty i opisy; GUILD_OFFER, CLASS_SPELLS
      DANE: OBIEKTY MAPY              SITES: kapliczki, studnie, młyny, obozy… (działanie w ZASADY GRY)
-     STAN GRY I USTAWIENIA           G (program), skróty do G.state: human, hero, ownerColor...
+     STAN GRY I USTAWIENIA           G (program), miejsca graczy (slots), ME = człowiek przy ekranie, skróty: human, hero...
      NARZĘDZIA                       losowość, szum, A*, kolory
      RYSOWANIE: PODSTAWY I PIXEL ART tekst, cache warstw, sprite(), drawSprite(), blit()
      DŹWIĘK                          Web Audio bez plików: Sound.play(efekt), Sound.music(motyw), SFX, MUSIC
@@ -112,7 +112,7 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    miast i bohaterów albo po NO_TOWN_DAYS dniach bez miasta), najlepsze wyniki (recordScore), wybór liczby rywali.
    Po kroku 15 (etap 1): rynek dla gracza (marketLot/trade, okno showMarket; kurs zależy od liczby rynków,
    te same zasady dla SI w buyMissing). Menu w stylu pikselowym.
-   Tura przeciwnika na żywo: aiAllTurns to generator akcji (kroki, obrona), ekran mapy odtwarza go w updateAi
+   Tura przeciwnika na żywo: aiAllTurns (dziś turnsAfter) to generator akcji (kroki, obrona), ekran mapy odtwarza go w updateAi
    (widoczne ruchy z animacją), atak na gracza pyta o walkę (askDefense) i otwiera bitwę z graczem po prawej
    (ekran bitwy: this.me, onDone). doEndTurn() bez opcji (testy) liczy wszystko od razu, z obroną automatyczną.
    Spotkanie bohaterów (showMeeting). Mgła wojny dla SI: reveal(…, owner) odkrywa teren każdemu graczowi,
@@ -140,9 +140,14 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    stocznia (buyBoat, shipyardSpot, tylko w mieście nad wodą), darmowe łodzie przy brzegach.
    Nowe frakcje: Twierdza (bagna: gnolle, jaszczuroludzie, ważki, bazyliszki, gorgony, wywerny, hydry) i Inferno (lawa:
    chochliki, gogi, ogary, demony, czarty, ifryty, diabły); klasy beastmaster/witch i demoniac/heretic, portrety, miasta, muzyka.
+   Hot-seat i do 8 graczy: 8 miejsc na ekranie nowej gry (settings.slots: człowiek/komputer/wolne, kolor, frakcja),
+   ME to numer człowieka przy ekranie (setViewer: jego mgła, kamera, wybrany bohater), kolejka tur turnsAfter
+   (komputery po kolei, nowy dzień advanceDay przy końcu listy), zasłona między ludźmi, wieści w skrzynkach graczy
+   (tell/takeInbox), obrona innego człowieka przed atakiem komputera, bitwa człowiek na człowieka (obie strony ręcznie),
+   zwycięzca = ostatni gracz na placu. Miejsc na miasta: 4/6/8/10 zależnie od mapy (SITE_COUNT).
 
    PLAN (kolejność ustalona z graczem; krok 13 „warunki zwycięstwa” pominięty)
-   1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (2–4 ludzi, zasłona między turami).
+   1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (zrobione: do 8 graczy, zasłona między turami).
    5. Samouczek (wykreślony). 6. Porządki: migracja starych zapisów, testy balansu frakcji.
    7. Grafika: animowana woda, wyraźniejsze sosny i ozdoby, obiekty mapy w stylu rudy, tła bitew zależne od terenu.
    ===================================================================================== */
@@ -179,7 +184,10 @@ const MAP_SIZES = [
 const PLAYER_COLORS = [
   { id: 'red', name: 'Czerwony', hex: '#c42a2a' }, { id: 'blue', name: 'Niebieski', hex: '#2f5bd0' },
   { id: 'green', name: 'Zielony', hex: '#2f8f3a' }, { id: 'purple', name: 'Fioletowy', hex: '#8040b0' },
+  { id: 'orange', name: 'Pomarańczowy', hex: '#e07818' }, { id: 'teal', name: 'Turkusowy', hex: '#1f9a9a' },
+  { id: 'pink', name: 'Różowy', hex: '#d0508e' }, { id: 'tan', name: 'Płowy', hex: '#a88450' },
 ];
+const MAX_PLAYERS = 8; // hot-seat: do 8 graczy (ludzie i komputer) na jednej mapie, każdy w innym kolorze
 const NEUTRAL_COLOR = '#d8d4c8'; // flagi i znaczniki obiektów bez właściciela (mapa, minimapa, interfejs)
 const BONUSES = [
   { id: 'gold', name: 'Złoto', sub: '500–1000' },
@@ -212,7 +220,7 @@ const ROADS = [null,
   { name: 'droga brukowana', cost: 50, pal: ['#8c826e', '#bdb29c', '#ddd4c0'] },
 ];
 const DX8 = [1, -1, 0, 0, 1, 1, -1, -1], DY8 = [0, 0, 1, -1, 1, -1, 1, -1];
-const SITE_COUNT = { 36: 3, 72: 5, 108: 7, 144: 9 };
+const SITE_COUNT = { 36: 4, 72: 6, 108: 8, 144: 10 }; // miejsca pod miasta = najwięcej graczy na mapie
 const STEP_TIME = 0.14, HERO_SIGHT = 5;
 
 // ==================== DANE: STWORZENIA ==================================================
@@ -640,7 +648,7 @@ const G = {
   mouse: { x: -1, y: -1, down: false },
   hover: null, downTarget: null, modal: null, keys: new Set(), popup: null, pressTimer: 0, longPress: false,
   fade: { a: 1, target: 0, next: null },
-  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, sfx: 0.7, mus: 0.7 }, rs: 1,
+  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, sfx: 0.7, mus: 0.7 }, rs: 1,
   state: null,
 };
 function loadSettings() {
@@ -653,14 +661,38 @@ function loadSettings() {
   if (!BONUSES.some(b => b.id === S.bonus)) S.bonus = 'gold';
   if (!FACTIONS.some(f => f.id === S.faction)) S.faction = 'haven';
   for (const [k, d] of [['sfx', 0.7], ['mus', 0.7]]) if (!SOUND_LEVELS.includes(S[k])) S[k] = d;
+  S.slots = validSlots(S.slots) || legacySlots(S);
 }
+// Miejsca graczy na ekranie nowej gry: 8 miejsc { type: 'human' | 'ai' | 'off', color, faction ('random' = losowa) }.
+// Kolejność miejsc = kolejność tur. Stare ustawienia (kolor, frakcja, liczba rywali) zamieniamy na miejsca.
+const SLOT_TYPES = ['human', 'ai', 'off'];
+function validSlots(a) {
+  if (!Array.isArray(a) || a.length !== MAX_PLAYERS) return null;
+  const used = new Set(), out = a.map(o => ({ type: SLOT_TYPES.includes(o && o.type) ? o.type : 'off', color: o && o.color, faction: o && (o.faction === 'random' || FACTIONS.some(f => f.id === o.faction)) ? o.faction : 'random' }));
+  for (const o of out) { if (!PLAYER_COLORS.some(c => c.id === o.color) || used.has(o.color)) o.color = null; else used.add(o.color); }
+  for (const o of out) if (!o.color) { o.color = PLAYER_COLORS.find(c => !used.has(c.id)).id; used.add(o.color); }
+  if (!out.some(o => o.type === 'human')) out[0].type = 'human';
+  return out;
+}
+function legacySlots(S) {
+  const colors = [S.color || 'red', ...PLAYER_COLORS.map(c => c.id).filter(id => id !== (S.color || 'red'))], foes = S.opponents == null ? 1 : S.opponents;
+  return colors.map((color, i) => ({ type: i === 0 ? 'human' : i <= foes ? 'ai' : 'off', color, faction: i === 0 ? S.faction || 'haven' : 'random' }));
+}
+// Aktywne miejsca do createNewGame. Bez S.slots (testy, stare ustawienia) liczą się kolor, frakcja i liczba rywali.
+const playerSlots = S => (validSlots(S.slots) || legacySlots(S)).filter(o => o.type !== 'off');
 function saveSettings() { try { localStorage.setItem('kk_settings', JSON.stringify(G.settings)); } catch (e) {} }
 const colorHex = id => (PLAYER_COLORS.find(c => c.id === id) || PLAYER_COLORS[0]).hex;
 // --- skróty do stanu rozgrywki (st = G.state) ---
-const ME = 0; // indeks gracza-człowieka; przeciwnicy komputerowi dostaną kolejne numery
+// ME = numer gracza-człowieka, który teraz gra (w hot-seat zmienia się co turę: setViewer). Mgła, surowce i „ty” w tekstach dotyczą jego.
+let ME = 0;
 const human = st => st.players[ME];
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const humanCount = st => st.players.filter(p => p.human).length;
+const hotseat = st => humanCount(st) > 1; // gra hot-seat (zwycięzca = ostatni gracz na placu)
+const sharedScreen = st => st.players.filter(p => p.human && !p.out).length > 1; // zasłona między turami: przy ekranie więcej niż jeden człowiek
+const playerName = (st, id) => `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[id].color) || PLAYER_COLORS[0]).name.toLowerCase()}`;
 const playerOf = (st, owner) => st.players[owner]; // gracz o danym numerze (surowce, frakcja, odkryta mapa)
-const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[owner].color) || PLAYER_COLORS[0]).name.toLowerCase()}` : 'nikt');
+const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? playerName(st, owner) : 'nikt');
 const ownerColor = (st, owner) => (st.players[owner] ? colorHex(st.players[owner].color) : NEUTRAL_COLOR);
 // Wybrany bohater gracza-człowieka; null, gdy gracz nie ma już bohaterów (może wtedy nająć nowego w tawernie)
 const hero = st => { const h = st.heroes[st.selHero || 0]; return h && h.owner === ME ? h : st.heroes.find(o => o.owner === ME) || null; };
@@ -1117,7 +1149,7 @@ class Button {
     ctx.lineWidth = 1.2; ctx.strokeStyle = this.disabled ? '#6d665c' : (hover || sel ? '#ffd970' : '#b8913f'); rr(ctx, x + 3, y + 3, w - 6, h - 6, 3); ctx.stroke();
     let cx = x + w / 2;
     if (this.swatch) {
-      ctx.fillStyle = this.swatch; ctx.fillRect(x + 10, y + h / 2 - 8, 16, 16);
+      ctx.fillStyle = typeof this.swatch === 'function' ? this.swatch() : this.swatch; ctx.fillRect(x + 10, y + h / 2 - 8, 16, 16);
       ctx.lineWidth = 1.5; ctx.strokeStyle = '#e0b24a'; ctx.strokeRect(x + 10, y + h / 2 - 8, 16, 16); cx = x + (w + 26) / 2;
     }
     if (this.icon) {
@@ -3089,31 +3121,33 @@ function createHero(st, owner, x, y, pick = null) {
 // seed podaje się tylko w testach (powtarzalny świat); w grze jest losowy.
 function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   const rng = mulberry32(seed), d = DIFFICULTIES[S.difficulty];
-  const resources = { ...d.res }; let bonusText = '';
-  if (S.bonus === 'gold') { const g = 500 + Math.floor(rng() * 6) * 100; resources.gold += g; bonusText = `+${g} złota`; }
-  else if (S.bonus === 'resource') { const a = 5 + Math.floor(rng() * 6); resources.wood += a; resources.ore += a; bonusText = `+${a} drewna i rudy`; }
-  const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S }, bonusText, selHero: 0, cam: null,
-    players: [{ id: ME, color: S.color, human: true, faction: S.faction, resources }], heroes: [], towns: [], objects: [] };
+  const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S }, bonusText: '', selHero: 0, cam: null, players: [], heroes: [], towns: [], objects: [] };
   const map = st.map = generateMap(MAP_SIZES.find(m => m.id === S.mapSize).n, seed);
-  human(st).explored = new Uint8Array(map.n * map.n);
   st.objects = placeObjects(st);
-  createTown(st, map.start.x, map.start.y, ME, S.faction);
-  // przeciwnicy komputerowi w kolejnych miejscach startowych (drugie = najdalej od gracza), reszta miast jest niezależna
-  const trng = mulberry32(seed ^ 0x70a7), others = map.sites.filter(s => s !== map.start), foes = others.slice(0, clamp(S.opponents == null ? 1 : S.opponents, 0, others.length));
-  const colors = PLAYER_COLORS.filter(c => c.id !== S.color);
-  foes.forEach((s, k) => {
-    const id = st.players.length, fac = FACTIONS[Math.floor(trng() * FACTIONS.length)].id;
-    st.players.push({ id, color: colors[k % colors.length].id, human: false, faction: fac, resources: { ...DIFFICULTIES[1].res }, explored: new Uint8Array(map.n * map.n) });
-    createTown(st, s.x, s.y, id, fac);
+  // gracze (ludzie i komputer) w kolejnych miejscach startowych (pierwsze = map.start, drugie = najdalej od niego), reszta miast jest niezależna
+  const trng = mulberry32(seed ^ 0x70a7), slots = playerSlots(S).slice(0, map.sites.length), others = map.sites.filter(s => s !== map.start), sites = [map.start, ...others];
+  slots.forEach((o, id) => {
+    const fac = o.faction === 'random' ? FACTIONS[Math.floor(trng() * FACTIONS.length)].id : o.faction, isHuman = o.type === 'human';
+    st.players.push({ id, color: o.color, human: isHuman, faction: fac, resources: { ...(isHuman ? d : DIFFICULTIES[1]).res }, explored: new Uint8Array(map.n * map.n) });
+    createTown(st, sites[id].x, sites[id].y, id, fac);
   });
-  for (const s of others.slice(foes.length)) createNeutralTown(st, s, trng);
+  for (const s of sites.slice(slots.length)) createNeutralTown(st, s, trng);
   rebuildObjIndex(st);
-  const h = createHero(st, ME, map.start.x, map.start.y);
-  for (const p of st.players) if (!p.human) createHero(st, p.id, st.towns.find(t => t.owner === p.id).x, st.towns.find(t => t.owner === p.id).y);
-  if (S.bonus === 'artifact') { const pool = ARTS_BY_RARITY('treasure'), id = pool[Math.floor(rng() * pool.length)]; giveArtifact(h, id); st.bonusText = `artefakt: ${ARTIFACTS[id].name}`; h.mp = heroMaxMP(h); }
-  reveal(st, h.x, h.y, HERO_SIGHT + 1);
-  for (const o of st.heroes) if (o.owner !== ME) reveal(st, o.x, o.y, HERO_SIGHT + 1, o.owner);
+  for (const p of st.players) {
+    const t = st.towns.find(t => t.owner === p.id), h = createHero(st, p.id, t.x, t.y);
+    if (p.human) p.bonusText = startBonus(st, S.bonus, p, h, rng);
+    reveal(st, h.x, h.y, HERO_SIGHT + 1, p.id);
+  }
+  st.cur = ME = st.players.find(p => p.human).id; st.bonusText = human(st).bonusText; st.selHero = st.heroes.findIndex(h => h.owner === ME);
   return st;
+}
+// Bonus startowy gracza-człowieka: złoto, drewno i ruda albo artefakt dla pierwszego bohatera
+function startBonus(st, bonus, p, h, rng) {
+  const R = p.resources;
+  if (bonus === 'gold') { const g = 500 + Math.floor(rng() * 6) * 100; R.gold += g; return `+${g} złota`; }
+  if (bonus === 'resource') { const a = 5 + Math.floor(rng() * 6); R.wood += a; R.ore += a; return `+${a} drewna i rudy`; }
+  if (bonus === 'artifact') { const pool = ARTS_BY_RARITY('treasure'), id = pool[Math.floor(rng() * pool.length)]; giveArtifact(h, id); h.mp = heroMaxMP(h); return `artefakt: ${ARTIFACTS[id].name}`; }
+  return '';
 }
 function startNewGame() { saveSettings(); G.state = createNewGame(G.settings); G.go('adventure', { welcome: true }); }
 
@@ -3802,7 +3836,8 @@ const sideHero = (B, side) => B.sides[side].hero;
 const sideAtt = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'att') : 0);
 const sideDef = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'def') : 0); // mury miasta chronią fizycznie (oblężenie)
 // Którą stroną dowodzi człowiek (resztą SI). Na razie człowiek zawsze atakuje, więc to strona 0.
-const humanSide = (B, side) => B.sides[side].owner === ME;
+// Strona dowodzona przez człowieka: gracz przed ekranem albo (hot-seat) inny człowiek, który się broni
+const humanSide = (B, side) => { const o = B.sides[side].owner; return o === ME || (o >= 0 && !!B.st.players[o] && B.st.players[o].human); };
 // Obrażenia jak w oryginale: podstawa × (1 + 5% za każdy punkt przewagi ataku), albo −2,5% za punkt przewagi obrony.
 // moved = liczba pól rozpędu (szarża), ranged = strzał; strzelec wręcz bije za połowę, chyba że ma „Walkę wręcz”.
 function damageRoll(B, a, t, ranged, moved = 0) {
@@ -4091,7 +4126,7 @@ function resolveBattle(B, fled) {
 // ==================== GRACZE KOMPUTEROWI ================================================
 // Tura przeciwnika dzieje się natychmiast (bez animacji), po turze człowieka, a przed nowym dniem.
 // SI widzi całą mapę. Kolejność: miasta (budowa, werbunek, najem), potem bohaterowie wybierają cele
-// z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do news.
+// z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do jego skrzynki (tell), zobaczy je na początku swojej tury.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
   'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u', 'guild4', 'guild5'];
 // Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
@@ -4106,7 +4141,7 @@ function buyMissing(st, owner, cost) {
 const aiMaxHeroes = st => (st.map.n >= 108 ? 3 : 2);
 // Rozejm: przez tyle dni SI nie atakuje miast ani bohaterów człowieka (Łatwy 21, Normalny 14, Trudny 7, wyżej 0)
 const AI_PEACE_DAYS = [21, 14, 7, 0, 0];
-const aiPeace = (st, owner) => owner === ME && st.dayTotal <= AI_PEACE_DAYS[st.settings.difficulty];
+const aiPeace = (st, owner) => owner >= 0 && playerOf(st, owner).human && st.dayTotal <= AI_PEACE_DAYS[st.settings.difficulty];
 // Daily bonus złota SI na wyższych poziomach trudności (Trudny +300, Ekspert +600, Niemożliwy +1000)
 const aiGoldBonus = st => Math.max(0, DIFFICULTIES[st.settings.difficulty].rating - 100) * 10;
 const armyStrength = h => Math.round(armyPower(h.army) * heroFactor(h));
@@ -4177,7 +4212,7 @@ function aiPickTarget(st, h, R) {
     const i = t.y * n + t.x, occupant = heroAt(st, t.x, t.y);
     if (t.owner === h.owner) { if (!occupant && armyPower(t.garrison) > 0) add(i, armyPower(t.garrison) * (hasArmy ? 3 : 20), 'reinforce'); continue; }
     if (!hasArmy || aiPeace(st, t.owner)) continue;
-    const tp = townPower(st, t); if (power > tp * 0.8) add(i, (t.owner === ME ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
+    const tp = townPower(st, t); if (power > tp * 0.8) add(i, (t.owner >= 0 && playerOf(st, t.owner).human ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
   }
   if (hasArmy) {
     for (const ob of st.objects) {
@@ -4196,7 +4231,7 @@ function aiPickTarget(st, h, R) {
       else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob); if (v > 0) add(i, v, 'site'); }
       else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
     }
-    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, o.owner === ME ? 15000 : 8000, 'hero', o);
+    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, playerOf(st, o.owner).human ? 15000 : 8000, 'hero', o);
     // zwiad: wolne pole na skraju odkrytego terenu, tym cenniejsze, im więcej mgły wokół
     const r = 3, m = n + 1, S = new Int32Array(m * m); let best = -1, bestScore = 0; // sumy prefiksowe nieodkrytych pól
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) S[(y + 1) * m + x + 1] = (ex[y * n + x] ? 0 : 1) + S[y * m + x + 1] + S[(y + 1) * m + x] - S[y * m + x];
@@ -4223,9 +4258,9 @@ function aiPickTarget(st, h, R) {
 function* aiBattle(st, h, foe, news) {
   const defOwner = foe.type === 'monster' ? -1 : foe.owner, defName = foe.type === 'monster' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
   let res;
-  if (defOwner === ME) {
-    const act = { kind: 'defend', h, foe }; res = yield act;
-    if (!act.shown) news.push(`${h.name} (${ownerName(st, h.owner)}) atakuje: ${defName}. ${res.outcome === 'win' ? (res.captured ? 'Miasto przepadło.' : 'Twój bohater poległ.') : 'Obrona się udała!'}`);
+  if (defOwner >= 0 && playerOf(st, defOwner).human) {
+    const act = { kind: 'defend', h, foe, owner: defOwner }; res = yield act;
+    if (!act.shown) tell(st, defOwner, `${h.name} (${ownerName(st, h.owner)}) atakuje: ${defName}. ${res.outcome === 'win' ? (res.captured ? 'Miasto przepadło.' : 'Twój bohater poległ.') : 'Obrona się udała!'}`);
   } else res = resolveBattle(simulateBattle(createBattle(st, h, foe)), false);
   if (res.outcome === 'win') gainExp(st, h, res.exp);
   return res.outcome === 'win';
@@ -4248,7 +4283,7 @@ function* aiVisit(st, h, i, news) {
   if (ob && ob.type === 'town') {
     const t = st.towns[ob.townId];
     if (t.owner === h.owner) { armyTransfer(t.garrison, h.army); return; }
-    if (!armySize(t.garrison) && !heroInTown(st, t)) { if (t.owner === ME) news.push(`${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
+    if (!armySize(t.garrison) && !heroInTown(st, t)) { tell(st, t.owner, `${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
     else yield* aiBattle(st, h, t, news);
     return;
   }
@@ -4258,7 +4293,7 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
   else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); }
-  else if (ob.type === 'mine') { if (ob.owner === ME) news.push(`Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
+  else if (ob.type === 'mine') { tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
 function* aiMoveHero(st, h, news) {
   for (let plan = 0; plan < 12 && st.heroes.includes(h); plan++) {
@@ -4280,39 +4315,74 @@ function* aiTurn(st, p, news) {
   for (const h of st.heroes.filter(h => h.owner === p.id)) yield* aiMoveHero(st, h, news);
   for (const t of st.towns.filter(t => t.owner === p.id)) { const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army); }
 }
-function* aiAllTurns(st, news) { for (const p of st.players) if (!p.human && !p.out) yield* aiTurn(st, p, news); }
+// Kolejka tur po graczu `from`: komputery po kolei, przy przejściu przez koniec listy nowy dzień ({ kind: 'day' }),
+// aż do następnego człowieka w grze. Wartość zwracana = numer człowieka, który gra teraz (przy jednym człowieku znowu from).
+function* turnsAfter(st, from, news) {
+  const N = st.players.length;
+  for (let k = 1; k <= N; k++) {
+    const id = (from + k) % N;
+    if (id === 0) { const d = advanceDay(st); yield { kind: 'day', newWeek: d.newWeek }; }
+    const p = st.players[id]; if (p.out) continue;
+    if (!playerAlive(st, p)) { p.out = true; continue; } // bez miast i bohaterów: odpada (ogłasza to ekran)
+    if (p.human) return id;
+    yield* aiTurn(st, p, news);
+  }
+  return from;
+}
+// Nowy dzień dla wszystkich: data, ruch i mana bohaterów, dochód, tydzień; wieści trafiają do skrzynek ludzi
+function advanceDay(st) {
+  st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
+  if (st.day > 7) { st.day = 1; st.week++; newWeek = true; if (st.week > 4) { st.week = 1; st.month++; newMonth = true; } }
+  for (const h of st.heroes) {
+    h.mp = heroMaxMP(h);
+    const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
+    if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
+  }
+  collectIncome(st);
+  for (const t of st.towns) t.builtToday = false;
+  if (newWeek) tell(st, -1, startWeek(st, newMonth));
+  dailyTownCheck(st); rebuildObjIndex(st); MapRender.miniDirty = true;
+  return { newWeek };
+}
 // Obrona człowieka bez ekranu bitwy: walka automatyczna, doświadczenie dla obrońcy
 function autoDefend(st, act) {
   const D = act.foe.garrison ? heroInTown(st, act.foe) : act.foe, res = resolveBattle(simulateBattle(createBattle(st, act.h, act.foe)), false);
   if (res.outcome !== 'win' && D && res.foeExp) gainExp(st, D, res.foeExp);
   return res;
 }
-function runAiSync(st, gen) { let input; for (;;) { const r = gen.next(input); input = undefined; if (r.done) return; if (r.value.kind === 'defend') input = autoDefend(st, r.value); } }
+function runAiSync(st, gen) { let input; for (;;) { const r = gen.next(input); input = undefined; if (r.done) return r.value; if (r.value.kind === 'defend') input = autoDefend(st, r.value); } }
 
 // --- koniec gry: gracz odpada, gdy nie ma miast ani bohaterów albo przez 7 dni nie ma żadnego miasta ---
 const NO_TOWN_DAYS = 7;
 const playerAlive = (st, p) => !p.out && (st.towns.some(t => t.owner === p.id) || st.heroes.some(h => h.owner === p.id));
 function eliminate(st, p) { p.out = true; for (const h of st.heroes.filter(h => h.owner === p.id)) removeHero(st, h); }
-// Po każdym dniu: licznik dni bez miasta. Zwraca wieści dla człowieka.
+// Po każdym dniu: licznik dni bez miasta; ostrzeżenia i wieści trafiają do skrzynek ludzi
 function dailyTownCheck(st) {
-  const news = [];
   for (const p of st.players) {
     if (p.out) continue;
     if (st.towns.some(t => t.owner === p.id)) { p.noTownDays = 0; continue; }
     p.noTownDays = (p.noTownDays || 0) + 1;
-    if (p.noTownDays >= NO_TOWN_DAYS) { eliminate(st, p); if (!p.human) news.push(`Gracz ${ownerName(st, p.id).replace('gracz ', '')} nie odzyskał miasta i odpada z gry.`); }
-    else if (p.human) news.push(`Nie masz żadnego miasta! Zdobądź je w ciągu ${NO_TOWN_DAYS - p.noTownDays + 1} dni, inaczej przegrasz.`);
+    if (p.noTownDays >= NO_TOWN_DAYS) { eliminate(st, p); tell(st, -1, `Gracz ${playerName(st, p.id).replace('gracz ', '')} nie odzyskał miasta i odpada z gry.`); }
+    else tell(st, p.id, `Nie masz żadnego miasta! Zdobądź je w ciągu ${NO_TOWN_DAYS - p.noTownDays + 1} dni, inaczej przegrasz.`);
   }
-  return news;
 }
+// Skrzynka wieści gracza-człowieka (to = -1: wszyscy ludzie w grze). Komputer wieści nie potrzebuje.
+function tell(st, to, text) { for (const p of st.players) if (p.human && !p.out && (to < 0 || p.id === to)) (p.inbox = p.inbox || []).push(text); }
+function takeInbox(p) { const a = p.inbox || []; p.inbox = []; return a; }
 // Wynik gry: 'win', 'lose' albo null. Bez przeciwników (tryb swobodny) nie ma zwycięstwa.
+// Hot-seat: 'lose', gdy odpadli wszyscy ludzie; 'win', gdy został jeden gracz i jest człowiekiem (st.winner).
 function gameResult(st) {
-  const me = human(st); if (me.out || !playerAlive(st, me)) return 'lose';
+  for (const p of st.players) if (!p.out && !playerAlive(st, p)) p.out = true;
+  if (hotseat(st)) {
+    const left = st.players.filter(p => !p.out);
+    if (!left.some(p => p.human)) return 'lose';
+    if (left.length === 1) { st.winner = left[0].id; return 'win'; }
+    return null;
+  }
+  const me = human(st); if (me.out) return 'lose';
   const foes = st.players.filter(p => !p.human); if (!foes.length) return null;
-  for (const p of foes) if (!p.out && !playerAlive(st, p)) p.out = true;
   return foes.every(p => p.out) ? 'win' : null;
 }
-
 // ==================== ZAPIS I ODCZYT GRY ================================================
 // Zapis = zwykły obiekt JSON (serializeGame) w jednym z miejsc (SaveStore): na koncie Claude
 // (magazyn db opublikowanej strony, prywatny dla każdego gracza) albo w pamięci przeglądarki.
@@ -4336,7 +4406,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0 },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -4353,7 +4423,10 @@ function deserializeGame(d) {
   const r = mulberry32(st.seed);
   for (const h of st.heroes) { if (!Array.isArray(h.army)) h.army = startingArmy(st.players[h.owner].faction, r); delete h.slowest; initHeroProgress(h); while (h.exp >= expForLevel(h.level + 1)) h.level++; }
   for (const t of st.towns) { if (!Array.isArray(t.garrison) || t.garrison.length !== ARMY_SLOTS) t.garrison = emptyArmy(); if (!t.avail) t.avail = {}; for (let L = 1; L <= guildLevel(t); L++) if (!t.guild || !t.guild[L]) rollGuildLevel(st, t, L); }
-  rebuildObjIndex(st); return st;
+  // zapisy sprzed hot-seat: jeden człowiek (numer 0), powitanie już było
+  if (!(st.cur >= 0 && st.players[st.cur] && st.players[st.cur].human)) st.cur = st.players.findIndex(p => p.human);
+  for (const p of st.players) if (p.human && p.welcomed === undefined) p.welcomed = true;
+  ME = st.cur; rebuildObjIndex(st); return st;
 }
 // Krótki opis zapisu do listy slotów (bez wczytywania całej gry)
 function saveMeta(st) {
@@ -6334,35 +6407,65 @@ G.screens.menu = {
     text(ctx, `Kroniki Królestw · wersja ${VERSION}`, 12, H - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
   },
 };
+// Nowa gra: mapa, trudność, bonus i 8 miejsc graczy (człowiek / komputer / wolne, kolor, frakcja).
+// Kilku ludzi = hot-seat: grają na zmianę przy jednym ekranie, każdy ze swoją mgłą wojny.
+const setupCap = S => (SITE_COUNT[(MAP_SIZES.find(m => m.id === S.mapSize) || MAP_SIZES[0]).n] || 4);
+const SLOT_LABEL = { human: 'Człowiek', ai: 'Komputer', off: '—' };
 G.screens.setup = {
   backdrop() {}, // scena menu maluje całe okno
   buttons: [],
   enter() {
-    const S = G.settings, B = [];
-    MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 118, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}` })));
-    DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 180, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
-    PLAYER_COLORS.forEach((c, i) => B.push(new Button(230 + i * 128, 276, 118, 40, c.name, () => { S.color = c.id; }, { selected: () => S.color === c.id, size: 13, swatch: c.hex })));
-    const fw = Math.min(154, Math.floor(506 / FACTIONS.length) - 6); FACTIONS.forEach((f, i) => B.push(new Button(230 + i * (fw + 6), 330, fw, 40, f.name, () => { S.faction = f.id; }, { selected: () => S.faction === f.id, size: fw < 110 ? 14 : 16 })));
-    BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 440, 100, 44, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, sub: b.sub })));
-    [1, 2, 3].forEach((k, i) => B.push(new Button(628 + i * 38, 440, 34, 44, String(k), () => { S.opponents = k; }, { selected: () => (S.opponents || 1) === k, size: 17,
-      tip: 'Liczba przeciwników komputerowych. Na małej mapie zmieszczą się najwyżej dwaj.' })));
-    B.push(new Button(150, 506, 200, 46, 'Rozpocznij', () => startNewGame(), { key: 'enter', size: 19 }));
-    B.push(new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
+    const S = G.settings, B = []; S.slots = validSlots(S.slots) || legacySlots(S);
+    MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 114, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}`, tip: `Na tej mapie zmieści się do ${SITE_COUNT[m.n]} graczy.` })));
+    DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 168, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
+    BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 254, 100, 36, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, tip: `Bonus startowy: ${b.sub}.` })));
+    this.slotBtns = S.slots.map((o, i) => {
+      const x = 80 + (i % 2) * 340, y = 318 + (i >> 1) * 42, col = () => S.slots[i];
+      const sw = new Button(x, y, 40, 34, '', () => this.nextColor(i), { swatch: () => colorHex(col().color), tip: 'Kolor gracza (kliknij, aby zmienić).' });
+      const ty = new Button(x + 46, y, 118, 34, '', () => this.nextType(i), { size: 14, selected: () => col().type === 'human', tip: 'Człowiek, komputer albo wolne miejsce. Kilku ludzi gra na zmianę przy jednym ekranie (hot-seat).' });
+      const fa = new Button(x + 170, y, 150, 34, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; }, { size: 14, tip: 'Frakcja gracza (kliknij, aby zmienić).' });
+      B.push(sw, ty, fa); return { sw, ty, fa };
+    });
+    this.bStart = new Button(150, 506, 200, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19 });
+    B.push(this.bStart, new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
     this.buttons = B;
   },
+  nextColor(i) {
+    const S = G.settings, o = S.slots[i], k = PLAYER_COLORS.findIndex(c => c.id === o.color);
+    for (let d = 1; d < PLAYER_COLORS.length; d++) {
+      const c = PLAYER_COLORS[(k + d) % PLAYER_COLORS.length], j = S.slots.findIndex(q => q.color === c.id);
+      if (j < 0 || S.slots[j].type === 'off') { if (j >= 0) S.slots[j].color = o.color; o.color = c.id; return; } // zamiana z wolnym miejscem
+    }
+  },
+  nextType(i) {
+    const S = G.settings, o = S.slots[i], t = SLOT_TYPES[(SLOT_TYPES.indexOf(o.type) + 1) % SLOT_TYPES.length];
+    if (o.type === 'human' && !S.slots.some((q, j) => j !== i && q.type === 'human')) { o.type = 'ai'; S.slots[i === 0 ? 1 : 0].type = 'human'; return; } // zawsze choć jeden człowiek
+    o.type = t;
+  },
+  active() { return G.settings.slots.filter(o => o.type !== 'off').length; },
+  start() {
+    const n = this.active(), cap = setupCap(G.settings);
+    if (n > cap) { showDialog(`Na tej mapie zmieści się najwyżej ${cap} graczy, a wybranych jest ${n}. Wybierz większą mapę albo zwolnij miejsca.`, [{ label: 'OK', key: 'enter' }]); return; }
+    const hu = G.settings.slots.find(o => o.type === 'human'); G.settings.color = hu.color; if (hu.faction !== 'random') G.settings.faction = hu.faction;
+    G.settings.opponents = G.settings.slots.filter(o => o.type === 'ai').length;
+    startNewGame();
+  },
   draw(ctx) {
+    const S = G.settings;
+    for (const [i, b] of (this.slotBtns || []).entries()) {
+      const o = S.slots[i]; b.ty.label = SLOT_LABEL[o.type]; b.fa.label = o.faction === 'random' ? 'Losowa' : factionOf(o.faction).name; b.fa.disabled = b.sw.disabled = o.type === 'off';
+    }
     dimmedMenuScene(ctx, 0.5);
     drawParchment(ctx, 40, 22, 720, 556);
     text(ctx, 'Nowa gra', W / 2, 58, { size: 30, align: 'center', color: '#3a1e08', fam: 'title' });
-    text(ctx, 'Pojedynczy scenariusz na losowej mapie', W / 2, 88, { size: 18, align: 'center', color: '#5a3814', italic: true, weight: 500 });
-    divider(ctx, 80, 720, 104);
+    text(ctx, 'Losowa mapa, do 8 graczy: ludzie na zmianę przy jednym ekranie i komputer', W / 2, 88, { size: 17, align: 'center', color: '#5a3814', italic: true, weight: 500 });
+    divider(ctx, 80, 720, 102);
     const L = (s, y, x = 80) => text(ctx, s, x, y, { size: 17, color: '#3a1e08', fam: 'title' });
-    L('Mapa', 140); L('Trudność', 202); L('Zasoby', 248); L('Kolor', 296); L('Frakcja', 350); L('Bonus', 462); L('Rywale', 462, 562);
-    const d = DIFFICULTIES[G.settings.difficulty];
-    RESOURCES.forEach((r, i) => { const x = 230 + i * 72; resIcon(ctx, r.id, x + 10, 248, 24); text(ctx, String(d.res[r.id]), x + 25, 249, { size: 16 }); });
-    const f = FACTIONS.find(f => f.id === G.settings.faction) || FACTIONS[0];
-    ctx.font = font(16, 500, 'body');
-    wrapText(ctx, f.desc, 490).slice(0, 2).forEach((l, i) => text(ctx, l, 230, 388 + i * 19, { size: 16, weight: 500, italic: true, color: '#4a2c0e' }));
+    L('Mapa', 136); L('Trudność', 190); L('Zasoby', 234); L('Bonus', 272);
+    const d = DIFFICULTIES[S.difficulty];
+    RESOURCES.forEach((r, i) => { const x = 230 + i * 72; resIcon(ctx, r.id, x + 10, 234, 24); text(ctx, String(d.res[r.id]), x + 25, 235, { size: 16 }); });
+    const n = this.active(), cap = setupCap(S), hu = S.slots.filter(o => o.type === 'human').length;
+    text(ctx, `Gracze: ${n} z ${cap} miejsc na tej mapie${hu > 1 ? ` · hot-seat: ${hu} ludzi` : ''}`, 80, 304, { size: 16, weight: 600, color: n > cap ? '#a02010' : '#3a1e08' });
     this.buttons.forEach(b => b.draw(ctx));
   },
 };
@@ -6600,18 +6703,42 @@ G.screens.adventure = {
   },
   enter(p) {
     const st = G.state;
-    rebuildObjIndex(st); this.floats = []; this.banner = null; this.flashMsg = null;
+    rebuildObjIndex(st); this.floats = []; this.banner = null; this.flashMsg = null; this.curtain = null;
     MapRender.reset(st.map, human(st).explored); layoutAdventure();
     if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
     if (this.aiRun && this.aiRun.st !== st) this.aiRun = null; // tura z poprzedniej gry
     this.layout(true); // przyciski panelu; w trakcie tury przeciwnika (powrót z bitwy obronnej) zablokowane
     if (p.flash) this.flash(p.flash);
     if (p.after) p.after();
-    if (p.welcome) {
-      const h = hero(st), foes = st.players.filter(q => !q.human);
-      const goal = foes.length ? ` Twoi rywale: ${foes.map(q => `${ownerName(st, q.id)} (${factionOf(q.faction).name})`).join(', ')}. Pokonaj ich wszystkich: zdobądź ich miasta i rozbij ich bohaterów.` : ' Nie masz rywali: to gra swobodna, bez zwycięstwa.';
-      showDialog(`Rozpoczyna się twoja kronika. ${h.name} (${heroTitle(h).split(', ')[1]}) czeka na rozkazy w mieście ${st.towns[0].name}.${goal} Bonus startowy: ${st.bonusText}.`, [{ label: 'Do dzieła', key: 'enter' }]);
-    }
+    if (p.welcome) this.startHumanTurn(st, true); else human(st).welcomed = true; // gra wczytana albo powrót z innego ekranu
+  },
+  // Powitanie gracza na początku jego pierwszej tury: frakcja, rywale, bonus startowy
+  welcomeText(st) {
+    const me = human(st), h = hero(st), t = myTowns(st)[0], foes = st.players.filter(q => q.id !== ME);
+    const goal = foes.length ? ` Twoi rywale: ${foes.map(q => `${ownerName(st, q.id)}${q.human ? ' (człowiek)' : ''} (${factionOf(q.faction).name})`).join(', ')}. Pokonaj ich wszystkich: zdobądź ich miasta i rozbij ich bohaterów.` : ' Nie masz rywali: to gra swobodna, bez zwycięstwa.';
+    return `Rozpoczyna się twoja kronika. ${h.name} (${heroTitle(h).split(', ')[1]}) czeka na rozkazy w mieście ${t ? t.name : ''}.${goal} Bonus startowy: ${me.bonusText || st.bonusText}.`;
+  },
+  // Początek tury człowieka. W hot-seat najpierw zasłona: mapa ukryta, dopóki właściwy gracz nie usiądzie do ekranu.
+  // Potem powitanie (pierwsza tura) i wieści ze skrzynki (ataki komputera, nowy tydzień, brak miasta).
+  startHumanTurn(st, live) {
+    const p = human(st), msgs = [];
+    if (!p.welcomed) { p.welcomed = true; msgs.push([this.welcomeText(st), 'Do dzieła']); }
+    const inbox = takeInbox(p); if (inbox.length) msgs.push([inbox.join(' '), 'OK']);
+    const next = () => { const m = msgs.shift(); if (m) showDialog(m[0], [{ label: m[1], key: 'enter', action: next }]); };
+    if (live && sharedScreen(st)) {
+      this.curtain = ME;
+      showDialog(`Tura: ${cap1(playerName(st, ME))} (${factionOf(p.faction).name}), ${dateText(st).toLowerCase()}. Pozostali gracze, nie patrzcie na ekran.`, [{ label: 'Zaczynam', key: 'enter', action: () => { this.curtain = null; next(); } }],
+        { locked: true, iconH: 70, icon: (ctx, cx, cy) => { ctx.save(); ctx.translate(cx - 30, cy - 24); ctx.scale(2.4, 2.4); drawFlag(ctx, 0, 0, 24, 13, G.time, ownerColor(st, ME)); ctx.restore(); } });
+    } else next();
+  },
+  // Zmiana gracza przed ekranem: jego mgła, kamera i wybrany bohater (poprzedni gracz zachowuje swoje)
+  setViewer(st, id) {
+    const prev = st.players[ME]; if (prev && prev.human) { prev.cam = st.cam; prev.selHero = st.selHero; }
+    ME = st.cur = id; const p = st.players[id];
+    st.cam = p.cam ? { ...p.cam } : null; st.selHero = p.selHero != null ? p.selHero : Math.max(0, st.heroes.findIndex(h => h.owner === id));
+    MapRender.reset(st.map, p.explored); MapRender.miniDirty = true;
+    if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
+    this.layout(true);
   },
   flash(msg) { this.flashMsg = { text: msg, t: G.time }; },
   systemMenu() {
@@ -6703,12 +6830,17 @@ G.screens.adventure = {
     if (idle.length) showDialog(`${idle.length > 1 ? 'Niektórzy bohaterowie mogą' : `${idle[0].name} może`} się jeszcze poruszyć. Czy na pewno zakończyć turę?`, [{ label: 'Tak', key: 'enter', action: () => this.doEndTurn({ live: true }) }, { label: 'Nie', key: 'escape' }]);
     else this.doEndTurn({ live: true });
   },
-  // Koniec dnia: najpierw tura przeciwników, potem nowy dzień (finishDay).
+  // Koniec tury: kolejni gracze komputerowi (turnsAfter), przy końcu kolejki nowy dzień, aż do następnego człowieka.
   // { live: true } (przycisk) odtwarza turę SI na mapie i pyta o obronę; bez opcji (testy, symulacje) wszystko dzieje się od razu.
   doEndTurn(opts = {}) {
-    const st = G.state, news = [], gen = aiAllTurns(st, news);
-    if (!opts.live) { runAiSync(st, gen); this.finishDay(st, news); return; }
+    const st = G.state, news = [], gen = turnsAfter(st, ME, news);
+    if (!opts.live) { const next = runAiSync(st, gen); this.nextHuman(st, next, false); return; }
     this.aiRun = { st, gen, news, input: undefined, wait: false, who: null, anim: null, seen: new Set() }; this.lockButtons(true);
+  },
+  nextHuman(st, id, live) {
+    if (id !== ME) this.setViewer(st, id);
+    if (live) this.autosave(st);
+    this.startHumanTurn(st, live);
   },
   lockButtons(on) { for (const b of this.buttons) { if (on) { b._was = b.disabled; b.disabled = true; } else if (b._was !== undefined) { b.disabled = b._was; delete b._was; } } },
   // Odtwarzanie tury SI: widoczne kroki (na odkrytej mapie) z animacją i kamerą, reszta od razu; atak na gracza czeka na jego decyzję
@@ -6724,15 +6856,22 @@ G.screens.adventure = {
     const ex = human(st).explored, n = st.map.n;
     for (let k = 0; k < 2000; k++) {
       const r = R.gen.next(R.input); R.input = undefined;
-      if (r.done) { this.aiRun = null; this.lockButtons(false); this.finishDay(st, R.news); return; }
+      if (r.done) { this.aiRun = null; this.lockButtons(false); this.nextHuman(st, r.value, true); return; }
       const a = r.value;
       if (a.kind === 'player') { R.who = a.p; continue; }
-      if (a.kind === 'step') {
-        if (!st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
+      if (a.kind === 'day') { this.banner = { text: `Dzień ${st.day}`, t: G.time }; Sound.play(a.newWeek ? 'week' : 'day'); continue; }
+      if (a.kind === 'step') { // w hot-seat ruchów komputera nie pokazujemy (mgła każdego gracza jest tajna)
+        if (sharedScreen(st) || !st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
         if (!R.seen.has(a.h)) { R.seen.add(a.h); centerCam(st, a.fx, a.fy); }
         a.h.anim = { fx: a.fx, fy: a.fy, t: 0 }; R.anim = a.h; return;
       }
-      if (a.kind === 'defend') { R.wait = true; this.askDefense(st, a, res => { R.input = res; R.wait = false; }); return; }
+      if (a.kind === 'defend') {
+        R.wait = true; const ask = () => this.askDefense(st, a, res => { R.input = res; R.wait = false; });
+        if (a.owner === ME) { ask(); return; }
+        this.setViewer(st, a.owner); this.curtain = ME; // hot-seat: broni się inny człowiek, siada do ekranu
+        showDialog(`${cap1(playerName(st, ME))}: komputer atakuje twoje ziemie! Podejdź do ekranu.`, [{ label: 'Jestem', key: 'enter', action: () => { this.curtain = null; ask(); } }], { locked: true, iconH: 70, icon: (ctx, cx, cy) => { ctx.save(); ctx.translate(cx - 30, cy - 24); ctx.scale(2.4, 2.4); drawFlag(ctx, 0, 0, 24, 13, G.time, ownerColor(st, ME)); ctx.restore(); } });
+        return;
+      }
     }
   },
   // Przeciwnik atakuje bohatera albo miasto gracza: walka na ekranie bitwy (gracz po prawej) albo automatyczna
@@ -6752,28 +6891,19 @@ G.screens.adventure = {
     showDialog(msg, [{ label: 'OK', key: 'enter', action: () => { if (held && D && res.foeExp && st.heroes.includes(D)) gainExp(st, D, res.foeExp); } }]);
     done(res);
   },
-  finishDay(st, news) {
-    st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
-    if (st.day > 7) { st.day = 1; st.week++; newWeek = true; if (st.week > 4) { st.week = 1; st.month++; newMonth = true; } }
-    for (const h of st.heroes) {
-      h.mp = heroMaxMP(h);
-      const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
-      if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
-    }
-    collectIncome(st);
-    for (const t of st.towns) t.builtToday = false;
-    this.banner = { text: `Dzień ${st.day}`, t: G.time }; Sound.play(newWeek ? 'week' : 'day');
-    this.autosave(st);
-    const weekNews = newWeek ? startWeek(st, newMonth) : null;
-    news.push(...dailyTownCheck(st)); rebuildObjIndex(st); MapRender.miniDirty = true;
-    if (weekNews) news.unshift(weekNews);
-    if (news.length) showDialog(news.join(' '), [{ label: 'OK', key: 'enter' }]);
-  },
   // Koniec gry sprawdzamy w każdej klatce bez otwartego okna: po bitwie, zdobyciu miasta i turze przeciwników
   checkGameEnd(st) {
-    if (st.over || G.modal) return; const r = gameResult(st); if (!r) return;
-    st.over = r; if (r === 'win') recordScore(st); Sound.play(r === 'win' ? 'victory' : 'defeat');
-    const msg = r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}. Twoja kronika trafia do księgi najlepszych wyników.`
+    if (st.over || G.modal) return; const r = gameResult(st);
+    if (!r && hotseat(st)) { // hot-seat: człowiek odpada, reszta gra dalej
+      const p = st.players.find(q => q.human && q.out && !q.told); if (!p) return; p.told = true; Sound.play('defeat');
+      showDialog(`${cap1(playerName(st, p.id))} odpada z gry: nie ma już miast ani bohaterów.`, [{ label: 'OK', key: 'enter', action: () => { if (p.id === ME && !this.aiRun) this.doEndTurn({ live: true }); } }], { locked: true });
+      return;
+    }
+    if (!r) return;
+    st.over = r; if (r === 'win' && !hotseat(st)) recordScore(st); Sound.play(r === 'win' ? 'victory' : 'defeat');
+    const days = `${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}`;
+    const msg = hotseat(st) ? (r === 'win' ? `Zwycięstwo! ${cap1(playerName(st, st.winner))} (${factionOf(st.players[st.winner].faction).name}) pokonuje wszystkich rywali w ${days}.` : 'Koniec gry: wszyscy ludzie przegrali, królestwa należą do komputera.')
+      : r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${days}. Twoja kronika trafia do księgi najlepszych wyników.`
       : 'Porażka. Twoje królestwo upadło: nie masz już miast ani bohaterów, którzy mogliby walczyć dalej.';
     showDialog(msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])], { locked: true });
   },
@@ -6840,6 +6970,9 @@ G.screens.adventure = {
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
     this.buttons.forEach(b => b.draw(ctx));
     drawResourceBar(ctx, st, VH - H, VW);
+    if (this.curtain != null) viewportDraw(ctx, c => { // zasłona hot-seat: nic z mapy poprzedniego gracza
+      c.fillStyle = '#140c06'; c.fillRect(0, 0, VW, VH); c.globalAlpha = 0.25; c.fillStyle = ownerColor(st, this.curtain); c.fillRect(0, 0, VW, VH); c.globalAlpha = 1;
+    });
   },
 };
 
@@ -7131,6 +7264,7 @@ G.screens.battle = {
     this.bCast = mk(2, 0, 'Czar', () => this.openBook(), { key: 'c', tip: 'Księga czarów bohatera: jeden czar na rundę, przed ruchem oddziału (klawisz C).' });
     this.bInfo = mk(2, 1, 'Mana', null, { disabled: true, tip: 'Mana bohatera. Odnawia się o 1 dziennie, a w pełni w mieście z gildią magów.' });
     this.casting = null; this.resume = false;
+    this.fleeTip = this.bFlee.tip;
     if (this.me === 1) { this.bFlee.disabled = true; this.bFlee.tip = 'Obrońca nie może uciec z pola bitwy.'; }
     this.buttons = [this.bWait, this.bDef, this.bAuto, this.bFlee, this.bCast, this.bInfo];
     this.phase = 'intro';
@@ -7152,6 +7286,7 @@ G.screens.battle = {
     if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
     if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
     this.phase = 'input'; this.reach = battleDist(B, u, unitSpd(u));
+    if (this.me !== u.side) { this.me = u.side; this.bFlee.disabled = u.side === 1; this.bFlee.tip = u.side ? 'Obrońca nie może uciec z pola bitwy.' : this.fleeTip; } // hot-seat: dowodzą na zmianę dwaj ludzie
     this.bWait.disabled = u.waited; this.onPointerMove(G.mouse.x, G.mouse.y);
   },
   player(fn) { if (this.phase !== 'input') return; this.casting = null; fn(this.B.active); this.phase = 'play'; },
@@ -7297,7 +7432,7 @@ G.screens.battle = {
     if (!u) return null;
     const c = CREATURES[u.cid];
     const ab = abilText(c);
-    return `${c.plural}: ${u.n} (${humanSide(this.B, u.side) ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''} Morale ${signed(unitMorale(this.B, u))}, szczęście ${signed(unitLuck(this.B, u))}.${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
+    return `${c.plural}: ${u.n} (${u.side === this.me ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''} Morale ${signed(unitMorale(this.B, u))}, szczęście ${signed(unitLuck(this.B, u))}.${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
   },
   draw(ctx) {
     const B = this.B, st = B.st, u0 = B.active, col = ownerColor(st, B.h.owner);

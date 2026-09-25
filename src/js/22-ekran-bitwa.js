@@ -68,6 +68,7 @@ G.screens.battle = {
     this.bCast = mk(2, 0, 'Czar', () => this.openBook(), { key: 'c', tip: 'Księga czarów bohatera: jeden czar na rundę, przed ruchem oddziału (klawisz C).' });
     this.bInfo = mk(2, 1, 'Mana', null, { disabled: true, tip: 'Mana bohatera. Odnawia się o 1 dziennie, a w pełni w mieście z gildią magów.' });
     this.casting = null; this.resume = false;
+    this.fleeTip = this.bFlee.tip;
     if (this.me === 1) { this.bFlee.disabled = true; this.bFlee.tip = 'Obrońca nie może uciec z pola bitwy.'; }
     this.buttons = [this.bWait, this.bDef, this.bAuto, this.bFlee, this.bCast, this.bInfo];
     this.phase = 'intro';
@@ -89,6 +90,7 @@ G.screens.battle = {
     if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
     if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
     this.phase = 'input'; this.reach = battleDist(B, u, unitSpd(u));
+    if (this.me !== u.side) { this.me = u.side; this.bFlee.disabled = u.side === 1; this.bFlee.tip = u.side ? 'Obrońca nie może uciec z pola bitwy.' : this.fleeTip; } // hot-seat: dowodzą na zmianę dwaj ludzie
     this.bWait.disabled = u.waited; this.onPointerMove(G.mouse.x, G.mouse.y);
   },
   player(fn) { if (this.phase !== 'input') return; this.casting = null; fn(this.B.active); this.phase = 'play'; },
@@ -234,7 +236,7 @@ G.screens.battle = {
     if (!u) return null;
     const c = CREATURES[u.cid];
     const ab = abilText(c);
-    return `${c.plural}: ${u.n} (${humanSide(this.B, u.side) ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''} Morale ${signed(unitMorale(this.B, u))}, szczęście ${signed(unitLuck(this.B, u))}.${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
+    return `${c.plural}: ${u.n} (${u.side === this.me ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''} Morale ${signed(unitMorale(this.B, u))}, szczęście ${signed(unitLuck(this.B, u))}.${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
   },
   draw(ctx) {
     const B = this.B, st = B.st, u0 = B.active, col = ownerColor(st, B.h.owner);

@@ -223,31 +223,33 @@ function createHero(st, owner, x, y, pick = null) {
 // seed podaje się tylko w testach (powtarzalny świat); w grze jest losowy.
 function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   const rng = mulberry32(seed), d = DIFFICULTIES[S.difficulty];
-  const resources = { ...d.res }; let bonusText = '';
-  if (S.bonus === 'gold') { const g = 500 + Math.floor(rng() * 6) * 100; resources.gold += g; bonusText = `+${g} złota`; }
-  else if (S.bonus === 'resource') { const a = 5 + Math.floor(rng() * 6); resources.wood += a; resources.ore += a; bonusText = `+${a} drewna i rudy`; }
-  const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S }, bonusText, selHero: 0, cam: null,
-    players: [{ id: ME, color: S.color, human: true, faction: S.faction, resources }], heroes: [], towns: [], objects: [] };
+  const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S }, bonusText: '', selHero: 0, cam: null, players: [], heroes: [], towns: [], objects: [] };
   const map = st.map = generateMap(MAP_SIZES.find(m => m.id === S.mapSize).n, seed);
-  human(st).explored = new Uint8Array(map.n * map.n);
   st.objects = placeObjects(st);
-  createTown(st, map.start.x, map.start.y, ME, S.faction);
-  // przeciwnicy komputerowi w kolejnych miejscach startowych (drugie = najdalej od gracza), reszta miast jest niezależna
-  const trng = mulberry32(seed ^ 0x70a7), others = map.sites.filter(s => s !== map.start), foes = others.slice(0, clamp(S.opponents == null ? 1 : S.opponents, 0, others.length));
-  const colors = PLAYER_COLORS.filter(c => c.id !== S.color);
-  foes.forEach((s, k) => {
-    const id = st.players.length, fac = FACTIONS[Math.floor(trng() * FACTIONS.length)].id;
-    st.players.push({ id, color: colors[k % colors.length].id, human: false, faction: fac, resources: { ...DIFFICULTIES[1].res }, explored: new Uint8Array(map.n * map.n) });
-    createTown(st, s.x, s.y, id, fac);
+  // gracze (ludzie i komputer) w kolejnych miejscach startowych (pierwsze = map.start, drugie = najdalej od niego), reszta miast jest niezależna
+  const trng = mulberry32(seed ^ 0x70a7), slots = playerSlots(S).slice(0, map.sites.length), others = map.sites.filter(s => s !== map.start), sites = [map.start, ...others];
+  slots.forEach((o, id) => {
+    const fac = o.faction === 'random' ? FACTIONS[Math.floor(trng() * FACTIONS.length)].id : o.faction, isHuman = o.type === 'human';
+    st.players.push({ id, color: o.color, human: isHuman, faction: fac, resources: { ...(isHuman ? d : DIFFICULTIES[1]).res }, explored: new Uint8Array(map.n * map.n) });
+    createTown(st, sites[id].x, sites[id].y, id, fac);
   });
-  for (const s of others.slice(foes.length)) createNeutralTown(st, s, trng);
+  for (const s of sites.slice(slots.length)) createNeutralTown(st, s, trng);
   rebuildObjIndex(st);
-  const h = createHero(st, ME, map.start.x, map.start.y);
-  for (const p of st.players) if (!p.human) createHero(st, p.id, st.towns.find(t => t.owner === p.id).x, st.towns.find(t => t.owner === p.id).y);
-  if (S.bonus === 'artifact') { const pool = ARTS_BY_RARITY('treasure'), id = pool[Math.floor(rng() * pool.length)]; giveArtifact(h, id); st.bonusText = `artefakt: ${ARTIFACTS[id].name}`; h.mp = heroMaxMP(h); }
-  reveal(st, h.x, h.y, HERO_SIGHT + 1);
-  for (const o of st.heroes) if (o.owner !== ME) reveal(st, o.x, o.y, HERO_SIGHT + 1, o.owner);
+  for (const p of st.players) {
+    const t = st.towns.find(t => t.owner === p.id), h = createHero(st, p.id, t.x, t.y);
+    if (p.human) p.bonusText = startBonus(st, S.bonus, p, h, rng);
+    reveal(st, h.x, h.y, HERO_SIGHT + 1, p.id);
+  }
+  st.cur = ME = st.players.find(p => p.human).id; st.bonusText = human(st).bonusText; st.selHero = st.heroes.findIndex(h => h.owner === ME);
   return st;
+}
+// Bonus startowy gracza-człowieka: złoto, drewno i ruda albo artefakt dla pierwszego bohatera
+function startBonus(st, bonus, p, h, rng) {
+  const R = p.resources;
+  if (bonus === 'gold') { const g = 500 + Math.floor(rng() * 6) * 100; R.gold += g; return `+${g} złota`; }
+  if (bonus === 'resource') { const a = 5 + Math.floor(rng() * 6); R.wood += a; R.ore += a; return `+${a} drewna i rudy`; }
+  if (bonus === 'artifact') { const pool = ARTS_BY_RARITY('treasure'), id = pool[Math.floor(rng() * pool.length)]; giveArtifact(h, id); h.mp = heroMaxMP(h); return `artefakt: ${ARTIFACTS[id].name}`; }
+  return '';
 }
 function startNewGame() { saveSettings(); G.state = createNewGame(G.settings); G.go('adventure', { welcome: true }); }
 

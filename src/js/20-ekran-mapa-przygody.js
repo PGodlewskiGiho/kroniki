@@ -111,18 +111,42 @@ G.screens.adventure = {
   },
   enter(p) {
     const st = G.state;
-    rebuildObjIndex(st); this.floats = []; this.banner = null; this.flashMsg = null;
+    rebuildObjIndex(st); this.floats = []; this.banner = null; this.flashMsg = null; this.curtain = null;
     MapRender.reset(st.map, human(st).explored); layoutAdventure();
     if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
     if (this.aiRun && this.aiRun.st !== st) this.aiRun = null; // tura z poprzedniej gry
     this.layout(true); // przyciski panelu; w trakcie tury przeciwnika (powrót z bitwy obronnej) zablokowane
     if (p.flash) this.flash(p.flash);
     if (p.after) p.after();
-    if (p.welcome) {
-      const h = hero(st), foes = st.players.filter(q => !q.human);
-      const goal = foes.length ? ` Twoi rywale: ${foes.map(q => `${ownerName(st, q.id)} (${factionOf(q.faction).name})`).join(', ')}. Pokonaj ich wszystkich: zdobądź ich miasta i rozbij ich bohaterów.` : ' Nie masz rywali: to gra swobodna, bez zwycięstwa.';
-      showDialog(`Rozpoczyna się twoja kronika. ${h.name} (${heroTitle(h).split(', ')[1]}) czeka na rozkazy w mieście ${st.towns[0].name}.${goal} Bonus startowy: ${st.bonusText}.`, [{ label: 'Do dzieła', key: 'enter' }]);
-    }
+    if (p.welcome) this.startHumanTurn(st, true); else human(st).welcomed = true; // gra wczytana albo powrót z innego ekranu
+  },
+  // Powitanie gracza na początku jego pierwszej tury: frakcja, rywale, bonus startowy
+  welcomeText(st) {
+    const me = human(st), h = hero(st), t = myTowns(st)[0], foes = st.players.filter(q => q.id !== ME);
+    const goal = foes.length ? ` Twoi rywale: ${foes.map(q => `${ownerName(st, q.id)}${q.human ? ' (człowiek)' : ''} (${factionOf(q.faction).name})`).join(', ')}. Pokonaj ich wszystkich: zdobądź ich miasta i rozbij ich bohaterów.` : ' Nie masz rywali: to gra swobodna, bez zwycięstwa.';
+    return `Rozpoczyna się twoja kronika. ${h.name} (${heroTitle(h).split(', ')[1]}) czeka na rozkazy w mieście ${t ? t.name : ''}.${goal} Bonus startowy: ${me.bonusText || st.bonusText}.`;
+  },
+  // Początek tury człowieka. W hot-seat najpierw zasłona: mapa ukryta, dopóki właściwy gracz nie usiądzie do ekranu.
+  // Potem powitanie (pierwsza tura) i wieści ze skrzynki (ataki komputera, nowy tydzień, brak miasta).
+  startHumanTurn(st, live) {
+    const p = human(st), msgs = [];
+    if (!p.welcomed) { p.welcomed = true; msgs.push([this.welcomeText(st), 'Do dzieła']); }
+    const inbox = takeInbox(p); if (inbox.length) msgs.push([inbox.join(' '), 'OK']);
+    const next = () => { const m = msgs.shift(); if (m) showDialog(m[0], [{ label: m[1], key: 'enter', action: next }]); };
+    if (live && sharedScreen(st)) {
+      this.curtain = ME;
+      showDialog(`Tura: ${cap1(playerName(st, ME))} (${factionOf(p.faction).name}), ${dateText(st).toLowerCase()}. Pozostali gracze, nie patrzcie na ekran.`, [{ label: 'Zaczynam', key: 'enter', action: () => { this.curtain = null; next(); } }],
+        { locked: true, iconH: 70, icon: (ctx, cx, cy) => { ctx.save(); ctx.translate(cx - 30, cy - 24); ctx.scale(2.4, 2.4); drawFlag(ctx, 0, 0, 24, 13, G.time, ownerColor(st, ME)); ctx.restore(); } });
+    } else next();
+  },
+  // Zmiana gracza przed ekranem: jego mgła, kamera i wybrany bohater (poprzedni gracz zachowuje swoje)
+  setViewer(st, id) {
+    const prev = st.players[ME]; if (prev && prev.human) { prev.cam = st.cam; prev.selHero = st.selHero; }
+    ME = st.cur = id; const p = st.players[id];
+    st.cam = p.cam ? { ...p.cam } : null; st.selHero = p.selHero != null ? p.selHero : Math.max(0, st.heroes.findIndex(h => h.owner === id));
+    MapRender.reset(st.map, p.explored); MapRender.miniDirty = true;
+    if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
+    this.layout(true);
   },
   flash(msg) { this.flashMsg = { text: msg, t: G.time }; },
   systemMenu() {
@@ -214,12 +238,17 @@ G.screens.adventure = {
     if (idle.length) showDialog(`${idle.length > 1 ? 'Niektórzy bohaterowie mogą' : `${idle[0].name} może`} się jeszcze poruszyć. Czy na pewno zakończyć turę?`, [{ label: 'Tak', key: 'enter', action: () => this.doEndTurn({ live: true }) }, { label: 'Nie', key: 'escape' }]);
     else this.doEndTurn({ live: true });
   },
-  // Koniec dnia: najpierw tura przeciwników, potem nowy dzień (finishDay).
+  // Koniec tury: kolejni gracze komputerowi (turnsAfter), przy końcu kolejki nowy dzień, aż do następnego człowieka.
   // { live: true } (przycisk) odtwarza turę SI na mapie i pyta o obronę; bez opcji (testy, symulacje) wszystko dzieje się od razu.
   doEndTurn(opts = {}) {
-    const st = G.state, news = [], gen = aiAllTurns(st, news);
-    if (!opts.live) { runAiSync(st, gen); this.finishDay(st, news); return; }
+    const st = G.state, news = [], gen = turnsAfter(st, ME, news);
+    if (!opts.live) { const next = runAiSync(st, gen); this.nextHuman(st, next, false); return; }
     this.aiRun = { st, gen, news, input: undefined, wait: false, who: null, anim: null, seen: new Set() }; this.lockButtons(true);
+  },
+  nextHuman(st, id, live) {
+    if (id !== ME) this.setViewer(st, id);
+    if (live) this.autosave(st);
+    this.startHumanTurn(st, live);
   },
   lockButtons(on) { for (const b of this.buttons) { if (on) { b._was = b.disabled; b.disabled = true; } else if (b._was !== undefined) { b.disabled = b._was; delete b._was; } } },
   // Odtwarzanie tury SI: widoczne kroki (na odkrytej mapie) z animacją i kamerą, reszta od razu; atak na gracza czeka na jego decyzję
@@ -235,15 +264,22 @@ G.screens.adventure = {
     const ex = human(st).explored, n = st.map.n;
     for (let k = 0; k < 2000; k++) {
       const r = R.gen.next(R.input); R.input = undefined;
-      if (r.done) { this.aiRun = null; this.lockButtons(false); this.finishDay(st, R.news); return; }
+      if (r.done) { this.aiRun = null; this.lockButtons(false); this.nextHuman(st, r.value, true); return; }
       const a = r.value;
       if (a.kind === 'player') { R.who = a.p; continue; }
-      if (a.kind === 'step') {
-        if (!st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
+      if (a.kind === 'day') { this.banner = { text: `Dzień ${st.day}`, t: G.time }; Sound.play(a.newWeek ? 'week' : 'day'); continue; }
+      if (a.kind === 'step') { // w hot-seat ruchów komputera nie pokazujemy (mgła każdego gracza jest tajna)
+        if (sharedScreen(st) || !st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
         if (!R.seen.has(a.h)) { R.seen.add(a.h); centerCam(st, a.fx, a.fy); }
         a.h.anim = { fx: a.fx, fy: a.fy, t: 0 }; R.anim = a.h; return;
       }
-      if (a.kind === 'defend') { R.wait = true; this.askDefense(st, a, res => { R.input = res; R.wait = false; }); return; }
+      if (a.kind === 'defend') {
+        R.wait = true; const ask = () => this.askDefense(st, a, res => { R.input = res; R.wait = false; });
+        if (a.owner === ME) { ask(); return; }
+        this.setViewer(st, a.owner); this.curtain = ME; // hot-seat: broni się inny człowiek, siada do ekranu
+        showDialog(`${cap1(playerName(st, ME))}: komputer atakuje twoje ziemie! Podejdź do ekranu.`, [{ label: 'Jestem', key: 'enter', action: () => { this.curtain = null; ask(); } }], { locked: true, iconH: 70, icon: (ctx, cx, cy) => { ctx.save(); ctx.translate(cx - 30, cy - 24); ctx.scale(2.4, 2.4); drawFlag(ctx, 0, 0, 24, 13, G.time, ownerColor(st, ME)); ctx.restore(); } });
+        return;
+      }
     }
   },
   // Przeciwnik atakuje bohatera albo miasto gracza: walka na ekranie bitwy (gracz po prawej) albo automatyczna
@@ -263,28 +299,19 @@ G.screens.adventure = {
     showDialog(msg, [{ label: 'OK', key: 'enter', action: () => { if (held && D && res.foeExp && st.heroes.includes(D)) gainExp(st, D, res.foeExp); } }]);
     done(res);
   },
-  finishDay(st, news) {
-    st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
-    if (st.day > 7) { st.day = 1; st.week++; newWeek = true; if (st.week > 4) { st.week = 1; st.month++; newMonth = true; } }
-    for (const h of st.heroes) {
-      h.mp = heroMaxMP(h);
-      const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
-      if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
-    }
-    collectIncome(st);
-    for (const t of st.towns) t.builtToday = false;
-    this.banner = { text: `Dzień ${st.day}`, t: G.time }; Sound.play(newWeek ? 'week' : 'day');
-    this.autosave(st);
-    const weekNews = newWeek ? startWeek(st, newMonth) : null;
-    news.push(...dailyTownCheck(st)); rebuildObjIndex(st); MapRender.miniDirty = true;
-    if (weekNews) news.unshift(weekNews);
-    if (news.length) showDialog(news.join(' '), [{ label: 'OK', key: 'enter' }]);
-  },
   // Koniec gry sprawdzamy w każdej klatce bez otwartego okna: po bitwie, zdobyciu miasta i turze przeciwników
   checkGameEnd(st) {
-    if (st.over || G.modal) return; const r = gameResult(st); if (!r) return;
-    st.over = r; if (r === 'win') recordScore(st); Sound.play(r === 'win' ? 'victory' : 'defeat');
-    const msg = r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}. Twoja kronika trafia do księgi najlepszych wyników.`
+    if (st.over || G.modal) return; const r = gameResult(st);
+    if (!r && hotseat(st)) { // hot-seat: człowiek odpada, reszta gra dalej
+      const p = st.players.find(q => q.human && q.out && !q.told); if (!p) return; p.told = true; Sound.play('defeat');
+      showDialog(`${cap1(playerName(st, p.id))} odpada z gry: nie ma już miast ani bohaterów.`, [{ label: 'OK', key: 'enter', action: () => { if (p.id === ME && !this.aiRun) this.doEndTurn({ live: true }); } }], { locked: true });
+      return;
+    }
+    if (!r) return;
+    st.over = r; if (r === 'win' && !hotseat(st)) recordScore(st); Sound.play(r === 'win' ? 'victory' : 'defeat');
+    const days = `${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}`;
+    const msg = hotseat(st) ? (r === 'win' ? `Zwycięstwo! ${cap1(playerName(st, st.winner))} (${factionOf(st.players[st.winner].faction).name}) pokonuje wszystkich rywali w ${days}.` : 'Koniec gry: wszyscy ludzie przegrali, królestwa należą do komputera.')
+      : r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${days}. Twoja kronika trafia do księgi najlepszych wyników.`
       : 'Porażka. Twoje królestwo upadło: nie masz już miast ani bohaterów, którzy mogliby walczyć dalej.';
     showDialog(msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])], { locked: true });
   },
@@ -351,6 +378,9 @@ G.screens.adventure = {
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
     this.buttons.forEach(b => b.draw(ctx));
     drawResourceBar(ctx, st, VH - H, VW);
+    if (this.curtain != null) viewportDraw(ctx, c => { // zasłona hot-seat: nic z mapy poprzedniego gracza
+      c.fillStyle = '#140c06'; c.fillRect(0, 0, VW, VH); c.globalAlpha = 0.25; c.fillStyle = ownerColor(st, this.curtain); c.fillRect(0, 0, VW, VH); c.globalAlpha = 1;
+    });
   },
 };
 

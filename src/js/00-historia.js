@@ -10,7 +10,7 @@
      DANE: ARTEFAKTY I ROZWÓJ...     PRIMARY, CLASS_GROWTH, poziomy, EQUIP_SLOTS, ARTIFACTS
      DANE: CZARY                     SPELLS, efekty i opisy; GUILD_OFFER, CLASS_SPELLS
      DANE: OBIEKTY MAPY              SITES: kapliczki, studnie, młyny, obozy… (działanie w ZASADY GRY)
-     STAN GRY I USTAWIENIA           G (program), skróty do G.state: human, hero, ownerColor...
+     STAN GRY I USTAWIENIA           G (program), miejsca graczy (slots), ME = człowiek przy ekranie, skróty: human, hero...
      NARZĘDZIA                       losowość, szum, A*, kolory
      RYSOWANIE: PODSTAWY I PIXEL ART tekst, cache warstw, sprite(), drawSprite(), blit()
      DŹWIĘK                          Web Audio bez plików: Sound.play(efekt), Sound.music(motyw), SFX, MUSIC
@@ -89,7 +89,7 @@
    miast i bohaterów albo po NO_TOWN_DAYS dniach bez miasta), najlepsze wyniki (recordScore), wybór liczby rywali.
    Po kroku 15 (etap 1): rynek dla gracza (marketLot/trade, okno showMarket; kurs zależy od liczby rynków,
    te same zasady dla SI w buyMissing). Menu w stylu pikselowym.
-   Tura przeciwnika na żywo: aiAllTurns to generator akcji (kroki, obrona), ekran mapy odtwarza go w updateAi
+   Tura przeciwnika na żywo: aiAllTurns (dziś turnsAfter) to generator akcji (kroki, obrona), ekran mapy odtwarza go w updateAi
    (widoczne ruchy z animacją), atak na gracza pyta o walkę (askDefense) i otwiera bitwę z graczem po prawej
    (ekran bitwy: this.me, onDone). doEndTurn() bez opcji (testy) liczy wszystko od razu, z obroną automatyczną.
    Spotkanie bohaterów (showMeeting). Mgła wojny dla SI: reveal(…, owner) odkrywa teren każdemu graczowi,
@@ -117,9 +117,14 @@
    stocznia (buyBoat, shipyardSpot, tylko w mieście nad wodą), darmowe łodzie przy brzegach.
    Nowe frakcje: Twierdza (bagna: gnolle, jaszczuroludzie, ważki, bazyliszki, gorgony, wywerny, hydry) i Inferno (lawa:
    chochliki, gogi, ogary, demony, czarty, ifryty, diabły); klasy beastmaster/witch i demoniac/heretic, portrety, miasta, muzyka.
+   Hot-seat i do 8 graczy: 8 miejsc na ekranie nowej gry (settings.slots: człowiek/komputer/wolne, kolor, frakcja),
+   ME to numer człowieka przy ekranie (setViewer: jego mgła, kamera, wybrany bohater), kolejka tur turnsAfter
+   (komputery po kolei, nowy dzień advanceDay przy końcu listy), zasłona między ludźmi, wieści w skrzynkach graczy
+   (tell/takeInbox), obrona innego człowieka przed atakiem komputera, bitwa człowiek na człowieka (obie strony ręcznie),
+   zwycięzca = ostatni gracz na placu. Miejsc na miasta: 4/6/8/10 zależnie od mapy (SITE_COUNT).
 
    PLAN (kolejność ustalona z graczem; krok 13 „warunki zwycięstwa” pominięty)
-   1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (2–4 ludzi, zasłona między turami).
+   1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (zrobione: do 8 graczy, zasłona między turami).
    5. Samouczek (wykreślony). 6. Porządki: migracja starych zapisów, testy balansu frakcji.
    7. Grafika: animowana woda, wyraźniejsze sosny i ozdoby, obiekty mapy w stylu rudy, tła bitew zależne od terenu.
    ===================================================================================== */

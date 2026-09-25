@@ -21,7 +21,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0 },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -38,7 +38,10 @@ function deserializeGame(d) {
   const r = mulberry32(st.seed);
   for (const h of st.heroes) { if (!Array.isArray(h.army)) h.army = startingArmy(st.players[h.owner].faction, r); delete h.slowest; initHeroProgress(h); while (h.exp >= expForLevel(h.level + 1)) h.level++; }
   for (const t of st.towns) { if (!Array.isArray(t.garrison) || t.garrison.length !== ARMY_SLOTS) t.garrison = emptyArmy(); if (!t.avail) t.avail = {}; for (let L = 1; L <= guildLevel(t); L++) if (!t.guild || !t.guild[L]) rollGuildLevel(st, t, L); }
-  rebuildObjIndex(st); return st;
+  // zapisy sprzed hot-seat: jeden człowiek (numer 0), powitanie już było
+  if (!(st.cur >= 0 && st.players[st.cur] && st.players[st.cur].human)) st.cur = st.players.findIndex(p => p.human);
+  for (const p of st.players) if (p.human && p.welcomed === undefined) p.welcomed = true;
+  ME = st.cur; rebuildObjIndex(st); return st;
 }
 // Krótki opis zapisu do listy slotów (bez wczytywania całej gry)
 function saveMeta(st) {
