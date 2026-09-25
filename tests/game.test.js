@@ -92,18 +92,21 @@ test('30 dni: kalendarz, dochód i przyrost tygodniowy', async () => {
   const r = await page.evaluate(() => {
     const st = G.state, t = st.towns[0], R = human(st).resources, log = [];
     buildIn(st, t, BUILD_BY_ID.dw1); t.avail[1] = 0;
+    let want = 0;
     for (let d = 0; d < 30; d++) {
-      const inc = dailyIncomeAll(st, ME), before = { ...R };
+      const before = { ...R };
       G.screens.adventure.doEndTurn(); G.modal = null;
+      const inc = dailyIncomeAll(st, ME); // dochód nowego dnia (z efektem jego tygodnia)
+      if (st.day === 1) want = st.week === 1 && monthInfo(st).kind === 'plague' ? Math.floor(want / 2) : want + weeklyGrowth(t, 1, st);
       for (const res of RESOURCES) if (R[res.id] - before[res.id] !== inc[res.id]) log.push(`dzień ${st.dayTotal}: ${res.id} +${R[res.id] - before[res.id]}, oczekiwano +${inc[res.id]}`);
     }
-    return { log, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, avail: t.avail[1], growth: weeklyGrowth(t, 1) };
+    return { log, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, avail: t.avail[1], want };
   });
   assert.deepEqual(r.log, []);
   assert.equal(r.dayTotal, 31);
   // dzień 31 = miesiąc 2 (28 dni), tydzień 1, dzień 3
   assert.deepEqual([r.month, r.week, r.day], [2, 1, 3]);
-  assert.equal(r.avail, r.growth * 4, 'cztery nowe tygodnie = cztery przyrosty');
+  assert.equal(r.avail, r.want, 'cztery nowe tygodnie = cztery przyrosty (z efektami tygodni)');
   assert.deepEqual(await checkInvariants(), []);
 });
 

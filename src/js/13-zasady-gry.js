@@ -178,7 +178,7 @@ const heroFactor = h => 1 + 0.05 * (heroStat(h, 'att') + heroStat(h, 'def'));
 // Każdy awans daje też wybór umiejętności: SI wybiera od razu, człowiek w oknie (po kolei, gdy awansów jest kilka).
 // then(): co zrobić po zamknięciu okien awansu (np. obejrzeć obiekt, na którym stoi bohater)
 function gainExp(st, h, amount, then) {
-  h.exp += Math.round(amount * (1 + skillVal(h, 'learning') / 100)); const ups = [];
+  h.exp += Math.round(amount * (1 + skillVal(h, 'learning') / 100 + (weekKind(st, 'exp') ? 0.25 : 0))); const ups = [];
   while (h.exp >= expForLevel(h.level + 1)) {
     h.level++; const g = (CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight).grow, r = thash(h.id, h.level, st.seed) % 100;
     let acc = 0, k = 0; for (; k < 3; k++) { acc += g[k]; if (r < acc) break; }
@@ -276,11 +276,53 @@ function dwellingUnits(t, L) {
   return u;
 }
 // Przyrost tygodniowy: bazowy z jednostki, +50% z Cytadelą, +100% z Zamkiem (opisy w BUILDINGS)
-function weeklyGrowth(t, L) {
-  const base = CREATURES[factionOf(t.faction).dw['dw' + L][1]].growth;
-  return Math.floor(base * (hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1));
+// Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
+function weeklyGrowth(t, L, st) {
+  const cid = factionOf(t.faction).dw['dw' + L][1], base = CREATURES[cid].growth, W = st && weekInfo(st);
+  return Math.floor(base * (hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
 }
-function townGrowthWeek(t) { for (const L of dwellingLevels(t)) t.avail[L] = (t.avail[L] || 0) + weeklyGrowth(t, L); }
+// Nowy tydzień: przyrost w siedliskach; w Miesiącu Zarazy zamiast przyrostu pula topnieje o połowę
+function townGrowthWeek(t, st) {
+  const plague = st && st.week === 1 && monthInfo(st).kind === 'plague';
+  for (const L of dwellingLevels(t)) t.avail[L] = plague ? Math.floor((t.avail[L] || 0) / 2) : (t.avail[L] || 0) + weeklyGrowth(t, L, st);
+}
+// --- tygodnie i miesiące z efektem (jak w oryginale). Wynik zależy tylko od daty i ziarna, więc nie trafia do zapisu. ---
+// Pierwszy tydzień gry jest spokojny. Potem: tydzień stworzenia (+5 przyrostu), Dobrobytu (złoto z miast +25%),
+// Górników (kopalnie dają podwójnie), Mędrców (doświadczenie +25%) albo spokojny tydzień z nazwą zwierzęcia.
+const WEEK_EFFECTS = {
+  gold: { name: 'Dobrobytu', text: 'miasta dają o 25% więcej złota' },
+  mines: { name: 'Górników', text: 'kopalnie wydobywają podwójnie' },
+  exp: { name: 'Mędrców', text: 'bohaterowie zdobywają o 25% więcej doświadczenia' },
+};
+let WEEK_CREATURES = null; // podstawowe jednostki poziomów 1–6 wszystkich frakcji
+function weekInfo(st) {
+  const h = thash(st.week, st.month, st.seed), calm = { kind: 'calm', name: WEEK_NAMES[h % WEEK_NAMES.length], text: '' };
+  if (st.week === 1 && st.month === 1) return calm;
+  const r = (h >>> 8) % 100;
+  if (r < 35) {
+    WEEK_CREATURES = WEEK_CREATURES || FACTIONS.flatMap(F => [1, 2, 3, 4, 5, 6].map(L => F.dw['dw' + L][1]));
+    const cid = WEEK_CREATURES[(h >>> 4) % WEEK_CREATURES.length], g = CREATURES[cid].gen;
+    return { kind: 'creature', cid, name: g[0].toUpperCase() + g.slice(1), text: `przyrost: ${CREATURES[cid].plural.toLowerCase()} +5` };
+  }
+  const kind = r < 50 ? 'gold' : r < 62 ? 'mines' : r < 74 ? 'exp' : null;
+  return kind ? { kind, ...WEEK_EFFECTS[kind] } : calm;
+}
+const weekKind = (st, k) => weekInfo(st).kind === k;
+// Miesiąc (od drugiego): Zaraza (pule siedlisk −50% zamiast przyrostu) albo Potworów (potwory na mapie +50%)
+function monthInfo(st) {
+  if (st.month < 2) return { kind: 'calm', name: '', text: '' };
+  const r = thash(st.month, 7717, st.seed) % 100;
+  return r < 15 ? { kind: 'plague', name: 'Zarazy', text: 'zaraza: w siedliskach zostaje połowa jednostek, bez przyrostu' }
+    : r < 40 ? { kind: 'monsters', name: 'Potworów', text: 'potworów na mapie jest o połowę więcej' } : { kind: 'calm', name: '', text: '' };
+}
+// Wieści na nowy tydzień (i miesiąc) oraz jednorazowe skutki miesiąca
+function startWeek(st, newMonth) {
+  const M = newMonth ? monthInfo(st) : null, W = weekInfo(st);
+  if (M && M.kind === 'monsters') for (const o of st.objects) if (o.type === 'monster' && !o.dead) o.count = Math.ceil(o.count * 1.5);
+  for (const t of st.towns) townGrowthWeek(t, st);
+  const head = newMonth ? (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
+  return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
+}
 const unitCost = cid => CREATURES[cid].cost || { gold: CREATURES[cid].value };
 function maxAffordable(st, cost, owner = ME) {
   const R = playerOf(st, owner).resources; let m = Infinity;
@@ -310,8 +352,8 @@ function armyMove(fromA, i, toA, j, heroArmies = []) {
 // Dzienny dochód gracza { wood, ..., gold }: kopalnie + miasta. Jedno źródło dla końca dnia, panelu i okna królestwa.
 function dailyIncomeAll(st, owner = ME) {
   const inc = Object.fromEntries(RESOURCES.map(r => [r.id, 0]));
-  for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === owner) inc[ob.kind] += MINES[ob.kind].income;
-  for (const t of st.towns) if (t.owner === owner) { inc.gold += townGold(t); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; } }
+  for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === owner) inc[ob.kind] += MINES[ob.kind].income * (weekKind(st, 'mines') ? 2 : 1);
+  for (const t of st.towns) if (t.owner === owner) { inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; } }
   for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates');
   return inc;
 }
@@ -330,7 +372,7 @@ function buildIn(st, t, B) {
   for (const r of RESOURCES) if (B.cost[r.id]) R[r.id] -= B.cost[r.id];
   t.built.push(B.id); t.builtToday = true;
   const gm = /^guild(\d)$/.exec(B.id); if (gm) rollGuildLevel(st, t, +gm[1]);
-  const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1]); // nowe siedlisko od razu daje przyrost
+  const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1], st); // nowe siedlisko od razu daje przyrost
 }
 // --- rynek: handel surowcami ---------------------------------------------------------------
 // Wartość surowca w złocie; kupno drożeje, a sprzedaż tanieje, im mniej rynków ma gracz (jak w oryginale).
