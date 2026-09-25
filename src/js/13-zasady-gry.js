@@ -71,13 +71,13 @@ function heroStep(st, h) {
   if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } return false; }
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
-  h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
+  h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h)); if (h.owner === ME) Sound.play('step');
   if (!h.path.length) { h.path = null; h.dest = null; }
   if (st.guard[ni]) { const m = st.objects[st.guard[ni] - 1]; halt(); h.pending = () => startEncounter(st, h, m); }
   else if (ob) { halt(); h.pending = () => visitObject(st, h, ob); }
   return true;
 }
-function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); }
+function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); Sound.play(res === 'gold' ? 'coin' : 'pickup'); }
 function visitObject(st, h, ob) {
   const R = playerOf(st, h.owner).resources;
   if (ob.type === 'res') { R[ob.res] += ob.amount; advFloat(`+${ob.amount}`, h.x, h.y, ob.res); removeObject(st, ob); }
@@ -88,7 +88,7 @@ function visitObject(st, h, ob) {
       { label: `${ob.exp} dośw.`, action: () => { advFloat(`+${ob.exp} dośw.`, h.x, h.y); gainExp(st, h, ob.exp); } },
     ], { locked: true, iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, chestSprite(), cx, cy + 4, 2) });
   } else if (ob.type === 'art') {
-    removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
+    removeObject(st, ob); Sound.play('treasure'); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
     showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}`, [{ label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art), cx, cy, 2) });
   } else if (ob.type === 'site') {
@@ -196,7 +196,7 @@ function gainExp(st, h, amount, then) {
   const next = i => {
     if (i >= ups.length) { if (then) then(); return; }
     const u = ups[i], offer = skillOffer(st, h, u.level), icon = { iconH: 76, locked: offer.length > 0, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) };
-    const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`;
+    const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`; Sound.play('levelup');
     if (!offer.length) { showDialog(msg, [{ label: 'Wspaniale', key: 'enter', action: () => next(i + 1) }], icon); return; }
     showDialog(`${msg} Wybierz umiejętność:`, offer.map((id, k) => {
       const L = heroSkill(h, id) + 1;

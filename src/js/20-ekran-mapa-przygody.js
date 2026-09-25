@@ -130,6 +130,7 @@ G.screens.adventure = {
       { label: 'Wróć do gry', key: 'escape' },
       { label: 'Zapisz', key: 'z', action: () => this.openSaves('save') },
       { label: 'Wczytaj', key: 'w', action: () => this.openSaves('load') },
+      { label: 'Dźwięk', key: 'd', action: () => showSoundSettings(() => this.systemMenu()) },
       { label: 'Menu główne', action: () => askToMenu() }]);
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
@@ -175,7 +176,7 @@ G.screens.adventure = {
   spellbook() {
     const st = G.state, h = hero(st); if (!h || h.moving || h.anim) return;
     showSpellbook(h, 'adv', id => {
-      const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); if (err) return;
+      const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); Sound.play(err ? 'error' : 'magic'); if (err) return;
       this.mapFx = this.mapFx || []; const col = SPELLS[id].col;
       if (id === 'eagleEye') this.mapFx.push({ kind: 'ring', x: h.x, y: h.y, r: 5 + heroStat(h, 'sp'), col, t: G.time });
       else { this.mapFx.push({ kind: 'column', x: from[0], y: from[1], col, t: G.time }, { kind: 'column', x: h.x, y: h.y, col, t: G.time + 0.2 }); }
@@ -271,7 +272,7 @@ G.screens.adventure = {
     }
     collectIncome(st);
     for (const t of st.towns) t.builtToday = false;
-    this.banner = { text: `Dzień ${st.day}`, t: G.time };
+    this.banner = { text: `Dzień ${st.day}`, t: G.time }; Sound.play(newWeek ? 'week' : 'day');
     this.autosave(st);
     const weekNews = newWeek ? startWeek(st, newMonth) : null;
     news.push(...dailyTownCheck(st)); rebuildObjIndex(st); MapRender.miniDirty = true;
@@ -281,7 +282,7 @@ G.screens.adventure = {
   // Koniec gry sprawdzamy w każdej klatce bez otwartego okna: po bitwie, zdobyciu miasta i turze przeciwników
   checkGameEnd(st) {
     if (st.over || G.modal) return; const r = gameResult(st); if (!r) return;
-    st.over = r; if (r === 'win') recordScore(st);
+    st.over = r; if (r === 'win') recordScore(st); Sound.play(r === 'win' ? 'victory' : 'defeat');
     const msg = r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}. Twoja kronika trafia do księgi najlepszych wyników.`
       : 'Porażka. Twoje królestwo upadło: nie masz już miast ani bohaterów, którzy mogliby walczyć dalej.';
     showDialog(msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])], { locked: true });

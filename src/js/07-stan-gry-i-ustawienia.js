@@ -6,7 +6,7 @@ const G = {
   mouse: { x: -1, y: -1, down: false },
   hover: null, downTarget: null, modal: null, keys: new Set(), popup: null, pressTimer: 0, longPress: false,
   fade: { a: 1, target: 0, next: null },
-  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1 }, rs: 1,
+  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, sfx: 0.7, mus: 0.7 }, rs: 1,
   state: null,
 };
 function loadSettings() {
@@ -18,6 +18,7 @@ function loadSettings() {
   if (!PLAYER_COLORS.some(c => c.id === S.color)) S.color = 'red';
   if (!BONUSES.some(b => b.id === S.bonus)) S.bonus = 'gold';
   if (!FACTIONS.some(f => f.id === S.faction)) S.faction = 'haven';
+  for (const [k, d] of [['sfx', 0.7], ['mus', 0.7]]) if (!SOUND_LEVELS.includes(S[k])) S[k] = d;
 }
 function saveSettings() { try { localStorage.setItem('kk_settings', JSON.stringify(G.settings)); } catch (e) {} }
 const colorHex = id => (PLAYER_COLORS.find(c => c.id === id) || PLAYER_COLORS[0]).hex;

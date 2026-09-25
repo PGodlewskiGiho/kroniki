@@ -143,12 +143,13 @@ G.screens.menu = {
   buttons: [], mode: 'main',
   enter(p) { G.state = null; this.setMode(p.mode || 'main'); },
   setMode(m) {
-    this.mode = m; let y = 196;
-    const B = (label, act, o = {}) => { const b = new Button(540, y, 220, 48, label, act, Object.assign({ size: 17 }, o)); y += 64; return b; };
+    this.mode = m; let y = 186;
+    const B = (label, act, o = {}) => { const b = new Button(540, y, 220, 46, label, act, Object.assign({ size: 17 }, o)); y += 56; return b; };
     this.buttons = [
       B('Nowa gra', () => G.go('setup'), { key: 'n' }),
       B('Wczytaj grę', () => G.go('load', { mode: 'load' }), { key: 'l' }),
       B('Najlepsze wyniki', () => G.go('scores'), { key: 'h' }),
+      B('Dźwięk', () => showSoundSettings(), { key: 'd' }),
       B('Twórcy', () => G.go('credits'), { key: 'c' }),
       B('Wyjście', () => askQuit(), { key: 'q' }),
     ];
