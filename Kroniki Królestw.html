@@ -89,12 +89,15 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    Krok 11: czary (SPELLS): mana z wiedzy, gildie magów, księga czarów, czary w bitwie i na mapie.
    Grafika: postacie z cieniowaniem i pozami (drawHumanoid/horse/griffin/drawDragon…), w bitwie w podwójnej
    rozdzielczości z animacją (battleSprite), efekty bitwy BattleFX (cząsteczki, pociski, pioruny, poświaty).
+   Krok 12: testy automatyczne (tests/), bitwa z dowolną armią: potwór, bohater albo miasto (garnizon + bohater
+   w mieście), czary bohatera obrońców, pokonany bohater znika, zwycięstwo nad miastem zmienia właściciela;
+   surowce, budowa i rekrutacja liczone dla właściciela (playerOf), nie tylko dla gracza-człowieka.
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
 // Stałe gry, surowce, poziomy trudności, rozmiary map, kolory graczy, bonusy.
 const W = 800, H = 600;
-const VERSION = 'krok 11 z 15 (nowa grafika)';
+const VERSION = 'krok 12 z 15';
 // Plan rozwoju: gdzie w interfejsie obiecujemy przyszłe funkcje. Zmiana planu = zmiana tylko tutaj.
 const ROADMAP = {
   capture: 'w kroku 13', later: 'w dalszym kroku',
@@ -451,6 +454,7 @@ const colorHex = id => (PLAYER_COLORS.find(c => c.id === id) || PLAYER_COLORS[0]
 // --- skróty do stanu rozgrywki (st = G.state) ---
 const ME = 0; // indeks gracza-człowieka; przeciwnicy komputerowi dostaną kolejne numery
 const human = st => st.players[ME];
+const playerOf = (st, owner) => st.players[owner]; // gracz o danym numerze (surowce, frakcja, odkryta mapa)
 const ownerColor = (st, owner) => (st.players[owner] ? colorHex(st.players[owner].color) : NEUTRAL_COLOR);
 const hero = st => st.heroes[st.selHero || 0];
 const heroAt = (st, x, y) => st.heroes.find(h => h.x === x && h.y === y) || null;
@@ -1801,9 +1805,10 @@ function createTown(st, x, y, owner, fac = 'haven') {
   return t;
 }
 function createHero(st, owner, x, y) {
-  const pool = factionOf(st.players[owner].faction).heroes, r = mulberry32(st.seed ^ 0x1234 ^ (st.heroes.length * 977));
+  const id = st.heroes.reduce((m, h) => Math.max(m, h.id + 1), 0); // pokonani bohaterowie znikają z listy, więc nie liczymy po długości
+  const pool = factionOf(st.players[owner].faction).heroes, r = mulberry32(st.seed ^ 0x1234 ^ (id * 977));
   const [name, cls, female] = pool[Math.floor(r() * pool.length)];
-  const h = { id: st.heroes.length, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: startingArmy(st.players[owner].faction, r),
+  const h = { id, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: startingArmy(st.players[owner].faction, r),
     path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null };
   initHeroProgress(h); h.mp = heroMaxMP(h); st.heroes.push(h); return h;
 }
@@ -1899,7 +1904,7 @@ function heroStep(st, h) {
 }
 function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); }
 function visitObject(st, h, ob) {
-  const R = human(st).resources;
+  const R = playerOf(st, h.owner).resources;
   if (ob.type === 'res') { R[ob.res] += ob.amount; advFloat(`+${ob.amount}`, h.x, h.y, ob.res); removeObject(st, ob); }
   else if (ob.type === 'chest') {
     removeObject(st, ob);
@@ -1958,7 +1963,7 @@ function gainExp(st, h, amount, then) {
     let acc = 0, k = 0; for (; k < 3; k++) { acc += g[k]; if (r < acc) break; }
     h.stats[PRIMARY[k].id]++; ups.push(PRIMARY[k]);
   }
-  if (!ups.length) { if (then) then(); return 0; }
+  if (!ups.length || h.owner !== ME) { if (then) then(); return ups.length; }
   const gains = PRIMARY.map(p => [p, ups.filter(u => u === p).length]).filter(([, k]) => k).map(([p, k]) => `+${k} do ${p.gen}`);
   showDialog(`${h.name} osiąga poziom ${h.level}! ${gains.join(', ')}.`, [{ label: 'Wspaniale', key: 'enter', action: then }],
     { iconH: 76, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) });
@@ -2046,8 +2051,8 @@ function weeklyGrowth(t, L) {
 }
 function townGrowthWeek(t) { for (const L of dwellingLevels(t)) t.avail[L] = (t.avail[L] || 0) + weeklyGrowth(t, L); }
 const unitCost = cid => CREATURES[cid].cost || { gold: CREATURES[cid].value };
-function maxAffordable(st, cost) {
-  const R = human(st).resources; let m = Infinity;
+function maxAffordable(st, cost, owner = ME) {
+  const R = playerOf(st, owner).resources; let m = Infinity;
   for (const r of RESOURCES) if (cost[r.id]) m = Math.min(m, Math.floor(R[r.id] / cost[r.id]));
   return m === Infinity ? 0 : m;
 }
@@ -2056,10 +2061,10 @@ const heroInTown = (st, t) => st.heroes.find(h => h.x === t.x && h.y === t.y && 
 function recruit(st, t, L, cid, n) {
   if (n <= 0) return 'Wybierz liczbę jednostek';
   if (n > (t.avail[L] || 0)) return 'Tylu jednostek nie ma w siedlisku';
-  const cost = unitCost(cid); if (n > maxAffordable(st, cost)) return 'Brakuje zasobów';
+  const cost = unitCost(cid); if (n > maxAffordable(st, cost, t.owner)) return 'Brakuje zasobów';
   const h = heroInTown(st, t), dest = armyHasRoom(t.garrison, cid) ? t.garrison : (h && armyHasRoom(h.army, cid) ? h.army : null);
   if (!dest) return 'Brak miejsca w garnizonie';
-  const R = human(st).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id] * n;
+  const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id] * n;
   armyAdd(dest, cid, n); t.avail[L] -= n; return null;
 }
 // Przesunięcie między dwoma miejscami (garnizon ↔ bohater): pusty cel = przeniesienie, ten sam typ = połączenie,
@@ -2084,13 +2089,13 @@ function collectIncome(st) {
   for (const p of st.players) { const inc = dailyIncomeAll(st, p.id); for (const r of RESOURCES) p.resources[r.id] += inc[r.id]; }
 }
 const hasB = (t, id) => t.built.includes(id);
-const canAfford = (st, cost) => RESOURCES.every(r => (human(st).resources[r.id] || 0) >= (cost[r.id] || 0));
+const canAfford = (st, cost, owner = ME) => RESOURCES.every(r => (playerOf(st, owner).resources[r.id] || 0) >= (cost[r.id] || 0));
 const reqMet = (t, B) => B.req.every(r => hasB(t, r));
 function townGold(t) { let g = 0; for (const id of ['hall1', 'hall2', 'hall3', 'hall4']) if (hasB(t, id)) g = BUILD_BY_ID[id].gold; return g; }
 function availableBuildings(t) { return BUILDINGS.filter(B => !hasB(t, B.id) && reqMet(t, B)); }
 function slotBuilding(t, slot) { let best = null; for (const B of BUILDINGS) if (B.slot === slot && hasB(t, B.id)) best = B; return best; }
 function buildIn(st, t, B) {
-  const R = human(st).resources;
+  const R = playerOf(st, t.owner).resources;
   for (const r of RESOURCES) if (B.cost[r.id]) R[r.id] -= B.cost[r.id];
   t.built.push(B.id); t.builtToday = true;
   const gm = /^guild(\d)$/.exec(B.id); if (gm) rollGuildLevel(st, t, +gm[1]);
@@ -2099,7 +2104,8 @@ function buildIn(st, t, B) {
 
 // ==================== BITWA: ZASADY ====================================================
 // Pole bitwy: siatka heksów BCOLS×BROWS w układzie „odd-r” (co drugi rząd przesunięty w prawo).
-// Strona 0 = bohater (lewa krawędź), strona 1 = potwory (prawa). Stan bitwy (B) nie trafia do zapisu gry.
+// Strona 0 = atakujący bohater (lewa krawędź), strona 1 = obrońca (prawa): potwór neutralny, bohater
+// albo miasto (bohater w mieście + garnizon). Stan bitwy (B) nie trafia do zapisu gry.
 const BCOLS = 13, BROWS = 9;
 const hexKey = (x, y) => y * BCOLS + x;
 const inField = (x, y) => x >= 0 && y >= 0 && x < BCOLS && y < BROWS;
@@ -2115,17 +2121,34 @@ function splitMonster(count) {
   return out;
 }
 const spreadRows = k => Array.from({ length: k }, (_, i) => Math.round((i + 0.5) * BROWS / k - 0.5));
-function createBattle(st, h, m) {
-  const B = { st, h, m, round: 0, order: [], waitQ: [], active: null, units: [], log: [], over: null, auto: false, obst: new Map(),
-    rng: mulberry32(st.seed ^ (st.dayTotal * 7919) ^ (m.id * 104729)), prevPos: h.prev ? [...h.prev] : null };
-  const mk = (side, cid, n, x, y, slot) => {
-    const c = CREATURES[cid];
-    B.units.push({ id: B.units.length, side, cid, n, n0: n, hp: c.hp, shots: c.shots || 0, x, y, slot, retaliated: false, defending: false, waited: false, dead: false, buffs: {} });
-  };
-  const mine = h.army.map((s, i) => s && { s, i }).filter(Boolean), rows0 = spreadRows(mine.length);
-  mine.forEach(({ s, i }, k) => mk(0, s.cid, s.n, 0, rows0[k], i));
-  const parts = splitMonster(m.count), rows1 = spreadRows(parts.length);
-  parts.forEach((n, k) => mk(1, m.cid, n, BCOLS - 1, rows1[k], null));
+// B.sides[s] = { owner, hero, monster, town }; oddział pamięta, skąd przyszedł (src + slot), żeby tam wrócić po bitwie.
+const armyEntries = (a, src) => a.map((s, slot) => s && { cid: s.cid, n: s.n, src, slot }).filter(Boolean);
+function battleSide(st, foe) {
+  if (foe.type === 'monster') return { owner: -1, hero: null, monster: foe, town: null, key: foe.id, stacks: splitMonster(foe.count).map(n => ({ cid: foe.cid, n, src: null, slot: null })) };
+  if (foe.garrison) { // miasto: bohater stojący w mieście broni się razem z garnizonem
+    const h = heroInTown(st, foe);
+    return { owner: foe.owner, hero: h, monster: null, town: foe, key: 9000 + st.towns.indexOf(foe), stacks: [...(h ? armyEntries(h.army, 'hero') : []), ...armyEntries(foe.garrison, 'garrison')] };
+  }
+  return { owner: foe.owner, hero: foe, monster: null, town: null, key: 5000 + foe.id, stacks: armyEntries(foe.army, 'hero') };
+}
+// Oddziały jednej strony w kolumnach od krawędzi (do 9 w kolumnie; miasto z bohaterem może mieć ich 14)
+function placeSide(B, side, stacks) {
+  for (let c = 0; c * BROWS < stacks.length; c++) {
+    const col = stacks.slice(c * BROWS, (c + 1) * BROWS), rows = spreadRows(col.length);
+    col.forEach((e, k) => {
+      const cr = CREATURES[e.cid], x = side === 0 ? c : BCOLS - 1 - c;
+      B.units.push({ id: B.units.length, side, cid: e.cid, n: e.n, n0: e.n, hp: cr.hp, shots: cr.shots || 0, x, y: rows[k], src: e.src, slot: e.slot, retaliated: false, defending: false, waited: false, dead: false, buffs: {} });
+    });
+  }
+}
+// foe: potwór z mapy, bohater albo miasto
+function createBattle(st, h, foe) {
+  const D = battleSide(st, foe);
+  const B = { st, h, sides: [{ owner: h.owner, hero: h, monster: null, town: null }, { owner: D.owner, hero: D.hero, monster: D.monster, town: D.town }],
+    round: 0, order: [], waitQ: [], active: null, units: [], log: [], over: null, auto: false, obst: new Map(), cast: [false, false],
+    rng: mulberry32(st.seed ^ (st.dayTotal * 7919) ^ (D.key * 104729)), prevPos: h.prev ? [...h.prev] : null };
+  placeSide(B, 0, armyEntries(h.army, 'hero'));
+  placeSide(B, 1, D.stacks);
   // przeszkody ze środka pola: te same drzewa i skały co na mapie przygody (typ + wariant rysunku)
   const cnt = 3 + Math.floor(B.rng() * 4);
   for (let k = 0, tries = 0; k < cnt && tries < 60; tries++) {
@@ -2173,9 +2196,12 @@ function pathTo({ prev }, u, x, y) {
   while (k !== start && k !== undefined) { out.unshift([k % BCOLS, Math.floor(k / BCOLS)]); k = prev.get(k); }
   return out;
 }
-// Premie bohatera do ataku i obrony swoich oddziałów
-const sideAtt = (B, side) => (side === 0 ? heroStat(B.h, 'att') : 0);
-const sideDef = (B, side) => (side === 0 ? heroStat(B.h, 'def') : 0);
+// Premie bohatera do ataku i obrony swoich oddziałów (strona bez bohatera: 0)
+const sideHero = (B, side) => B.sides[side].hero;
+const sideAtt = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'att') : 0);
+const sideDef = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'def') : 0);
+// Którą stroną dowodzi człowiek (resztą SI). Na razie człowiek zawsze atakuje, więc to strona 0.
+const humanSide = (B, side) => B.sides[side].owner === ME;
 // Obrażenia jak w oryginale: podstawa × (1 + 5% za każdy punkt przewagi ataku), albo −2,5% za punkt przewagi obrony.
 // moved = liczba pól rozpędu (szarża), ranged = strzał; strzelec wręcz bije za połowę, chyba że ma „Walkę wręcz”.
 function damageRoll(B, a, t, ranged, moved = 0) {
@@ -2276,7 +2302,7 @@ function nextActive(B) {
     if (!alive(B, 0).length || !alive(B, 1).length) { B.over = alive(B, 0).length ? 'win' : 'lose'; B.active = null; return null; }
     if (!B.order.length && B.waitQ.length) { B.order = B.waitQ.filter(u => !u.dead).sort((a, b) => unitSpd(a) - unitSpd(b)); B.waitQ = []; }
     if (!B.order.length) {
-      B.round++; B.cast = false;
+      B.round++; B.cast = [false, false];
       for (const u of B.units) {
         u.retaliated = false; u.defending = false; u.waited = false;
         for (const k of Object.keys(u.buffs)) if (--u.buffs[k] <= 0) delete u.buffs[k];
@@ -2292,17 +2318,19 @@ const unitAtt = u => CREATURES[u.cid].att + (u.buffs.bloodlust ? 3 : 0) - (u.buf
 const unitDef = u => CREATURES[u.cid].def + (u.buffs.stoneSkin ? 3 : 0);
 const unitSpd = u => Math.max(1, CREATURES[u.cid].spd + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0));
 const battleSpells = h => (h.spells || []).filter(id => SPELLS[id].kind === 'battle');
-const canCastNow = B => !B.cast && B.active && B.active.side === 0 && battleSpells(B.h).some(id => SPELLS[id].cost <= B.h.mana);
-// Czy cel pasuje do czaru (u = oddział albo null dla czaru na pole)
+// Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
+const casterSide = B => (B.active ? B.active.side : 0);
+const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => SPELLS[id].cost <= h.mana)); };
+// Czy cel pasuje do czaru (u = oddział albo null dla czaru na pole); „swoi” = strona rzucającego
 function spellTargetOk(B, id, u) {
-  const t = SPELLS[id].target; if (t === 'hex') return true; if (!u || u.dead && !(t === 'undeadAlly' && u.side === 0 && hasAb(u, 'undead'))) return false;
-  return t === 'enemy' ? u.side === 1 : t === 'ally' ? u.side === 0 : t === 'undeadAlly' ? u.side === 0 && hasAb(u, 'undead') : false;
+  const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex') return true; if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead'))) return false;
+  return t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : false;
 }
 // Pola trafione czarem (kula ognia: pole + sąsiedzi)
 const spellArea = (id, x, y) => (SPELLS[id].target === 'hex' ? [[x, y], ...hexNeighbors(x, y)] : [[x, y]]);
 function castBattle(B, id, x, y) {
-  const S = SPELLS[id], sp = heroStat(B.h, 'sp'), tu = B.units.find(u => u.x === x && u.y === y && (!u.dead || S.raise)) || null;
-  B.h.mana -= S.cost; B.cast = true; B.log.push(`${B.h.name} rzuca: ${S.name}.`);
+  const s = casterSide(B), h = sideHero(B, s), S = SPELLS[id], sp = heroStat(h, 'sp'), tu = B.units.find(u => u.x === x && u.y === y && (!u.dead || S.raise)) || null;
+  h.mana -= S.cost; B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
   if (B.fx) B.fx.push({ kind: 'spell', id, x, y });
   if (S.dmg) for (const [ax, ay] of spellArea(id, x, y)) {
     const v = unitAt(B, ax, ay); if (!v) continue; const d = S.dmg(sp), k = applyDamage(v, d);
@@ -2319,15 +2347,15 @@ function castBattle(B, id, x, y) {
 // SI bohatera (tryb Auto i walka automatyczna): czar zadający najwięcej wartości, jeśli jakiś się opłaca
 function aiHeroCast(B) {
   if (!canCastNow(B)) return false;
-  const sp = heroStat(B.h, 'sp'); let best = null;
-  for (const id of battleSpells(B.h)) {
-    const S = SPELLS[id]; if (!S.dmg || S.cost > B.h.mana) continue;
-    const cells = S.target === 'hex' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : alive(B, 1).map(u => [u.x, u.y]);
+  const s = casterSide(B), h = sideHero(B, s), sp = heroStat(h, 'sp'); let best = null;
+  for (const id of battleSpells(h)) {
+    const S = SPELLS[id]; if (!S.dmg || S.cost > h.mana) continue;
+    const cells = S.target === 'hex' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : alive(B, 1 - s).map(u => [u.x, u.y]);
     for (const [x, y] of cells) {
       let val = 0;
       for (const [ax, ay] of spellArea(id, x, y)) {
         const v = unitAt(B, ax, ay); if (!v) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = S.dmg(sp);
-        const k = d >= pool ? v.n : v.n - Math.ceil((pool - d) / hp); val += (v.side === 1 ? 1 : -1.5) * k * CREATURES[v.cid].value;
+        const k = d >= pool ? v.n : v.n - Math.ceil((pool - d) / hp); val += (v.side !== s ? 1 : -1.5) * k * CREATURES[v.cid].value;
       }
       if (val > 0 && (!best || val > best.val)) best = { val, id, x, y };
     }
@@ -2337,23 +2365,43 @@ function aiHeroCast(B) {
 // Cała bitwa bez ekranu (przycisk „Automatycznie” i testy)
 function simulateBattle(B) {
   B.auto = true; let guard = 0;
-  while (!B.over && guard++ < 5000) { const u = nextActive(B); if (!u) break; if (u.side === 0) aiHeroCast(B); if (!u.dead && alive(B, 1).length) aiAct(B, u); }
+  while (!B.over && guard++ < 5000) { const u = nextActive(B); if (!u) break; aiHeroCast(B); if (!u.dead && alive(B, 1 - u.side).length) aiAct(B, u); }
   if (!B.over) B.over = 'lose';
   return B;
 }
-// Zapisuje wynik w stanie gry i zwraca opis dla okna podsumowania
+// Ocalałe oddziały wracają tam, skąd przyszły: do armii bohatera, garnizonu albo liczebności potwora
+function writeBackSide(B, side) {
+  const S = B.sides[side], units = B.units.filter(u => u.side === side);
+  if (S.monster) { S.monster.count = units.reduce((s, u) => s + (u.dead ? 0 : u.n), 0); return; }
+  for (const u of units) { const a = u.src === 'garrison' ? S.town.garrison : S.hero.army; a[u.slot] = u.n > 0 && !u.dead ? { cid: u.cid, n: u.n } : null; }
+}
+const sideLosses = (B, side) => B.units.filter(u => u.side === side && u.n < u.n0).map(u => `${CREATURES[u.cid].plural.toLowerCase()} −${u.n0 - u.n}`);
+const killedHp = (B, side) => B.units.filter(u => u.side === side).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
+// Pokonany bohater znika z mapy. Wybór bohatera gracza przesuwa się tak, żeby wskazywał tego samego (albo pierwszego).
+function removeHero(st, h) {
+  const sel = hero(st), i = st.heroes.indexOf(h); if (i < 0) return;
+  st.heroes.splice(i, 1);
+  const keep = sel !== h ? sel : myHeroes(st)[0]; st.selHero = Math.max(0, st.heroes.indexOf(keep));
+}
+// Zmiana właściciela miasta (i jego obiektu na mapie)
+function captureTown(st, t, owner) {
+  t.owner = owner;
+  for (const ob of st.objects) if (ob.type === 'town' && ob.townId === t.id) ob.owner = owner;
+  MapRender.miniDirty = true;
+}
+// Zapisuje wynik w stanie gry i zwraca opis dla okna podsumowania (z punktu widzenia atakującego, strona 0)
 function resolveBattle(B, fled) {
-  const { st, h, m } = B, lost = [], killedHp = B.units.filter(u => u.side === 1).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
-  for (const u of B.units.filter(u => u.side === 0)) {
-    if (u.n < u.n0) lost.push(`${CREATURES[u.cid].plural.toLowerCase()} −${u.n0 - u.n}`);
-    h.army[u.slot] = u.n > 0 ? { cid: u.cid, n: u.n } : null;
-  }
-  const left = alive(B, 1).reduce((s, u) => s + u.n, 0);
-  const res = { outcome: fled ? 'fled' : B.over, lost, exp: 0 };
-  if (res.outcome === 'win') { removeObject(st, m); res.exp = killedHp; }
-  else {
-    m.count = left;
-    if (res.outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
+  const { st, h } = B, D = B.sides[1], outcome = fled ? 'fled' : B.over;
+  const res = { outcome, lost: sideLosses(B, 0), foeLost: sideLosses(B, 1), exp: 0, foeExp: 0, captured: null, heroDefeated: null };
+  writeBackSide(B, 0); writeBackSide(B, 1);
+  if (outcome === 'win') {
+    res.exp = killedHp(B, 1);
+    if (D.monster) removeObject(st, D.monster);
+    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; removeHero(st, D.hero); }
+    if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
+  } else {
+    if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); gainExp(st, D.hero, res.foeExp); }
+    if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
     else { // porażka: bohater uchodzi z życiem do swojego miasta, bez armii
       const t = st.towns.find(t => t.owner === h.owner); h.army = emptyArmy(); h.mp = 0;
       if (t) { h.x = t.x; h.y = t.y; reveal(st, h.x, h.y, heroSight(h)); }
@@ -4614,15 +4662,16 @@ G.screens.battle = {
   },
   startTurnFor(u) {
     const B = this.B; this.casting = null;
-    if (B.auto && u.side === 0 && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera
-    if (u.side === 1 || B.auto) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
+    const ai = B.auto || !humanSide(B, u.side);
+    if (ai && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
+    if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
     this.phase = 'input'; this.reach = battleDist(B, u, unitSpd(u));
     this.bWait.disabled = u.waited; this.onPointerMove(G.mouse.x, G.mouse.y);
   },
   player(fn) { if (this.phase !== 'input') return; this.casting = null; fn(this.B.active); this.phase = 'play'; },
   openBook() {
     if (this.phase !== 'input') return; const B = this.B;
-    if (B.cast) { B.log.push('W tej rundzie bohater już rzucił czar.'); return; }
+    if (B.cast[0]) { B.log.push('W tej rundzie bohater już rzucił czar.'); return; }
     showSpellbook(B.h, 'battle', id => { this.casting = id; this.onPointerMove(G.mouse.x, G.mouse.y); });
   },
   finish(fled) {
@@ -4785,7 +4834,7 @@ G.screens.battle = {
       if (!u.dead) {
         const bx = u.px + (u.side === 0 ? 8 : -34), by = u.py + 18, s = String(u.n);
         ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(bx + 1, by + 1, 27, 15);
-        ctx.fillStyle = u.side === 0 ? col : '#5a5448'; ctx.fillRect(bx, by, 26, 14); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx, by, 26, 4);
+        ctx.fillStyle = u.side === 0 ? col : B.sides[1].owner >= 0 ? ownerColor(st, B.sides[1].owner) : '#5a5448'; ctx.fillRect(bx, by, 26, 14); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx, by, 26, 4);
         ctx.strokeStyle = '#e0b24a'; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, 25, 13);
         text(ctx, s, bx + 13, by + 8, { size: 11, align: 'center', color: '#fff8e0', fam: 'body' });
         Object.keys(u.buffs).forEach((k, i) => { ctx.fillStyle = BAD_BUFFS.includes(k) ? '#b060e0' : '#ffe08a'; ctx.fillRect(bx + i * 6, by - 6, 4, 4); });
@@ -4802,7 +4851,9 @@ G.screens.battle = {
     // pasek górny
     drawHeroPortrait(ctx, 6, 1, B.h, col); text(ctx, heroTitle(B.h), 50, 19, { size: 15, color: '#ecd9a8', fam: 'title' });
     text(ctx, `Runda ${B.round}`, W / 2, 19, { size: 16, align: 'center', color: '#f0e4c0', fam: 'title' });
-    text(ctx, `${CREATURES[B.m.cid].plural} (neutralni)`, W - 12, 19, { size: 15, align: 'right', color: '#ecd9a8', fam: 'title' });
+    const D = B.sides[1], foeCol = ownerColor(st, D.owner), right = D.hero ? W - 50 : W - 12;
+    if (D.hero) drawHeroPortrait(ctx, W - 44, 1, D.hero, foeCol);
+    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: '#ecd9a8', fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && u0.side === 1 ? 'Ruch przeciwnika…' : '';
@@ -4820,7 +4871,8 @@ G.screens.battle = {
 function showBattleResult(st, h, res) {
   const lost = res.lost.length ? `Straty: ${res.lost.join(', ')}.` : 'Bez strat.';
   if (res.outcome === 'win') {
-    showDialog(`Zwycięstwo! ${lost} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
+    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '');
+    showDialog(`Zwycięstwo!${extra} ${lost} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
       advFloat(`+${res.exp} dośw.`, h.x, h.y);
       gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster') visitObject(st, h, here); });
     } }]);
