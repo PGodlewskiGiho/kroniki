@@ -46,13 +46,19 @@ for (const faction of ['haven', 'sylvan', 'barrow']) {
     test(`nowa gra: ${faction}, mapa ${mapSize}`, async () => {
       const info = await newGame(page, { faction, mapSize }, 1000 + mapSize.charCodeAt(0));
       assert.equal(info.players, 1);
-      assert.equal(info.towns, 1);
+      assert.ok(info.towns >= 2, 'miasto gracza + niezależne');
       assert.equal(info.heroes, 1);
       assert.ok(info.objects > 20, `za mało obiektów: ${info.objects}`);
       const start = await page.evaluate(() => {
-        const st = G.state, h = st.heroes[0], t = st.towns[0];
-        return { heroOnTown: h.x === t.x && h.y === t.y, faction: t.faction, army: armySize(h.army), mp: h.mp };
+        const st = G.state, h = st.heroes[0], t = st.towns[0], others = st.towns.slice(1);
+        return { heroOnTown: h.x === t.x && h.y === t.y, faction: t.faction, army: armySize(h.army), mp: h.mp, owner: t.owner,
+          townsAtSites: st.towns.length === st.map.sites.length, neutral: others.every(o => o.owner === -1 && armySize(o.garrison) > 0),
+          names: new Set(st.towns.map(o => o.name)).size === st.towns.length };
       });
+      assert.equal(start.owner, 0);
+      assert.ok(start.townsAtSites, 'miasto w każdym miejscu startowym');
+      assert.ok(start.neutral, 'pozostałe miasta są niezależne i mają garnizon');
+      assert.ok(start.names, 'nazwy miast się nie powtarzają');
       assert.ok(start.heroOnTown, 'bohater zaczyna w mieście');
       assert.equal(start.faction, faction);
       assert.ok(start.army > 0, 'bohater ma armię');

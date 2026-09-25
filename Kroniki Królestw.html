@@ -92,15 +92,18 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    Krok 12: testy automatyczne (tests/), bitwa z dowolną armią: potwór, bohater albo miasto (garnizon + bohater
    w mieście), czary bohatera obrońców, pokonany bohater znika, zwycięstwo nad miastem zmienia właściciela;
    surowce, budowa i rekrutacja liczone dla właściciela (playerOf), nie tylko dla gracza-człowieka.
+   Krok 13: miasta niezależne w pozostałych miejscach startowych (createNeutralTown: losowa frakcja, garnizon
+   rośnie z odległością i trudnością), zdobywanie miast (startTownAssault; puste zajmuje się bez walki),
+   mury Fortu/Cytadeli/Zamku dają obrońcom premię do obrony (TOWN_WALL_DEF).
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
 // Stałe gry, surowce, poziomy trudności, rozmiary map, kolory graczy, bonusy.
 const W = 800, H = 600;
-const VERSION = 'krok 12 z 15';
+const VERSION = 'krok 13 z 15';
 // Plan rozwoju: gdzie w interfejsie obiecujemy przyszłe funkcje. Zmiana planu = zmiana tylko tutaj.
 const ROADMAP = {
-  capture: 'w kroku 13', later: 'w dalszym kroku',
+  later: 'w dalszym kroku',
 };
 const RESOURCES = [
   { id: 'wood', name: 'Drewno' }, { id: 'mercury', name: 'Rtęć' }, { id: 'ore', name: 'Ruda' },
@@ -455,6 +458,7 @@ const colorHex = id => (PLAYER_COLORS.find(c => c.id === id) || PLAYER_COLORS[0]
 const ME = 0; // indeks gracza-człowieka; przeciwnicy komputerowi dostaną kolejne numery
 const human = st => st.players[ME];
 const playerOf = (st, owner) => st.players[owner]; // gracz o danym numerze (surowce, frakcja, odkryta mapa)
+const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[owner].color) || PLAYER_COLORS[0]).name.toLowerCase()}` : 'nikt');
 const ownerColor = (st, owner) => (st.players[owner] ? colorHex(st.players[owner].color) : NEUTRAL_COLOR);
 const hero = st => st.heroes[st.selHero || 0];
 const heroAt = (st, x, y) => st.heroes.find(h => h.x === x && h.y === y) || null;
@@ -759,7 +763,7 @@ function showDialog(msg, opts, extra = {}) {
   const bw = 120, gap = 24, total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
   const buttons = opts.map(o => { const b = new Button(bx, y + h - 64, bw, 40, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key }); bx += bw + gap; return b; });
   G.modal = {
-    buttons, locked: !!extra.locked,
+    msg, buttons, locked: !!extra.locked, // msg: treść okna (podgląd w testach)
     draw(ctx) {
       ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, h);
       lines.forEach((l, i) => text(ctx, l, W / 2, y + 44 + i * 26, { size: 20, weight: 500, align: 'center', color: '#2a1606' }));
@@ -1331,6 +1335,8 @@ function drawFlag(ctx, px, py, len, hgt, t, col) {
 // --- miasto na mapie przygody -------------------------------------------------------------------
 // 3×2 pola, (x0, y0) = lewy górny róg, wejście pośrodku dolnego rzędu.
 // Poziom umocnień jak w widoku miasta: 0 osada bez murów, 1 fort, 2 cytadela, 3 zamek.
+// Premia do obrony oddziałów broniących miasta za mury: brak, Fort, Cytadela, Zamek
+const TOWN_WALL_DEF = [0, 2, 4, 6];
 const townLevel = t => hasB(t, 'castle') ? 3 : hasB(t, 'citadel') ? 2 : hasB(t, 'fort') ? 1 : 0;
 // szczyty dachów, na których powiewają flagi właściciela [x, y] względem (x0, y0)
 const TOWN_FLAG_POINTS = [[[48, -16]], [[13, -2], [83, -2]], [[13, -10], [83, -10]], [[13, -10], [83, -10], [48, -26]]];
@@ -1796,12 +1802,25 @@ function placeObjects(st) {
 }
 function createTown(st, x, y, owner, fac = 'haven') {
   const F = factionOf(fac), names = F.towns, nat = F.terrain, n0 = st.map.n;
-  const t = { id: st.towns.length, x, y, owner, name: names[thash(x, y, st.seed) % names.length], faction: fac, built: ['hall1'], builtToday: false, garrison: emptyArmy(), avail: {} };
+  const used = new Set(st.towns.map(t => t.name)), k0 = thash(x, y, st.seed) % names.length;
+  const name = names.map((_, k) => names[(k0 + k) % names.length]).find(nm => !used.has(nm)) || names[k0];
+  const t = { id: st.towns.length, x, y, owner, name, faction: fac, built: ['hall1'], builtToday: false, garrison: emptyArmy(), avail: {} };
   for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const tx = x + dx, ty = y + dy; if (dx * dx + dy * dy <= 6 && tx >= 0 && ty >= 0 && tx < n0 && ty < n0 && st.map.terrain[ty * n0 + tx] !== TER.WATER) st.map.terrain[ty * n0 + tx] = nat; }
   st.towns.push(t);
   const n = st.map.n, blocks = [];
   for (const [dx, dy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]]) { const bx = x + dx, by = y + dy; if (bx >= 0 && by >= 0 && bx < n && by < n) blocks.push(by * n + bx); }
   st.objects.push({ id: st.objects.length, type: 'town', townId: t.id, x, y, owner, blocks });
+  return t;
+}
+// Miasto niezależne w miejscu startowym: losowa frakcja, garnizon tym silniejszy, im dalej od gracza
+// (i im wyższy poziom trudności). Daleko stoją też mury, które dają obrońcom premię (TOWN_WALL_DEF).
+function createNeutralTown(st, site, rng) {
+  const n = st.map.n, dd = clamp(Math.hypot(site.x - st.map.start.x, site.y - st.map.start.y) / (n * 0.75), 0, 1);
+  const fac = FACTIONS[Math.floor(rng() * FACTIONS.length)].id, t = createTown(st, site.x, site.y, -1, fac), F = factionOf(fac);
+  t.built.push('dw1', 'dw2'); if (dd > 0.45) t.built.push('fort', 'dw3'); if (dd > 0.8) t.built.push('tavern');
+  const k = (0.8 + dd * 1.4) * DIFFICULTIES[st.settings.difficulty].rating / 100;
+  const troops = [[1, 14, 8], [2, 7, 4]]; if (dd > 0.4) troops.push([3, 4, 3]); if (dd > 0.7) troops.push([4, 2, 2]);
+  troops.forEach(([L, base, spread], i) => { t.garrison[i] = { cid: F.dw['dw' + L][1], n: Math.max(1, Math.round((base + rng() * spread) * k)) }; });
   return t;
 }
 function createHero(st, owner, x, y) {
@@ -1826,6 +1845,8 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   human(st).explored = new Uint8Array(map.n * map.n);
   st.objects = placeObjects(st);
   createTown(st, map.start.x, map.start.y, ME, S.faction);
+  const trng = mulberry32(seed ^ 0x70a7);
+  for (const s of map.sites) if (s !== map.start) createNeutralTown(st, s, trng);
   rebuildObjIndex(st);
   const h = createHero(st, ME, map.start.x, map.start.y);
   if (S.bonus === 'artifact') { const pool = ARTS_BY_RARITY('treasure'), id = pool[Math.floor(rng() * pool.length)]; giveArtifact(h, id); st.bonusText = `artefakt: ${ARTIFACTS[id].name}`; h.mp = heroMaxMP(h); }
@@ -1917,7 +1938,7 @@ function visitObject(st, h, ob) {
     showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}`, [{ label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art), cx, cy, 2) });
   } else if (ob.type === 'town') {
-    if (ob.owner === h.owner) G.go('town', { townId: ob.townId }); else G.screens.adventure.flash(`Obce miasto. Zdobywanie miast ${ROADMAP.capture}.`);
+    if (ob.owner === h.owner) G.go('town', { townId: ob.townId }); else startTownAssault(st, h, st.towns[ob.townId]);
   } else if (ob.type === 'mine') {
     const M = MINES[ob.kind];
     if (ob.owner === h.owner) { G.screens.adventure.flash(`${M.name} już należy do ciebie`); return; }
@@ -1930,12 +1951,33 @@ function startEncounter(st, h, m) {
   if (m.dead) return; const c = CREATURES[m.cid];
   // h.prev jest puste, gdy bohater sam wszedł na potwora; ustawione, gdy wszedł w strefę strażnika
   const who = h.prev ? `${qtyName(m.count)} ${c.gen} atakuje twojego bohatera!` : `${h.name} atakuje: ${qtyName(m.count).toLowerCase()} ${c.gen}.`;
-  const ph = Math.round(armyPower(h.army) * heroFactor(h)), pm = m.count * c.value, odds = ph > pm * 1.5 ? 'Przewaga jest po twojej stronie.' : ph > pm ? 'Siły są dość wyrównane.' : 'Przeciwnik wygląda na silniejszego.';
-  showDialog(`${who} ${odds} (siła: twoja ${ph}, wroga ${pm})`, [
-    { label: 'Walcz', key: 'enter', action: () => G.go('battle', { battle: createBattle(st, h, m) }) },
-    { label: 'Automatycznie', key: 'a', action: () => { const B = simulateBattle(createBattle(st, h, m)); showBattleResult(st, h, resolveBattle(B, false)); } },
+  offerBattle(st, h, m, who, m.count * c.value, (ctx, cx, cy) => drawSprite(ctx, creatureSprite(m.cid, 1), cx, cy + 34, 2));
+}
+// Siła obrońców miasta: garnizon, bohater w mieście (z premią za cechy) i mury
+function townPower(st, t) {
+  const hh = heroInTown(st, t), wall = 1 + 0.05 * TOWN_WALL_DEF[townLevel(t)];
+  return Math.round((armyPower(t.garrison) + (hh ? armyPower(hh.army) * heroFactor(hh) : 0)) * wall);
+}
+// Wejście do obcego miasta: puste zajmujemy od razu, bronione trzeba zdobyć w bitwie
+function startTownAssault(st, h, t) {
+  if (t.owner === h.owner) return;
+  const hh = heroInTown(st, t), walls = ['', ' Miasto otaczają mury Fortu.', ' Miasto otaczają mury Cytadeli.', ' Miasto otaczają mury Zamku.'][townLevel(t)];
+  if (!armySize(t.garrison) && !hh) {
+    captureTown(st, t, h.owner); rebuildObjIndex(st);
+    showDialog(`Miasto ${t.name} nie ma obrońców. ${h.name} zajmuje je bez walki.`, [{ label: 'Wejdź do miasta', key: 'enter', action: () => G.go('town', { townId: t.id }) }]);
+    return;
+  }
+  const who = `${t.name} (${t.owner < 0 ? 'miasto niezależne' : `miasto: ${ownerName(st, t.owner)}`}) ${hh ? `ma w murach bohatera: ${heroTitle(hh)}` : 'broni się garnizonem'}.${walls}`;
+  offerBattle(st, h, t, who, townPower(st, t), (ctx, cx, cy) => drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), cx - 40, cy - 40, 2));
+}
+// Okno przed bitwą: porównanie sił i wybór (walka, walka automatyczna, odwrót)
+function offerBattle(st, h, foe, who, foePower, icon) {
+  const ph = Math.round(armyPower(h.army) * heroFactor(h)), odds = ph > foePower * 1.5 ? 'Przewaga jest po twojej stronie.' : ph > foePower ? 'Siły są dość wyrównane.' : 'Przeciwnik wygląda na silniejszego.';
+  showDialog(`${who} ${odds} (siła: twoja ${ph}, wroga ${foePower})`, [
+    { label: 'Walcz', key: 'enter', action: () => G.go('battle', { battle: createBattle(st, h, foe) }) },
+    { label: 'Automatycznie', key: 'a', action: () => { const B = simulateBattle(createBattle(st, h, foe)); showBattleResult(st, h, resolveBattle(B, false)); } },
     { label: 'Wycofaj się', key: 'escape', action: () => { if (h.prev) { h.x = h.prev[0]; h.y = h.prev[1]; h.prev = null; } } },
-  ], { locked: true, iconH: 84, icon: (ctx, cx, cy) => drawSprite(ctx, creatureSprite(m.cid, 1), cx, cy + 34, 2) });
+  ], { locked: true, iconH: 84, icon });
 }
 // --- rozwój bohatera: cechy, poziomy, ekwipunek -----------------------------------------------
 const emptyEquip = () => Object.fromEntries(EQUIP_SLOTS.map(s => [s.id, null]));
@@ -2199,7 +2241,7 @@ function pathTo({ prev }, u, x, y) {
 // Premie bohatera do ataku i obrony swoich oddziałów (strona bez bohatera: 0)
 const sideHero = (B, side) => B.sides[side].hero;
 const sideAtt = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'att') : 0);
-const sideDef = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'def') : 0);
+const sideDef = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'def') : 0) + (B.sides[side].town ? TOWN_WALL_DEF[townLevel(B.sides[side].town)] : 0);
 // Którą stroną dowodzi człowiek (resztą SI). Na razie człowiek zawsze atakuje, więc to strona 0.
 const humanSide = (B, side) => B.sides[side].owner === ME;
 // Obrażenia jak w oryginale: podstawa × (1 + 5% za każdy punkt przewagi ataku), albo −2,5% za punkt przewagi obrony.
@@ -2804,7 +2846,7 @@ function tileInfo(st, tx, ty) {
   const ob = objectAt(st, i);
   if (ob) {
     if (ob.type === 'monster') return `${qtyName(ob.count)} ${CREATURES[ob.cid].gen}`;
-    if (ob.type === 'town') { const t = st.towns[ob.townId]; return `${t.name}, ${ob.owner === ME ? 'twoje miasto' : 'obce miasto'}`; }
+    if (ob.type === 'town') { const t = st.towns[ob.townId]; return `${t.name}, ${ob.owner === ME ? 'twoje miasto' : ob.owner < 0 ? 'miasto niezależne' : 'obce miasto'}`; }
     if (ob.type === 'mine') return `${MINES[ob.kind].name} (${ob.owner === ME ? 'należy do ciebie' : 'bez właściciela'})`;
     if (ob.type === 'chest') return 'Skrzynia ze skarbem';
     if (ob.type === 'art') return `Artefakt: ${ARTIFACTS[ob.art].name}`;
@@ -4277,9 +4319,9 @@ G.screens.adventure = {
       if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid]; return `${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${armyPower(hero(st).army)}). Poziom ${c.level}, ${unitStats(c)}.`; }
       if (ob && ob.type === 'town') {
         const t = st.towns[ob.townId];
-        return `${t.name}. Dochód: ${townGold(t)} złota dziennie. Budowli: ${t.built.length}. ` + (t.owner === ME ? 'Wejdź bohaterem albo wybierz miasto z listy po prawej.' : 'Obce miasto.');
+        return `${t.name}. Dochód: ${townGold(t)} złota dziennie. Budowli: ${t.built.length}. ` + (t.owner === ME ? 'Wejdź bohaterem albo wybierz miasto z listy po prawej.' : `${t.owner < 0 ? 'Miasto niezależne' : `Właściciel: ${ownerName(st, t.owner)}`}. Siła obrońców ${townPower(st, t)}, twoja armia ${armyPower(hero(st).army)}. Wejdź, aby je zdobyć.`);
       }
-      if (ob && ob.type === 'mine') { const M = MINES[ob.kind]; return `${M.name}. Właściciel: ${ob.owner === ME ? 'ty' : 'nikt'}. Dochód dzienny: ${M.income} (${resName(ob.kind).toLowerCase()}).`; }
+      if (ob && ob.type === 'mine') { const M = MINES[ob.kind]; return `${M.name}. Właściciel: ${ownerName(st, ob.owner)}. Dochód dzienny: ${M.income} (${resName(ob.kind).toLowerCase()}).`; }
       if (ob && ob.type === 'chest') return 'Skrzynia ze skarbem. Wybierzesz złoto albo doświadczenie dla bohatera.';
       if (ob && ob.type === 'art') return `${artInfo(ob.art)} Wejdź na to pole, aby go podnieść.`;
       if (ob && ob.type === 'res') return `${resName(ob.res)}: ${ob.amount}. Wejdź na to pole, aby zabrać.`;

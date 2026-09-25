@@ -8,14 +8,16 @@ test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
 
-// Nowa gra + drugi gracz (Kurhan) z miastem w drugim miejscu startowym i bohaterem obok niego.
+// Nowa gra + drugi gracz (Kurhan), który dostaje niezależne miasto z drugiego miejsca startowego
+// (puste: sam ratusz, bez garnizonu) i bohatera obok niego.
 // W przeglądarce zostają pomocnicze funkcje TX.* (T to już rozmiar pola w grze) do budowania armii.
 async function twoPlayers(seed = 500) {
   await newGame(page, { mapSize: 'M' }, seed);
   await page.evaluate(() => {
     const st = G.state, s = st.map.sites.find(p => p !== st.map.start), n = st.map.n;
     st.players.push({ id: 1, color: 'blue', human: false, faction: 'barrow', resources: { ...DIFFICULTIES[1].res }, explored: new Uint8Array(n * n) });
-    createTown(st, s.x, s.y, 1, 'barrow'); rebuildObjIndex(st);
+    const t = st.towns.find(t => t.x === s.x && t.y === s.y); captureTown(st, t, 1);
+    t.faction = 'barrow'; t.built = ['hall1']; t.garrison = emptyArmy(); t.avail = {}; rebuildObjIndex(st);
     createHero(st, 1, s.x, s.y + 1);
     window.TX = {
       me: () => G.state.heroes.find(h => h.owner === ME), foe: () => G.state.heroes.find(h => h.owner === 1),

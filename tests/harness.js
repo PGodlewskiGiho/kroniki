@@ -37,4 +37,12 @@ async function frames(page, n = 5) {
   await page.evaluate(n => new Promise(res => { const f = () => (--n <= 0 ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
 }
 
-module.exports = { openGame, newGame, frames };
+// Otwarte okno dialogowe: { msg, labels } albo null
+const dialog = page => page.evaluate(() => (G.modal && G.modal.msg != null ? { msg: G.modal.msg, labels: G.modal.buttons.map(b => b.label) } : null));
+// Wciska przycisk okna dialogowego po etykiecie (jak kliknięcie)
+async function pressDialog(page, label) {
+  const ok = await page.evaluate(label => { const b = G.modal && G.modal.buttons.find(b => b.label === label); if (b) b.action(); return !!b; }, label);
+  if (!ok) throw new Error(`brak przycisku „${label}” w oknie`);
+}
+
+module.exports = { openGame, newGame, frames, dialog, pressDialog };
