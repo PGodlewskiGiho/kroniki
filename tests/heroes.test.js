@@ -92,17 +92,18 @@ test('okno tawerny w mieście: najem przez kliknięcie budowli', async () => {
   await frames(page, 5);
 });
 
-test('bohaterowie blokują sobie drogę, kliknięcie własnego bohatera go wybiera', async () => {
+test('bohaterowie blokują sobie drogę; kliknięcie sąsiedniego własnego bohatera otwiera spotkanie', async () => {
   await withTavern();
   const r = await page.evaluate(() => {
     const st = G.state, t = st.towns[0], a = hero(st), b = hireHero(st, t, 0).hero;
     b.x = a.x + 1; b.y = a.y; a.mp = b.mp = 1e6;
     const path = computePath(st, a, a.x + 2, a.y), through = !!path && path.some(([x, y]) => x === b.x && y === b.y);
     G.screens.adventure.enter({}); G.modal = null; G.screens.adventure.tileClick(b.x, b.y);
-    return { through, selected: hero(st) === b, canTarget: !!computePath(st, a, b.x, b.y) };
+    const meeting = !!(G.modal && G.modal.meeting); G.modal = null;
+    return { through, meeting, canTarget: !!computePath(st, a, b.x, b.y) };
   });
   assert.equal(r.through, false, 'ścieżka omija drugiego bohatera');
-  assert.ok(r.selected);
+  assert.ok(r.meeting);
   assert.ok(r.canTarget, 'na pole bohatera można wskazać cel');
 });
 
