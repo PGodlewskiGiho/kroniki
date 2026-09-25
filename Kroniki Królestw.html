@@ -95,12 +95,15 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    Krok 13: miasta niezależne w pozostałych miejscach startowych (createNeutralTown: losowa frakcja, garnizon
    rośnie z odległością i trudnością), zdobywanie miast (startTownAssault; puste zajmuje się bez walki),
    mury Fortu/Cytadeli/Zamku dają obrońcom premię do obrony (TOWN_WALL_DEF).
+   Krok 14: tawerna (tavernOffer/hireHero: dwóch chętnych na tydzień, HERO_COST, najwyżej MAX_HEROES),
+   wielu bohaterów: blokują sobie drogę, kliknięcie własnego wybiera go, wejście na wrogiego = bitwa,
+   ruch wszystkich bohaterów w pętli ekranu mapy, przewijana lista w panelu (panelItems, listScroll).
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
 // Stałe gry, surowce, poziomy trudności, rozmiary map, kolory graczy, bonusy.
 const W = 800, H = 600;
-const VERSION = 'krok 13 z 15';
+const VERSION = 'krok 14 z 15';
 // Plan rozwoju: gdzie w interfejsie obiecujemy przyszłe funkcje. Zmiana planu = zmiana tylko tutaj.
 const ROADMAP = {
   later: 'w dalszym kroku',
@@ -306,7 +309,7 @@ const BUILDINGS = [
   { id: 'fort', name: 'Fort', slot: 1, cost: { gold: 5000, wood: 20, ore: 20 }, req: [], emblem: 'wall', desc: 'Mury obronne miasta. Otwiera drogę do silniejszych siedlisk.' },
   { id: 'citadel', name: 'Cytadela', slot: 1, cost: { gold: 2500, wood: 5, ore: 5 }, req: ['fort'], emblem: 'wall', desc: 'Mocniejsze mury i wieża strzelnicza. Przyrost jednostek we wszystkich siedliskach większy o połowę.' },
   { id: 'castle', name: 'Zamek', slot: 1, cost: { gold: 5000, wood: 10, ore: 10 }, req: ['citadel'], emblem: 'wall', desc: 'Najmocniejsze mury. Przyrost jednostek we wszystkich siedliskach podwojony.' },
-  { id: 'tavern', name: 'Tawerna', slot: 12, cost: { gold: 500, wood: 5 }, req: [], emblem: 'mug', desc: 'Miejsce plotek i najmu bohaterów.' },
+  { id: 'tavern', name: 'Tawerna', slot: 12, cost: { gold: 500, wood: 5 }, req: [], emblem: 'mug', desc: 'Najem bohaterów: co tydzień dwóch nowych chętnych.' },
   { id: 'market', name: 'Rynek', slot: 13, cost: { gold: 500, wood: 5 }, req: [], emblem: 'scale', desc: `Pozwala wymieniać zasoby (handel ${ROADMAP.later}).` },
   { id: 'silo', name: 'Skarbiec zasobów', slot: 9, cost: { gold: 5000, ore: 5 }, req: ['market'], emblem: 'barrel', desc: 'Codziennie dodaje 1 drewna i 1 rudy.' },
   { id: 'smith', name: 'Kuźnia', slot: 8, cost: { gold: 1000, ore: 5 }, req: [], emblem: 'anvil', desc: `Wyposaża armię w machiny wojenne (${ROADMAP.later}).` },
@@ -1823,11 +1826,13 @@ function createNeutralTown(st, site, rng) {
   troops.forEach(([L, base, spread], i) => { t.garrison[i] = { cid: F.dw['dw' + L][1], n: Math.max(1, Math.round((base + rng() * spread) * k)) }; });
   return t;
 }
-function createHero(st, owner, x, y) {
+// pick = { name, cls, female, fac } z tawerny; bez niego losujemy bohatera frakcji gracza
+function createHero(st, owner, x, y, pick = null) {
   const id = st.heroes.reduce((m, h) => Math.max(m, h.id + 1), 0); // pokonani bohaterowie znikają z listy, więc nie liczymy po długości
   const pool = factionOf(st.players[owner].faction).heroes, r = mulberry32(st.seed ^ 0x1234 ^ (id * 977));
-  const [name, cls, female] = pool[Math.floor(r() * pool.length)];
-  const h = { id, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: startingArmy(st.players[owner].faction, r),
+  const P = pick || (([name, cls, female]) => ({ name, cls, female: !!female, fac: st.players[owner].faction }))(pool[Math.floor(r() * pool.length)]);
+  const { name, cls, female } = P;
+  const h = { id, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: startingArmy(P.fac, r),
     path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null };
   initHeroProgress(h); h.mp = heroMaxMP(h); st.heroes.push(h); return h;
 }
@@ -1892,7 +1897,9 @@ function rebuildObjIndex(st) {
 function objectAt(st, i) { const o = st.objAt[i]; return o ? st.objects[o - 1] : null; }
 function removeObject(st, ob) { ob.dead = true; rebuildObjIndex(st); }
 // Obiekty i strefy strażników można tylko "odwiedzić" jako cel ścieżki, nie przejść przez nie.
+// Inny bohater zajmuje pole: można na nie tylko wejść jako cel (wrogi bohater = bitwa).
 function objBlocks(st, j, target, tg = 0) {
+  if (j !== target && heroAt(st, j % st.map.n, (j / st.map.n) | 0)) return true;
   const ob = objectAt(st, j);
   if (ob) { if ((ob.type === 'mine' || ob.type === 'town') && j !== ob.y * st.map.n + ob.x) return true; if (j !== target) return true; }
   return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
@@ -1907,7 +1914,7 @@ function computePath(st, h, tx, ty) {
 function heroCanStillMove(st, h) {
   if (!armySize(h.army)) return false;
   const n = st.map.n;
-  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y) && !objBlocks(st, j, j) && stepCost(st.map, h.x, h.y, x, y) <= h.mp) return true; }
+  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y) <= h.mp) return true; }
   return false;
 }
 function heroStep(st, h) {
@@ -1915,6 +1922,8 @@ function heroStep(st, h) {
   const n = st.map.n, [nx, ny] = h.path[0], ni = ny * n + nx, ob = objectAt(st, ni);
   const halt = () => { h.moving = false; h.path = null; h.dest = null; };
   if (ob && ob.type === 'monster') { halt(); h.prev = null; startEncounter(st, h, ob); return false; }
+  const other = heroAt(st, nx, ny); // bohater w bramie miasta broni się razem z miastem (startTownAssault)
+  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } return false; }
   const cost = stepCost(st.map, h.x, h.y, nx, ny); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
@@ -1952,6 +1961,10 @@ function startEncounter(st, h, m) {
   // h.prev jest puste, gdy bohater sam wszedł na potwora; ustawione, gdy wszedł w strefę strażnika
   const who = h.prev ? `${qtyName(m.count)} ${c.gen} atakuje twojego bohatera!` : `${h.name} atakuje: ${qtyName(m.count).toLowerCase()} ${c.gen}.`;
   offerBattle(st, h, m, who, m.count * c.value, (ctx, cx, cy) => drawSprite(ctx, creatureSprite(m.cid, 1), cx, cy + 34, 2));
+}
+function startHeroEncounter(st, h, foe) {
+  offerBattle(st, h, foe, `${h.name} atakuje: ${heroTitle(foe)} (${ownerName(st, foe.owner)}).`, Math.round(armyPower(foe.army) * heroFactor(foe)),
+    (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, foe, ownerColor(st, foe.owner), 2));
 }
 // Siła obrońców miasta: garnizon, bohater w mieście (z premią za cechy) i mury
 function townPower(st, t) {
@@ -2142,6 +2155,36 @@ function buildIn(st, t, B) {
   t.built.push(B.id); t.builtToday = true;
   const gm = /^guild(\d)$/.exec(B.id); if (gm) rollGuildLevel(st, t, +gm[1]);
   const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1]); // nowe siedlisko od razu daje przyrost
+}
+// --- tawerna: najem bohaterów ---------------------------------------------------------------
+const HERO_COST = 2500, MAX_HEROES = 8;
+const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
+// Oferta tawerny gracza na bieżący tydzień (wspólna dla wszystkich jego miast): dwóch chętnych,
+// pierwszy z frakcji gracza, drugi z innej. Imiona nie powtarzają się z bohaterami na mapie.
+function tavernOffer(st, owner) {
+  const p = playerOf(st, owner), wk = weekIndex(st);
+  if (!p.tavern || p.tavern.week !== wk) p.tavern = { week: wk, hired: 0, offers: [null, null] };
+  const tv = p.tavern, taken = new Set([...st.heroes.map(h => h.name), ...tv.offers.filter(Boolean).map(o => o.name)]);
+  const r = mulberry32(st.seed ^ (wk * 7717) ^ (owner * 131) ^ (tv.hired * 977));
+  tv.offers.forEach((o, k) => {
+    if (o) return;
+    const facs = FACTIONS.map(f => f.id).filter(f => (k === 0) === (f === p.faction));
+    const pool = facs.flatMap(fac => factionOf(fac).heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac }))).filter(c => !taken.has(c.name));
+    if (pool.length) { tv.offers[k] = pool[Math.floor(r() * pool.length)]; taken.add(tv.offers[k].name); }
+  });
+  return tv.offers;
+}
+// Najem k-tego chętnego w mieście t. Zwraca { hero } albo { error }.
+function hireHero(st, t, k) {
+  const owner = t.owner, P = playerOf(st, owner), o = tavernOffer(st, owner)[k];
+  if (!hasB(t, 'tavern')) return { error: 'W mieście nie ma tawerny' };
+  if (st.heroes.filter(h => h.owner === owner).length >= MAX_HEROES) return { error: `Możesz mieć najwyżej ${MAX_HEROES} bohaterów` };
+  if (heroAt(st, t.x, t.y)) return { error: 'Brama miasta jest zajęta: najpierw wyprowadź bohatera' };
+  if (!o) return { error: 'Nikt więcej nie czeka w tawernie' };
+  if (P.resources.gold < HERO_COST) return { error: `Najem kosztuje ${HERO_COST} złota` };
+  P.resources.gold -= HERO_COST; P.tavern.offers[k] = null; P.tavern.hired++;
+  const h = createHero(st, owner, t.x, t.y, o); if (owner === ME) reveal(st, h.x, h.y, heroSight(h));
+  return { hero: h };
 }
 
 // ==================== BITWA: ZASADY ====================================================
@@ -2444,9 +2487,11 @@ function resolveBattle(B, fled) {
   } else {
     if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); gainExp(st, D.hero, res.foeExp); }
     if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
-    else { // porażka: bohater uchodzi z życiem do swojego miasta, bez armii
-      const t = st.towns.find(t => t.owner === h.owner); h.army = emptyArmy(); h.mp = 0;
-      if (t) { h.x = t.x; h.y = t.y; reveal(st, h.x, h.y, heroSight(h)); }
+    else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
+      const towns = st.towns.filter(t => t.owner === h.owner), t = towns.find(t => !heroAt(st, t.x, t.y)) || (towns.length && st.heroes.filter(o => o.owner === h.owner).length === 1 ? towns[0] : null);
+      h.army = emptyArmy(); h.mp = 0; res.home = t ? t.name : null;
+      if (t) { h.x = t.x; h.y = t.y; if (h.owner === ME) reveal(st, h.x, h.y, heroSight(h)); }
+      else if (towns.length) { removeHero(st, h); res.heroLost = true; }
     }
   }
   h.prev = null; h.path = null; h.dest = null; rebuildObjIndex(st);
@@ -4224,9 +4269,11 @@ function showKingdom(st) {
 const myHeroes = st => st.heroes.filter(h => h.owner === ME);
 const myTowns = st => st.towns.filter(t => t.owner === ME);
 // Wiersze listy po prawej: najpierw bohaterowie, potem miasta gracza
-function panelRows(st) {
-  return [...myHeroes(st).map(h => ({ hero: h })), ...myTowns(st).map(t => ({ town: t }))]
-    .map((r, i) => ({ ...r, y: LIST.y + 6 + i * 48 })).filter(r => r.y + 44 <= LIST.y + LIST.h);
+// Lista bohaterów i miast w panelu; mieści się LIST_ROWS wierszy, resztę przewija się kółkiem albo przeciągnięciem
+const LIST_ROWS = 3, LIST_ROW_H = 48;
+const panelItems = st => [...myHeroes(st).map(h => ({ hero: h })), ...myTowns(st).map(t => ({ town: t }))];
+function panelRows(st, scroll = 0) {
+  return panelItems(st).map((r, i) => ({ ...r, y: LIST.y + 6 + (i - scroll) * LIST_ROW_H })).filter(r => r.y >= LIST.y && r.y + 44 <= LIST.y + LIST.h);
 }
 function buildPanelButtons(scr, st) {
   const S = 30, by = 176, bx = 602, mk = (i, icon, label, act, o = {}) => new Button(bx + i * 32, by, S, S, label, act, Object.assign({ icon }, o));
@@ -4252,7 +4299,12 @@ function panelInfoText(st, scr) {
 }
 function drawPanel(ctx, st, scr) {
   drawMinimap(ctx, st);
-  for (const r of panelRows(st)) {
+  const items = panelItems(st).length; scr.listScroll = clamp(scr.listScroll || 0, 0, Math.max(0, items - LIST_ROWS));
+  if (items > LIST_ROWS) { // pasek przewijania
+    const bh = LIST.h * LIST_ROWS / items, by = LIST.y + (LIST.h - bh) * scr.listScroll / (items - LIST_ROWS);
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(LIST.x + LIST.w - 3, LIST.y, 3, LIST.h); ctx.fillStyle = '#b8913f'; ctx.fillRect(LIST.x + LIST.w - 3, by, 3, bh);
+  }
+  for (const r of panelRows(st, scr.listScroll)) {
     const y = r.y, on = r.hero && r.hero === hero(st);
     ctx.fillStyle = on ? 'rgba(210,160,60,.25)' : 'rgba(0,0,0,.25)'; rr(ctx, 604, y, 188, 44, 3); ctx.fill();
     ctx.strokeStyle = on ? '#e0b24a' : '#6a5a3a'; ctx.lineWidth = 1.2; ctx.stroke();
@@ -4300,7 +4352,11 @@ G.screens.adventure = {
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
   autosave(st) { SaveStore.write('auto', st).catch(() => { if (G.state === st) this.flash('Autozapis się nie udał'); }); },
   onKey(k) { if (k === ' ') centerCam(G.state, hero(G.state).x, hero(G.state).y); else if (k === 'h') this.heroInfo(); },
-  selectHero(h) { const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y); },
+  selectHero(h) {
+    const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
+    const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
+  },
+  onWheel(d) { if (inRect(G.mouse.x, G.mouse.y, LIST)) this.listScroll = clamp((this.listScroll || 0) + Math.sign(d), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS)); },
   nextHero() {
     const st = G.state, mine = myHeroes(st), i0 = mine.indexOf(hero(st));
     for (let k = 1; k <= mine.length; k++) { const h = mine[(i0 + k) % mine.length]; if (!h.asleep || k === mine.length) { this.selectHero(h); break; } }
@@ -4328,7 +4384,7 @@ G.screens.adventure = {
       return tileInfo(st, tx, ty);
     }
     if (inRect(x, y, { x: MINI.x, y: MINI.y, w: MINI.s, h: MINI.s })) return 'Minimapa. Kliknij albo przeciągnij, aby przenieść widok.';
-    if (inRect(x, y, LIST)) return 'Bohaterowie i miasta. Kliknij bohatera, aby go wybrać (ponownie: ekran bohatera, klawisz H), albo miasto, aby do niego wejść.';
+    if (inRect(x, y, LIST)) return 'Bohaterowie i miasta. Kliknij bohatera, aby go wybrać (ponownie: ekran bohatera, klawisz H), albo miasto, aby do niego wejść. Kółko albo przeciągnięcie przewija listę.';
     return resourceBarInfo(st, x, y);
   },
   spellbook() {
@@ -4354,6 +4410,7 @@ G.screens.adventure = {
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
     // kliknięcie w budynek miasta albo kopalni oznacza jego wejście
     const ob = objectAt(st, ty * n + tx); if (ob && ob.blocks && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
+    const other = heroAt(st, tx, ty); if (other && other !== h && other.owner === ME) { this.selectHero(other); return; } // własny bohater: wybór
     if (tx === h.x && ty === h.y) {
       const here = objectAt(st, ty * n + tx);
       if (here && here.type === 'town' && here.owner === h.owner) G.go('town', { townId: here.townId }); else this.heroInfo();
@@ -4386,10 +4443,15 @@ G.screens.adventure = {
   },
   update(dt) {
     const st = G.state, K = G.keys, m = G.mouse; if (!st || !st.map) return;
-    const h = hero(st);
-    if (h.anim) { h.anim.t += dt; if (h.anim.t >= STEP_TIME) { h.anim = null; if (h.pending) { const f = h.pending; h.pending = null; f(); } else if (h.moving) heroStep(st, h); } }
-    else if (h.moving) heroStep(st, h);
-    this.btnMove.disabled = !h.path;
+    // ruch wszystkich bohaterów gracza (wybór innego nie zatrzymuje tego, który idzie); kamera śledzi idącego
+    let walker = null;
+    for (const w of myHeroes(st)) {
+      if (w.anim) { w.anim.t += dt; if (w.anim.t >= STEP_TIME) { w.anim = null; if (w.pending) { const f = w.pending; w.pending = null; f(); } else if (w.moving) heroStep(st, w); } }
+      else if (w.moving && !G.modal) heroStep(st, w);
+      if (w.anim) walker = w;
+    }
+    const h = walker || hero(st); if (!h) return;
+    this.btnMove.disabled = !hero(st).path;
     if (G.modal) return;
     if (h.anim) {
       const [hx, hy] = heroDrawPos(h), tx = hx * T + T / 2 - VIEW.w / 2, ty = hy * T + T / 2 - VIEW.h / 2, k = Math.min(1, dt * 5);
@@ -4409,21 +4471,23 @@ G.screens.adventure = {
     const st = G.state;
     if (inRect(x, y, { x: MINI.x, y: MINI.y, w: MINI.s, h: MINI.s })) { this.drag = { mode: 'mini' }; this.miniJump(x, y); }
     else if (inRect(x, y, VIEW)) this.drag = { mode: 'map', sx: x, sy: y, cx: st.cam.x, cy: st.cam.y, moved: false };
+    else if (inRect(x, y, LIST)) this.drag = { mode: 'list', sy: y, s0: this.listScroll || 0, moved: false };
   },
   onPointerMove(x, y) {
     const d = this.drag; if (!d || !G.mouse.down) return;
     clearTimeout(G.pressTimer);
     if (d.mode === 'mini') { this.miniJump(x, y); return; }
+    if (d.mode === 'list') { if (Math.abs(y - d.sy) > 6) d.moved = true; if (d.moved) this.listScroll = clamp(d.s0 - Math.round((y - d.sy) / LIST_ROW_H), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS)); return; }
     const dx = x - d.sx, dy = y - d.sy; if (!d.moved && Math.hypot(dx, dy) > 6) d.moved = true;
     if (d.moved) { G.state.cam.x = d.cx - dx; G.state.cam.y = d.cy - dy; camClamp(G.state); }
   },
-  onPointerUp() { const d = this.drag; this.drag = null; return !!(d && (d.mode === 'mini' || d.moved)); },
+  onPointerUp() { const d = this.drag; this.drag = null; return !!(d && (d.mode === 'mini' || d.moved)); }, // przeciągnięcie listy to nie kliknięcie
   miniJump(x, y) { const st = G.state, n = st.map.n; centerCam(st, clamp((x - MINI.x) / MINI.s * n, 0, n) - 0.5, clamp((y - MINI.y) / MINI.s * n, 0, n) - 0.5); },
   onClick(x, y) {
     if (clickButtons(this.buttons, x, y)) return;
     const st = G.state;
     if (inRect(x, y, LIST)) {
-      const r = panelRows(st).find(r => y >= r.y && y < r.y + 44);
+      const r = panelRows(st, this.listScroll).find(r => y >= r.y && y < r.y + 44);
       if (r && r.hero) { if (r.hero === hero(st)) this.heroInfo(); else this.selectHero(r.hero); } else if (r && r.town) G.go('town', { townId: r.town.id });
       return;
     }
@@ -4919,7 +4983,8 @@ function showBattleResult(st, h, res) {
       gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster') visitObject(st, h, here); });
     } }]);
   } else if (res.outcome === 'fled') showDialog(`${h.name} wycofuje się z pola bitwy. ${lost} Na dziś koniec marszu.`, [{ label: 'OK', key: 'enter' }]);
-  else { const t = st.towns.find(t => t.owner === h.owner); showDialog(`Porażka. Armia została rozbita, a ${h.name} ledwie uchodzi z życiem${t ? ` do miasta ${t.name}` : ''}. Zwerbuj nowe wojsko, zanim ruszysz dalej.`, [{ label: 'OK', key: 'enter' }]); }
+  else if (res.heroLost) showDialog(`Porażka. Armia została rozbita, a ${h.name} opuszcza twoją służbę: wszystkie bramy twoich miast są zajęte.`, [{ label: 'OK', key: 'enter' }]);
+  else { showDialog(`Porażka. Armia została rozbita, a ${h.name} ledwie uchodzi z życiem${res.home ? ` do miasta ${res.home}` : ''}. Zwerbuj nowe wojsko, zanim ruszysz dalej.`, [{ label: 'OK', key: 'enter' }]); }
 }
 
 // ==================== EKRAN: MIASTO =====================================================
@@ -4945,6 +5010,19 @@ G.screens.town = {
   guildVisit() {
     const st = G.state, t = this.town(), h = heroInTown(st, t); if (!h || !guildLevel(t)) return;
     const learned = visitGuild(st, t, h); if (learned.length) this.say(`${h.name} poznaje: ${learned.map(id => SPELLS[id].name).join(', ')}`);
+  },
+  // Tawerna: dwóch chętnych na ten tydzień, najem za HERO_COST złota; nowy bohater staje w bramie miasta
+  showTavern() {
+    const st = G.state, t = this.town(), offers = tavernOffer(st, t.owner), avail = offers.map((o, k) => o && { o, k }).filter(Boolean);
+    const who = o => `${o.name} (${(o.female ? HERO_CLASSES[o.cls].nameF : HERO_CLASSES[o.cls].name).toLowerCase()}, ${factionOf(o.fac).name})`;
+    if (!avail.length) return showDialog('W tawernie nikt już nie czeka. Nowi chętni pojawią się w przyszłym tygodniu.', [{ label: 'OK', key: 'enter' }]);
+    showDialog(`W tawernie czekają: ${avail.map(a => who(a.o)).join(' i ')}. Najem kosztuje ${HERO_COST} złota, a bohater przychodzi z małym oddziałem.`, [
+      ...avail.map(({ o, k }) => ({ label: o.name, action: () => { const r = hireHero(st, t, k); this.say(r.error || `${r.hero.name} dołącza do twojej sprawy`); } })),
+      { label: 'Wyjdź', key: 'escape' },
+    ], { iconH: 96, icon: (ctx, cx, cy) => avail.forEach(({ o }, i) => {
+      const x = cx + (i - (avail.length - 1) / 2) * 144 - 36, look = { name: o.name, cls: o.cls, female: o.female, asleep: false };
+      drawHeroPortrait(ctx, x, cy - 44, look, ownerColor(st, t.owner), 2);
+    }) });
   },
   showGuild() {
     const t = this.town(), L = guildLevel(t), F = factionOf(t.faction);
@@ -4988,6 +5066,7 @@ G.screens.town = {
     const B = slotBuilding(t, i), next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id));
     const dw = B && /^dw(\d)u?$/.exec(B.id); if (dw) return showRecruit(st, t, +dw[1], m => this.say(m)); // siedlisko: werbunek
     if (B && /^guild/.test(B.id) && !(next && reqMet(t, next))) return this.showGuild();
+    if (B && B.id === 'tavern') return this.showTavern();
     if (next && reqMet(t, next)) this.tryBuild(next);
     else if (next) showDialog(`${bInfo(next, fac).name} wymaga wcześniej: ${next.req.map(r => bInfo(BUILD_BY_ID[r], fac).name).join(', ')}.`, [{ label: 'OK', key: 'enter' }]);
     else if (B) showDialog(`${bInfo(B, fac).name}. ${bInfo(B, fac).desc}`, [{ label: 'OK', key: 'enter' }]);
@@ -4998,7 +5077,7 @@ G.screens.town = {
     const slot = this.armySlotAt(x, y);
     if (slot) return slot.a[slot.i] ? stackInfo(slot.a[slot.i]) : 'Wolne miejsce. Kliknij oddział, a potem miejsce, aby go przenieść, połączyć z takim samym albo zamienić.';
     const i = this.slotAt(x, y); if (i === null) return resourceBarInfo(G.state, x, y);
-    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : ''); }
+    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : ''); }
     const next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id)); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }
     return null;
   },
