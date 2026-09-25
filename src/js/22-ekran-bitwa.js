@@ -79,8 +79,9 @@ G.screens.battle = {
   },
   startTurnFor(u) {
     const B = this.B; this.casting = null;
-    const ai = B.auto || !humanSide(B, u.side);
-    if (ai && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
+    const mach = isMachine(u) && humanSide(B, u.side) && !B.auto; // machiny gracza działają same
+    const ai = mach || B.auto || !humanSide(B, u.side);
+    if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
     if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
     this.phase = 'input'; this.reach = battleDist(B, u, unitSpd(u));
     this.bWait.disabled = u.waited; this.onPointerMove(G.mouse.x, G.mouse.y);
@@ -105,7 +106,7 @@ G.screens.battle = {
     if (this.play) { this.play.t += dt; this.stepPlay(); return; }
     if (B.fx.length) { this.startPlay(B.fx.shift()); return; }
     if (this.phase === 'play') {
-      if (this.resume) { this.resume = false; if (alive(B, 0).length && alive(B, 1).length && !B.active.dead) { this.startTurnFor(B.active); return; } }
+      if (this.resume) { this.resume = false; if (fighters(B, 0).length && fighters(B, 1).length && !B.active.dead) { this.startTurnFor(B.active); return; } }
       this.nextTurn(); return;
     }
     if (this.phase === 'ai') { this.timer -= dt; if (this.timer <= 0) { aiAct(B, B.active); this.phase = 'play'; } return; }

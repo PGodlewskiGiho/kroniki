@@ -209,6 +209,7 @@ const ABILITIES = {
   lifeDrain: { name: 'Wysysanie życia', desc: 'leczy się i wskrzesza poległych o zadane obrażenia' },
   regen: { name: 'Regeneracja', desc: 'na początku rundy leczy rany pierwszego stwora' },
   undead: { name: 'Nieumarły', desc: 'odporny na wysysanie życia; ważne też przy czarach' },
+  machine: { name: 'Machina', desc: 'stoi w miejscu, działa sama, nie kontratakuje i nie zna morale' },
 };
 // Stworzenia neutralne (statystyki własne, w duchu oryginału).
 const CREATURES = {
@@ -272,6 +273,16 @@ Object.assign(CREATURES, {
   ghostWyvern: mkU('Upiorny wywern', 'Upiorne wywerny', 'upiornych wywern', 7, 19, 17, 25, 50, 200, 14, 1, 4700, { gold: 3000, mercury: 1 }, { abil: ['undead', 'fly', 'breath'], faction: 'barrow', fly: true, look: { kind: 'dragon', fur: '#b8c8e0', bony: true, size: 1.08 } }),
 });
 
+// Machiny wojenne (kupowane w kuźni; bohater ma najwyżej po jednej). W bitwie stoją za armią i działają same:
+// balista strzela co rundę (obrażenia rosną z atakiem bohatera), namiot medyka leczy pierwszego stwora
+// najbardziej rannego oddziału, wóz z amunicją daje strzelcom niekończące się strzały. Nie liczą się jako armia.
+Object.assign(CREATURES, {
+  ballista: mkU('Balista', 'Balisty', 'balist', 0, 10, 10, 2, 3, 250, 0, 0, 600, { gold: 2500 }, { shots: 99, abil: ['machine'], desc: 'co rundę strzela do wroga; obrażenia 2–3 razy (atak bohatera + 1)', look: { kind: 'ballista', wood: '#8a5a2a', metal: '#9aa0a8' } }),
+  firstAid: mkU('Namiot medyka', 'Namioty medyka', 'namiotów medyka', 0, 0, 0, 0, 0, 75, 0, 0, 300, { gold: 750 }, { abil: ['machine'], desc: 'co rundę leczy 1–25 życia pierwszego stwora w najbardziej rannym oddziale', look: { kind: 'tent', cloth: '#e8e0cc', trim: '#c83a2a' } }),
+  ammoCart: mkU('Wóz z amunicją', 'Wozy z amunicją', 'wozów z amunicją', 0, 0, 5, 0, 0, 100, 0, 0, 400, { gold: 1000 }, { abil: ['machine'], desc: 'póki stoi, twoi strzelcy nie tracą strzał', look: { kind: 'cart', wood: '#7a4a22', cloth: '#b8a070' } }),
+});
+const MACHINES = ['ballista', 'firstAid', 'ammoCart'];
+const isMachine = u => MACHINES.includes(u.cid);
 // ==================== DANE: FRAKCJE, BOHATEROWIE, BUDOWLE, KOPALNIE =====================
 // Wszystko, co różni frakcje, jest w FACTIONS. BUILDINGS opisuje budowle wspólne dla frakcji.
 // Klasy bohaterów. look = wygląd wspólny dla postaci na mapie i portretu w panelu.
@@ -339,7 +350,7 @@ const BUILDINGS = [
   { id: 'tavern', name: 'Tawerna', slot: 12, cost: { gold: 500, wood: 5 }, req: [], emblem: 'mug', desc: 'Najem bohaterów: co tydzień dwóch nowych chętnych.' },
   { id: 'market', name: 'Rynek', slot: 13, cost: { gold: 500, wood: 5 }, req: [], emblem: 'scale', desc: 'Handel surowcami. Każdy kolejny rynek w królestwie daje lepszy kurs.' },
   { id: 'silo', name: 'Skarbiec zasobów', slot: 9, cost: { gold: 5000, ore: 5 }, req: ['market'], emblem: 'barrel', desc: 'Codziennie dodaje 1 drewna i 1 rudy.' },
-  { id: 'smith', name: 'Kuźnia', slot: 8, cost: { gold: 1000, ore: 5 }, req: [], emblem: 'anvil', desc: `Wyposaża armię w machiny wojenne (${ROADMAP.later}).` },
+  { id: 'smith', name: 'Kuźnia', slot: 8, cost: { gold: 1000, ore: 5 }, req: [], emblem: 'anvil', desc: 'Sprzedaje machiny wojenne bohaterowi stojącemu w mieście: balistę, namiot medyka i wóz z amunicją.' },
   { id: 'guild1', slot: 2, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['tavern'], emblem: 'book', desc: 'Uczy bohaterów czarów 1 poziomu i odnawia im manę.' },
   { id: 'guild2', slot: 2, cost: { gold: 1000, wood: 5, ore: 5 }, req: ['guild1'], emblem: 'book', desc: 'Dodaje czary 2 poziomu.' },
   { id: 'guild3', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 4, crystal: 4 }, req: ['guild2', 'hall2'], emblem: 'book', desc: 'Dodaje czary 3 poziomu.' },
@@ -1299,6 +1310,35 @@ function drawTreant(ctx, L, P = {}) {
   circ(ctx, el[0] - 1, el[1] - 2, 2.2, leaf);
   ctx.restore(); ctx.restore();
 }
+// --- machiny wojenne (stoją w miejscu; atak = odrzut balisty) ---
+function drawBallista(ctx, L, P) {
+  const w = L.wood, m = L.metal, rec = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 2.5 : 0;
+  ctx.lineCap = 'round';
+  for (const wx of [-7, 6]) { circ(ctx, wx, -3.5, 3.5, DK(w, 0.45)); circ(ctx, wx, -3.5, 1.2, m); }
+  fillPoly(ctx, [[-11, -6], [10, -6], [8, -9], [-9, -9]], DK(w));
+  limb(ctx, -2, -8, -4, -15, 2.2, w); limb(ctx, 2, -8, 3, -15, 2.2, w);
+  ctx.save(); ctx.translate(-rec, -16); ctx.rotate(-0.12);
+  fillPoly(ctx, [[-12, -1.5], [12, -1.5], [12, 1.5], [-12, 1.5]], w); ctx.fillStyle = LT(w); ctx.fillRect(-12, -1.5, 24, 1);
+  ctx.strokeStyle = m; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(8, -11); ctx.quadraticCurveTo(11, 0, 8, 11); ctx.stroke();
+  ctx.strokeStyle = '#e8e0c8'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(8, -11); ctx.lineTo(-6 + rec * 2, 0); ctx.lineTo(8, 11); ctx.stroke();
+  if (!(P.atk > 0.4)) { limb(ctx, -6, -0.2, 13, -0.2, 1.2, '#5a3a1a'); fillPoly(ctx, [[13, -1.8], [16.5, -0.2], [13, 1.4]], m); }
+  ctx.restore();
+}
+function drawTent(ctx, L, P) {
+  const c = L.cloth, sway = Math.sin((P.t || 0) * 2) * 0.6;
+  fillPoly(ctx, [[-13, 0], [0, -24 + sway], [13, 0]], c); fillPoly(ctx, [[0, -24 + sway], [13, 0], [5, 0]], DK(c, 0.18));
+  fillPoly(ctx, [[-3.5, 0], [0, -11], [3.5, 0]], '#3a2a1e');
+  ctx.fillStyle = L.trim; ctx.fillRect(-1.5, -20, 3, 8); ctx.fillRect(-4, -17.5, 8, 3);
+  limb(ctx, 0, -24 + sway, 0, -30, 1, '#5a3a1a'); fillPoly(ctx, [[0, -30], [6, -28.5 + sway], [0, -27]], L.trim);
+}
+function drawCart(ctx, L, P) {
+  const w = L.wood;
+  limb(ctx, -10, -8, -17, -3, 1.6, DK(w)); fillPoly(ctx, [[-10, -7], [11, -7], [12, -18], [-11, -18]], w);
+  ctx.fillStyle = DK(w); ctx.fillRect(-10, -13, 21, 1.2);
+  ctx.fillStyle = L.cloth; ctx.beginPath(); ctx.moveTo(-11, -18); ctx.quadraticCurveTo(0, -28, 12, -18); ctx.closePath(); ctx.fill();
+  for (const ax of [-5, -1, 3, 7]) limb(ctx, ax, -18, ax + 1.5, -22.5, 1, '#5a3a1a');
+  for (const wx of [-6, 7]) { circ(ctx, wx, -4, 4, DK(w, 0.45)); circ(ctx, wx, -4, 2.6, DK(w, 0.2)); circ(ctx, wx, -4, 1, '#9aa0a8'); }
+}
 // x, y = punkt na ziemi pod stworzeniem; s = skala, dir = 1 w prawo / -1 w lewo; P = poza (domyślnie spoczynek w chwili t)
 function drawCreature(ctx, cid, x, y, s, dir, t, P) {
   const L = CREATURES[cid].look; P = P || { t };
@@ -1315,6 +1355,9 @@ function drawCreature(ctx, cid, x, y, s, dir, t, P) {
     case 'ghost': ghost(ctx, 0, -8 + hover, 1.3, L.fur, P, L); break;
     case 'dragon': drawDragon(ctx, L, P); break;
     case 'treant': drawTreant(ctx, L, P); break;
+    case 'ballista': drawBallista(ctx, L, P); break;
+    case 'tent': drawTent(ctx, L, P); break;
+    case 'cart': drawCart(ctx, L, P); break;
     case 'rider': {
       const rear = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 0.12 : 0;
       horse(ctx, 0, 0, 1, L.horse, L.mane || '#2a1a0e', P, { rear, barding: L.barding, trim: L.trim });
@@ -1490,7 +1533,8 @@ const townIconSprite = (fac, lvl, col) => sprite(`townico_${fac}_${lvl}_${col}`,
 // --- armie w interfejsie ---------------------------------------------------------------------
 const unitStats = c => `atak ${c.att}, obrona ${c.def}, obrażenia ${c.dmin}–${c.dmax}, życie ${c.hp}, szybkość ${c.spd}`;
 const abilText = c => (c.abil || []).map(a => `${ABILITIES[a].name} (${ABILITIES[a].desc})`).join('; ');
-const stackInfo = s => { const c = CREATURES[s.cid], ab = abilText(c); return `${c.plural}: ${s.n}. Poziom ${c.level}, ${unitStats(c)}${c.shots ? `, strzały ${c.shots}` : ''}.${ab ? ` Zdolności: ${ab}.` : ''}`; };
+const machineInfo = id => { const c = CREATURES[id]; return `${c.name}: ${c.desc}. Życie ${c.hp}, cena ${c.cost.gold} złota.`; };
+const stackInfo = s => { if (MACHINES.includes(s.cid)) return machineInfo(s.cid); const c = CREATURES[s.cid], ab = abilText(c); return `${c.plural}: ${s.n}. Poziom ${c.level}, ${unitStats(c)}${c.shots ? `, strzały ${c.shots}` : ''}.${ab ? ` Zdolności: ${ab}.` : ''}`; };
 // Rząd 7 miejsc armii z tymi samymi sprite'ami co na mapie. Zwraca prostokąty miejsc (do klikania i dymków).
 function drawArmyRow(ctx, army, x, y, o = {}) {
   const w = o.w || 62, h = o.h || 50, gap = o.gap || 6, rects = [];
@@ -2160,6 +2204,7 @@ function initHeroProgress(h) {
   if (!h.level) h.level = 1;
   if (!h.spells) h.spells = [...(CLASS_SPELLS[h.cls] || [])];
   if (!h.skills) h.skills = (CLASS_SKILLS[h.cls] || []).map(([id, lv]) => ({ id, lv }));
+  if (!h.machines) h.machines = [];
   if (h.mana == null) h.mana = heroMaxMana(h);
 }
 // --- umiejętności drugorzędne ---
@@ -2395,6 +2440,15 @@ function hireHero(st, t, k) {
   return { hero: h };
 }
 
+// Kuźnia: machina wojenna dla bohatera stojącego w mieście (każdej najwyżej jedna). Zwraca błąd albo null.
+function buyMachine(st, t, h, id) {
+  if (!hasB(t, 'smith')) return 'Brak kuźni';
+  if (!h || !heroInTown(st, t) || heroInTown(st, t) !== h) return 'Bohater musi stać w mieście';
+  if (h.machines.includes(id)) return 'Bohater ma już tę machinę';
+  const cost = CREATURES[id].cost; if (!canAfford(st, cost, h.owner)) return 'Brakuje złota';
+  const R = playerOf(st, h.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id];
+  h.machines.push(id); return null;
+}
 // ==================== BITWA: ZASADY ====================================================
 // Pole bitwy: siatka heksów BCOLS×BROWS w układzie „odd-r” (co drugi rząd przesunięty w prawo).
 // Strona 0 = atakujący bohater (lewa krawędź), strona 1 = obrońca (prawa): potwór neutralny, bohater
@@ -2434,6 +2488,16 @@ function placeSide(B, side, stacks) {
     });
   }
 }
+// Machiny bohatera stają za armią: najpierw w narożnikach (balista u góry, namiot na dole), potem na wolnych polach od krawędzi
+function placeMachines(B, side, h) {
+  const ms = MACHINES.filter(id => h && (h.machines || []).includes(id)), rows = [0, BROWS - 1, 1, BROWS - 2, 2, 6, 3, 5, 4];
+  for (const cid of ms) {
+    let spot = null;
+    for (let c = 0; c < 3 && !spot; c++) for (const y of rows) { const x = side === 0 ? c : BCOLS - 1 - c; if (isFree(B, x, y)) { spot = [x, y]; break; } }
+    if (!spot) continue; const cr = CREATURES[cid];
+    B.units.push({ id: B.units.length, side, cid, n: 1, n0: 1, hp: cr.hp, shots: cr.shots || 0, x: spot[0], y: spot[1], src: 'machine', slot: null, retaliated: false, defending: false, waited: false, dead: false, buffs: {} });
+  }
+}
 // foe: potwór z mapy, bohater albo miasto
 function createBattle(st, h, foe) {
   const D = battleSide(st, foe);
@@ -2442,6 +2506,7 @@ function createBattle(st, h, foe) {
     rng: mulberry32(st.seed ^ (st.dayTotal * 7919) ^ (D.key * 104729)), prevPos: h.prev ? [...h.prev] : null };
   placeSide(B, 0, armyEntries(h.army, 'hero'));
   placeSide(B, 1, D.stacks);
+  placeMachines(B, 0, h); placeMachines(B, 1, D.hero);
   B.morale = [sideMorale(B, 0), sideMorale(B, 1)]; B.luck = [sideLuck(B, 0), sideLuck(B, 1)];
   // przeszkody ze środka pola: te same drzewa i skały co na mapie przygody (typ + wariant rysunku)
   const cnt = 3 + Math.floor(B.rng() * 4);
@@ -2463,17 +2528,20 @@ function armyMorale(cids, hero, town) {
   return clamp(m, -3, 3);
 }
 const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') : 0, -3, 3);
-function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side).map(u => u.cid), S.hero, S.town); }
+function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side && !isMachine(u)).map(u => u.cid), S.hero, S.town); }
 const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
 // Nieumarli nie znają strachu ani zapału: morale zawsze 0
-const unitMorale = (B, u) => (hasAb(u, 'undead') || !B.morale ? 0 : B.morale[u.side]);
+const unitMorale = (B, u) => (hasAb(u, 'undead') || isMachine(u) || !B.morale ? 0 : B.morale[u.side]);
 const unitLuck = (B, u) => (B.luck ? B.luck[u.side] : 0);
 const signed = v => (v > 0 ? `+${v}` : String(v));
 const alive = (B, side) => B.units.filter(u => !u.dead && (side == null || u.side === side));
+// Oddziały, od których zależy wynik: strona bez nich przegrywa, nawet jeśli zostały jej machiny
+const fighters = (B, side) => alive(B, side).filter(u => !isMachine(u));
+const hasCart = (B, side) => alive(B, side).some(u => u.cid === 'ammoCart');
 const unitAt = (B, x, y) => B.units.find(u => !u.dead && u.x === x && u.y === y) || null;
 const hasAb = (u, a) => (CREATURES[u.cid].abil || []).includes(a);
 const isFree = (B, x, y) => !B.obst.has(hexKey(x, y)) && !unitAt(B, x, y);
-const canShoot = (B, u) => u.shots > 0 && !alive(B, 1 - u.side).some(e => hexAdjacent(u, e));
+const canShoot = (B, u) => u.cid === 'ballista' || u.shots > 0 && !alive(B, 1 - u.side).some(e => hexAdjacent(u, e));
 // Współrzędne sześcienne heksu (do odległości i kierunków); układ odd-r
 const toCube = (x, y) => { const q = x - (y - (y & 1)) / 2; return [q, y, -q - y]; };
 const fromCube = (q, r) => [q + (r - (r & 1)) / 2, r];
@@ -2518,7 +2586,8 @@ const humanSide = (B, side) => B.sides[side].owner === ME;
 // moved = liczba pól rozpędu (szarża), ranged = strzał; strzelec wręcz bije za połowę, chyba że ma „Walkę wręcz”.
 function damageRoll(B, a, t, ranged, moved = 0) {
   const ca = CREATURES[a.cid], ct = CREATURES[t.cid];
-  const base = a.n * (a.buffs.bless ? ca.dmax : ca.dmin + B.rng() * (ca.dmax - ca.dmin));
+  let base = a.n * (a.buffs.bless ? ca.dmax : ca.dmin + B.rng() * (ca.dmax - ca.dmin));
+  if (a.cid === 'ballista') base *= sideAtt(B, a.side) + 1; // balista: podstawa × (atak bohatera + 1)
   const A = unitAtt(a) + sideAtt(B, a.side), D = unitDef(t) + sideDef(B, t.side) + (t.defending ? Math.ceil(ct.def * 0.2) + 1 : 0);
   let mult = A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
   if (!ranged && ca.shots > 0 && !hasAb(a, 'noMeleePenalty')) mult *= 0.5;
@@ -2564,13 +2633,24 @@ function actMoveAttack(B, u, path, target) {
   }
   if (!target) return;
   strike(B, u, target, false, moved);
-  const retal = () => { if (target.dead || u.dead || hasAb(u, 'noRetal')) return; if (target.retaliated && !hasAb(target, 'unlimitedRetal')) return; target.retaliated = true; strike(B, target, u, false); };
+  const retal = () => { if (target.dead || u.dead || hasAb(u, 'noRetal') || isMachine(target)) return; if (target.retaliated && !hasAb(target, 'unlimitedRetal')) return; target.retaliated = true; strike(B, target, u, false); };
   retal();
   if (hasAb(u, 'doubleStrike') && !u.dead && !target.dead) strike(B, u, target, false, 0);
 }
+// Strzały: wóz z amunicją uzupełnia je na bieżąco, balista ma ich bez liku
 function actShoot(B, u, target) {
-  u.acted = true; u.shots--; strike(B, u, target, true);
-  if (hasAb(u, 'doubleShot') && u.shots > 0 && !target.dead) { u.shots--; strike(B, u, target, true); }
+  const use = () => { if (u.cid !== 'ballista' && !hasCart(B, u.side)) u.shots--; };
+  u.acted = true; use(); strike(B, u, target, true);
+  if (hasAb(u, 'doubleShot') && u.shots > 0 && !target.dead) { use(); strike(B, u, target, true); }
+}
+// Namiot medyka: leczy pierwszego stwora w najbardziej rannym oddziale (1–25 życia, bez wskrzeszania)
+function actFirstAid(B, u) {
+  u.acted = true;
+  const hurt = alive(B, u.side).filter(v => !isMachine(v) && v.hp < CREATURES[v.cid].hp);
+  if (!hurt.length) { B.log.push('Namiot medyka: nikt nie potrzebuje pomocy.'); return; }
+  const v = hurt.reduce((a, b) => (CREATURES[b.cid].hp - b.hp > CREATURES[a.cid].hp - a.hp ? b : a)), amt = Math.min(CREATURES[v.cid].hp - v.hp, 1 + Math.floor(B.rng() * 25));
+  v.hp += amt; B.log.push(`Namiot medyka leczy: ${CREATURES[v.cid].plural.toLowerCase()} (+${amt}).`);
+  if (B.fx) B.fx.push({ kind: 'heal', u: v, amount: amt });
 }
 function actWait(B, u) { u.waited = true; B.waitQ.push(u); B.log.push(`${CREATURES[u.cid].plural} czekają.`); }
 function actDefend(B, u) { u.defending = true; B.log.push(`${CREATURES[u.cid].plural} bronią się.`); }
@@ -2582,7 +2662,7 @@ function tradeValue(B, u, e, ranged, moved) {
   const kills = dmg >= poolE ? e.n : e.n - Math.ceil((poolE - dmg) / hpE); let gain = kills * CREATURES[e.cid].value * (e.shots > 0 ? 1.5 : 1);
   if (dmg >= poolE) gain *= 1.3; // premia za całkowite rozbicie oddziału
   let loss = 0;
-  if (!ranged && dmg < poolE && !hasAb(u, 'noRetal') && (!e.retaliated || hasAb(e, 'unlimitedRetal'))) {
+  if (!ranged && dmg < poolE && !hasAb(u, 'noRetal') && !isMachine(e) && (!e.retaliated || hasAb(e, 'unlimitedRetal'))) {
     const left = { ...e, n: e.n - kills }, hpU = CREATURES[u.cid].hp, poolU = (u.n - 1) * hpU + u.hp, back = damageRoll(B, left, u, false, 0);
     loss = Math.min(u.n, back >= poolU ? u.n : u.n - Math.ceil((poolU - back) / hpU)) * CREATURES[u.cid].value;
   }
@@ -2591,6 +2671,8 @@ function tradeValue(B, u, e, ranged, moved) {
 // Sztuczna inteligencja: wybiera najlepszą wymianę (strzał albo atak z dostępnego pola),
 // a gdy nikogo nie sięgnie, zbliża się do najcenniejszego celu. Strzelców wroga ceni wyżej.
 function aiAct(B, u) {
+  if (u.cid === 'firstAid') { actFirstAid(B, u); return; }
+  if (isMachine(u) && u.cid !== 'ballista') { actDefend(B, u); return; }
   const foes = alive(B, 1 - u.side);
   if (canShoot(B, u)) {
     const t = foes.reduce((a, b) => (tradeValue(B, u, b, true, 0) > tradeValue(B, u, a, true, 0) ? b : a));
@@ -2621,13 +2703,13 @@ function nextActive(B) {
   const prev = B.active;
   if (prev && prev.acted) {
     prev.acted = false; const m = unitMorale(B, prev);
-    if (!prev.dead && !prev.moraleBonus && m > 0 && alive(B, 0).length && alive(B, 1).length && B.rng() < m / 24) {
+    if (!prev.dead && !prev.moraleBonus && m > 0 && fighters(B, 0).length && fighters(B, 1).length && B.rng() < m / 24) {
       prev.moraleBonus = true; B.log.push(`Wysokie morale! ${CREATURES[prev.cid].plural} ruszają ponownie.`);
       if (B.fx) B.fx.push({ kind: 'heal', u: prev, label: 'Morale!' }); return prev;
     }
   }
   for (;;) {
-    if (!alive(B, 0).length || !alive(B, 1).length) { B.over = alive(B, 0).length ? 'win' : 'lose'; B.active = null; return null; }
+    if (!fighters(B, 0).length || !fighters(B, 1).length) { B.over = fighters(B, 0).length ? 'win' : 'lose'; B.active = null; return null; }
     if (!B.order.length && B.waitQ.length) { B.order = B.waitQ.filter(u => !u.dead).sort((a, b) => unitSpd(a) - unitSpd(b)); B.waitQ = []; }
     if (!B.order.length) {
       B.round++; B.cast = [false, false];
@@ -2636,7 +2718,7 @@ function nextActive(B) {
         for (const k of Object.keys(u.buffs)) if (--u.buffs[k] <= 0) delete u.buffs[k];
         if (!u.dead && hasAb(u, 'regen') && u.hp < CREATURES[u.cid].hp) { const amt = CREATURES[u.cid].hp - u.hp; u.hp += amt; if (B.fx) B.fx.push({ kind: 'heal', u, amount: amt }); }
       }
-      B.order = alive(B).sort((a, b) => unitSpd(b) - unitSpd(a) || a.side - b.side);
+      B.order = alive(B).filter(u => u.cid !== 'ammoCart').sort((a, b) => unitSpd(b) - unitSpd(a) || a.side - b.side); // wóz nie ma własnej tury
     }
     const u = B.order.shift(); if (!u || u.dead) continue;
     if (!u.moraleRolled) {
@@ -2649,7 +2731,7 @@ function nextActive(B) {
 // --- czary w bitwie: bohater rzuca jeden czar na rundę, zanim ruszy oddział ---
 const unitAtt = u => CREATURES[u.cid].att + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0);
 const unitDef = u => CREATURES[u.cid].def + (u.buffs.stoneSkin ? 3 : 0);
-const unitSpd = u => Math.max(1, CREATURES[u.cid].spd + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0));
+const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0)));
 const battleSpells = h => (h.spells || []).filter(id => SPELLS[id].kind === 'battle');
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
@@ -2700,7 +2782,7 @@ function aiHeroCast(B) {
 // Cała bitwa bez ekranu (przycisk „Automatycznie” i testy)
 function simulateBattle(B) {
   B.auto = true; let guard = 0;
-  while (!B.over && guard++ < 5000) { const u = nextActive(B); if (!u) break; aiHeroCast(B); if (!u.dead && alive(B, 1 - u.side).length) aiAct(B, u); }
+  while (!B.over && guard++ < 5000) { const u = nextActive(B); if (!u) break; aiHeroCast(B); if (!u.dead && fighters(B, 1 - u.side).length) aiAct(B, u); }
   if (!B.over) B.over = 'lose';
   return B;
 }
@@ -2708,7 +2790,9 @@ function simulateBattle(B) {
 function writeBackSide(B, side) {
   const S = B.sides[side], units = B.units.filter(u => u.side === side);
   if (S.monster) { S.monster.count = units.reduce((s, u) => s + (u.dead ? 0 : u.n), 0); return; }
-  for (const u of units) { const a = u.src === 'garrison' ? S.town.garrison : S.hero.army; a[u.slot] = u.n > 0 && !u.dead ? { cid: u.cid, n: u.n } : null; }
+  for (const u of units) {
+    if (u.src === 'machine') { if (u.dead) S.hero.machines = S.hero.machines.filter(id => id !== u.cid); continue; } // zniszczona machina przepada
+    const a = u.src === 'garrison' ? S.town.garrison : S.hero.army; a[u.slot] = u.n > 0 && !u.dead ? { cid: u.cid, n: u.n } : null; }
 }
 const sideLosses = (B, side) => B.units.filter(u => u.side === side && u.n < u.n0).map(u => `${CREATURES[u.cid].plural.toLowerCase()} −${u.n0 - u.n}`);
 const killedHp = (B, side) => B.units.filter(u => u.side === side).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
@@ -2728,7 +2812,7 @@ function captureTown(st, t, owner) {
 // Nekromancja zwycięzcy: z pct% życia poległych żywych wrogów wstają kościotrupy w armii bohatera (gdy jest miejsce)
 function raiseDead(B, side) {
   const h = sideHero(B, side), pct = skillVal(h, 'necromancy'); if (!pct) return 0;
-  const hp = B.units.filter(u => u.side !== side && !hasAb(u, 'undead')).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
+  const hp = B.units.filter(u => u.side !== side && !hasAb(u, 'undead') && !isMachine(u)).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
   const n = Math.floor(hp * pct / 100 / CREATURES.boneWarrior.hp);
   const i = h.army.findIndex(s => s && s.cid === 'boneWarrior'), k = i >= 0 ? i : h.army.findIndex(s => !s);
   if (!n || k < 0) return 0;
@@ -2750,7 +2834,7 @@ function resolveBattle(B, fled) {
     if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
     else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
       const towns = st.towns.filter(t => t.owner === h.owner), t = towns.find(t => !heroAt(st, t.x, t.y)) || (towns.length && st.heroes.filter(o => o.owner === h.owner).length === 1 ? towns[0] : null);
-      h.army = emptyArmy(); h.mp = 0; res.home = t ? t.name : null;
+      h.army = emptyArmy(); h.machines = []; h.mp = 0; res.home = t ? t.name : null;
       if (t) { h.x = t.x; h.y = t.y; reveal(st, h.x, h.y, heroSight(h), h.owner); }
       else if (towns.length) { removeHero(st, h); res.heroLost = true; }
     }
@@ -2804,7 +2888,10 @@ function aiManageTown(st, p, t) {
     const cid = dwellingUnits(t, L).at(-1), n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), p.id));
     if (n > 0) recruit(st, t, L, cid, n);
   }
-  const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army);
+  const h = heroInTown(st, t); if (!h) return;
+  armyTransfer(t.garrison, h.army);
+  // kuźnia: machiny po werbunku, gdy zostaje zapas złota
+  if (hasB(t, 'smith')) for (const id of MACHINES) if (!h.machines.includes(id) && p.resources.gold >= CREATURES[id].cost.gold + 3000) buyMachine(st, t, h, id);
 }
 // Mapa odległości od bohatera (Dijkstra, koszty ruchu jak u człowieka) tylko po terenie odkrytym przez jego
 // gracza. Pola z obiektem, strażnikiem albo bohaterem są przystankami: można na nie wejść, ale nie przejść dalej.
@@ -5157,6 +5244,7 @@ G.screens.hero = {
     if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id])} Kliknij, aby zdjąć.` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
     if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
+    if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
     const si = this.skillAt(x, y);
     if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
@@ -5199,7 +5287,8 @@ G.screens.hero = {
       .forEach((l, i) => text(ctx, l, 32, 286 + i * 22, { size: 15, weight: 500, color: '#2a1606' }));
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });
-    text(ctx, 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
+    if (h.machines.length) text(ctx, `Machiny wojenne: ${h.machines.map(id => CREATURES[id].name.toLowerCase()).join(', ')}`, 210, 480, { size: 13, weight: 700, align: 'center', color: '#5a3814' });
+    else text(ctx, 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
     // ekwipunek
     text(ctx, 'Ekwipunek', 602, 38, { size: 20, align: 'center', color: '#f0e4c0', fam: 'title' });
     ctx.fillStyle = 'rgba(240,228,192,.07)'; circ(ctx, 599, 89, 26, 'rgba(240,228,192,.07)'); rr(ctx, 560, 118, 78, 170, 20); ctx.fill(); ctx.fillRect(566, 280, 26, 70); ctx.fillRect(606, 280, 26, 70);
@@ -5402,8 +5491,9 @@ G.screens.battle = {
   },
   startTurnFor(u) {
     const B = this.B; this.casting = null;
-    const ai = B.auto || !humanSide(B, u.side);
-    if (ai && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
+    const mach = isMachine(u) && humanSide(B, u.side) && !B.auto; // machiny gracza działają same
+    const ai = mach || B.auto || !humanSide(B, u.side);
+    if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
     if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
     this.phase = 'input'; this.reach = battleDist(B, u, unitSpd(u));
     this.bWait.disabled = u.waited; this.onPointerMove(G.mouse.x, G.mouse.y);
@@ -5428,7 +5518,7 @@ G.screens.battle = {
     if (this.play) { this.play.t += dt; this.stepPlay(); return; }
     if (B.fx.length) { this.startPlay(B.fx.shift()); return; }
     if (this.phase === 'play') {
-      if (this.resume) { this.resume = false; if (alive(B, 0).length && alive(B, 1).length && !B.active.dead) { this.startTurnFor(B.active); return; } }
+      if (this.resume) { this.resume = false; if (fighters(B, 0).length && fighters(B, 1).length && !B.active.dead) { this.startTurnFor(B.active); return; } }
       this.nextTurn(); return;
     }
     if (this.phase === 'ai') { this.timer -= dt; if (this.timer <= 0) { aiAct(B, B.active); this.phase = 'play'; } return; }
@@ -5660,6 +5750,18 @@ G.screens.town = {
       drawHeroPortrait(ctx, x, cy - 44, look, ownerColor(st, t.owner), 2);
     }) });
   },
+  // Kuźnia: machiny wojenne dla bohatera stojącego w mieście
+  showSmith() {
+    const st = G.state, t = this.town(), h = heroInTown(st, t);
+    if (!h) return showDialog('Kuźnia sprzedaje machiny wojenne: balistę, namiot medyka i wóz z amunicją. Wprowadź bohatera do miasta, aby je kupić.', [{ label: 'OK', key: 'enter' }]);
+    const offer = MACHINES.filter(id => !h.machines.includes(id));
+    if (!offer.length) return showDialog(`${h.name} ma już wszystkie machiny wojenne.`, [{ label: 'OK', key: 'enter' }]);
+    const bw = 150, gap = 24, total = offer.length * bw + (offer.length - 1) * gap;
+    showDialog(`Kuźnia: machiny dla bohatera ${h.name}. Balista strzela co rundę, namiot medyka leczy rannych, a wóz z amunicją daje strzelcom niekończące się strzały.`, [
+      ...offer.map(id => ({ label: CREATURES[id].name, sub: `${CREATURES[id].cost.gold} złota`, tip: stackInfo({ cid: id, n: 1 }), action: () => { const e = buyMachine(st, t, h, id); this.say(e || `Kupiono: ${CREATURES[id].name.toLowerCase()}`); if (!e) this.showSmith(); } })),
+      { label: 'Wyjdź', key: 'escape' },
+    ], { bw, iconH: 70, icon: (ctx, cx, cy) => offer.forEach((id, i) => drawSprite(ctx, battleSprite(id, 1, 'idle', 0), cx - total / 2 + i * (bw + gap) + bw / 2, cy + 26, 1)) });
+  },
   showGuild() {
     const t = this.town(), L = guildLevel(t), F = factionOf(t.faction);
     const lines = []; for (let k = 1; k <= L; k++) lines.push(`poziom ${k}: ${((t.guild || {})[k] || []).map(id => SPELLS[id].name).join(', ')}`);
@@ -5703,6 +5805,7 @@ G.screens.town = {
     const dw = B && /^dw(\d)u?$/.exec(B.id); if (dw) return showRecruit(st, t, +dw[1], m => this.say(m)); // siedlisko: werbunek
     if (B && /^guild/.test(B.id) && !(next && reqMet(t, next))) return this.showGuild();
     if (B && B.id === 'tavern') return this.showTavern();
+    if (B && B.id === 'smith') return this.showSmith();
     if (B && B.id === 'market' && !(next && reqMet(t, next))) return showMarket(st, t.owner, m => this.say(m));
     if (next && reqMet(t, next)) this.tryBuild(next);
     else if (next) showDialog(`${bInfo(next, fac).name} wymaga wcześniej: ${next.req.map(r => bInfo(BUILD_BY_ID[r], fac).name).join(', ')}.`, [{ label: 'OK', key: 'enter' }]);
@@ -5714,7 +5817,7 @@ G.screens.town = {
     const slot = this.armySlotAt(x, y);
     if (slot) return slot.a[slot.i] ? stackInfo(slot.a[slot.i]) : 'Wolne miejsce. Kliknij oddział, a potem miejsce, aby go przenieść, połączyć z takim samym albo zamienić.';
     const i = this.slotAt(x, y); if (i === null) return resourceBarInfo(G.state, x, y);
-    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'market' ? ' Kliknij, aby handlować.' : ''); }
+    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'smith' ? ' Kliknij, aby kupić machiny wojenne.' : B.id === 'market' ? ' Kliknij, aby handlować.' : ''); }
     const next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id)); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }
     return null;
   },

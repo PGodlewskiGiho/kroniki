@@ -147,6 +147,7 @@ function initHeroProgress(h) {
   if (!h.level) h.level = 1;
   if (!h.spells) h.spells = [...(CLASS_SPELLS[h.cls] || [])];
   if (!h.skills) h.skills = (CLASS_SKILLS[h.cls] || []).map(([id, lv]) => ({ id, lv }));
+  if (!h.machines) h.machines = [];
   if (h.mana == null) h.mana = heroMaxMana(h);
 }
 // --- umiejętności drugorzędne ---
@@ -382,3 +383,12 @@ function hireHero(st, t, k) {
   return { hero: h };
 }
 
+// Kuźnia: machina wojenna dla bohatera stojącego w mieście (każdej najwyżej jedna). Zwraca błąd albo null.
+function buyMachine(st, t, h, id) {
+  if (!hasB(t, 'smith')) return 'Brak kuźni';
+  if (!h || !heroInTown(st, t) || heroInTown(st, t) !== h) return 'Bohater musi stać w mieście';
+  if (h.machines.includes(id)) return 'Bohater ma już tę machinę';
+  const cost = CREATURES[id].cost; if (!canAfford(st, cost, h.owner)) return 'Brakuje złota';
+  const R = playerOf(st, h.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id];
+  h.machines.push(id); return null;
+}

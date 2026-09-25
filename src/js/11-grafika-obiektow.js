@@ -389,6 +389,35 @@ function drawTreant(ctx, L, P = {}) {
   circ(ctx, el[0] - 1, el[1] - 2, 2.2, leaf);
   ctx.restore(); ctx.restore();
 }
+// --- machiny wojenne (stoją w miejscu; atak = odrzut balisty) ---
+function drawBallista(ctx, L, P) {
+  const w = L.wood, m = L.metal, rec = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 2.5 : 0;
+  ctx.lineCap = 'round';
+  for (const wx of [-7, 6]) { circ(ctx, wx, -3.5, 3.5, DK(w, 0.45)); circ(ctx, wx, -3.5, 1.2, m); }
+  fillPoly(ctx, [[-11, -6], [10, -6], [8, -9], [-9, -9]], DK(w));
+  limb(ctx, -2, -8, -4, -15, 2.2, w); limb(ctx, 2, -8, 3, -15, 2.2, w);
+  ctx.save(); ctx.translate(-rec, -16); ctx.rotate(-0.12);
+  fillPoly(ctx, [[-12, -1.5], [12, -1.5], [12, 1.5], [-12, 1.5]], w); ctx.fillStyle = LT(w); ctx.fillRect(-12, -1.5, 24, 1);
+  ctx.strokeStyle = m; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(8, -11); ctx.quadraticCurveTo(11, 0, 8, 11); ctx.stroke();
+  ctx.strokeStyle = '#e8e0c8'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(8, -11); ctx.lineTo(-6 + rec * 2, 0); ctx.lineTo(8, 11); ctx.stroke();
+  if (!(P.atk > 0.4)) { limb(ctx, -6, -0.2, 13, -0.2, 1.2, '#5a3a1a'); fillPoly(ctx, [[13, -1.8], [16.5, -0.2], [13, 1.4]], m); }
+  ctx.restore();
+}
+function drawTent(ctx, L, P) {
+  const c = L.cloth, sway = Math.sin((P.t || 0) * 2) * 0.6;
+  fillPoly(ctx, [[-13, 0], [0, -24 + sway], [13, 0]], c); fillPoly(ctx, [[0, -24 + sway], [13, 0], [5, 0]], DK(c, 0.18));
+  fillPoly(ctx, [[-3.5, 0], [0, -11], [3.5, 0]], '#3a2a1e');
+  ctx.fillStyle = L.trim; ctx.fillRect(-1.5, -20, 3, 8); ctx.fillRect(-4, -17.5, 8, 3);
+  limb(ctx, 0, -24 + sway, 0, -30, 1, '#5a3a1a'); fillPoly(ctx, [[0, -30], [6, -28.5 + sway], [0, -27]], L.trim);
+}
+function drawCart(ctx, L, P) {
+  const w = L.wood;
+  limb(ctx, -10, -8, -17, -3, 1.6, DK(w)); fillPoly(ctx, [[-10, -7], [11, -7], [12, -18], [-11, -18]], w);
+  ctx.fillStyle = DK(w); ctx.fillRect(-10, -13, 21, 1.2);
+  ctx.fillStyle = L.cloth; ctx.beginPath(); ctx.moveTo(-11, -18); ctx.quadraticCurveTo(0, -28, 12, -18); ctx.closePath(); ctx.fill();
+  for (const ax of [-5, -1, 3, 7]) limb(ctx, ax, -18, ax + 1.5, -22.5, 1, '#5a3a1a');
+  for (const wx of [-6, 7]) { circ(ctx, wx, -4, 4, DK(w, 0.45)); circ(ctx, wx, -4, 2.6, DK(w, 0.2)); circ(ctx, wx, -4, 1, '#9aa0a8'); }
+}
 // x, y = punkt na ziemi pod stworzeniem; s = skala, dir = 1 w prawo / -1 w lewo; P = poza (domyślnie spoczynek w chwili t)
 function drawCreature(ctx, cid, x, y, s, dir, t, P) {
   const L = CREATURES[cid].look; P = P || { t };
@@ -405,6 +434,9 @@ function drawCreature(ctx, cid, x, y, s, dir, t, P) {
     case 'ghost': ghost(ctx, 0, -8 + hover, 1.3, L.fur, P, L); break;
     case 'dragon': drawDragon(ctx, L, P); break;
     case 'treant': drawTreant(ctx, L, P); break;
+    case 'ballista': drawBallista(ctx, L, P); break;
+    case 'tent': drawTent(ctx, L, P); break;
+    case 'cart': drawCart(ctx, L, P); break;
     case 'rider': {
       const rear = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 0.12 : 0;
       horse(ctx, 0, 0, 1, L.horse, L.mane || '#2a1a0e', P, { rear, barding: L.barding, trim: L.trim });
@@ -580,7 +612,8 @@ const townIconSprite = (fac, lvl, col) => sprite(`townico_${fac}_${lvl}_${col}`,
 // --- armie w interfejsie ---------------------------------------------------------------------
 const unitStats = c => `atak ${c.att}, obrona ${c.def}, obrażenia ${c.dmin}–${c.dmax}, życie ${c.hp}, szybkość ${c.spd}`;
 const abilText = c => (c.abil || []).map(a => `${ABILITIES[a].name} (${ABILITIES[a].desc})`).join('; ');
-const stackInfo = s => { const c = CREATURES[s.cid], ab = abilText(c); return `${c.plural}: ${s.n}. Poziom ${c.level}, ${unitStats(c)}${c.shots ? `, strzały ${c.shots}` : ''}.${ab ? ` Zdolności: ${ab}.` : ''}`; };
+const machineInfo = id => { const c = CREATURES[id]; return `${c.name}: ${c.desc}. Życie ${c.hp}, cena ${c.cost.gold} złota.`; };
+const stackInfo = s => { if (MACHINES.includes(s.cid)) return machineInfo(s.cid); const c = CREATURES[s.cid], ab = abilText(c); return `${c.plural}: ${s.n}. Poziom ${c.level}, ${unitStats(c)}${c.shots ? `, strzały ${c.shots}` : ''}.${ab ? ` Zdolności: ${ab}.` : ''}`; };
 // Rząd 7 miejsc armii z tymi samymi sprite'ami co na mapie. Zwraca prostokąty miejsc (do klikania i dymków).
 function drawArmyRow(ctx, army, x, y, o = {}) {
   const w = o.w || 62, h = o.h || 50, gap = o.gap || 6, rects = [];

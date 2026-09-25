@@ -45,6 +45,7 @@ G.screens.hero = {
     if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id])} Kliknij, aby zdjąć.` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
     if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
+    if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
     const si = this.skillAt(x, y);
     if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
@@ -87,7 +88,8 @@ G.screens.hero = {
       .forEach((l, i) => text(ctx, l, 32, 286 + i * 22, { size: 15, weight: 500, color: '#2a1606' }));
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });
-    text(ctx, 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
+    if (h.machines.length) text(ctx, `Machiny wojenne: ${h.machines.map(id => CREATURES[id].name.toLowerCase()).join(', ')}`, 210, 480, { size: 13, weight: 700, align: 'center', color: '#5a3814' });
+    else text(ctx, 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
     // ekwipunek
     text(ctx, 'Ekwipunek', 602, 38, { size: 20, align: 'center', color: '#f0e4c0', fam: 'title' });
     ctx.fillStyle = 'rgba(240,228,192,.07)'; circ(ctx, 599, 89, 26, 'rgba(240,228,192,.07)'); rr(ctx, 560, 118, 78, 170, 20); ctx.fill(); ctx.fillRect(566, 280, 26, 70); ctx.fillRect(606, 280, 26, 70);

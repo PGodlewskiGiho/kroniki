@@ -43,7 +43,10 @@ function aiManageTown(st, p, t) {
     const cid = dwellingUnits(t, L).at(-1), n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), p.id));
     if (n > 0) recruit(st, t, L, cid, n);
   }
-  const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army);
+  const h = heroInTown(st, t); if (!h) return;
+  armyTransfer(t.garrison, h.army);
+  // kuźnia: machiny po werbunku, gdy zostaje zapas złota
+  if (hasB(t, 'smith')) for (const id of MACHINES) if (!h.machines.includes(id) && p.resources.gold >= CREATURES[id].cost.gold + 3000) buyMachine(st, t, h, id);
 }
 // Mapa odległości od bohatera (Dijkstra, koszty ruchu jak u człowieka) tylko po terenie odkrytym przez jego
 // gracza. Pola z obiektem, strażnikiem albo bohaterem są przystankami: można na nie wejść, ale nie przejść dalej.

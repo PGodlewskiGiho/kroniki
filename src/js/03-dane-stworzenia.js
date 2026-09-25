@@ -16,6 +16,7 @@ const ABILITIES = {
   lifeDrain: { name: 'Wysysanie życia', desc: 'leczy się i wskrzesza poległych o zadane obrażenia' },
   regen: { name: 'Regeneracja', desc: 'na początku rundy leczy rany pierwszego stwora' },
   undead: { name: 'Nieumarły', desc: 'odporny na wysysanie życia; ważne też przy czarach' },
+  machine: { name: 'Machina', desc: 'stoi w miejscu, działa sama, nie kontratakuje i nie zna morale' },
 };
 // Stworzenia neutralne (statystyki własne, w duchu oryginału).
 const CREATURES = {
@@ -79,3 +80,13 @@ Object.assign(CREATURES, {
   ghostWyvern: mkU('Upiorny wywern', 'Upiorne wywerny', 'upiornych wywern', 7, 19, 17, 25, 50, 200, 14, 1, 4700, { gold: 3000, mercury: 1 }, { abil: ['undead', 'fly', 'breath'], faction: 'barrow', fly: true, look: { kind: 'dragon', fur: '#b8c8e0', bony: true, size: 1.08 } }),
 });
 
+// Machiny wojenne (kupowane w kuźni; bohater ma najwyżej po jednej). W bitwie stoją za armią i działają same:
+// balista strzela co rundę (obrażenia rosną z atakiem bohatera), namiot medyka leczy pierwszego stwora
+// najbardziej rannego oddziału, wóz z amunicją daje strzelcom niekończące się strzały. Nie liczą się jako armia.
+Object.assign(CREATURES, {
+  ballista: mkU('Balista', 'Balisty', 'balist', 0, 10, 10, 2, 3, 250, 0, 0, 600, { gold: 2500 }, { shots: 99, abil: ['machine'], desc: 'co rundę strzela do wroga; obrażenia 2–3 razy (atak bohatera + 1)', look: { kind: 'ballista', wood: '#8a5a2a', metal: '#9aa0a8' } }),
+  firstAid: mkU('Namiot medyka', 'Namioty medyka', 'namiotów medyka', 0, 0, 0, 0, 0, 75, 0, 0, 300, { gold: 750 }, { abil: ['machine'], desc: 'co rundę leczy 1–25 życia pierwszego stwora w najbardziej rannym oddziale', look: { kind: 'tent', cloth: '#e8e0cc', trim: '#c83a2a' } }),
+  ammoCart: mkU('Wóz z amunicją', 'Wozy z amunicją', 'wozów z amunicją', 0, 0, 5, 0, 0, 100, 0, 0, 400, { gold: 1000 }, { abil: ['machine'], desc: 'póki stoi, twoi strzelcy nie tracą strzał', look: { kind: 'cart', wood: '#7a4a22', cloth: '#b8a070' } }),
+});
+const MACHINES = ['ballista', 'firstAid', 'ammoCart'];
+const isMachine = u => MACHINES.includes(u.cid);
