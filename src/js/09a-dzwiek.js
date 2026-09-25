@@ -95,6 +95,7 @@ const SFX = {
   day(t) { this.tone(880, t, 1.4, { vol: 0.12, d: 1.3 }); this.tone(1320, t, 1.0, { vol: 0.04 }); this.tone(1760, t + 0.01, 0.7, { vol: 0.03 }); },
   week(t) { [[55, 0], [59, 0.25], [62, 0.5]].forEach(([m, dt]) => this.tone(NOTE(m), t + dt, 1.3 - dt, { type: 'sawtooth', vol: 0.07, lp: 1400, a: 0.06 })); },
   levelup(t) { [60, 64, 67, 72, 76, 79].forEach((m, i) => this.tone(NOTE(m + 12), t + i * 0.08, i === 5 ? 0.7 : 0.16, { type: 'square', vol: 0.1, lp: 3500 })); },
+  boat(t) { this.noise(t, 0.6, { f: 500, to: 1400, q: 0.8, vol: 0.18, a: 0.15 }); this.noise(t + 0.3, 0.7, { f: 1200, to: 400, q: 0.8, vol: 0.12, a: 0.1 }); this.tone(180, t + 0.05, 0.25, { to: 140, type: 'triangle', vol: 0.12 }); },
   error(t) { this.tone(160, t, 0.1, { type: 'square', vol: 0.08, lp: 1200 }); this.tone(130, t + 0.12, 0.14, { type: 'square', vol: 0.08, lp: 1200 }); },
   swing(t) { this.noise(t, 0.18, { f: 3200, to: 700, q: 1.2, vol: 0.28 }); },
   hit(t) { this.noise(t, 0.12, { f: 700, filter: 'lowpass', vol: 0.5 }); this.tone(120, t, 0.16, { to: 55, vol: 0.4 }); },

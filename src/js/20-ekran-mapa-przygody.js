@@ -167,6 +167,7 @@ G.screens.adventure = {
       if (ob && ob.type === 'chest') return 'Skrzynia ze skarbem. Wybierzesz złoto albo doświadczenie dla bohatera.';
       if (ob && ob.type === 'art') return `${artInfo(ob.art)} Wejdź na to pole, aby go podnieść.`;
       if (ob && ob.type === 'res') return `${resName(ob.res)}: ${ob.amount}. Wejdź na to pole, aby zabrać.`;
+      if (ob && ob.type === 'boat') return 'Łódź. Wejdź na nią z brzegu, aby płynąć po wodzie; wysiadka na brzeg kończy ruch na dziś.';
       return tileInfo(st, tx, ty);
     }
     if (inRect(x, y, { x: MINI.x, y: MINI.y, w: MINI.s, h: MINI.s })) return 'Minimapa. Kliknij albo przeciągnij, aby przenieść widok.';

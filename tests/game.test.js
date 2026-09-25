@@ -29,7 +29,7 @@ const checkInvariants = () => page.evaluate(() => {
     if (ob.dead) continue;
     if (!inMap(ob.x, ob.y)) { bad.push(`obiekt ${ob.id} poza mapą`); continue; }
     const i = ob.y * n + ob.x;
-    if (st.map.terrain[i] === TER.WATER) bad.push(`obiekt ${ob.id} (${ob.type}) na wodzie`);
+    if (st.map.terrain[i] === TER.WATER && ob.type !== 'boat') bad.push(`obiekt ${ob.id} (${ob.type}) na wodzie`);
     if (st.objAt[i] !== ob.id + 1) bad.push(`obiekt ${ob.id} nie jest w indeksie objAt`);
     if (ob.type === 'monster' && !(ob.count > 0)) bad.push(`potwór ${ob.id}: liczebność ${ob.count}`);
   }

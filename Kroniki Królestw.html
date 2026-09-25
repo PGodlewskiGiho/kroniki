@@ -442,6 +442,7 @@ const BUILDINGS = [
   { id: 'tavern', name: 'Tawerna', slot: 12, cost: { gold: 500, wood: 5 }, req: [], emblem: 'mug', desc: 'Najem bohaterów: co tydzień dwóch nowych chętnych.' },
   { id: 'market', name: 'Rynek', slot: 13, cost: { gold: 500, wood: 5 }, req: [], emblem: 'scale', desc: 'Handel surowcami. Każdy kolejny rynek w królestwie daje lepszy kurs.' },
   { id: 'silo', name: 'Skarbiec zasobów', slot: 9, cost: { gold: 5000, ore: 5 }, req: ['market'], emblem: 'barrel', desc: 'Codziennie dodaje 1 drewna i 1 rudy.' },
+  { id: 'shipyard', name: 'Stocznia', cost: { gold: 2000, wood: 20 }, req: [], emblem: 'anchor', desc: 'Buduje łodzie (1000 złota i 10 drewna) na wodzie przy mieście. Tylko w mieście nad wodą.' },
   { id: 'smith', name: 'Kuźnia', slot: 8, cost: { gold: 1000, ore: 5 }, req: [], emblem: 'anvil', desc: 'Sprzedaje machiny wojenne bohaterowi stojącemu w mieście: balistę, namiot medyka i wóz z amunicją.' },
   { id: 'guild1', slot: 2, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['tavern'], emblem: 'book', desc: 'Uczy bohaterów czarów 1 poziomu i odnawia im manę.' },
   { id: 'guild2', slot: 2, cost: { gold: 1000, wood: 5, ore: 5 }, req: ['guild1'], emblem: 'book', desc: 'Dodaje czary 2 poziomu.' },
@@ -954,6 +955,7 @@ const SFX = {
   day(t) { this.tone(880, t, 1.4, { vol: 0.12, d: 1.3 }); this.tone(1320, t, 1.0, { vol: 0.04 }); this.tone(1760, t + 0.01, 0.7, { vol: 0.03 }); },
   week(t) { [[55, 0], [59, 0.25], [62, 0.5]].forEach(([m, dt]) => this.tone(NOTE(m), t + dt, 1.3 - dt, { type: 'sawtooth', vol: 0.07, lp: 1400, a: 0.06 })); },
   levelup(t) { [60, 64, 67, 72, 76, 79].forEach((m, i) => this.tone(NOTE(m + 12), t + i * 0.08, i === 5 ? 0.7 : 0.16, { type: 'square', vol: 0.1, lp: 3500 })); },
+  boat(t) { this.noise(t, 0.6, { f: 500, to: 1400, q: 0.8, vol: 0.18, a: 0.15 }); this.noise(t + 0.3, 0.7, { f: 1200, to: 400, q: 0.8, vol: 0.12, a: 0.1 }); this.tone(180, t + 0.05, 0.25, { to: 140, type: 'triangle', vol: 0.12 }); },
   error(t) { this.tone(160, t, 0.1, { type: 'square', vol: 0.08, lp: 1200 }); this.tone(130, t + 0.12, 0.14, { type: 'square', vol: 0.08, lp: 1200 }); },
   swing(t) { this.noise(t, 0.18, { f: 3200, to: 700, q: 1.2, vol: 0.28 }); },
   hit(t) { this.noise(t, 0.12, { f: 700, filter: 'lowpass', vol: 0.5 }); this.tone(120, t, 0.16, { to: 55, vol: 0.4 }); },
@@ -1820,8 +1822,26 @@ function drawSkeleton(ctx, x, y, sc, t, dir, spear) {
 }
 
 // --- bohater: postać na koniu (mapa) i portret (panel) z jednego opisu wyglądu -----------------
-function drawHeroSprite(ctx, x, y, dir, col, t, moving, look = HERO_CLASSES.knight.look) {
+// Łódź: kadłub z desek, maszt; sail = kolor żagla (null = żagiel zwinięty)
+function drawBoat(ctx, t, sail) {
+  const rock = Math.sin(t * 3) * 0.6;
+  ctx.strokeStyle = 'rgba(220,235,255,.55)'; ctx.lineWidth = 1; for (const [x0, y0] of [[-17, 8], [10, 9], [-4, 11]]) { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + 7, y0); ctx.stroke(); }
+  fillPoly(ctx, [[-15, -1 + rock], [16, -2 - rock], [11, 7], [-11, 7]], '#6a4424'); fillPoly(ctx, [[-15, -1 + rock], [16, -2 - rock], [15, 1 - rock], [-14, 2 + rock]], '#9a6a38');
+  ctx.strokeStyle = '#4a2e14'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-12, 3); ctx.lineTo(13, 3); ctx.moveTo(-11, 5.2); ctx.lineTo(12, 5.2); ctx.stroke();
+  fillPoly(ctx, [[14, -2 - rock], [19, -6 - rock], [17, -1 - rock]], '#6a4424');
+  ctx.strokeStyle = '#3a2412'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(1, 0); ctx.lineTo(1, -27); ctx.stroke();
+  if (sail) { ctx.fillStyle = sail; ctx.beginPath(); ctx.moveTo(1.5, -26); ctx.quadraticCurveTo(12 + Math.sin(t * 4) * 1.2, -18, 2, -8); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(1.5, -18, 5, 1.5); }
+  else { ctx.fillStyle = '#e0d4b0'; ctx.fillRect(-1, -24, 5, 3); }
+}
+function drawHeroSprite(ctx, x, y, dir, col, t, moving, look = HERO_CLASSES.knight.look, boat = false) {
   ctx.save(); ctx.translate(x, y + 4); ctx.scale(dir, 1);
+  if (boat) { // bohater w łodzi: kadłub, żagiel w barwach gracza, postać na rufie
+    drawBoat(ctx, t, col); const ry = -1 + Math.sin(t * 3) * 0.5;
+    ctx.fillStyle = look.armor; rr(ctx, -10, ry - 11, 7, 10, 2); ctx.fill(); ctx.fillStyle = col; ctx.fillRect(-9, ry - 8, 5, 6);
+    if (look.hood) { circ(ctx, -6.5, ry - 13.5, 3, look.skin); ctx.fillStyle = look.hood; ctx.beginPath(); ctx.moveTo(-10, ry - 10); ctx.quadraticCurveTo(-10.5, ry - 18, -6.5, ry - 18.5); ctx.quadraticCurveTo(-3, ry - 17, -3, ry - 13); ctx.lineTo(-6, ry - 15); ctx.closePath(); ctx.fill(); }
+    else { circ(ctx, -6.5, ry - 14, 3.4, look.helm); ctx.fillStyle = '#1a1a22'; ctx.fillRect(-6, ry - 14.5, 3, 1.2); }
+    ctx.restore(); return;
+  }
   const bob = moving ? Math.sin(t * 22) * 1.2 : 0, hc = look.horse;
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 9, 14, 4, 0, 0, TAU); ctx.fill();
   ctx.lineCap = 'round';
@@ -1896,6 +1916,7 @@ const obstacleSprite = (o, t, v) => sprite(`ob${o}_${t}_${v}`, 40, 38, 20, 26, p
 const decorSprite = (t, v) => sprite(`dec${t}_${v}`, 12, 10, 6, 7, p => drawDecor(p, t, v), null);
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
+const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
 // Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki
 const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1 };
@@ -1929,7 +1950,7 @@ function tintSprite(s, col) {
 }
 function heroSprite(h, col) {
   const moving = !!h.anim, fr = Math.floor(G.time * (moving ? 12 : 4)) % 4, tk = moving ? fr * TAU / 88 : fr * TAU / 20;
-  return sprite(`hero_${h.cls}_${col}_${h.dir}_${moving ? 1 : 0}_${fr}`, 26, 26, 13, 17, p => drawHeroSprite(p, 0, 0, h.dir, col, tk, moving, heroClass(h).look));
+  return sprite(`hero_${h.cls}_${col}_${h.dir}_${moving ? 1 : 0}_${fr}_${h.boat ? 1 : 0}`, 26, 26, 13, 17, p => drawHeroSprite(p, 0, 0, h.dir, col, h.boat ? fr * TAU / 12 : tk, moving, heroClass(h).look, !!h.boat));
 }
 function flagSprite(col, len, hgt) {
   const fr = Math.floor(G.time * 6) % 4;
@@ -3009,6 +3030,12 @@ function placeObjects(st) {
     const a = add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x: p[0], y: p[1] }, [p[1] * n + p[0]]);
     guard(a, rar === 'major' ? 2 : rar === 'minor' ? 1 : 0);
   }
+  // łodzie przy brzegu: w zasięgu lądu dostępnego ze startu, pierwsza możliwie blisko gracza
+  const coastBoat = near => { for (let k = 0; k < 600; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x;
+    if (map.terrain[i] !== TER.WATER || occ[i] || (near && dStart(x, y) > near)) continue;
+    let land = false; for (let d = 0; d < 8; d++) { const j = (y + DY8[d]) * n + x + DX8[d]; if (reach[j] && !occ[j]) land = true; }
+    if (land) return add({ type: 'boat', x, y }, [i]); } return null; };
+  if (!coastBoat(n * 0.3)) coastBoat(0); for (let k = Math.round(N / 3000); k > 0; k--) coastBoat(0);
   // miejsca (SITES): liczba wg gęstości, na małej mapie rzadsze z losowaniem; część pilnują potwory
   for (const [kind, S] of Object.entries(SITES)) {
     const want = N / S.per, cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);
@@ -3103,15 +3130,44 @@ function reveal(st, cx, cy, r, owner = ME) {
   }
   if (changed && owner === ME) MapRender.miniDirty = true;
 }
-function passableTile(st, x, y) {
+// Pole, na które można wejść. Woda tylko dla bohatera w łodzi albo jako pole z łodzią (wsiadanie).
+function passableTile(st, x, y, h = null) {
   const map = st.map, n = map.n; if (x < 0 || y < 0 || x >= n || y >= n) return false;
-  const i = y * n + x; return !!human(st).explored[i] && map.terrain[i] !== TER.WATER && !map.obst[i];
+  const i = y * n + x; if (!human(st).explored[i] || map.obst[i]) return false;
+  return map.terrain[i] !== TER.WATER || !!(h && (h.boat || boatAt(st, i)));
+}
+// --- statki: łódź to obiekt na wodzie; bohater wsiada, wchodząc na nią, a wysiada na brzeg (koniec ruchu na dziś) ---
+const BOAT_COST = { gold: 1000, wood: 10 };
+const boatAt = (st, i) => { const o = objectAt(st, i); return !!(o && o.type === 'boat'); };
+function addBoat(st, x, y) { const ob = { id: st.objects.length, type: 'boat', x, y }; st.objects.push(ob); rebuildObjIndex(st); return ob; }
+// Krok po wodzie: w łodzi tylko po wodzie, brzeg wyłącznie jako cel; pieszo woda tylko jako cel (łódź)
+function legOk(st, h, i, j, target) {
+  const w = st.map.terrain; return h && h.boat ? (w[j] === TER.WATER || (j === target && w[i] === TER.WATER)) : (w[j] !== TER.WATER || j === target);
+}
+// Miejsce na nową łódź ze stoczni: najbliższa wolna woda przy brzegu w promieniu 4 pól od miasta
+function shipyardSpot(st, t) {
+  const map = st.map, n = map.n; let best = null;
+  for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+    const x = t.x + dx, y = t.y + dy, i = y * n + x; if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1 || map.terrain[i] !== TER.WATER || st.objAt[i] || heroAt(st, x, y)) continue;
+    let coast = false; for (let d = 0; d < 8; d++) { const j = (y + DY8[d]) * n + x + DX8[d]; if (map.terrain[j] !== TER.WATER && !map.obst[j]) coast = true; }
+    const d = dx * dx + dy * dy; if (coast && (!best || d < best.d)) best = { x, y, d };
+  }
+  return best;
+}
+// Czy miasto leży nad wodą (stocznię można zbudować tylko nad wodą)
+function townCoastal(st, t) { const map = st.map, n = map.n; for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = t.x + dx, y = t.y + dy; if (x >= 0 && y >= 0 && x < n && y < n && map.terrain[y * n + x] === TER.WATER) return true; } return false; }
+// Kupno łodzi w stoczni. Zwraca błąd albo null.
+function buyBoat(st, t) {
+  if (!hasB(t, 'shipyard')) return 'Brak stoczni'; if (!canAfford(st, BOAT_COST, t.owner)) return 'Brakuje zasobów na łódź';
+  const p = shipyardSpot(st, t); if (!p) return 'Przy stoczni nie ma wolnego miejsca na wodzie';
+  const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (BOAT_COST[r.id]) R[r.id] -= BOAT_COST[r.id];
+  addBoat(st, p.x, p.y); return null;
 }
 // Koszt kroku liczony wg terenu, z którego bohater wychodzi; droga działa, gdy oba pola mają drogę.
 // Znajdowanie drogi (h) zmniejsza narzut trudnego terenu ponad 100.
 function baseCost(map, i, j, h) {
   if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
-  const c = TERRAINS[map.terrain[i]].cost, pf = h ? skillVal(h, 'pathfinding') : 0;
+  const c = TERRAINS[map.terrain[i]].cost || 100, pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
   return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
 }
 function stepCost(map, fx, fy, tx, ty, h) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx, h); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
@@ -3140,16 +3196,16 @@ function objBlocks(st, j, target, tg = 0) {
   return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
 }
 function computePath(st, h, tx, ty) {
-  if (!passableTile(st, tx, ty)) return null; const map = st.map, n = map.n, t = ty * n + tx;
+  if (!passableTile(st, tx, ty, h)) return null; const map = st.map, n = map.n, t = ty * n + tx;
   if (objBlocks(st, t, t)) return null;
   const tob = objectAt(st, t), tg = tob && tob.type === 'monster' ? tob.id + 1 : 0;
-  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j, h) : Infinity, 50);
+  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0, h) && legOk(st, h, i, j, t) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j, h) : Infinity, 50);
   return p && p.length > 1 ? p.slice(1).map(i => [i % n, (i / n) | 0]) : null;
 }
 function heroCanStillMove(st, h) {
   if (!armySize(h.army)) return false;
   const n = st.map.n;
-  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y, h) <= h.mp) return true; }
+  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y, h) && legOk(st, h, h.y * n + h.x, j, j) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y, h) <= h.mp) return true; }
   return false;
 }
 function heroStep(st, h) {
@@ -3163,6 +3219,8 @@ function heroStep(st, h) {
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h)); if (h.owner === ME) Sound.play('step');
   if (!h.path.length) { h.path = null; h.dest = null; }
+  if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); if (h.owner === ME) Sound.play('boat'); return true; }
+  if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; if (h.owner === ME) Sound.play('boat'); } // wysiadka: łódź zostaje przy brzegu
   if (st.guard[ni]) { const m = st.objects[st.guard[ni] - 1]; halt(); h.pending = () => startEncounter(st, h, m); }
   else if (ob) { halt(); h.pending = () => visitObject(st, h, ob); }
   return true;
@@ -3335,6 +3393,7 @@ function castAdventure(st, h, id) {
     if (h.mp < 300) return 'Za mało punktów ruchu (potrzeba 300)';
     const t = st.towns.filter(t => t.owner === h.owner && !heroAt(st, t.x, t.y)).sort((a, b) => Math.hypot(a.x - h.x, a.y - h.y) - Math.hypot(b.x - h.x, b.y - h.y))[0];
     if (!t) return 'Brak wolnego własnego miasta';
+    if (h.boat) { h.boat = false; addBoat(st, h.x, h.y); } // łódź zostaje na wodzie
     h.x = t.x; h.y = t.y; h.mp -= 300; h.path = null; h.dest = null; reveal(st, h.x, h.y, heroSight(h)); centerCam(st, h.x, h.y);
   }
   h.mana -= S.cost; return null;
@@ -3460,7 +3519,7 @@ const hasB = (t, id) => t.built.includes(id);
 const canAfford = (st, cost, owner = ME) => RESOURCES.every(r => (playerOf(st, owner).resources[r.id] || 0) >= (cost[r.id] || 0));
 const reqMet = (t, B) => B.req.every(r => hasB(t, r));
 function townGold(t) { let g = 0; for (const id of ['hall1', 'hall2', 'hall3', 'hall4']) if (hasB(t, id)) g = BUILD_BY_ID[id].gold; return g; }
-function availableBuildings(t) { return BUILDINGS.filter(B => !hasB(t, B.id) && reqMet(t, B)); }
+function availableBuildings(t, st = G.state) { return BUILDINGS.filter(B => !hasB(t, B.id) && reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t)))); }
 function slotBuilding(t, slot) { let best = null; for (const B of BUILDINGS) if (B.slot === slot && hasB(t, B.id)) best = B; return best; }
 function buildIn(st, t, B) {
   const R = playerOf(st, t.owner).resources;
@@ -4668,6 +4727,7 @@ function drawWorldPixel(b, st) {
     if (ob.type === 'monster') { shadow(10, px, py + 10); blit(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
     else if (ob.type === 'res') { shadow(10, px, py + 9); blit(b, resSprite(ob.res), px, py + 2); }
     else if (ob.type === 'chest') { shadow(10, px, py + 9); blit(b, chestSprite(), px, py + 2); }
+    else if (ob.type === 'boat') blit(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py);
     else if (ob.type === 'site') { shadow(14, px, py + 12); blit(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
     else if (ob.type === 'art') { shadow(9, px, py + 10); blit(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
     else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blit(b, mineSprite(ob.kind), mx, my); blit(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
@@ -4734,6 +4794,7 @@ function tileInfo(st, tx, ty) {
     if (ob.type === 'site') { const h = hero(st); return `${SITES[ob.kind].name}${h && siteUsed(st, ob, h) ? ' (odwiedzone)' : ''}`; }
     if (ob.type === 'art') return `Artefakt: ${ARTIFACTS[ob.art].name}`;
     if (ob.type === 'res') return resName(ob.res);
+    if (ob.type === 'boat') return 'Łódź';
   }
   const t = map.terrain[i]; if (t === TER.WATER) return 'Woda (potrzebna łódź)';
   let s = TERRAINS[t].name, cost = TERRAINS[t].cost;
@@ -4784,6 +4845,7 @@ function drawEmblem(ctx, kind, cx, cy, s, col) {
     case 'ghost': ctx.beginPath(); ctx.arc(0, -3, 7, Math.PI, 0); ctx.lineTo(7, 9); ctx.lineTo(3.5, 6); ctx.lineTo(0, 9); ctx.lineTo(-3.5, 6); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill(); ctx.fillStyle = dark; ctx.fillRect(-3.5, -4, 2.2, 3); ctx.fillRect(1.3, -4, 2.2, 3); break;
     case 'bat': ctx.beginPath(); [[0, -3], [3, -7], [4, -3], [10, -7], [9, 1], [6, -1], [3, 4], [0, 1], [-3, 4], [-6, -1], [-9, 1], [-10, -7], [-4, -3], [-3, -7]].forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); ctx.fill(); break;
     case 'moon': ctx.beginPath(); ctx.arc(0, 0, 9, 0.9, TAU - 0.9); ctx.arc(5, 0, 7.5, TAU - 1.25, 1.25, true); ctx.closePath(); ctx.fill(); break;
+    case 'anchor': ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(0, 8); ctx.moveTo(-5, -3); ctx.lineTo(5, -3); ctx.moveTo(-8, 2); ctx.quadraticCurveTo(-7, 9, 0, 8); ctx.quadraticCurveTo(7, 9, 8, 2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, -9, 2.2, 0, TAU); ctx.stroke(); break;
     case 'eye': ctx.beginPath(); ctx.ellipse(0, 0, 10, 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(0, 0, 2, 5, 0, 0, TAU); ctx.fill(); break;
     case 'fork': ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(0, -4); ctx.moveTo(-6, -9); ctx.lineTo(-6, -3); ctx.quadraticCurveTo(0, 2, 6, -3); ctx.lineTo(6, -9); ctx.moveTo(0, -4); ctx.lineTo(0, -10); ctx.stroke(); break;
   }
@@ -6592,6 +6654,7 @@ G.screens.adventure = {
       if (ob && ob.type === 'chest') return 'Skrzynia ze skarbem. Wybierzesz złoto albo doświadczenie dla bohatera.';
       if (ob && ob.type === 'art') return `${artInfo(ob.art)} Wejdź na to pole, aby go podnieść.`;
       if (ob && ob.type === 'res') return `${resName(ob.res)}: ${ob.amount}. Wejdź na to pole, aby zabrać.`;
+      if (ob && ob.type === 'boat') return 'Łódź. Wejdź na nią z brzegu, aby płynąć po wodzie; wysiadka na brzeg kończy ruch na dziś.';
       return tileInfo(st, tx, ty);
     }
     if (inRect(x, y, { x: MINI.x, y: MINI.y, w: MINI.s, h: MINI.s })) return 'Minimapa. Kliknij albo przeciągnij, aby przenieść widok.';
@@ -7331,9 +7394,17 @@ G.screens.town = {
       new Button(596, 448, 192, 40, 'Rekrutacja', () => showRecruitList(G.state, this.town(), m => this.say(m)), { key: 'r', size: 16, tip: 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).' }),
       new Button(596, 496, 192, 40, 'Powrót na mapę', () => G.go('adventure'), { key: 'escape', size: 16, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
     ];
+    this.bRecruitHalf = new Button(596, 448, 94, 40, 'Rekrutacja', this.baseButtons[0].action, { key: 'r', size: 14, tip: this.baseButtons[0].tip });
+    this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
     this.btnUp = new Button(596, 392, 44, 28, 'W górę', () => this.onWheel(-1), { icon: iconArrow(-1), tip: 'Przewiń listę budowli w górę.' });
     this.btnDown = new Button(744, 392, 44, 28, 'W dół', () => this.onWheel(1), { icon: iconArrow(1), tip: 'Przewiń listę budowli w dół.' });
     this.buttons = this.baseButtons;
+  },
+  showShipyard() {
+    const st = G.state, t = this.town();
+    showDialog(`Stocznia. Łódź kosztuje ${BOAT_COST.gold} złota i ${BOAT_COST.wood} drewna i czeka na wodzie przy mieście. Bohater wsiada, wchodząc na nią z brzegu.`, [
+      { label: 'Kup łódź', key: 'enter', action: () => { const e = buyBoat(st, t); Sound.play(e ? 'error' : 'boat'); this.say(e || 'Łódź czeka na wodzie przy mieście'); } },
+      { label: 'Wyjdź', key: 'escape' }]);
   },
   onWheel(d) { const n = availableBuildings(this.town()).length; this.scroll = clamp(this.scroll + d, 0, Math.max(0, n - this.LIST_ROWS)); },
   say(m) { this.msg = m; this.msgT = G.time; },
@@ -7471,7 +7542,8 @@ G.screens.town = {
     });
     if (!list.length) text(ctx, 'Brak dostępnych budowli', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
-    this.buttons = paged ? [...this.baseButtons, this.btnUp, this.btnDown] : this.baseButtons;
+    const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, this.baseButtons[1]] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
+    this.buttons = paged ? [...base, this.btnUp, this.btnDown] : base;
     if (paged) {
       this.btnUp.disabled = this.scroll === 0; this.btnDown.disabled = this.scroll >= list.length - N;
       text(ctx, `${this.scroll + 1}–${Math.min(list.length, this.scroll + N)} z ${list.length}`, 692, 406, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });

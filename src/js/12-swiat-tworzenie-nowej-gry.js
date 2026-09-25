@@ -166,6 +166,12 @@ function placeObjects(st) {
     const a = add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x: p[0], y: p[1] }, [p[1] * n + p[0]]);
     guard(a, rar === 'major' ? 2 : rar === 'minor' ? 1 : 0);
   }
+  // łodzie przy brzegu: w zasięgu lądu dostępnego ze startu, pierwsza możliwie blisko gracza
+  const coastBoat = near => { for (let k = 0; k < 600; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x;
+    if (map.terrain[i] !== TER.WATER || occ[i] || (near && dStart(x, y) > near)) continue;
+    let land = false; for (let d = 0; d < 8; d++) { const j = (y + DY8[d]) * n + x + DX8[d]; if (reach[j] && !occ[j]) land = true; }
+    if (land) return add({ type: 'boat', x, y }, [i]); } return null; };
+  if (!coastBoat(n * 0.3)) coastBoat(0); for (let k = Math.round(N / 3000); k > 0; k--) coastBoat(0);
   // miejsca (SITES): liczba wg gęstości, na małej mapie rzadsze z losowaniem; część pilnują potwory
   for (const [kind, S] of Object.entries(SITES)) {
     const want = N / S.per, cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);

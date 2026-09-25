@@ -589,8 +589,26 @@ function drawSkeleton(ctx, x, y, sc, t, dir, spear) {
 }
 
 // --- bohater: postać na koniu (mapa) i portret (panel) z jednego opisu wyglądu -----------------
-function drawHeroSprite(ctx, x, y, dir, col, t, moving, look = HERO_CLASSES.knight.look) {
+// Łódź: kadłub z desek, maszt; sail = kolor żagla (null = żagiel zwinięty)
+function drawBoat(ctx, t, sail) {
+  const rock = Math.sin(t * 3) * 0.6;
+  ctx.strokeStyle = 'rgba(220,235,255,.55)'; ctx.lineWidth = 1; for (const [x0, y0] of [[-17, 8], [10, 9], [-4, 11]]) { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + 7, y0); ctx.stroke(); }
+  fillPoly(ctx, [[-15, -1 + rock], [16, -2 - rock], [11, 7], [-11, 7]], '#6a4424'); fillPoly(ctx, [[-15, -1 + rock], [16, -2 - rock], [15, 1 - rock], [-14, 2 + rock]], '#9a6a38');
+  ctx.strokeStyle = '#4a2e14'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-12, 3); ctx.lineTo(13, 3); ctx.moveTo(-11, 5.2); ctx.lineTo(12, 5.2); ctx.stroke();
+  fillPoly(ctx, [[14, -2 - rock], [19, -6 - rock], [17, -1 - rock]], '#6a4424');
+  ctx.strokeStyle = '#3a2412'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(1, 0); ctx.lineTo(1, -27); ctx.stroke();
+  if (sail) { ctx.fillStyle = sail; ctx.beginPath(); ctx.moveTo(1.5, -26); ctx.quadraticCurveTo(12 + Math.sin(t * 4) * 1.2, -18, 2, -8); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(1.5, -18, 5, 1.5); }
+  else { ctx.fillStyle = '#e0d4b0'; ctx.fillRect(-1, -24, 5, 3); }
+}
+function drawHeroSprite(ctx, x, y, dir, col, t, moving, look = HERO_CLASSES.knight.look, boat = false) {
   ctx.save(); ctx.translate(x, y + 4); ctx.scale(dir, 1);
+  if (boat) { // bohater w łodzi: kadłub, żagiel w barwach gracza, postać na rufie
+    drawBoat(ctx, t, col); const ry = -1 + Math.sin(t * 3) * 0.5;
+    ctx.fillStyle = look.armor; rr(ctx, -10, ry - 11, 7, 10, 2); ctx.fill(); ctx.fillStyle = col; ctx.fillRect(-9, ry - 8, 5, 6);
+    if (look.hood) { circ(ctx, -6.5, ry - 13.5, 3, look.skin); ctx.fillStyle = look.hood; ctx.beginPath(); ctx.moveTo(-10, ry - 10); ctx.quadraticCurveTo(-10.5, ry - 18, -6.5, ry - 18.5); ctx.quadraticCurveTo(-3, ry - 17, -3, ry - 13); ctx.lineTo(-6, ry - 15); ctx.closePath(); ctx.fill(); }
+    else { circ(ctx, -6.5, ry - 14, 3.4, look.helm); ctx.fillStyle = '#1a1a22'; ctx.fillRect(-6, ry - 14.5, 3, 1.2); }
+    ctx.restore(); return;
+  }
   const bob = moving ? Math.sin(t * 22) * 1.2 : 0, hc = look.horse;
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 9, 14, 4, 0, 0, TAU); ctx.fill();
   ctx.lineCap = 'round';
@@ -665,6 +683,7 @@ const obstacleSprite = (o, t, v) => sprite(`ob${o}_${t}_${v}`, 40, 38, 20, 26, p
 const decorSprite = (t, v) => sprite(`dec${t}_${v}`, 12, 10, 6, 7, p => drawDecor(p, t, v), null);
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
+const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
 // Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki
 const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1 };
@@ -698,7 +717,7 @@ function tintSprite(s, col) {
 }
 function heroSprite(h, col) {
   const moving = !!h.anim, fr = Math.floor(G.time * (moving ? 12 : 4)) % 4, tk = moving ? fr * TAU / 88 : fr * TAU / 20;
-  return sprite(`hero_${h.cls}_${col}_${h.dir}_${moving ? 1 : 0}_${fr}`, 26, 26, 13, 17, p => drawHeroSprite(p, 0, 0, h.dir, col, tk, moving, heroClass(h).look));
+  return sprite(`hero_${h.cls}_${col}_${h.dir}_${moving ? 1 : 0}_${fr}_${h.boat ? 1 : 0}`, 26, 26, 13, 17, p => drawHeroSprite(p, 0, 0, h.dir, col, h.boat ? fr * TAU / 12 : tk, moving, heroClass(h).look, !!h.boat));
 }
 function flagSprite(col, len, hgt) {
   const fr = Math.floor(G.time * 6) % 4;

@@ -13,15 +13,44 @@ function reveal(st, cx, cy, r, owner = ME) {
   }
   if (changed && owner === ME) MapRender.miniDirty = true;
 }
-function passableTile(st, x, y) {
+// Pole, na które można wejść. Woda tylko dla bohatera w łodzi albo jako pole z łodzią (wsiadanie).
+function passableTile(st, x, y, h = null) {
   const map = st.map, n = map.n; if (x < 0 || y < 0 || x >= n || y >= n) return false;
-  const i = y * n + x; return !!human(st).explored[i] && map.terrain[i] !== TER.WATER && !map.obst[i];
+  const i = y * n + x; if (!human(st).explored[i] || map.obst[i]) return false;
+  return map.terrain[i] !== TER.WATER || !!(h && (h.boat || boatAt(st, i)));
+}
+// --- statki: łódź to obiekt na wodzie; bohater wsiada, wchodząc na nią, a wysiada na brzeg (koniec ruchu na dziś) ---
+const BOAT_COST = { gold: 1000, wood: 10 };
+const boatAt = (st, i) => { const o = objectAt(st, i); return !!(o && o.type === 'boat'); };
+function addBoat(st, x, y) { const ob = { id: st.objects.length, type: 'boat', x, y }; st.objects.push(ob); rebuildObjIndex(st); return ob; }
+// Krok po wodzie: w łodzi tylko po wodzie, brzeg wyłącznie jako cel; pieszo woda tylko jako cel (łódź)
+function legOk(st, h, i, j, target) {
+  const w = st.map.terrain; return h && h.boat ? (w[j] === TER.WATER || (j === target && w[i] === TER.WATER)) : (w[j] !== TER.WATER || j === target);
+}
+// Miejsce na nową łódź ze stoczni: najbliższa wolna woda przy brzegu w promieniu 4 pól od miasta
+function shipyardSpot(st, t) {
+  const map = st.map, n = map.n; let best = null;
+  for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+    const x = t.x + dx, y = t.y + dy, i = y * n + x; if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1 || map.terrain[i] !== TER.WATER || st.objAt[i] || heroAt(st, x, y)) continue;
+    let coast = false; for (let d = 0; d < 8; d++) { const j = (y + DY8[d]) * n + x + DX8[d]; if (map.terrain[j] !== TER.WATER && !map.obst[j]) coast = true; }
+    const d = dx * dx + dy * dy; if (coast && (!best || d < best.d)) best = { x, y, d };
+  }
+  return best;
+}
+// Czy miasto leży nad wodą (stocznię można zbudować tylko nad wodą)
+function townCoastal(st, t) { const map = st.map, n = map.n; for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = t.x + dx, y = t.y + dy; if (x >= 0 && y >= 0 && x < n && y < n && map.terrain[y * n + x] === TER.WATER) return true; } return false; }
+// Kupno łodzi w stoczni. Zwraca błąd albo null.
+function buyBoat(st, t) {
+  if (!hasB(t, 'shipyard')) return 'Brak stoczni'; if (!canAfford(st, BOAT_COST, t.owner)) return 'Brakuje zasobów na łódź';
+  const p = shipyardSpot(st, t); if (!p) return 'Przy stoczni nie ma wolnego miejsca na wodzie';
+  const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (BOAT_COST[r.id]) R[r.id] -= BOAT_COST[r.id];
+  addBoat(st, p.x, p.y); return null;
 }
 // Koszt kroku liczony wg terenu, z którego bohater wychodzi; droga działa, gdy oba pola mają drogę.
 // Znajdowanie drogi (h) zmniejsza narzut trudnego terenu ponad 100.
 function baseCost(map, i, j, h) {
   if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
-  const c = TERRAINS[map.terrain[i]].cost, pf = h ? skillVal(h, 'pathfinding') : 0;
+  const c = TERRAINS[map.terrain[i]].cost || 100, pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
   return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
 }
 function stepCost(map, fx, fy, tx, ty, h) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx, h); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
@@ -50,16 +79,16 @@ function objBlocks(st, j, target, tg = 0) {
   return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
 }
 function computePath(st, h, tx, ty) {
-  if (!passableTile(st, tx, ty)) return null; const map = st.map, n = map.n, t = ty * n + tx;
+  if (!passableTile(st, tx, ty, h)) return null; const map = st.map, n = map.n, t = ty * n + tx;
   if (objBlocks(st, t, t)) return null;
   const tob = objectAt(st, t), tg = tob && tob.type === 'monster' ? tob.id + 1 : 0;
-  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j, h) : Infinity, 50);
+  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0, h) && legOk(st, h, i, j, t) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j, h) : Infinity, 50);
   return p && p.length > 1 ? p.slice(1).map(i => [i % n, (i / n) | 0]) : null;
 }
 function heroCanStillMove(st, h) {
   if (!armySize(h.army)) return false;
   const n = st.map.n;
-  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y, h) <= h.mp) return true; }
+  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y, h) && legOk(st, h, h.y * n + h.x, j, j) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y, h) <= h.mp) return true; }
   return false;
 }
 function heroStep(st, h) {
@@ -73,6 +102,8 @@ function heroStep(st, h) {
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h)); if (h.owner === ME) Sound.play('step');
   if (!h.path.length) { h.path = null; h.dest = null; }
+  if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); if (h.owner === ME) Sound.play('boat'); return true; }
+  if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; if (h.owner === ME) Sound.play('boat'); } // wysiadka: łódź zostaje przy brzegu
   if (st.guard[ni]) { const m = st.objects[st.guard[ni] - 1]; halt(); h.pending = () => startEncounter(st, h, m); }
   else if (ob) { halt(); h.pending = () => visitObject(st, h, ob); }
   return true;
@@ -245,6 +276,7 @@ function castAdventure(st, h, id) {
     if (h.mp < 300) return 'Za mało punktów ruchu (potrzeba 300)';
     const t = st.towns.filter(t => t.owner === h.owner && !heroAt(st, t.x, t.y)).sort((a, b) => Math.hypot(a.x - h.x, a.y - h.y) - Math.hypot(b.x - h.x, b.y - h.y))[0];
     if (!t) return 'Brak wolnego własnego miasta';
+    if (h.boat) { h.boat = false; addBoat(st, h.x, h.y); } // łódź zostaje na wodzie
     h.x = t.x; h.y = t.y; h.mp -= 300; h.path = null; h.dest = null; reveal(st, h.x, h.y, heroSight(h)); centerCam(st, h.x, h.y);
   }
   h.mana -= S.cost; return null;
@@ -370,7 +402,7 @@ const hasB = (t, id) => t.built.includes(id);
 const canAfford = (st, cost, owner = ME) => RESOURCES.every(r => (playerOf(st, owner).resources[r.id] || 0) >= (cost[r.id] || 0));
 const reqMet = (t, B) => B.req.every(r => hasB(t, r));
 function townGold(t) { let g = 0; for (const id of ['hall1', 'hall2', 'hall3', 'hall4']) if (hasB(t, id)) g = BUILD_BY_ID[id].gold; return g; }
-function availableBuildings(t) { return BUILDINGS.filter(B => !hasB(t, B.id) && reqMet(t, B)); }
+function availableBuildings(t, st = G.state) { return BUILDINGS.filter(B => !hasB(t, B.id) && reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t)))); }
 function slotBuilding(t, slot) { let best = null; for (const B of BUILDINGS) if (B.slot === slot && hasB(t, B.id)) best = B; return best; }
 function buildIn(st, t, B) {
   const R = playerOf(st, t.owner).resources;
