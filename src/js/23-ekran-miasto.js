@@ -35,6 +35,18 @@ G.screens.town = {
       drawHeroPortrait(ctx, x, cy - 44, look, ownerColor(st, t.owner), 2);
     }) });
   },
+  // Kuźnia: machiny wojenne dla bohatera stojącego w mieście
+  showSmith() {
+    const st = G.state, t = this.town(), h = heroInTown(st, t);
+    if (!h) return showDialog('Kuźnia sprzedaje machiny wojenne: balistę, namiot medyka i wóz z amunicją. Wprowadź bohatera do miasta, aby je kupić.', [{ label: 'OK', key: 'enter' }]);
+    const offer = MACHINES.filter(id => !h.machines.includes(id));
+    if (!offer.length) return showDialog(`${h.name} ma już wszystkie machiny wojenne.`, [{ label: 'OK', key: 'enter' }]);
+    const bw = 150, gap = 24, total = offer.length * bw + (offer.length - 1) * gap;
+    showDialog(`Kuźnia: machiny dla bohatera ${h.name}. Balista strzela co rundę, namiot medyka leczy rannych, a wóz z amunicją daje strzelcom niekończące się strzały.`, [
+      ...offer.map(id => ({ label: CREATURES[id].name, sub: `${CREATURES[id].cost.gold} złota`, tip: stackInfo({ cid: id, n: 1 }), action: () => { const e = buyMachine(st, t, h, id); this.say(e || `Kupiono: ${CREATURES[id].name.toLowerCase()}`); if (!e) this.showSmith(); } })),
+      { label: 'Wyjdź', key: 'escape' },
+    ], { bw, iconH: 70, icon: (ctx, cx, cy) => offer.forEach((id, i) => drawSprite(ctx, battleSprite(id, 1, 'idle', 0), cx - total / 2 + i * (bw + gap) + bw / 2, cy + 26, 1)) });
+  },
   showGuild() {
     const t = this.town(), L = guildLevel(t), F = factionOf(t.faction);
     const lines = []; for (let k = 1; k <= L; k++) lines.push(`poziom ${k}: ${((t.guild || {})[k] || []).map(id => SPELLS[id].name).join(', ')}`);
@@ -78,6 +90,7 @@ G.screens.town = {
     const dw = B && /^dw(\d)u?$/.exec(B.id); if (dw) return showRecruit(st, t, +dw[1], m => this.say(m)); // siedlisko: werbunek
     if (B && /^guild/.test(B.id) && !(next && reqMet(t, next))) return this.showGuild();
     if (B && B.id === 'tavern') return this.showTavern();
+    if (B && B.id === 'smith') return this.showSmith();
     if (B && B.id === 'market' && !(next && reqMet(t, next))) return showMarket(st, t.owner, m => this.say(m));
     if (next && reqMet(t, next)) this.tryBuild(next);
     else if (next) showDialog(`${bInfo(next, fac).name} wymaga wcześniej: ${next.req.map(r => bInfo(BUILD_BY_ID[r], fac).name).join(', ')}.`, [{ label: 'OK', key: 'enter' }]);
@@ -89,7 +102,7 @@ G.screens.town = {
     const slot = this.armySlotAt(x, y);
     if (slot) return slot.a[slot.i] ? stackInfo(slot.a[slot.i]) : 'Wolne miejsce. Kliknij oddział, a potem miejsce, aby go przenieść, połączyć z takim samym albo zamienić.';
     const i = this.slotAt(x, y); if (i === null) return resourceBarInfo(G.state, x, y);
-    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'market' ? ' Kliknij, aby handlować.' : ''); }
+    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'smith' ? ' Kliknij, aby kupić machiny wojenne.' : B.id === 'market' ? ' Kliknij, aby handlować.' : ''); }
     const next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id)); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }
     return null;
   },

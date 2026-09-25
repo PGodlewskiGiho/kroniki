@@ -166,6 +166,17 @@ function placeObjects(st) {
     const a = add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x: p[0], y: p[1] }, [p[1] * n + p[0]]);
     guard(a, rar === 'major' ? 2 : rar === 'minor' ? 1 : 0);
   }
+  // miejsca (SITES): liczba wg gęstości, na małej mapie rzadsze z losowaniem; część pilnują potwory
+  for (const [kind, S] of Object.entries(SITES)) {
+    const want = N / S.per, cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);
+    for (let k = 0; k < cnt; k++) {
+      const p = pick((x, y) => dStart(x, y) >= (S.guard ? 7 : 4)); if (!p) continue;
+      const o = { type: 'site', kind, x: p[0], y: p[1], seen: {} };
+      if (kind === 'shrine') { const L = d01(p[0], p[1]) > 0.5 ? 2 : 1, pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L); o.spell = pool[Math.floor(rng() * pool.length)]; }
+      if (kind === 'windmill') o.res = RARE[Math.floor(rng() * RARE.length)];
+      add(o, [p[1] * n + p[0]]); if (S.guard) guard(o, 0);
+    }
+  }
   return objs;
 }
 function createTown(st, x, y, owner, fac = 'haven') {
@@ -181,7 +192,7 @@ function createTown(st, x, y, owner, fac = 'haven') {
   return t;
 }
 // Miasto niezależne w miejscu startowym: losowa frakcja, garnizon tym silniejszy, im dalej od gracza
-// (i im wyższy poziom trudności). Daleko stoją też mury, które dają obrońcom premię (TOWN_WALL_DEF).
+// (i im wyższy poziom trudności). Daleko stoją też mury (oblężenie w bitwie).
 function createNeutralTown(st, site, rng) {
   const n = st.map.n, dd = clamp(Math.hypot(site.x - st.map.start.x, site.y - st.map.start.y) / (n * 0.75), 0, 1);
   const fac = FACTIONS[Math.floor(rng() * FACTIONS.length)].id, t = createTown(st, site.x, site.y, -1, fac), F = factionOf(fac);

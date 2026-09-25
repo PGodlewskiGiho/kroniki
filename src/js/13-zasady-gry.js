@@ -91,6 +91,11 @@ function visitObject(st, h, ob) {
     removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
     showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}`, [{ label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art), cx, cy, 2) });
+  } else if (ob.type === 'site') {
+    const r = useSite(st, h, ob), S = SITES[ob.kind];
+    if (r.float) advFloat(r.float, h.x, h.y, r.res);
+    showDialog(`${S.name}. ${r.text}`, [{ label: 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); } }],
+      { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5) });
   } else if (ob.type === 'town') {
     if (ob.owner === h.owner) G.go('town', { townId: ob.townId }); else startTownAssault(st, h, st.towns[ob.townId]);
   } else if (ob.type === 'mine') {
@@ -147,6 +152,7 @@ function initHeroProgress(h) {
   if (!h.level) h.level = 1;
   if (!h.spells) h.spells = [...(CLASS_SPELLS[h.cls] || [])];
   if (!h.skills) h.skills = (CLASS_SKILLS[h.cls] || []).map(([id, lv]) => ({ id, lv }));
+  if (!h.machines) h.machines = [];
   if (h.mana == null) h.mana = heroMaxMana(h);
 }
 // --- umiejętności drugorzędne ---
@@ -177,7 +183,7 @@ const heroFactor = h => 1 + 0.05 * (heroStat(h, 'att') + heroStat(h, 'def'));
 // Każdy awans daje też wybór umiejętności: SI wybiera od razu, człowiek w oknie (po kolei, gdy awansów jest kilka).
 // then(): co zrobić po zamknięciu okien awansu (np. obejrzeć obiekt, na którym stoi bohater)
 function gainExp(st, h, amount, then) {
-  h.exp += Math.round(amount * (1 + skillVal(h, 'learning') / 100)); const ups = [];
+  h.exp += Math.round(amount * (1 + skillVal(h, 'learning') / 100 + (weekKind(st, 'exp') ? 0.25 : 0))); const ups = [];
   while (h.exp >= expForLevel(h.level + 1)) {
     h.level++; const g = (CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight).grow, r = thash(h.id, h.level, st.seed) % 100;
     let acc = 0, k = 0; for (; k < 3; k++) { acc += g[k]; if (r < acc) break; }
@@ -275,11 +281,53 @@ function dwellingUnits(t, L) {
   return u;
 }
 // Przyrost tygodniowy: bazowy z jednostki, +50% z Cytadelą, +100% z Zamkiem (opisy w BUILDINGS)
-function weeklyGrowth(t, L) {
-  const base = CREATURES[factionOf(t.faction).dw['dw' + L][1]].growth;
-  return Math.floor(base * (hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1));
+// Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
+function weeklyGrowth(t, L, st) {
+  const cid = factionOf(t.faction).dw['dw' + L][1], base = CREATURES[cid].growth, W = st && weekInfo(st);
+  return Math.floor(base * (hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
 }
-function townGrowthWeek(t) { for (const L of dwellingLevels(t)) t.avail[L] = (t.avail[L] || 0) + weeklyGrowth(t, L); }
+// Nowy tydzień: przyrost w siedliskach; w Miesiącu Zarazy zamiast przyrostu pula topnieje o połowę
+function townGrowthWeek(t, st) {
+  const plague = st && st.week === 1 && monthInfo(st).kind === 'plague';
+  for (const L of dwellingLevels(t)) t.avail[L] = plague ? Math.floor((t.avail[L] || 0) / 2) : (t.avail[L] || 0) + weeklyGrowth(t, L, st);
+}
+// --- tygodnie i miesiące z efektem (jak w oryginale). Wynik zależy tylko od daty i ziarna, więc nie trafia do zapisu. ---
+// Pierwszy tydzień gry jest spokojny. Potem: tydzień stworzenia (+5 przyrostu), Dobrobytu (złoto z miast +25%),
+// Górników (kopalnie dają podwójnie), Mędrców (doświadczenie +25%) albo spokojny tydzień z nazwą zwierzęcia.
+const WEEK_EFFECTS = {
+  gold: { name: 'Dobrobytu', text: 'miasta dają o 25% więcej złota' },
+  mines: { name: 'Górników', text: 'kopalnie wydobywają podwójnie' },
+  exp: { name: 'Mędrców', text: 'bohaterowie zdobywają o 25% więcej doświadczenia' },
+};
+let WEEK_CREATURES = null; // podstawowe jednostki poziomów 1–6 wszystkich frakcji
+function weekInfo(st) {
+  const h = thash(st.week, st.month, st.seed), calm = { kind: 'calm', name: WEEK_NAMES[h % WEEK_NAMES.length], text: '' };
+  if (st.week === 1 && st.month === 1) return calm;
+  const r = (h >>> 8) % 100;
+  if (r < 35) {
+    WEEK_CREATURES = WEEK_CREATURES || FACTIONS.flatMap(F => [1, 2, 3, 4, 5, 6].map(L => F.dw['dw' + L][1]));
+    const cid = WEEK_CREATURES[(h >>> 4) % WEEK_CREATURES.length], g = CREATURES[cid].gen;
+    return { kind: 'creature', cid, name: g[0].toUpperCase() + g.slice(1), text: `przyrost: ${CREATURES[cid].plural.toLowerCase()} +5` };
+  }
+  const kind = r < 50 ? 'gold' : r < 62 ? 'mines' : r < 74 ? 'exp' : null;
+  return kind ? { kind, ...WEEK_EFFECTS[kind] } : calm;
+}
+const weekKind = (st, k) => weekInfo(st).kind === k;
+// Miesiąc (od drugiego): Zaraza (pule siedlisk −50% zamiast przyrostu) albo Potworów (potwory na mapie +50%)
+function monthInfo(st) {
+  if (st.month < 2) return { kind: 'calm', name: '', text: '' };
+  const r = thash(st.month, 7717, st.seed) % 100;
+  return r < 15 ? { kind: 'plague', name: 'Zarazy', text: 'zaraza: w siedliskach zostaje połowa jednostek, bez przyrostu' }
+    : r < 40 ? { kind: 'monsters', name: 'Potworów', text: 'potworów na mapie jest o połowę więcej' } : { kind: 'calm', name: '', text: '' };
+}
+// Wieści na nowy tydzień (i miesiąc) oraz jednorazowe skutki miesiąca
+function startWeek(st, newMonth) {
+  const M = newMonth ? monthInfo(st) : null, W = weekInfo(st);
+  if (M && M.kind === 'monsters') for (const o of st.objects) if (o.type === 'monster' && !o.dead) o.count = Math.ceil(o.count * 1.5);
+  for (const t of st.towns) townGrowthWeek(t, st);
+  const head = newMonth ? (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
+  return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
+}
 const unitCost = cid => CREATURES[cid].cost || { gold: CREATURES[cid].value };
 function maxAffordable(st, cost, owner = ME) {
   const R = playerOf(st, owner).resources; let m = Infinity;
@@ -309,8 +357,8 @@ function armyMove(fromA, i, toA, j, heroArmies = []) {
 // Dzienny dochód gracza { wood, ..., gold }: kopalnie + miasta. Jedno źródło dla końca dnia, panelu i okna królestwa.
 function dailyIncomeAll(st, owner = ME) {
   const inc = Object.fromEntries(RESOURCES.map(r => [r.id, 0]));
-  for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === owner) inc[ob.kind] += MINES[ob.kind].income;
-  for (const t of st.towns) if (t.owner === owner) { inc.gold += townGold(t); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; } }
+  for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === owner) inc[ob.kind] += MINES[ob.kind].income * (weekKind(st, 'mines') ? 2 : 1);
+  for (const t of st.towns) if (t.owner === owner) { inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; } }
   for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates');
   return inc;
 }
@@ -329,7 +377,7 @@ function buildIn(st, t, B) {
   for (const r of RESOURCES) if (B.cost[r.id]) R[r.id] -= B.cost[r.id];
   t.built.push(B.id); t.builtToday = true;
   const gm = /^guild(\d)$/.exec(B.id); if (gm) rollGuildLevel(st, t, +gm[1]);
-  const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1]); // nowe siedlisko od razu daje przyrost
+  const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1], st); // nowe siedlisko od razu daje przyrost
 }
 // --- rynek: handel surowcami ---------------------------------------------------------------
 // Wartość surowca w złocie; kupno drożeje, a sprzedaż tanieje, im mniej rynków ma gracz (jak w oryginale).
@@ -382,3 +430,53 @@ function hireHero(st, t, k) {
   return { hero: h };
 }
 
+// Kuźnia: machina wojenna dla bohatera stojącego w mieście (każdej najwyżej jedna). Zwraca błąd albo null.
+function buyMachine(st, t, h, id) {
+  if (!hasB(t, 'smith')) return 'Brak kuźni';
+  if (!h || !heroInTown(st, t) || heroInTown(st, t) !== h) return 'Bohater musi stać w mieście';
+  if (h.machines.includes(id)) return 'Bohater ma już tę machinę';
+  const cost = CREATURES[id].cost; if (!canAfford(st, cost, h.owner)) return 'Brakuje złota';
+  const R = playerOf(st, h.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id];
+  h.machines.push(id); return null;
+}
+// --- miejsca na mapie (SITES) ---
+// Znacznik odwiedzin: dla kogo (bohater, gracz albo cały świat) i do kiedy nagroda jest wykorzystana
+function siteStamp(st, ob, h) {
+  const u = SITES[ob.kind].use, wk = weekIndex(st);
+  return u === 'hero' ? [h.id, 1] : u === 'day' ? [h.id, st.dayTotal] : u === 'heroWeek' ? [h.id, wk] : u === 'week' ? ['all', wk] : ['p' + h.owner, 1];
+}
+const siteUsed = (st, ob, h) => { const [k, v] = siteStamp(st, ob, h); return (ob.seen || {})[k] === v; };
+// Skutek odwiedzin (człowiek i SI). Zwraca { text, float?, res?, exp? }; doświadczenie dolicza wołający (okno awansu).
+function useSite(st, h, ob) {
+  const S = SITES[ob.kind], R = playerOf(st, h.owner).resources;
+  if (siteUsed(st, ob, h)) return { text: { hero: `${h.name} już tu był${h.female ? 'a' : ''}.`, day: 'Dziś już stąd korzystano. Wróć jutro.', heroWeek: 'W tym tygodniu już stąd korzystano.', week: 'W tym tygodniu plon już zebrano. Wróć w następnym.', player: 'Okolica jest już odsłonięta.' }[S.use] };
+  const [k, v] = siteStamp(st, ob, h); const mark = () => { ob.seen = ob.seen || {}; ob.seen[k] = v; };
+  switch (ob.kind) {
+    case 'shrine': {
+      const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
+      mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(heroStat(h, 'sp'))}.` };
+    }
+    case 'well': {
+      const max = heroMaxMana(h); if (h.mana >= max) return { text: 'Woda jest orzeźwiająca, ale mana bohatera jest już pełna.' };
+      mark(); h.mana = max; return { text: `Mana bohatera wraca do pełna (${max}).`, float: `mana ${max}` };
+    }
+    case 'windmill': { const a = 3 + thash(ob.id, weekIndex(st), st.seed) % 4; mark(); R[ob.res] += a; return { text: `Młynarz oddaje tygodniowy plon: ${a} (${resName(ob.res).toLowerCase()}).`, float: `+${a}`, res: ob.res }; }
+    case 'waterMill': mark(); R.gold += 1000; return { text: 'Młynarz oddaje tygodniowy utarg: 1000 złota.', float: '+1000', res: 'gold' };
+    case 'stone': mark(); return { text: `Runy na kamieniu dzielą się pradawną wiedzą: +${SITE_EXP} doświadczenia.`, float: `+${SITE_EXP} dośw.`, exp: SITE_EXP };
+    case 'temple': case 'fountain': {
+      const key = ob.kind === 'temple' ? 'morale' : 'luck'; mark(); h.boost = { ...(h.boost || {}), [key]: 1 };
+      return { text: ob.kind === 'temple' ? 'Modlitwa dodaje wojsku ducha: +1 do morale do końca następnej bitwy.' : 'Moneta wrzucona do fontanny przynosi szczęście: +1 do końca następnej bitwy.' };
+    }
+    case 'stables': mark(); h.mp += SITE_MP; return { text: `Świeże konie: +${SITE_MP} punktów ruchu na dziś.` };
+    case 'lookout': mark(); reveal(st, ob.x, ob.y, LOOKOUT_R, h.owner); MapRender.miniDirty = true; return { text: `Z wieży widać okolicę w promieniu ${LOOKOUT_R} pól.` };
+  }
+  if (S.stat) { mark(); h.stats[S.stat]++; const P = PRIMARY.find(p => p.id === S.stat); if (S.stat === 'kn') h.mana = Math.min(heroMaxMana(h), h.mana + 10); return { text: `${h.name}: ${P.name.toLowerCase()} +1 (teraz ${h.stats[S.stat]}).`, float: `${P.name} +1` }; }
+  return { text: '' };
+}
+// Opis miejsca w dymku: co daje i czy wybrany bohater już z niego skorzystał
+function siteInfo(st, ob, h) {
+  const S = SITES[ob.kind];
+  const what = ob.kind === 'shrine' ? `uczy czaru „${SPELLS[ob.spell].name}” (poziom ${SPELLS[ob.spell].level})` : ob.kind === 'windmill' ? `co tydzień 3–6 jednostek surowca (${resName(ob.res).toLowerCase()}) dla pierwszego gościa` : S.desc;
+  const used = h && siteUsed(st, ob, h) ? { hero: ' Ten bohater już tu był.', day: ' Dziś już wykorzystane.', heroWeek: ' W tym tygodniu już wykorzystane.', week: ' Plon z tego tygodnia już zebrany.', player: ' Już odwiedzone.' }[S.use] : '';
+  return `${S.name}: ${what}.${used}${st.guard[ob.y * st.map.n + ob.x] ? ' Pilnuje go potwór.' : ''}`;
+}

@@ -79,8 +79,9 @@ G.screens.battle = {
   },
   startTurnFor(u) {
     const B = this.B; this.casting = null;
-    const ai = B.auto || !humanSide(B, u.side);
-    if (ai && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
+    const mach = isMachine(u) && humanSide(B, u.side) && !B.auto; // machiny gracza działają same
+    const ai = mach || B.auto || !humanSide(B, u.side);
+    if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
     if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
     this.phase = 'input'; this.reach = battleDist(B, u, unitSpd(u));
     this.bWait.disabled = u.waited; this.onPointerMove(G.mouse.x, G.mouse.y);
@@ -105,7 +106,7 @@ G.screens.battle = {
     if (this.play) { this.play.t += dt; this.stepPlay(); return; }
     if (B.fx.length) { this.startPlay(B.fx.shift()); return; }
     if (this.phase === 'play') {
-      if (this.resume) { this.resume = false; if (alive(B, 0).length && alive(B, 1).length && !B.active.dead) { this.startTurnFor(B.active); return; } }
+      if (this.resume) { this.resume = false; if (fighters(B, 0).length && fighters(B, 1).length && !B.active.dead) { this.startTurnFor(B.active); return; } }
       this.nextTurn(); return;
     }
     if (this.phase === 'ai') { this.timer -= dt; if (this.timer <= 0) { aiAct(B, B.active); this.phase = 'play'; } return; }
@@ -115,12 +116,12 @@ G.screens.battle = {
   startPlay(fx) {
     const sp = this.B.auto ? 0.55 : 1, S = fx.kind === 'spell' ? SPELL_FX[fx.id] || {} : null;
     const dur = fx.kind === 'move' ? (fx.fly ? 0.35 + 0.07 * hexDistance({ x: fx.path[0][0], y: fx.path[0][1] }, { x: fx.u.x, y: fx.u.y }) : 0.17 * (fx.path.length - 1))
-      : fx.kind === 'hit' ? (fx.a ? 0.62 : 0.3) : fx.kind === 'shot' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
+      : fx.kind === 'hit' ? (fx.a ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
     const now = G.time;
     if (fx.kind === 'move') fx.u.anim = { pose: 'walk', t0: now, dur: this.play.dur };
     if (fx.kind === 'hit' && fx.a) fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur };
-    if (fx.kind === 'shot') fx.a.anim = { pose: 'attack', t0: now, dur: 0.55 * sp };
+    if (fx.kind === 'shot' || fx.kind === 'siege') fx.a.anim = { pose: 'attack', t0: now, dur: 0.55 * sp };
   },
   // Trafienie: błysk, odrzut, iskry, liczba obrażeń; zabity oddział przewraca się
   impact(tg, dmg, killed, col = '#ffe8a0') {
@@ -149,6 +150,14 @@ G.screens.battle = {
       }
       if (p.launched && !p.landed && p.t >= p.hitAt) { p.landed = true; this.impact(p.tg, p.dmg, p.killed, orb ? col : '#ffe8a0'); if (orb) BattleFX.emit(p.tg.px, p.tg.py - 16, { n: 14, col: [col, '#ffffff'], spd: 90, life: 0.4, size: 3, glow: true }); }
       if (p.hitAt) p.dur = Math.max(p.dur, p.hitAt + 0.15);
+    } else if (p.kind === 'siege') { // głaz z katapulty w mur
+      const [tx, ty] = hexCenter(p.x, p.y);
+      if (!p.launched && f >= 0.4) { p.launched = true; p.pr = BattleFX.proj('rock', p.a.px, p.a.py - 26, tx + (p.hit ? 0 : 20), ty - 20, 0.5 * p.sp, '#8a847a', 90); p.hitAt = p.t + p.pr.dur; }
+      if (p.launched && !p.landed && p.t >= p.hitAt) {
+        p.landed = true; BattleFX.emit(tx, ty - 16, { n: p.broken ? 40 : 18, col: ['#9a948a', '#6e6a62', '#c8c0b0'], spd: 120, up: -60, g: 300, life: 0.7, size: 4, jx: 20 });
+        BattleFX.shake = Math.max(BattleFX.shake, p.broken ? 6 : 3); this.floats.push({ x: tx, y: ty - 50, text: p.hit ? (p.broken ? 'Wyłom!' : 'Trafienie!') : 'Pudło', t: G.time, col: '#e8e0cc', small: true });
+      }
+      if (p.hitAt) p.dur = Math.max(p.dur, p.hitAt + 0.2);
     } else if (p.kind === 'heal') {
       if (!p.landed) { p.landed = true; const u = p.u;
         if (p.label) this.floats.push({ x: u.px, y: u.py - 50, text: p.label, t: G.time, col: '#ffe08a', small: true });
@@ -175,7 +184,7 @@ G.screens.battle = {
   unitLook(u) {
     const d = u.side === 0 ? 1 : -1, now = G.time, a = u.anim && now - u.anim.t0 < u.anim.dur ? u.anim : null;
     let pose = 'idle', i = Math.floor(now * 3.5 + u.id * 1.37) % BATTLE_FRAMES.idle, ox = 0;
-    if (this.phase === 'intro') { pose = 'walk'; i = Math.floor(now * 10) % BATTLE_FRAMES.walk; ox = -d * (1 - ease(clamp(this.intro.t / this.intro.dur, 0, 1))) * 110; }
+    if (this.phase === 'intro' && u.cid !== 'arrowTower') { pose = 'walk'; i = Math.floor(now * 10) % BATTLE_FRAMES.walk; ox = -d * (1 - ease(clamp(this.intro.t / this.intro.dur, 0, 1))) * 110; }
     else if (a) {
       const f = clamp((now - a.t0) / a.dur, 0, 1); pose = a.pose;
       i = pose === 'walk' ? Math.floor(now * 10) % BATTLE_FRAMES.walk : pose === 'attack' ? Math.min(BATTLE_FRAMES.attack - 1, Math.floor(f * BATTLE_FRAMES.attack)) : 0;
@@ -193,7 +202,7 @@ G.screens.battle = {
       this.preview = spellTargetOk(B, id, tu) ? { kind: 'cast', id, x: hx.x, y: hx.y, target: tu } : { kind: 'nocast', id }; return;
     }
     const occ = unitAt(B, hx.x, hx.y), k = hexKey(hx.x, hx.y);
-    if (occ && occ.side !== u.side) {
+    if (occ && occ.side !== u.side && targetable(occ)) {
       if (canShoot(B, u)) { this.preview = { kind: 'shoot', target: occ, est: estimateStrike(B, u, occ, true) }; return; }
       let best = null;
       for (const [nx, ny] of hexNeighbors(occ.x, occ.y)) {
@@ -213,7 +222,9 @@ G.screens.battle = {
     else if (p.kind === 'move') this.player(u => actMoveAttack(B, u, pathTo(this.reach, u, ...p.to), null));
   },
   rightInfo(x, y) {
-    const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y); if (!u) return null;
+    const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y), w = hx && wallAt(this.B, hx.x, hx.y);
+    if (w && !u) return w.hp <= 0 ? `${w.kind === 'gate' ? 'Rozbita brama' : 'Wyłom w murze'}: można tędy przejść.` : w.kind === 'gate' ? `Brama miasta (wytrzymałość ${w.hp}/${w.max}): przepuszcza tylko obrońców. Rozbija ją katapulta.` : `Mur miasta (wytrzymałość ${w.hp}/${w.max}). Strzały zza muru tracą połowę siły; katapulta robi wyłomy.`;
+    if (!u) return null;
     const c = CREATURES[u.cid];
     const ab = abilText(c);
     return `${c.plural}: ${u.n} (${humanSide(this.B, u.side) ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''} Morale ${signed(unitMorale(this.B, u))}, szczęście ${signed(unitLuck(this.B, u))}.${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
@@ -241,7 +252,9 @@ G.screens.battle = {
     // oddziały i przeszkody (od góry ekranu w dół, żeby niższe zasłaniały wyższe)
     const shown = B.units.filter(u => !u.dead || u.dieT == null || G.time - u.dieT <= 0.45);
     const obst = [...B.obst].map(([k, o]) => { const x = k % BCOLS, y = Math.floor(k / BCOLS), [px, py] = hexCenter(x, y); return { obst: o, px, py }; });
-    for (const u of [...shown, ...obst].sort((a, b) => a.py - b.py)) {
+    const walls = B.walls ? [...B.walls.values()].map(w => { const [px, py] = hexCenter(w.x, w.y); return { wall: w, px, py: py - 0.1 }; }) : [];
+    for (const u of [...shown, ...obst, ...walls].sort((a, b) => a.py - b.py)) {
+      if (u.wall) { const w = u.wall; drawSprite(ctx, wallSprite(w.kind === 'tower' ? 'wall' : w.kind, w.hp <= 0 ? 'down' : w.hp < w.max ? 'hit' : 'ok'), u.px, u.py + 14, 1); continue; }
       if (u.obst) { drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
       const L = this.unitLook(u), gx = u.px + L.ox, gy = u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
       ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15 * sz, 5 * sz, 0, 0, TAU); ctx.fill();

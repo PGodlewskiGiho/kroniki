@@ -37,6 +37,52 @@ function placeSide(B, side, stacks) {
     });
   }
 }
+// Machiny bohatera stają za armią: najpierw w narożnikach (balista u góry, namiot na dole), potem na wolnych polach od krawędzi
+function placeMachines(B, side, h) {
+  const ms = MACHINES.filter(id => h && (h.machines || []).includes(id)), rows = [0, BROWS - 1, 1, BROWS - 2, 2, 6, 3, 5, 4];
+  for (const cid of ms) {
+    let spot = null;
+    for (let c = 0; c < 3 && !spot; c++) for (const y of rows) { const x = side === 0 ? c : BCOLS - 1 - c; if (isFree(B, x, y, side)) { spot = [x, y]; break; } }
+    if (!spot) continue; const cr = CREATURES[cid];
+    B.units.push({ id: B.units.length, side, cid, n: 1, n0: 1, hp: cr.hp, shots: cr.shots || 0, x: spot[0], y: spot[1], src: 'machine', slot: null, retaliated: false, defending: false, waited: false, dead: false, buffs: {} });
+  }
+}
+// --- oblężenie: mur z bramą w kolumnie SIEGE_X (Fort i wyżej), wieże strzelnicze (Cytadela: jedna, Zamek: dwie)
+// i katapulta atakującego, która co rundę rzuca głazem w mur. Brama przepuszcza tylko obrońców; lotnicy przelatują.
+const SIEGE_X = 9, GATE_Y = 4;
+const wallAt = (B, x, y) => (B.walls ? B.walls.get(hexKey(x, y)) : null);
+const walled = (B, x, y, side) => { const w = wallAt(B, x, y); return !!w && w.hp > 0 && (w.kind !== 'gate' || side !== 1); };
+const targetable = u => u.cid !== 'arrowTower'; // wież nie da się zaatakować
+function addFixed(B, side, cid, x, y, n, src) {
+  const cr = CREATURES[cid];
+  B.units.push({ id: B.units.length, side, cid, n, n0: n, hp: cr.hp, shots: cr.shots || 0, x, y, src, slot: null, retaliated: false, defending: false, waited: false, dead: false, buffs: {} });
+}
+function freeSpot(B, side, rows) {
+  for (let c = 0; c < 3; c++) for (const y of rows) { const x = side === 0 ? c : BCOLS - 1 - c; if (isFree(B, x, y, side)) return [x, y]; }
+  return null;
+}
+function setupSiege(B, t) {
+  const L = townLevel(t); if (!L) return;
+  const hp = L >= 2 ? 3 : 2, towers = L >= 3 ? [0, BROWS - 1] : L >= 2 ? [0] : [];
+  B.walls = new Map(); B.siege = { level: L };
+  for (let y = 0; y < BROWS; y++) {
+    const tower = towers.includes(y);
+    B.walls.set(hexKey(SIEGE_X, y), { x: SIEGE_X, y, kind: tower ? 'tower' : y === GATE_Y ? 'gate' : 'wall', hp: tower ? Infinity : hp, max: hp });
+    if (tower) addFixed(B, 1, 'arrowTower', SIEGE_X, y, 1 + dwellingLevels(t).length, 'siege'); // siła wieży rośnie z liczbą siedlisk
+  }
+  const spot = freeSpot(B, 0, [BROWS - 1, 0, BROWS - 2, 1, 7, 2, 6, 3, 5, 4]); if (spot) addFixed(B, 0, 'catapult', spot[0], spot[1], 1, 'siege');
+}
+// Katapulta: głaz w bramę (co drugi rzut) albo w losowy fragment muru; trafia 3 razy na 4
+function actCatapult(B, u) {
+  u.acted = true;
+  const segs = [...B.walls.values()].filter(w => w.kind !== 'tower' && w.hp > 0);
+  if (!segs.length) { B.log.push('Katapulta: mury już leżą w gruzach.'); return; }
+  const gate = segs.find(w => w.kind === 'gate'), w = gate && B.rng() < 0.5 ? gate : segs[Math.floor(B.rng() * segs.length)], hit = B.rng() < 0.75;
+  if (hit) w.hp--;
+  const what = w.kind === 'gate' ? 'brama' : 'mur';
+  B.log.push(hit ? (w.hp <= 0 ? `Katapulta: ${what} ${w.kind === 'gate' ? 'rozbita' : 'runął'}!` : `Katapulta trafia: ${what} słabnie.`) : 'Katapulta chybia.');
+  if (B.fx) B.fx.push({ kind: 'siege', a: u, x: w.x, y: w.y, hit, broken: hit && w.hp <= 0 });
+}
 // foe: potwór z mapy, bohater albo miasto
 function createBattle(st, h, foe) {
   const D = battleSide(st, foe);
@@ -45,11 +91,14 @@ function createBattle(st, h, foe) {
     rng: mulberry32(st.seed ^ (st.dayTotal * 7919) ^ (D.key * 104729)), prevPos: h.prev ? [...h.prev] : null };
   placeSide(B, 0, armyEntries(h.army, 'hero'));
   placeSide(B, 1, D.stacks);
+  if (D.town) setupSiege(B, D.town);
+  placeMachines(B, 0, h); placeMachines(B, 1, D.hero);
   B.morale = [sideMorale(B, 0), sideMorale(B, 1)]; B.luck = [sideLuck(B, 0), sideLuck(B, 1)];
   // przeszkody ze środka pola: te same drzewa i skały co na mapie przygody (typ + wariant rysunku)
   const cnt = 3 + Math.floor(B.rng() * 4);
+  const xMax = B.walls ? SIEGE_X - 2 : BCOLS - 3; // przy oblężeniu przeszkody tylko przed murem
   for (let k = 0, tries = 0; k < cnt && tries < 60; tries++) {
-    const x = 2 + Math.floor(B.rng() * (BCOLS - 4)), y = Math.floor(B.rng() * BROWS), key = hexKey(x, y);
+    const x = 2 + Math.floor(B.rng() * (xMax - 1)), y = Math.floor(B.rng() * BROWS), key = hexKey(x, y);
     if (B.obst.has(key)) continue; B.obst.set(key, { o: B.rng() < 0.55 ? OBST.TREE : OBST.ROCK, v: Math.floor(B.rng() * 4) }); k++;
   }
   return B;
@@ -61,22 +110,26 @@ function armyMorale(cids, hero, town) {
   const facs = new Set(cids.map(cid => CREATURES[cid].faction)).size;
   let m = facs <= 1 ? 1 : facs === 2 ? 0 : facs === 3 ? -1 : -2;
   if (cids.some(cid => (CREATURES[cid].abil || []).includes('undead'))) m -= 1;
-  if (hero) m += heroBonus(hero, 'morale') + skillVal(hero, 'leadership');
+  if (hero) m += heroBonus(hero, 'morale') + skillVal(hero, 'leadership') + ((hero.boost || {}).morale || 0); // boost: świątynia do następnej bitwy
   if (town && hasB(town, 'tavern')) m += 1;
   return clamp(m, -3, 3);
 }
-const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') : 0, -3, 3);
-function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side).map(u => u.cid), S.hero, S.town); }
+const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') + ((h.boost || {}).luck || 0) : 0, -3, 3);
+function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side && !isMachine(u)).map(u => u.cid), S.hero, S.town); }
 const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
 // Nieumarli nie znają strachu ani zapału: morale zawsze 0
-const unitMorale = (B, u) => (hasAb(u, 'undead') || !B.morale ? 0 : B.morale[u.side]);
+const unitMorale = (B, u) => (hasAb(u, 'undead') || isMachine(u) || !B.morale ? 0 : B.morale[u.side]);
 const unitLuck = (B, u) => (B.luck ? B.luck[u.side] : 0);
 const signed = v => (v > 0 ? `+${v}` : String(v));
 const alive = (B, side) => B.units.filter(u => !u.dead && (side == null || u.side === side));
+// Oddziały, od których zależy wynik: strona bez nich przegrywa, nawet jeśli zostały jej machiny
+const fighters = (B, side) => alive(B, side).filter(u => !isMachine(u));
+const hasCart = (B, side) => alive(B, side).some(u => u.cid === 'ammoCart');
 const unitAt = (B, x, y) => B.units.find(u => !u.dead && u.x === x && u.y === y) || null;
 const hasAb = (u, a) => (CREATURES[u.cid].abil || []).includes(a);
-const isFree = (B, x, y) => !B.obst.has(hexKey(x, y)) && !unitAt(B, x, y);
-const canShoot = (B, u) => u.shots > 0 && !alive(B, 1 - u.side).some(e => hexAdjacent(u, e));
+const isFree = (B, x, y, side) => !B.obst.has(hexKey(x, y)) && !walled(B, x, y, side) && !unitAt(B, x, y);
+const endlessShots = u => u.cid === 'ballista' || u.cid === 'arrowTower';
+const canShoot = (B, u) => endlessShots(u) || u.shots > 0 && !alive(B, 1 - u.side).some(e => hexAdjacent(u, e));
 // Współrzędne sześcienne heksu (do odległości i kierunków); układ odd-r
 const toCube = (x, y) => { const q = x - (y - (y & 1)) / 2; return [q, y, -q - y]; };
 const fromCube = (q, r) => [q + (r - (r & 1)) / 2, r];
@@ -92,7 +145,7 @@ function battleDist(B, u, limit = Infinity) {
   const dist = new Map([[hexKey(u.x, u.y), 0]]), prev = new Map();
   if (hasAb(u, 'fly')) {
     for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) {
-      const d = hexDistance(u, { x, y }); if (d > 0 && d <= limit && isFree(B, x, y)) { dist.set(hexKey(x, y), d); prev.set(hexKey(x, y), hexKey(u.x, u.y)); }
+      const d = hexDistance(u, { x, y }); if (d > 0 && d <= limit && isFree(B, x, y, u.side)) { dist.set(hexKey(x, y), d); prev.set(hexKey(x, y), hexKey(u.x, u.y)); }
     }
     return { dist, prev, fly: true };
   }
@@ -100,7 +153,7 @@ function battleDist(B, u, limit = Infinity) {
   while (q.length) {
     const [x, y] = q.shift(), d = dist.get(hexKey(x, y)); if (d >= limit) continue;
     for (const [nx, ny] of hexNeighbors(x, y)) {
-      const k = hexKey(nx, ny); if (dist.has(k) || !isFree(B, nx, ny)) continue;
+      const k = hexKey(nx, ny); if (dist.has(k) || !isFree(B, nx, ny, u.side)) continue;
       dist.set(k, d + 1); prev.set(k, hexKey(x, y)); q.push([nx, ny]);
     }
   }
@@ -114,18 +167,21 @@ function pathTo({ prev }, u, x, y) {
 // Premie bohatera do ataku i obrony swoich oddziałów (strona bez bohatera: 0)
 const sideHero = (B, side) => B.sides[side].hero;
 const sideAtt = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'att') : 0);
-const sideDef = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'def') : 0) + (B.sides[side].town ? TOWN_WALL_DEF[townLevel(B.sides[side].town)] : 0);
+const sideDef = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'def') : 0); // mury miasta chronią fizycznie (oblężenie)
 // Którą stroną dowodzi człowiek (resztą SI). Na razie człowiek zawsze atakuje, więc to strona 0.
 const humanSide = (B, side) => B.sides[side].owner === ME;
 // Obrażenia jak w oryginale: podstawa × (1 + 5% za każdy punkt przewagi ataku), albo −2,5% za punkt przewagi obrony.
 // moved = liczba pól rozpędu (szarża), ranged = strzał; strzelec wręcz bije za połowę, chyba że ma „Walkę wręcz”.
 function damageRoll(B, a, t, ranged, moved = 0) {
   const ca = CREATURES[a.cid], ct = CREATURES[t.cid];
-  const base = a.n * (a.buffs.bless ? ca.dmax : ca.dmin + B.rng() * (ca.dmax - ca.dmin));
+  let base = a.n * (a.buffs.bless ? ca.dmax : ca.dmin + B.rng() * (ca.dmax - ca.dmin));
+  if (a.cid === 'ballista') base *= sideAtt(B, a.side) + 1; // balista: podstawa × (atak bohatera + 1)
   const A = unitAtt(a) + sideAtt(B, a.side), D = unitDef(t) + sideDef(B, t.side) + (t.defending ? Math.ceil(ct.def * 0.2) + 1 : 0);
   let mult = A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
   if (!ranged && ca.shots > 0 && !hasAb(a, 'noMeleePenalty')) mult *= 0.5;
   if (!ranged && hasAb(a, 'jousting')) mult *= 1 + 0.05 * moved;
+  // strzał atakującego zza muru w obrońcę za murem: połowa obrażeń, dopóki ten fragment muru stoi
+  if (ranged && B.walls && a.side === 0 && a.x < SIEGE_X && t.x > SIEGE_X) { const w = wallAt(B, SIEGE_X, t.y); if (w && w.hp > 0) mult *= 0.5; }
   // umiejętności bohaterów: Atak / Łucznictwo napastnika, Zbroja obrońcy
   mult *= (1 + skillVal(sideHero(B, a.side), ranged ? 'archery' : 'offense') / 100) * (1 - skillVal(sideHero(B, t.side), 'armorer') / 100);
   return Math.max(1, Math.floor(base * mult));
@@ -167,13 +223,24 @@ function actMoveAttack(B, u, path, target) {
   }
   if (!target) return;
   strike(B, u, target, false, moved);
-  const retal = () => { if (target.dead || u.dead || hasAb(u, 'noRetal')) return; if (target.retaliated && !hasAb(target, 'unlimitedRetal')) return; target.retaliated = true; strike(B, target, u, false); };
+  const retal = () => { if (target.dead || u.dead || hasAb(u, 'noRetal') || isMachine(target)) return; if (target.retaliated && !hasAb(target, 'unlimitedRetal')) return; target.retaliated = true; strike(B, target, u, false); };
   retal();
   if (hasAb(u, 'doubleStrike') && !u.dead && !target.dead) strike(B, u, target, false, 0);
 }
+// Strzały: wóz z amunicją uzupełnia je na bieżąco, balista ma ich bez liku
 function actShoot(B, u, target) {
-  u.acted = true; u.shots--; strike(B, u, target, true);
-  if (hasAb(u, 'doubleShot') && u.shots > 0 && !target.dead) { u.shots--; strike(B, u, target, true); }
+  const use = () => { if (!endlessShots(u) && !hasCart(B, u.side)) u.shots--; };
+  u.acted = true; use(); strike(B, u, target, true);
+  if (hasAb(u, 'doubleShot') && u.shots > 0 && !target.dead) { use(); strike(B, u, target, true); }
+}
+// Namiot medyka: leczy pierwszego stwora w najbardziej rannym oddziale (1–25 życia, bez wskrzeszania)
+function actFirstAid(B, u) {
+  u.acted = true;
+  const hurt = alive(B, u.side).filter(v => !isMachine(v) && v.hp < CREATURES[v.cid].hp);
+  if (!hurt.length) { B.log.push('Namiot medyka: nikt nie potrzebuje pomocy.'); return; }
+  const v = hurt.reduce((a, b) => (CREATURES[b.cid].hp - b.hp > CREATURES[a.cid].hp - a.hp ? b : a)), amt = Math.min(CREATURES[v.cid].hp - v.hp, 1 + Math.floor(B.rng() * 25));
+  v.hp += amt; B.log.push(`Namiot medyka leczy: ${CREATURES[v.cid].plural.toLowerCase()} (+${amt}).`);
+  if (B.fx) B.fx.push({ kind: 'heal', u: v, amount: amt });
 }
 function actWait(B, u) { u.waited = true; B.waitQ.push(u); B.log.push(`${CREATURES[u.cid].plural} czekają.`); }
 function actDefend(B, u) { u.defending = true; B.log.push(`${CREATURES[u.cid].plural} bronią się.`); }
@@ -185,7 +252,7 @@ function tradeValue(B, u, e, ranged, moved) {
   const kills = dmg >= poolE ? e.n : e.n - Math.ceil((poolE - dmg) / hpE); let gain = kills * CREATURES[e.cid].value * (e.shots > 0 ? 1.5 : 1);
   if (dmg >= poolE) gain *= 1.3; // premia za całkowite rozbicie oddziału
   let loss = 0;
-  if (!ranged && dmg < poolE && !hasAb(u, 'noRetal') && (!e.retaliated || hasAb(e, 'unlimitedRetal'))) {
+  if (!ranged && dmg < poolE && !hasAb(u, 'noRetal') && !isMachine(e) && (!e.retaliated || hasAb(e, 'unlimitedRetal'))) {
     const left = { ...e, n: e.n - kills }, hpU = CREATURES[u.cid].hp, poolU = (u.n - 1) * hpU + u.hp, back = damageRoll(B, left, u, false, 0);
     loss = Math.min(u.n, back >= poolU ? u.n : u.n - Math.ceil((poolU - back) / hpU)) * CREATURES[u.cid].value;
   }
@@ -194,7 +261,10 @@ function tradeValue(B, u, e, ranged, moved) {
 // Sztuczna inteligencja: wybiera najlepszą wymianę (strzał albo atak z dostępnego pola),
 // a gdy nikogo nie sięgnie, zbliża się do najcenniejszego celu. Strzelców wroga ceni wyżej.
 function aiAct(B, u) {
-  const foes = alive(B, 1 - u.side);
+  if (u.cid === 'firstAid') { actFirstAid(B, u); return; }
+  if (u.cid === 'catapult') { actCatapult(B, u); return; }
+  if (isMachine(u) && !endlessShots(u)) { actDefend(B, u); return; }
+  const foes = alive(B, 1 - u.side).filter(targetable);
   if (canShoot(B, u)) {
     const t = foes.reduce((a, b) => (tradeValue(B, u, b, true, 0) > tradeValue(B, u, a, true, 0) ? b : a));
     actShoot(B, u, t); return;
@@ -213,6 +283,10 @@ function aiAct(B, u) {
   const far = battleDist(B, u, reach.fly ? spd : Infinity); let goal = null;
   if (reach.fly) { for (const k of far.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS), d = hexDistance({ x, y }, target); if (!goal || d < goal.d) goal = { d, nx: x, ny: y }; } }
   else for (const e of [target, ...foes]) { for (const [nx, ny] of hexNeighbors(e.x, e.y)) { const d = far.dist.get(hexKey(nx, ny)); if (d != null && (!goal || d < goal.d)) goal = { d, nx, ny }; } if (goal) break; }
+  if (!goal && B.walls && !reach.fly) { // mur zamknięty: podejdź pod bramę i czekaj na wyłom
+    for (const k of far.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS), d = hexDistance({ x, y }, { x: SIEGE_X, y: GATE_Y }); if (!goal || d < goal.d) goal = { d, nx: x, ny: y }; }
+    if (goal && goal.nx === u.x && goal.ny === u.y) goal = null;
+  }
   if (!goal) { actDefend(B, u); return; }
   const path = reach.fly ? [[goal.nx, goal.ny]] : pathTo(far, u, goal.nx, goal.ny).slice(0, spd);
   actMoveAttack(B, u, path, null);
@@ -224,13 +298,13 @@ function nextActive(B) {
   const prev = B.active;
   if (prev && prev.acted) {
     prev.acted = false; const m = unitMorale(B, prev);
-    if (!prev.dead && !prev.moraleBonus && m > 0 && alive(B, 0).length && alive(B, 1).length && B.rng() < m / 24) {
+    if (!prev.dead && !prev.moraleBonus && m > 0 && fighters(B, 0).length && fighters(B, 1).length && B.rng() < m / 24) {
       prev.moraleBonus = true; B.log.push(`Wysokie morale! ${CREATURES[prev.cid].plural} ruszają ponownie.`);
       if (B.fx) B.fx.push({ kind: 'heal', u: prev, label: 'Morale!' }); return prev;
     }
   }
   for (;;) {
-    if (!alive(B, 0).length || !alive(B, 1).length) { B.over = alive(B, 0).length ? 'win' : 'lose'; B.active = null; return null; }
+    if (!fighters(B, 0).length || !fighters(B, 1).length) { B.over = fighters(B, 0).length ? 'win' : 'lose'; B.active = null; return null; }
     if (!B.order.length && B.waitQ.length) { B.order = B.waitQ.filter(u => !u.dead).sort((a, b) => unitSpd(a) - unitSpd(b)); B.waitQ = []; }
     if (!B.order.length) {
       B.round++; B.cast = [false, false];
@@ -239,7 +313,7 @@ function nextActive(B) {
         for (const k of Object.keys(u.buffs)) if (--u.buffs[k] <= 0) delete u.buffs[k];
         if (!u.dead && hasAb(u, 'regen') && u.hp < CREATURES[u.cid].hp) { const amt = CREATURES[u.cid].hp - u.hp; u.hp += amt; if (B.fx) B.fx.push({ kind: 'heal', u, amount: amt }); }
       }
-      B.order = alive(B).sort((a, b) => unitSpd(b) - unitSpd(a) || a.side - b.side);
+      B.order = alive(B).filter(u => u.cid !== 'ammoCart').sort((a, b) => unitSpd(b) - unitSpd(a) || a.side - b.side); // wóz nie ma własnej tury
     }
     const u = B.order.shift(); if (!u || u.dead) continue;
     if (!u.moraleRolled) {
@@ -252,14 +326,14 @@ function nextActive(B) {
 // --- czary w bitwie: bohater rzuca jeden czar na rundę, zanim ruszy oddział ---
 const unitAtt = u => CREATURES[u.cid].att + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0);
 const unitDef = u => CREATURES[u.cid].def + (u.buffs.stoneSkin ? 3 : 0);
-const unitSpd = u => Math.max(1, CREATURES[u.cid].spd + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0));
+const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0)));
 const battleSpells = h => (h.spells || []).filter(id => SPELLS[id].kind === 'battle');
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
 const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => SPELLS[id].cost <= h.mana)); };
 // Czy cel pasuje do czaru (u = oddział albo null dla czaru na pole); „swoi” = strona rzucającego
 function spellTargetOk(B, id, u) {
-  const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex') return true; if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead'))) return false;
+  const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex') return true; if (u && !targetable(u)) return false; if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead'))) return false;
   return t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : false;
 }
 // Obrażenia czaru z Czarnoksięstwem bohatera
@@ -271,7 +345,7 @@ function castBattle(B, id, x, y) {
   h.mana -= S.cost; B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
   if (B.fx) B.fx.push({ kind: 'spell', id, x, y });
   if (S.dmg) for (const [ax, ay] of spellArea(id, x, y)) {
-    const v = unitAt(B, ax, ay); if (!v) continue; const d = spellDamage(h, S, sp), k = applyDamage(v, d);
+    const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue; const d = spellDamage(h, S, sp), k = applyDamage(v, d);
     B.log.push(`${CREATURES[v.cid].plural}: ${d} obrażeń${k ? `, tracą ${k}` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: v, dmg: d, killed: k });
   }
   if (S.heal && tu) {
@@ -288,11 +362,11 @@ function aiHeroCast(B) {
   const s = casterSide(B), h = sideHero(B, s), sp = heroStat(h, 'sp'); let best = null;
   for (const id of battleSpells(h)) {
     const S = SPELLS[id]; if (!S.dmg || S.cost > h.mana) continue;
-    const cells = S.target === 'hex' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : alive(B, 1 - s).map(u => [u.x, u.y]);
+    const cells = S.target === 'hex' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : alive(B, 1 - s).filter(targetable).map(u => [u.x, u.y]);
     for (const [x, y] of cells) {
       let val = 0;
       for (const [ax, ay] of spellArea(id, x, y)) {
-        const v = unitAt(B, ax, ay); if (!v) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = spellDamage(h, S, sp);
+        const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = spellDamage(h, S, sp);
         const k = d >= pool ? v.n : v.n - Math.ceil((pool - d) / hp); val += (v.side !== s ? 1 : -1.5) * k * CREATURES[v.cid].value;
       }
       if (val > 0 && (!best || val > best.val)) best = { val, id, x, y };
@@ -303,7 +377,7 @@ function aiHeroCast(B) {
 // Cała bitwa bez ekranu (przycisk „Automatycznie” i testy)
 function simulateBattle(B) {
   B.auto = true; let guard = 0;
-  while (!B.over && guard++ < 5000) { const u = nextActive(B); if (!u) break; aiHeroCast(B); if (!u.dead && alive(B, 1 - u.side).length) aiAct(B, u); }
+  while (!B.over && guard++ < 5000) { const u = nextActive(B); if (!u) break; aiHeroCast(B); if (!u.dead && fighters(B, 1 - u.side).length) aiAct(B, u); }
   if (!B.over) B.over = 'lose';
   return B;
 }
@@ -311,9 +385,12 @@ function simulateBattle(B) {
 function writeBackSide(B, side) {
   const S = B.sides[side], units = B.units.filter(u => u.side === side);
   if (S.monster) { S.monster.count = units.reduce((s, u) => s + (u.dead ? 0 : u.n), 0); return; }
-  for (const u of units) { const a = u.src === 'garrison' ? S.town.garrison : S.hero.army; a[u.slot] = u.n > 0 && !u.dead ? { cid: u.cid, n: u.n } : null; }
+  for (const u of units) {
+    if (u.src === 'siege') continue; // katapulta i wieże należą do bitwy, nie do armii
+    if (u.src === 'machine') { if (u.dead) S.hero.machines = S.hero.machines.filter(id => id !== u.cid); continue; } // zniszczona machina przepada
+    const a = u.src === 'garrison' ? S.town.garrison : S.hero.army; a[u.slot] = u.n > 0 && !u.dead ? { cid: u.cid, n: u.n } : null; }
 }
-const sideLosses = (B, side) => B.units.filter(u => u.side === side && u.n < u.n0).map(u => `${CREATURES[u.cid].plural.toLowerCase()} −${u.n0 - u.n}`);
+const sideLosses = (B, side) => B.units.filter(u => u.side === side && u.n < u.n0 && u.src !== 'siege').map(u => `${CREATURES[u.cid].plural.toLowerCase()} −${u.n0 - u.n}`);
 const killedHp = (B, side) => B.units.filter(u => u.side === side).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
 // Pokonany bohater znika z mapy. Wybór bohatera gracza przesuwa się tak, żeby wskazywał tego samego (albo pierwszego).
 function removeHero(st, h) {
@@ -331,7 +408,7 @@ function captureTown(st, t, owner) {
 // Nekromancja zwycięzcy: z pct% życia poległych żywych wrogów wstają kościotrupy w armii bohatera (gdy jest miejsce)
 function raiseDead(B, side) {
   const h = sideHero(B, side), pct = skillVal(h, 'necromancy'); if (!pct) return 0;
-  const hp = B.units.filter(u => u.side !== side && !hasAb(u, 'undead')).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
+  const hp = B.units.filter(u => u.side !== side && !hasAb(u, 'undead') && !isMachine(u)).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
   const n = Math.floor(hp * pct / 100 / CREATURES.boneWarrior.hp);
   const i = h.army.findIndex(s => s && s.cid === 'boneWarrior'), k = i >= 0 ? i : h.army.findIndex(s => !s);
   if (!n || k < 0) return 0;
@@ -343,6 +420,7 @@ function resolveBattle(B, fled) {
   const { st, h } = B, D = B.sides[1], outcome = fled ? 'fled' : B.over;
   const res = { outcome, lost: sideLosses(B, 0), foeLost: sideLosses(B, 1), exp: 0, foeExp: 0, captured: null, heroDefeated: null };
   writeBackSide(B, 0); writeBackSide(B, 1);
+  for (const S of B.sides) if (S.hero) delete S.hero.boost; // premie ze świątyni i fontanny trwają do końca bitwy
   if (outcome === 'win') {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);
@@ -353,7 +431,7 @@ function resolveBattle(B, fled) {
     if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
     else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
       const towns = st.towns.filter(t => t.owner === h.owner), t = towns.find(t => !heroAt(st, t.x, t.y)) || (towns.length && st.heroes.filter(o => o.owner === h.owner).length === 1 ? towns[0] : null);
-      h.army = emptyArmy(); h.mp = 0; res.home = t ? t.name : null;
+      h.army = emptyArmy(); h.machines = []; h.mp = 0; res.home = t ? t.name : null;
       if (t) { h.x = t.x; h.y = t.y; reveal(st, h.x, h.y, heroSight(h), h.owner); }
       else if (towns.length) { removeHero(st, h); res.heroLost = true; }
     }

@@ -147,6 +147,7 @@ G.screens.adventure = {
   toggleSleep() { const h = hero(G.state); if (!h) return; h.asleep = !h.asleep; if (h.asleep) { h.path = null; h.dest = null; } this.flash(h.asleep ? `${h.name} odpoczywa` : `${h.name} znów rusza w drogę`); },
   rightInfo(x, y) {
     const st = G.state;
+    if (inRect(x, y, { x: INFOBOX.x, y: INFOBOX.y, w: INFOBOX.w, h: 32 })) { const W = weekInfo(st), M = monthInfo(st); return `Tydzień ${W.name}: ${W.text || 'spokojny tydzień, bez szczególnych skutków'}.${M.name ? ` Miesiąc ${M.name}: ${M.text}.` : ''} Co tydzień los wybiera nowy efekt.`; }
     if (inRect(x, y, VIEW)) {
       const { tx, ty } = screenToTile(st, x, y), n = st.map.n;
       if (tx < 0 || ty < 0 || tx >= n || ty >= n) return null;
@@ -161,6 +162,7 @@ G.screens.adventure = {
         return `${t.name}. Dochód: ${townGold(t)} złota dziennie. Budowli: ${t.built.length}. ` + (t.owner === ME ? 'Wejdź bohaterem albo wybierz miasto z listy po prawej.' : `${t.owner < 0 ? 'Miasto niezależne' : `Właściciel: ${ownerName(st, t.owner)}`}. Siła obrońców ${townPower(st, t)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}. Wejdź, aby je zdobyć.`);
       }
       if (ob && ob.type === 'mine') { const M = MINES[ob.kind]; return `${M.name}. Właściciel: ${ownerName(st, ob.owner)}. Dochód dzienny: ${M.income} (${resName(ob.kind).toLowerCase()}).`; }
+      if (ob && ob.type === 'site') return siteInfo(st, ob, hero(st));
       if (ob && ob.type === 'chest') return 'Skrzynia ze skarbem. Wybierzesz złoto albo doświadczenie dla bohatera.';
       if (ob && ob.type === 'art') return `${artInfo(ob.art)} Wejdź na to pole, aby go podnieść.`;
       if (ob && ob.type === 'res') return `${resName(ob.res)}: ${ob.amount}. Wejdź na to pole, aby zabrać.`;
@@ -271,9 +273,9 @@ G.screens.adventure = {
     for (const t of st.towns) t.builtToday = false;
     this.banner = { text: `Dzień ${st.day}`, t: G.time };
     this.autosave(st);
-    if (newWeek) for (const t of st.towns) townGrowthWeek(t);
+    const weekNews = newWeek ? startWeek(st, newMonth) : null;
     news.push(...dailyTownCheck(st)); rebuildObjIndex(st); MapRender.miniDirty = true;
-    if (newWeek) news.unshift(`${newMonth ? 'Rozpoczyna się nowy miesiąc. ' : ''}Nastał Tydzień ${weekName(st)}. W siedliskach pojawiły się nowe jednostki.`);
+    if (weekNews) news.unshift(weekNews);
     if (news.length) showDialog(news.join(' '), [{ label: 'OK', key: 'enter' }]);
   },
   // Koniec gry sprawdzamy w każdej klatce bez otwartego okna: po bitwie, zdobyciu miasta i turze przeciwników

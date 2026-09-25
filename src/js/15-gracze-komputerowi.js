@@ -43,7 +43,10 @@ function aiManageTown(st, p, t) {
     const cid = dwellingUnits(t, L).at(-1), n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), p.id));
     if (n > 0) recruit(st, t, L, cid, n);
   }
-  const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army);
+  const h = heroInTown(st, t); if (!h) return;
+  armyTransfer(t.garrison, h.army);
+  // kuźnia: machiny po werbunku, gdy zostaje zapas złota
+  if (hasB(t, 'smith')) for (const id of MACHINES) if (!h.machines.includes(id) && p.resources.gold >= CREATURES[id].cost.gold + 3000) buyMachine(st, t, h, id);
 }
 // Mapa odległości od bohatera (Dijkstra, koszty ruchu jak u człowieka) tylko po terenie odkrytym przez jego
 // gracza. Pola z obiektem, strażnikiem albo bohaterem są przystankami: można na nie wejść, ale nie przejść dalej.
@@ -100,6 +103,7 @@ function aiPickTarget(st, h, R) {
       if (ob.type === 'res') add(i, ob.res === 'gold' ? ob.amount : ob.amount * (RARE.includes(ob.res) ? 250 : 120), 'res');
       else if (ob.type === 'chest') add(i, 1500, 'chest');
       else if (ob.type === 'art') add(i, 2500, 'art');
+      else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob); if (v > 0) add(i, v, 'site'); }
       else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
     }
     for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, o.owner === ME ? 15000 : 8000, 'hero', o);
@@ -136,6 +140,14 @@ function* aiBattle(st, h, foe, news) {
   if (res.outcome === 'win') gainExp(st, h, res.exp);
   return res.outcome === 'win';
 }
+// Ile warte jest dla SI miejsce na mapie (0 = nie warto iść): kapliczka ze znanym czarem, pełna mana itp.
+function aiSiteValue(st, h, ob) {
+  const S = SITES[ob.kind];
+  if (ob.kind === 'shrine' && h.spells.includes(ob.spell)) return 0;
+  if (ob.kind === 'well' && h.mana >= heroMaxMana(h) * 0.6) return 0;
+  if ((ob.kind === 'temple' || ob.kind === 'fountain') && h.boost && h.boost[ob.kind === 'temple' ? 'morale' : 'luck']) return 0;
+  return S.ai;
+}
 // Wejście na pole celu (tak jak visitObject u człowieka, ale bez okien)
 function* aiVisit(st, h, i, news) {
   const n = st.map.n, R = playerOf(st, h.owner).resources, x = i % n, y = (i / n) | 0;
@@ -155,6 +167,7 @@ function* aiVisit(st, h, i, news) {
   if (ob.type === 'res') { R[ob.res] += ob.amount; removeObject(st, ob); }
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
+  else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); }
   else if (ob.type === 'mine') { if (ob.owner === ME) news.push(`Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
 function* aiMoveHero(st, h, news) {

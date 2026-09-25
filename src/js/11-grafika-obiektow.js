@@ -77,6 +77,90 @@ function drawMine(ctx, ob, x0, y0, t, col) {
   }
   if (col) drawFlag(ctx, x0 + 56, y0 - 2, 12, 7, t, col);
 }
+// --- miejsca na mapie (SITES): (0, 0) = środek dolnej krawędzi pola, rysunek ok. 44×46 ---
+function drawSite(ctx, kind, f) {
+  const t = f * TAU; // f = faza animacji 0..1 (4 klatki)
+  const poly = (pts, c) => fillPoly(ctx, pts, c), box = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+  const stone = (x, y, w, h, c = '#8a8478') => { box(x, y, w, h, c); box(x, y, w, 2, LT(c)); box(x + w - 2, y, 2, h, DK(c, 0.2)); };
+  const roof = (x, y, w, h, c) => { poly([[x - 2, y], [x + w / 2, y - h], [x + w + 2, y]], c); poly([[x + w / 2, y - h], [x + w + 2, y], [x + w / 2, y]], DK(c, 0.18)); };
+  switch (kind) {
+    case 'shrine': {
+      stone(-11, -6, 22, 6, '#6e6a62'); stone(-8, -24, 16, 18, '#9a948a'); roof(-8, -24, 16, 10, '#4a5a8a');
+      box(-3, -20, 6, 12, '#1e1a24'); const a = 0.6 + 0.4 * Math.sin(t);
+      circ(ctx, 0, -14, 3 + a, `rgba(140,190,255,${(0.35 * a).toFixed(2)})`); circ(ctx, 0, -14, 2, '#bfe0ff'); break;
+    }
+    case 'well': {
+      ctx.fillStyle = '#6e6a62'; ctx.beginPath(); ctx.ellipse(0, -5, 11, 6, 0, 0, TAU); ctx.fill(); box(-11, -9, 22, 5, '#8a8478');
+      ctx.fillStyle = '#9a948a'; ctx.beginPath(); ctx.ellipse(0, -9, 11, 4.5, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#2a4a6a'; ctx.beginPath(); ctx.ellipse(0, -9, 8, 3, 0, 0, TAU); ctx.fill();
+      limb(ctx, -9, -9, -9, -26, 2, '#6a4424'); limb(ctx, 9, -9, 9, -26, 2, '#6a4424'); limb(ctx, -10, -21, 10, -21, 1.4, '#4a3018');
+      roof(-12, -26, 24, 8, '#8a3a22'); limb(ctx, 2, -21, 2, -15, 0.8, '#3a2a1a'); box(0, -15, 4, 4, '#7a5a34'); break;
+    }
+    case 'windmill': {
+      poly([[-9, 0], [-6, -26], [6, -26], [9, 0]], '#c8b48a'); poly([[2, -26], [6, -26], [9, 0], [3, 0]], '#a8946a');
+      roof(-7, -26, 14, 8, '#7a3a22'); box(-2, -8, 4, 8, '#3a2a1a'); box(-4, -18, 3, 3, '#3a2a1a');
+      ctx.save(); ctx.translate(0, -28); ctx.rotate(f * Math.PI / 2);
+      for (let k = 0; k < 4; k++) { ctx.rotate(Math.PI / 2); limb(ctx, 0, 0, 0, -17, 1.2, '#5a3a1a'); poly([[1, -5], [5, -6], [5, -17], [1, -17]], '#e8e0cc'); }
+      ctx.restore(); circ(ctx, 0, -28, 1.6, '#3a2a1a'); break;
+    }
+    case 'waterMill': {
+      ctx.fillStyle = '#3a6a9a'; ctx.beginPath(); ctx.ellipse(8, -2, 14, 4, 0, 0, TAU); ctx.fill();
+      stone(-14, -18, 16, 18, '#b8a882'); roof(-14, -18, 16, 10, '#6a4a2a'); box(-9, -9, 5, 9, '#3a2a1a');
+      ctx.save(); ctx.translate(9, -9); ctx.rotate(f * Math.PI / 4); ctx.strokeStyle = '#6a4424'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, 0, 8, 0, TAU); ctx.stroke();
+      for (let k = 0; k < 8; k++) { ctx.rotate(Math.PI / 4); box(-1, -10, 2, 5, '#8a5a2a'); }
+      ctx.restore(); circ(ctx, 9, -9, 1.6, '#3a2a1a'); ctx.fillStyle = 'rgba(200,230,255,.6)'; ctx.fillRect(4 + f * 8, -2, 3, 1); break;
+    }
+    case 'camp': {
+      poly([[-16, 0], [-8, -16], [0, 0]], '#9a7a4a'); poly([[-8, -16], [0, 0], [-6, 0]], '#7a5a34'); box(-10, -6, 3, 6, '#3a2a1a');
+      poly([[2, 0], [9, -13], [16, 0]], '#8a3a2a'); poly([[9, -13], [16, 0], [11, 0]], '#6a2a1e');
+      limb(ctx, -2, 2, 4, 2, 1.4, '#4a3018'); const f = 0.5 + 0.5 * Math.sin(t);
+      poly([[-2, 2], [1, -5 - f * 2], [4, 2]], '#ff9a2a'); poly([[0, 2], [1, -2 - f], [2.5, 2]], '#ffe07a');
+      limb(ctx, -12, -16, -12, -28, 1, '#4a3018'); poly([[-12, -28], [-5, -26 + f], [-12, -23]], '#c83a2a'); break;
+    }
+    case 'post': {
+      limb(ctx, -13, 0, -13, -18, 2, '#6a4424'); limb(ctx, 13, 0, 13, -18, 2, '#6a4424'); limb(ctx, -14, -15, 14, -15, 1.6, '#5a3a1a');
+      poly([[-7, -24], [7, -24], [6, -12], [0, -6], [-6, -12]], '#3a5aa0'); poly([[-1.5, -23], [1.5, -23], [1.5, -8], [-1.5, -8]], '#e0b24a'); poly([[-6, -18], [6, -18], [6, -15.5], [-6, -15.5]], '#e0b24a');
+      limb(ctx, -10, -2, 10, -26, 1.2, '#c8ccd4'); limb(ctx, 10, -2, -10, -26, 1.2, '#c8ccd4'); break;
+    }
+    case 'altar': {
+      stone(-12, -6, 24, 6, '#5a5462'); stone(-8, -14, 16, 8, '#7a7482');
+      const f = 0.5 + 0.5 * Math.sin(t); poly([[-5, -14], [0, -30 - f * 3], [5, -14]], '#c040e0'); poly([[-2.5, -14], [0, -23 - f * 2], [2.5, -14]], '#ffb0ff');
+      circ(ctx, 0, -18, 8, `rgba(200,80,240,${(0.15 + 0.1 * f).toFixed(2)})`); break;
+    }
+    case 'library': {
+      stone(-14, -20, 28, 20, '#a8a090'); ctx.fillStyle = '#4a6a9a'; ctx.beginPath(); ctx.arc(0, -20, 12, Math.PI, 0); ctx.fill();
+      box(-3, -10, 6, 10, '#3a2a1a'); for (const wx of [-10, 7]) box(wx, -16, 3, 5, '#e8d890');
+      circ(ctx, 0, -26, 3, '#e8d890'); limb(ctx, -14, -2, -6, -18, 1.6, '#4a7a3a'); break;
+    }
+    case 'stone': {
+      poly([[-7, 0], [-8, -20], [-3, -32], [4, -30], [7, -18], [6, 0]], '#7a7880'); poly([[1, -31], [4, -30], [7, -18], [6, 0], [1, 0]], '#5e5c66');
+      const a = 0.5 + 0.5 * Math.sin(t); ctx.fillStyle = `rgba(120,220,255,${(0.5 + 0.5 * a).toFixed(2)})`;
+      for (const [rx, ry] of [[-3, -24], [-2, -17], [-4, -10]]) { ctx.fillRect(rx, ry, 4, 1.4); ctx.fillRect(rx + 1.3, ry - 1.5, 1.4, 4.4); } break;
+    }
+    case 'temple': {
+      stone(-15, -4, 30, 4, '#b8b0a0'); for (const cx of [-12, -5, 2, 9]) stone(cx, -20, 3.5, 16, '#e8e2d4');
+      stone(-15, -23, 30, 3, '#d8d0c0'); poly([[-16, -23], [0, -32], [16, -23]], '#c8c0b0'); poly([[-10, -24], [0, -29], [10, -24]], '#a89e8c');
+      circ(ctx, 0, -27, 1.5, '#e0b24a'); break;
+    }
+    case 'fountain': {
+      ctx.fillStyle = '#8a8478'; ctx.beginPath(); ctx.ellipse(0, -4, 14, 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#3a7aba'; ctx.beginPath(); ctx.ellipse(0, -5, 11, 4, 0, 0, TAU); ctx.fill();
+      stone(-2, -18, 4, 13, '#a8a090'); circ(ctx, 0, -19, 3.5, '#b8b0a0');
+      for (let k = 0; k < 4; k++) { const p = (f + k * 0.37) % 1, sx = (k % 2 ? 1 : -1) * (2 + p * 8); circ(ctx, sx, -22 + p * 16 - Math.sin(p * Math.PI) * 6, 1.2, '#bfe6ff'); }
+      circ(ctx, 5, -6, 1, '#ffd970'); break;
+    }
+    case 'stables': {
+      box(-16, -16, 32, 16, '#8a5a2a'); for (let k = 1; k < 4; k++) box(-16, -16 + k * 4, 32, 0.8, '#6a4424');
+      roof(-16, -16, 32, 10, '#6a3a22'); box(-5, -10, 10, 10, '#3a2412'); limb(ctx, -5, -10, 5, 0, 0.8, '#8a5a2a'); limb(ctx, 5, -10, -5, 0, 0.8, '#8a5a2a');
+      ctx.fillStyle = '#e0c060'; ctx.beginPath(); ctx.ellipse(-11, -2, 4, 2.5, 0, 0, TAU); ctx.fill();
+      poly([[9, -12], [14, -14], [15, -9], [11, -8]], '#7a4a28'); circ(ctx, 13.5, -12, 0.6, '#1a0e06'); break;
+    }
+    case 'lookout': {
+      poly([[-6, 0], [-4, -30], [4, -30], [6, 0]], '#9a948a'); poly([[1, -30], [4, -30], [6, 0], [2, 0]], '#7a746a');
+      box(-8, -34, 16, 4, '#8a8478'); for (const bx of [-8, -3, 2, 6]) box(bx, -37, 2.4, 3, '#8a8478');
+      box(-1.5, -22, 3, 5, '#1e1a24'); box(-2, -8, 4, 8, '#3a2a1a');
+      limb(ctx, 0, -37, 0, -46, 1, '#4a3018'); poly([[0, -46], [7, -44 + Math.sin(t)], [0, -41]], '#e0b24a'); break;
+    }
+  }
+}
 // --- stworzenia -------------------------------------------------------------------------------
 // Rysunki w jednostkach mapy, (0, 0) = punkt na ziemi pod stworzeniem, zwrot w prawo.
 // Te same funkcje rysują jednostki w siedliskach miasta, na mapie, w oknach i w bitwie (w bitwie w podwójnej
@@ -389,6 +473,63 @@ function drawTreant(ctx, L, P = {}) {
   circ(ctx, el[0] - 1, el[1] - 2, 2.2, leaf);
   ctx.restore(); ctx.restore();
 }
+// --- machiny wojenne (stoją w miejscu; atak = odrzut balisty) ---
+function drawBallista(ctx, L, P) {
+  const w = L.wood, m = L.metal, rec = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 2.5 : 0;
+  ctx.lineCap = 'round';
+  for (const wx of [-7, 6]) { circ(ctx, wx, -3.5, 3.5, DK(w, 0.45)); circ(ctx, wx, -3.5, 1.2, m); }
+  fillPoly(ctx, [[-11, -6], [10, -6], [8, -9], [-9, -9]], DK(w));
+  limb(ctx, -2, -8, -4, -15, 2.2, w); limb(ctx, 2, -8, 3, -15, 2.2, w);
+  ctx.save(); ctx.translate(-rec, -16); ctx.rotate(-0.12);
+  fillPoly(ctx, [[-12, -1.5], [12, -1.5], [12, 1.5], [-12, 1.5]], w); ctx.fillStyle = LT(w); ctx.fillRect(-12, -1.5, 24, 1);
+  ctx.strokeStyle = m; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(8, -11); ctx.quadraticCurveTo(11, 0, 8, 11); ctx.stroke();
+  ctx.strokeStyle = '#e8e0c8'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(8, -11); ctx.lineTo(-6 + rec * 2, 0); ctx.lineTo(8, 11); ctx.stroke();
+  if (!(P.atk > 0.4)) { limb(ctx, -6, -0.2, 13, -0.2, 1.2, '#5a3a1a'); fillPoly(ctx, [[13, -1.8], [16.5, -0.2], [13, 1.4]], m); }
+  ctx.restore();
+}
+function drawTent(ctx, L, P) {
+  const c = L.cloth, sway = Math.sin((P.t || 0) * 2) * 0.6;
+  fillPoly(ctx, [[-13, 0], [0, -24 + sway], [13, 0]], c); fillPoly(ctx, [[0, -24 + sway], [13, 0], [5, 0]], DK(c, 0.18));
+  fillPoly(ctx, [[-3.5, 0], [0, -11], [3.5, 0]], '#3a2a1e');
+  ctx.fillStyle = L.trim; ctx.fillRect(-1.5, -20, 3, 8); ctx.fillRect(-4, -17.5, 8, 3);
+  limb(ctx, 0, -24 + sway, 0, -30, 1, '#5a3a1a'); fillPoly(ctx, [[0, -30], [6, -28.5 + sway], [0, -27]], L.trim);
+}
+function drawCart(ctx, L, P) {
+  const w = L.wood;
+  limb(ctx, -10, -8, -17, -3, 1.6, DK(w)); fillPoly(ctx, [[-10, -7], [11, -7], [12, -18], [-11, -18]], w);
+  ctx.fillStyle = DK(w); ctx.fillRect(-10, -13, 21, 1.2);
+  ctx.fillStyle = L.cloth; ctx.beginPath(); ctx.moveTo(-11, -18); ctx.quadraticCurveTo(0, -28, 12, -18); ctx.closePath(); ctx.fill();
+  for (const ax of [-5, -1, 3, 7]) limb(ctx, ax, -18, ax + 1.5, -22.5, 1, '#5a3a1a');
+  for (const wx of [-6, 7]) { circ(ctx, wx, -4, 4, DK(w, 0.45)); circ(ctx, wx, -4, 2.6, DK(w, 0.2)); circ(ctx, wx, -4, 1, '#9aa0a8'); }
+}
+// --- oblężenie: katapulta, wieża strzelnicza, fragmenty muru ---
+function drawCatapult(ctx, L, P) {
+  const w = L.wood, a = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) : 0;
+  for (const wx of [-8, 7]) { circ(ctx, wx, -3.5, 3.5, DK(w, 0.45)); circ(ctx, wx, -3.5, 1.2, '#9aa0a8'); }
+  fillPoly(ctx, [[-12, -6], [11, -6], [9, -9], [-10, -9]], DK(w)); limb(ctx, -5, -8, 0, -20, 2.2, w); limb(ctx, 5, -8, 0, -20, 2.2, w);
+  ctx.save(); ctx.translate(0, -12); ctx.rotate(-0.9 + a * 1.7); limb(ctx, 0, 0, -16, 0, 1.8, LT(w)); circ(ctx, -16, 0, 3, '#5a3a1a');
+  if (a < 0.5) circ(ctx, -16, -2, 2.4, '#8a847a'); ctx.restore();
+}
+function drawTowerUnit(ctx, L, P) {
+  const c = L.stone;
+  fillPoly(ctx, [[-11, 0], [-10, -34], [10, -34], [11, 0]], c); fillPoly(ctx, [[3, -34], [10, -34], [11, 0], [4, 0]], DK(c, 0.2));
+  ctx.fillStyle = LT(c, 0.1); for (let y = -28; y < 0; y += 7) ctx.fillRect(-10, y, 20, 1);
+  ctx.fillStyle = c; ctx.fillRect(-12, -39, 24, 5); for (const bx of [-12, -5, 2, 8]) ctx.fillRect(bx, -42, 4, 3);
+  ctx.fillStyle = '#1e1a24'; ctx.fillRect(-2, -26, 4, 7); ctx.fillRect(-2, -13, 4, 6);
+  const bob = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 1.5 : 0; circ(ctx, 3 + bob, -44, 2.2, '#d8a878'); limb(ctx, 5 + bob, -46, 6 + bob, -39, 0.8, '#6a4424');
+  fillPoly(ctx, [[1 + bob, -45], [3 + bob, -49], [5 + bob, -45]], '#4a5a8a');
+}
+// Fragment muru na polu bitwy: state 'ok', 'hit' (spękany), 'down' (gruzy); brama to drewniane wrota
+function drawWallSeg(ctx, kind, state) {
+  const c = '#9a948a', dk = DK(c, 0.25);
+  if (state === 'down') { for (const [x, y, r] of [[-9, -3, 5], [-2, -5, 6], [6, -3, 5], [1, -1, 4], [-6, 0, 3]]) { circ(ctx, x, y, r, x > 0 ? dk : c); } if (kind === 'gate') { limb(ctx, -10, -2, 2, -6, 1.6, '#5a3a1a'); limb(ctx, 4, -1, 11, -5, 1.6, '#5a3a1a'); } return; }
+  fillPoly(ctx, [[-14, 0], [-14, -28], [14, -28], [14, 0]], c); fillPoly(ctx, [[8, -28], [14, -28], [14, 0], [8, 0]], dk);
+  ctx.fillStyle = LT(c, 0.1); for (let y = -24; y < 0; y += 6) ctx.fillRect(-14, y, 28, 1);
+  ctx.fillStyle = c; for (const bx of [-14, -7, 0, 7]) ctx.fillRect(bx, -32, 5, 4);
+  if (kind === 'gate') { ctx.fillStyle = '#5a3a1a'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-8, -16); ctx.arc(0, -16, 8, Math.PI, 0); ctx.lineTo(8, 0); ctx.fill(); ctx.fillStyle = '#3a2412'; ctx.fillRect(-0.5, -23, 1, 23); ctx.fillStyle = '#9aa0a8'; ctx.fillRect(-8, -12, 16, 1.2); ctx.fillRect(-8, -5, 16, 1.2); }
+  if (state === 'hit') { ctx.strokeStyle = '#3a342c'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -28); ctx.lineTo(-2, -18); ctx.lineTo(-7, -10); ctx.moveTo(5, -26); ctx.lineTo(9, -16); ctx.stroke(); fillPoly(ctx, [[-14, -28], [-8, -28], [-12, -22]], '#2a2622'); }
+}
+const wallSprite = (kind, state) => sprite(`wall_${kind}_${state}`, 76, 88, 38, 72, p => drawWallSeg(p, kind, state), OUTLINE, 1);
 // x, y = punkt na ziemi pod stworzeniem; s = skala, dir = 1 w prawo / -1 w lewo; P = poza (domyślnie spoczynek w chwili t)
 function drawCreature(ctx, cid, x, y, s, dir, t, P) {
   const L = CREATURES[cid].look; P = P || { t };
@@ -405,6 +546,11 @@ function drawCreature(ctx, cid, x, y, s, dir, t, P) {
     case 'ghost': ghost(ctx, 0, -8 + hover, 1.3, L.fur, P, L); break;
     case 'dragon': drawDragon(ctx, L, P); break;
     case 'treant': drawTreant(ctx, L, P); break;
+    case 'ballista': drawBallista(ctx, L, P); break;
+    case 'tent': drawTent(ctx, L, P); break;
+    case 'cart': drawCart(ctx, L, P); break;
+    case 'catapult': drawCatapult(ctx, L, P); break;
+    case 'tower': drawTowerUnit(ctx, L, P); break;
     case 'rider': {
       const rear = P.atk != null ? Math.sin(clamp(P.atk, 0, 1) * Math.PI) * 0.12 : 0;
       horse(ctx, 0, 0, 1, L.horse, L.mane || '#2a1a0e', P, { rear, barding: L.barding, trim: L.trim });
@@ -491,7 +637,7 @@ function drawFlag(ctx, px, py, len, hgt, t, col) {
 // --- miasto na mapie przygody -------------------------------------------------------------------
 // 3×2 pola, (x0, y0) = lewy górny róg, wejście pośrodku dolnego rzędu.
 // Poziom umocnień jak w widoku miasta: 0 osada bez murów, 1 fort, 2 cytadela, 3 zamek.
-// Premia do obrony oddziałów broniących miasta za mury: brak, Fort, Cytadela, Zamek
+// Umocnienia w szacunku siły miasta dla SI (townPower): brak, Fort, Cytadela, Zamek; w bitwie mury są na polu (setupSiege)
 const TOWN_WALL_DEF = [0, 2, 4, 6];
 const townLevel = t => hasB(t, 'castle') ? 3 : hasB(t, 'citadel') ? 2 : hasB(t, 'fort') ? 1 : 0;
 // szczyty dachów, na których powiewają flagi właściciela [x, y] względem (x0, y0)
@@ -522,6 +668,10 @@ const obstacleSprite = (o, t, v) => sprite(`ob${o}_${t}_${v}`, 40, 38, 20, 26, p
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
+// Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki
+const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1 };
+const siteSprite = (k, i = 0) => sprite(`site_${k}_${i}`, 26, 26, 13, 24, p => drawSite(p, k, i / 4));
+const siteFrame = (ob) => (SITE_ANIM[ob.kind] ? Math.floor(G.time * 5 + ob.id) % 4 : 0);
 const mineSprite = k => sprite(`mine_${k}`, 36, 38, 2, 4, p => drawMine(p, { kind: k }, 0, 0, 0, null));
 const creatureSprite = (cid, dir, i = 0) => sprite(`cr_${cid}_${dir}_${i}`, 30, 32, 15, 27, p => drawCreature(p, cid, 0, 0, 1, dir, i * TAU / 4 / 2.4));
 // Sprite bitewny: ta sama postać w podwójnej rozdzielczości (1 piksel = 1 jednostka), w pozie i klatce animacji.
@@ -580,7 +730,8 @@ const townIconSprite = (fac, lvl, col) => sprite(`townico_${fac}_${lvl}_${col}`,
 // --- armie w interfejsie ---------------------------------------------------------------------
 const unitStats = c => `atak ${c.att}, obrona ${c.def}, obrażenia ${c.dmin}–${c.dmax}, życie ${c.hp}, szybkość ${c.spd}`;
 const abilText = c => (c.abil || []).map(a => `${ABILITIES[a].name} (${ABILITIES[a].desc})`).join('; ');
-const stackInfo = s => { const c = CREATURES[s.cid], ab = abilText(c); return `${c.plural}: ${s.n}. Poziom ${c.level}, ${unitStats(c)}${c.shots ? `, strzały ${c.shots}` : ''}.${ab ? ` Zdolności: ${ab}.` : ''}`; };
+const machineInfo = id => { const c = CREATURES[id]; return `${c.name}: ${c.desc}. Życie ${c.hp}, cena ${c.cost.gold} złota.`; };
+const stackInfo = s => { if (MACHINES.includes(s.cid)) return machineInfo(s.cid); const c = CREATURES[s.cid], ab = abilText(c); return `${c.plural}: ${s.n}. Poziom ${c.level}, ${unitStats(c)}${c.shots ? `, strzały ${c.shots}` : ''}.${ab ? ` Zdolności: ${ab}.` : ''}`; };
 // Rząd 7 miejsc armii z tymi samymi sprite'ami co na mapie. Zwraca prostokąty miejsc (do klikania i dymków).
 function drawArmyRow(ctx, army, x, y, o = {}) {
   const w = o.w || 62, h = o.h || 50, gap = o.gap || 6, rects = [];
@@ -740,7 +891,7 @@ function showRecruitList(st, t, onDone) {
         ctx.fillStyle = 'rgba(90,55,20,.12)'; rr(ctx, x + 24, ry, w - 48, 48, 4); ctx.fill();
         ctx.save(); rr(ctx, x + 26, ry + 1, 50, 46, 3); ctx.clip(); drawSprite(ctx, creatureSprite(best, 1), x + 51, ry + 42, 1); ctx.restore();
         text(ctx, units.map(u => CREATURES[u].name).join(' / '), x + 86, ry + 17, { size: 15, color: '#2a1606', fam: 'title' });
-        text(ctx, `${F.dw['dw' + L + (units.length > 1 ? 'u' : '')][0]} · dostępne ${t.avail[L] || 0}, przyrost ${weeklyGrowth(t, L)}/tydz.`, x + 86, ry + 36, { size: 13, weight: 500, color: '#5a3814' });
+        text(ctx, `${F.dw['dw' + L + (units.length > 1 ? 'u' : '')][0]} · dostępne ${t.avail[L] || 0}, przyrost ${weeklyGrowth(t, L, st)}/tydz.`, x + 86, ry + 36, { size: 13, weight: 500, color: '#5a3814' });
       });
       rowBtns.forEach(b => { b.disabled = false; b.draw(ctx); }); close.draw(ctx);
     },

@@ -33,6 +33,6 @@ const heroAt = (st, x, y) => st.heroes.find(h => h.x === x && h.y === y) || null
 const heroClass = h => HERO_CLASSES[h.cls] || HERO_CLASSES.knight;
 const heroTitle = h => `${h.name}, ${(h.female ? heroClass(h).nameF : heroClass(h).name).toLowerCase()}`;
 const dateText = st => `Miesiąc ${st.month}, tydzień ${st.week}, dzień ${st.day}`;
-const weekName = st => WEEK_NAMES[thash(st.week, st.month, st.seed) % WEEK_NAMES.length];
+const weekName = st => weekInfo(st).name; // tygodnie z efektem: ZASADY GRY (weekInfo)
 const resName = id => RESOURCES.find(r => r.id === id).name;
 
