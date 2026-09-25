@@ -98,12 +98,16 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    Krok 14: tawerna (tavernOffer/hireHero: dwóch chętnych na tydzień, HERO_COST, najwyżej MAX_HEROES),
    wielu bohaterów: blokują sobie drogę, kliknięcie własnego wybiera go, wejście na wrogiego = bitwa,
    ruch wszystkich bohaterów w pętli ekranu mapy, przewijana lista w panelu (panelItems, listScroll).
+   Krok 15: przeciwnicy komputerowi (GRACZE KOMPUTEROWI: aiTurn po turze człowieka; budowa według AI_BUILD_ORDER,
+   dokupowanie surowców na rynku, werbunek, najem, cele z mapy odległości aiReach, próbna walka aiWorthFight,
+   rozejm AI_PEACE_DAYS zależny od trudności), koniec gry (gameResult: wygrana po pokonaniu rywali, porażka bez
+   miast i bohaterów albo po NO_TOWN_DAYS dniach bez miasta), najlepsze wyniki (recordScore), wybór liczby rywali.
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
 // Stałe gry, surowce, poziomy trudności, rozmiary map, kolory graczy, bonusy.
 const W = 800, H = 600;
-const VERSION = 'krok 14 z 15';
+const VERSION = 'krok 15 z 15';
 // Plan rozwoju: gdzie w interfejsie obiecujemy przyszłe funkcje. Zmiana planu = zmiana tylko tutaj.
 const ROADMAP = {
   later: 'w dalszym kroku',
@@ -442,7 +446,7 @@ const G = {
   mouse: { x: -1, y: -1, down: false },
   hover: null, downTarget: null, modal: null, keys: new Set(), popup: null, pressTimer: 0, longPress: false,
   fade: { a: 1, target: 0, next: null },
-  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold' }, rs: 1,
+  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1 }, rs: 1,
   state: null,
 };
 function loadSettings() {
@@ -463,7 +467,8 @@ const human = st => st.players[ME];
 const playerOf = (st, owner) => st.players[owner]; // gracz o danym numerze (surowce, frakcja, odkryta mapa)
 const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[owner].color) || PLAYER_COLORS[0]).name.toLowerCase()}` : 'nikt');
 const ownerColor = (st, owner) => (st.players[owner] ? colorHex(st.players[owner].color) : NEUTRAL_COLOR);
-const hero = st => st.heroes[st.selHero || 0];
+// Wybrany bohater gracza-człowieka; null, gdy gracz nie ma już bohaterów (może wtedy nająć nowego w tawernie)
+const hero = st => { const h = st.heroes[st.selHero || 0]; return h && h.owner === ME ? h : st.heroes.find(o => o.owner === ME) || null; };
 const heroAt = (st, x, y) => st.heroes.find(h => h.x === x && h.y === y) || null;
 const heroClass = h => HERO_CLASSES[h.cls] || HERO_CLASSES.knight;
 const heroTitle = h => `${h.name}, ${(h.female ? heroClass(h).nameF : heroClass(h).name).toLowerCase()}`;
@@ -1850,10 +1855,18 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   human(st).explored = new Uint8Array(map.n * map.n);
   st.objects = placeObjects(st);
   createTown(st, map.start.x, map.start.y, ME, S.faction);
-  const trng = mulberry32(seed ^ 0x70a7);
-  for (const s of map.sites) if (s !== map.start) createNeutralTown(st, s, trng);
+  // przeciwnicy komputerowi w kolejnych miejscach startowych (drugie = najdalej od gracza), reszta miast jest niezależna
+  const trng = mulberry32(seed ^ 0x70a7), others = map.sites.filter(s => s !== map.start), foes = others.slice(0, clamp(S.opponents == null ? 1 : S.opponents, 0, others.length));
+  const colors = PLAYER_COLORS.filter(c => c.id !== S.color);
+  foes.forEach((s, k) => {
+    const id = st.players.length, fac = FACTIONS[Math.floor(trng() * FACTIONS.length)].id;
+    st.players.push({ id, color: colors[k % colors.length].id, human: false, faction: fac, resources: { ...DIFFICULTIES[1].res }, explored: new Uint8Array(map.n * map.n) });
+    createTown(st, s.x, s.y, id, fac);
+  });
+  for (const s of others.slice(foes.length)) createNeutralTown(st, s, trng);
   rebuildObjIndex(st);
   const h = createHero(st, ME, map.start.x, map.start.y);
+  for (const p of st.players) if (!p.human) createHero(st, p.id, st.towns.find(t => t.owner === p.id).x, st.towns.find(t => t.owner === p.id).y);
   if (S.bonus === 'artifact') { const pool = ARTS_BY_RARITY('treasure'), id = pool[Math.floor(rng() * pool.length)]; giveArtifact(h, id); st.bonusText = `artefakt: ${ARTIFACTS[id].name}`; h.mp = heroMaxMP(h); }
   reveal(st, h.x, h.y, HERO_SIGHT + 1);
   return st;
@@ -2141,7 +2154,7 @@ function dailyIncomeAll(st, owner = ME) {
 }
 const dailyIncome = (st, res) => dailyIncomeAll(st)[res];
 function collectIncome(st) {
-  for (const p of st.players) { const inc = dailyIncomeAll(st, p.id); for (const r of RESOURCES) p.resources[r.id] += inc[r.id]; }
+  for (const p of st.players) { if (p.out) continue; const inc = dailyIncomeAll(st, p.id); for (const r of RESOURCES) p.resources[r.id] += inc[r.id]; if (!p.human) p.resources.gold += aiGoldBonus(st); }
 }
 const hasB = (t, id) => t.built.includes(id);
 const canAfford = (st, cost, owner = ME) => RESOURCES.every(r => (playerOf(st, owner).resources[r.id] || 0) >= (cost[r.id] || 0));
@@ -2498,6 +2511,187 @@ function resolveBattle(B, fled) {
   return res;
 }
 
+// ==================== GRACZE KOMPUTEROWI ================================================
+// Tura przeciwnika dzieje się natychmiast (bez animacji), po turze człowieka, a przed nowym dniem.
+// SI widzi całą mapę. Kolejność: miasta (budowa, werbunek, najem), potem bohaterowie wybierają cele
+// z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do news.
+const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
+  'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u'];
+// Rynek: cena surowca w złocie (drewno i ruda taniej, rzadkie drożej). Na razie handluje tylko SI.
+const MARKET_PRICE = r => (r === 'wood' || r === 'ore' ? 250 : 500);
+// Dokupuje brakujące surowce na koszt cost, jeśli gracz ma rynek i starczy złota. Zwraca, czy kupił.
+function buyMissing(st, owner, cost) {
+  if (!st.towns.some(t => t.owner === owner && hasB(t, 'market'))) return false;
+  const R = playerOf(st, owner).resources; let gold = cost.gold || 0; const need = {};
+  for (const r of RESOURCES) if (r.id !== 'gold' && (cost[r.id] || 0) > R[r.id]) { need[r.id] = cost[r.id] - R[r.id]; gold += need[r.id] * MARKET_PRICE(r.id); }
+  if (!Object.keys(need).length || R.gold < gold) return false;
+  for (const [r, k] of Object.entries(need)) { R[r] += k; R.gold -= k * MARKET_PRICE(r); }
+  return true;
+}
+const aiMaxHeroes = st => (st.map.n >= 108 ? 3 : 2);
+// Rozejm: przez tyle dni SI nie atakuje miast ani bohaterów człowieka (Łatwy 21, Normalny 14, Trudny 7, wyżej 0)
+const AI_PEACE_DAYS = [21, 14, 7, 0, 0];
+const aiPeace = (st, owner) => owner === ME && st.dayTotal <= AI_PEACE_DAYS[st.settings.difficulty];
+// Daily bonus złota SI na wyższych poziomach trudności (Trudny +300, Ekspert +600, Niemożliwy +1000)
+const aiGoldBonus = st => Math.max(0, DIFFICULTIES[st.settings.difficulty].rating - 100) * 10;
+const armyStrength = h => Math.round(armyPower(h.army) * heroFactor(h));
+// Przenosi oddziały z jednej armii do drugiej (łączy takie same, zajmuje wolne miejsca)
+function armyTransfer(from, to) {
+  for (let i = 0; i < from.length; i++) {
+    const s = from[i]; if (!s) continue;
+    const j = to.findIndex(x => x && x.cid === s.cid), k = j >= 0 ? j : to.findIndex(x => !x);
+    if (k < 0) continue; if (to[k]) to[k].n += s.n; else to[k] = { cid: s.cid, n: s.n }; from[i] = null;
+  }
+}
+function aiManageTown(st, p, t) {
+  // pierwsza osiągalna z trzech kolejnych budowli z listy (żeby brak rudy na Fort nie wstrzymał wszystkiego)
+  if (!t.builtToday) {
+    const next = AI_BUILD_ORDER.map(id => BUILD_BY_ID[id]).filter(B => !hasB(t, B.id) && reqMet(t, B)).slice(0, 3);
+    const B = next.find(B => canAfford(st, B.cost, p.id)) || (next[0] && buyMissing(st, p.id, next[0].cost) ? next[0] : null); if (B) buildIn(st, t, B);
+  }
+  const heroes = st.heroes.filter(h => h.owner === p.id);
+  if (heroes.length < aiMaxHeroes(st) && hasB(t, 'tavern') && !heroAt(st, t.x, t.y) && p.resources.gold >= HERO_COST + 2000) {
+    const k = tavernOffer(st, p.id).findIndex(Boolean); if (k >= 0) hireHero(st, t, k);
+  }
+  for (let L = 7; L >= 1; L--) {
+    if (!hasB(t, 'dw' + L) || !t.avail[L]) continue;
+    const cid = dwellingUnits(t, L).at(-1), n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), p.id));
+    if (n > 0) recruit(st, t, L, cid, n);
+  }
+  const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army);
+}
+// Mapa odległości od bohatera (Dijkstra, koszty ruchu jak u człowieka). Pola z obiektem, strażnikiem
+// albo bohaterem są przystankami: można na nie wejść, ale nie przejść dalej.
+function aiReach(st, h) {
+  const map = st.map, n = map.n, N = n * n, dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1), start = h.y * n + h.x;
+  const heap = [[0, start]], push = e => { heap.push(e); let i = heap.length - 1; while (i) { const q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; [heap[q], heap[i]] = [heap[i], heap[q]]; i = q; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  const stop = i => !!(st.objAt[i] || st.guard[i] || heroAt(st, i % n, (i / n) | 0));
+  dist[start] = 0;
+  while (heap.length) {
+    const [d, i] = pop(); if (d > dist[i]) continue; if (i !== start && stop(i)) continue;
+    const x = i % n, y = (i / n) | 0;
+    for (let k = 0; k < 8; k++) {
+      const nx = x + DX8[k], ny = y + DY8[k]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+      const j = ny * n + nx; if (map.terrain[j] === TER.WATER || map.obst[j]) continue;
+      const ob = objectAt(st, j); if (ob && ob.blocks && j !== ob.y * n + ob.x) continue; // bok miasta/kopalni: tylko przez wejście
+      const nd = d + stepCost(map, x, y, nx, ny); if (nd < dist[j]) { dist[j] = nd; prev[j] = i; push([nd, j]); }
+    }
+  }
+  return { dist, prev, path(j) { const out = []; while (j !== start && j >= 0) { out.unshift([j % n, (j / n) | 0]); j = prev[j]; } return out; } };
+}
+// Czy walka się opłaca: bitwa jest powtarzalna (to samo ziarno co w prawdziwej walce tego dnia),
+// więc SI rozgrywa ją na próbę i atakuje tylko, gdy wygra, tracąc najwyżej część armii.
+function aiWorthFight(st, h, foe) {
+  const B = simulateBattle(createBattle(st, h, foe)); if (B.over !== 'win') return false;
+  const lost = B.units.filter(u => u.side === 0).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].value, 0);
+  return lost <= armyPower(h.army) * 0.4;
+}
+// Najlepszy cel bohatera: wartość celu maleje z odległością (dzień marszu ≈ połowa wartości).
+// Walki (potwory, miasta, bohaterowie) sprawdzamy symulacją dopiero wtedy, gdy są najlepszym kandydatem.
+function aiPickTarget(st, h, R) {
+  const n = st.map.n, cands = [], add = (i, value, what, foe) => { if (value > 0 && R.dist[i] < Infinity) cands.push({ i, score: value / (1 + R.dist[i] / 1500), what, foe }); };
+  const hasArmy = armySize(h.army) > 0, power = armyStrength(h);
+  for (const t of st.towns) {
+    const i = t.y * n + t.x, occupant = heroAt(st, t.x, t.y);
+    if (t.owner === h.owner) { if (!occupant && armyPower(t.garrison) > 0) add(i, armyPower(t.garrison) * (hasArmy ? 3 : 20), 'reinforce'); continue; }
+    if (!hasArmy || aiPeace(st, t.owner)) continue;
+    const tp = townPower(st, t); if (power > tp * 0.8) add(i, (t.owner === ME ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
+  }
+  if (hasArmy) {
+    for (const ob of st.objects) {
+      if (ob.dead) continue; const i = ob.y * n + ob.x;
+      if (ob.type === 'monster') {
+        const mp = ob.count * CREATURES[ob.cid].value; if (power <= mp) continue;
+        let best = -1; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = ob.x + dx, y = ob.y + dy, j = y * n + x; if (x >= 0 && y >= 0 && x < n && y < n && st.guard[j] === ob.id + 1 && (best < 0 || R.dist[j] < R.dist[best])) best = j; }
+        // strażnik przy kopalni, artefakcie albo skarbie jest wart tyle co to, czego pilnuje
+        const guarded = st.objects.find(o => !o.dead && o !== ob && o.type !== 'monster' && Math.abs(o.x - ob.x) <= 1 && Math.abs(o.y - ob.y) <= 1);
+        if (best >= 0) add(best, 400 + mp * 0.5 + (guarded ? (guarded.type === 'mine' ? 3500 : 1500) : 0), 'monster', ob); continue;
+      }
+      if (st.guard[i]) continue; // najpierw trzeba pokonać strażnika
+      if (ob.type === 'res') add(i, ob.res === 'gold' ? ob.amount : ob.amount * (RARE.includes(ob.res) ? 250 : 120), 'res');
+      else if (ob.type === 'chest') add(i, 1500, 'chest');
+      else if (ob.type === 'art') add(i, 2500, 'art');
+      else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
+    }
+    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, o.owner === ME ? 15000 : 8000, 'hero', o);
+  }
+  cands.sort((a, b) => b.score - a.score);
+  let sims = 0;
+  for (const c of cands) {
+    if (!c.foe) return c;
+    if (sims++ >= 4) continue; // najwyżej kilka prób walki na jeden wybór celu
+    if (aiWorthFight(st, h, c.foe)) return c;
+  }
+  return null;
+}
+// Walka SI bez ekranu; wieść dla człowieka, gdy walka go dotyczy
+function aiBattle(st, h, foe, news) {
+  const defOwner = foe.type === 'monster' ? -1 : foe.owner, defName = foe.type === 'monster' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
+  const res = resolveBattle(simulateBattle(createBattle(st, h, foe)), false);
+  if (res.outcome === 'win') gainExp(st, h, res.exp);
+  if (defOwner === ME) news.push(`${h.name} (${ownerName(st, h.owner)}) atakuje: ${defName}. ${res.outcome === 'win' ? (res.captured ? 'Miasto przepadło.' : 'Twój bohater poległ.') : 'Obrona się udała!'}`);
+  return res.outcome === 'win';
+}
+// Wejście na pole celu (tak jak visitObject u człowieka, ale bez okien)
+function aiVisit(st, h, i, news) {
+  const n = st.map.n, R = playerOf(st, h.owner).resources, x = i % n, y = (i / n) | 0;
+  const guard = st.guard[i] && st.objects[st.guard[i] - 1];
+  if (guard && !guard.dead && !aiBattle(st, h, guard, news)) return;
+  if (h.x !== x || h.y !== y) return; // przegrana odesłała bohatera do domu
+  const other = st.heroes.find(o => o !== h && o.x === x && o.y === y), ob = objectAt(st, i);
+  if (ob && ob.type === 'town') {
+    const t = st.towns[ob.townId];
+    if (t.owner === h.owner) { armyTransfer(t.garrison, h.army); return; }
+    if (!armySize(t.garrison) && !heroInTown(st, t)) { if (t.owner === ME) news.push(`${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
+    else aiBattle(st, h, t, news);
+    return;
+  }
+  if (other && other.owner !== h.owner) { aiBattle(st, h, other, news); return; }
+  if (!ob) return;
+  if (ob.type === 'res') { R[ob.res] += ob.amount; removeObject(st, ob); }
+  else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
+  else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
+  else if (ob.type === 'mine') { if (ob.owner === ME) news.push(`Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
+}
+function aiMoveHero(st, h, news) {
+  for (let plan = 0; plan < 12 && st.heroes.includes(h); plan++) {
+    const R = aiReach(st, h), target = aiPickTarget(st, h, R); if (!target) return;
+    const path = R.path(target.i); if (!path.length) return;
+    for (const [nx, ny] of path) { const c = stepCost(st.map, h.x, h.y, nx, ny); if (c > h.mp) return; h.mp -= c; h.prev = [h.x, h.y]; h.x = nx; h.y = ny; }
+    aiVisit(st, h, target.i, news); h.prev = null;
+    if (!st.heroes.includes(h) || !armySize(h.army) && target.what !== 'reinforce') return;
+  }
+}
+function aiTurn(st, p, news) {
+  for (const t of st.towns.filter(t => t.owner === p.id)) aiManageTown(st, p, t);
+  for (const h of st.heroes.filter(h => h.owner === p.id)) aiMoveHero(st, h, news);
+  for (const t of st.towns.filter(t => t.owner === p.id)) { const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army); }
+}
+// --- koniec gry: gracz odpada, gdy nie ma miast ani bohaterów albo przez 7 dni nie ma żadnego miasta ---
+const NO_TOWN_DAYS = 7;
+const playerAlive = (st, p) => !p.out && (st.towns.some(t => t.owner === p.id) || st.heroes.some(h => h.owner === p.id));
+function eliminate(st, p) { p.out = true; for (const h of st.heroes.filter(h => h.owner === p.id)) removeHero(st, h); }
+// Po każdym dniu: licznik dni bez miasta. Zwraca wieści dla człowieka.
+function dailyTownCheck(st) {
+  const news = [];
+  for (const p of st.players) {
+    if (p.out) continue;
+    if (st.towns.some(t => t.owner === p.id)) { p.noTownDays = 0; continue; }
+    p.noTownDays = (p.noTownDays || 0) + 1;
+    if (p.noTownDays >= NO_TOWN_DAYS) { eliminate(st, p); if (!p.human) news.push(`Gracz ${ownerName(st, p.id).replace('gracz ', '')} nie odzyskał miasta i odpada z gry.`); }
+    else if (p.human) news.push(`Nie masz żadnego miasta! Zdobądź je w ciągu ${NO_TOWN_DAYS - p.noTownDays + 1} dni, inaczej przegrasz.`);
+  }
+  return news;
+}
+// Wynik gry: 'win', 'lose' albo null. Bez przeciwników (tryb swobodny) nie ma zwycięstwa.
+function gameResult(st) {
+  const me = human(st); if (me.out || !playerAlive(st, me)) return 'lose';
+  const foes = st.players.filter(p => !p.human); if (!foes.length) return null;
+  for (const p of foes) if (!p.out && !playerAlive(st, p)) p.out = true;
+  return foes.every(p => p.out) ? 'win' : null;
+}
+
 // ==================== ZAPIS I ODCZYT GRY ================================================
 // Zapis = zwykły obiekt JSON (serializeGame) w jednym z miejsc (SaveStore): na koncie Claude
 // (magazyn db opublikowanej strony, prywatny dla każdego gracza) albo w pamięci przeglądarki.
@@ -2820,7 +3014,7 @@ function drawWorldPixel(b, st) {
   const r0 = Math.max(0, Math.floor(camY / CP)), r1 = Math.min(nC - 1, Math.floor((camY + VIEW.h - 1) / CP));
   const ox = VIEW.x - camX, oy = VIEW.y - camY;
   for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) b.drawImage(MapRender.get(cx, cy), ox + cx * CP, oy + cy * CP, CP, CP);
-  if (hero(st).owner === ME) drawPathPixel(b, st, hero(st), ox, oy);
+  if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
   for (const h of st.heroes) { const [hx, hy] = heroDrawPos(h); list.push({ y: hy + 0.5, hero: h, hx, hy }); }
@@ -4105,7 +4299,9 @@ G.screens.setup = {
     DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 180, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
     PLAYER_COLORS.forEach((c, i) => B.push(new Button(230 + i * 128, 276, 118, 40, c.name, () => { S.color = c.id; }, { selected: () => S.color === c.id, size: 13, swatch: c.hex })));
     FACTIONS.forEach((f, i) => B.push(new Button(230 + i * 164, 330, 154, 40, f.name, () => { S.faction = f.id; }, { selected: () => S.faction === f.id, size: 16 })));
-    BONUSES.forEach((b, i) => B.push(new Button(230 + i * 164, 440, 154, 44, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 16, sub: b.sub })));
+    BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 440, 100, 44, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, sub: b.sub })));
+    [1, 2, 3].forEach((k, i) => B.push(new Button(628 + i * 38, 440, 34, 44, String(k), () => { S.opponents = k; }, { selected: () => (S.opponents || 1) === k, size: 17,
+      tip: 'Liczba przeciwników komputerowych. Na małej mapie zmieszczą się najwyżej dwaj.' })));
     B.push(new Button(150, 506, 200, 46, 'Rozpocznij', () => startNewGame(), { key: 'enter', size: 19 }));
     B.push(new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu', { mode: 'new' }), { key: 'escape', size: 19 }));
     this.buttons = B;
@@ -4116,8 +4312,8 @@ G.screens.setup = {
     text(ctx, 'Nowa gra', W / 2, 58, { size: 30, align: 'center', color: '#3a1e08', fam: 'title' });
     text(ctx, 'Pojedynczy scenariusz na losowej mapie', W / 2, 88, { size: 18, align: 'center', color: '#5a3814', italic: true, weight: 500 });
     divider(ctx, 80, 720, 104);
-    const L = (s, y) => text(ctx, s, 80, y, { size: 17, color: '#3a1e08', fam: 'title' });
-    L('Mapa', 140); L('Trudność', 202); L('Zasoby', 248); L('Kolor', 296); L('Frakcja', 350); L('Bonus', 462);
+    const L = (s, y, x = 80) => text(ctx, s, x, y, { size: 17, color: '#3a1e08', fam: 'title' });
+    L('Mapa', 140); L('Trudność', 202); L('Zasoby', 248); L('Kolor', 296); L('Frakcja', 350); L('Bonus', 462); L('Rywale', 462, 562);
     const d = DIFFICULTIES[G.settings.difficulty];
     RESOURCES.forEach((r, i) => { const x = 230 + i * 72; resIcon(ctx, r.id, x + 10, 248, 24); text(ctx, String(d.res[r.id]), x + 25, 249, { size: 16 }); });
     const f = FACTIONS.find(f => f.id === G.settings.faction) || FACTIONS[0];
@@ -4195,10 +4391,25 @@ G.screens.load = {
     this.buttons.forEach(b => b.draw(ctx));
   },
 };
+// Najlepsze wyniki: zwycięstwa zapisane w tej przeglądarce. Wynik = trudność × rywale × wielkość mapy / dni.
+function loadScores() { try { return JSON.parse(localStorage.getItem('kk_scores') || '[]'); } catch (e) { return []; } }
+function recordScore(st) {
+  const S = st.settings, foes = st.players.filter(p => !p.human).length, n = st.map.n;
+  const score = Math.round(DIFFICULTIES[S.difficulty].rating * foes * n * 20 / Math.max(1, st.dayTotal));
+  const row = { hero: (hero(st) || {}).name || '—', faction: factionOf(human(st).faction).name, map: (MAP_SIZES.find(m => m.id === S.mapSize) || MAP_SIZES[0]).name, diff: DIFFICULTIES[S.difficulty].name, days: st.dayTotal, score };
+  const all = [...loadScores(), row].sort((a, b) => b.score - a.score).slice(0, 8);
+  try { localStorage.setItem('kk_scores', JSON.stringify(all)); } catch (e) {}
+  return row;
+}
 G.screens.scores = makeListScreen('Najlepsze wyniki', ctx => {
   [['Gracz', 200], ['Scenariusz', 330], ['Dni', 480], ['Wynik', 540]].forEach(([s, x]) => text(ctx, s, x, 140, { size: 15, color: '#3a1e08', fam: 'title' }));
   ctx.strokeStyle = 'rgba(90,55,20,.45)'; ctx.beginPath(); ctx.moveTo(195, 156); ctx.lineTo(605, 156); ctx.stroke();
-  text(ctx, 'Brak wyników. Wygraj pierwszą grę, aby się tu znaleźć.', W / 2, 290, { size: 18, align: 'center', italic: true, weight: 500, color: '#5a3814' });
+  const rows = loadScores();
+  if (!rows.length) { text(ctx, 'Brak wyników. Wygraj pierwszą grę, aby się tu znaleźć.', W / 2, 290, { size: 18, align: 'center', italic: true, weight: 500, color: '#5a3814' }); return; }
+  rows.forEach((r, i) => {
+    const y = 180 + i * 36, o = { size: 16, weight: 500, color: '#3a1e08' };
+    text(ctx, r.hero, 200, y, o); text(ctx, `${r.map}, ${r.diff}`, 330, y, o); text(ctx, String(r.days), 480, y, o); text(ctx, String(r.score), 540, y, { ...o, weight: 700 });
+  });
 });
 G.screens.credits = {
   lines: ['#KRONIKI KRÓLESTW', 'Turowa strategia w klimacie klasycznych gier fantasy', '', '#Pomysł i testy', 'Ty', '',
@@ -4278,7 +4489,7 @@ function panelRows(st, scroll = 0) {
 function buildPanelButtons(scr, st) {
   const S = 30, by = 176, bx = 602, mk = (i, icon, label, act, o = {}) => new Button(bx + i * 32, by, S, S, label, act, Object.assign({ icon }, o));
   scr.btnMove = mk(2, iconBoot, 'Ruch', () => scr.startMove(), { key: 'm', tip: 'Ruszaj bohatera wzdłuż wyznaczonej ścieżki (klawisz M).' });
-  scr.btnSleep = mk(3, iconSleep, 'Śpij', () => scr.toggleSleep(), { key: 's', selected: () => hero(G.state).asleep, tip: 'Uśpij albo obudź bohatera. Śpiący nie upomina się o ruch przy końcu tury (klawisz S).' });
+  scr.btnSleep = mk(3, iconSleep, 'Śpij', () => scr.toggleSleep(), { key: 's', selected: () => !!(hero(G.state) && hero(G.state).asleep), tip: 'Uśpij albo obudź bohatera. Śpiący nie upomina się o ruch przy końcu tury (klawisz S).' });
   scr.buttons = [
     mk(0, iconCrown, 'Królestwo', () => showKingdom(st), { key: 'k', tip: 'Podsumowanie królestwa: zasoby, dochód i kopalnie (klawisz K).' }),
     mk(1, iconNext, 'Następny bohater', () => scr.nextHero(), { key: 'n', tip: 'Przełącz na następnego bohatera (klawisz N).' }),
@@ -4294,6 +4505,7 @@ function panelInfoText(st, scr) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y); return { text: tileInfo(st, tx, ty), col: '#ecd9a8' };
   }
   const h = hero(st);
+  if (!h) return { text: 'Nie masz bohatera. Najmij nowego w tawernie któregoś z miast.', col: '#ff9a7a' };
   if (h.path) return { text: `Ścieżka wyznaczona, ${h.path.length} pól. Kliknij cel ponownie albo naciśnij M.`, col: '#ecd9a8' };
   return { text: 'Kliknij pole, aby wyznaczyć ścieżkę. Prawy przycisk myszy pokazuje informacje.', col: 'rgba(236,217,168,.75)' };
 }
@@ -4335,11 +4547,15 @@ G.screens.adventure = {
     const st = G.state;
     rebuildObjIndex(st); this.floats = []; this.banner = null; this.flashMsg = null;
     MapRender.reset(st.map, human(st).explored);
-    if (!st.cam) centerCam(st, hero(st).x, hero(st).y);
+    if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
     buildPanelButtons(this, st);
     if (p.flash) this.flash(p.flash);
     if (p.after) p.after();
-    if (p.welcome) { const h = hero(st); showDialog(`Rozpoczyna się twoja kronika. ${h.name} (${heroTitle(h).split(', ')[1]}) czeka na rozkazy w mieście ${st.towns[0].name}. Bonus startowy: ${st.bonusText}.`, [{ label: 'Do dzieła', key: 'enter' }]); }
+    if (p.welcome) {
+      const h = hero(st), foes = st.players.filter(q => !q.human);
+      const goal = foes.length ? ` Twoi rywale: ${foes.map(q => `${ownerName(st, q.id)} (${factionOf(q.faction).name})`).join(', ')}. Pokonaj ich wszystkich: zdobądź ich miasta i rozbij ich bohaterów.` : ' Nie masz rywali: to gra swobodna, bez zwycięstwa.';
+      showDialog(`Rozpoczyna się twoja kronika. ${h.name} (${heroTitle(h).split(', ')[1]}) czeka na rozkazy w mieście ${st.towns[0].name}.${goal} Bonus startowy: ${st.bonusText}.`, [{ label: 'Do dzieła', key: 'enter' }]);
+    }
   },
   flash(msg) { this.flashMsg = { text: msg, t: G.time }; },
   systemMenu() {
@@ -4351,17 +4567,17 @@ G.screens.adventure = {
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
   autosave(st) { SaveStore.write('auto', st).catch(() => { if (G.state === st) this.flash('Autozapis się nie udał'); }); },
-  onKey(k) { if (k === ' ') centerCam(G.state, hero(G.state).x, hero(G.state).y); else if (k === 'h') this.heroInfo(); },
+  onKey(k) { const h = hero(G.state); if (!h) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); },
   selectHero(h) {
     const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
     const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
   },
   onWheel(d) { if (inRect(G.mouse.x, G.mouse.y, LIST)) this.listScroll = clamp((this.listScroll || 0) + Math.sign(d), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS)); },
   nextHero() {
-    const st = G.state, mine = myHeroes(st), i0 = mine.indexOf(hero(st));
+    const st = G.state, mine = myHeroes(st), i0 = mine.indexOf(hero(st)); if (!mine.length) return;
     for (let k = 1; k <= mine.length; k++) { const h = mine[(i0 + k) % mine.length]; if (!h.asleep || k === mine.length) { this.selectHero(h); break; } }
   },
-  toggleSleep() { const h = hero(G.state); h.asleep = !h.asleep; if (h.asleep) { h.path = null; h.dest = null; } this.flash(h.asleep ? `${h.name} odpoczywa` : `${h.name} znów rusza w drogę`); },
+  toggleSleep() { const h = hero(G.state); if (!h) return; h.asleep = !h.asleep; if (h.asleep) { h.path = null; h.dest = null; } this.flash(h.asleep ? `${h.name} odpoczywa` : `${h.name} znów rusza w drogę`); },
   rightInfo(x, y) {
     const st = G.state;
     if (inRect(x, y, VIEW)) {
@@ -4372,10 +4588,10 @@ G.screens.adventure = {
       const hh = heroAt(st, tx, ty);
       if (hh) return `${heroTitle(hh)}. Punkty ruchu: ${hh.mp} z ${heroMaxMP(hh)}. Doświadczenie: ${hh.exp}.`;
       const ob = objectAt(st, i);
-      if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid]; return `${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${armyPower(hero(st).army)}). Poziom ${c.level}, ${unitStats(c)}.`; }
+      if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid]; return `${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}.`; }
       if (ob && ob.type === 'town') {
         const t = st.towns[ob.townId];
-        return `${t.name}. Dochód: ${townGold(t)} złota dziennie. Budowli: ${t.built.length}. ` + (t.owner === ME ? 'Wejdź bohaterem albo wybierz miasto z listy po prawej.' : `${t.owner < 0 ? 'Miasto niezależne' : `Właściciel: ${ownerName(st, t.owner)}`}. Siła obrońców ${townPower(st, t)}, twoja armia ${armyPower(hero(st).army)}. Wejdź, aby je zdobyć.`);
+        return `${t.name}. Dochód: ${townGold(t)} złota dziennie. Budowli: ${t.built.length}. ` + (t.owner === ME ? 'Wejdź bohaterem albo wybierz miasto z listy po prawej.' : `${t.owner < 0 ? 'Miasto niezależne' : `Właściciel: ${ownerName(st, t.owner)}`}. Siła obrońców ${townPower(st, t)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}. Wejdź, aby je zdobyć.`);
       }
       if (ob && ob.type === 'mine') { const M = MINES[ob.kind]; return `${M.name}. Właściciel: ${ownerName(st, ob.owner)}. Dochód dzienny: ${M.income} (${resName(ob.kind).toLowerCase()}).`; }
       if (ob && ob.type === 'chest') return 'Skrzynia ze skarbem. Wybierzesz złoto albo doświadczenie dla bohatera.';
@@ -4388,7 +4604,7 @@ G.screens.adventure = {
     return resourceBarInfo(st, x, y);
   },
   spellbook() {
-    const st = G.state, h = hero(st); if (h.moving || h.anim) return;
+    const st = G.state, h = hero(st); if (!h || h.moving || h.anim) return;
     showSpellbook(h, 'adv', id => {
       const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); if (err) return;
       this.mapFx = this.mapFx || []; const col = SPELLS[id].col;
@@ -4396,16 +4612,16 @@ G.screens.adventure = {
       else { this.mapFx.push({ kind: 'column', x: from[0], y: from[1], col, t: G.time }, { kind: 'column', x: h.x, y: h.y, col, t: G.time + 0.2 }); }
     });
   },
-  heroInfo() { G.go('hero', { heroId: G.state.heroes.indexOf(hero(G.state)) }); },
+  heroInfo() { if (hero(G.state)) G.go('hero', { heroId: G.state.heroes.indexOf(hero(G.state)) }); },
   startMove() {
-    const st = G.state, h = hero(st); if (!h.path || h.moving || h.anim) return;
+    const st = G.state, h = hero(st); if (!h || !h.path || h.moving || h.anim) return;
     if (!armySize(h.army)) { this.flash('Bohater nie ma armii. Zwerbuj jednostki w mieście.'); return; }
     const [nx, ny] = h.path[0];
     if (stepCost(st.map, h.x, h.y, nx, ny) > h.mp) { this.flash('Bohater nie ma już dziś punktów ruchu'); return; }
     h.stop = false; h.moving = true;
   },
   tileClick(tx, ty) {
-    const st = G.state, h = hero(st), n = st.map.n;
+    const st = G.state, h = hero(st), n = st.map.n; if (!h) return;
     if (h.moving || h.anim) { h.stop = true; return; }
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
     // kliknięcie w budynek miasta albo kopalni oznacza jego wejście
@@ -4427,7 +4643,9 @@ G.screens.adventure = {
     else this.doEndTurn();
   },
   doEndTurn() {
-    const st = G.state; st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
+    const st = G.state, news = [];
+    for (const p of st.players) if (!p.human && !p.out) aiTurn(st, p, news); // tura przeciwników, zanim zacznie się nowy dzień
+    st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
     if (st.day > 7) { st.day = 1; st.week++; newWeek = true; if (st.week > 4) { st.week = 1; st.month++; newMonth = true; } }
     for (const h of st.heroes) {
       h.mp = heroMaxMP(h);
@@ -4439,7 +4657,17 @@ G.screens.adventure = {
     this.banner = { text: `Dzień ${st.day}`, t: G.time };
     this.autosave(st);
     if (newWeek) for (const t of st.towns) townGrowthWeek(t);
-    if (newWeek) showDialog(`${newMonth ? 'Rozpoczyna się nowy miesiąc. ' : ''}Nastał Tydzień ${weekName(st)}. W siedliskach pojawiły się nowe jednostki.`, [{ label: 'OK', key: 'enter' }]);
+    news.push(...dailyTownCheck(st)); rebuildObjIndex(st); MapRender.miniDirty = true;
+    if (newWeek) news.unshift(`${newMonth ? 'Rozpoczyna się nowy miesiąc. ' : ''}Nastał Tydzień ${weekName(st)}. W siedliskach pojawiły się nowe jednostki.`);
+    if (news.length) showDialog(news.join(' '), [{ label: 'OK', key: 'enter' }]);
+  },
+  // Koniec gry sprawdzamy w każdej klatce bez otwartego okna: po bitwie, zdobyciu miasta i turze przeciwników
+  checkGameEnd(st) {
+    if (st.over || G.modal) return; const r = gameResult(st); if (!r) return;
+    st.over = r; if (r === 'win') recordScore(st);
+    const msg = r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}. Twoja kronika trafia do księgi najlepszych wyników.`
+      : 'Porażka. Twoje królestwo upadło: nie masz już miast ani bohaterów, którzy mogliby walczyć dalej.';
+    showDialog(msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])], { locked: true });
   },
   update(dt) {
     const st = G.state, K = G.keys, m = G.mouse; if (!st || !st.map) return;
@@ -4450,9 +4678,10 @@ G.screens.adventure = {
       else if (w.moving && !G.modal) heroStep(st, w);
       if (w.anim) walker = w;
     }
-    const h = walker || hero(st); if (!h) return;
-    this.btnMove.disabled = !hero(st).path;
-    if (G.modal) return;
+    this.checkGameEnd(st);
+    const h = walker || hero(st);
+    this.btnMove.disabled = !(hero(st) && hero(st).path);
+    if (G.modal || !h) return;
     if (h.anim) {
       const [hx, hy] = heroDrawPos(h), tx = hx * T + T / 2 - VIEW.w / 2, ty = hy * T + T / 2 - VIEW.h / 2, k = Math.min(1, dt * 5);
       st.cam.x += (tx - st.cam.x) * k; st.cam.y += (ty - st.cam.y) * k; camClamp(st);
