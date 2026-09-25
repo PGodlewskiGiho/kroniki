@@ -246,7 +246,7 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   const trng = mulberry32(seed ^ 0x70a7), slots = playerSlots(S).slice(0, map.sites.length), others = map.sites.filter(s => s !== map.start), sites = [map.start, ...others];
   slots.forEach((o, id) => {
     const fac = o.faction === 'random' ? FACTIONS[Math.floor(trng() * FACTIONS.length)].id : o.faction, isHuman = o.type === 'human';
-    st.players.push({ id, color: o.color, human: isHuman, faction: fac, resources: { ...(isHuman ? d : DIFFICULTIES[1]).res }, explored: new Uint8Array(map.n * map.n) });
+    st.players.push({ id, color: o.color, ...(isHuman && o.name ? { name: o.name } : {}), human: isHuman, faction: fac, resources: { ...(isHuman ? d : DIFFICULTIES[1]).res }, explored: new Uint8Array(map.n * map.n) });
     createTown(st, sites[id].x, sites[id].y, id, fac);
   });
   for (const s of sites.slice(slots.length)) createNeutralTown(st, s, trng);

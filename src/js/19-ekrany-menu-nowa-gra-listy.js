@@ -179,10 +179,11 @@ G.screens.setup = {
     BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 254, 100, 36, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, tip: `Bonus startowy: ${b.sub}.` })));
     this.slotBtns = S.slots.map((o, i) => {
       const x = 80 + (i % 2) * 340, y = 318 + (i >> 1) * 42, col = () => S.slots[i];
-      const sw = new Button(x, y, 40, 34, '', () => this.nextColor(i), { swatch: () => colorHex(col().color), tip: 'Kolor gracza (kliknij, aby zmienić).' });
-      const ty = new Button(x + 46, y, 118, 34, '', () => this.nextType(i), { size: 14, selected: () => col().type === 'human', tip: 'Człowiek, komputer albo wolne miejsce. Kilku ludzi gra na zmianę przy jednym ekranie (hot-seat).' });
-      const fa = new Button(x + 170, y, 150, 34, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; }, { size: 14, tip: 'Frakcja gracza (kliknij, aby zmienić).' });
-      B.push(sw, ty, fa); return { sw, ty, fa };
+      const sw = new Button(x, y, 34, 34, '', () => this.nextColor(i), { swatch: () => colorHex(col().color), tip: 'Kolor gracza (kliknij, aby zmienić).' });
+      const ty = new Button(x + 38, y, 88, 34, '', () => this.nextType(i), { size: 13, selected: () => col().type === 'human', tip: 'Człowiek, komputer albo wolne miejsce. Kilku ludzi gra na zmianę przy jednym ekranie (hot-seat).' });
+      const nm = new Button(x + 130, y, 96, 34, '', () => askText(`Imię gracza (${PLAYER_COLORS.find(c => c.id === col().color).name.toLowerCase()}). Puste = nazwa od koloru.`, col().name, v => { col().name = v; saveSettings(); }), { size: 13, tip: 'Imię człowieka widoczne w turach i wieściach (kliknij, aby wpisać).' });
+      const fa = new Button(x + 230, y, 90, 34, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; }, { size: 13, tip: 'Frakcja gracza (kliknij, aby zmienić).' });
+      B.push(sw, ty, nm, fa); return { sw, ty, nm, fa };
     });
     this.bStart = new Button(150, 506, 200, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19 });
     B.push(this.bStart, new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
@@ -211,7 +212,7 @@ G.screens.setup = {
   draw(ctx) {
     const S = G.settings;
     for (const [i, b] of (this.slotBtns || []).entries()) {
-      const o = S.slots[i]; b.ty.label = SLOT_LABEL[o.type]; b.fa.label = o.faction === 'random' ? 'Losowa' : factionOf(o.faction).name; b.fa.disabled = b.sw.disabled = o.type === 'off';
+      const o = S.slots[i]; b.ty.label = SLOT_LABEL[o.type]; b.fa.label = o.faction === 'random' ? 'Losowa' : factionOf(o.faction).name; b.fa.disabled = b.sw.disabled = o.type === 'off'; b.nm.disabled = o.type !== 'human'; b.nm.label = o.type !== 'human' ? '—' : o.name || 'Imię…';
     }
     dimmedMenuScene(ctx, 0.5);
     drawParchment(ctx, 40, 22, 720, 556);

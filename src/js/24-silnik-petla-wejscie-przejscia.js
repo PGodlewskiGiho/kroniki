@@ -13,6 +13,7 @@ function handleClick(x, y) {
   if (G.screen.onClick) G.screen.onClick(x, y); else clickButtons(G.screen.buttons || [], x, y);
 }
 function onKey(e) {
+  if (e.target && e.target.tagName === 'INPUT') return; // pisanie w polu tekstowym (askText) nie uruchamia skrótów
   Sound.unlock();
   const k = e.key.toLowerCase(); G.keys.add(k);
   if (G.fade.next) return;
