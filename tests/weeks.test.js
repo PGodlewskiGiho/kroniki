@@ -81,7 +81,7 @@ test('Miesiąc Zarazy zmniejsza pule o połowę, Miesiąc Potworów powiększa p
   }, [plague, monsters]);
   assert.equal(r.pl, 20);
   assert.match(r.pm, /Nastał Miesiąc Zarazy/);
-  assert.equal(r.grew, Math.ceil(r.c0 * 1.5));
+  assert.equal(r.grew, Math.ceil(Math.ceil(r.c0 * 1.08) * 1.5)); // zwykły przyrost tygodniowy (+8%) i półtora raza w Miesiącu Potworów
   assert.match(r.mm, /Nastał Miesiąc Potworów/);
 });
 

@@ -34,14 +34,44 @@ function deserializeGame(d) {
   const map = { n, seed: d.map.seed, sites: d.map.sites, terrain: unpackBytes(d.map.terrain, N), obst: unpackBytes(d.map.obst, N), road: unpackBytes(d.map.road, N) };
   map.start = map.sites[d.map.startIdx] || map.sites[0];
   const st = { ...d.core, map, players: d.players.map(p => ({ ...p, explored: unpackBytes(p.explored, N) })), heroes: d.heroes, towns: d.towns, objects: d.objects };
-  // zapisy sprzed rekrutacji: brak armii bohatera, garnizonu i puli jednostek
-  const r = mulberry32(st.seed);
-  for (const h of st.heroes) { if (!Array.isArray(h.army)) h.army = startingArmy(st.players[h.owner].faction, r); delete h.slowest; initHeroProgress(h); while (h.exp >= expForLevel(h.level + 1)) h.level++; }
-  for (const t of st.towns) { if (!Array.isArray(t.garrison) || t.garrison.length !== ARMY_SLOTS) t.garrison = emptyArmy(); if (!t.avail) t.avail = {}; for (let L = 1; L <= guildLevel(t); L++) if (!t.guild || !t.guild[L]) rollGuildLevel(st, t, L); }
+  migrateSave(st); ME = st.cur; rebuildObjIndex(st); return st;
+}
+// Naprawa zapisów ze starszych wersji gry: brakujące pola dostają wartości domyślne, a to, czego gra już nie zna
+// (usunięte stwory, budowle, artefakty, miejsca), znika zamiast psuć rozgrywkę. Kolejne kroki w kolejności powstawania gry.
+function migrateSave(st) {
+  const r = mulberry32(st.seed), cr = s => (s && CREATURES[s.cid] && s.n > 0 ? s : null), armyFix = a => Array.from({ length: ARMY_SLOTS }, (_, i) => cr(a && a[i]));
+  if (!(st.settings.difficulty >= 0 && st.settings.difficulty < DIFFICULTIES.length)) st.settings.difficulty = 1;
+  // gracze: znane frakcje i kolory, komplet surowców
+  const used = new Set();
+  for (const p of st.players) {
+    if (!FACTIONS.some(f => f.id === p.faction)) p.faction = 'haven';
+    if (!PLAYER_COLORS.some(c => c.id === p.color) || used.has(p.color)) p.color = PLAYER_COLORS.find(c => !used.has(c.id)).id; used.add(p.color);
+    for (const res of RESOURCES) if (!(p.resources[res.id] >= 0)) p.resources[res.id] = 0;
+  }
+  // bohaterowie: armia (zapisy sprzed rekrutacji), cechy, poziom, machiny, łódź
+  for (const h of st.heroes) {
+    if (!Array.isArray(h.army)) h.army = startingArmy(st.players[h.owner].faction, r); h.army = armyFix(h.army);
+    delete h.slowest; initHeroProgress(h); while (h.exp >= expForLevel(h.level + 1)) h.level++;
+    h.spells = h.spells.filter(id => SPELLS[id]); h.bag = h.bag.filter(id => ARTIFACTS[id]);
+    for (const k of Object.keys(h.equip)) if (h.equip[k] && !ARTIFACTS[h.equip[k]]) h.equip[k] = null;
+    h.machines = h.machines.filter(id => CREATURES[id]); if (h.boat && st.map.terrain[h.y * st.map.n + h.x] !== TER.WATER) delete h.boat; // łódź tylko na wodzie
+  }
+  // miasta: znana frakcja i budowle, garnizon, pula jednostek, gildia magów
+  for (const t of st.towns) {
+    if (!FACTIONS.some(f => f.id === t.faction)) t.faction = 'haven';
+    t.built = t.built.filter(id => BUILDINGS.some(b => b.id === id)); if (!t.built.includes('hall1')) t.built.unshift('hall1');
+    t.garrison = armyFix(Array.isArray(t.garrison) ? t.garrison : null); if (!t.avail) t.avail = {};
+    for (let L = 1; L <= guildLevel(t); L++) if (!t.guild || !t.guild[L]) rollGuildLevel(st, t, L);
+  }
+  // obiekty: nieznane stwory, artefakty i miejsca znikają; skarbce mają załogę
+  for (const o of st.objects) {
+    if ((o.type === 'monster' && !CREATURES[o.cid]) || (o.type === 'art' && !ARTIFACTS[o.art]) || (o.type === 'site' && !SITES[o.kind]) || (o.type === 'bank' && !BANKS[o.kind])) o.dead = true;
+    if (o.type === 'bank' && !Array.isArray(o.guards)) o.guards = o.cleared ? [] : bankGuards(o.kind, st.settings.difficulty);
+    if (o.type === 'bank') o.guards = o.guards.filter(([cid, n]) => CREATURES[cid] && n > 0);
+  }
   // zapisy sprzed hot-seat: jeden człowiek (numer 0), powitanie już było
-  if (!(st.cur >= 0 && st.players[st.cur] && st.players[st.cur].human)) st.cur = st.players.findIndex(p => p.human);
+  if (!(st.cur >= 0 && st.players[st.cur] && st.players[st.cur].human)) st.cur = Math.max(0, st.players.findIndex(p => p.human));
   for (const p of st.players) if (p.human && p.welcomed === undefined) p.welcomed = true;
-  ME = st.cur; rebuildObjIndex(st); return st;
 }
 // Krótki opis zapisu do listy slotów (bez wczytywania całej gry)
 function saveMeta(st) {

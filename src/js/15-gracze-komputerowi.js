@@ -105,6 +105,7 @@ function aiPickTarget(st, h, R) {
       else if (ob.type === 'art') add(i, 2500, 'art');
       else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob); if (v > 0) add(i, v, 'site'); }
       else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
+      else if (ob.type === 'bank' && !ob.cleared && power > bankPower(ob) * 1.3) add(i, 2000 + bankPower(ob) * 0.4, 'bank', ob);
     }
     for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, playerOf(st, o.owner).human ? 15000 : 8000, 'hero', o);
     // zwiad: wolne pole na skraju odkrytego terenu, tym cenniejsze, im więcej mgły wokół
@@ -131,7 +132,7 @@ function aiPickTarget(st, h, R) {
 // odtworzyć), atak na człowieka ({ kind: 'defend' }: wynik bitwy wraca przez gen.next(res)) i początek tury gracza.
 // Bez ekranu (testy, symulacje, szybka tura) generator rozgrywa runAiSync: obrona jest wtedy automatyczna.
 function* aiBattle(st, h, foe, news) {
-  const defOwner = foe.type === 'monster' ? -1 : foe.owner, defName = foe.type === 'monster' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
+  const defOwner = foe.type === 'monster' || foe.type === 'bank' ? -1 : foe.owner, defName = foe.type === 'monster' || foe.type === 'bank' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
   let res;
   if (defOwner >= 0 && playerOf(st, defOwner).human) {
     const act = { kind: 'defend', h, foe, owner: defOwner }; res = yield act;
@@ -168,6 +169,7 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
   else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); }
+  else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
   else if (ob.type === 'mine') { tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
 function* aiMoveHero(st, h, news) {

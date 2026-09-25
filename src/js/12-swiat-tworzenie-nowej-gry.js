@@ -125,27 +125,33 @@ function placeObjects(st) {
     for (let d = 0; d < 8; d++) { const nx = x + DX8[d], ny = y + DY8[d]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (!reach[j] && map.terrain[j] !== TER.WATER && !map.obst[j]) { reach[j] = 1; q.push(j); } }
   }
   const ok = (x, y) => x >= 1 && y >= 1 && x < n - 1 && y < n - 1 && reach[y * n + x] && !occ[y * n + x];
-  const dStart = (x, y) => Math.hypot(x - map.start.x, y - map.start.y), d01 = (x, y) => clamp(dStart(x, y) / (n * 0.75), 0, 1);
+  // odległość od najbliższego startu gracza (pierwsze miejsca na liście); d01 = 0 przy starcie, 1 daleko od wszystkich graczy
+  const starts = map.sites.slice(0, clamp(playerSlots(st.settings).length, 1, map.sites.length)), spread = n / Math.sqrt(starts.length) * 0.7;
+  const dStart = (x, y) => Math.min(...starts.map(s => Math.hypot(x - s.x, y - s.y))), d01 = (x, y) => clamp(dStart(x, y) / spread, 0, 1);
   const pick = (cond, tries = 500) => { for (let k = 0; k < tries; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (ok(x, y) && cond(x, y)) return [x, y]; } return null; };
   const add = (o, tiles) => { o.id = objs.length; objs.push(o); for (const i of tiles) occ[i] = 1; return o; };
+  // Potwór: siła rośnie wykładniczo z odległością od startu (blisko ~armia startowa, na krańcach mapy kilkanaście razy więcej),
+  // strażnicy cenniejszych rzeczy (boost) są mocniejsi, a poziom trudności mnoży liczebność
+  const diff = DIFFICULTIES[st.settings.difficulty].rating / 100;
   const monster = (x, y, boost = 0) => {
-    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 3.2 + rng() * 1.6) + boost, 1, 5), list = NEUTRALS_BY_LEVEL[lvl];
-    const base = { 1: [10, 22], 2: [6, 14], 3: [4, 10], 4: [3, 6], 5: [2, 4] }[lvl];
-    const count = Math.max(1, Math.round((base[0] + rng() * (base[1] - base[0])) * (0.8 + dd * 0.8)));
-    return add({ type: 'monster', cid: list[Math.floor(rng() * list.length)], count, x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
+    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), list = NEUTRALS_BY_LEVEL[lvl], cid = list[Math.floor(rng() * list.length)];
+    const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff);
+    return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
   };
-  const placeMine = (kind, near, dmin, dmax) => {
-    const p = pick((x, y) => {
-      const d = Math.hypot(x - near.x, y - near.y); if (d < dmin || d > dmax || y + 1 >= n) return false;
+  // Obiekt 2×2 (kopalnia, skarbiec): wejście w prawym dolnym polu, pozostałe trzy pola zablokowane, pole przed wejściem wolne
+  const footprint = (near, dmin, dmax, extra = () => true) => pick((x, y) => {
+      const d = Math.hypot(x - near.x, y - near.y); if (d < dmin || d > dmax || y + 1 >= n || !extra(x, y)) return false;
       for (const [dx, dy] of [[-1, 0], [-1, -1], [0, -1]]) { const j = (y + dy) * n + x + dx; if (map.terrain[j] === TER.WATER || map.obst[j] || occ[j] || map.road[j]) return false; }
       const f = (y + 1) * n + x; return map.terrain[f] !== TER.WATER && !map.obst[f];
     }, 800);
+  const placeMine = (kind, near, dmin, dmax) => {
+    const p = footprint(near, dmin, dmax);
     if (!p) return null; const [x, y] = p, blocks = [y * n + x - 1, (y - 1) * n + x - 1, (y - 1) * n + x];
     const m = add({ type: 'mine', kind, x, y, owner: -1, blocks }, [y * n + x, ...blocks]); occ[(y + 1) * n + x] = 1; return m;
   };
   const guard = (m, boost) => { for (const [dx, dy] of [[1, 0], [1, 1], [-1, 1], [1, -1]]) { const x = m.x + dx, y = m.y + dy; if (ok(x, y) && dStart(x, y) >= 6) { monster(x, y, boost); return; } } };
   map.sites.forEach((s, k) => {
-    for (const kind of ['wood', 'ore']) { const m = placeMine(kind, s, 4, 9); if (m && k !== 0) guard(m, 0); }
+    for (const kind of ['wood', 'ore']) { const m = placeMine(kind, s, 4, 9); if (m && k >= starts.length) guard(m, 0); }
     const m = placeMine(RARE[Math.floor(rng() * 4)], s, 6, 14); if (m) guard(m, 0);
   });
   for (let g = 0; g < Math.max(1, Math.floor(map.sites.length / 2)); g++) { const m = placeMine('gold', map.start, n * 0.25, n * 2); if (m) guard(m, 1); }
@@ -165,6 +171,15 @@ function placeObjects(st) {
     const dd = d01(p[0], p[1]), rar = dd > 0.6 && rng() < 0.5 ? 'major' : dd > 0.3 ? 'minor' : 'treasure', pool = ARTS_BY_RARITY(rar);
     const a = add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x: p[0], y: p[1] }, [p[1] * n + p[0]]);
     guard(a, rar === 'major' ? 2 : rar === 'minor' ? 1 : 0);
+  }
+  // skarbce: jedna na tyle pól (co najmniej min), dalej od startu niż BANKS[].dd; Smocza Utopia możliwie na krańcu mapy
+  for (const [kind, B] of Object.entries(BANKS)) {
+    const want = N / B.per, cnt = Math.max(B.min, Math.floor(want) + (rng() < want % 1 ? 1 : 0));
+    for (let k = 0; k < cnt; k++) {
+      let p = null; for (let dd = B.dd; !p && dd >= 0; dd -= 0.1) p = footprint(map.start, 6, n * 2, (x, y) => d01(x, y) >= dd);
+      if (!p) continue; const [x, y] = p, blocks = [y * n + x - 1, (y - 1) * n + x - 1, (y - 1) * n + x];
+      add({ type: 'bank', kind, x, y, blocks, guards: bankGuards(kind, st.settings.difficulty), cleared: false }, [y * n + x, ...blocks]); occ[(y + 1) * n + x] = 1;
+    }
   }
   // łodzie przy brzegu: w zasięgu lądu dostępnego ze startu, pierwsza możliwie blisko gracza
   const coastBoat = near => { for (let k = 0; k < 600; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x;
@@ -197,10 +212,11 @@ function createTown(st, x, y, owner, fac = 'haven') {
   st.objects.push({ id: st.objects.length, type: 'town', townId: t.id, x, y, owner, blocks });
   return t;
 }
-// Miasto niezależne w miejscu startowym: losowa frakcja, garnizon tym silniejszy, im dalej od gracza
+// Miasto niezależne w miejscu startowym: losowa frakcja, garnizon tym silniejszy, im dalej od graczy
 // (i im wyższy poziom trudności). Daleko stoją też mury (oblężenie w bitwie).
 function createNeutralTown(st, site, rng) {
-  const n = st.map.n, dd = clamp(Math.hypot(site.x - st.map.start.x, site.y - st.map.start.y) / (n * 0.75), 0, 1);
+  const n = st.map.n, own = st.towns.filter(t => t.owner >= 0), spread = n / Math.sqrt(Math.max(1, own.length)) * 0.75;
+  const dd = clamp(Math.min(...own.map(t => Math.hypot(site.x - t.x, site.y - t.y))) / spread, 0, 1); // daleko od wszystkich graczy = silniej
   const fac = FACTIONS[Math.floor(rng() * FACTIONS.length)].id, t = createTown(st, site.x, site.y, -1, fac), F = factionOf(fac);
   t.built.push('dw1', 'dw2'); if (dd > 0.45) t.built.push('fort', 'dw3'); if (dd > 0.8) t.built.push('tavern');
   const k = (0.8 + dd * 1.4) * DIFFICULTIES[st.settings.difficulty].rating / 100;

@@ -75,7 +75,7 @@ function removeObject(st, ob) { ob.dead = true; rebuildObjIndex(st); }
 function objBlocks(st, j, target, tg = 0) {
   if (j !== target && heroAt(st, j % st.map.n, (j / st.map.n) | 0)) return true;
   const ob = objectAt(st, j);
-  if (ob) { if ((ob.type === 'mine' || ob.type === 'town') && j !== ob.y * st.map.n + ob.x) return true; if (j !== target) return true; }
+  if (ob) { if ((ob.type === 'mine' || ob.type === 'town' || ob.type === 'bank') && j !== ob.y * st.map.n + ob.x) return true; if (j !== target) return true; }
   return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
 }
 function computePath(st, h, tx, ty) {
@@ -129,6 +129,9 @@ function visitObject(st, h, ob) {
       { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5) });
   } else if (ob.type === 'town') {
     if (ob.owner === h.owner) G.go('town', { townId: ob.townId }); else startTownAssault(st, h, st.towns[ob.townId]);
+  } else if (ob.type === 'bank') {
+    if (ob.cleared) { G.screens.adventure.flash(`${BANKS[ob.kind].name}: splądrowane, nic tu już nie ma`); return; }
+    startBankAssault(st, h, ob);
   } else if (ob.type === 'mine') {
     const M = MINES[ob.kind];
     if (ob.owner === h.owner) { G.screens.adventure.flash(`${M.name} już należy do ciebie`); return; }
@@ -142,6 +145,30 @@ function startEncounter(st, h, m) {
   // h.prev jest puste, gdy bohater sam wszedł na potwora; ustawione, gdy wszedł w strefę strażnika
   const who = h.prev ? `${qtyName(m.count)} ${c.gen} atakuje twojego bohatera!` : `${h.name} atakuje: ${qtyName(m.count).toLowerCase()} ${c.gen}.`;
   offerBattle(st, h, m, who, m.count * c.value, (ctx, cx, cy) => drawSprite(ctx, creatureSprite(m.cid, 1), cx, cy + 34, 2));
+}
+// Skarbiec: opis załogi i łupu, potem zwykłe okno przed bitwą (odwrót cofa bohatera o pole)
+const bankPower = ob => ob.guards.reduce((s, [cid, n]) => s + n * CREATURES[cid].value, 0);
+const bankGuardText = ob => ob.guards.map(([cid, n]) => `${qtyName(n).toLowerCase()} ${CREATURES[cid].gen}`).join(', ');
+function bankLootText(kind) {
+  const B = BANKS[kind], parts = RESOURCES.filter(r => B.loot[r.id]).map(r => `${B.loot[r.id]} ${r.id === 'gold' ? 'złota' : resName(r.id).toLowerCase()}`);
+  for (const [rar, k] of B.arts || []) parts.push(k > 1 ? `${k} artefakty (${{ treasure: 'skarby', minor: 'pomniejsze', major: 'potężne' }[rar]})` : `artefakt (${RARITY[rar]})`);
+  if (B.units) parts.push(`${B.units[1]} ${CREATURES[B.units[0]].gen} do armii`);
+  return parts.join(', ');
+}
+function startBankAssault(st, h, ob) {
+  const B = BANKS[ob.kind];
+  offerBattle(st, h, ob, `${B.name}: ${B.desc}. Załoga: ${bankGuardText(ob)}. Łup: ${bankLootText(ob.kind)}.`, bankPower(ob),
+    (ctx, cx, cy) => { const sp = bankSprite(ob.kind, false), k = Math.min(1.1, 40 / sp.c.height); drawSpriteBox(ctx, sp, cx - sp.c.width * k, cy - sp.c.height * k, k); });
+}
+// Łup ze skarbca dla zwycięzcy (człowieka albo SI); zwraca opis do okna wyniku
+function lootBank(st, h, ob) {
+  const B = BANKS[ob.kind], R = playerOf(st, h.owner).resources, r = mulberry32(st.seed ^ (ob.id * 7919) ^ st.dayTotal), got = [];
+  ob.cleared = true; MapRender.miniDirty = true;
+  for (const res of RESOURCES) if (B.loot[res.id]) R[res.id] += B.loot[res.id];
+  for (const [rar, k] of B.arts || []) for (let i = 0; i < k; i++) { const pool = ARTS_BY_RARITY(rar), id = pool[Math.floor(r() * pool.length)]; giveArtifact(h, id); got.push(ARTIFACTS[id].name); }
+  let joined = '';
+  if (B.units) { if (armyAdd(h.army, B.units[0], B.units[1])) joined = ` Do armii dołączają: ${CREATURES[B.units[0]].plural.toLowerCase()} (${B.units[1]}).`; else joined = ` Uwolnieni ${CREATURES[B.units[0]].plural.toLowerCase()} odchodzą: w armii nie ma miejsca.`; }
+  return ` Łup: ${RESOURCES.filter(x => B.loot[x.id]).map(x => `${B.loot[x.id]} ${x.id === 'gold' ? 'złota' : resName(x.id).toLowerCase()}`).join(', ')}${got.length ? `; artefakty: ${got.join(', ')}` : ''}.${joined}`;
 }
 function startHeroEncounter(st, h, foe) {
   offerBattle(st, h, foe, `${h.name} atakuje: ${heroTitle(foe)} (${ownerName(st, foe.owner)}).`, Math.round(armyPower(foe.army) * heroFactor(foe)),
@@ -355,7 +382,10 @@ function monthInfo(st) {
 // Wieści na nowy tydzień (i miesiąc) oraz jednorazowe skutki miesiąca
 function startWeek(st, newMonth) {
   const M = newMonth ? monthInfo(st) : null, W = weekInfo(st);
-  if (M && M.kind === 'monsters') for (const o of st.objects) if (o.type === 'monster' && !o.dead) o.count = Math.ceil(o.count * 1.5);
+  for (const o of st.objects) if (o.type === 'monster' && !o.dead) { // potwory rosną co tydzień (do MONSTER_GROW_MAX razy), Miesiąc Potworów dokłada połowę
+    o.base = o.base || o.count; o.count = Math.min(Math.ceil(o.count * (1 + MONSTER_GROW)), Math.ceil(o.base * MONSTER_GROW_MAX));
+    if (M && M.kind === 'monsters') o.count = Math.ceil(o.count * 1.5);
+  }
   for (const t of st.towns) townGrowthWeek(t, st);
   const head = newMonth ? (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
   return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;

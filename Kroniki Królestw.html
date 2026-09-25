@@ -42,6 +42,7 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
      GRAFIKA: PORTRETY BOHATERÓW     pixel art 36×36, wygląd z HERO_LOOKS albo losowany z imienia
      GRAFIKA: OBLĘŻENIE              mur, brama i wieże na polu bitwy (castleSprite), bruk dziedzińca
      GRAFIKA: STWORY TWIERDZY I INFERNA  ciała 'insect', 'lizard', 'bull', 'hydra'
+     GRAFIKA: SKARBCE                drawBank, bankSprite: krypta, warownia, gniazdo, leże hydr, Smocza Utopia
      ŚWIAT: TWORZENIE NOWEJ GRY      generateMap, placeObjects, createTown, createHero, createNewGame
      ZASADY GRY                      ruch, ścieżki, obiekty, potyczki, armie, rekrutacja, dochód, budowa
      BITWA: ZASADY                   pole heksów, obrażenia, kolejka, SI, simulateBattle, resolveBattle
@@ -145,10 +146,15 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    (komputery po kolei, nowy dzień advanceDay przy końcu listy), zasłona między ludźmi, wieści w skrzynkach graczy
    (tell/takeInbox), obrona innego człowieka przed atakiem komputera, bitwa człowiek na człowieka (obie strony ręcznie),
    zwycięzca = ostatni gracz na placu. Miejsc na miasta: 4/6/8/10 zależnie od mapy (SITE_COUNT).
+   Porządki i trudniejsza mapa: potwory neutralne to też jednostki frakcji (poziomy 1–7, fillNeutrals), siła rośnie
+   wykładniczo z odległością od najbliższego startu (MONSTER_POWER, d01) i z trudnością, potwory rosną co tydzień
+   (MONSTER_GROW do MONSTER_GROW_MAX). Skarbce BANKS (Krypta, Orcza warownia, Gniazdo gryfów, Leże hydr, Smocza Utopia):
+   załoga z kilku oddziałów, łup (lootBank), puste po zwycięstwie; SI też je rozbija. migrateSave naprawia stare zapisy.
+   Balans: Kurhan silniejszy, hydra bez regeneracji, bazyliszek bez „bez odwetu”; test balansu frakcji (30–70% wygranych).
 
    PLAN (kolejność ustalona z graczem; krok 13 „warunki zwycięstwa” pominięty)
    1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (zrobione: do 8 graczy, zasłona między turami).
-   5. Samouczek (wykreślony). 6. Porządki: migracja starych zapisów, testy balansu frakcji.
+   5. Samouczek (wykreślony). 6. Porządki (zrobione: migracja zapisów, test balansu, trudniejsza mapa i skarbce).
    7. Grafika: animowana woda, wyraźniejsze sosny i ozdoby, obiekty mapy w stylu rudy, tła bitew zależne od terenu.
    ===================================================================================== */
 
@@ -252,7 +258,10 @@ const CREATURES = {
   troll: { name: 'Troll', plural: 'Trolle', gen: 'trolli', acc: 'trolle', level: 4, att: 10, def: 9, dmin: 4, dmax: 9, hp: 40, spd: 6, growth: 4, value: 600, shots: 0, abil: ['regen'], look: { kind: 'hum', skin: '#6a7a6a', cloth: '#4a3a2a', size: 1.3, weapon: 'club', hair: '#3a4a3a', ears: true, hunch: true, tusks: true } },
   ogre: { name: 'Ogr', plural: 'Ogry', gen: 'ogrów', acc: 'ogry', level: 5, att: 13, def: 7, dmin: 6, dmax: 12, hp: 60, spd: 5, growth: 3, value: 900, shots: 0, look: { kind: 'hum', skin: '#c49a6a', cloth: '#6a3a1a', size: 1.45, weapon: 'club', hair: '#3a2410', beard: '#4a2a14', hunch: true } },
 };
-const NEUTRALS_BY_LEVEL = { 1: ['goblin', 'skeleton'], 2: ['wolf'], 3: ['orc'], 4: ['troll'], 5: ['ogre'] };
+// Potwory na mapie: własne stwory neutralne i podstawowe (nieulepszone) jednostki wszystkich frakcji; uzupełnia je
+// fillNeutrals() po wczytaniu wszystkich frakcji (poziomy 6 i 7 to wyłącznie jednostki frakcji).
+const NEUTRALS_BY_LEVEL = { 1: ['goblin', 'skeleton'], 2: ['wolf'], 3: ['orc'], 4: ['troll'], 5: ['ogre'], 6: [], 7: [] };
+function fillNeutrals() { for (const [id, c] of Object.entries(CREATURES)) if (c.faction && c.up && !NEUTRALS_BY_LEVEL[c.level].includes(id)) NEUTRALS_BY_LEVEL[c.level].push(id); }
 const QTY = [[1, 'Kilka'], [5, 'Grupa'], [10, 'Oddział'], [20, 'Mnóstwo'], [50, 'Horda'], [100, 'Tłum'], [250, 'Rój'], [500, 'Zatrzęsienie'], [1000, 'Legion']];
 function qtyName(c) { let s = QTY[0][1]; for (const [m, nm] of QTY) if (c >= m) s = nm; return s; }
 // Jednostki frakcji Przystań
@@ -289,19 +298,19 @@ Object.assign(CREATURES, {
   sunPhoenix: mkU('Słoneczny feniks', 'Słoneczne feniksy', 'słonecznych feniksów', 6, 19, 15, 20, 26, 110, 14, 2, 2400, { gold: 1600, mercury: 2 }, { abil: ['fly', 'breath'], faction: 'sylvan', fly: true, look: { kind: 'phoenix', size: 1.15 } }),
   emeraldDragon: mkU('Szmaragdowy smok', 'Szmaragdowe smoki', 'szmaragdowych smoków', 7, 19, 19, 40, 50, 200, 10, 1, 4500, { gold: 2400, crystal: 1 }, { abil: ['fly', 'breath'], faction: 'sylvan', fly: true, up: 'jadeDragon', look: { kind: 'dragon', fur: '#3a9a5a' } }),
   jadeDragon: mkU('Nefrytowy smok', 'Nefrytowe smoki', 'nefrytowych smoków', 7, 23, 23, 40, 55, 250, 14, 1, 6200, { gold: 4000, crystal: 2 }, { abil: ['fly', 'breath'], faction: 'sylvan', fly: true, look: { kind: 'dragon', fur: '#4ab88a', size: 1.08, horn: '#f0e0a0' } }),
-  boneWarrior: mkU('Kościotrup', 'Kościotrupy', 'kościotrupów', 1, 5, 4, 1, 3, 6, 4, 12, 75, { gold: 60 }, { abil: ['undead'], faction: 'barrow', up: 'boneGuard', look: { kind: 'hum', bony: true, skin: '#e8e2cc', size: 0.95, weapon: 'sword', shield: '#5a4a3a', metal: '#9aa0a8', eyes: '#8af0b8' } }),
+  boneWarrior: mkU('Kościotrup', 'Kościotrupy', 'kościotrupów', 1, 5, 4, 1, 3, 7, 4, 14, 75, { gold: 60 }, { abil: ['undead'], faction: 'barrow', up: 'boneGuard', look: { kind: 'hum', bony: true, skin: '#e8e2cc', size: 0.95, weapon: 'sword', shield: '#5a4a3a', metal: '#9aa0a8', eyes: '#8af0b8' } }),
   boneGuard: mkU('Kościany gwardzista', 'Kościani gwardziści', 'kościanych gwardzistów', 1, 6, 6, 1, 3, 6, 5, 12, 100, { gold: 70 }, { abil: ['undead'], faction: 'barrow', look: { kind: 'hum', bony: true, skin: '#ece6d2', size: 1, weapon: 'halberd', shield: '#4a4450', metal: '#8a909a', helm: 'helm', helmCol: '#6a6a72', eyes: '#8af0b8' } }),
-  ghoul: mkU('Ghul', 'Ghule', 'ghuli', 2, 5, 5, 2, 3, 15, 3, 8, 110, { gold: 100 }, { abil: ['undead'], faction: 'barrow', up: 'plagueGhoul', look: { kind: 'hum', skin: '#8a9a78', cloth: '#3a3a2a', size: 1, weapon: 'none', claws: true, hunch: true, hair: '#2a2a1a', eyes: '#f0e060' } }),
+  ghoul: mkU('Ghul', 'Ghule', 'ghuli', 2, 5, 6, 2, 4, 17, 4, 8, 110, { gold: 100 }, { abil: ['undead'], faction: 'barrow', up: 'plagueGhoul', look: { kind: 'hum', skin: '#8a9a78', cloth: '#3a3a2a', size: 1, weapon: 'none', claws: true, hunch: true, hair: '#2a2a1a', eyes: '#f0e060' } }),
   plagueGhoul: mkU('Morowy ghul', 'Morowe ghule', 'morowych ghuli', 2, 6, 6, 2, 3, 20, 4, 8, 150, { gold: 125 }, { abil: ['undead'], faction: 'barrow', look: { kind: 'hum', skin: '#7a8a5a', cloth: '#2a3a1a', size: 1.02, weapon: 'none', claws: true, hunch: true, eyes: '#a0f060' } }),
-  wraith: mkU('Zjawa', 'Zjawy', 'zjaw', 3, 7, 7, 3, 5, 18, 5, 7, 280, { gold: 200 }, { abil: ['undead', 'fly'], faction: 'barrow', fly: true, up: 'banshee', look: { kind: 'ghost', fur: '#c8d0e8', size: 1.2, scythe: true } }),
+  wraith: mkU('Zjawa', 'Zjawy', 'zjaw', 3, 8, 7, 3, 5, 22, 6, 7, 280, { gold: 200 }, { abil: ['undead', 'fly'], faction: 'barrow', fly: true, up: 'banshee', look: { kind: 'ghost', fur: '#c8d0e8', size: 1.2, scythe: true } }),
   banshee: mkU('Wyjąca zjawa', 'Wyjące zjawy', 'wyjących zjaw', 3, 8, 7, 3, 5, 18, 7, 7, 340, { gold: 230 }, { abil: ['undead', 'fly', 'noRetal'], faction: 'barrow', fly: true, look: { kind: 'ghost', fur: '#d8e0f8', size: 1.3, longHair: '#e8eef8', eyes: '#ff8aa0' } }),
-  vampire: mkU('Wampir', 'Wampiry', 'wampirów', 4, 10, 9, 5, 8, 30, 6, 4, 555, { gold: 360 }, { abil: ['undead', 'fly', 'noRetal'], faction: 'barrow', fly: true, up: 'vampireLord', look: { kind: 'hum', skin: '#d8d0d8', cloth: '#1a1a22', size: 1, weapon: 'sword', cape: '#6a1020', hair: '#1a1a1a', eyes: '#ff3030', metal: '#d8dce4' } }),
+  vampire: mkU('Wampir', 'Wampiry', 'wampirów', 4, 10, 10, 5, 8, 34, 6, 4, 555, { gold: 360 }, { abil: ['undead', 'fly', 'noRetal'], faction: 'barrow', fly: true, up: 'vampireLord', look: { kind: 'hum', skin: '#d8d0d8', cloth: '#1a1a22', size: 1, weapon: 'sword', cape: '#6a1020', hair: '#1a1a1a', eyes: '#ff3030', metal: '#d8dce4' } }),
   vampireLord: mkU('Władca wampirów', 'Władcy wampirów', 'władców wampirów', 4, 11, 10, 5, 8, 40, 9, 4, 780, { gold: 500 }, { abil: ['undead', 'fly', 'noRetal', 'lifeDrain'], faction: 'barrow', fly: true, look: { kind: 'hum', skin: '#e0d8e0', cloth: '#2a1a2a', size: 1.05, weapon: 'sword', cape: '#8a1020', hair: '#101010', eyes: '#ff3030', helm: 'crown', metal: '#d8dce4' } }),
-  necromancer: mkU('Nekromanta', 'Nekromanci', 'nekromantów', 5, 13, 10, 11, 13, 30, 6, 3, 850, { gold: 550 }, { abil: ['undead'], shots: 12, faction: 'barrow', shots: 12, up: 'archNecro', look: { kind: 'hum', skin: '#d8d0c0', cloth: '#3a2a4a', size: 1.05, weapon: 'staff', robe: true, helm: 'hood', hoodCol: '#2a1e36', orb: '#a6f0a8', eyes: '#a6f0a8' } }),
+  necromancer: mkU('Nekromanta', 'Nekromanci', 'nekromantów', 5, 13, 11, 11, 14, 35, 6, 3, 850, { gold: 550 }, { abil: ['undead'], shots: 12, faction: 'barrow', shots: 12, up: 'archNecro', look: { kind: 'hum', skin: '#d8d0c0', cloth: '#3a2a4a', size: 1.05, weapon: 'staff', robe: true, helm: 'hood', hoodCol: '#2a1e36', orb: '#a6f0a8', eyes: '#a6f0a8' } }),
   archNecro: mkU('Arcynekromanta', 'Arcynekromanci', 'arcynekromantów', 5, 15, 10, 11, 15, 40, 7, 3, 1050, { gold: 600 }, { abil: ['undead', 'noMeleePenalty'], shots: 24, faction: 'barrow', shots: 24, look: { kind: 'hum', skin: '#e0d8c8', cloth: '#4a2a6a', size: 1.1, weapon: 'staff', robe: true, helm: 'skull', cape: '#2a1a3a', orb: '#c080ff', eyes: '#c080ff' } }),
-  doomKnight: mkU('Rycerz Zagłady', 'Rycerze Zagłady', 'rycerzy Zagłady', 6, 16, 16, 15, 30, 120, 7, 2, 2000, { gold: 1500 }, { abil: ['undead', 'jousting'], faction: 'barrow', up: 'dreadLord', look: { kind: 'rider', horse: '#2e2a36', mane: '#a6f0a8', skin: '#3a3a44', cloth: '#1a1a22', weapon: 'axe', helm: 'horn', armor: true, metal: '#4a4458', eyes: '#a6f0a8', barding: '#2a2430', trim: '#6a6478' } }),
+  doomKnight: mkU('Rycerz Zagłady', 'Rycerze Zagłady', 'rycerzy Zagłady', 6, 17, 17, 16, 30, 130, 7, 2, 2000, { gold: 1500 }, { abil: ['undead', 'jousting'], faction: 'barrow', up: 'dreadLord', look: { kind: 'rider', horse: '#2e2a36', mane: '#a6f0a8', skin: '#3a3a44', cloth: '#1a1a22', weapon: 'axe', helm: 'horn', armor: true, metal: '#4a4458', eyes: '#a6f0a8', barding: '#2a2430', trim: '#6a6478' } }),
   dreadLord: mkU('Władca Grozy', 'Władcy Grozy', 'władców Grozy', 6, 18, 18, 15, 30, 120, 9, 2, 2400, { gold: 1500, mercury: 1 }, { abil: ['undead', 'jousting', 'lifeDrain'], faction: 'barrow', look: { kind: 'rider', horse: '#3a2a40', mane: '#ff5040', skin: '#4a3a54', cloth: '#2a1a32', weapon: 'axe', helm: 'horn', armor: true, metal: '#5a4a64', cape: '#6a1020', barding: '#3a2040', trim: '#a02030' } }),
-  boneWyvern: mkU('Kościsty wywern', 'Kościste wywerny', 'kościstych wywern', 7, 17, 15, 25, 50, 150, 9, 1, 3400, { gold: 1800 }, { abil: ['undead', 'fly'], faction: 'barrow', fly: true, up: 'ghostWyvern', look: { kind: 'dragon', fur: '#d8d2c0', bony: true } }),
+  boneWyvern: mkU('Kościsty wywern', 'Kościste wywerny', 'kościstych wywern', 7, 19, 17, 28, 50, 180, 10, 1, 3400, { gold: 1800 }, { abil: ['undead', 'fly'], faction: 'barrow', fly: true, up: 'ghostWyvern', look: { kind: 'dragon', fur: '#d8d2c0', bony: true } }),
   ghostWyvern: mkU('Upiorny wywern', 'Upiorne wywerny', 'upiornych wywern', 7, 19, 17, 25, 50, 200, 14, 1, 4700, { gold: 3000, mercury: 1 }, { abil: ['undead', 'fly', 'breath'], faction: 'barrow', fly: true, look: { kind: 'dragon', fur: '#b8c8e0', bony: true, size: 1.08 } }),
 });
 
@@ -329,13 +338,13 @@ Object.assign(CREATURES, {
   lizardWarrior: mkU('Jaszczurzy wojownik', 'Jaszczurzy wojownicy', 'jaszczurzych wojowników', 2, 6, 7, 2, 4, 15, 5, 9, 195, { gold: 140 }, { abil: ['noMeleePenalty'], shots: 24, faction: 'fortress', look: { kind: 'hum', skin: '#4a7a5a', cloth: '#3a4a2a', size: 1.05, weapon: 'bow', snout: true, tail: '#3e6a4a', helm: 'cap', helmCol: '#6a4a2a', feather: '#c83a2a', eyes: '#f0d040' } }),
   dragonfly: mkU('Ważka', 'Ważki', 'ważek', 3, 7, 10, 1, 3, 20, 9, 8, 268, { gold: 220 }, { abil: ['fly'], fly: true, faction: 'fortress', up: 'venomFly', look: { kind: 'insect', fur: '#3a7ac8', wing: '#d0ecff', eyes: '#a0f070', size: 1.2 } }),
   venomFly: mkU('Ważka jadowita', 'Ważki jadowite', 'ważek jadowitych', 3, 8, 10, 2, 5, 20, 13, 8, 312, { gold: 240 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'fortress', look: { kind: 'insect', fur: '#5aa83a', wing: '#e8f8c8', eyes: '#ff5a3a', size: 1.3 } }),
-  basilisk: mkU('Bazyliszek', 'Bazyliszki', 'bazyliszków', 4, 11, 11, 6, 10, 35, 5, 4, 552, { gold: 325 }, { abil: ['noRetal'], faction: 'fortress', up: 'greatBasilisk', look: { kind: 'lizard', fur: '#6a7a3a', spikes: '#3a4a1e', eyes: '#f0e040' } }),
+  basilisk: mkU('Bazyliszek', 'Bazyliszki', 'bazyliszków', 4, 11, 11, 6, 10, 35, 5, 4, 552, { gold: 325 }, { faction: 'fortress', up: 'greatBasilisk', look: { kind: 'lizard', fur: '#6a7a3a', spikes: '#3a4a1e', eyes: '#f0e040' } }),
   greatBasilisk: mkU('Wielki bazyliszek', 'Wielkie bazyliszki', 'wielkich bazyliszków', 4, 12, 12, 6, 10, 40, 7, 4, 714, { gold: 400 }, { abil: ['noRetal'], faction: 'fortress', look: { kind: 'lizard', fur: '#8a8a4a', spikes: '#6a2a1a', eyes: '#ff9a2a', size: 1.12 } }),
-  gorgon: mkU('Gorgona', 'Gorgony', 'gorgon', 5, 10, 12, 12, 16, 70, 5, 3, 850, { gold: 525 }, { faction: 'fortress', up: 'mightyGorgon', look: { kind: 'bull', fur: '#6a7a5a', horn: '#e8e0cc' } }),
+  gorgon: mkU('Gorgona', 'Gorgony', 'gorgon', 5, 10, 12, 12, 16, 60, 5, 3, 850, { gold: 525 }, { faction: 'fortress', up: 'mightyGorgon', look: { kind: 'bull', fur: '#6a7a5a', horn: '#e8e0cc' } }),
   mightyGorgon: mkU('Potężna gorgona', 'Potężne gorgony', 'potężnych gorgon', 5, 11, 14, 12, 16, 70, 6, 3, 980, { gold: 600 }, { abil: ['breath'], faction: 'fortress', look: { kind: 'bull', fur: '#5a6a7a', horn: '#f0d890', breath: '#a0f0a0', size: 1.08 } }),
   wyvern: mkU('Wywern', 'Wywerny', 'wywern', 6, 14, 14, 14, 18, 70, 7, 2, 1350, { gold: 800 }, { abil: ['fly'], fly: true, faction: 'fortress', up: 'wyvernKing', look: { kind: 'dragon', fur: '#7a8a3a', horn: '#d8c890', size: 0.92 } }),
   wyvernKing: mkU('Król wywern', 'Królowie wywern', 'królów wywern', 6, 14, 14, 18, 22, 70, 11, 2, 1518, { gold: 1100 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'fortress', look: { kind: 'dragon', fur: '#9a6a2a', horn: '#f0e0a0' } }),
-  hydra: mkU('Hydra', 'Hydry', 'hydr', 7, 16, 18, 25, 45, 160, 5, 1, 3900, { gold: 2200, sulfur: 1 }, { abil: ['noRetal', 'regen'], faction: 'fortress', up: 'chaosHydra', look: { kind: 'hydra', fur: '#4a7a4a', heads: 5 } }),
+  hydra: mkU('Hydra', 'Hydry', 'hydr', 7, 16, 17, 25, 45, 160, 5, 1, 3900, { gold: 2200, sulfur: 1 }, { abil: ['noRetal'], faction: 'fortress', up: 'chaosHydra', look: { kind: 'hydra', fur: '#4a7a4a', heads: 5 } }),
   chaosHydra: mkU('Hydra chaosu', 'Hydry chaosu', 'hydr chaosu', 7, 18, 20, 25, 45, 220, 7, 1, 5600, { gold: 3500, sulfur: 1 }, { abil: ['noRetal', 'regen', 'breath'], faction: 'fortress', look: { kind: 'hydra', fur: '#6a4a7a', heads: 7, size: 1.08 } }),
 });
 // Jednostki frakcji Inferno (lawa)
@@ -355,6 +364,7 @@ Object.assign(CREATURES, {
   devil: mkU('Diabeł', 'Diabły', 'diabłów', 7, 19, 21, 30, 40, 180, 11, 1, 5400, { gold: 2700, mercury: 1 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'inferno', up: 'archDevil', look: { kind: 'hum', skin: '#7a1a1a', cloth: '#1a0808', size: 1.38, weapon: 'spear', horns: '#1a1010', tail: '#6a1414', wings: '#2a0a0a', eyes: '#ffd040', metal: '#c8c0b0', cape: '#4a0e0e' } }),
   archDevil: mkU('Arcydiabeł', 'Arcydiabły', 'arcydiabłów', 7, 24, 24, 30, 40, 220, 17, 1, 7400, { gold: 4500, mercury: 2 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'inferno', look: { kind: 'hum', skin: '#5a0e14', cloth: '#0e0406', size: 1.45, weapon: 'halberd', horns: '#f0e0c0', tail: '#4a0a10', wings: '#1a0406', eyes: '#ff4020', metal: '#ffd060', cape: '#8a0a0a', glow: '#ff6a2a', armor: true, helm: 'crown' } }),
 });
+fillNeutrals();
 // ==================== DANE: FRAKCJE, BOHATEROWIE, BUDOWLE, KOPALNIE =====================
 // Wszystko, co różni frakcje, jest w FACTIONS. BUILDINGS opisuje budowle wspólne dla frakcji.
 // Klasy bohaterów. look = wygląd wspólny dla postaci na mapie i portretu w panelu.
@@ -640,6 +650,26 @@ const SITES = {
   lookout: { name: 'Wieża obserwacyjna', use: 'player', per: 1600, ai: 500, desc: 'odsłania okolicę w promieniu 12 pól' },
 };
 const SITE_EXP = 1000, SITE_MP = 400, LOOKOUT_R = 12;
+// Skarbce (obiekt type: 'bank', kind): silna załoga z kilku oddziałów, po zwycięstwie jednorazowy łup, potem obiekt stoi pusty.
+// guards: [stwór, liczba] (liczby rosną z poziomem trudności), loot: surowce, arts: artefakty [rzadkość, ile], units: stwory dołączają do armii.
+// per = jeden na tyle pól mapy, min = najmniej na każdej mapie, dd = najmniejsza odległość od startu (0–1, jak siła potworów).
+const BANKS = {
+  crypt: { name: 'Krypta', per: 1300, min: 1, dd: 0.15, guards: [['skeleton', 24], ['ghoul', 12], ['wraith', 5]],
+    loot: { gold: 2500 }, arts: [['treasure', 1]], desc: 'nieumarli strzegą grobowych skarbów' },
+  orcFort: { name: 'Orcza warownia', per: 1900, min: 1, dd: 0.25, guards: [['orc', 22], ['troll', 5], ['ogre', 4]],
+    loot: { gold: 4000, wood: 10, ore: 10 }, desc: 'orkowie i trolle pilnują łupów z wypraw' },
+  griffinNest: { name: 'Gniazdo gryfów', per: 2600, min: 0, dd: 0.35, guards: [['griffin', 22], ['royalGriffin', 10]],
+    loot: { gold: 3000 }, units: ['champion', 3], desc: 'gryfy bronią gniazd; w podziemiach czekają uwięzieni czempioni' },
+  hydraLair: { name: 'Leże hydr', per: 3600, min: 0, dd: 0.5, guards: [['hydra', 5], ['basilisk', 12], ['gorgon', 6]],
+    loot: { gold: 8000, mercury: 5, sulfur: 5, crystal: 5, gems: 5 }, arts: [['minor', 1]], desc: 'hydry z bagien strzegą zatopionych skarbów' },
+  dragonUtopia: { name: 'Smocza Utopia', per: 6000, min: 1, dd: 0.6, guards: [['emeraldDragon', 4], ['jadeDragon', 2], ['ghostWyvern', 3], ['archDevil', 2], ['chaosHydra', 1]],
+    loot: { gold: 20000 }, arts: [['major', 2], ['minor', 1]], desc: 'legowisko smoków: ogromne skarby dla najsilniejszych armii' },
+};
+// Siła potworów na mapie tuż przy starcie gracza (liczebność = siła / wartość stwora), rośnie z odległością (placeObjects)
+const MONSTER_POWER = 700;
+// Potwory na mapie rosną co tydzień o tyle (część ułamkowa w górę), do MONSTER_GROW_MAX razy stanu początkowego
+const MONSTER_GROW = 0.08, MONSTER_GROW_MAX = 3;
+const bankGuards = (kind, diff) => BANKS[kind].guards.map(([cid, n]) => [cid, Math.max(1, Math.round(n * (0.6 + 0.4 * DIFFICULTIES[diff].rating / 100)))]);
 // ==================== STAN GRY I USTAWIENIA =============================================
 // G trzyma stan programu; G.state to stan jednej rozgrywki (to, co kiedyś trafi do zapisu gry).
 const G = {
@@ -2896,6 +2926,63 @@ function drawHydra(ctx, L, P = {}) {
   quadLegs(ctx, [[-7, Math.PI, false], [9, 0, false]], -6, 6, f, P, 3.2);
   ctx.restore();
 }
+// ==================== GRAFIKA: SKARBCE ====================================================
+// Skarbce (BANKS) na mapie: 2×2 pola jak kopalnia, (0,0) = lewy górny róg, ziemia na y ≈ 58, wejście w prawym dolnym polu.
+// Styl jak ruda i góry: bryły ze ściankami jasną i ciemną. Splądrowany skarbiec jest ciemniejszy i bez skarbów.
+function drawBank(ctx, kind, cleared) {
+  const C = c => (cleared ? DK(c, 0.3) : c), P = (pts, c) => fillPoly(ctx, pts, C(c));
+  const rock = (x, y, w, h, c) => { P([[x, y + h], [x + w * 0.15, y + h * 0.3], [x + w * 0.45, y], [x + w * 0.8, y + h * 0.25], [x + w, y + h]], c); P([[x, y + h], [x + w * 0.15, y + h * 0.3], [x + w * 0.45, y], [x + w * 0.4, y + h * 0.55], [x + w * 0.3, y + h]], LT(c, 0.18)); };
+  const gold = (x, y, s) => { if (cleared) return; P([[x - 7 * s, y], [x - 3 * s, y - 5 * s], [x + 3 * s, y - 6 * s], [x + 8 * s, y]], '#e0b030'); P([[x - 3 * s, y - 5 * s], [x + 3 * s, y - 6 * s], [x + 1 * s, y - 2 * s]], '#fff0a0'); circ(ctx, x + 5 * s, y - 2 * s, 1.6 * s, '#f8e070'); };
+  const door = (x, y, w, h) => { ctx.fillStyle = '#140c08'; ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y + w / 2); ctx.arc(x + w / 2, y + w / 2, w / 2, Math.PI, 0); ctx.lineTo(x + w, y + h); ctx.fill(); };
+  oval(ctx, 34, 58, 31, 7, '#00000055');
+  if (kind === 'crypt') { // grobowiec z kolumnami i trójkątnym szczytem, nagrobki
+    for (const [x, h] of [[6, 12], [14, 9]]) { P([[x, 58], [x, 58 - h], [x + 3, 55 - h], [x + 6, 58 - h], [x + 6, 58]], '#8a8a86'); P([[x, 58], [x, 58 - h], [x + 3, 55 - h], [x + 3, 58]], '#a6a6a0'); }
+    P([[24, 58], [24, 26], [62, 26], [62, 58]], '#7a7872'); P([[24, 58], [24, 26], [34, 26], [34, 58]], '#96948c');
+    P([[20, 27], [43, 8], [66, 27]], '#5a5854'); P([[20, 27], [43, 8], [43, 27]], '#76746e');
+    for (const x of [27, 55]) P([[x, 58], [x, 30], [x + 4, 30], [x + 4, 58]], '#b0aea6');
+    door(37, 34, 12, 24); P([[41.5, 13], [44.5, 13], [44.5, 22], [41.5, 22]], '#d8d4c8'); P([[39, 16], [47, 16], [47, 18.5], [39, 18.5]], '#d8d4c8');
+    if (!cleared) { circ(ctx, 43, 44, 1.6, '#7ae0c0'); circ(ctx, 43, 44, 0.8, '#e8fff8'); }
+  } else if (kind === 'orcFort') { // częstokół z zaostrzonych pali przed chatą ze skór, wieża strażnicza, czaszka na tyczce, proporzec
+    P([[14, 34], [26, 12], [44, 12], [54, 34]], '#7a5a3a'); P([[14, 34], [26, 12], [32, 12], [26, 34]], '#9a7448'); // dach z futer
+    P([[46, 58], [46, 16], [62, 16], [62, 58]], '#5a3a1e'); P([[46, 58], [46, 16], [51, 16], [51, 58]], '#7a5430'); // wieża
+    P([[43, 17], [65, 17], [65, 12], [43, 12]], '#8a6238'); P([[44, 12], [54, 3], [64, 12]], '#a8402a'); P([[44, 12], [54, 3], [54, 12]], '#c85a3a');
+    for (let i = 0; i < 9; i++) { const x = 2 + i * 5, h = 20 + (i % 3) * 3; P([[x, 58], [x, 58 - h], [x + 2, 55 - h], [x + 4, 58 - h], [x + 4, 58]], i % 2 ? '#8a6034' : '#b08048'); P([[x + 4, 58], [x + 4, 58 - h], [x + 5, 58 - h], [x + 5, 58]], '#3a2410'); }
+    P([[18, 58], [18, 46], [28, 46], [28, 58]], '#1a100a'); limb(ctx, 16, 46, 30, 46, 1.4, C('#5a3a1a'));
+    limb(ctx, 40, 58, 40, 24, 1.6, C('#5a3a1a')); circ(ctx, 40, 22, 3.4, C('#e8e0c8')); circ(ctx, 38.8, 21.6, 0.9, '#1a1008'); circ(ctx, 41.2, 21.6, 0.9, '#1a1008');
+    limb(ctx, 54, 3, 54, -8, 1.2, C('#4a3018')); P([[54, -8], [66, -5], [54, -2]], '#c82a1a');
+    gold(58, 58, 0.8);
+  } else if (kind === 'griffinNest') { // skalna iglica z gniazdem z gałęzi, pióra
+    rock(8, 26, 30, 32, '#7a6a58'); rock(26, 6, 30, 52, '#8a7862'); rock(44, 30, 22, 28, '#6e604e');
+    P([[28, 12], [54, 12], [50, 18], [32, 18]], '#6a4a26'); for (let i = 0; i < 6; i++) limb(ctx, 28 + i * 4.4, 11 + (i % 2) * 5, 33 + i * 4.4, 17 - (i % 2) * 4, 1.2, C('#8a6434'));
+    if (!cleared) { oval(ctx, 38, 10, 3, 3.8, '#f0e0b0'); oval(ctx, 44, 10.5, 3, 3.8, '#e8c060'); }
+    P([[16, 52], [22, 46], [21, 52]], '#e8d8a8'); P([[58, 52], [62, 47], [63, 52]], '#c8a860');
+    door(43, 44, 10, 14);
+  } else if (kind === 'hydraLair') { // bagienna pieczara: omszały pagórek, zielona toń, trzciny, z pieczary wychylają się szyje hydry
+    oval(ctx, 20, 55, 20, 5, C('#2e5a4a')); oval(ctx, 18, 54, 15, 3, C('#4a9a7a'));
+    rock(18, 14, 48, 44, '#4a5a3a'); P([[24, 26], [42, 14], [60, 26], [44, 21]], '#6a9a4a'); P([[30, 20], [36, 16], [40, 20]], '#8aba5a');
+    door(36, 36, 18, 22);
+    if (!cleared) for (const [x, y, a] of [[38, 36, -0.9], [45, 32, -0.2], [52, 36, 0.6]]) { // trzy łby hydry
+      ctx.strokeStyle = '#3a7a4a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(45, 56); ctx.quadraticCurveTo(45 + a * 6, 46, x, y); ctx.stroke();
+      P([[x - 3, y - 2], [x + 3 + a * 2, y - 3], [x + 5 + a * 3, y], [x - 2, y + 2]], '#4a9a5a'); circ(ctx, x + 1, y - 1.2, 0.9, '#f0e060');
+    }
+    for (const [x, h] of [[4, 14], [8, 18], [12, 12], [62, 14], [66, 10]]) { limb(ctx, x, 58, x + 1, 58 - h, 1.2, C('#6a8a2a')); oval(ctx, x + 1, 58 - h, 1.3, 3, C('#7a5a2a')); }
+    gold(28, 58, 0.7);
+  } else if (kind === 'dragonUtopia') { // smocza góra: czerwone skały z żyłami lawy, skrzydła smoka na szczycie, złoty skarb w pieczarze
+    rock(-18, 10, 40, 48, '#7a3a34'); rock(40, 4, 42, 54, '#6a3430'); rock(4, -30, 56, 88, '#8a4a3c');
+    for (const [x1, y1, x2, y2] of [[10, 0, 16, 20], [52, 14, 58, 30], [-6, 30, 0, 46], [46, -6, 42, 8]]) limb(ctx, x1, y1, x2, y2, 1.4, cleared ? '#4a2a22' : '#ff8a2a');
+    P([[26, -30], [32, -44], [36, -30]], '#9a5a4a');
+    P([[29, -36], [4, -52], [10, -40], [-2, -38], [22, -28]], '#5a1a1a'); P([[33, -36], [58, -52], [52, -40], [64, -38], [40, -28]], '#5a1a1a'); // skrzydła
+    P([[29, -36], [4, -52], [16, -36]], '#8a2a22'); P([[33, -36], [58, -52], [46, -36]], '#8a2a22');
+    P([[27, -44], [31, -52], [35, -44]], '#6a1a14'); circ(ctx, 29.5, -46, 0.9, cleared ? '#3a1a10' : '#ffd040');
+    ctx.fillStyle = C('#1a0a06'); ctx.beginPath(); ctx.moveTo(18, 58); ctx.lineTo(18, 34); ctx.arc(34, 34, 16, Math.PI, 0); ctx.lineTo(50, 58); ctx.fill();
+    if (!cleared) { oval(ctx, 34, 55, 15, 4, '#c88a1a'); gold(26, 57, 1.3); gold(40, 57, 1.1); gold(33, 52, 0.8); circ(ctx, 30, 30, 1.8, '#ff5a2a'); circ(ctx, 38, 30, 1.8, '#ff5a2a'); }
+    for (const [x, y] of [[-6, 22], [70, 18], [16, -8]]) P([[x, y], [x + 3, y - 4], [x + 6, y]], '#e8c888');
+  }
+}
+// Większa Smocza Utopia wychodzi poza 2×2 pola (w lewo i do góry)
+const bankSprite = (k, cleared) => (k === 'dragonUtopia'
+  ? sprite(`bank_${k}_${cleared ? 1 : 0}`, 54, 66, 12, 32, p => drawBank(p, k, cleared))
+  : sprite(`bank_${k}_${cleared ? 1 : 0}`, 36, 38, 2, 4, p => drawBank(p, k, cleared)));
 // ==================== ŚWIAT: TWORZENIE NOWEJ GRY ========================================
 // Generator mapy, rozmieszczanie obiektów, miasta i bohaterowie startowi.
 function smoothTerrain(ter, n) {
@@ -3023,27 +3110,33 @@ function placeObjects(st) {
     for (let d = 0; d < 8; d++) { const nx = x + DX8[d], ny = y + DY8[d]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (!reach[j] && map.terrain[j] !== TER.WATER && !map.obst[j]) { reach[j] = 1; q.push(j); } }
   }
   const ok = (x, y) => x >= 1 && y >= 1 && x < n - 1 && y < n - 1 && reach[y * n + x] && !occ[y * n + x];
-  const dStart = (x, y) => Math.hypot(x - map.start.x, y - map.start.y), d01 = (x, y) => clamp(dStart(x, y) / (n * 0.75), 0, 1);
+  // odległość od najbliższego startu gracza (pierwsze miejsca na liście); d01 = 0 przy starcie, 1 daleko od wszystkich graczy
+  const starts = map.sites.slice(0, clamp(playerSlots(st.settings).length, 1, map.sites.length)), spread = n / Math.sqrt(starts.length) * 0.7;
+  const dStart = (x, y) => Math.min(...starts.map(s => Math.hypot(x - s.x, y - s.y))), d01 = (x, y) => clamp(dStart(x, y) / spread, 0, 1);
   const pick = (cond, tries = 500) => { for (let k = 0; k < tries; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (ok(x, y) && cond(x, y)) return [x, y]; } return null; };
   const add = (o, tiles) => { o.id = objs.length; objs.push(o); for (const i of tiles) occ[i] = 1; return o; };
+  // Potwór: siła rośnie wykładniczo z odległością od startu (blisko ~armia startowa, na krańcach mapy kilkanaście razy więcej),
+  // strażnicy cenniejszych rzeczy (boost) są mocniejsi, a poziom trudności mnoży liczebność
+  const diff = DIFFICULTIES[st.settings.difficulty].rating / 100;
   const monster = (x, y, boost = 0) => {
-    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 3.2 + rng() * 1.6) + boost, 1, 5), list = NEUTRALS_BY_LEVEL[lvl];
-    const base = { 1: [10, 22], 2: [6, 14], 3: [4, 10], 4: [3, 6], 5: [2, 4] }[lvl];
-    const count = Math.max(1, Math.round((base[0] + rng() * (base[1] - base[0])) * (0.8 + dd * 0.8)));
-    return add({ type: 'monster', cid: list[Math.floor(rng() * list.length)], count, x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
+    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), list = NEUTRALS_BY_LEVEL[lvl], cid = list[Math.floor(rng() * list.length)];
+    const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff);
+    return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
   };
-  const placeMine = (kind, near, dmin, dmax) => {
-    const p = pick((x, y) => {
-      const d = Math.hypot(x - near.x, y - near.y); if (d < dmin || d > dmax || y + 1 >= n) return false;
+  // Obiekt 2×2 (kopalnia, skarbiec): wejście w prawym dolnym polu, pozostałe trzy pola zablokowane, pole przed wejściem wolne
+  const footprint = (near, dmin, dmax, extra = () => true) => pick((x, y) => {
+      const d = Math.hypot(x - near.x, y - near.y); if (d < dmin || d > dmax || y + 1 >= n || !extra(x, y)) return false;
       for (const [dx, dy] of [[-1, 0], [-1, -1], [0, -1]]) { const j = (y + dy) * n + x + dx; if (map.terrain[j] === TER.WATER || map.obst[j] || occ[j] || map.road[j]) return false; }
       const f = (y + 1) * n + x; return map.terrain[f] !== TER.WATER && !map.obst[f];
     }, 800);
+  const placeMine = (kind, near, dmin, dmax) => {
+    const p = footprint(near, dmin, dmax);
     if (!p) return null; const [x, y] = p, blocks = [y * n + x - 1, (y - 1) * n + x - 1, (y - 1) * n + x];
     const m = add({ type: 'mine', kind, x, y, owner: -1, blocks }, [y * n + x, ...blocks]); occ[(y + 1) * n + x] = 1; return m;
   };
   const guard = (m, boost) => { for (const [dx, dy] of [[1, 0], [1, 1], [-1, 1], [1, -1]]) { const x = m.x + dx, y = m.y + dy; if (ok(x, y) && dStart(x, y) >= 6) { monster(x, y, boost); return; } } };
   map.sites.forEach((s, k) => {
-    for (const kind of ['wood', 'ore']) { const m = placeMine(kind, s, 4, 9); if (m && k !== 0) guard(m, 0); }
+    for (const kind of ['wood', 'ore']) { const m = placeMine(kind, s, 4, 9); if (m && k >= starts.length) guard(m, 0); }
     const m = placeMine(RARE[Math.floor(rng() * 4)], s, 6, 14); if (m) guard(m, 0);
   });
   for (let g = 0; g < Math.max(1, Math.floor(map.sites.length / 2)); g++) { const m = placeMine('gold', map.start, n * 0.25, n * 2); if (m) guard(m, 1); }
@@ -3063,6 +3156,15 @@ function placeObjects(st) {
     const dd = d01(p[0], p[1]), rar = dd > 0.6 && rng() < 0.5 ? 'major' : dd > 0.3 ? 'minor' : 'treasure', pool = ARTS_BY_RARITY(rar);
     const a = add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x: p[0], y: p[1] }, [p[1] * n + p[0]]);
     guard(a, rar === 'major' ? 2 : rar === 'minor' ? 1 : 0);
+  }
+  // skarbce: jedna na tyle pól (co najmniej min), dalej od startu niż BANKS[].dd; Smocza Utopia możliwie na krańcu mapy
+  for (const [kind, B] of Object.entries(BANKS)) {
+    const want = N / B.per, cnt = Math.max(B.min, Math.floor(want) + (rng() < want % 1 ? 1 : 0));
+    for (let k = 0; k < cnt; k++) {
+      let p = null; for (let dd = B.dd; !p && dd >= 0; dd -= 0.1) p = footprint(map.start, 6, n * 2, (x, y) => d01(x, y) >= dd);
+      if (!p) continue; const [x, y] = p, blocks = [y * n + x - 1, (y - 1) * n + x - 1, (y - 1) * n + x];
+      add({ type: 'bank', kind, x, y, blocks, guards: bankGuards(kind, st.settings.difficulty), cleared: false }, [y * n + x, ...blocks]); occ[(y + 1) * n + x] = 1;
+    }
   }
   // łodzie przy brzegu: w zasięgu lądu dostępnego ze startu, pierwsza możliwie blisko gracza
   const coastBoat = near => { for (let k = 0; k < 600; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x;
@@ -3095,10 +3197,11 @@ function createTown(st, x, y, owner, fac = 'haven') {
   st.objects.push({ id: st.objects.length, type: 'town', townId: t.id, x, y, owner, blocks });
   return t;
 }
-// Miasto niezależne w miejscu startowym: losowa frakcja, garnizon tym silniejszy, im dalej od gracza
+// Miasto niezależne w miejscu startowym: losowa frakcja, garnizon tym silniejszy, im dalej od graczy
 // (i im wyższy poziom trudności). Daleko stoją też mury (oblężenie w bitwie).
 function createNeutralTown(st, site, rng) {
-  const n = st.map.n, dd = clamp(Math.hypot(site.x - st.map.start.x, site.y - st.map.start.y) / (n * 0.75), 0, 1);
+  const n = st.map.n, own = st.towns.filter(t => t.owner >= 0), spread = n / Math.sqrt(Math.max(1, own.length)) * 0.75;
+  const dd = clamp(Math.min(...own.map(t => Math.hypot(site.x - t.x, site.y - t.y))) / spread, 0, 1); // daleko od wszystkich graczy = silniej
   const fac = FACTIONS[Math.floor(rng() * FACTIONS.length)].id, t = createTown(st, site.x, site.y, -1, fac), F = factionOf(fac);
   t.built.push('dw1', 'dw2'); if (dd > 0.45) t.built.push('fort', 'dw3'); if (dd > 0.8) t.built.push('tavern');
   const k = (0.8 + dd * 1.4) * DIFFICULTIES[st.settings.difficulty].rating / 100;
@@ -3228,7 +3331,7 @@ function removeObject(st, ob) { ob.dead = true; rebuildObjIndex(st); }
 function objBlocks(st, j, target, tg = 0) {
   if (j !== target && heroAt(st, j % st.map.n, (j / st.map.n) | 0)) return true;
   const ob = objectAt(st, j);
-  if (ob) { if ((ob.type === 'mine' || ob.type === 'town') && j !== ob.y * st.map.n + ob.x) return true; if (j !== target) return true; }
+  if (ob) { if ((ob.type === 'mine' || ob.type === 'town' || ob.type === 'bank') && j !== ob.y * st.map.n + ob.x) return true; if (j !== target) return true; }
   return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
 }
 function computePath(st, h, tx, ty) {
@@ -3282,6 +3385,9 @@ function visitObject(st, h, ob) {
       { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5) });
   } else if (ob.type === 'town') {
     if (ob.owner === h.owner) G.go('town', { townId: ob.townId }); else startTownAssault(st, h, st.towns[ob.townId]);
+  } else if (ob.type === 'bank') {
+    if (ob.cleared) { G.screens.adventure.flash(`${BANKS[ob.kind].name}: splądrowane, nic tu już nie ma`); return; }
+    startBankAssault(st, h, ob);
   } else if (ob.type === 'mine') {
     const M = MINES[ob.kind];
     if (ob.owner === h.owner) { G.screens.adventure.flash(`${M.name} już należy do ciebie`); return; }
@@ -3295,6 +3401,30 @@ function startEncounter(st, h, m) {
   // h.prev jest puste, gdy bohater sam wszedł na potwora; ustawione, gdy wszedł w strefę strażnika
   const who = h.prev ? `${qtyName(m.count)} ${c.gen} atakuje twojego bohatera!` : `${h.name} atakuje: ${qtyName(m.count).toLowerCase()} ${c.gen}.`;
   offerBattle(st, h, m, who, m.count * c.value, (ctx, cx, cy) => drawSprite(ctx, creatureSprite(m.cid, 1), cx, cy + 34, 2));
+}
+// Skarbiec: opis załogi i łupu, potem zwykłe okno przed bitwą (odwrót cofa bohatera o pole)
+const bankPower = ob => ob.guards.reduce((s, [cid, n]) => s + n * CREATURES[cid].value, 0);
+const bankGuardText = ob => ob.guards.map(([cid, n]) => `${qtyName(n).toLowerCase()} ${CREATURES[cid].gen}`).join(', ');
+function bankLootText(kind) {
+  const B = BANKS[kind], parts = RESOURCES.filter(r => B.loot[r.id]).map(r => `${B.loot[r.id]} ${r.id === 'gold' ? 'złota' : resName(r.id).toLowerCase()}`);
+  for (const [rar, k] of B.arts || []) parts.push(k > 1 ? `${k} artefakty (${{ treasure: 'skarby', minor: 'pomniejsze', major: 'potężne' }[rar]})` : `artefakt (${RARITY[rar]})`);
+  if (B.units) parts.push(`${B.units[1]} ${CREATURES[B.units[0]].gen} do armii`);
+  return parts.join(', ');
+}
+function startBankAssault(st, h, ob) {
+  const B = BANKS[ob.kind];
+  offerBattle(st, h, ob, `${B.name}: ${B.desc}. Załoga: ${bankGuardText(ob)}. Łup: ${bankLootText(ob.kind)}.`, bankPower(ob),
+    (ctx, cx, cy) => { const sp = bankSprite(ob.kind, false), k = Math.min(1.1, 40 / sp.c.height); drawSpriteBox(ctx, sp, cx - sp.c.width * k, cy - sp.c.height * k, k); });
+}
+// Łup ze skarbca dla zwycięzcy (człowieka albo SI); zwraca opis do okna wyniku
+function lootBank(st, h, ob) {
+  const B = BANKS[ob.kind], R = playerOf(st, h.owner).resources, r = mulberry32(st.seed ^ (ob.id * 7919) ^ st.dayTotal), got = [];
+  ob.cleared = true; MapRender.miniDirty = true;
+  for (const res of RESOURCES) if (B.loot[res.id]) R[res.id] += B.loot[res.id];
+  for (const [rar, k] of B.arts || []) for (let i = 0; i < k; i++) { const pool = ARTS_BY_RARITY(rar), id = pool[Math.floor(r() * pool.length)]; giveArtifact(h, id); got.push(ARTIFACTS[id].name); }
+  let joined = '';
+  if (B.units) { if (armyAdd(h.army, B.units[0], B.units[1])) joined = ` Do armii dołączają: ${CREATURES[B.units[0]].plural.toLowerCase()} (${B.units[1]}).`; else joined = ` Uwolnieni ${CREATURES[B.units[0]].plural.toLowerCase()} odchodzą: w armii nie ma miejsca.`; }
+  return ` Łup: ${RESOURCES.filter(x => B.loot[x.id]).map(x => `${B.loot[x.id]} ${x.id === 'gold' ? 'złota' : resName(x.id).toLowerCase()}`).join(', ')}${got.length ? `; artefakty: ${got.join(', ')}` : ''}.${joined}`;
 }
 function startHeroEncounter(st, h, foe) {
   offerBattle(st, h, foe, `${h.name} atakuje: ${heroTitle(foe)} (${ownerName(st, foe.owner)}).`, Math.round(armyPower(foe.army) * heroFactor(foe)),
@@ -3508,7 +3638,10 @@ function monthInfo(st) {
 // Wieści na nowy tydzień (i miesiąc) oraz jednorazowe skutki miesiąca
 function startWeek(st, newMonth) {
   const M = newMonth ? monthInfo(st) : null, W = weekInfo(st);
-  if (M && M.kind === 'monsters') for (const o of st.objects) if (o.type === 'monster' && !o.dead) o.count = Math.ceil(o.count * 1.5);
+  for (const o of st.objects) if (o.type === 'monster' && !o.dead) { // potwory rosną co tydzień (do MONSTER_GROW_MAX razy), Miesiąc Potworów dokłada połowę
+    o.base = o.base || o.count; o.count = Math.min(Math.ceil(o.count * (1 + MONSTER_GROW)), Math.ceil(o.base * MONSTER_GROW_MAX));
+    if (M && M.kind === 'monsters') o.count = Math.ceil(o.count * 1.5);
+  }
   for (const t of st.towns) townGrowthWeek(t, st);
   const head = newMonth ? (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
   return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
@@ -3687,6 +3820,10 @@ const spreadRows = k => Array.from({ length: k }, (_, i) => Math.round((i + 0.5)
 // B.sides[s] = { owner, hero, monster, town }; oddział pamięta, skąd przyszedł (src + slot), żeby tam wrócić po bitwie.
 const armyEntries = (a, src) => a.map((s, slot) => s && { cid: s.cid, n: s.n, src, slot }).filter(Boolean);
 function battleSide(st, foe) {
+  if (foe.type === 'bank') { // załoga skarbca: każdy rodzaj w jednym oddziale, liczne rozbite na dwa (najwyżej 7 oddziałów)
+    const stacks = []; for (const [cid, n] of foe.guards) (n >= 10 && foe.guards.length <= 3 ? [Math.ceil(n / 2), Math.floor(n / 2)] : [n]).forEach(k => stacks.push({ cid, n: k, src: null, slot: null }));
+    return { owner: -1, hero: null, monster: null, bank: foe, town: null, key: foe.id, stacks: stacks.slice(0, 7) };
+  }
   if (foe.type === 'monster') return { owner: -1, hero: null, monster: foe, town: null, key: foe.id, stacks: splitMonster(foe.count).map(n => ({ cid: foe.cid, n, src: null, slot: null })) };
   if (foe.garrison) { // miasto: bohater stojący w mieście broni się razem z garnizonem
     const h = heroInTown(st, foe);
@@ -3750,10 +3887,10 @@ function actCatapult(B, u) {
   B.log.push(hit ? (w.hp <= 0 ? `Katapulta: ${what} ${w.kind === 'gate' ? 'rozbita' : 'runął'}!` : `Katapulta trafia: ${what} słabnie.`) : 'Katapulta chybia.');
   if (B.fx) B.fx.push({ kind: 'siege', a: u, x: w.x, y: w.y, hit, broken: hit && w.hp <= 0 });
 }
-// foe: potwór z mapy, bohater albo miasto
+// foe: potwór z mapy, skarbiec, bohater albo miasto
 function createBattle(st, h, foe) {
   const D = battleSide(st, foe);
-  const B = { st, h, sides: [{ owner: h.owner, hero: h, monster: null, town: null }, { owner: D.owner, hero: D.hero, monster: D.monster, town: D.town }],
+  const B = { st, h, sides: [{ owner: h.owner, hero: h, monster: null, town: null }, { owner: D.owner, hero: D.hero, monster: D.monster, bank: D.bank || null, town: D.town }],
     round: 0, order: [], waitQ: [], active: null, units: [], log: [], over: null, auto: false, obst: new Map(), cast: [false, false],
     rng: mulberry32(st.seed ^ (st.dayTotal * 7919) ^ (D.key * 104729)), prevPos: h.prev ? [...h.prev] : null };
   placeSide(B, 0, armyEntries(h.army, 'hero'));
@@ -3782,7 +3919,7 @@ function armyMorale(cids, hero, town) {
   return clamp(m, -3, 3);
 }
 const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') + ((h.boost || {}).luck || 0) : 0, -3, 3);
-function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side && !isMachine(u)).map(u => u.cid), S.hero, S.town); }
+function sideMorale(B, side) { const S = B.sides[side]; return S.monster || S.bank ? 0 : armyMorale(B.units.filter(u => u.side === side && !isMachine(u)).map(u => u.cid), S.hero, S.town); }
 const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
 // Nieumarli nie znają strachu ani zapału: morale zawsze 0
 const unitMorale = (B, u) => (hasAb(u, 'undead') || isMachine(u) || !B.morale ? 0 : B.morale[u.side]);
@@ -4068,6 +4205,7 @@ function simulateBattle(B) {
 function writeBackSide(B, side) {
   const S = B.sides[side], units = B.units.filter(u => u.side === side);
   if (S.monster) { S.monster.count = units.reduce((s, u) => s + (u.dead ? 0 : u.n), 0); return; }
+  if (S.bank) { const g = new Map(); for (const u of units) if (!u.dead && u.n > 0) g.set(u.cid, (g.get(u.cid) || 0) + u.n); S.bank.guards = [...g]; return; } // ocalała załoga zostaje w skarbcu
   for (const u of units) {
     if (u.src === 'siege') continue; // katapulta i wieże należą do bitwy, nie do armii
     if (u.src === 'machine') { if (u.dead) S.hero.machines = S.hero.machines.filter(id => id !== u.cid); continue; } // zniszczona machina przepada
@@ -4107,6 +4245,7 @@ function resolveBattle(B, fled) {
   if (outcome === 'win') {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);
+    if (D.bank) res.bankText = lootBank(st, h, D.bank);
     if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; removeHero(st, D.hero); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
   } else {
@@ -4230,6 +4369,7 @@ function aiPickTarget(st, h, R) {
       else if (ob.type === 'art') add(i, 2500, 'art');
       else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob); if (v > 0) add(i, v, 'site'); }
       else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
+      else if (ob.type === 'bank' && !ob.cleared && power > bankPower(ob) * 1.3) add(i, 2000 + bankPower(ob) * 0.4, 'bank', ob);
     }
     for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, playerOf(st, o.owner).human ? 15000 : 8000, 'hero', o);
     // zwiad: wolne pole na skraju odkrytego terenu, tym cenniejsze, im więcej mgły wokół
@@ -4256,7 +4396,7 @@ function aiPickTarget(st, h, R) {
 // odtworzyć), atak na człowieka ({ kind: 'defend' }: wynik bitwy wraca przez gen.next(res)) i początek tury gracza.
 // Bez ekranu (testy, symulacje, szybka tura) generator rozgrywa runAiSync: obrona jest wtedy automatyczna.
 function* aiBattle(st, h, foe, news) {
-  const defOwner = foe.type === 'monster' ? -1 : foe.owner, defName = foe.type === 'monster' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
+  const defOwner = foe.type === 'monster' || foe.type === 'bank' ? -1 : foe.owner, defName = foe.type === 'monster' || foe.type === 'bank' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
   let res;
   if (defOwner >= 0 && playerOf(st, defOwner).human) {
     const act = { kind: 'defend', h, foe, owner: defOwner }; res = yield act;
@@ -4293,6 +4433,7 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
   else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); }
+  else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
   else if (ob.type === 'mine') { tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
 function* aiMoveHero(st, h, news) {
@@ -4419,14 +4560,44 @@ function deserializeGame(d) {
   const map = { n, seed: d.map.seed, sites: d.map.sites, terrain: unpackBytes(d.map.terrain, N), obst: unpackBytes(d.map.obst, N), road: unpackBytes(d.map.road, N) };
   map.start = map.sites[d.map.startIdx] || map.sites[0];
   const st = { ...d.core, map, players: d.players.map(p => ({ ...p, explored: unpackBytes(p.explored, N) })), heroes: d.heroes, towns: d.towns, objects: d.objects };
-  // zapisy sprzed rekrutacji: brak armii bohatera, garnizonu i puli jednostek
-  const r = mulberry32(st.seed);
-  for (const h of st.heroes) { if (!Array.isArray(h.army)) h.army = startingArmy(st.players[h.owner].faction, r); delete h.slowest; initHeroProgress(h); while (h.exp >= expForLevel(h.level + 1)) h.level++; }
-  for (const t of st.towns) { if (!Array.isArray(t.garrison) || t.garrison.length !== ARMY_SLOTS) t.garrison = emptyArmy(); if (!t.avail) t.avail = {}; for (let L = 1; L <= guildLevel(t); L++) if (!t.guild || !t.guild[L]) rollGuildLevel(st, t, L); }
+  migrateSave(st); ME = st.cur; rebuildObjIndex(st); return st;
+}
+// Naprawa zapisów ze starszych wersji gry: brakujące pola dostają wartości domyślne, a to, czego gra już nie zna
+// (usunięte stwory, budowle, artefakty, miejsca), znika zamiast psuć rozgrywkę. Kolejne kroki w kolejności powstawania gry.
+function migrateSave(st) {
+  const r = mulberry32(st.seed), cr = s => (s && CREATURES[s.cid] && s.n > 0 ? s : null), armyFix = a => Array.from({ length: ARMY_SLOTS }, (_, i) => cr(a && a[i]));
+  if (!(st.settings.difficulty >= 0 && st.settings.difficulty < DIFFICULTIES.length)) st.settings.difficulty = 1;
+  // gracze: znane frakcje i kolory, komplet surowców
+  const used = new Set();
+  for (const p of st.players) {
+    if (!FACTIONS.some(f => f.id === p.faction)) p.faction = 'haven';
+    if (!PLAYER_COLORS.some(c => c.id === p.color) || used.has(p.color)) p.color = PLAYER_COLORS.find(c => !used.has(c.id)).id; used.add(p.color);
+    for (const res of RESOURCES) if (!(p.resources[res.id] >= 0)) p.resources[res.id] = 0;
+  }
+  // bohaterowie: armia (zapisy sprzed rekrutacji), cechy, poziom, machiny, łódź
+  for (const h of st.heroes) {
+    if (!Array.isArray(h.army)) h.army = startingArmy(st.players[h.owner].faction, r); h.army = armyFix(h.army);
+    delete h.slowest; initHeroProgress(h); while (h.exp >= expForLevel(h.level + 1)) h.level++;
+    h.spells = h.spells.filter(id => SPELLS[id]); h.bag = h.bag.filter(id => ARTIFACTS[id]);
+    for (const k of Object.keys(h.equip)) if (h.equip[k] && !ARTIFACTS[h.equip[k]]) h.equip[k] = null;
+    h.machines = h.machines.filter(id => CREATURES[id]); if (h.boat && st.map.terrain[h.y * st.map.n + h.x] !== TER.WATER) delete h.boat; // łódź tylko na wodzie
+  }
+  // miasta: znana frakcja i budowle, garnizon, pula jednostek, gildia magów
+  for (const t of st.towns) {
+    if (!FACTIONS.some(f => f.id === t.faction)) t.faction = 'haven';
+    t.built = t.built.filter(id => BUILDINGS.some(b => b.id === id)); if (!t.built.includes('hall1')) t.built.unshift('hall1');
+    t.garrison = armyFix(Array.isArray(t.garrison) ? t.garrison : null); if (!t.avail) t.avail = {};
+    for (let L = 1; L <= guildLevel(t); L++) if (!t.guild || !t.guild[L]) rollGuildLevel(st, t, L);
+  }
+  // obiekty: nieznane stwory, artefakty i miejsca znikają; skarbce mają załogę
+  for (const o of st.objects) {
+    if ((o.type === 'monster' && !CREATURES[o.cid]) || (o.type === 'art' && !ARTIFACTS[o.art]) || (o.type === 'site' && !SITES[o.kind]) || (o.type === 'bank' && !BANKS[o.kind])) o.dead = true;
+    if (o.type === 'bank' && !Array.isArray(o.guards)) o.guards = o.cleared ? [] : bankGuards(o.kind, st.settings.difficulty);
+    if (o.type === 'bank') o.guards = o.guards.filter(([cid, n]) => CREATURES[cid] && n > 0);
+  }
   // zapisy sprzed hot-seat: jeden człowiek (numer 0), powitanie już było
-  if (!(st.cur >= 0 && st.players[st.cur] && st.players[st.cur].human)) st.cur = st.players.findIndex(p => p.human);
+  if (!(st.cur >= 0 && st.players[st.cur] && st.players[st.cur].human)) st.cur = Math.max(0, st.players.findIndex(p => p.human));
   for (const p of st.players) if (p.human && p.welcomed === undefined) p.welcomed = true;
-  ME = st.cur; rebuildObjIndex(st); return st;
 }
 // Krótki opis zapisu do listy slotów (bez wczytywania całej gry)
 function saveMeta(st) {
@@ -4805,6 +4976,7 @@ function drawWorldPixel(b, st) {
     else if (ob.type === 'boat') blit(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py);
     else if (ob.type === 'site') { shadow(14, px, py + 12); blit(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
     else if (ob.type === 'art') { shadow(9, px, py + 10); blit(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
+    else if (ob.type === 'bank') blit(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
     else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blit(b, mineSprite(ob.kind), mx, my); blit(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
     else if (ob.type === 'town') {
       const t = st.towns[ob.townId], lvl = townLevel(t), mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, fc = ownerColor(st, ob.owner);
@@ -4870,6 +5042,7 @@ function tileInfo(st, tx, ty) {
     if (ob.type === 'art') return `Artefakt: ${ARTIFACTS[ob.art].name}`;
     if (ob.type === 'res') return resName(ob.res);
     if (ob.type === 'boat') return 'Łódź';
+    if (ob.type === 'bank') return `${BANKS[ob.kind].name}${ob.cleared ? ' (splądrowane)' : ''}`;
   }
   const t = map.terrain[i]; if (t === TER.WATER) return 'Woda (potrzebna łódź)';
   let s = TERRAINS[t].name, cost = TERRAINS[t].cost;
@@ -6779,6 +6952,7 @@ G.screens.adventure = {
         return `${t.name}. Dochód: ${townGold(t)} złota dziennie. Budowli: ${t.built.length}. ` + (t.owner === ME ? 'Wejdź bohaterem albo wybierz miasto z listy po prawej.' : `${t.owner < 0 ? 'Miasto niezależne' : `Właściciel: ${ownerName(st, t.owner)}`}. Siła obrońców ${townPower(st, t)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}. Wejdź, aby je zdobyć.`);
       }
       if (ob && ob.type === 'mine') { const M = MINES[ob.kind]; return `${M.name}. Właściciel: ${ownerName(st, ob.owner)}. Dochód dzienny: ${M.income} (${resName(ob.kind).toLowerCase()}).`; }
+      if (ob && ob.type === 'bank') { const B = BANKS[ob.kind]; return ob.cleared ? `${B.name}: splądrowane, nic tu już nie ma.` : `${B.name}: ${B.desc}. Załoga: ${bankGuardText(ob)} (siła ${bankPower(ob)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Łup: ${bankLootText(ob.kind)}.`; }
       if (ob && ob.type === 'site') return siteInfo(st, ob, hero(st));
       if (ob && ob.type === 'chest') return 'Skrzynia ze skarbem. Wybierzesz złoto albo doświadczenie dla bohatera.';
       if (ob && ob.type === 'art') return `${artInfo(ob.art)} Wejdź na to pole, aby go podnieść.`;
@@ -7489,7 +7663,7 @@ G.screens.battle = {
     text(ctx, `Runda ${B.round}`, W / 2, 19, { size: 16, align: 'center', color: '#f0e4c0', fam: 'title' });
     const D = B.sides[1], foeCol = ownerColor(st, D.owner), right = D.hero ? W - 50 : W - 12;
     if (D.hero) drawHeroPortrait(ctx, W - 44, 1, D.hero, foeCol);
-    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: '#ecd9a8', fam: 'title' });
+    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: '#ecd9a8', fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
@@ -7508,10 +7682,10 @@ function showBattleResult(st, h, res) {
   const lost = res.lost.length ? `Straty: ${res.lost.join(', ')}.` : 'Bez strat.';
   Sound.play(res.outcome === 'win' ? 'victory' : 'defeat');
   if (res.outcome === 'win') {
-    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '');
+    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
     showDialog(`Zwycięstwo!${extra} ${lost}${raisedText(res.raised)} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
       advFloat(`+${res.exp} dośw.`, h.x, h.y);
-      gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster') visitObject(st, h, here); });
+      gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank') visitObject(st, h, here); });
     } }]);
   } else if (res.outcome === 'fled') showDialog(`${h.name} wycofuje się z pola bitwy. ${lost} Na dziś koniec marszu.`, [{ label: 'OK', key: 'enter' }]);
   else if (res.heroLost) showDialog(`Porażka. Armia została rozbita, a ${h.name} opuszcza twoją służbę: wszystkie bramy twoich miast są zajęte.`, [{ label: 'OK', key: 'enter' }]);

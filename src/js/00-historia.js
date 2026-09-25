@@ -19,6 +19,7 @@
      GRAFIKA: PORTRETY BOHATERÓW     pixel art 36×36, wygląd z HERO_LOOKS albo losowany z imienia
      GRAFIKA: OBLĘŻENIE              mur, brama i wieże na polu bitwy (castleSprite), bruk dziedzińca
      GRAFIKA: STWORY TWIERDZY I INFERNA  ciała 'insect', 'lizard', 'bull', 'hydra'
+     GRAFIKA: SKARBCE                drawBank, bankSprite: krypta, warownia, gniazdo, leże hydr, Smocza Utopia
      ŚWIAT: TWORZENIE NOWEJ GRY      generateMap, placeObjects, createTown, createHero, createNewGame
      ZASADY GRY                      ruch, ścieżki, obiekty, potyczki, armie, rekrutacja, dochód, budowa
      BITWA: ZASADY                   pole heksów, obrażenia, kolejka, SI, simulateBattle, resolveBattle
@@ -122,10 +123,15 @@
    (komputery po kolei, nowy dzień advanceDay przy końcu listy), zasłona między ludźmi, wieści w skrzynkach graczy
    (tell/takeInbox), obrona innego człowieka przed atakiem komputera, bitwa człowiek na człowieka (obie strony ręcznie),
    zwycięzca = ostatni gracz na placu. Miejsc na miasta: 4/6/8/10 zależnie od mapy (SITE_COUNT).
+   Porządki i trudniejsza mapa: potwory neutralne to też jednostki frakcji (poziomy 1–7, fillNeutrals), siła rośnie
+   wykładniczo z odległością od najbliższego startu (MONSTER_POWER, d01) i z trudnością, potwory rosną co tydzień
+   (MONSTER_GROW do MONSTER_GROW_MAX). Skarbce BANKS (Krypta, Orcza warownia, Gniazdo gryfów, Leże hydr, Smocza Utopia):
+   załoga z kilku oddziałów, łup (lootBank), puste po zwycięstwie; SI też je rozbija. migrateSave naprawia stare zapisy.
+   Balans: Kurhan silniejszy, hydra bez regeneracji, bazyliszek bez „bez odwetu”; test balansu frakcji (30–70% wygranych).
 
    PLAN (kolejność ustalona z graczem; krok 13 „warunki zwycięstwa” pominięty)
    1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (zrobione: do 8 graczy, zasłona między turami).
-   5. Samouczek (wykreślony). 6. Porządki: migracja starych zapisów, testy balansu frakcji.
+   5. Samouczek (wykreślony). 6. Porządki (zrobione: migracja zapisów, test balansu, trudniejsza mapa i skarbce).
    7. Grafika: animowana woda, wyraźniejsze sosny i ozdoby, obiekty mapy w stylu rudy, tła bitew zależne od terenu.
    ===================================================================================== */
 

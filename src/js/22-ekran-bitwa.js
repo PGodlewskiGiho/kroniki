@@ -293,7 +293,7 @@ G.screens.battle = {
     text(ctx, `Runda ${B.round}`, W / 2, 19, { size: 16, align: 'center', color: '#f0e4c0', fam: 'title' });
     const D = B.sides[1], foeCol = ownerColor(st, D.owner), right = D.hero ? W - 50 : W - 12;
     if (D.hero) drawHeroPortrait(ctx, W - 44, 1, D.hero, foeCol);
-    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: '#ecd9a8', fam: 'title' });
+    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: '#ecd9a8', fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
@@ -312,10 +312,10 @@ function showBattleResult(st, h, res) {
   const lost = res.lost.length ? `Straty: ${res.lost.join(', ')}.` : 'Bez strat.';
   Sound.play(res.outcome === 'win' ? 'victory' : 'defeat');
   if (res.outcome === 'win') {
-    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '');
+    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
     showDialog(`Zwycięstwo!${extra} ${lost}${raisedText(res.raised)} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
       advFloat(`+${res.exp} dośw.`, h.x, h.y);
-      gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster') visitObject(st, h, here); });
+      gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank') visitObject(st, h, here); });
     } }]);
   } else if (res.outcome === 'fled') showDialog(`${h.name} wycofuje się z pola bitwy. ${lost} Na dziś koniec marszu.`, [{ label: 'OK', key: 'enter' }]);
   else if (res.heroLost) showDialog(`Porażka. Armia została rozbita, a ${h.name} opuszcza twoją służbę: wszystkie bramy twoich miast są zajęte.`, [{ label: 'OK', key: 'enter' }]);

@@ -54,3 +54,23 @@ const SITES = {
   lookout: { name: 'Wieża obserwacyjna', use: 'player', per: 1600, ai: 500, desc: 'odsłania okolicę w promieniu 12 pól' },
 };
 const SITE_EXP = 1000, SITE_MP = 400, LOOKOUT_R = 12;
+// Skarbce (obiekt type: 'bank', kind): silna załoga z kilku oddziałów, po zwycięstwie jednorazowy łup, potem obiekt stoi pusty.
+// guards: [stwór, liczba] (liczby rosną z poziomem trudności), loot: surowce, arts: artefakty [rzadkość, ile], units: stwory dołączają do armii.
+// per = jeden na tyle pól mapy, min = najmniej na każdej mapie, dd = najmniejsza odległość od startu (0–1, jak siła potworów).
+const BANKS = {
+  crypt: { name: 'Krypta', per: 1300, min: 1, dd: 0.15, guards: [['skeleton', 24], ['ghoul', 12], ['wraith', 5]],
+    loot: { gold: 2500 }, arts: [['treasure', 1]], desc: 'nieumarli strzegą grobowych skarbów' },
+  orcFort: { name: 'Orcza warownia', per: 1900, min: 1, dd: 0.25, guards: [['orc', 22], ['troll', 5], ['ogre', 4]],
+    loot: { gold: 4000, wood: 10, ore: 10 }, desc: 'orkowie i trolle pilnują łupów z wypraw' },
+  griffinNest: { name: 'Gniazdo gryfów', per: 2600, min: 0, dd: 0.35, guards: [['griffin', 22], ['royalGriffin', 10]],
+    loot: { gold: 3000 }, units: ['champion', 3], desc: 'gryfy bronią gniazd; w podziemiach czekają uwięzieni czempioni' },
+  hydraLair: { name: 'Leże hydr', per: 3600, min: 0, dd: 0.5, guards: [['hydra', 5], ['basilisk', 12], ['gorgon', 6]],
+    loot: { gold: 8000, mercury: 5, sulfur: 5, crystal: 5, gems: 5 }, arts: [['minor', 1]], desc: 'hydry z bagien strzegą zatopionych skarbów' },
+  dragonUtopia: { name: 'Smocza Utopia', per: 6000, min: 1, dd: 0.6, guards: [['emeraldDragon', 4], ['jadeDragon', 2], ['ghostWyvern', 3], ['archDevil', 2], ['chaosHydra', 1]],
+    loot: { gold: 20000 }, arts: [['major', 2], ['minor', 1]], desc: 'legowisko smoków: ogromne skarby dla najsilniejszych armii' },
+};
+// Siła potworów na mapie tuż przy starcie gracza (liczebność = siła / wartość stwora), rośnie z odległością (placeObjects)
+const MONSTER_POWER = 700;
+// Potwory na mapie rosną co tydzień o tyle (część ułamkowa w górę), do MONSTER_GROW_MAX razy stanu początkowego
+const MONSTER_GROW = 0.08, MONSTER_GROW_MAX = 3;
+const bankGuards = (kind, diff) => BANKS[kind].guards.map(([cid, n]) => [cid, Math.max(1, Math.round(n * (0.6 + 0.4 * DIFFICULTIES[diff].rating / 100)))]);

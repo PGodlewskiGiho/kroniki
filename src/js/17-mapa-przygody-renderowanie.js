@@ -323,6 +323,7 @@ function drawWorldPixel(b, st) {
     else if (ob.type === 'boat') blit(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py);
     else if (ob.type === 'site') { shadow(14, px, py + 12); blit(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
     else if (ob.type === 'art') { shadow(9, px, py + 10); blit(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
+    else if (ob.type === 'bank') blit(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
     else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blit(b, mineSprite(ob.kind), mx, my); blit(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
     else if (ob.type === 'town') {
       const t = st.towns[ob.townId], lvl = townLevel(t), mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, fc = ownerColor(st, ob.owner);
@@ -388,6 +389,7 @@ function tileInfo(st, tx, ty) {
     if (ob.type === 'art') return `Artefakt: ${ARTIFACTS[ob.art].name}`;
     if (ob.type === 'res') return resName(ob.res);
     if (ob.type === 'boat') return 'Łódź';
+    if (ob.type === 'bank') return `${BANKS[ob.kind].name}${ob.cleared ? ' (splądrowane)' : ''}`;
   }
   const t = map.terrain[i]; if (t === TER.WATER) return 'Woda (potrzebna łódź)';
   let s = TERRAINS[t].name, cost = TERRAINS[t].cost;
