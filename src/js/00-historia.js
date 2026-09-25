@@ -18,12 +18,14 @@
      GRAFIKA OBIEKTÓW                jeden rysunek na obiekt: surowce, kopalnie, stwory, bohater, miasto
      GRAFIKA: PORTRETY BOHATERÓW     pixel art 36×36, wygląd z HERO_LOOKS albo losowany z imienia
      GRAFIKA: OBLĘŻENIE              mur, brama i wieże na polu bitwy (castleSprite), bruk dziedzińca
+     GRAFIKA: STWORY TWIERDZY I INFERNA  ciała 'insect', 'lizard', 'bull', 'hydra'
      ŚWIAT: TWORZENIE NOWEJ GRY      generateMap, placeObjects, createTown, createHero, createNewGame
      ZASADY GRY                      ruch, ścieżki, obiekty, potyczki, armie, rekrutacja, dochód, budowa
      BITWA: ZASADY                   pole heksów, obrażenia, kolejka, SI, simulateBattle, resolveBattle
      ZAPIS I ODCZYT GRY              serializeGame/deserializeGame, SaveStore (konto Claude albo przeglądarka)
      MAPA PRZYGODY: RENDEROWANIE     teren piksel po pikselu, minimapa, mgła, kamera
      MIASTO: GRAFIKA                 style frakcji, budowle, sceny w perspektywie, efekty
+     MIASTO: TWIERDZA I INFERNO      style, budowle i sceny dwóch nowych frakcji
      EKRANY / MAPA / BOHATER / BITWA / MIASTO  menu, listy, mapa, ekran bohatera, bitwa, widok miasta
      SILNIK                          pętla, wejście (mysz, dotyk, klawiatura, kółko), przejścia
 
@@ -111,9 +113,11 @@
    księga czarów w trzech kolumnach, gdy czarów jest wiele.
    Grafika mapy: ruda jako ciemne bryłki, góry/drzewa/skały ze ściankami (8 wariantów gór), ozdoby na pustych polach.
    Dźwięk: efekty i muzyka syntezowane w Web Audio (DŹWIĘK), motyw zależny od ekranu i frakcji, głośność w menu.
+   Nowe frakcje: Twierdza (bagna: gnolle, jaszczuroludzie, ważki, bazyliszki, gorgony, wywerny, hydry) i Inferno (lawa:
+   chochliki, gogi, ogary, demony, czarty, ifryty, diabły); klasy beastmaster/witch i demoniac/heretic, portrety, miasta, muzyka.
 
    PLAN (kolejność ustalona z graczem; krok 13 „warunki zwycięstwa” pominięty)
-   1. Dźwięk. 2. 4. frakcja. 3. Statki (stocznia, woda, wyspy). 4. Hot-seat (2–4 ludzi, zasłona między turami).
+   1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (stocznia, woda, wyspy). 4. Hot-seat (2–4 ludzi, zasłona między turami).
    5. Samouczek (wyłączalne podpowiedzi). 6. Porządki: migracja starych zapisów, testy balansu frakcji.
    7. Grafika: animowana woda, wyraźniejsze sosny i ozdoby, obiekty mapy w stylu rudy, tła bitew zależne od terenu.
    ===================================================================================== */

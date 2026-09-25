@@ -7,7 +7,11 @@
 // Peleryna ma kolor gracza. Na ekranie 1 piksel = 1 px logiczny (k = 1) albo 2 px, jak piksel mapy (k = 2).
 const PORTRAIT_N = 36;
 const PORTRAITS = new Map();
-const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058' };
+const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058',
+  beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e' };
+// Nowe klasy korzystają z ubioru klasy o podobnym stroju (zbroja, skóry, szaty)
+const PORTRAIT_DRESS = { beastmaster: 'ranger', witch: 'druid', demoniac: 'knight', heretic: 'necro' };
+const INFERNAL = ['demoniac', 'heretic'];
 const PORTRAIT_HAIR = ['#241a14', '#3e2a1a', '#5e3e22', '#7c4c26', '#a0602c', '#c89450', '#e2c47e', '#8e8a86', '#d8d4cc'];
 const PORTRAIT_SKIN = ['#f0c8a0', '#e2b28a', '#d09c74', '#b07c56', '#8e603e'];
 const PORTRAIT_EYES = ['#3c64a8', '#3a6e3a', '#6a4424', '#6c8098', '#3a2a1a'];
@@ -27,6 +31,14 @@ const HERO_LOOKS = {
   'Raga': { hair: '#241a14', style: 'long', head: 'cowl', eyes: 'glow', mouth: 'smirk', marks: ['tattoo'], robe: '#3e2438', bg: 'fire', flip: true },
   'Sir Kruk': { head: 'skullhelm', armor: '#3e3a48', bg: 'night', flip: true },
   'Zofia Czarna': { hair: '#241a14', style: 'crop', head: 'spikecrown', eyes: 'glow', brow: 'angry', mouth: 'frown', marks: ['scar'], armor: '#5a4a50', bg: 'fire', flip: false },
+  'Borzywoj': { age: 'adult', skin: '#b07c56', hair: '#3e2a1a', style: 'long', beard: 'full', head: 'horned', brow: 'bushy', nose: 'broad', mouth: 'frown', marks: ['paint'], robe: '#6a5030', bg: 'forest', flip: false },
+  'Wilga': { hair: '#5e3e22', style: 'braid', head: 'flowers', brow: 'thin', eyes: 'narrow', mouth: 'smirk', marks: ['tattoo'], robe: '#3e5a3a', bg: 'night', flip: true },
+  'Mszar': { age: 'old', hair: '#8e8a86', style: 'long', beard: 'long', head: 'antlers', brow: 'bushy', nose: 'hooked', mouth: 'neutral', marks: ['mole'], robe: '#4a5a34', bg: 'forest', flip: true },
+  'Dobrawa': { skin: '#d09c74', hair: '#241a14', style: 'ponytail', head: 'feather', brow: 'angry', mouth: 'neutral', marks: ['scarCheek'], robe: '#7a5a34', bg: 'sky', flip: false },
+  'Azgar': { hair: '#241a14', style: 'crop', beard: 'goatee', head: 'horned', eyes: 'glow', brow: 'angry', mouth: 'smirk', marks: ['scar'], armor: '#6a2a24', bg: 'fire', flip: false },
+  'Kalida': { hair: '#e2c47e', style: 'long', head: 'spikecrown', eyes: 'glow', brow: 'arched', mouth: 'smirk', armor: '#7a3a2a', bg: 'fire', flip: true },
+  'Moloch': { age: 'old', style: 'bald', beard: 'mustache', hair: '#d8d4cc', head: 'horned', eyes: 'glow', nose: 'long', mouth: 'frown', marks: ['tattoo'], robe: '#4a1414', bg: 'night', flip: true },
+  'Wiera Popiół': { hair: '#8e8a86', style: 'bun', head: 'circlet', eyes: 'glow', brow: 'thin', mouth: 'neutral', marks: ['mole'], robe: '#2a1418', bg: 'fire', flip: false },
 };
 function heroLookSeed(h) { let s = 2166136261; for (const ch of String(h.name || '')) s = Math.imul(s ^ ch.charCodeAt(0), 16777619); return s >>> 0; }
 // Pełny opis wyglądu: HERO_LOOKS + cechy losowane z imienia
@@ -41,10 +53,13 @@ function heroFace(h) {
   F.style = f ? pick(['long', 'braid', 'bun', 'ponytail', 'curly']) : pick(['short', 'crop', 'swept', 'long', 'curly', age === 'old' ? 'bald' : 'short']);
   F.beard = f ? 'none' : pick(['none', 'none', 'stubble', 'goatee', 'full', 'mustache', ...(age === 'old' ? ['full', 'long'] : [])]);
   F.head = { knight: ['helm', 'crest', 'none', 'circlet'], cleric: ['diadem', 'veil', 'mitre', 'none'], ranger: ['hood', 'feather', 'headband', 'none'],
-    druid: ['wreath', 'antlers', 'flowers'], necro: ['cowl', 'skullcrown', 'none'], deathKnight: ['horned', 'skullhelm', 'spikecrown'] }[cls][Math.floor(r() * 4) % (cls === 'druid' || cls === 'necro' || cls === 'deathKnight' ? 3 : 4)];
+    druid: ['wreath', 'antlers', 'flowers'], necro: ['cowl', 'skullcrown', 'none'], deathKnight: ['horned', 'skullhelm', 'spikecrown'],
+    beastmaster: ['horned', 'feather', 'headband', 'none'], witch: ['hood', 'flowers', 'antlers'], demoniac: ['horned', 'spikecrown', 'helm'], heretic: ['cowl', 'horned', 'circlet'] }[cls][Math.floor(r() * 4) % (['druid', 'necro', 'deathKnight', 'witch', 'demoniac', 'heretic'].includes(cls) ? 3 : 4)];
   F.brow = pick(['straight', 'arched', 'angry', 'bushy', 'thin']); F.eyes = undead ? 'glow' : pick(['normal', 'normal', 'narrow', 'wide']);
   F.nose = pick(['small', 'long', 'hooked', 'broad']); F.mouth = pick(['neutral', 'smile', 'frown', 'smirk']); F.face = pick(['oval', 'oval', 'round', 'long']);
   F.armor = pick(['#a8b2c4', '#c8b070', '#8a9ab8', '#b8c0cc']); F.robe = pick({ cleric: ['#e6dcc2', '#f0ead8', '#d8e0f0'], ranger: ['#7a5a34', '#5e4a2a'], druid: ['#6e5a34', '#6e7a34'], necro: ['#3a2c52', '#2a2236', '#3e2438'] }[cls] || ['#6e5a34']);
+  if (INFERNAL.includes(cls)) { F.eyes = r() < 0.6 ? 'glow' : F.eyes; F.armor = pick(['#6a2a24', '#5a1e1e', '#7a3a2a']); F.robe = pick(['#4a1414', '#2a1418', '#5a1e1e']); }
+  if (cls === 'beastmaster') F.robe = pick(['#6a5030', '#7a5a34', '#5a4a2a']); if (cls === 'witch') F.robe = pick(['#3e5a3a', '#4a5a34', '#34503e']);
   F.bg = pick(['plain', 'sky', 'window', 'night', 'fire', 'forest']); F.flip = r() < 0.5;
   Object.assign(F, HERO_LOOKS[h.name] || {});
   if (F.undead && !HERO_LOOKS[h.name]) F.skin = pick(['#cac6b6', '#b8beb0', '#d2c8c0']);
@@ -182,7 +197,7 @@ function paintPortrait(h, F, col) {
 // Oczy, brwi, nos, usta, zmarszczki i znaki szczególne
 function paintFacePx(P, F, face, S, HR) {
   const cls = F.cls, lid = pxMix(S[4], [20, 10, 8], 0.5), white = F.eyes === 'glow' ? [26, 20, 28] : [238, 230, 214];
-  const glow = cls === 'deathKnight' ? [255, 110, 70] : [170, 250, 170], iris = F.eyes === 'glow' ? glow : hexRgb(F.eye);
+  const glow = cls === 'deathKnight' || INFERNAL.includes(cls) ? [255, 110, 70] : [170, 250, 170], iris = F.eyes === 'glow' ? glow : hexRgb(F.eye);
   for (const [x0, i] of [[13, 14], [20, 21]]) {
     const shade = x0 === 13 ? white : pxMix(white, S[2], 0.5);
     if (F.eyes === 'narrow') { P.dots([[x0, 15], [x0 + 2, 15]], lid); P.set(i, 15, iris); P.dots([[x0, 14], [x0 + 1, 14], [x0 + 2, 14]], S[3]); }
@@ -250,7 +265,7 @@ function paintHairPx(P, F, face, S, HR, tex) {
 }
 
 function paintTorsoPx(P, F, look, CL) {
-  const cls = F.cls;
+  const cls = PORTRAIT_DRESS[F.cls] || F.cls;
   if (cls === 'knight' || cls === 'deathKnight') {
     const M = pxRamp(F.armor || (cls === 'knight' ? '#a8b2c4' : '#4c485c')), trim = cls === 'knight' ? [232, 196, 90] : [150, 40, 40];
     P.shape(mEll(18, 37, 14.5, 10.5), M, { cx: 13, cy: 29, rx: 16, ry: 10 });

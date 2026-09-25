@@ -9,6 +9,10 @@ const HERO_CLASSES = {
   druid: { name: 'Druid', nameF: 'Druidka', look: { horse: '#c8b890', mane: '#6a5a3a', armor: '#7a6a3a', hood: '#6a8a3a', skin: '#e8c8a0' } },
   deathKnight: { name: 'Rycerz śmierci', nameF: 'Rycerka śmierci', look: { horse: '#2e2a36', mane: '#a6f0a8', armor: '#5a5468', helm: '#6e6880', skin: '#c8c0b0' } },
   necro: { name: 'Nekromanta', nameF: 'Nekromantka', look: { horse: '#3a3440', mane: '#c8c0ac', armor: '#4a3a5a', hood: '#2a1e36', skin: '#c8c0b0' } },
+  beastmaster: { name: 'Władca bestii', nameF: 'Władczyni bestii', look: { horse: '#6a5a3a', mane: '#2a2010', armor: '#7a5a34', helm: '#8a6a3a', skin: '#c89a6a' } },
+  witch: { name: 'Szaman', nameF: 'Wiedźma', look: { horse: '#5a6a4a', mane: '#2a3a20', armor: '#4a5a3a', hood: '#3a5a3a', skin: '#d8b890' } },
+  demoniac: { name: 'Piekielny rycerz', nameF: 'Piekielna rycerka', look: { horse: '#2a1a1a', mane: '#ff6a2a', armor: '#6a2a24', helm: '#4a1e1a', skin: '#d8a888' } },
+  heretic: { name: 'Heretyk', nameF: 'Heretyczka', look: { horse: '#3a2020', mane: '#c83a1a', armor: '#5a1e1e', hood: '#2a0e10', skin: '#d8b090' } },
 };
 // Wszystko, co wyróżnia frakcję. dw: siedliska [nazwa, jednostka], emb: symbole siedlisk poziomów 1–7.
 const FACTIONS = [
@@ -49,6 +53,32 @@ const FACTIONS = [
       dw3: ['Nawiedzona kaplica', 'wraith'], dw3u: ['Wieża zawodzenia', 'banshee'], dw4: ['Krypta', 'vampire'], dw4u: ['Mroczna krypta', 'vampireLord'],
       dw5: ['Wieża nekromanty', 'necromancer'], dw5u: ['Czarna biblioteka', 'archNecro'], dw6: ['Mroczne stajnie', 'doomKnight'], dw6u: ['Stajnie zagłady', 'dreadLord'],
       dw7: ['Kościana grań', 'boneWyvern'], dw7u: ['Upiorna grań', 'ghostWyvern'],
+    },
+  },
+  {
+    id: 'fortress', name: 'Twierdza', terrain: TER.SWAMP,
+    desc: 'Bagienna warownia: gnolle, jaszczuroludzie, ważki, bazyliszki, gorgony, wywerny i hydry.',
+    heroes: [['Borzywoj', 'beastmaster'], ['Wilga', 'witch', 1], ['Mszar', 'witch'], ['Dobrawa', 'beastmaster', 1]],
+    towns: ['Mokradła', 'Trzcinowy Gród', 'Czarny Staw', 'Grząski Bród', 'Żabi Kamień', 'Olszowa Warownia', 'Sitowie'],
+    guild: 'Chata wiedźmy', emb: ['spear', 'bow', 'wing', 'eye', 'horn', 'dragon', 'skull'],
+    dw: {
+      dw1: ['Nora gnolli', 'gnoll'], dw1u: ['Obóz gnolli', 'gnollMarauder'], dw2: ['Chaty jaszczurów', 'lizardman'], dw2u: ['Strażnica jaszczurów', 'lizardWarrior'],
+      dw3: ['Rój ważek', 'dragonfly'], dw3u: ['Gniazdo ważek', 'venomFly'], dw4: ['Jama bazyliszków', 'basilisk'], dw4u: ['Leże bazyliszków', 'greatBasilisk'],
+      dw5: ['Zagroda gorgon', 'gorgon'], dw5u: ['Żelazna zagroda', 'mightyGorgon'], dw6: ['Gniazdo wywern', 'wyvern'], dw6u: ['Turnia wywern', 'wyvernKing'],
+      dw7: ['Bagno hydr', 'hydra'], dw7u: ['Otchłań chaosu', 'chaosHydra'],
+    },
+  },
+  {
+    id: 'inferno', name: 'Inferno', terrain: TER.LAVA,
+    desc: 'Piekielne miasto: chochliki, gogi, piekielne ogary, demony, czarty, ifryty i diabły.',
+    heroes: [['Azgar', 'demoniac'], ['Kalida', 'demoniac', 1], ['Moloch', 'heretic'], ['Wiera Popiół', 'heretic', 1]],
+    towns: ['Siarkogród', 'Płonąca Brama', 'Popielisko', 'Czerwona Otchłań', 'Żarnowiec', 'Smolna Twierdza', 'Kotlina Dymów'],
+    guild: 'Świątynia ognia', emb: ['bat', 'sun', 'horn', 'skull', 'flame', 'sun', 'fork'],
+    dw: {
+      dw1: ['Krąg chochlików', 'imp'], dw1u: ['Klatka diablików', 'familiar'], dw2: ['Hala gogów', 'gog'], dw2u: ['Kuźnia magogów', 'magog'],
+      dw3: ['Psiarnia', 'hellHound'], dw3u: ['Legowisko cerberów', 'cerberus'], dw4: ['Brama demonów', 'demon'], dw4u: ['Wrota rogatych', 'hornedDemon'],
+      dw5: ['Szyb czartów', 'pitFiend'], dw5u: ['Otchłań władców', 'pitLord'], dw6: ['Pałac ifrytów', 'efreet'], dw6u: ['Pałac sułtanów', 'efreetSultan'],
+      dw7: ['Wrota piekieł', 'devil'], dw7u: ['Tron ognia', 'archDevil'],
     },
   },
 ];

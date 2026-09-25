@@ -135,6 +135,10 @@ const MUSIC = {
   town_haven: { bpm: 84, root: 55, scale: [0, 2, 4, 5, 7, 9, 11], prog: [0, 4, 5, 3, 0, 4, 3, 4], lead: 'horn', arp: 'harp', seed: 51 },
   town_sylvan: { bpm: 80, root: 52, scale: [0, 2, 3, 5, 7, 9, 10], prog: [0, 3, 6, 0, 5, 3, 4, 0], lead: 'harp', arp: 'harp', seed: 61 },
   town_barrow: { bpm: 64, root: 45, scale: [0, 1, 3, 5, 7, 8, 10], prog: [0, 1, 0, 5, 0, 1, 6, 4], lead: 'bell', arp: null, seed: 71 },
+  map_fortress: { bpm: 80, root: 48, scale: [0, 2, 3, 5, 7, 8, 10], prog: [0, 3, 0, 6, 5, 3, 4, 4], lead: 'flute', arp: 'harp', seed: 91 },
+  town_fortress: { bpm: 90, root: 50, scale: [0, 2, 3, 5, 7, 9, 10], prog: [0, 0, 6, 3, 0, 5, 6, 4], lead: 'horn', arp: null, drums: true, seed: 95 },
+  map_inferno: { bpm: 76, root: 47, scale: [0, 1, 4, 5, 7, 8, 10], prog: [0, 1, 0, 6, 0, 1, 5, 4], lead: 'horn', arp: null, seed: 101 },
+  town_inferno: { bpm: 68, root: 45, scale: [0, 1, 4, 5, 7, 8, 10], prog: [0, 5, 1, 0, 6, 5, 1, 4], lead: 'bell', arp: null, drums: true, seed: 105 },
   battle: { bpm: 132, root: 52, scale: [0, 2, 3, 5, 7, 8, 10], prog: [0, 0, 5, 6, 0, 0, 3, 4], lead: 'horn', arp: null, drums: true, seed: 81 },
 };
 // Układa 8 taktów po 8 ósemek: akord (pad), bas, arpeggio, melodia z prostym motywem (A A' powtórzone) i bębny w bitwie

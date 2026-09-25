@@ -9,6 +9,8 @@ const CLASS_GROWTH = {
   knight: { base: [2, 2, 1, 1], grow: [35, 45, 10, 10] }, cleric: { base: [1, 0, 2, 2], grow: [20, 15, 30, 35] },
   ranger: { base: [1, 3, 1, 1], grow: [30, 45, 10, 15] }, druid: { base: [0, 2, 1, 2], grow: [10, 20, 35, 35] },
   deathKnight: { base: [1, 2, 2, 1], grow: [30, 25, 25, 20] }, necro: { base: [1, 0, 2, 2], grow: [15, 15, 35, 35] },
+  beastmaster: { base: [0, 4, 1, 1], grow: [30, 50, 10, 10] }, witch: { base: [0, 1, 2, 2], grow: [5, 15, 40, 40] },
+  demoniac: { base: [2, 2, 1, 1], grow: [40, 35, 15, 10] }, heretic: { base: [1, 1, 2, 1], grow: [15, 15, 40, 30] },
 };
 // Umiejętności drugorzędne (jak w oryginale): bohater ma ich najwyżej MAX_SKILLS, każdą na poziomie 1–3.
 // v: wartość na poziomach 1–3 (działanie w ZASADY GRY i BITWA: ZASADY), desc: opis dla wartości.
@@ -34,6 +36,8 @@ const CLASS_SKILLS = {
   knight: [['leadership', 1], ['archery', 1]], cleric: [['intelligence', 1], ['estates', 1]],
   ranger: [['pathfinding', 1], ['archery', 1]], druid: [['luck', 1], ['mysticism', 1]],
   deathKnight: [['necromancy', 1], ['offense', 1]], necro: [['necromancy', 1], ['sorcery', 1]],
+  beastmaster: [['armorer', 1], ['pathfinding', 1]], witch: [['mysticism', 1], ['learning', 1]],
+  demoniac: [['offense', 1], ['logistics', 1]], heretic: [['sorcery', 1], ['intelligence', 1]],
 };
 const NECRO_CLASSES = ['deathKnight', 'necro'];
 // Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)

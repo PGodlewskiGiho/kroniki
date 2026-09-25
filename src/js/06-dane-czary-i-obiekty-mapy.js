@@ -30,7 +30,7 @@ const BAD_BUFFS = ['slow', 'weakness'];
 const GUILD_OFFER = { 1: 3, 2: 2, 3: 2, 4: 2, 5: 1 };
 const GUILD_MAX = 5;
 // Czar startowy klas magicznych
-const CLASS_SPELLS = { cleric: ['bless'], druid: ['cure'], necro: ['magicArrow'] };
+const CLASS_SPELLS = { cleric: ['bless'], druid: ['cure'], necro: ['magicArrow'], witch: ['slow'], heretic: ['magicArrow'] };
 
 
 // ==================== DANE: OBIEKTY MAPY =================================================
