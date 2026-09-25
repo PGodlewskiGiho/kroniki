@@ -128,10 +128,12 @@
    (MONSTER_GROW do MONSTER_GROW_MAX). Skarbce BANKS (Krypta, Orcza warownia, Gniazdo gryfów, Leże hydr, Smocza Utopia):
    załoga z kilku oddziałów, łup (lootBank), puste po zwycięstwie; SI też je rozbija. migrateSave naprawia stare zapisy.
    Balans: Kurhan silniejszy, hydra bez regeneracji, bazyliszek bez „bez odwetu”; test balansu frakcji (30–70% wygranych).
+   Szlify grafiki: żywa woda (WaterFx: fale po głębi i pulsująca piana, maski wody fragmentów mapy), wyraźniejsze świerki,
+   zwęglone drzewa z żarem na lawie, surowce jako bryłki w stylu rudy, tła bitew ze szczegółami terenu (battleDecor).
 
    PLAN (kolejność ustalona z graczem; krok 13 „warunki zwycięstwa” pominięty)
    1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (zrobione: do 8 graczy, zasłona między turami).
    5. Samouczek (wykreślony). 6. Porządki (zrobione: migracja zapisów, test balansu, trudniejsza mapa i skarbce).
-   7. Grafika: animowana woda, wyraźniejsze sosny i ozdoby, obiekty mapy w stylu rudy, tła bitew zależne od terenu.
+   7. Grafika (zrobione: animowana woda, świerki, surowce w stylu rudy, tła bitew zależne od terenu).
    ===================================================================================== */
 

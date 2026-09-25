@@ -22,16 +22,17 @@ function drawOak(g, x, y, s, r = mulberry32(1)) {
   const cl = [[0, -24, 7.5], [-7, -19, 7], [7, -18, 7], [-3, -13, 7], [5, -12, 6.5]].map(([dx, dy, R]) => [x + (dx + (r() - 0.5) * 2) * s, y + dy * s, R * s * (0.9 + r() * 0.2)]);
   leafCrown(g, cl, pal, r);
 }
-function drawPine(g, x, y, s, snowy, r = mulberry32(1)) {
-  shadowAt(g, x, y, 7 * s);
-  g.fillStyle = '#3e2614'; g.fillRect(x - 1.3 * s, y - 6 * s, 2.6 * s, 6 * s); g.fillStyle = '#6a4424'; g.fillRect(x - 1.3 * s, y - 6 * s, 1.1 * s, 6 * s);
-  for (let i = 0; i < 4; i++) {
-    const by = y - 4 * s - i * 6 * s, w = (9 - i * 2) * s, top = by - 10 * s, zig = [];
-    for (let k = 0; k <= 6; k++) zig.push([x + w - k * w / 3, by - (k % 2 ? 2.2 * s : 0)]);
-    mpoly(g, [[x, top], ...zig], '#143a20');
-    mpoly(g, [[x, top], [x - w * 0.05, by - 1.5 * s], ...zig.slice(4)], '#2e7440');
-    mpoly(g, [[x - 0.5 * s, top + 2 * s], [x - w * 0.7, by - 1.2 * s], [x - w * 0.45, by - 1.8 * s]], '#62ae5e');
-    if (snowy) { mpoly(g, [[x, top], [x - w * 0.6, by - 4 * s], [x - w * 0.2, by - 5 * s], [x + w * 0.1, by - 3.5 * s], [x + w * 0.5, by - 4.5 * s]], '#f4f8fc'); mpoly(g, [[x, top], [x + w * 0.1, by - 3.5 * s], [x + w * 0.5, by - 4.5 * s]], '#b8c6d8'); }
+function drawPine(g, x, y, s, snowy, r = mulberry32(1)) { // świerk: trzy–cztery piętra ze ścianką jasną z lewej i ciemną z prawej
+  shadowAt(g, x, y, 8 * s);
+  mpoly(g, [[x - 1.7 * s, y + 1], [x - 1.4 * s, y - 8 * s], [x + 1.4 * s, y - 8 * s], [x + 1.7 * s, y + 1]], '#4a2e18'); mpoly(g, [[x - 1.7 * s, y + 1], [x - 1.4 * s, y - 8 * s], [x - 0.2 * s, y - 8 * s], [x - 0.3 * s, y + 1]], '#80563a');
+  const tiers = 3 + (r() < 0.4 ? 1 : 0), step = tiers === 4 ? 6 : 7.5;
+  for (let i = 0; i < tiers; i++) {
+    const by = y - 5 * s - i * step * s, w = (11.5 - i * (tiers === 4 ? 2.3 : 3)) * s, top = by - (tiers === 4 ? 10 : 12) * s;
+    mpoly(g, [[x, top], [x + w, by], [x + w * 0.45, by - 1.8 * s], [x, by + 0.8 * s], [x - w * 0.45, by - 1.8 * s], [x - w, by]], '#184a2a'); // bryła piętra
+    mpoly(g, [[x, top], [x - w, by], [x - w * 0.45, by - 1.8 * s], [x - 0.3 * s, by - 0.6 * s]], '#3a8848'); // jasna ścianka
+    mpoly(g, [[x - 0.3 * s, top + 2 * s], [x - w * 0.8, by - 0.8 * s], [x - w * 0.55, by - 2.6 * s]], '#72bc68'); // odblask
+    mpoly(g, [[x + w * 0.2, by - 1 * s], [x + w, by], [x + w * 0.45, by - 1.8 * s]], '#0e3420'); // cień pod gałęziami
+    if (snowy) { mpoly(g, [[x, top], [x - w * 0.6, by - 4.5 * s], [x - w * 0.2, by - 5.5 * s], [x + w * 0.15, by - 4 * s], [x + w * 0.55, by - 5 * s]], '#f4f8fc'); mpoly(g, [[x, top], [x + w * 0.15, by - 4 * s], [x + w * 0.55, by - 5 * s]], '#b8c6d8'); }
   }
 }
 function drawPalm(g, x, y, s, r = mulberry32(1)) {
@@ -50,6 +51,17 @@ function drawDeadTree(g, x, y, s, col, r = mulberry32(1)) {
   mpoly(g, [[x - 2 * s, y], [x - 1.2 * s, y - 16 * s], [x - 0.3 * s, y - 16 * s], [x - 0.6 * s, y]], lt);
   mline(g, [[x, y - 9 * s], [x - 6 * s, y - 15 * s], [x - 8 * s, y - 15 * s]], col, 1.6 * s); mline(g, [[x, y - 12 * s], [x + 6 * s, y - 18 * s], [x + 7 * s, y - 21 * s]], col, 1.5 * s);
   mline(g, [[x - 3 * s, y - 12 * s], [x - 7 * s, y - 11 * s]], col, 1.2 * s); mline(g, [[x + 3.5 * s, y - 15 * s], [x + 7 * s, y - 14 * s]], col, 1.1 * s);
+}
+// Zwęglone drzewo na lawie: szary pień z jaśniejszą krawędzią, żarzące się pęknięcia i rozżarzone końce gałęzi
+function drawCharredTree(g, x, y, s, r = mulberry32(1)) {
+  shadowAt(g, x, y, 7 * s); const c = '#4a3c38', lt = '#86706a', dk = '#261c1a';
+  mpoly(g, [[x - 5 * s, y + 1], [x - 2 * s, y - 3 * s], [x + 2 * s, y - 3 * s], [x + 5 * s, y + 1]], '#2e2624'); // kopczyk popiołu
+  mpoly(g, [[x - 2.6 * s, y], [x - 1.3 * s, y - 18 * s], [x + 1.3 * s, y - 18 * s], [x + 2.6 * s, y]], c);
+  mpoly(g, [[x - 2.4 * s, y], [x - 1.3 * s, y - 17 * s], [x - 0.2 * s, y - 17 * s], [x - 0.8 * s, y]], lt); mpoly(g, [[x + 0.8 * s, y], [x + 0.6 * s, y - 17 * s], [x + 1.3 * s, y - 18 * s], [x + 2.6 * s, y]], dk);
+  const side = r() < 0.5 ? 1 : -1, br = [[0, -10, -7, -16], [0, -13, 7, -20], [-0.5, -6, -5, -8], [0.5, -15, 5, -16]];
+  for (const [a, b, c2, d] of br) { mline(g, [[x + a * s * side, y + b * s], [x + c2 * s * side, y + d * s]], c, 1.7 * s); g.fillStyle = '#ffb040'; g.fillRect(x + c2 * s * side - 1, y + d * s - 1, 2, 2); }
+  mline(g, [[x - 0.3 * s, y - 2 * s], [x + 0.6 * s, y - 6 * s], [x - 0.4 * s, y - 9 * s], [x + 0.5 * s, y - 12 * s]], '#ff7a2a', 1.2 * s); // żar w pęknięciu
+  g.fillStyle = '#ffd060'; g.fillRect(x, y - 6 * s, 1.6, 1.6);
 }
 function drawWillow(g, x, y, s, r = mulberry32(1)) {
   shadowAt(g, x, y, 9 * s);
@@ -109,7 +121,7 @@ function drawObstacle(g, o, t, px, py, r) {
     const x = px + spots[k][0], y = py + spots[k][1], s = 0.8 + r() * 0.3;
     if (t === TER.SNOW || t === TER.ROUGH) drawPine(g, x, y, s, t === TER.SNOW, r);
     else if (t === TER.SAND) drawPalm(g, x, y, s, r);
-    else if (t === TER.LAVA) drawDeadTree(g, x, y, s, '#1a1210', r);
+    else if (t === TER.LAVA) drawCharredTree(g, x, y, s, r);
     else if (t === TER.SWAMP) { if (r() < 0.5) drawDeadTree(g, x, y, s, '#2e2618', r); else drawWillow(g, x, y, s, r); }
     else if (t === TER.DIRT && r() < 0.5) drawPine(g, x, y, s, false, r);
     else drawOak(g, x, y, s, r);
@@ -178,6 +190,7 @@ function renderChunkPixel(map, cx, cy) {
     if (!any) segs.push([px, py, px, py, t]);
   }
   const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), img = g.createImageData(S, S), d = img.data;
+  const wm = new Uint8Array(S * S); let wet = false; // maska wody: 1 = głębia (fale), 2 = pas przy brzegu (piana)
   for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
     const k = (py * S + px) * 4, ax = bx + px, ay = by + py; let col;
     if (ax >= lim || ay >= lim) col = PC.void;
@@ -185,6 +198,7 @@ function renderChunkPixel(map, cx, cy) {
       const t = TT(px, py), hh = thash(ax, ay, 77) / 4294967296;
       if (t === TER.WATER) {
         let near = 9; for (const r of RING) if (TT(px + r[0], py + r[1]) !== TER.WATER) { near = r[2]; break; }
+        wm[py * S + px] = near <= 2 ? 2 : 1; wet = true;
         if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
         else { const P = TPAL[0]; col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; }
       } else {
@@ -194,6 +208,7 @@ function renderChunkPixel(map, cx, cy) {
       if (segs.length) {
         let best = 99, bt = 0;
         for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5, py + 0.5, s); if (dd < best) { best = dd; bt = s[4]; } }
+        if (best <= 4.3) wm[py * S + px] = 0;
         if (best <= 3.3) col = roadColor(bt, ax, ay, hh); else if (best <= 4.3) col = PC.edge;
       }
     }
@@ -213,8 +228,44 @@ function renderChunkPixel(map, cx, cy) {
     const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     g.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
   }
+  if (wet) { // maski do animacji wody (WaterFx); przeszkody stojące nad wodą (drzewa, góry przy brzegu) ją zasłaniają
+    const mk = v => { const m = document.createElement('canvas'); m.width = m.height = S; const mg = m.getContext('2d'), mi = mg.createImageData(S, S);
+      for (let i = 0; i < S * S; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out';
+      for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
+        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); mg.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
+      }
+      return m; };
+    c._deep = mk(1); c._shore = mk(2);
+  }
   return c;
 }
+// Żywa woda: po głębi płyną dwie warstwy błysków fal (w przeciwnych kierunkach), pas przy brzegu pulsuje pianą.
+// Rysowane co klatkę na gotowy fragment mapy, przycięte jego maskami; wzór jest ciągły między fragmentami.
+const WaterFx = {
+  pat: null, tmp: null,
+  pattern() {
+    if (this.pat) return this.pat; const P = 48, c = document.createElement('canvas'); c.width = c.height = P; const g = c.getContext('2d'), r = mulberry32(4242);
+    for (let k = 0; k < 16; k++) { // krótkie łuki fal: jasny grzbiet i ciemniejszy cień pod nim
+      const x = Math.floor(r() * P), y = Math.floor(r() * P), w = 3 + Math.floor(r() * 4);
+      for (let i = 0; i < w; i++) { const yy = y - (i > 0 && i < w - 1 ? 1 : 0); g.fillStyle = k % 4 ? '#8cb6da' : '#d4eaf6'; g.fillRect((x + i) % P, (yy + P) % P, 1, 1); g.fillStyle = '#1e3e66'; g.fillRect((x + i) % P, (yy + 1 + P) % P, 1, 1); }
+    }
+    return this.pat = c;
+  },
+  draw(b, ch, dx, dy, size, wx, wy) {
+    if (!ch._deep) return; const S = ch.width, t = G.time;
+    const tmp = this.tmp || (this.tmp = document.createElement('canvas')); if (tmp.width !== S) { tmp.width = tmp.height = S; }
+    const g = tmp.getContext('2d'), pat = g.createPattern(this.pattern(), 'repeat');
+    const layer = (ox, oy, a) => { g.save(); g.globalAlpha = a; g.translate(ox, oy); g.fillStyle = pat; g.fillRect(-ox, -oy, S, S); g.restore(); };
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S);
+    layer(Math.floor(t * 4) - wx, Math.floor(t * 1.5) - wy, 0.5 + 0.2 * Math.sin(t * 1.3));
+    layer(-Math.floor(t * 3) - wx + 21, Math.floor(t * 2) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0);
+    b.drawImage(tmp, dx, dy, size, size);
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = '#eef8fc'; g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0); g.globalCompositeOperation = 'source-over';
+    b.drawImage(tmp, dx, dy, size, size);
+  },
+};
 // Minimapa: 1 piksel na pole, kolory bazowe z palety terenu po korekcji barw mapy
 function buildMinimap(map, ex) {
   const n = map.n, c = document.createElement('canvas'); c.width = c.height = n;
@@ -307,7 +358,7 @@ function drawWorldPixel(b, st) {
   const c0 = Math.max(0, Math.floor(camX / CP)), c1 = Math.min(nC - 1, Math.floor((camX + VIEW.w - 1) / CP));
   const r0 = Math.max(0, Math.floor(camY / CP)), r1 = Math.min(nC - 1, Math.floor((camY + VIEW.h - 1) / CP));
   const ox = VIEW.x - camX, oy = VIEW.y - camY;
-  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) b.drawImage(MapRender.get(cx, cy), ox + cx * CP, oy + cy * CP, CP, CP);
+  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) { const ch = MapRender.get(cx, cy); b.drawImage(ch, ox + cx * CP, oy + cy * CP, CP, CP); WaterFx.draw(b, ch, ox + cx * CP, oy + cy * CP, CP, cx * ch.width, cy * ch.width); }
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });

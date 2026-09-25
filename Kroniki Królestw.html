@@ -151,11 +151,13 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    (MONSTER_GROW do MONSTER_GROW_MAX). Skarbce BANKS (Krypta, Orcza warownia, Gniazdo gryfów, Leże hydr, Smocza Utopia):
    załoga z kilku oddziałów, łup (lootBank), puste po zwycięstwie; SI też je rozbija. migrateSave naprawia stare zapisy.
    Balans: Kurhan silniejszy, hydra bez regeneracji, bazyliszek bez „bez odwetu”; test balansu frakcji (30–70% wygranych).
+   Szlify grafiki: żywa woda (WaterFx: fale po głębi i pulsująca piana, maski wody fragmentów mapy), wyraźniejsze świerki,
+   zwęglone drzewa z żarem na lawie, surowce jako bryłki w stylu rudy, tła bitew ze szczegółami terenu (battleDecor).
 
    PLAN (kolejność ustalona z graczem; krok 13 „warunki zwycięstwa” pominięty)
    1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (zrobione: do 8 graczy, zasłona między turami).
    5. Samouczek (wykreślony). 6. Porządki (zrobione: migracja zapisów, test balansu, trudniejsza mapa i skarbce).
-   7. Grafika: animowana woda, wyraźniejsze sosny i ozdoby, obiekty mapy w stylu rudy, tła bitew zależne od terenu.
+   7. Grafika (zrobione: animowana woda, świerki, surowce w stylu rudy, tła bitew zależne od terenu).
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
@@ -1300,42 +1302,46 @@ function resourceBarInfo(st, x, y, dy = 0) {
 function drawResIcon(ctx, id, cx, cy, s = 24) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s / 24, s / 24); ctx.lineWidth = 1.2; ctx.strokeStyle = '#1a0e04';
   const poly = (pts, fill) => { ctx.beginPath(); pts.forEach(([px, py], i) => i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.stroke(); };
+  // bryłka w stylu rudy: podstawa, jasna ścianka u góry, ciemna z prawej, iskra odblasku; pal = [podstawa, jasna, ciemna]
+  const nugget = (ox, oy, k, pal, vein) => {
+    const P = (x, y) => [ox + x * k, oy + y * k];
+    poly([P(-7, 3), P(-5, -4), P(1, -7), P(7, -3), P(7, 4), P(1, 6)], pal[0]);
+    poly([P(-5, -4), P(1, -7), P(7, -3), P(1, -1)], pal[1]);
+    poly([P(1, -1), P(7, -3), P(7, 4), P(1, 6)], pal[2]);
+    if (vein) { ctx.strokeStyle = vein; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(...P(-5, 2)); ctx.lineTo(...P(-2, 0)); ctx.lineTo(...P(0, 3)); ctx.stroke(); }
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(...P(-1, -5), 1.6, 1.6); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
+  };
+  const heap = (pal, vein) => { for (const [ox, oy, k] of [[1, -4, 1.05], [-5, 3, 0.9], [6, 4, 0.8]]) nugget(ox, oy, k, pal, vein); };
   switch (id) {
-    case 'wood':
-      for (const [oy, len] of [[4, 20], [-4, 17]]) {
-        ctx.fillStyle = '#7a4a22'; rr(ctx, -len / 2, oy - 4, len, 8, 3); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#d9aa6c'; ctx.beginPath(); ctx.ellipse(len / 2 - 1, oy, 2.6, 3.8, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    case 'wood': // stos trzech kłód: kora ze ścianką jasną i ciemną, czoła z słojami
+      for (const [ox, oy, len] of [[-2, 5, 20], [2, 5, 18], [0, -3, 18]].slice(0, 3)) {
+        const x0 = ox - len / 2, x1 = ox + len / 2 - 2;
+        poly([[x0, oy - 4], [x1, oy - 4], [x1, oy + 4], [x0, oy + 4]], '#6e4220');
+        ctx.fillStyle = '#9a6634'; ctx.fillRect(x0 + 1, oy - 3.4, x1 - x0 - 2, 2.4); ctx.fillStyle = '#4a2a12'; ctx.fillRect(x0 + 1, oy + 1.6, x1 - x0 - 2, 1.8); ctx.strokeStyle = '#1a0e04';
+        ctx.fillStyle = '#d9aa6c'; ctx.beginPath(); ctx.ellipse(x1, oy, 2.8, 4, 0, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#a0703c'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.ellipse(x1, oy, 1.3, 2, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
       } break;
-    case 'mercury': {
-      ctx.fillStyle = '#b8bcc8'; ctx.fillRect(-3, -11, 6, 9); ctx.strokeRect(-3, -11, 6, 9);
-      const g = ctx.createRadialGradient(-3, 1, 1, 0, 4, 9); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#8a90a0');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 4, 8, 0, TAU); ctx.fill(); ctx.stroke(); break;
+    case 'mercury': { // kanciasta fiolka z rtęcią: szkło ze ściankami, srebrna ciecz z odblaskiem
+      poly([[-3, -12], [3, -12], [3, -6], [-3, -6]], '#8a6a4a');
+      poly([[-4, -6], [4, -6], [9, 1], [7, 9], [-7, 9], [-9, 1]], '#9aa6b8');
+      poly([[-4, -6], [0, -6], [-2, 9], [-7, 9], [-9, 1]], '#d8e0ec');
+      poly([[-8, 2], [8, 2], [7, 9], [-7, 9]], '#c4ccd8'); poly([[1, 2], [8, 2], [7, 9], [2, 9]], '#7a8496');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-5, 3, 2, 2); ctx.fillRect(-6, -2, 1.5, 3); break;
     }
-    case 'ore': // kupka ciemnych, metalicznych bryłek z rdzawymi żyłkami (nie szary głaz jak kamienie na mapie)
-      for (const [ox, oy, k] of [[1, -4, 1.05], [-5, 3, 0.9], [6, 4, 0.8]]) {
-        const P = (x, y) => [ox + x * k, oy + y * k];
-        poly([P(-7, 3), P(-5, -4), P(1, -7), P(7, -3), P(7, 4), P(1, 6)], '#3b4150');
-        poly([P(-5, -4), P(1, -7), P(7, -3), P(1, -1)], '#6c7a92');
-        poly([P(1, -1), P(7, -3), P(7, 4), P(1, 6)], '#2a2e3a');
-        ctx.strokeStyle = '#c0682a'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(...P(-5, 2)); ctx.lineTo(...P(-2, 0)); ctx.lineTo(...P(0, 3)); ctx.stroke();
-        ctx.fillStyle = '#e8f0ff'; ctx.fillRect(...P(-1, -5), 1.6, 1.6); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
-      } break;
-    case 'sulfur':
-      ctx.beginPath(); ctx.moveTo(-11, 8); ctx.quadraticCurveTo(-6, -10, 0, -9); ctx.quadraticCurveTo(7, -9, 11, 8); ctx.closePath();
-      ctx.fillStyle = '#e4c629'; ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff38a';
-      for (const [dx, dy] of [[-3, -3], [3, 0], [-5, 4], [2, 5]]) { ctx.beginPath(); ctx.arc(dx, dy, 1.4, 0, TAU); ctx.fill(); } break;
+    case 'ore': heap(['#3b4150', '#6c7a92', '#2a2e3a'], '#c0682a'); break; // ciemne, metaliczne bryłki z rdzawymi żyłkami
+    case 'sulfur': heap(['#c8cc3a', '#f4f6a8', '#7e8a1e'], null); break; // blade, cytrynowe grudy siarki (złoto jest cieplejsze)
     case 'crystal':
       poly([[7, -4], [11, 2], [9, 9], [5, 9], [4, 1]], '#a81f28');
+      poly([[-7, 0], [-4, 9], [-9, 9], [-10, 3]], '#c02a34');
       poly([[0, -11], [6, -2], [3, 9], [-3, 9], [-6, -2]], '#d8303a');
-      poly([[0, -11], [-1, 9], [-3, 9], [-6, -2]], '#ff7a82'); break;
-    case 'gems': {
-      const gem = (gx, gy, c) => poly([[gx, gy - 6], [gx + 5, gy], [gx, gy + 6], [gx - 5, gy]], c);
+      poly([[0, -11], [-1, 9], [-3, 9], [-6, -2]], '#ff7a82'); ctx.fillStyle = '#ffffff'; ctx.fillRect(-3, -5, 1.6, 1.6); break;
+    case 'gems': { // oszlifowane kamienie: jasna ścianka z lewej u góry, ciemna z prawej u dołu
+      const gem = (gx, gy, c) => { poly([[gx, gy - 6], [gx + 5, gy], [gx, gy + 6], [gx - 5, gy]], c); poly([[gx, gy - 6], [gx, gy], [gx - 5, gy]], shadeHex(c, 0.35)); poly([[gx, gy], [gx + 5, gy], [gx, gy + 6]], shadeHex(c, -0.3)); ctx.fillStyle = '#ffffff'; ctx.fillRect(gx - 2, gy - 3, 1.5, 1.5); };
       gem(0, -4, '#b04ad0'); gem(-5, 4, '#2fb85a'); gem(5, 4, '#3a7de0'); break;
     }
-    case 'gold':
-      for (const [sx, n] of [[-4, 4], [6, 2]]) for (let i = 0; i < n; i++) {
-        ctx.fillStyle = i === n - 1 ? '#ffe070' : '#d9a520'; ctx.beginPath(); ctx.ellipse(sx, 8 - i * 4, 6, 3, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      } break;
+    case 'gold': // złote samorodki z monetą na wierzchu
+      heap(['#d8901c', '#ffd860', '#8a4e0c'], null);
+      for (const [cx, cy] of [[-6, -6], [-6, -9], [-6, -12], [4, -9]]) { ctx.fillStyle = '#f0b830'; ctx.beginPath(); ctx.ellipse(cx, cy, 4.5, 2, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff0a0'; ctx.fillRect(cx - 2.5, cy - 1, 2, 1); } break;
   }
   ctx.restore();
 }
@@ -4675,16 +4681,17 @@ function drawOak(g, x, y, s, r = mulberry32(1)) {
   const cl = [[0, -24, 7.5], [-7, -19, 7], [7, -18, 7], [-3, -13, 7], [5, -12, 6.5]].map(([dx, dy, R]) => [x + (dx + (r() - 0.5) * 2) * s, y + dy * s, R * s * (0.9 + r() * 0.2)]);
   leafCrown(g, cl, pal, r);
 }
-function drawPine(g, x, y, s, snowy, r = mulberry32(1)) {
-  shadowAt(g, x, y, 7 * s);
-  g.fillStyle = '#3e2614'; g.fillRect(x - 1.3 * s, y - 6 * s, 2.6 * s, 6 * s); g.fillStyle = '#6a4424'; g.fillRect(x - 1.3 * s, y - 6 * s, 1.1 * s, 6 * s);
-  for (let i = 0; i < 4; i++) {
-    const by = y - 4 * s - i * 6 * s, w = (9 - i * 2) * s, top = by - 10 * s, zig = [];
-    for (let k = 0; k <= 6; k++) zig.push([x + w - k * w / 3, by - (k % 2 ? 2.2 * s : 0)]);
-    mpoly(g, [[x, top], ...zig], '#143a20');
-    mpoly(g, [[x, top], [x - w * 0.05, by - 1.5 * s], ...zig.slice(4)], '#2e7440');
-    mpoly(g, [[x - 0.5 * s, top + 2 * s], [x - w * 0.7, by - 1.2 * s], [x - w * 0.45, by - 1.8 * s]], '#62ae5e');
-    if (snowy) { mpoly(g, [[x, top], [x - w * 0.6, by - 4 * s], [x - w * 0.2, by - 5 * s], [x + w * 0.1, by - 3.5 * s], [x + w * 0.5, by - 4.5 * s]], '#f4f8fc'); mpoly(g, [[x, top], [x + w * 0.1, by - 3.5 * s], [x + w * 0.5, by - 4.5 * s]], '#b8c6d8'); }
+function drawPine(g, x, y, s, snowy, r = mulberry32(1)) { // świerk: trzy–cztery piętra ze ścianką jasną z lewej i ciemną z prawej
+  shadowAt(g, x, y, 8 * s);
+  mpoly(g, [[x - 1.7 * s, y + 1], [x - 1.4 * s, y - 8 * s], [x + 1.4 * s, y - 8 * s], [x + 1.7 * s, y + 1]], '#4a2e18'); mpoly(g, [[x - 1.7 * s, y + 1], [x - 1.4 * s, y - 8 * s], [x - 0.2 * s, y - 8 * s], [x - 0.3 * s, y + 1]], '#80563a');
+  const tiers = 3 + (r() < 0.4 ? 1 : 0), step = tiers === 4 ? 6 : 7.5;
+  for (let i = 0; i < tiers; i++) {
+    const by = y - 5 * s - i * step * s, w = (11.5 - i * (tiers === 4 ? 2.3 : 3)) * s, top = by - (tiers === 4 ? 10 : 12) * s;
+    mpoly(g, [[x, top], [x + w, by], [x + w * 0.45, by - 1.8 * s], [x, by + 0.8 * s], [x - w * 0.45, by - 1.8 * s], [x - w, by]], '#184a2a'); // bryła piętra
+    mpoly(g, [[x, top], [x - w, by], [x - w * 0.45, by - 1.8 * s], [x - 0.3 * s, by - 0.6 * s]], '#3a8848'); // jasna ścianka
+    mpoly(g, [[x - 0.3 * s, top + 2 * s], [x - w * 0.8, by - 0.8 * s], [x - w * 0.55, by - 2.6 * s]], '#72bc68'); // odblask
+    mpoly(g, [[x + w * 0.2, by - 1 * s], [x + w, by], [x + w * 0.45, by - 1.8 * s]], '#0e3420'); // cień pod gałęziami
+    if (snowy) { mpoly(g, [[x, top], [x - w * 0.6, by - 4.5 * s], [x - w * 0.2, by - 5.5 * s], [x + w * 0.15, by - 4 * s], [x + w * 0.55, by - 5 * s]], '#f4f8fc'); mpoly(g, [[x, top], [x + w * 0.15, by - 4 * s], [x + w * 0.55, by - 5 * s]], '#b8c6d8'); }
   }
 }
 function drawPalm(g, x, y, s, r = mulberry32(1)) {
@@ -4703,6 +4710,17 @@ function drawDeadTree(g, x, y, s, col, r = mulberry32(1)) {
   mpoly(g, [[x - 2 * s, y], [x - 1.2 * s, y - 16 * s], [x - 0.3 * s, y - 16 * s], [x - 0.6 * s, y]], lt);
   mline(g, [[x, y - 9 * s], [x - 6 * s, y - 15 * s], [x - 8 * s, y - 15 * s]], col, 1.6 * s); mline(g, [[x, y - 12 * s], [x + 6 * s, y - 18 * s], [x + 7 * s, y - 21 * s]], col, 1.5 * s);
   mline(g, [[x - 3 * s, y - 12 * s], [x - 7 * s, y - 11 * s]], col, 1.2 * s); mline(g, [[x + 3.5 * s, y - 15 * s], [x + 7 * s, y - 14 * s]], col, 1.1 * s);
+}
+// Zwęglone drzewo na lawie: szary pień z jaśniejszą krawędzią, żarzące się pęknięcia i rozżarzone końce gałęzi
+function drawCharredTree(g, x, y, s, r = mulberry32(1)) {
+  shadowAt(g, x, y, 7 * s); const c = '#4a3c38', lt = '#86706a', dk = '#261c1a';
+  mpoly(g, [[x - 5 * s, y + 1], [x - 2 * s, y - 3 * s], [x + 2 * s, y - 3 * s], [x + 5 * s, y + 1]], '#2e2624'); // kopczyk popiołu
+  mpoly(g, [[x - 2.6 * s, y], [x - 1.3 * s, y - 18 * s], [x + 1.3 * s, y - 18 * s], [x + 2.6 * s, y]], c);
+  mpoly(g, [[x - 2.4 * s, y], [x - 1.3 * s, y - 17 * s], [x - 0.2 * s, y - 17 * s], [x - 0.8 * s, y]], lt); mpoly(g, [[x + 0.8 * s, y], [x + 0.6 * s, y - 17 * s], [x + 1.3 * s, y - 18 * s], [x + 2.6 * s, y]], dk);
+  const side = r() < 0.5 ? 1 : -1, br = [[0, -10, -7, -16], [0, -13, 7, -20], [-0.5, -6, -5, -8], [0.5, -15, 5, -16]];
+  for (const [a, b, c2, d] of br) { mline(g, [[x + a * s * side, y + b * s], [x + c2 * s * side, y + d * s]], c, 1.7 * s); g.fillStyle = '#ffb040'; g.fillRect(x + c2 * s * side - 1, y + d * s - 1, 2, 2); }
+  mline(g, [[x - 0.3 * s, y - 2 * s], [x + 0.6 * s, y - 6 * s], [x - 0.4 * s, y - 9 * s], [x + 0.5 * s, y - 12 * s]], '#ff7a2a', 1.2 * s); // żar w pęknięciu
+  g.fillStyle = '#ffd060'; g.fillRect(x, y - 6 * s, 1.6, 1.6);
 }
 function drawWillow(g, x, y, s, r = mulberry32(1)) {
   shadowAt(g, x, y, 9 * s);
@@ -4762,7 +4780,7 @@ function drawObstacle(g, o, t, px, py, r) {
     const x = px + spots[k][0], y = py + spots[k][1], s = 0.8 + r() * 0.3;
     if (t === TER.SNOW || t === TER.ROUGH) drawPine(g, x, y, s, t === TER.SNOW, r);
     else if (t === TER.SAND) drawPalm(g, x, y, s, r);
-    else if (t === TER.LAVA) drawDeadTree(g, x, y, s, '#1a1210', r);
+    else if (t === TER.LAVA) drawCharredTree(g, x, y, s, r);
     else if (t === TER.SWAMP) { if (r() < 0.5) drawDeadTree(g, x, y, s, '#2e2618', r); else drawWillow(g, x, y, s, r); }
     else if (t === TER.DIRT && r() < 0.5) drawPine(g, x, y, s, false, r);
     else drawOak(g, x, y, s, r);
@@ -4831,6 +4849,7 @@ function renderChunkPixel(map, cx, cy) {
     if (!any) segs.push([px, py, px, py, t]);
   }
   const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), img = g.createImageData(S, S), d = img.data;
+  const wm = new Uint8Array(S * S); let wet = false; // maska wody: 1 = głębia (fale), 2 = pas przy brzegu (piana)
   for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
     const k = (py * S + px) * 4, ax = bx + px, ay = by + py; let col;
     if (ax >= lim || ay >= lim) col = PC.void;
@@ -4838,6 +4857,7 @@ function renderChunkPixel(map, cx, cy) {
       const t = TT(px, py), hh = thash(ax, ay, 77) / 4294967296;
       if (t === TER.WATER) {
         let near = 9; for (const r of RING) if (TT(px + r[0], py + r[1]) !== TER.WATER) { near = r[2]; break; }
+        wm[py * S + px] = near <= 2 ? 2 : 1; wet = true;
         if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
         else { const P = TPAL[0]; col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; }
       } else {
@@ -4847,6 +4867,7 @@ function renderChunkPixel(map, cx, cy) {
       if (segs.length) {
         let best = 99, bt = 0;
         for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5, py + 0.5, s); if (dd < best) { best = dd; bt = s[4]; } }
+        if (best <= 4.3) wm[py * S + px] = 0;
         if (best <= 3.3) col = roadColor(bt, ax, ay, hh); else if (best <= 4.3) col = PC.edge;
       }
     }
@@ -4866,8 +4887,44 @@ function renderChunkPixel(map, cx, cy) {
     const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     g.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
   }
+  if (wet) { // maski do animacji wody (WaterFx); przeszkody stojące nad wodą (drzewa, góry przy brzegu) ją zasłaniają
+    const mk = v => { const m = document.createElement('canvas'); m.width = m.height = S; const mg = m.getContext('2d'), mi = mg.createImageData(S, S);
+      for (let i = 0; i < S * S; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out';
+      for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
+        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); mg.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
+      }
+      return m; };
+    c._deep = mk(1); c._shore = mk(2);
+  }
   return c;
 }
+// Żywa woda: po głębi płyną dwie warstwy błysków fal (w przeciwnych kierunkach), pas przy brzegu pulsuje pianą.
+// Rysowane co klatkę na gotowy fragment mapy, przycięte jego maskami; wzór jest ciągły między fragmentami.
+const WaterFx = {
+  pat: null, tmp: null,
+  pattern() {
+    if (this.pat) return this.pat; const P = 48, c = document.createElement('canvas'); c.width = c.height = P; const g = c.getContext('2d'), r = mulberry32(4242);
+    for (let k = 0; k < 16; k++) { // krótkie łuki fal: jasny grzbiet i ciemniejszy cień pod nim
+      const x = Math.floor(r() * P), y = Math.floor(r() * P), w = 3 + Math.floor(r() * 4);
+      for (let i = 0; i < w; i++) { const yy = y - (i > 0 && i < w - 1 ? 1 : 0); g.fillStyle = k % 4 ? '#8cb6da' : '#d4eaf6'; g.fillRect((x + i) % P, (yy + P) % P, 1, 1); g.fillStyle = '#1e3e66'; g.fillRect((x + i) % P, (yy + 1 + P) % P, 1, 1); }
+    }
+    return this.pat = c;
+  },
+  draw(b, ch, dx, dy, size, wx, wy) {
+    if (!ch._deep) return; const S = ch.width, t = G.time;
+    const tmp = this.tmp || (this.tmp = document.createElement('canvas')); if (tmp.width !== S) { tmp.width = tmp.height = S; }
+    const g = tmp.getContext('2d'), pat = g.createPattern(this.pattern(), 'repeat');
+    const layer = (ox, oy, a) => { g.save(); g.globalAlpha = a; g.translate(ox, oy); g.fillStyle = pat; g.fillRect(-ox, -oy, S, S); g.restore(); };
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S);
+    layer(Math.floor(t * 4) - wx, Math.floor(t * 1.5) - wy, 0.5 + 0.2 * Math.sin(t * 1.3));
+    layer(-Math.floor(t * 3) - wx + 21, Math.floor(t * 2) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0);
+    b.drawImage(tmp, dx, dy, size, size);
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = '#eef8fc'; g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0); g.globalCompositeOperation = 'source-over';
+    b.drawImage(tmp, dx, dy, size, size);
+  },
+};
 // Minimapa: 1 piksel na pole, kolory bazowe z palety terenu po korekcji barw mapy
 function buildMinimap(map, ex) {
   const n = map.n, c = document.createElement('canvas'); c.width = c.height = n;
@@ -4960,7 +5017,7 @@ function drawWorldPixel(b, st) {
   const c0 = Math.max(0, Math.floor(camX / CP)), c1 = Math.min(nC - 1, Math.floor((camX + VIEW.w - 1) / CP));
   const r0 = Math.max(0, Math.floor(camY / CP)), r1 = Math.min(nC - 1, Math.floor((camY + VIEW.h - 1) / CP));
   const ox = VIEW.x - camX, oy = VIEW.y - camY;
-  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) b.drawImage(MapRender.get(cx, cy), ox + cx * CP, oy + cy * CP, CP, CP);
+  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) { const ch = MapRender.get(cx, cy); b.drawImage(ch, ox + cx * CP, oy + cy * CP, CP, CP); WaterFx.draw(b, ch, ox + cx * CP, oy + cy * CP, CP, cx * ch.width, cy * ch.width); }
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
@@ -7396,10 +7453,44 @@ function paintBattleBg(c, terr, fac) {
     } else { const n = vnoise2(x / 9, y / 6, 17) * 0.7 + vnoise2(x / 3, y / 3, 5) * 0.3 + (BAYER4[(y & 3) * 4 + (x & 3)] / 16 - 0.5) * 0.18; col = P[n < 0.32 ? 0 : n < 0.62 ? 1 : n < 0.8 ? 2 : 3]; }
     img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
   }
-  g.putImageData(img, 0, 0); c.imageSmoothingEnabled = false; c.drawImage(off, 0, 0, W, H);
+  g.putImageData(img, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = false; c.drawImage(off, 0, 0, W, H);
   c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1;
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { hexPath(c, x, y, 1); c.stroke(); }
   stoneFill(c, 0, 490, W, 110); c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, W, 38);
+}
+// Tło bitwy zależne od terenu (w połowie rozdzielczości, przed powiększeniem): horyzont pod paskiem u góry
+// i drobne malowane szczegóły na polu (kępki, kamyki, kałuże, pęknięcia z żarem). Nie wpływają na walkę.
+function battleDecor(g, terr, w, h, fac) {
+  const r = mulberry32(9001 + terr * 131), P = TPAL[terr].map(c => `rgb(${gradeRgb(c).map(Math.round).join(',')})`), px = (x, y, c, k = 1) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), k, k); };
+  const maxX = fac ? PAVE_X / 2 - 8 : w;
+  // horyzont: odległe wzgórza, las, wydmy, szczyty albo wulkany w kolorach terenu, zlewające się z polem
+  const far = { [TER.GRASS]: '#2e4a2a', [TER.DIRT]: '#4a3a28', [TER.SAND]: '#8a7050', [TER.SNOW]: '#8a98b0', [TER.SWAMP]: '#2a3a2a', [TER.ROUGH]: '#4a4436', [TER.LAVA]: '#2a1614', [TER.WATER]: '#2a4a6a' }[terr] || '#3a3a3a';
+  g.fillStyle = far; g.beginPath(); g.moveTo(0, 26);
+  for (let x = 0; x <= w; x += 4) { const peak = terr === TER.SNOW || terr === TER.ROUGH || terr === TER.LAVA ? Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 + Math.abs(Math.sin(x * 0.11)) * 4 : (terr === TER.GRASS || terr === TER.SWAMP) ? 4 + (thash(x >> 2, 3, terr) % 4) : Math.sin(x * 0.03) * 3 + 3; g.lineTo(x, 22 - peak); }
+  g.lineTo(w, 26); g.closePath(); g.fill();
+  if (terr === TER.LAVA) for (let x = 60; x < w; x += 150) { px(x, 10, '#ff7a2a', 2); px(x + 1, 8, '#ffd060'); }
+  if (terr === TER.SNOW) for (let x = 0; x < w; x += 3) if (Math.abs(Math.sin(x * 0.045 + 1.3)) > 0.8) px(x, 22 - Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 - Math.abs(Math.sin(x * 0.11)) * 4 + 1, '#f4f8fc', 2);
+  // większe plamy (jaśniejsza trawa, piach, zaspy, muł, zastygła lawa), potem drobne szczegóły
+  const patch = { [TER.GRASS]: '#4a7a34', [TER.DIRT]: P[0], [TER.SAND]: P[0], [TER.SNOW]: '#c8d2e0', [TER.SWAMP]: '#1e3a30', [TER.ROUGH]: P[0], [TER.LAVA]: '#3a1a14', [TER.WATER]: P[0] }[terr];
+  g.fillStyle = patch;
+  for (let k = 0; k < 14; k++) { // rozproszone w szachownicę, żeby wtapiały się w teren; środek gęstszy
+    const x0 = Math.round(20 + r() * (maxX - 40)), y0 = Math.round(40 + r() * (h - 110)), rx = 8 + r() * 12, ry = 3 + r() * 4;
+    for (let y = -Math.ceil(ry); y <= ry; y++) for (let x = -Math.ceil(rx); x <= rx; x++) { const d = (x / rx) ** 2 + (y / ry) ** 2; if (d <= 1 && (d < 0.35 || ((x0 + x + y0 + y) & 1))) g.fillRect(x0 + x, y0 + y, 1, 1); }
+  }
+  const tuft = (x, y, a, b) => { px(x, y - 2, a); px(x + 1, y - 3, b); px(x + 1, y - 2, b); px(x + 2, y - 4, b); px(x + 3, y - 3, a); px(x + 3, y - 2, a); px(x + 4, y - 2, b); };
+  const stone = (x, y, pal) => { g.fillStyle = pal[1]; g.fillRect(Math.round(x), Math.round(y) - 2, 4, 3); px(x, y - 2, pal[0], 2); px(x + 3, y, pal[2]); };
+  for (let k = 0; k < 120; k++) {
+    const x = 8 + r() * (maxX - 16), y = 34 + r() * (h - 96), v = r();
+    switch (terr) {
+      case TER.GRASS: if (v < 0.5) tuft(x, y, '#2e5a24', '#6aa844'); else if (v < 0.8) { const c = ['#e8d040', '#f4f0e8', '#d8503a', '#9a70d0'][k % 4]; px(x, y, c, 2); px(x + 3, y + 1, c); } else stone(x, y, ['#b0aca0', '#86847a', '#5a5850']); break;
+      case TER.DIRT: case TER.ROUGH: if (v < 0.45) stone(x, y, ['#a89880', '#7a6a58', '#4a3e32']); else if (v < 0.75) { for (let i = 0; i < 7; i++) px(x + i, y + (i % 3 === 1 ? 1 : 0), P[3]); } else tuft(x, y, '#6a6030', '#a89a50'); break;
+      case TER.SAND: if (v < 0.6) { for (let i = 0; i < 10; i++) px(x + i, y + Math.round(Math.sin(i * 0.7) * 1.2), P[2]); } else if (v < 0.72) { px(x, y, '#eee6d0', 4); px(x + 4, y + 1, '#eee6d0', 2); } else if (v < 0.8) { g.fillStyle = '#4a8a3a'; g.fillRect(Math.round(x), Math.round(y) - 6, 2, 7); g.fillRect(Math.round(x) - 2, Math.round(y) - 4, 2, 1); g.fillRect(Math.round(x) - 2, Math.round(y) - 5, 1, 2); } else stone(x, y, ['#e0c898', '#b09060', '#7a5a38']); break;
+      case TER.SNOW: if (v < 0.5) { for (let i = 0; i < 12; i++) px(x + i, y + (i > 2 && i < 9 ? 0 : 1), '#a0b0c8'); for (let i = 3; i < 9; i++) px(x + i, y - 1, '#ffffff'); } else if (v < 0.75) stone(x, y, ['#e8eef4', '#a0acba', '#6a7686']); else px(x, y, '#ffffff', 2); break;
+      case TER.SWAMP: if (v < 0.3) { g.fillStyle = '#16302c'; g.beginPath(); g.ellipse(Math.round(x), Math.round(y), 7, 3, 0, 0, TAU); g.fill(); px(x - 4, y - 1, '#4a8a7a', 2); } else if (v < 0.65) { for (let i = 0; i < 3; i++) { g.fillStyle = '#5a7a2a'; g.fillRect(Math.round(x + i * 2), Math.round(y) - 6, 1, 6); } px(x + 2, y - 8, '#6a4a26', 1); px(x + 2, y - 7, '#6a4a26'); } else if (v < 0.8) px(x, y, '#c83a2a', 2); else tuft(x, y, '#2a4a24', '#5a7a34'); break;
+      case TER.LAVA: if (v < 0.45) { let cx = x, cy = y; for (let i = 0; i < 10; i++) { px(cx, cy, i % 3 ? '#e0601a' : '#ffb040'); cx += 1; cy += r() < 0.5 ? 1 : -1; } } else stone(x, y, ['#5a4a42', '#3a2e2a', '#1e1714']); break;
+      case TER.WATER: if (v < 0.6) for (let i = 0; i < 5; i++) px(x + i, y - (i > 0 && i < 4 ? 1 : 0), '#8cb6da'); break;
+    }
+  }
 }
 // Szacunek obrażeń do podglądu ataku: [min, max] i ilu zginie
 function estimateStrike(B, a, t, ranged, moved = 0) {

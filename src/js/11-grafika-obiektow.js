@@ -3,42 +3,46 @@
 function drawResIcon(ctx, id, cx, cy, s = 24) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s / 24, s / 24); ctx.lineWidth = 1.2; ctx.strokeStyle = '#1a0e04';
   const poly = (pts, fill) => { ctx.beginPath(); pts.forEach(([px, py], i) => i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.stroke(); };
+  // bryłka w stylu rudy: podstawa, jasna ścianka u góry, ciemna z prawej, iskra odblasku; pal = [podstawa, jasna, ciemna]
+  const nugget = (ox, oy, k, pal, vein) => {
+    const P = (x, y) => [ox + x * k, oy + y * k];
+    poly([P(-7, 3), P(-5, -4), P(1, -7), P(7, -3), P(7, 4), P(1, 6)], pal[0]);
+    poly([P(-5, -4), P(1, -7), P(7, -3), P(1, -1)], pal[1]);
+    poly([P(1, -1), P(7, -3), P(7, 4), P(1, 6)], pal[2]);
+    if (vein) { ctx.strokeStyle = vein; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(...P(-5, 2)); ctx.lineTo(...P(-2, 0)); ctx.lineTo(...P(0, 3)); ctx.stroke(); }
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(...P(-1, -5), 1.6, 1.6); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
+  };
+  const heap = (pal, vein) => { for (const [ox, oy, k] of [[1, -4, 1.05], [-5, 3, 0.9], [6, 4, 0.8]]) nugget(ox, oy, k, pal, vein); };
   switch (id) {
-    case 'wood':
-      for (const [oy, len] of [[4, 20], [-4, 17]]) {
-        ctx.fillStyle = '#7a4a22'; rr(ctx, -len / 2, oy - 4, len, 8, 3); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#d9aa6c'; ctx.beginPath(); ctx.ellipse(len / 2 - 1, oy, 2.6, 3.8, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    case 'wood': // stos trzech kłód: kora ze ścianką jasną i ciemną, czoła z słojami
+      for (const [ox, oy, len] of [[-2, 5, 20], [2, 5, 18], [0, -3, 18]].slice(0, 3)) {
+        const x0 = ox - len / 2, x1 = ox + len / 2 - 2;
+        poly([[x0, oy - 4], [x1, oy - 4], [x1, oy + 4], [x0, oy + 4]], '#6e4220');
+        ctx.fillStyle = '#9a6634'; ctx.fillRect(x0 + 1, oy - 3.4, x1 - x0 - 2, 2.4); ctx.fillStyle = '#4a2a12'; ctx.fillRect(x0 + 1, oy + 1.6, x1 - x0 - 2, 1.8); ctx.strokeStyle = '#1a0e04';
+        ctx.fillStyle = '#d9aa6c'; ctx.beginPath(); ctx.ellipse(x1, oy, 2.8, 4, 0, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#a0703c'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.ellipse(x1, oy, 1.3, 2, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
       } break;
-    case 'mercury': {
-      ctx.fillStyle = '#b8bcc8'; ctx.fillRect(-3, -11, 6, 9); ctx.strokeRect(-3, -11, 6, 9);
-      const g = ctx.createRadialGradient(-3, 1, 1, 0, 4, 9); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#8a90a0');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 4, 8, 0, TAU); ctx.fill(); ctx.stroke(); break;
+    case 'mercury': { // kanciasta fiolka z rtęcią: szkło ze ściankami, srebrna ciecz z odblaskiem
+      poly([[-3, -12], [3, -12], [3, -6], [-3, -6]], '#8a6a4a');
+      poly([[-4, -6], [4, -6], [9, 1], [7, 9], [-7, 9], [-9, 1]], '#9aa6b8');
+      poly([[-4, -6], [0, -6], [-2, 9], [-7, 9], [-9, 1]], '#d8e0ec');
+      poly([[-8, 2], [8, 2], [7, 9], [-7, 9]], '#c4ccd8'); poly([[1, 2], [8, 2], [7, 9], [2, 9]], '#7a8496');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-5, 3, 2, 2); ctx.fillRect(-6, -2, 1.5, 3); break;
     }
-    case 'ore': // kupka ciemnych, metalicznych bryłek z rdzawymi żyłkami (nie szary głaz jak kamienie na mapie)
-      for (const [ox, oy, k] of [[1, -4, 1.05], [-5, 3, 0.9], [6, 4, 0.8]]) {
-        const P = (x, y) => [ox + x * k, oy + y * k];
-        poly([P(-7, 3), P(-5, -4), P(1, -7), P(7, -3), P(7, 4), P(1, 6)], '#3b4150');
-        poly([P(-5, -4), P(1, -7), P(7, -3), P(1, -1)], '#6c7a92');
-        poly([P(1, -1), P(7, -3), P(7, 4), P(1, 6)], '#2a2e3a');
-        ctx.strokeStyle = '#c0682a'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(...P(-5, 2)); ctx.lineTo(...P(-2, 0)); ctx.lineTo(...P(0, 3)); ctx.stroke();
-        ctx.fillStyle = '#e8f0ff'; ctx.fillRect(...P(-1, -5), 1.6, 1.6); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
-      } break;
-    case 'sulfur':
-      ctx.beginPath(); ctx.moveTo(-11, 8); ctx.quadraticCurveTo(-6, -10, 0, -9); ctx.quadraticCurveTo(7, -9, 11, 8); ctx.closePath();
-      ctx.fillStyle = '#e4c629'; ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff38a';
-      for (const [dx, dy] of [[-3, -3], [3, 0], [-5, 4], [2, 5]]) { ctx.beginPath(); ctx.arc(dx, dy, 1.4, 0, TAU); ctx.fill(); } break;
+    case 'ore': heap(['#3b4150', '#6c7a92', '#2a2e3a'], '#c0682a'); break; // ciemne, metaliczne bryłki z rdzawymi żyłkami
+    case 'sulfur': heap(['#c8cc3a', '#f4f6a8', '#7e8a1e'], null); break; // blade, cytrynowe grudy siarki (złoto jest cieplejsze)
     case 'crystal':
       poly([[7, -4], [11, 2], [9, 9], [5, 9], [4, 1]], '#a81f28');
+      poly([[-7, 0], [-4, 9], [-9, 9], [-10, 3]], '#c02a34');
       poly([[0, -11], [6, -2], [3, 9], [-3, 9], [-6, -2]], '#d8303a');
-      poly([[0, -11], [-1, 9], [-3, 9], [-6, -2]], '#ff7a82'); break;
-    case 'gems': {
-      const gem = (gx, gy, c) => poly([[gx, gy - 6], [gx + 5, gy], [gx, gy + 6], [gx - 5, gy]], c);
+      poly([[0, -11], [-1, 9], [-3, 9], [-6, -2]], '#ff7a82'); ctx.fillStyle = '#ffffff'; ctx.fillRect(-3, -5, 1.6, 1.6); break;
+    case 'gems': { // oszlifowane kamienie: jasna ścianka z lewej u góry, ciemna z prawej u dołu
+      const gem = (gx, gy, c) => { poly([[gx, gy - 6], [gx + 5, gy], [gx, gy + 6], [gx - 5, gy]], c); poly([[gx, gy - 6], [gx, gy], [gx - 5, gy]], shadeHex(c, 0.35)); poly([[gx, gy], [gx + 5, gy], [gx, gy + 6]], shadeHex(c, -0.3)); ctx.fillStyle = '#ffffff'; ctx.fillRect(gx - 2, gy - 3, 1.5, 1.5); };
       gem(0, -4, '#b04ad0'); gem(-5, 4, '#2fb85a'); gem(5, 4, '#3a7de0'); break;
     }
-    case 'gold':
-      for (const [sx, n] of [[-4, 4], [6, 2]]) for (let i = 0; i < n; i++) {
-        ctx.fillStyle = i === n - 1 ? '#ffe070' : '#d9a520'; ctx.beginPath(); ctx.ellipse(sx, 8 - i * 4, 6, 3, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      } break;
+    case 'gold': // złote samorodki z monetą na wierzchu
+      heap(['#d8901c', '#ffd860', '#8a4e0c'], null);
+      for (const [cx, cy] of [[-6, -6], [-6, -9], [-6, -12], [4, -9]]) { ctx.fillStyle = '#f0b830'; ctx.beginPath(); ctx.ellipse(cx, cy, 4.5, 2, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff0a0'; ctx.fillRect(cx - 2.5, cy - 1, 2, 1); } break;
   }
   ctx.restore();
 }
