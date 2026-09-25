@@ -109,3 +109,25 @@ test('ekran nowej gry: za dużo graczy na małej mapie to ostrzeżenie zamiast s
   await page.evaluate(() => { G.modal = null; });
   await page.evaluate(s => { Object.assign(G.settings, JSON.parse(s)); }, saved);
 });
+
+test('imiona graczy: wpisane na ekranie nowej gry zastępują „gracz <kolor>” w turach i wieściach', async () => {
+  const saved = await page.evaluate(() => JSON.stringify(G.settings));
+  await page.evaluate(sl => { G.settings.slots = sl; G.settings.mapSize = 'S'; setScreen('setup', {}); }, slots('hh'));
+  await frames(page, 3);
+  await page.evaluate(() => G.screens.setup.slotBtns[1].nm.action());
+  await frames(page, 2);
+  const typed = await page.evaluate(() => { const inp = document.querySelector('input'); return !!inp && document.activeElement === inp; });
+  assert.ok(typed, 'pole tekstowe ma fokus');
+  await page.keyboard.type('Ania');
+  await page.keyboard.press('Enter');
+  const r = await page.evaluate(() => {
+    const st = createNewGame(Object.assign({}, G.settings), 5);
+    return { name: G.settings.slots[1].name, input: !!document.querySelector('input'), modal: !!G.modal, p1: playerName(st, 1), p0: playerName(st, 0), label: G.screens.setup.slotBtns[1].nm.label };
+  });
+  await frames(page, 2);
+  assert.deepEqual(r, { name: 'Ania', input: false, modal: false, p1: 'Ania', p0: 'gracz czerwony', label: 'Ania' });
+  await page.evaluate(() => G.screens.setup.slotBtns[1].nm.action());
+  await page.keyboard.press('Escape');
+  assert.equal(await page.evaluate(() => !!document.querySelector('input') || !!G.modal), false, 'Esc zamyka okno i pole');
+  await page.evaluate(s => { Object.assign(G.settings, JSON.parse(s)); }, saved);
+});

@@ -26,7 +26,7 @@ function loadSettings() {
 const SLOT_TYPES = ['human', 'ai', 'off'];
 function validSlots(a) {
   if (!Array.isArray(a) || a.length !== MAX_PLAYERS) return null;
-  const used = new Set(), out = a.map(o => ({ type: SLOT_TYPES.includes(o && o.type) ? o.type : 'off', color: o && o.color, faction: o && (o.faction === 'random' || FACTIONS.some(f => f.id === o.faction)) ? o.faction : 'random' }));
+  const used = new Set(), out = a.map(o => ({ type: SLOT_TYPES.includes(o && o.type) ? o.type : 'off', color: o && o.color, name: o && typeof o.name === 'string' ? o.name.trim().slice(0, 16) : '', faction: o && (o.faction === 'random' || FACTIONS.some(f => f.id === o.faction)) ? o.faction : 'random' }));
   for (const o of out) { if (!PLAYER_COLORS.some(c => c.id === o.color) || used.has(o.color)) o.color = null; else used.add(o.color); }
   for (const o of out) if (!o.color) { o.color = PLAYER_COLORS.find(c => !used.has(c.id)).id; used.add(o.color); }
   if (!out.some(o => o.type === 'human')) out[0].type = 'human';
@@ -48,7 +48,8 @@ const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
 const humanCount = st => st.players.filter(p => p.human).length;
 const hotseat = st => humanCount(st) > 1; // gra hot-seat (zwycięzca = ostatni gracz na placu)
 const sharedScreen = st => st.players.filter(p => p.human && !p.out).length > 1; // zasłona między turami: przy ekranie więcej niż jeden człowiek
-const playerName = (st, id) => `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[id].color) || PLAYER_COLORS[0]).name.toLowerCase()}`;
+// Imię gracza wpisane na ekranie nowej gry (hot-seat), inaczej „gracz <kolor>”
+const playerName = (st, id) => st.players[id].name || `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[id].color) || PLAYER_COLORS[0]).name.toLowerCase()}`;
 const playerOf = (st, owner) => st.players[owner]; // gracz o danym numerze (surowce, frakcja, odkryta mapa)
 const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? playerName(st, owner) : 'nikt');
 const ownerColor = (st, owner) => (st.players[owner] ? colorHex(st.players[owner].color) : NEUTRAL_COLOR);

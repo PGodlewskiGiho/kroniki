@@ -114,6 +114,23 @@ function showDialog(msg, opts, extra = {}) {
     },
   };
 }
+// Okno z polem tekstowym (np. imię gracza): prawdziwy <input> nad pergaminem, żeby działała klawiatura, także na telefonie.
+// done(tekst) po OK/Enter; Anuluj/Esc zamyka bez zmian. Pole znika razem z oknem.
+function askText(msg, initial, done, max = 16) {
+  const inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = max; inp.value = initial || '';
+  Object.assign(inp.style, { position: 'fixed', zIndex: 10, boxSizing: 'border-box', textAlign: 'center', border: '2px solid #6a4a1e', borderRadius: '4px',
+    background: '#f4e6c4', color: '#2a1606', fontFamily: 'Georgia, serif', outline: 'none', padding: '0 6px' });
+  document.body.appendChild(inp);
+  const close = () => inp.remove(), ok = () => { const v = inp.value.trim().slice(0, max); close(); done(v); };
+  showDialog(msg, [{ label: 'OK', action: ok }, { label: 'Anuluj', action: close }], { iconH: 50, icon: (ctx, cx, cy) => {
+    const r = G.canvas.getBoundingClientRect(), k = r.width / VW, w = 260 * k, h = 36 * k;
+    Object.assign(inp.style, { left: `${r.left + (OX + cx) * k - w / 2}px`, top: `${r.top + (OY + cy) * k - h / 2}px`, width: `${w}px`, height: `${h}px`, fontSize: `${Math.round(20 * k)}px` });
+  } });
+  const M = G.modal; M.input = inp;
+  inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { G.modal = null; ok(); } else if (e.key === 'Escape') { G.modal = null; close(); } });
+  const watch = () => { if (G.modal !== M) close(); else requestAnimationFrame(watch); }; requestAnimationFrame(watch);
+  setTimeout(() => { inp.focus(); inp.select(); }, 0);
+}
 // Rysowanie w układzie całego okna (VW×VH), niezależnie od przesunięcia wyśrodkowanego ekranu
 function viewportDraw(ctx, fn) { ctx.save(); ctx.setTransform(G.rs, 0, 0, G.rs, 0, 0); fn(ctx); ctx.restore(); }
 // Przyciemnienie całego okna pod oknem dialogowym
