@@ -14,9 +14,15 @@ function drawResIcon(ctx, id, cx, cy, s = 24) {
       const g = ctx.createRadialGradient(-3, 1, 1, 0, 4, 9); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#8a90a0');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 4, 8, 0, TAU); ctx.fill(); ctx.stroke(); break;
     }
-    case 'ore':
-      poly([[-10, 6], [-7, -4], [0, -9], [8, -5], [10, 5], [3, 9], [-6, 9]], '#6d6a68');
-      poly([[-7, -4], [0, -9], [2, -1], [-3, 1]], '#a19c97'); break;
+    case 'ore': // kupka ciemnych, metalicznych bryłek z rdzawymi żyłkami (nie szary głaz jak kamienie na mapie)
+      for (const [ox, oy, k] of [[1, -4, 1.05], [-5, 3, 0.9], [6, 4, 0.8]]) {
+        const P = (x, y) => [ox + x * k, oy + y * k];
+        poly([P(-7, 3), P(-5, -4), P(1, -7), P(7, -3), P(7, 4), P(1, 6)], '#3b4150');
+        poly([P(-5, -4), P(1, -7), P(7, -3), P(1, -1)], '#6c7a92');
+        poly([P(1, -1), P(7, -3), P(7, 4), P(1, 6)], '#2a2e3a');
+        ctx.strokeStyle = '#c0682a'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(...P(-5, 2)); ctx.lineTo(...P(-2, 0)); ctx.lineTo(...P(0, 3)); ctx.stroke();
+        ctx.fillStyle = '#e8f0ff'; ctx.fillRect(...P(-1, -5), 1.6, 1.6); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
+      } break;
     case 'sulfur':
       ctx.beginPath(); ctx.moveTo(-11, 8); ctx.quadraticCurveTo(-6, -10, 0, -9); ctx.quadraticCurveTo(7, -9, 11, 8); ctx.closePath();
       ctx.fillStyle = '#e4c629'; ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff38a';
