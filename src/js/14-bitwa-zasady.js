@@ -61,11 +61,11 @@ function armyMorale(cids, hero, town) {
   const facs = new Set(cids.map(cid => CREATURES[cid].faction)).size;
   let m = facs <= 1 ? 1 : facs === 2 ? 0 : facs === 3 ? -1 : -2;
   if (cids.some(cid => (CREATURES[cid].abil || []).includes('undead'))) m -= 1;
-  if (hero) m += heroBonus(hero, 'morale');
+  if (hero) m += heroBonus(hero, 'morale') + skillVal(hero, 'leadership');
   if (town && hasB(town, 'tavern')) m += 1;
   return clamp(m, -3, 3);
 }
-const heroLuck = h => clamp(h ? heroBonus(h, 'luck') : 0, -3, 3);
+const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') : 0, -3, 3);
 function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side).map(u => u.cid), S.hero, S.town); }
 const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
 // Nieumarli nie znają strachu ani zapału: morale zawsze 0
@@ -126,6 +126,8 @@ function damageRoll(B, a, t, ranged, moved = 0) {
   let mult = A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
   if (!ranged && ca.shots > 0 && !hasAb(a, 'noMeleePenalty')) mult *= 0.5;
   if (!ranged && hasAb(a, 'jousting')) mult *= 1 + 0.05 * moved;
+  // umiejętności bohaterów: Atak / Łucznictwo napastnika, Zbroja obrońcy
+  mult *= (1 + skillVal(sideHero(B, a.side), ranged ? 'archery' : 'offense') / 100) * (1 - skillVal(sideHero(B, t.side), 'armorer') / 100);
   return Math.max(1, Math.floor(base * mult));
 }
 function applyDamage(t, dmg) {
@@ -260,6 +262,8 @@ function spellTargetOk(B, id, u) {
   const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex') return true; if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead'))) return false;
   return t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : false;
 }
+// Obrażenia czaru z Czarnoksięstwem bohatera
+const spellDamage = (h, S, sp) => Math.floor(S.dmg(sp) * (1 + skillVal(h, 'sorcery') / 100));
 // Pola trafione czarem (kula ognia: pole + sąsiedzi)
 const spellArea = (id, x, y) => (SPELLS[id].target === 'hex' ? [[x, y], ...hexNeighbors(x, y)] : [[x, y]]);
 function castBattle(B, id, x, y) {
@@ -267,7 +271,7 @@ function castBattle(B, id, x, y) {
   h.mana -= S.cost; B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
   if (B.fx) B.fx.push({ kind: 'spell', id, x, y });
   if (S.dmg) for (const [ax, ay] of spellArea(id, x, y)) {
-    const v = unitAt(B, ax, ay); if (!v) continue; const d = S.dmg(sp), k = applyDamage(v, d);
+    const v = unitAt(B, ax, ay); if (!v) continue; const d = spellDamage(h, S, sp), k = applyDamage(v, d);
     B.log.push(`${CREATURES[v.cid].plural}: ${d} obrażeń${k ? `, tracą ${k}` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: v, dmg: d, killed: k });
   }
   if (S.heal && tu) {
@@ -288,7 +292,7 @@ function aiHeroCast(B) {
     for (const [x, y] of cells) {
       let val = 0;
       for (const [ax, ay] of spellArea(id, x, y)) {
-        const v = unitAt(B, ax, ay); if (!v) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = S.dmg(sp);
+        const v = unitAt(B, ax, ay); if (!v) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = spellDamage(h, S, sp);
         const k = d >= pool ? v.n : v.n - Math.ceil((pool - d) / hp); val += (v.side !== s ? 1 : -1.5) * k * CREATURES[v.cid].value;
       }
       if (val > 0 && (!best || val > best.val)) best = { val, id, x, y };
@@ -324,17 +328,28 @@ function captureTown(st, t, owner) {
   MapRender.miniDirty = true;
 }
 // Zapisuje wynik w stanie gry i zwraca opis dla okna podsumowania (z punktu widzenia atakującego, strona 0)
+// Nekromancja zwycięzcy: z pct% życia poległych żywych wrogów wstają kościotrupy w armii bohatera (gdy jest miejsce)
+function raiseDead(B, side) {
+  const h = sideHero(B, side), pct = skillVal(h, 'necromancy'); if (!pct) return 0;
+  const hp = B.units.filter(u => u.side !== side && !hasAb(u, 'undead')).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
+  const n = Math.floor(hp * pct / 100 / CREATURES.boneWarrior.hp);
+  const i = h.army.findIndex(s => s && s.cid === 'boneWarrior'), k = i >= 0 ? i : h.army.findIndex(s => !s);
+  if (!n || k < 0) return 0;
+  if (h.army[k]) h.army[k].n += n; else h.army[k] = { cid: 'boneWarrior', n };
+  return n;
+}
+const raisedText = n => (n ? ` Nekromancja: ${n === 1 ? 'wstaje 1 kościotrup' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? `wstają ${n} kościotrupy` : `wstaje ${n} kościotrupów`}.` : '');
 function resolveBattle(B, fled) {
   const { st, h } = B, D = B.sides[1], outcome = fled ? 'fled' : B.over;
   const res = { outcome, lost: sideLosses(B, 0), foeLost: sideLosses(B, 1), exp: 0, foeExp: 0, captured: null, heroDefeated: null };
   writeBackSide(B, 0); writeBackSide(B, 1);
   if (outcome === 'win') {
-    res.exp = killedHp(B, 1);
+    res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);
     if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; removeHero(st, D.hero); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
   } else {
-    if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie
+    if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); res.foeRaised = raiseDead(B, 1); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie
     if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
     else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
       const towns = st.towns.filter(t => t.owner === h.owner), t = towns.find(t => !heroAt(st, t.x, t.y)) || (towns.length && st.heroes.filter(o => o.owner === h.owner).length === 1 ? towns[0] : null);

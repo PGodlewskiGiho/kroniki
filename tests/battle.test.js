@@ -94,7 +94,7 @@ test('miasto: garnizon i bohater bronią się razem, zdobycie zmienia właścici
     const B = createBattle(st, me, t), def = B.units.filter(u => u.side === 1), cells = new Set(B.units.map(u => u.x + ',' + u.y));
     const layout = { def: def.length, fromGarrison: def.filter(u => u.src === 'garrison').length, unique: cells.size === B.units.length, cols: [...new Set(def.map(u => u.x))].sort() };
     const res = resolveBattle(simulateBattle(B), false), ob = st.objects.find(o => o.type === 'town' && o.townId === t.id);
-    return { layout, res, owner: t.owner, obOwner: ob.owner, garrison: TX.total(t.garrison), foeGone: !st.heroes.includes(foe), income: dailyIncomeAll(st, ME).gold, foeIncome: dailyIncomeAll(st, 1).gold };
+    return { layout, res, owner: t.owner, obOwner: ob.owner, garrison: TX.total(t.garrison), foeGone: !st.heroes.includes(foe), income: dailyIncomeAll(st, ME).gold - st.heroes.filter(h => h.owner === ME).reduce((s, h) => s + skillVal(h, 'estates'), 0), foeIncome: dailyIncomeAll(st, 1).gold };
   });
   assert.deepEqual(r.layout, { def: 14, fromGarrison: 7, unique: true, cols: [11, 12] });
   assert.equal(r.res.outcome, 'win');
@@ -103,7 +103,7 @@ test('miasto: garnizon i bohater bronią się razem, zdobycie zmienia właścici
   assert.equal(r.obOwner, 0);
   assert.equal(r.garrison, 0);
   assert.ok(r.foeGone);
-  assert.equal(r.income, 1000, 'dwa miasta z ratuszem = 2 × 500 złota');
+  assert.equal(r.income, 1000, 'dwa miasta z ratuszem = 2 × 500 złota (bez Majątku bohatera)');
   assert.equal(r.foeIncome, 0);
 });
 

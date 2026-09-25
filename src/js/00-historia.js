@@ -94,5 +94,9 @@
    pozostałe ekrany i okna dialogowe są wyśrodkowane (OX, OY) na tle drawBackdrop / screen.backdrop.
    Krok 6: morale i szczęście (armyMorale, heroLuck; B.morale / B.luck liczone w createBattle). Morale dodatnie
    daje drugi ruch po ataku (nextActive), ujemne wahanie i utratę tury; szczęście podwaja, pech połowi obrażenia (strike).
+   Krok 7: umiejętności drugorzędne (SKILLS, h.skills = [{ id, lv }], najwyżej 8, poziomy 1–3). Awans daje wybór
+   z dwóch (skillOffer: ulepszenie + nowa), SI wybiera wg AI_SKILL_ORDER. Działanie: skillVal() w ruchu, widzeniu,
+   manie, dochodzie, koszcie terenu (baseCost z bohaterem), obrażeniach (damageRoll, spellDamage), morale,
+   szczęściu, doświadczeniu i nekromancji (raiseDead po zwycięstwie).
    ===================================================================================== */
 

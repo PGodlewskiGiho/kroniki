@@ -97,12 +97,13 @@ function clickButtons(list, x, y) {
   if (b && b === G.downTarget) { if (b.action) b.action(); return true; }
   return false;
 }
-// opts: [{label, key, action}]
+// opts: [{label, key, action, sub, tip}]; extra: icon, iconH, locked (Esc nie zamyka), bw (szerokość przycisków)
 function showDialog(msg, opts, extra = {}) {
-  const w = Math.max(400, opts.length * 144 + 36); G.ctx.font = font(20, 500, 'body'); const lines = wrapText(G.ctx, msg, w - 70);
-  const iconH = extra.icon ? (extra.iconH || 56) : 0, h = 130 + lines.length * 26 + iconH, x = (W - w) / 2, y = (H - h) / 2;
-  const bw = 120, gap = 24, total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
-  const buttons = opts.map(o => { const b = new Button(bx, y + h - 64, bw, 40, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key }); bx += bw + gap; return b; });
+  const bw = extra.bw || 120, gap = 24, bh = opts.some(o => o.sub) ? 50 : 40;
+  const w = Math.max(400, opts.length * (bw + gap) + 36); G.ctx.font = font(20, 500, 'body'); const lines = wrapText(G.ctx, msg, w - 70);
+  const iconH = extra.icon ? (extra.iconH || 56) : 0, h = 120 + bh + lines.length * 26 + iconH, x = (W - w) / 2, y = (H - h) / 2;
+  const total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
+  const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip }); bx += bw + gap; return b; });
   G.modal = {
     msg, buttons, locked: !!extra.locked, // msg: treść okna (podgląd w testach)
     draw(ctx) {

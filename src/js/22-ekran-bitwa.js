@@ -291,7 +291,7 @@ function showBattleResult(st, h, res) {
   const lost = res.lost.length ? `Straty: ${res.lost.join(', ')}.` : 'Bez strat.';
   if (res.outcome === 'win') {
     const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '');
-    showDialog(`Zwycięstwo!${extra} ${lost} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
+    showDialog(`Zwycięstwo!${extra} ${lost}${raisedText(res.raised)} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
       advFloat(`+${res.exp} dośw.`, h.x, h.y);
       gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster') visitObject(st, h, here); });
     } }]);

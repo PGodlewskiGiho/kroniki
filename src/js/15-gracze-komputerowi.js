@@ -60,7 +60,7 @@ function aiReach(st, h) {
       const nx = x + DX8[k], ny = y + DY8[k]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
       const j = ny * n + nx; if (!ex[j] || map.terrain[j] === TER.WATER || map.obst[j]) continue;
       const ob = objectAt(st, j); if (ob && ob.blocks && j !== ob.y * n + ob.x) continue; // bok miasta/kopalni: tylko przez wejście
-      const nd = d + stepCost(map, x, y, nx, ny); if (nd < dist[j]) { dist[j] = nd; prev[j] = i; push([nd, j]); }
+      const nd = d + stepCost(map, x, y, nx, ny, h); if (nd < dist[j]) { dist[j] = nd; prev[j] = i; push([nd, j]); }
     }
   }
   return { dist, prev, path(j) { const out = []; while (j !== start && j >= 0) { out.unshift([j % n, (j / n) | 0]); j = prev[j]; } return out; } };
@@ -162,7 +162,7 @@ function* aiMoveHero(st, h, news) {
     const R = aiReach(st, h), target = aiPickTarget(st, h, R); if (!target) return;
     const path = R.path(target.i); if (!path.length) return;
     for (const [nx, ny] of path) {
-      const c = stepCost(st.map, h.x, h.y, nx, ny); if (c > h.mp) return;
+      const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
       reveal(st, nx, ny, heroSight(h), h.owner);
       yield { kind: 'step', h, fx, fy };
