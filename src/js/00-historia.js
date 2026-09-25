@@ -89,5 +89,8 @@
    aiReach i aiPickTarget widzą tylko odkryte pola, a bez lepszego celu bohater SI idzie na zwiad (cel explore).
    Podział pliku: źródła w src/ (szablon.html + src/js/NN-dział.js, jeden plik na dział), build.js skleja je
    w „Kroniki Królestw.html” (npm run build / watch), a npm test najpierw sprawdza, czy plik jest aktualny.
+   Okno dopasowane do ekranu: logiczne okno VW×VH (co najmniej W×H, do VW_MAX×VH_MAX) zamiast stałego 4:3.
+   Mapa przygody (fill: true) wypełnia całe okno (layoutAdventure), menu maluje scenę na całą szerokość,
+   pozostałe ekrany i okna dialogowe są wyśrodkowane (OX, OY) na tle drawBackdrop / screen.backdrop.
    ===================================================================================== */
 

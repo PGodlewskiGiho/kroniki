@@ -1,10 +1,10 @@
 // ==================== EKRAN: MAPA PRZYGODY ==============================================
 // Panel boczny, okno królestwa i obsługa mapy przygody.
 function paintAdvChrome(c) {
-  stoneFill(c, 0, 0, W, H);
+  stoneFill(c, 0, 0, VW, VH);
   goldFrame(c, VIEW.x, VIEW.y, VIEW.w, VIEW.h); goldFrame(c, MINI.x, MINI.y, MINI.s, MINI.s);
   for (const r of [LIST, INFOBOX]) { c.fillStyle = 'rgba(0,0,0,.45)'; rr(c, r.x, r.y, r.w, r.h, 4); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1.2; c.stroke(); }
-  c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, 8, 569, 784, 27, 3); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1; c.stroke();
+  c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, 8, VH - 31, VW - 16, 27, 3); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1; c.stroke();
 }
 function showKingdom(st) {
   const R = human(st).resources, x = 150, y = 84, w = 500, h = 444, mines = {};
@@ -15,7 +15,7 @@ function showKingdom(st) {
     buttons: [btn],
     draw(ctx) {
       const inc = dailyIncomeAll(st);
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, h);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, h);
       text(ctx, 'Twoje królestwo', W / 2, y + 40, { size: 28, align: 'center', color: '#3a1e08', fam: 'title' });
       divider(ctx, x + 40, x + w - 40, y + 62);
       text(ctx, 'Zasób', x + 96, y + 84, { size: 15, color: '#5a3814', fam: 'title' });
@@ -40,13 +40,12 @@ const myHeroes = st => st.heroes.filter(h => h.owner === ME);
 const myTowns = st => st.towns.filter(t => t.owner === ME);
 // Wiersze listy po prawej: najpierw bohaterowie, potem miasta gracza
 // Lista bohaterów i miast w panelu; mieści się LIST_ROWS wierszy, resztę przewija się kółkiem albo przeciągnięciem
-const LIST_ROWS = 3, LIST_ROW_H = 48;
 const panelItems = st => [...myHeroes(st).map(h => ({ hero: h })), ...myTowns(st).map(t => ({ town: t }))];
 function panelRows(st, scroll = 0) {
   return panelItems(st).map((r, i) => ({ ...r, y: LIST.y + 6 + (i - scroll) * LIST_ROW_H })).filter(r => r.y >= LIST.y && r.y + 44 <= LIST.y + LIST.h);
 }
 function buildPanelButtons(scr, st) {
-  const S = 30, by = 176, bx = 602, mk = (i, icon, label, act, o = {}) => new Button(bx + i * 32, by, S, S, label, act, Object.assign({ icon }, o));
+  const S = 30, by = 176, bx = LIST.x + 2, mk = (i, icon, label, act, o = {}) => new Button(bx + i * 32, by, S, S, label, act, Object.assign({ icon }, o));
   scr.btnMove = mk(2, iconBoot, 'Ruch', () => scr.startMove(), { key: 'm', tip: 'Ruszaj bohatera wzdłuż wyznaczonej ścieżki (klawisz M).' });
   scr.btnSleep = mk(3, iconSleep, 'Śpij', () => scr.toggleSleep(), { key: 's', selected: () => !!(hero(G.state) && hero(G.state).asleep), tip: 'Uśpij albo obudź bohatera. Śpiący nie upomina się o ruch przy końcu tury (klawisz S).' });
   scr.buttons = [
@@ -55,7 +54,7 @@ function buildPanelButtons(scr, st) {
     scr.btnMove, scr.btnSleep,
     mk(4, iconSpell, 'Czary', () => scr.spellbook(), { key: 'c', tip: 'Księga czarów: czary rzucane na mapie (klawisz C).' }),
     mk(5, iconGear, 'Menu', () => scr.systemMenu(), { key: 'escape', tip: 'Menu systemowe: powrót do menu głównego (klawisz Esc).' }),
-    new Button(602, 212, 190, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
+    new Button(LIST.x + 2, 212, 190, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
   ];
 }
 function panelInfoText(st, scr) {
@@ -78,21 +77,21 @@ function drawPanel(ctx, st, scr) {
   }
   for (const r of panelRows(st, scr.listScroll)) {
     const y = r.y, on = r.hero && r.hero === hero(st);
-    ctx.fillStyle = on ? 'rgba(210,160,60,.25)' : 'rgba(0,0,0,.25)'; rr(ctx, 604, y, 188, 44, 3); ctx.fill();
+    ctx.fillStyle = on ? 'rgba(210,160,60,.25)' : 'rgba(0,0,0,.25)'; rr(ctx, LIST.x + 4, y, 188, 44, 3); ctx.fill();
     ctx.strokeStyle = on ? '#e0b24a' : '#6a5a3a'; ctx.lineWidth = 1.2; ctx.stroke();
     if (r.hero) {
       const h = r.hero, max = heroMaxMP(h), frac = clamp(h.mp / max, 0, 1);
-      drawHeroPortrait(ctx, 608, y + 4, h, ownerColor(st, h.owner));
-      text(ctx, h.name, 652, y + 14, { size: 15, color: '#ecd9a8', fam: 'title' });
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(652, y + 27, 132, 9);
-      ctx.fillStyle = h.asleep ? '#7a7466' : '#3aa14a'; ctx.fillRect(652, y + 27, 132 * frac, 9);
-      ctx.strokeStyle = '#8a6d32'; ctx.lineWidth = 1; ctx.strokeRect(652.5, y + 27.5, 131, 8);
-      text(ctx, `${h.mp} / ${max}`, 786, y + 14, { size: 12, align: 'right', color: '#c8b68a' });
+      drawHeroPortrait(ctx, LIST.x + 8, y + 4, h, ownerColor(st, h.owner));
+      text(ctx, h.name, LIST.x + 52, y + 14, { size: 15, color: '#ecd9a8', fam: 'title' });
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(LIST.x + 52, y + 27, 132, 9);
+      ctx.fillStyle = h.asleep ? '#7a7466' : '#3aa14a'; ctx.fillRect(LIST.x + 52, y + 27, 132 * frac, 9);
+      ctx.strokeStyle = '#8a6d32'; ctx.lineWidth = 1; ctx.strokeRect(LIST.x + 52.5, y + 27.5, 131, 8);
+      text(ctx, `${h.mp} / ${max}`, LIST.x + 186, y + 14, { size: 12, align: 'right', color: '#c8b68a' });
     } else {
       const t = r.town;
-      drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), 606, y + 2, 1);
-      text(ctx, t.name, 652, y + 16, { size: 14, color: '#ecd9a8', fam: 'title' });
-      text(ctx, `${townGold(t)} złota dziennie`, 652, y + 32, { size: 12, weight: 500, color: '#c8b68a' });
+      drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), LIST.x + 6, y + 2, 1);
+      text(ctx, t.name, LIST.x + 52, y + 16, { size: 14, color: '#ecd9a8', fam: 'title' });
+      text(ctx, `${townGold(t)} złota dziennie`, LIST.x + 52, y + 32, { size: 12, weight: 500, color: '#c8b68a' });
     }
   }
   text(ctx, `Tydzień ${weekName(st)}`, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 18, { size: 15, align: 'center', color: '#f0e4c0', fam: 'title' });
@@ -103,14 +102,20 @@ function drawPanel(ctx, st, scr) {
 G.screens.adventure = {
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
+  fill: true, // rysuje w całym oknie, układ z layoutAdventure()
+  // Po zmianie rozmiaru okna: nowy układ panelu, przyciski na nowych miejscach, kamera w granicach mapy
+  layout(force) {
+    const key = VW + 'x' + VH; if (!force && this.layoutKey === key) return; this.layoutKey = key;
+    const st = G.state; layoutAdventure(); buildPanelButtons(this, st); if (this.aiRun) this.lockButtons(true);
+    if (st.cam) camClamp(st);
+  },
   enter(p) {
     const st = G.state;
     rebuildObjIndex(st); this.floats = []; this.banner = null; this.flashMsg = null;
-    MapRender.reset(st.map, human(st).explored);
+    MapRender.reset(st.map, human(st).explored); layoutAdventure();
     if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
-    buildPanelButtons(this, st);
     if (this.aiRun && this.aiRun.st !== st) this.aiRun = null; // tura z poprzedniej gry
-    if (this.aiRun) this.lockButtons(true); // powrót z bitwy obronnej w trakcie tury przeciwnika
+    this.layout(true); // przyciski panelu; w trakcie tury przeciwnika (powrót z bitwy obronnej) zablokowane
     if (p.flash) this.flash(p.flash);
     if (p.after) p.after();
     if (p.welcome) {
@@ -163,7 +168,7 @@ G.screens.adventure = {
     }
     if (inRect(x, y, { x: MINI.x, y: MINI.y, w: MINI.s, h: MINI.s })) return 'Minimapa. Kliknij albo przeciągnij, aby przenieść widok.';
     if (inRect(x, y, LIST)) return 'Bohaterowie i miasta. Kliknij bohatera, aby go wybrać (ponownie: ekran bohatera, klawisz H), albo miasto, aby do niego wejść. Kółko albo przeciągnięcie przewija listę.';
-    return resourceBarInfo(st, x, y);
+    return resourceBarInfo(st, x, y, VH - H);
   },
   spellbook() {
     const st = G.state, h = hero(st); if (!h || h.moving || h.anim) return;
@@ -280,6 +285,7 @@ G.screens.adventure = {
     showDialog(msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])], { locked: true });
   },
   update(dt) {
+    if (G.state && G.state.map) this.layout();
     const st = G.state, K = G.keys, m = G.mouse; if (!st || !st.map) return;
     // ruch wszystkich bohaterów gracza (wybór innego nie zatrzymuje tego, który idzie); kamera śledzi idącego
     let walker = null;
@@ -299,9 +305,9 @@ G.screens.adventure = {
     }
     let vx = 0, vy = 0;
     if (K.has('arrowleft')) vx -= 1; if (K.has('arrowright')) vx += 1; if (K.has('arrowup')) vy -= 1; if (K.has('arrowdown')) vy += 1;
-    if (!m.down && m.type === 'mouse' && m.x >= 0 && m.x <= W && m.y >= 0 && m.y <= H) {
-      if (m.x < 10) vx -= 1; else if (m.x > W - 10) vx += 1;
-      if (m.y < 10) vy -= 1; else if (m.y > H - 10) vy += 1;
+    if (!m.down && m.type === 'mouse' && m.x >= 0 && m.x <= VW && m.y >= 0 && m.y <= VH) {
+      if (m.x < 10) vx -= 1; else if (m.x > VW - 10) vx += 1;
+      if (m.y < 10) vy -= 1; else if (m.y > VH - 10) vy += 1;
     }
     if (vx || vy) { st.cam.x += vx * 640 * dt; st.cam.y += vy * 640 * dt; camClamp(st); }
     if (this.drag && this.drag.moved) G.canvas.style.cursor = 'grabbing';
@@ -336,10 +342,11 @@ G.screens.adventure = {
   },
   draw(ctx) {
     const st = G.state; if (!st || !st.map) return;
-    ctx.drawImage(Layers.get('advChrome', W, H, paintAdvChrome), 0, 0, W, H);
+    this.layout();
+    ctx.drawImage(Layers.get(`advChrome_${VW}x${VH}`, VW, VH, paintAdvChrome), 0, 0, VW, VH);
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
     this.buttons.forEach(b => b.draw(ctx));
-    drawResourceBar(ctx, st);
+    drawResourceBar(ctx, st, VH - H, VW);
   },
 };
 

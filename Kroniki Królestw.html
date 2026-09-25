@@ -112,11 +112,18 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    aiReach i aiPickTarget widzą tylko odkryte pola, a bez lepszego celu bohater SI idzie na zwiad (cel explore).
    Podział pliku: źródła w src/ (szablon.html + src/js/NN-dział.js, jeden plik na dział), build.js skleja je
    w „Kroniki Królestw.html” (npm run build / watch), a npm test najpierw sprawdza, czy plik jest aktualny.
+   Okno dopasowane do ekranu: logiczne okno VW×VH (co najmniej W×H, do VW_MAX×VH_MAX) zamiast stałego 4:3.
+   Mapa przygody (fill: true) wypełnia całe okno (layoutAdventure), menu maluje scenę na całą szerokość,
+   pozostałe ekrany i okna dialogowe są wyśrodkowane (OX, OY) na tle drawBackdrop / screen.backdrop.
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
 // Stałe gry, surowce, poziomy trudności, rozmiary map, kolory graczy, bonusy.
-const W = 800, H = 600;
+// W×H: obszar, dla którego zaprojektowano ekrany i okna (wyśrodkowany w oknie przeglądarki).
+// VW×VH: całe okno w tych samych jednostkach (co najmniej W×H, dopasowane do proporcji ekranu);
+// OX, OY: przesunięcie obszaru W×H w oknie. Ekrany z fill: true (mapa przygody) rysują w całym oknie.
+const W = 800, H = 600, VW_MAX = 1440, VH_MAX = 800;
+let VW = W, VH = H, OX = 0, OY = 0;
 const VERSION = '1.1';
 // Plan rozwoju: gdzie w interfejsie obiecujemy przyszłe funkcje. Zmiana planu = zmiana tylko tutaj.
 const ROADMAP = {
@@ -783,18 +790,23 @@ function showDialog(msg, opts, extra = {}) {
   G.modal = {
     msg, buttons, locked: !!extra.locked, // msg: treść okna (podgląd w testach)
     draw(ctx) {
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, h);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, h);
       lines.forEach((l, i) => text(ctx, l, W / 2, y + 44 + i * 26, { size: 20, weight: 500, align: 'center', color: '#2a1606' }));
       if (extra.icon) extra.icon(ctx, W / 2, y + 34 + lines.length * 26 + iconH / 2);
       buttons.forEach(b => b.draw(ctx));
     },
   };
 }
+// Rysowanie w układzie całego okna (VW×VH), niezależnie od przesunięcia wyśrodkowanego ekranu
+function viewportDraw(ctx, fn) { ctx.save(); ctx.setTransform(G.rs, 0, 0, G.rs, 0, 0); fn(ctx); ctx.restore(); }
+// Przyciemnienie całego okna pod oknem dialogowym
+function dimScreen(ctx, a) { viewportDraw(ctx, c => { c.fillStyle = `rgba(0,0,0,${a})`; c.fillRect(0, 0, VW, VH); }); }
+// Dymek z opisem; p.x, p.y w układzie okna (VW×VH)
 function drawPopup(ctx, p) {
   ctx.font = font(16, 500, 'body');
   const lines = wrapText(ctx, p.text, 250), tw = Math.max(...lines.map(l => ctx.measureText(l).width));
   const w = clamp(tw + 36, 140, 286), h = 26 + lines.length * 20;
-  const x = clamp(p.x + 14, 8, W - w - 8), y = clamp(p.y + 14, 8, H - h - 8);
+  const x = clamp(p.x + 14, 8, VW - w - 8), y = clamp(p.y + 14, 8, VH - h - 8);
   drawParchment(ctx, x, y, w, h);
   lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 21 + i * 20, { size: 16, weight: 500, align: 'center', color: '#2a1606' }));
 }
@@ -848,15 +860,15 @@ function drawCost(ctx, cost, x, y, o = {}) {
     cx += size + 5 + ctx.measureText(s).width;
   }
 }
-// Pasek surowców na dole ekranu mapy i miasta
+// Pasek surowców na dole ekranu mapy i miasta (dy: przesunięcie w dół, w: szerokość ekranu)
 const RESBAR = { x: 18, y: 582, step: 78 };
-function drawResourceBar(ctx, st) {
-  const R = human(st).resources;
-  RESOURCES.forEach((r, i) => { const x = RESBAR.x + i * RESBAR.step; resIcon(ctx, r.id, x + 10, RESBAR.y, 24); text(ctx, String(R[r.id]), x + 25, RESBAR.y + 1, { size: 16, color: '#ecd9a8' }); });
-  text(ctx, dateText(st), 782, RESBAR.y + 1, { size: 15, weight: 500, align: 'right', color: '#ecd9a8' });
+function drawResourceBar(ctx, st, dy = 0, w = W) {
+  const R = human(st).resources, y = RESBAR.y + dy;
+  RESOURCES.forEach((r, i) => { const x = RESBAR.x + i * RESBAR.step; resIcon(ctx, r.id, x + 10, y, 24); text(ctx, String(R[r.id]), x + 25, y + 1, { size: 16, color: '#ecd9a8' }); });
+  text(ctx, dateText(st), w - 18, y + 1, { size: 15, weight: 500, align: 'right', color: '#ecd9a8' });
 }
-function resourceBarInfo(st, x, y) {
-  if (y < 566) return null; const i = Math.floor((x - RESBAR.x) / RESBAR.step); if (i < 0 || i >= RESOURCES.length) return null;
+function resourceBarInfo(st, x, y, dy = 0) {
+  if (y < 566 + dy) return null; const i = Math.floor((x - RESBAR.x) / RESBAR.step); if (i < 0 || i >= RESOURCES.length) return null;
   const r = RESOURCES[i]; return `${r.name}: ${human(st).resources[r.id]}. Dochód dzienny: ${dailyIncome(st, r.id)}.`;
 }
 
@@ -1485,7 +1497,7 @@ function showRecruit(st, t, L, onDone, backToList) {
     draw(ctx) {
       const c = CREATURES[cid], cost = unitCost(cid), total = {}; for (const r of RESOURCES) if (cost[r.id]) total[r.id] = cost[r.id] * n;
       bBuy.disabled = n <= 0; bMinus.disabled = n <= 0; bPlus.disabled = bMax.disabled = n >= maxN();
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, F.dw['dw' + L + (cid === units[0] ? '' : 'u')][0], W / 2, y + 32, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
       if (units.length === 1) text(ctx, c.name, W / 2, y + 68, { size: 17, align: 'center', color: '#5a3814', fam: 'title' });
       ctx.fillStyle = 'rgba(90,55,20,.12)'; rr(ctx, x + 24, y + 100, 110, 140, 4); ctx.fill();
@@ -1530,7 +1542,7 @@ function showMarket(st, owner, onDone) {
     draw(ctx) {
       const L = lot(), m = marketCount(st, owner);
       bTrade.disabled = !L || n <= 0; bMinus.disabled = n <= 0; bPlus.disabled = bMax.disabled = n >= max();
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, 'Rynek', W / 2, y + 32, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
       text(ctx, `Rynków w królestwie: ${m}${m < 4 ? ' (kolejne poprawiają kurs)' : ''}`, W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: '#6a4418' });
       text(ctx, 'Oddajesz', col(0, false), y + 80, { size: 15, color: '#3a1e08', fam: 'title' }); text(ctx, 'Dostajesz', col(0, true), y + 80, { size: 15, color: '#3a1e08', fam: 'title' });
@@ -1572,7 +1584,7 @@ function showMeeting(st, a, b, onMsg) {
       return null;
     },
     draw(ctx) {
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, 'Spotkanie bohaterów', W / 2, y + 30, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' });
       text(ctx, msg || 'Kliknij oddział, a potem miejsce, aby go przenieść. Kliknij artefakt, aby go oddać.', W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: msg ? '#8a3a1a' : '#6a4418' });
       heroes.forEach((h, k) => {
@@ -1595,7 +1607,7 @@ function showRecruitList(st, t, onDone) {
   G.modal = {
     buttons: [...rowBtns, close],
     draw(ctx) {
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, `Rekrutacja: ${t.name}`, W / 2, y + 40, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' }); divider(ctx, x + 30, x + w - 30, y + 64);
       levels.forEach((L, i) => {
         const ry = y + 84 + i * 52, units = dwellingUnits(t, L), best = units[units.length - 1];
@@ -1697,7 +1709,7 @@ function showSpellbook(h, mode, onPick) {
     rightInfo(px, py) { const i = list.findIndex((id, k) => inRect(px, py, cell(k))); if (i < 0) return null; const S = SPELLS[list[i]]; return `${S.name} (poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${S.cost} many): ${S.desc(sp)}.`; },
     draw(ctx) {
       hover = list.findIndex((id, k) => inRect(G.mouse.x, G.mouse.y, cell(k)));
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, 'Księga czarów', W / 2, y + 34, { size: 26, align: 'center', color: '#3a1e08', fam: 'title' });
       text(ctx, `${h.name} · mana ${h.mana} / ${heroMaxMana(h)} · moc czarów ${sp}`, W / 2, y + 58, { size: 14, weight: 500, align: 'center', color: '#5a3814' });
       if (!list.length) text(ctx, 'Bohater nie zna jeszcze żadnych czarów. Odwiedź miasto z gildią magów.', W / 2, y + 200, { size: 15, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
@@ -3099,6 +3111,15 @@ const MapRender = {
 };
 const VIEW = { x: 8, y: 8, w: 576, h: 552 }, MINI = { x: 624, y: 24, s: 144 };
 const LIST = { x: 600, y: 262, w: 196, h: 186 }, INFOBOX = { x: 600, y: 456, w: 196, h: 108 };
+// Układ mapy przygody zależy od rozmiaru okna (VW×VH): mapa zajmuje wszystko poza panelem po prawej,
+// panel i pasek surowców trzymają się prawej i dolnej krawędzi, a lista bohaterów i miast rośnie z wysokością.
+const LIST_ROW_H = 48; let LIST_ROWS = 3;
+function layoutAdventure() {
+  const dx = VW - W, dy = VH - H;
+  VIEW.w = 576 + dx; VIEW.h = 552 + dy; MINI.x = 624 + dx;
+  LIST.x = 600 + dx; LIST.h = 186 + dy; INFOBOX.x = 600 + dx; INFOBOX.y = 456 + dy;
+  LIST_ROWS = Math.floor((LIST.h - 6) / LIST_ROW_H);
+}
 function camClamp(st) { const m = st.map.n * T; st.cam.x = clamp(st.cam.x, -T, m - VIEW.w + T); st.cam.y = clamp(st.cam.y, -T, m - VIEW.h + T); }
 function centerCam(st, tx, ty) { st.cam = { x: tx * T + T / 2 - VIEW.w / 2, y: ty * T + T / 2 - VIEW.h / 2 }; camClamp(st); }
 function screenToTile(st, x, y) { return { tx: Math.floor((x - VIEW.x + st.cam.x) / T), ty: Math.floor((y - VIEW.y + st.cam.y) / T) }; }
@@ -4303,30 +4324,32 @@ const CASTLE_WINDOWS = [
 ].map((w, i) => [...w, i * 1.7]);
 const CLOUDS = (() => { const r = mulberry32(5); return Array.from({ length: 7 }, () => ({ x: r() * 1100, y: 30 + r() * 160, s: 0.6 + r() * 1.1, v: 5 + r() * 9, a: 0.1 + r() * 0.12 })); })();
 const EMBERS = (() => { const r = mulberry32(9); return Array.from({ length: 28 }, () => ({ x: r() * 500, y: 430 + r() * 170, v: 8 + r() * 14, p: r() * TAU, r: 1 + r() * 1.6 })); })();
+// Scena menu jest zaprojektowana na W×H, ale malowana na całe okno: wokół środka (x od -OX do W + OX,
+// y od -OY do H + OY) niebo, grzbiety gór i ziemia ciągną się dalej, a na bokach rosną dodatkowe drzewa.
 function ridge(c, seed, base, amp, col) {
-  const r = mulberry32(seed); const p1 = r() * 6, p2 = r() * 6, p3 = r() * 6;
-  c.beginPath(); c.moveTo(0, H);
-  for (let x = 0; x <= W + 6; x += 6) { // o krok za brzeg, żeby przy prawej krawędzi nie prześwitywało niebo
+  const r = mulberry32(seed); const p1 = r() * 6, p2 = r() * 6, p3 = r() * 6, x0 = -OX - (OX % 6);
+  c.beginPath(); c.moveTo(x0, H + OY);
+  for (let x = x0; x <= W + OX + 6; x += 6) { // o krok za brzeg, żeby przy prawej krawędzi nie prześwitywało niebo
     const n = Math.sin(x * 0.009 + p1) * 0.5 + Math.sin(x * 0.023 + p2) * 0.3 + Math.sin(x * 0.061 + p3) * 0.15 + (r() - 0.5) * 0.08;
     c.lineTo(x, base - amp * (0.55 + n * 0.6));
   }
-  c.lineTo(W, H); c.closePath(); c.fillStyle = col; c.fill();
+  c.lineTo(W + OX + 6, H + OY); c.closePath(); c.fillStyle = col; c.fill();
 }
 function paintSky(c) {
   const g = c.createLinearGradient(0, 0, 0, 440);
   g.addColorStop(0, '#0a0c26'); g.addColorStop(0.35, '#221a4a'); g.addColorStop(0.62, '#6a2f52'); g.addColorStop(0.82, '#c7603f'); g.addColorStop(1, '#f0a050');
-  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.fillStyle = g; c.fillRect(-OX, -OY, VW, VH);
   const r = mulberry32(11);
-  for (let i = 0; i < 150; i++) { const x = r() * W, y = r() * 260, a = (1 - y / 260) * (0.4 + r() * 0.6), s = r() < 0.1 ? 1.8 : 1; c.fillStyle = `rgba(255,248,230,${a.toFixed(3)})`; c.fillRect(x, y, s, s); }
+  for (let i = 0; i < 150 * VW / W; i++) { const x = r() * VW - OX, y = r() * 260, a = (1 - y / 260) * (0.4 + r() * 0.6), s = r() < 0.1 ? 1.8 : 1; c.fillStyle = `rgba(255,248,230,${a.toFixed(3)})`; c.fillRect(x, y, s, s); }
   const mg = c.createRadialGradient(470, 170, 10, 470, 170, 120); mg.addColorStop(0, 'rgba(255,240,210,.35)'); mg.addColorStop(1, 'rgba(255,240,210,0)');
   c.fillStyle = mg; c.fillRect(340, 40, 260, 260);
   c.fillStyle = '#f6ecd0'; c.beginPath(); c.arc(470, 170, 24, 0, TAU); c.fill();
   c.fillStyle = 'rgba(190,170,140,.35)'; for (const [x, y, rad] of [[462, 164, 5], [478, 180, 4], [476, 160, 3]]) { c.beginPath(); c.arc(x, y, rad, 0, TAU); c.fill(); }
   const sg = c.createRadialGradient(300, 420, 10, 300, 420, 320); sg.addColorStop(0, 'rgba(255,190,110,.5)'); sg.addColorStop(1, 'rgba(255,190,110,0)');
-  c.fillStyle = sg; c.fillRect(0, 0, W, H);
+  c.fillStyle = sg; c.fillRect(-OX, -OY, VW, VH);
   ridge(c, 31, 405, 150, '#4b3358');
   const hz = c.createLinearGradient(0, 330, 0, 430); hz.addColorStop(0, 'rgba(240,140,100,0)'); hz.addColorStop(1, 'rgba(240,140,100,.28)');
-  c.fillStyle = hz; c.fillRect(0, 330, W, 100);
+  c.fillStyle = hz; c.fillRect(-OX, 330, VW, 100);
   ridge(c, 47, 425, 95, '#2c2140');
 }
 function pine(c, x, base, h, col) {
@@ -4353,8 +4376,8 @@ function paintCastle(c) {
   c.fillStyle = '#0a0810'; for (const [x, y, w, h] of CASTLE_WINDOWS) c.fillRect(x, y, w, h);
 }
 function paintLand(c) {
-  c.fillStyle = '#17122a'; c.beginPath(); c.moveTo(-10, H); c.lineTo(-10, 455);
-  c.bezierCurveTo(70, 410, 150, 396, 260, 396); c.bezierCurveTo(370, 396, 450, 420, 560, 470); c.lineTo(560, H); c.closePath(); c.fill();
+  c.fillStyle = '#17122a'; c.beginPath(); c.moveTo(-OX - 10, H + OY); c.lineTo(-OX - 10, 455); c.lineTo(-10, 455);
+  c.bezierCurveTo(70, 410, 150, 396, 260, 396); c.bezierCurveTo(370, 396, 450, 420, 560, 470); c.lineTo(560, H + OY); c.closePath(); c.fill();
   // skalny kopiec pod zamkiem: wzgórze opada na boki, a mury muszą na czymś stać
   c.beginPath(); c.moveTo(80, 470); c.bezierCurveTo(100, 425, 118, 400, 132, 394); c.lineTo(390, 394);
   c.bezierCurveTo(408, 402, 428, 425, 460, 470); c.closePath(); c.fill();
@@ -4366,8 +4389,16 @@ function paintLand(c) {
   const r = mulberry32(21);
   for (let i = 0; i < 9; i++) { const x = 10 + r() * 110; pine(c, x, 460 - (x / 130) * 45 + 10, 30 + r() * 25, '#100c1c'); }
   for (let i = 0; i < 8; i++) { const x = 410 + r() * 110; pine(c, x, 410 + ((x - 400) / 120) * 50 + 10, 30 + r() * 25, '#100c1c'); }
-  c.fillStyle = '#0d0a15'; c.beginPath(); c.moveTo(0, H); c.lineTo(0, 505);
-  c.bezierCurveTo(150, 470, 330, 500, 480, 520); c.bezierCurveTo(600, 535, 700, 515, 800, 520); c.lineTo(800, H); c.closePath(); c.fill();
+  // boki szerszego okna: las po lewej, łagodne wzgórze z drzewami po prawej
+  const re = mulberry32(41);
+  for (let i = 0; i < OX / 14; i++) { const x = -OX + re() * OX; pine(c, x, 462 + re() * 10, 30 + re() * 25, '#100c1c'); }
+  if (OX > 0) {
+    c.fillStyle = '#17122a'; c.beginPath(); c.moveTo(640, H + OY); c.bezierCurveTo(700, 470, 780, 452, 880, 450); c.lineTo(W + OX + 10, 448); c.lineTo(W + OX + 10, H + OY); c.closePath(); c.fill();
+    for (let i = 0; i < OX / 12; i++) { const x = 800 + re() * OX; pine(c, x, 455 + re() * 12, 30 + re() * 25, '#100c1c'); }
+  }
+  c.fillStyle = '#0d0a15'; c.beginPath(); c.moveTo(-OX, H + OY); c.lineTo(-OX, 505); c.lineTo(0, 505);
+  c.bezierCurveTo(150, 470, 330, 500, 480, 520); c.bezierCurveTo(600, 535, 700, 515, 800, 520); c.lineTo(W + OX, 515); c.lineTo(W + OX, H + OY); c.closePath(); c.fill();
+  for (let i = 0; i < OX / 40; i++) { const x = W + re() * OX; pine(c, x, 545 + re() * 50, 50 + re() * 60, '#07050c'); }
   for (let i = 0; i < 16; i++) { const x = r() * 520; if (x > 290 && x < 370) continue; pine(c, x, 540 + r() * 50, 50 + r() * 60, '#07050c'); }
   pine(c, 28, 610, 230, '#050409'); pine(c, 90, 620, 170, '#050409');
 }
@@ -4390,11 +4421,12 @@ function menuRider(b, t) {
 // Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize)
 // i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
 function drawMenuScene(ctx) {
-  const t = G.time, pb = pixBuf('menuScene', W / 2, H / 2, true), b = pb._ctx;
-  b.setTransform(0.5, 0, 0, 0.5, 0, 0); b.imageSmoothingEnabled = false;
-  b.drawImage(Layers.get('menuSky', W, H, paintSky, 0.5), 0, 0, W, H);
-  for (const c of CLOUDS) drawCloud(b, ((c.x + t * c.v) % 1100) - 150, c.y, c.s, c.a);
-  b.drawImage(Layers.get('menuLand', W, H, paintLand, 0.5), 0, 0, W, H);
+  const t = G.time, pb = pixBuf('menuScene', VW / 2, VH / 2, true), b = pb._ctx, span = VW + 300;
+  const layer = paint => c => { c.translate(OX, OY); paint(c); };
+  b.setTransform(0.5, 0, 0, 0.5, OX / 2, OY / 2); b.imageSmoothingEnabled = false;
+  b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 0.5), -OX, -OY, VW, VH);
+  for (const c of CLOUDS) drawCloud(b, ((c.x * span / 1100 + t * c.v) % span) - 150 - OX, c.y, c.s, c.a);
+  b.drawImage(Layers.get(`menuLand_${VW}x${VH}`, VW, VH, layer(paintLand), 0.5), -OX, -OY, VW, VH);
   for (const [x, y, w, h, p] of CASTLE_WINDOWS) {
     const f = clamp(0.55 + 0.35 * Math.sin(t * 2.3 + p) + 0.1 * Math.sin(t * 7.1 + p * 3), 0.15, 1);
     b.fillStyle = `rgba(255,170,70,${(f * 0.18).toFixed(3)})`; b.fillRect(x - 2, y - 2, w + 4, h + 4);
@@ -4404,7 +4436,7 @@ function drawMenuScene(ctx) {
   drawFlag(b, 260, 96, 26, 12, t, col); drawFlag(b, 200, 168, 14, 7, t + 1, col); drawFlag(b, 320, 168, 14, 7, t + 2, col);
   menuRider(b, t);
   for (let i = 0; i < 4; i++) {
-    const x = ((i * 320 + t * 9) % 1280) - 240; b.save(); b.translate(x, 448 + (i % 2) * 18); b.scale(3.2, 0.45);
+    const x = ((i * 320 + t * 9) % 1280) - 240 + (i % 2 ? OX : -OX); b.save(); b.translate(x, 448 + (i % 2) * 18); b.scale(3.2, 0.45);
     const g = b.createRadialGradient(0, 0, 0, 0, 0, 100); g.addColorStop(0, 'rgba(210,170,200,.14)'); g.addColorStop(1, 'rgba(210,170,200,0)');
     b.fillStyle = g; b.fillRect(-100, -100, 200, 200); b.restore();
   }
@@ -4413,9 +4445,9 @@ function drawMenuScene(ctx) {
     b.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; b.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
   }
   pixelQuantize(pb, 14);
-  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(pb, 0, 0, W, H); ctx.restore();
+  viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
 }
-function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.fillRect(0, 0, W, H); }
+function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); dimScreen(ctx, a); }
 function askQuit() {
   showDialog('Czy na pewno chcesz opuścić grę?', [{ label: 'Tak', key: 'enter', action: () => G.go('bye') }, { label: 'Nie', key: 'escape' }]);
 }
@@ -4424,6 +4456,7 @@ function askToMenu() {
     { label: 'Tak', key: 'enter', action: () => G.go('menu') }, { label: 'Nie', key: 'escape' }]);
 }
 G.screens.menu = {
+  backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'main',
   enter(p) { G.state = null; this.setMode(p.mode || 'main'); },
   setMode(m) {
@@ -4449,6 +4482,7 @@ G.screens.menu = {
   },
 };
 G.screens.setup = {
+  backdrop() {}, // scena menu maluje całe okno
   buttons: [],
   enter() {
     const S = G.settings, B = [];
@@ -4481,6 +4515,7 @@ G.screens.setup = {
 };
 function makeListScreen(title, drawBody) {
   return {
+    backdrop() {}, // scena menu maluje całe okno
     buttons: [],
     enter() { this.buttons = [new Button(300, 478, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 })]; },
     draw(ctx) {
@@ -4492,6 +4527,7 @@ function makeListScreen(title, drawBody) {
 }
 // Lista slotów zapisu. mode 'load' (z menu albo z gry) lub 'save' (z gry).
 G.screens.load = {
+  backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'load', slots: null, err: null, busy: false, token: 0, hover: -1,
   ROW: { x: 180, y: 132, w: 440, h: 44, gap: 50 },
   enter(p) {
@@ -4569,6 +4605,7 @@ G.screens.scores = makeListScreen('Najlepsze wyniki', ctx => {
   });
 });
 G.screens.credits = {
+  backdrop() {}, // scena menu maluje całe okno
   lines: ['#KRONIKI KRÓLESTW', 'Turowa strategia w klimacie klasycznych gier fantasy', '', '#Pomysł i testy', 'Ty', '',
     '#Kod, grafika i interfejs', 'Claude', '', '#Technologia', 'HTML5 Canvas i czysty JavaScript', '',
     '#Podziękowania', 'Dla wszystkich fanów klasycznych strategii', '', '#Dziękujemy za grę!'],
@@ -4586,10 +4623,11 @@ G.screens.credits = {
   },
 };
 G.screens.bye = {
+  backdrop() {}, // scena menu maluje całe okno
   enter() { this.t0 = G.time; },
   onClick() { G.go('menu'); }, onBack() { G.go('menu'); },
   draw(ctx) {
-    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = clamp((G.time - this.t0) / 1.2, 0, 1);
+    dimScreen(ctx, 1); ctx.globalAlpha = clamp((G.time - this.t0) / 1.2, 0, 1);
     goldText(ctx, 'Do zobaczenia, Władco!', W / 2, H / 2 - 20, 36);
     text(ctx, 'Kliknij, aby wrócić do menu głównego', W / 2, H / 2 + 30, { size: 18, weight: 500, italic: true, align: 'center', color: '#bfae88' });
     ctx.globalAlpha = 1;
@@ -4599,10 +4637,10 @@ G.screens.bye = {
 // ==================== EKRAN: MAPA PRZYGODY ==============================================
 // Panel boczny, okno królestwa i obsługa mapy przygody.
 function paintAdvChrome(c) {
-  stoneFill(c, 0, 0, W, H);
+  stoneFill(c, 0, 0, VW, VH);
   goldFrame(c, VIEW.x, VIEW.y, VIEW.w, VIEW.h); goldFrame(c, MINI.x, MINI.y, MINI.s, MINI.s);
   for (const r of [LIST, INFOBOX]) { c.fillStyle = 'rgba(0,0,0,.45)'; rr(c, r.x, r.y, r.w, r.h, 4); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1.2; c.stroke(); }
-  c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, 8, 569, 784, 27, 3); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1; c.stroke();
+  c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, 8, VH - 31, VW - 16, 27, 3); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1; c.stroke();
 }
 function showKingdom(st) {
   const R = human(st).resources, x = 150, y = 84, w = 500, h = 444, mines = {};
@@ -4613,7 +4651,7 @@ function showKingdom(st) {
     buttons: [btn],
     draw(ctx) {
       const inc = dailyIncomeAll(st);
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, h);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, h);
       text(ctx, 'Twoje królestwo', W / 2, y + 40, { size: 28, align: 'center', color: '#3a1e08', fam: 'title' });
       divider(ctx, x + 40, x + w - 40, y + 62);
       text(ctx, 'Zasób', x + 96, y + 84, { size: 15, color: '#5a3814', fam: 'title' });
@@ -4638,13 +4676,12 @@ const myHeroes = st => st.heroes.filter(h => h.owner === ME);
 const myTowns = st => st.towns.filter(t => t.owner === ME);
 // Wiersze listy po prawej: najpierw bohaterowie, potem miasta gracza
 // Lista bohaterów i miast w panelu; mieści się LIST_ROWS wierszy, resztę przewija się kółkiem albo przeciągnięciem
-const LIST_ROWS = 3, LIST_ROW_H = 48;
 const panelItems = st => [...myHeroes(st).map(h => ({ hero: h })), ...myTowns(st).map(t => ({ town: t }))];
 function panelRows(st, scroll = 0) {
   return panelItems(st).map((r, i) => ({ ...r, y: LIST.y + 6 + (i - scroll) * LIST_ROW_H })).filter(r => r.y >= LIST.y && r.y + 44 <= LIST.y + LIST.h);
 }
 function buildPanelButtons(scr, st) {
-  const S = 30, by = 176, bx = 602, mk = (i, icon, label, act, o = {}) => new Button(bx + i * 32, by, S, S, label, act, Object.assign({ icon }, o));
+  const S = 30, by = 176, bx = LIST.x + 2, mk = (i, icon, label, act, o = {}) => new Button(bx + i * 32, by, S, S, label, act, Object.assign({ icon }, o));
   scr.btnMove = mk(2, iconBoot, 'Ruch', () => scr.startMove(), { key: 'm', tip: 'Ruszaj bohatera wzdłuż wyznaczonej ścieżki (klawisz M).' });
   scr.btnSleep = mk(3, iconSleep, 'Śpij', () => scr.toggleSleep(), { key: 's', selected: () => !!(hero(G.state) && hero(G.state).asleep), tip: 'Uśpij albo obudź bohatera. Śpiący nie upomina się o ruch przy końcu tury (klawisz S).' });
   scr.buttons = [
@@ -4653,7 +4690,7 @@ function buildPanelButtons(scr, st) {
     scr.btnMove, scr.btnSleep,
     mk(4, iconSpell, 'Czary', () => scr.spellbook(), { key: 'c', tip: 'Księga czarów: czary rzucane na mapie (klawisz C).' }),
     mk(5, iconGear, 'Menu', () => scr.systemMenu(), { key: 'escape', tip: 'Menu systemowe: powrót do menu głównego (klawisz Esc).' }),
-    new Button(602, 212, 190, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
+    new Button(LIST.x + 2, 212, 190, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
   ];
 }
 function panelInfoText(st, scr) {
@@ -4676,21 +4713,21 @@ function drawPanel(ctx, st, scr) {
   }
   for (const r of panelRows(st, scr.listScroll)) {
     const y = r.y, on = r.hero && r.hero === hero(st);
-    ctx.fillStyle = on ? 'rgba(210,160,60,.25)' : 'rgba(0,0,0,.25)'; rr(ctx, 604, y, 188, 44, 3); ctx.fill();
+    ctx.fillStyle = on ? 'rgba(210,160,60,.25)' : 'rgba(0,0,0,.25)'; rr(ctx, LIST.x + 4, y, 188, 44, 3); ctx.fill();
     ctx.strokeStyle = on ? '#e0b24a' : '#6a5a3a'; ctx.lineWidth = 1.2; ctx.stroke();
     if (r.hero) {
       const h = r.hero, max = heroMaxMP(h), frac = clamp(h.mp / max, 0, 1);
-      drawHeroPortrait(ctx, 608, y + 4, h, ownerColor(st, h.owner));
-      text(ctx, h.name, 652, y + 14, { size: 15, color: '#ecd9a8', fam: 'title' });
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(652, y + 27, 132, 9);
-      ctx.fillStyle = h.asleep ? '#7a7466' : '#3aa14a'; ctx.fillRect(652, y + 27, 132 * frac, 9);
-      ctx.strokeStyle = '#8a6d32'; ctx.lineWidth = 1; ctx.strokeRect(652.5, y + 27.5, 131, 8);
-      text(ctx, `${h.mp} / ${max}`, 786, y + 14, { size: 12, align: 'right', color: '#c8b68a' });
+      drawHeroPortrait(ctx, LIST.x + 8, y + 4, h, ownerColor(st, h.owner));
+      text(ctx, h.name, LIST.x + 52, y + 14, { size: 15, color: '#ecd9a8', fam: 'title' });
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(LIST.x + 52, y + 27, 132, 9);
+      ctx.fillStyle = h.asleep ? '#7a7466' : '#3aa14a'; ctx.fillRect(LIST.x + 52, y + 27, 132 * frac, 9);
+      ctx.strokeStyle = '#8a6d32'; ctx.lineWidth = 1; ctx.strokeRect(LIST.x + 52.5, y + 27.5, 131, 8);
+      text(ctx, `${h.mp} / ${max}`, LIST.x + 186, y + 14, { size: 12, align: 'right', color: '#c8b68a' });
     } else {
       const t = r.town;
-      drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), 606, y + 2, 1);
-      text(ctx, t.name, 652, y + 16, { size: 14, color: '#ecd9a8', fam: 'title' });
-      text(ctx, `${townGold(t)} złota dziennie`, 652, y + 32, { size: 12, weight: 500, color: '#c8b68a' });
+      drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), LIST.x + 6, y + 2, 1);
+      text(ctx, t.name, LIST.x + 52, y + 16, { size: 14, color: '#ecd9a8', fam: 'title' });
+      text(ctx, `${townGold(t)} złota dziennie`, LIST.x + 52, y + 32, { size: 12, weight: 500, color: '#c8b68a' });
     }
   }
   text(ctx, `Tydzień ${weekName(st)}`, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 18, { size: 15, align: 'center', color: '#f0e4c0', fam: 'title' });
@@ -4701,14 +4738,20 @@ function drawPanel(ctx, st, scr) {
 G.screens.adventure = {
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
+  fill: true, // rysuje w całym oknie, układ z layoutAdventure()
+  // Po zmianie rozmiaru okna: nowy układ panelu, przyciski na nowych miejscach, kamera w granicach mapy
+  layout(force) {
+    const key = VW + 'x' + VH; if (!force && this.layoutKey === key) return; this.layoutKey = key;
+    const st = G.state; layoutAdventure(); buildPanelButtons(this, st); if (this.aiRun) this.lockButtons(true);
+    if (st.cam) camClamp(st);
+  },
   enter(p) {
     const st = G.state;
     rebuildObjIndex(st); this.floats = []; this.banner = null; this.flashMsg = null;
-    MapRender.reset(st.map, human(st).explored);
+    MapRender.reset(st.map, human(st).explored); layoutAdventure();
     if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
-    buildPanelButtons(this, st);
     if (this.aiRun && this.aiRun.st !== st) this.aiRun = null; // tura z poprzedniej gry
-    if (this.aiRun) this.lockButtons(true); // powrót z bitwy obronnej w trakcie tury przeciwnika
+    this.layout(true); // przyciski panelu; w trakcie tury przeciwnika (powrót z bitwy obronnej) zablokowane
     if (p.flash) this.flash(p.flash);
     if (p.after) p.after();
     if (p.welcome) {
@@ -4761,7 +4804,7 @@ G.screens.adventure = {
     }
     if (inRect(x, y, { x: MINI.x, y: MINI.y, w: MINI.s, h: MINI.s })) return 'Minimapa. Kliknij albo przeciągnij, aby przenieść widok.';
     if (inRect(x, y, LIST)) return 'Bohaterowie i miasta. Kliknij bohatera, aby go wybrać (ponownie: ekran bohatera, klawisz H), albo miasto, aby do niego wejść. Kółko albo przeciągnięcie przewija listę.';
-    return resourceBarInfo(st, x, y);
+    return resourceBarInfo(st, x, y, VH - H);
   },
   spellbook() {
     const st = G.state, h = hero(st); if (!h || h.moving || h.anim) return;
@@ -4878,6 +4921,7 @@ G.screens.adventure = {
     showDialog(msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])], { locked: true });
   },
   update(dt) {
+    if (G.state && G.state.map) this.layout();
     const st = G.state, K = G.keys, m = G.mouse; if (!st || !st.map) return;
     // ruch wszystkich bohaterów gracza (wybór innego nie zatrzymuje tego, który idzie); kamera śledzi idącego
     let walker = null;
@@ -4897,9 +4941,9 @@ G.screens.adventure = {
     }
     let vx = 0, vy = 0;
     if (K.has('arrowleft')) vx -= 1; if (K.has('arrowright')) vx += 1; if (K.has('arrowup')) vy -= 1; if (K.has('arrowdown')) vy += 1;
-    if (!m.down && m.type === 'mouse' && m.x >= 0 && m.x <= W && m.y >= 0 && m.y <= H) {
-      if (m.x < 10) vx -= 1; else if (m.x > W - 10) vx += 1;
-      if (m.y < 10) vy -= 1; else if (m.y > H - 10) vy += 1;
+    if (!m.down && m.type === 'mouse' && m.x >= 0 && m.x <= VW && m.y >= 0 && m.y <= VH) {
+      if (m.x < 10) vx -= 1; else if (m.x > VW - 10) vx += 1;
+      if (m.y < 10) vy -= 1; else if (m.y > VH - 10) vy += 1;
     }
     if (vx || vy) { st.cam.x += vx * 640 * dt; st.cam.y += vy * 640 * dt; camClamp(st); }
     if (this.drag && this.drag.moved) G.canvas.style.cursor = 'grabbing';
@@ -4934,10 +4978,11 @@ G.screens.adventure = {
   },
   draw(ctx) {
     const st = G.state; if (!st || !st.map) return;
-    ctx.drawImage(Layers.get('advChrome', W, H, paintAdvChrome), 0, 0, W, H);
+    this.layout();
+    ctx.drawImage(Layers.get(`advChrome_${VW}x${VH}`, VW, VH, paintAdvChrome), 0, 0, VW, VH);
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
     this.buttons.forEach(b => b.draw(ctx));
-    drawResourceBar(ctx, st);
+    drawResourceBar(ctx, st, VH - H, VW);
   },
 };
 
@@ -5176,6 +5221,16 @@ function estimateStrike(B, a, t, ranged, moved = 0) {
   return { min: out[0], max: out[1], kmin: kills(out[0]), kmax: kills(out[1]) };
 }
 G.screens.battle = {
+  // Szersze okno: pole walki ciągnie się na boki (lustrzane odbicie brzegów tła, lekko przyciemnione)
+  backdrop(ctx) {
+    const bg = Layers.get(`battleBg_${this.terr}`, W, H, c => paintBattleBg(c, this.terr)), k = bg.width / W, sw = Math.min(OX, W);
+    stoneFill(ctx, 0, 0, VW, VH);
+    if (sw > 0) {
+      ctx.save(); ctx.translate(OX, OY); ctx.scale(-1, 1); ctx.drawImage(bg, 0, 0, sw * k, bg.height, 0, 0, sw, H); ctx.restore();
+      ctx.save(); ctx.translate(OX + W, OY); ctx.scale(-1, 1); ctx.drawImage(bg, (W - sw) * k, 0, sw * k, bg.height, -sw, 0, sw, H); ctx.restore();
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(0, 0, VW, VH);
+  },
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
     const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null;
@@ -5610,25 +5665,32 @@ function onKey(e) {
   if (k === 'escape') { if (G.modal) { if (!G.modal.locked) G.modal = null; } else if (G.screen.onBack) G.screen.onBack(); }
   else if (!G.modal && G.screen.onKey) G.screen.onKey(k, e);
 }
-function toLogical(e) { const r = G.canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+// Współrzędne myszy: vx, vy w całym oknie (VW×VH); x, y w układzie aktywnej warstwy: okno dialogowe
+// i zwykłe ekrany leżą w wyśrodkowanym obszarze W×H (przesunięcie OX, OY), ekrany fill w całym oknie.
+const layerOffset = () => (G.modal || !(G.screen && G.screen.fill)) ? [OX, OY] : [0, 0];
+function toLogical(e) {
+  const r = G.canvas.getBoundingClientRect(), vx = (e.clientX - r.left) / r.width * VW, vy = (e.clientY - r.top) / r.height * VH, [ox, oy] = layerOffset();
+  return { x: vx - ox, y: vy - oy, vx, vy };
+}
+function syncMouse() { const m = G.mouse; if (m.vx == null || m.vx < 0) return; const [ox, oy] = layerOffset(); m.x = m.vx - ox; m.y = m.vy - oy; }
 function bindInput() {
   const c = G.canvas;
   window.addEventListener('pointermove', e => {
-    const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.type = e.pointerType;
+    const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; G.mouse.type = e.pointerType;
     if (!G.modal && G.screen && G.screen.onPointerMove) G.screen.onPointerMove(p.x, p.y, e);
   });
   c.addEventListener('pointerdown', e => {
     if (e.button === 2) {
-      e.preventDefault(); const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; updateHover();
-      const txt = rightInfoAt(p.x, p.y); if (txt) G.popup = { text: txt, x: p.x, y: p.y };
+      e.preventDefault(); const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; updateHover();
+      const txt = rightInfoAt(p.x, p.y); if (txt) G.popup = { text: txt, x: p.vx, y: p.vy };
       return;
     }
     if (e.button !== 0) return; e.preventDefault(); G.popup = null;
     if (e.pointerType !== 'mouse') {
       const p0 = toLogical(e); clearTimeout(G.pressTimer);
-      G.pressTimer = setTimeout(() => { const txt = rightInfoAt(p0.x, p0.y); if (txt) { G.popup = { text: txt, x: p0.x, y: p0.y }; G.longPress = true; } }, 420);
+      G.pressTimer = setTimeout(() => { const txt = rightInfoAt(p0.x, p0.y); if (txt) { G.popup = { text: txt, x: p0.vx, y: p0.vy }; G.longPress = true; } }, 420);
     }
-    const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.type = e.pointerType; G.mouse.down = true;
+    const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; G.mouse.type = e.pointerType; G.mouse.down = true;
     updateHover(); G.downTarget = G.hover;
     if (!G.hover && !G.modal && !G.fade.next && G.screen.onPointerDown) G.screen.onPointerDown(p.x, p.y, e);
   });
@@ -5638,20 +5700,26 @@ function bindInput() {
     if (!G.mouse.down) return; G.mouse.down = false; const p = toLogical(e);
     if (G.longPress) { G.longPress = false; G.downTarget = null; return; }
     const consumed = (!G.modal && G.screen.onPointerUp) ? G.screen.onPointerUp(p.x, p.y, e) : false;
-    if (!consumed && p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) handleClick(p.x, p.y);
-    G.downTarget = null; if (e.pointerType !== 'mouse') { G.mouse.x = -1; G.mouse.y = -1; }
+    if (!consumed && p.vx >= 0 && p.vx <= VW && p.vy >= 0 && p.vy <= VH) handleClick(p.x, p.y);
+    G.downTarget = null; if (e.pointerType !== 'mouse') { G.mouse.x = G.mouse.y = G.mouse.vx = G.mouse.vy = -1; }
   });
-  c.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !G.mouse.down) { G.mouse.x = -1; G.mouse.y = -1; } });
+  c.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !G.mouse.down) { G.mouse.x = G.mouse.y = G.mouse.vx = G.mouse.vy = -1; } });
   c.addEventListener('contextmenu', e => e.preventDefault());
   c.addEventListener('wheel', e => { if (!G.modal && !G.fade.next && G.screen.onWheel) { e.preventDefault(); G.screen.onWheel(Math.sign(e.deltaY)); } }, { passive: false });
   window.addEventListener('keydown', onKey);
   window.addEventListener('keyup', e => G.keys.delete(e.key.toLowerCase()));
   window.addEventListener('blur', () => G.keys.clear());
 }
+// Okno gry wypełnia ekran: skala tak, by zmieścił się obszar W×H, a reszta szerokości albo wysokości
+// (do VW_MAX×VH_MAX) poszerza okno logiczne. Wymiary parzyste, bo bufory pikselowe mają połowę rozdzielczości.
 function resize() {
   const wrap = document.getElementById('wrap'), aw = Math.max(1, wrap.clientWidth), ah = Math.max(1, wrap.clientHeight);
-  const s = Math.min(aw / W, ah / H), cw = Math.max(1, Math.floor(W * s)), ch = Math.max(1, Math.floor(H * s));
-  G.dpr = Math.min(window.devicePixelRatio || 1, 2); G.scale = cw / W; G.rs = G.scale * G.dpr;
+  const s = Math.min(aw / W, ah / H);
+  VW = clamp(Math.floor(aw / s / 2) * 2, W, VW_MAX); VH = clamp(Math.floor(ah / s / 2) * 2, H, VH_MAX);
+  OX = (VW - W) / 2; OY = (VH - H) / 2;
+  for (const k in Layers.cache) if (/_\d+x\d+$/.test(k)) delete Layers.cache[k]; // warstwy zależne od rozmiaru okna
+  const cw = Math.max(1, Math.floor(VW * s)), ch = Math.max(1, Math.floor(VH * s));
+  G.dpr = Math.min(window.devicePixelRatio || 1, 2); G.scale = cw / VW; G.rs = G.scale * G.dpr;
   G.canvas.style.width = cw + 'px'; G.canvas.style.height = ch + 'px';
   G.canvas.width = Math.round(cw * G.dpr); G.canvas.height = Math.round(ch * G.dpr);
 }
@@ -5659,12 +5727,26 @@ function update(dt) {
   G.time += dt; const f = G.fade, sp = 3.5;
   if (f.a < f.target) f.a = Math.min(f.target, f.a + dt * sp); else if (f.a > f.target) f.a = Math.max(f.target, f.a - dt * sp);
   if (f.next && f.a >= 1) { const n = f.next; f.next = null; setScreen(n.name, n.params); f.target = 0; }
-  updateHover(); if (G.screen.update) G.screen.update(dt);
+  syncMouse(); updateHover(); if (G.screen.update) G.screen.update(dt);
 }
 function render() {
-  const ctx = G.ctx, s = G.rs; ctx.setTransform(s, 0, 0, s, 0, 0); ctx.clearRect(0, 0, W, H);
-  G.screen.draw(ctx); if (G.modal) G.modal.draw(ctx); if (G.popup) drawPopup(ctx, G.popup);
-  if (G.fade.a > 0) { ctx.fillStyle = `rgba(0,0,0,${G.fade.a.toFixed(3)})`; ctx.fillRect(0, 0, W, H); }
+  const ctx = G.ctx, s = G.rs, center = () => ctx.setTransform(s, 0, 0, s, OX * s, OY * s);
+  ctx.setTransform(s, 0, 0, s, 0, 0); ctx.clearRect(0, 0, VW, VH);
+  if (G.screen.fill) G.screen.draw(ctx);
+  else { if (OX || OY) drawBackdrop(ctx); center(); G.screen.draw(ctx); }
+  if (G.modal) { center(); G.modal.draw(ctx); }
+  ctx.setTransform(s, 0, 0, s, 0, 0);
+  if (G.popup) drawPopup(ctx, G.popup);
+  if (G.fade.a > 0) { ctx.fillStyle = `rgba(0,0,0,${G.fade.a.toFixed(3)})`; ctx.fillRect(0, 0, VW, VH); }
+}
+// Tło wokół wyśrodkowanego ekranu: kamień jak w ramkach gry, przyciemniony, ze złotą obwódką.
+// Ekran może podać własne (screen.backdrop), np. bitwa przedłuża pole walki.
+function drawBackdrop(ctx) {
+  if (G.screen.backdrop) { G.screen.backdrop(ctx); return; }
+  ctx.drawImage(Layers.get(`backdrop_${VW}x${VH}`, VW, VH, c => {
+    stoneFill(c, 0, 0, VW, VH); c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, 0, VW, VH);
+    goldFrame(c, OX, OY, W, H);
+  }), 0, 0, VW, VH);
 }
 function frame(ts) {
   const t = ts / 1000, dt = G.last ? Math.min(0.05, Math.max(0, t - G.last)) : 0; G.last = t;

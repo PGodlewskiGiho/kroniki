@@ -168,6 +168,15 @@ const MapRender = {
 };
 const VIEW = { x: 8, y: 8, w: 576, h: 552 }, MINI = { x: 624, y: 24, s: 144 };
 const LIST = { x: 600, y: 262, w: 196, h: 186 }, INFOBOX = { x: 600, y: 456, w: 196, h: 108 };
+// Układ mapy przygody zależy od rozmiaru okna (VW×VH): mapa zajmuje wszystko poza panelem po prawej,
+// panel i pasek surowców trzymają się prawej i dolnej krawędzi, a lista bohaterów i miast rośnie z wysokością.
+const LIST_ROW_H = 48; let LIST_ROWS = 3;
+function layoutAdventure() {
+  const dx = VW - W, dy = VH - H;
+  VIEW.w = 576 + dx; VIEW.h = 552 + dy; MINI.x = 624 + dx;
+  LIST.x = 600 + dx; LIST.h = 186 + dy; INFOBOX.x = 600 + dx; INFOBOX.y = 456 + dy;
+  LIST_ROWS = Math.floor((LIST.h - 6) / LIST_ROW_H);
+}
 function camClamp(st) { const m = st.map.n * T; st.cam.x = clamp(st.cam.x, -T, m - VIEW.w + T); st.cam.y = clamp(st.cam.y, -T, m - VIEW.h + T); }
 function centerCam(st, tx, ty) { st.cam = { x: tx * T + T / 2 - VIEW.w / 2, y: ty * T + T / 2 - VIEW.h / 2 }; camClamp(st); }
 function screenToTile(st, x, y) { return { tx: Math.floor((x - VIEW.x + st.cam.x) / T), ty: Math.floor((y - VIEW.y + st.cam.y) / T) }; }

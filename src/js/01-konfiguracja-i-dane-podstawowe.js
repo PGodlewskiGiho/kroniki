@@ -1,6 +1,10 @@
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
 // Stałe gry, surowce, poziomy trudności, rozmiary map, kolory graczy, bonusy.
-const W = 800, H = 600;
+// W×H: obszar, dla którego zaprojektowano ekrany i okna (wyśrodkowany w oknie przeglądarki).
+// VW×VH: całe okno w tych samych jednostkach (co najmniej W×H, dopasowane do proporcji ekranu);
+// OX, OY: przesunięcie obszaru W×H w oknie. Ekrany z fill: true (mapa przygody) rysują w całym oknie.
+const W = 800, H = 600, VW_MAX = 1440, VH_MAX = 800;
+let VW = W, VH = H, OX = 0, OY = 0;
 const VERSION = '1.1';
 // Plan rozwoju: gdzie w interfejsie obiecujemy przyszłe funkcje. Zmiana planu = zmiana tylko tutaj.
 const ROADMAP = {

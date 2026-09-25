@@ -106,18 +106,23 @@ function showDialog(msg, opts, extra = {}) {
   G.modal = {
     msg, buttons, locked: !!extra.locked, // msg: treść okna (podgląd w testach)
     draw(ctx) {
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, h);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, h);
       lines.forEach((l, i) => text(ctx, l, W / 2, y + 44 + i * 26, { size: 20, weight: 500, align: 'center', color: '#2a1606' }));
       if (extra.icon) extra.icon(ctx, W / 2, y + 34 + lines.length * 26 + iconH / 2);
       buttons.forEach(b => b.draw(ctx));
     },
   };
 }
+// Rysowanie w układzie całego okna (VW×VH), niezależnie od przesunięcia wyśrodkowanego ekranu
+function viewportDraw(ctx, fn) { ctx.save(); ctx.setTransform(G.rs, 0, 0, G.rs, 0, 0); fn(ctx); ctx.restore(); }
+// Przyciemnienie całego okna pod oknem dialogowym
+function dimScreen(ctx, a) { viewportDraw(ctx, c => { c.fillStyle = `rgba(0,0,0,${a})`; c.fillRect(0, 0, VW, VH); }); }
+// Dymek z opisem; p.x, p.y w układzie okna (VW×VH)
 function drawPopup(ctx, p) {
   ctx.font = font(16, 500, 'body');
   const lines = wrapText(ctx, p.text, 250), tw = Math.max(...lines.map(l => ctx.measureText(l).width));
   const w = clamp(tw + 36, 140, 286), h = 26 + lines.length * 20;
-  const x = clamp(p.x + 14, 8, W - w - 8), y = clamp(p.y + 14, 8, H - h - 8);
+  const x = clamp(p.x + 14, 8, VW - w - 8), y = clamp(p.y + 14, 8, VH - h - 8);
   drawParchment(ctx, x, y, w, h);
   lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 21 + i * 20, { size: 16, weight: 500, align: 'center', color: '#2a1606' }));
 }
@@ -171,15 +176,15 @@ function drawCost(ctx, cost, x, y, o = {}) {
     cx += size + 5 + ctx.measureText(s).width;
   }
 }
-// Pasek surowców na dole ekranu mapy i miasta
+// Pasek surowców na dole ekranu mapy i miasta (dy: przesunięcie w dół, w: szerokość ekranu)
 const RESBAR = { x: 18, y: 582, step: 78 };
-function drawResourceBar(ctx, st) {
-  const R = human(st).resources;
-  RESOURCES.forEach((r, i) => { const x = RESBAR.x + i * RESBAR.step; resIcon(ctx, r.id, x + 10, RESBAR.y, 24); text(ctx, String(R[r.id]), x + 25, RESBAR.y + 1, { size: 16, color: '#ecd9a8' }); });
-  text(ctx, dateText(st), 782, RESBAR.y + 1, { size: 15, weight: 500, align: 'right', color: '#ecd9a8' });
+function drawResourceBar(ctx, st, dy = 0, w = W) {
+  const R = human(st).resources, y = RESBAR.y + dy;
+  RESOURCES.forEach((r, i) => { const x = RESBAR.x + i * RESBAR.step; resIcon(ctx, r.id, x + 10, y, 24); text(ctx, String(R[r.id]), x + 25, y + 1, { size: 16, color: '#ecd9a8' }); });
+  text(ctx, dateText(st), w - 18, y + 1, { size: 15, weight: 500, align: 'right', color: '#ecd9a8' });
 }
-function resourceBarInfo(st, x, y) {
-  if (y < 566) return null; const i = Math.floor((x - RESBAR.x) / RESBAR.step); if (i < 0 || i >= RESOURCES.length) return null;
+function resourceBarInfo(st, x, y, dy = 0) {
+  if (y < 566 + dy) return null; const i = Math.floor((x - RESBAR.x) / RESBAR.step); if (i < 0 || i >= RESOURCES.length) return null;
   const r = RESOURCES[i]; return `${r.name}: ${human(st).resources[r.id]}. Dochód dzienny: ${dailyIncome(st, r.id)}.`;
 }
 

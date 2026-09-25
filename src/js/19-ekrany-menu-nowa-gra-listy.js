@@ -7,30 +7,32 @@ const CASTLE_WINDOWS = [
 ].map((w, i) => [...w, i * 1.7]);
 const CLOUDS = (() => { const r = mulberry32(5); return Array.from({ length: 7 }, () => ({ x: r() * 1100, y: 30 + r() * 160, s: 0.6 + r() * 1.1, v: 5 + r() * 9, a: 0.1 + r() * 0.12 })); })();
 const EMBERS = (() => { const r = mulberry32(9); return Array.from({ length: 28 }, () => ({ x: r() * 500, y: 430 + r() * 170, v: 8 + r() * 14, p: r() * TAU, r: 1 + r() * 1.6 })); })();
+// Scena menu jest zaprojektowana na W×H, ale malowana na całe okno: wokół środka (x od -OX do W + OX,
+// y od -OY do H + OY) niebo, grzbiety gór i ziemia ciągną się dalej, a na bokach rosną dodatkowe drzewa.
 function ridge(c, seed, base, amp, col) {
-  const r = mulberry32(seed); const p1 = r() * 6, p2 = r() * 6, p3 = r() * 6;
-  c.beginPath(); c.moveTo(0, H);
-  for (let x = 0; x <= W + 6; x += 6) { // o krok za brzeg, żeby przy prawej krawędzi nie prześwitywało niebo
+  const r = mulberry32(seed); const p1 = r() * 6, p2 = r() * 6, p3 = r() * 6, x0 = -OX - (OX % 6);
+  c.beginPath(); c.moveTo(x0, H + OY);
+  for (let x = x0; x <= W + OX + 6; x += 6) { // o krok za brzeg, żeby przy prawej krawędzi nie prześwitywało niebo
     const n = Math.sin(x * 0.009 + p1) * 0.5 + Math.sin(x * 0.023 + p2) * 0.3 + Math.sin(x * 0.061 + p3) * 0.15 + (r() - 0.5) * 0.08;
     c.lineTo(x, base - amp * (0.55 + n * 0.6));
   }
-  c.lineTo(W, H); c.closePath(); c.fillStyle = col; c.fill();
+  c.lineTo(W + OX + 6, H + OY); c.closePath(); c.fillStyle = col; c.fill();
 }
 function paintSky(c) {
   const g = c.createLinearGradient(0, 0, 0, 440);
   g.addColorStop(0, '#0a0c26'); g.addColorStop(0.35, '#221a4a'); g.addColorStop(0.62, '#6a2f52'); g.addColorStop(0.82, '#c7603f'); g.addColorStop(1, '#f0a050');
-  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.fillStyle = g; c.fillRect(-OX, -OY, VW, VH);
   const r = mulberry32(11);
-  for (let i = 0; i < 150; i++) { const x = r() * W, y = r() * 260, a = (1 - y / 260) * (0.4 + r() * 0.6), s = r() < 0.1 ? 1.8 : 1; c.fillStyle = `rgba(255,248,230,${a.toFixed(3)})`; c.fillRect(x, y, s, s); }
+  for (let i = 0; i < 150 * VW / W; i++) { const x = r() * VW - OX, y = r() * 260, a = (1 - y / 260) * (0.4 + r() * 0.6), s = r() < 0.1 ? 1.8 : 1; c.fillStyle = `rgba(255,248,230,${a.toFixed(3)})`; c.fillRect(x, y, s, s); }
   const mg = c.createRadialGradient(470, 170, 10, 470, 170, 120); mg.addColorStop(0, 'rgba(255,240,210,.35)'); mg.addColorStop(1, 'rgba(255,240,210,0)');
   c.fillStyle = mg; c.fillRect(340, 40, 260, 260);
   c.fillStyle = '#f6ecd0'; c.beginPath(); c.arc(470, 170, 24, 0, TAU); c.fill();
   c.fillStyle = 'rgba(190,170,140,.35)'; for (const [x, y, rad] of [[462, 164, 5], [478, 180, 4], [476, 160, 3]]) { c.beginPath(); c.arc(x, y, rad, 0, TAU); c.fill(); }
   const sg = c.createRadialGradient(300, 420, 10, 300, 420, 320); sg.addColorStop(0, 'rgba(255,190,110,.5)'); sg.addColorStop(1, 'rgba(255,190,110,0)');
-  c.fillStyle = sg; c.fillRect(0, 0, W, H);
+  c.fillStyle = sg; c.fillRect(-OX, -OY, VW, VH);
   ridge(c, 31, 405, 150, '#4b3358');
   const hz = c.createLinearGradient(0, 330, 0, 430); hz.addColorStop(0, 'rgba(240,140,100,0)'); hz.addColorStop(1, 'rgba(240,140,100,.28)');
-  c.fillStyle = hz; c.fillRect(0, 330, W, 100);
+  c.fillStyle = hz; c.fillRect(-OX, 330, VW, 100);
   ridge(c, 47, 425, 95, '#2c2140');
 }
 function pine(c, x, base, h, col) {
@@ -57,8 +59,8 @@ function paintCastle(c) {
   c.fillStyle = '#0a0810'; for (const [x, y, w, h] of CASTLE_WINDOWS) c.fillRect(x, y, w, h);
 }
 function paintLand(c) {
-  c.fillStyle = '#17122a'; c.beginPath(); c.moveTo(-10, H); c.lineTo(-10, 455);
-  c.bezierCurveTo(70, 410, 150, 396, 260, 396); c.bezierCurveTo(370, 396, 450, 420, 560, 470); c.lineTo(560, H); c.closePath(); c.fill();
+  c.fillStyle = '#17122a'; c.beginPath(); c.moveTo(-OX - 10, H + OY); c.lineTo(-OX - 10, 455); c.lineTo(-10, 455);
+  c.bezierCurveTo(70, 410, 150, 396, 260, 396); c.bezierCurveTo(370, 396, 450, 420, 560, 470); c.lineTo(560, H + OY); c.closePath(); c.fill();
   // skalny kopiec pod zamkiem: wzgórze opada na boki, a mury muszą na czymś stać
   c.beginPath(); c.moveTo(80, 470); c.bezierCurveTo(100, 425, 118, 400, 132, 394); c.lineTo(390, 394);
   c.bezierCurveTo(408, 402, 428, 425, 460, 470); c.closePath(); c.fill();
@@ -70,8 +72,16 @@ function paintLand(c) {
   const r = mulberry32(21);
   for (let i = 0; i < 9; i++) { const x = 10 + r() * 110; pine(c, x, 460 - (x / 130) * 45 + 10, 30 + r() * 25, '#100c1c'); }
   for (let i = 0; i < 8; i++) { const x = 410 + r() * 110; pine(c, x, 410 + ((x - 400) / 120) * 50 + 10, 30 + r() * 25, '#100c1c'); }
-  c.fillStyle = '#0d0a15'; c.beginPath(); c.moveTo(0, H); c.lineTo(0, 505);
-  c.bezierCurveTo(150, 470, 330, 500, 480, 520); c.bezierCurveTo(600, 535, 700, 515, 800, 520); c.lineTo(800, H); c.closePath(); c.fill();
+  // boki szerszego okna: las po lewej, łagodne wzgórze z drzewami po prawej
+  const re = mulberry32(41);
+  for (let i = 0; i < OX / 14; i++) { const x = -OX + re() * OX; pine(c, x, 462 + re() * 10, 30 + re() * 25, '#100c1c'); }
+  if (OX > 0) {
+    c.fillStyle = '#17122a'; c.beginPath(); c.moveTo(640, H + OY); c.bezierCurveTo(700, 470, 780, 452, 880, 450); c.lineTo(W + OX + 10, 448); c.lineTo(W + OX + 10, H + OY); c.closePath(); c.fill();
+    for (let i = 0; i < OX / 12; i++) { const x = 800 + re() * OX; pine(c, x, 455 + re() * 12, 30 + re() * 25, '#100c1c'); }
+  }
+  c.fillStyle = '#0d0a15'; c.beginPath(); c.moveTo(-OX, H + OY); c.lineTo(-OX, 505); c.lineTo(0, 505);
+  c.bezierCurveTo(150, 470, 330, 500, 480, 520); c.bezierCurveTo(600, 535, 700, 515, 800, 520); c.lineTo(W + OX, 515); c.lineTo(W + OX, H + OY); c.closePath(); c.fill();
+  for (let i = 0; i < OX / 40; i++) { const x = W + re() * OX; pine(c, x, 545 + re() * 50, 50 + re() * 60, '#07050c'); }
   for (let i = 0; i < 16; i++) { const x = r() * 520; if (x > 290 && x < 370) continue; pine(c, x, 540 + r() * 50, 50 + r() * 60, '#07050c'); }
   pine(c, 28, 610, 230, '#050409'); pine(c, 90, 620, 170, '#050409');
 }
@@ -94,11 +104,12 @@ function menuRider(b, t) {
 // Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize)
 // i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
 function drawMenuScene(ctx) {
-  const t = G.time, pb = pixBuf('menuScene', W / 2, H / 2, true), b = pb._ctx;
-  b.setTransform(0.5, 0, 0, 0.5, 0, 0); b.imageSmoothingEnabled = false;
-  b.drawImage(Layers.get('menuSky', W, H, paintSky, 0.5), 0, 0, W, H);
-  for (const c of CLOUDS) drawCloud(b, ((c.x + t * c.v) % 1100) - 150, c.y, c.s, c.a);
-  b.drawImage(Layers.get('menuLand', W, H, paintLand, 0.5), 0, 0, W, H);
+  const t = G.time, pb = pixBuf('menuScene', VW / 2, VH / 2, true), b = pb._ctx, span = VW + 300;
+  const layer = paint => c => { c.translate(OX, OY); paint(c); };
+  b.setTransform(0.5, 0, 0, 0.5, OX / 2, OY / 2); b.imageSmoothingEnabled = false;
+  b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 0.5), -OX, -OY, VW, VH);
+  for (const c of CLOUDS) drawCloud(b, ((c.x * span / 1100 + t * c.v) % span) - 150 - OX, c.y, c.s, c.a);
+  b.drawImage(Layers.get(`menuLand_${VW}x${VH}`, VW, VH, layer(paintLand), 0.5), -OX, -OY, VW, VH);
   for (const [x, y, w, h, p] of CASTLE_WINDOWS) {
     const f = clamp(0.55 + 0.35 * Math.sin(t * 2.3 + p) + 0.1 * Math.sin(t * 7.1 + p * 3), 0.15, 1);
     b.fillStyle = `rgba(255,170,70,${(f * 0.18).toFixed(3)})`; b.fillRect(x - 2, y - 2, w + 4, h + 4);
@@ -108,7 +119,7 @@ function drawMenuScene(ctx) {
   drawFlag(b, 260, 96, 26, 12, t, col); drawFlag(b, 200, 168, 14, 7, t + 1, col); drawFlag(b, 320, 168, 14, 7, t + 2, col);
   menuRider(b, t);
   for (let i = 0; i < 4; i++) {
-    const x = ((i * 320 + t * 9) % 1280) - 240; b.save(); b.translate(x, 448 + (i % 2) * 18); b.scale(3.2, 0.45);
+    const x = ((i * 320 + t * 9) % 1280) - 240 + (i % 2 ? OX : -OX); b.save(); b.translate(x, 448 + (i % 2) * 18); b.scale(3.2, 0.45);
     const g = b.createRadialGradient(0, 0, 0, 0, 0, 100); g.addColorStop(0, 'rgba(210,170,200,.14)'); g.addColorStop(1, 'rgba(210,170,200,0)');
     b.fillStyle = g; b.fillRect(-100, -100, 200, 200); b.restore();
   }
@@ -117,9 +128,9 @@ function drawMenuScene(ctx) {
     b.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; b.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
   }
   pixelQuantize(pb, 14);
-  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(pb, 0, 0, W, H); ctx.restore();
+  viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
 }
-function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); ctx.fillStyle = `rgba(0,0,0,${a})`; ctx.fillRect(0, 0, W, H); }
+function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); dimScreen(ctx, a); }
 function askQuit() {
   showDialog('Czy na pewno chcesz opuścić grę?', [{ label: 'Tak', key: 'enter', action: () => G.go('bye') }, { label: 'Nie', key: 'escape' }]);
 }
@@ -128,6 +139,7 @@ function askToMenu() {
     { label: 'Tak', key: 'enter', action: () => G.go('menu') }, { label: 'Nie', key: 'escape' }]);
 }
 G.screens.menu = {
+  backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'main',
   enter(p) { G.state = null; this.setMode(p.mode || 'main'); },
   setMode(m) {
@@ -153,6 +165,7 @@ G.screens.menu = {
   },
 };
 G.screens.setup = {
+  backdrop() {}, // scena menu maluje całe okno
   buttons: [],
   enter() {
     const S = G.settings, B = [];
@@ -185,6 +198,7 @@ G.screens.setup = {
 };
 function makeListScreen(title, drawBody) {
   return {
+    backdrop() {}, // scena menu maluje całe okno
     buttons: [],
     enter() { this.buttons = [new Button(300, 478, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 })]; },
     draw(ctx) {
@@ -196,6 +210,7 @@ function makeListScreen(title, drawBody) {
 }
 // Lista slotów zapisu. mode 'load' (z menu albo z gry) lub 'save' (z gry).
 G.screens.load = {
+  backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'load', slots: null, err: null, busy: false, token: 0, hover: -1,
   ROW: { x: 180, y: 132, w: 440, h: 44, gap: 50 },
   enter(p) {
@@ -273,6 +288,7 @@ G.screens.scores = makeListScreen('Najlepsze wyniki', ctx => {
   });
 });
 G.screens.credits = {
+  backdrop() {}, // scena menu maluje całe okno
   lines: ['#KRONIKI KRÓLESTW', 'Turowa strategia w klimacie klasycznych gier fantasy', '', '#Pomysł i testy', 'Ty', '',
     '#Kod, grafika i interfejs', 'Claude', '', '#Technologia', 'HTML5 Canvas i czysty JavaScript', '',
     '#Podziękowania', 'Dla wszystkich fanów klasycznych strategii', '', '#Dziękujemy za grę!'],
@@ -290,10 +306,11 @@ G.screens.credits = {
   },
 };
 G.screens.bye = {
+  backdrop() {}, // scena menu maluje całe okno
   enter() { this.t0 = G.time; },
   onClick() { G.go('menu'); }, onBack() { G.go('menu'); },
   draw(ctx) {
-    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = clamp((G.time - this.t0) / 1.2, 0, 1);
+    dimScreen(ctx, 1); ctx.globalAlpha = clamp((G.time - this.t0) / 1.2, 0, 1);
     goldText(ctx, 'Do zobaczenia, Władco!', W / 2, H / 2 - 20, 36);
     text(ctx, 'Kliknij, aby wrócić do menu głównego', W / 2, H / 2 + 30, { size: 18, weight: 500, italic: true, align: 'center', color: '#bfae88' });
     ctx.globalAlpha = 1;

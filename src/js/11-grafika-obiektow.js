@@ -623,7 +623,7 @@ function showRecruit(st, t, L, onDone, backToList) {
     draw(ctx) {
       const c = CREATURES[cid], cost = unitCost(cid), total = {}; for (const r of RESOURCES) if (cost[r.id]) total[r.id] = cost[r.id] * n;
       bBuy.disabled = n <= 0; bMinus.disabled = n <= 0; bPlus.disabled = bMax.disabled = n >= maxN();
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, F.dw['dw' + L + (cid === units[0] ? '' : 'u')][0], W / 2, y + 32, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
       if (units.length === 1) text(ctx, c.name, W / 2, y + 68, { size: 17, align: 'center', color: '#5a3814', fam: 'title' });
       ctx.fillStyle = 'rgba(90,55,20,.12)'; rr(ctx, x + 24, y + 100, 110, 140, 4); ctx.fill();
@@ -668,7 +668,7 @@ function showMarket(st, owner, onDone) {
     draw(ctx) {
       const L = lot(), m = marketCount(st, owner);
       bTrade.disabled = !L || n <= 0; bMinus.disabled = n <= 0; bPlus.disabled = bMax.disabled = n >= max();
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, 'Rynek', W / 2, y + 32, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
       text(ctx, `Rynków w królestwie: ${m}${m < 4 ? ' (kolejne poprawiają kurs)' : ''}`, W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: '#6a4418' });
       text(ctx, 'Oddajesz', col(0, false), y + 80, { size: 15, color: '#3a1e08', fam: 'title' }); text(ctx, 'Dostajesz', col(0, true), y + 80, { size: 15, color: '#3a1e08', fam: 'title' });
@@ -710,7 +710,7 @@ function showMeeting(st, a, b, onMsg) {
       return null;
     },
     draw(ctx) {
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, 'Spotkanie bohaterów', W / 2, y + 30, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' });
       text(ctx, msg || 'Kliknij oddział, a potem miejsce, aby go przenieść. Kliknij artefakt, aby go oddać.', W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: msg ? '#8a3a1a' : '#6a4418' });
       heroes.forEach((h, k) => {
@@ -733,7 +733,7 @@ function showRecruitList(st, t, onDone) {
   G.modal = {
     buttons: [...rowBtns, close],
     draw(ctx) {
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, `Rekrutacja: ${t.name}`, W / 2, y + 40, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' }); divider(ctx, x + 30, x + w - 30, y + 64);
       levels.forEach((L, i) => {
         const ry = y + 84 + i * 52, units = dwellingUnits(t, L), best = units[units.length - 1];
@@ -835,7 +835,7 @@ function showSpellbook(h, mode, onPick) {
     rightInfo(px, py) { const i = list.findIndex((id, k) => inRect(px, py, cell(k))); if (i < 0) return null; const S = SPELLS[list[i]]; return `${S.name} (poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${S.cost} many): ${S.desc(sp)}.`; },
     draw(ctx) {
       hover = list.findIndex((id, k) => inRect(G.mouse.x, G.mouse.y, cell(k)));
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, 'Księga czarów', W / 2, y + 34, { size: 26, align: 'center', color: '#3a1e08', fam: 'title' });
       text(ctx, `${h.name} · mana ${h.mana} / ${heroMaxMana(h)} · moc czarów ${sp}`, W / 2, y + 58, { size: 14, weight: 500, align: 'center', color: '#5a3814' });
       if (!list.length) text(ctx, 'Bohater nie zna jeszcze żadnych czarów. Odwiedź miasto z gildią magów.', W / 2, y + 200, { size: 15, italic: true, weight: 500, align: 'center', color: '#7a5a34' });

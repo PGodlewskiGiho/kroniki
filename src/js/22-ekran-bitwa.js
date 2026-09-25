@@ -36,6 +36,16 @@ function estimateStrike(B, a, t, ranged, moved = 0) {
   return { min: out[0], max: out[1], kmin: kills(out[0]), kmax: kills(out[1]) };
 }
 G.screens.battle = {
+  // Szersze okno: pole walki ciągnie się na boki (lustrzane odbicie brzegów tła, lekko przyciemnione)
+  backdrop(ctx) {
+    const bg = Layers.get(`battleBg_${this.terr}`, W, H, c => paintBattleBg(c, this.terr)), k = bg.width / W, sw = Math.min(OX, W);
+    stoneFill(ctx, 0, 0, VW, VH);
+    if (sw > 0) {
+      ctx.save(); ctx.translate(OX, OY); ctx.scale(-1, 1); ctx.drawImage(bg, 0, 0, sw * k, bg.height, 0, 0, sw, H); ctx.restore();
+      ctx.save(); ctx.translate(OX + W, OY); ctx.scale(-1, 1); ctx.drawImage(bg, (W - sw) * k, 0, sw * k, bg.height, -sw, 0, sw, H); ctx.restore();
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(0, 0, VW, VH);
+  },
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
     const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null;
