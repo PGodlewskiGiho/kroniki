@@ -1541,6 +1541,47 @@ function showMarket(st, owner, onDone) {
     },
   };
 }
+// Spotkanie dwóch bohaterów gracza (stoją obok siebie): wymiana oddziałów i artefaktów z plecaka.
+// Oddział: kliknij go, potem miejsce w dowolnej z dwóch armii (przeniesienie, połączenie albo zamiana).
+function showMeeting(st, a, b, onMsg) {
+  const x = 60, y = 70, w = 680, hh = 460, heroes = [a, b], rows = [y + 96, y + 290], armies = [a.army, b.army];
+  let sel = null, msg = ''; const say = m => { msg = m; if (onMsg) onMsg(m); };
+  let armyRects = [[], []], bagRects = [[], []];
+  const bClose = new Button(x + w / 2 - 65, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
+  const armyAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(armyRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
+  const bagAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(bagRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
+  G.modal = {
+    buttons: [bClose], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
+    onClick(px, py) {
+      const s = armyAt(px, py), g = bagAt(px, py);
+      if (s) {
+        if (!sel) { if (armies[s.k][s.i]) { sel = s; msg = ''; } return; }
+        const err = armyMove(armies[sel.k], sel.i, armies[s.k], s.i, armies); sel = null; if (err) say(err); return;
+      }
+      if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
+      sel = null;
+    },
+    rightInfo(px, py) {
+      const s = armyAt(px, py); if (s) return armies[s.k][s.i] ? stackInfo(armies[s.k][s.i]) : 'Wolne miejsce.';
+      const g = bagAt(px, py); if (g) return `${artInfo(heroes[g.k].bag[g.i])} Kliknij, aby oddać drugiemu bohaterowi.`;
+      return null;
+    },
+    draw(ctx) {
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); drawParchment(ctx, x, y, w, hh);
+      text(ctx, 'Spotkanie bohaterów', W / 2, y + 30, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, msg || 'Kliknij oddział, a potem miejsce, aby go przenieść. Kliknij artefakt, aby go oddać.', W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: msg ? '#8a3a1a' : '#6a4418' });
+      heroes.forEach((h, k) => {
+        const ry = rows[k]; drawHeroPortrait(ctx, x + 24, ry - 26, h, ownerColor(st, h.owner));
+        text(ctx, heroTitle(h), x + 68, ry - 12, { size: 16, color: '#3a1e08', fam: 'title' });
+        text(ctx, `Armia: siła ${armyStrength(h)}`, x + w - 24, ry - 12, { size: 13, align: 'right', weight: 500, color: '#5a3814' });
+        armyRects[k] = drawArmyRow(ctx, h.army, x + 24, ry + 16, { light: true, sel: sel && sel.k === k ? sel.i : null, w: 84, gap: 6 });
+        text(ctx, h.bag.length ? 'Plecak:' : 'Plecak pusty', x + 24, ry + 92, { size: 13, weight: 500, color: '#5a3814' });
+        bagRects[k] = h.bag.slice(0, 12).map((id, i) => { const bx = x + 90 + i * 46; drawSprite(ctx, artSprite(id), bx + 20, ry + 92, 1); return { x: bx, y: ry + 72, w: 40, h: 40, i }; });
+      });
+      bClose.draw(ctx);
+    },
+  };
+}
 function showRecruitList(st, t, onDone) {
   const levels = dwellingLevels(t), F = factionOf(t.faction), w = 500, hh = 120 + levels.length * 52 + 60, x = (W - w) / 2, y = Math.max(20, (H - hh) / 2);
   const open = L => showRecruit(st, t, L, onDone, () => showRecruitList(st, t, onDone));
@@ -4723,7 +4764,8 @@ G.screens.adventure = {
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
     // kliknięcie w budynek miasta albo kopalni oznacza jego wejście
     const ob = objectAt(st, ty * n + tx); if (ob && ob.blocks && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
-    const other = heroAt(st, tx, ty); if (other && other !== h && other.owner === ME) { this.selectHero(other); return; } // własny bohater: wybór
+    const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = wybór
+    if (other && other !== h && other.owner === ME) { if (Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) showMeeting(st, h, other); else this.selectHero(other); return; }
     if (tx === h.x && ty === h.y) {
       const here = objectAt(st, ty * n + tx);
       if (here && here.type === 'town' && here.owner === h.owner) G.go('town', { townId: here.townId }); else this.heroInfo();
