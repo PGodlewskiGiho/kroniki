@@ -165,35 +165,65 @@ G.screens.menu = {
     text(ctx, `Kroniki Królestw · wersja ${VERSION}`, 12, H - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
   },
 };
+// Nowa gra: mapa, trudność, bonus i 8 miejsc graczy (człowiek / komputer / wolne, kolor, frakcja).
+// Kilku ludzi = hot-seat: grają na zmianę przy jednym ekranie, każdy ze swoją mgłą wojny.
+const setupCap = S => (SITE_COUNT[(MAP_SIZES.find(m => m.id === S.mapSize) || MAP_SIZES[0]).n] || 4);
+const SLOT_LABEL = { human: 'Człowiek', ai: 'Komputer', off: '—' };
 G.screens.setup = {
   backdrop() {}, // scena menu maluje całe okno
   buttons: [],
   enter() {
-    const S = G.settings, B = [];
-    MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 118, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}` })));
-    DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 180, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
-    PLAYER_COLORS.forEach((c, i) => B.push(new Button(230 + i * 128, 276, 118, 40, c.name, () => { S.color = c.id; }, { selected: () => S.color === c.id, size: 13, swatch: c.hex })));
-    const fw = Math.min(154, Math.floor(506 / FACTIONS.length) - 6); FACTIONS.forEach((f, i) => B.push(new Button(230 + i * (fw + 6), 330, fw, 40, f.name, () => { S.faction = f.id; }, { selected: () => S.faction === f.id, size: fw < 110 ? 14 : 16 })));
-    BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 440, 100, 44, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, sub: b.sub })));
-    [1, 2, 3].forEach((k, i) => B.push(new Button(628 + i * 38, 440, 34, 44, String(k), () => { S.opponents = k; }, { selected: () => (S.opponents || 1) === k, size: 17,
-      tip: 'Liczba przeciwników komputerowych. Na małej mapie zmieszczą się najwyżej dwaj.' })));
-    B.push(new Button(150, 506, 200, 46, 'Rozpocznij', () => startNewGame(), { key: 'enter', size: 19 }));
-    B.push(new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
+    const S = G.settings, B = []; S.slots = validSlots(S.slots) || legacySlots(S);
+    MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 114, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}`, tip: `Na tej mapie zmieści się do ${SITE_COUNT[m.n]} graczy.` })));
+    DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 168, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
+    BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 254, 100, 36, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, tip: `Bonus startowy: ${b.sub}.` })));
+    this.slotBtns = S.slots.map((o, i) => {
+      const x = 80 + (i % 2) * 340, y = 318 + (i >> 1) * 42, col = () => S.slots[i];
+      const sw = new Button(x, y, 40, 34, '', () => this.nextColor(i), { swatch: () => colorHex(col().color), tip: 'Kolor gracza (kliknij, aby zmienić).' });
+      const ty = new Button(x + 46, y, 118, 34, '', () => this.nextType(i), { size: 14, selected: () => col().type === 'human', tip: 'Człowiek, komputer albo wolne miejsce. Kilku ludzi gra na zmianę przy jednym ekranie (hot-seat).' });
+      const fa = new Button(x + 170, y, 150, 34, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; }, { size: 14, tip: 'Frakcja gracza (kliknij, aby zmienić).' });
+      B.push(sw, ty, fa); return { sw, ty, fa };
+    });
+    this.bStart = new Button(150, 506, 200, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19 });
+    B.push(this.bStart, new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
     this.buttons = B;
   },
+  nextColor(i) {
+    const S = G.settings, o = S.slots[i], k = PLAYER_COLORS.findIndex(c => c.id === o.color);
+    for (let d = 1; d < PLAYER_COLORS.length; d++) {
+      const c = PLAYER_COLORS[(k + d) % PLAYER_COLORS.length], j = S.slots.findIndex(q => q.color === c.id);
+      if (j < 0 || S.slots[j].type === 'off') { if (j >= 0) S.slots[j].color = o.color; o.color = c.id; return; } // zamiana z wolnym miejscem
+    }
+  },
+  nextType(i) {
+    const S = G.settings, o = S.slots[i], t = SLOT_TYPES[(SLOT_TYPES.indexOf(o.type) + 1) % SLOT_TYPES.length];
+    if (o.type === 'human' && !S.slots.some((q, j) => j !== i && q.type === 'human')) { o.type = 'ai'; S.slots[i === 0 ? 1 : 0].type = 'human'; return; } // zawsze choć jeden człowiek
+    o.type = t;
+  },
+  active() { return G.settings.slots.filter(o => o.type !== 'off').length; },
+  start() {
+    const n = this.active(), cap = setupCap(G.settings);
+    if (n > cap) { showDialog(`Na tej mapie zmieści się najwyżej ${cap} graczy, a wybranych jest ${n}. Wybierz większą mapę albo zwolnij miejsca.`, [{ label: 'OK', key: 'enter' }]); return; }
+    const hu = G.settings.slots.find(o => o.type === 'human'); G.settings.color = hu.color; if (hu.faction !== 'random') G.settings.faction = hu.faction;
+    G.settings.opponents = G.settings.slots.filter(o => o.type === 'ai').length;
+    startNewGame();
+  },
   draw(ctx) {
+    const S = G.settings;
+    for (const [i, b] of (this.slotBtns || []).entries()) {
+      const o = S.slots[i]; b.ty.label = SLOT_LABEL[o.type]; b.fa.label = o.faction === 'random' ? 'Losowa' : factionOf(o.faction).name; b.fa.disabled = b.sw.disabled = o.type === 'off';
+    }
     dimmedMenuScene(ctx, 0.5);
     drawParchment(ctx, 40, 22, 720, 556);
     text(ctx, 'Nowa gra', W / 2, 58, { size: 30, align: 'center', color: '#3a1e08', fam: 'title' });
-    text(ctx, 'Pojedynczy scenariusz na losowej mapie', W / 2, 88, { size: 18, align: 'center', color: '#5a3814', italic: true, weight: 500 });
-    divider(ctx, 80, 720, 104);
+    text(ctx, 'Losowa mapa, do 8 graczy: ludzie na zmianę przy jednym ekranie i komputer', W / 2, 88, { size: 17, align: 'center', color: '#5a3814', italic: true, weight: 500 });
+    divider(ctx, 80, 720, 102);
     const L = (s, y, x = 80) => text(ctx, s, x, y, { size: 17, color: '#3a1e08', fam: 'title' });
-    L('Mapa', 140); L('Trudność', 202); L('Zasoby', 248); L('Kolor', 296); L('Frakcja', 350); L('Bonus', 462); L('Rywale', 462, 562);
-    const d = DIFFICULTIES[G.settings.difficulty];
-    RESOURCES.forEach((r, i) => { const x = 230 + i * 72; resIcon(ctx, r.id, x + 10, 248, 24); text(ctx, String(d.res[r.id]), x + 25, 249, { size: 16 }); });
-    const f = FACTIONS.find(f => f.id === G.settings.faction) || FACTIONS[0];
-    ctx.font = font(16, 500, 'body');
-    wrapText(ctx, f.desc, 490).slice(0, 2).forEach((l, i) => text(ctx, l, 230, 388 + i * 19, { size: 16, weight: 500, italic: true, color: '#4a2c0e' }));
+    L('Mapa', 136); L('Trudność', 190); L('Zasoby', 234); L('Bonus', 272);
+    const d = DIFFICULTIES[S.difficulty];
+    RESOURCES.forEach((r, i) => { const x = 230 + i * 72; resIcon(ctx, r.id, x + 10, 234, 24); text(ctx, String(d.res[r.id]), x + 25, 235, { size: 16 }); });
+    const n = this.active(), cap = setupCap(S), hu = S.slots.filter(o => o.type === 'human').length;
+    text(ctx, `Gracze: ${n} z ${cap} miejsc na tej mapie${hu > 1 ? ` · hot-seat: ${hu} ludzi` : ''}`, 80, 304, { size: 16, weight: 600, color: n > cap ? '#a02010' : '#3a1e08' });
     this.buttons.forEach(b => b.draw(ctx));
   },
 };

@@ -33,7 +33,7 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
      DANE: ARTEFAKTY I ROZWÓJ...     PRIMARY, CLASS_GROWTH, poziomy, EQUIP_SLOTS, ARTIFACTS
      DANE: CZARY                     SPELLS, efekty i opisy; GUILD_OFFER, CLASS_SPELLS
      DANE: OBIEKTY MAPY              SITES: kapliczki, studnie, młyny, obozy… (działanie w ZASADY GRY)
-     STAN GRY I USTAWIENIA           G (program), skróty do G.state: human, hero, ownerColor...
+     STAN GRY I USTAWIENIA           G (program), miejsca graczy (slots), ME = człowiek przy ekranie, skróty: human, hero...
      NARZĘDZIA                       losowość, szum, A*, kolory
      RYSOWANIE: PODSTAWY I PIXEL ART tekst, cache warstw, sprite(), drawSprite(), blit()
      DŹWIĘK                          Web Audio bez plików: Sound.play(efekt), Sound.music(motyw), SFX, MUSIC
@@ -42,6 +42,7 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
      GRAFIKA: PORTRETY BOHATERÓW     pixel art 36×36, wygląd z HERO_LOOKS albo losowany z imienia
      GRAFIKA: OBLĘŻENIE              mur, brama i wieże na polu bitwy (castleSprite), bruk dziedzińca
      GRAFIKA: STWORY TWIERDZY I INFERNA  ciała 'insect', 'lizard', 'bull', 'hydra'
+     GRAFIKA: SKARBCE                drawBank, bankSprite: krypta, warownia, gniazdo, leże hydr, Smocza Utopia
      ŚWIAT: TWORZENIE NOWEJ GRY      generateMap, placeObjects, createTown, createHero, createNewGame
      ZASADY GRY                      ruch, ścieżki, obiekty, potyczki, armie, rekrutacja, dochód, budowa
      BITWA: ZASADY                   pole heksów, obrażenia, kolejka, SI, simulateBattle, resolveBattle
@@ -112,7 +113,7 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    miast i bohaterów albo po NO_TOWN_DAYS dniach bez miasta), najlepsze wyniki (recordScore), wybór liczby rywali.
    Po kroku 15 (etap 1): rynek dla gracza (marketLot/trade, okno showMarket; kurs zależy od liczby rynków,
    te same zasady dla SI w buyMissing). Menu w stylu pikselowym.
-   Tura przeciwnika na żywo: aiAllTurns to generator akcji (kroki, obrona), ekran mapy odtwarza go w updateAi
+   Tura przeciwnika na żywo: aiAllTurns (dziś turnsAfter) to generator akcji (kroki, obrona), ekran mapy odtwarza go w updateAi
    (widoczne ruchy z animacją), atak na gracza pyta o walkę (askDefense) i otwiera bitwę z graczem po prawej
    (ekran bitwy: this.me, onDone). doEndTurn() bez opcji (testy) liczy wszystko od razu, z obroną automatyczną.
    Spotkanie bohaterów (showMeeting). Mgła wojny dla SI: reveal(…, owner) odkrywa teren każdemu graczowi,
@@ -136,13 +137,27 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    księga czarów w trzech kolumnach, gdy czarów jest wiele.
    Grafika mapy: ruda jako ciemne bryłki, góry/drzewa/skały ze ściankami (8 wariantów gór), ozdoby na pustych polach.
    Dźwięk: efekty i muzyka syntezowane w Web Audio (DŹWIĘK), motyw zależny od ekranu i frakcji, głośność w menu.
+   Statki: obiekt 'boat' na wodzie, h.boat (passableTile/legOk: w łodzi tylko woda, brzeg jako cel; wysiadka kończy ruch),
+   stocznia (buyBoat, shipyardSpot, tylko w mieście nad wodą), darmowe łodzie przy brzegach.
    Nowe frakcje: Twierdza (bagna: gnolle, jaszczuroludzie, ważki, bazyliszki, gorgony, wywerny, hydry) i Inferno (lawa:
    chochliki, gogi, ogary, demony, czarty, ifryty, diabły); klasy beastmaster/witch i demoniac/heretic, portrety, miasta, muzyka.
+   Hot-seat i do 8 graczy: 8 miejsc na ekranie nowej gry (settings.slots: człowiek/komputer/wolne, kolor, frakcja),
+   ME to numer człowieka przy ekranie (setViewer: jego mgła, kamera, wybrany bohater), kolejka tur turnsAfter
+   (komputery po kolei, nowy dzień advanceDay przy końcu listy), zasłona między ludźmi, wieści w skrzynkach graczy
+   (tell/takeInbox), obrona innego człowieka przed atakiem komputera, bitwa człowiek na człowieka (obie strony ręcznie),
+   zwycięzca = ostatni gracz na placu. Miejsc na miasta: 4/6/8/10 zależnie od mapy (SITE_COUNT).
+   Porządki i trudniejsza mapa: potwory neutralne to też jednostki frakcji (poziomy 1–7, fillNeutrals), siła rośnie
+   wykładniczo z odległością od najbliższego startu (MONSTER_POWER, d01) i z trudnością, potwory rosną co tydzień
+   (MONSTER_GROW do MONSTER_GROW_MAX). Skarbce BANKS (Krypta, Orcza warownia, Gniazdo gryfów, Leże hydr, Smocza Utopia):
+   załoga z kilku oddziałów, łup (lootBank), puste po zwycięstwie; SI też je rozbija. migrateSave naprawia stare zapisy.
+   Balans: Kurhan silniejszy, hydra bez regeneracji, bazyliszek bez „bez odwetu”; test balansu frakcji (30–70% wygranych).
+   Szlify grafiki: żywa woda (WaterFx: fale po głębi i pulsująca piana, maski wody fragmentów mapy), wyraźniejsze świerki,
+   zwęglone drzewa z żarem na lawie, surowce jako bryłki w stylu rudy, tła bitew ze szczegółami terenu (battleDecor).
 
    PLAN (kolejność ustalona z graczem; krok 13 „warunki zwycięstwa” pominięty)
-   1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (stocznia, woda, wyspy). 4. Hot-seat (2–4 ludzi, zasłona między turami).
-   5. Samouczek (wyłączalne podpowiedzi). 6. Porządki: migracja starych zapisów, testy balansu frakcji.
-   7. Grafika: animowana woda, wyraźniejsze sosny i ozdoby, obiekty mapy w stylu rudy, tła bitew zależne od terenu.
+   1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (zrobione: do 8 graczy, zasłona między turami).
+   5. Samouczek (wykreślony). 6. Porządki (zrobione: migracja zapisów, test balansu, trudniejsza mapa i skarbce).
+   7. Grafika (zrobione: animowana woda, świerki, surowce w stylu rudy, tła bitew zależne od terenu).
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
@@ -177,7 +192,10 @@ const MAP_SIZES = [
 const PLAYER_COLORS = [
   { id: 'red', name: 'Czerwony', hex: '#c42a2a' }, { id: 'blue', name: 'Niebieski', hex: '#2f5bd0' },
   { id: 'green', name: 'Zielony', hex: '#2f8f3a' }, { id: 'purple', name: 'Fioletowy', hex: '#8040b0' },
+  { id: 'orange', name: 'Pomarańczowy', hex: '#e07818' }, { id: 'teal', name: 'Turkusowy', hex: '#1f9a9a' },
+  { id: 'pink', name: 'Różowy', hex: '#d0508e' }, { id: 'tan', name: 'Płowy', hex: '#a88450' },
 ];
+const MAX_PLAYERS = 8; // hot-seat: do 8 graczy (ludzie i komputer) na jednej mapie, każdy w innym kolorze
 const NEUTRAL_COLOR = '#d8d4c8'; // flagi i znaczniki obiektów bez właściciela (mapa, minimapa, interfejs)
 const BONUSES = [
   { id: 'gold', name: 'Złoto', sub: '500–1000' },
@@ -210,7 +228,7 @@ const ROADS = [null,
   { name: 'droga brukowana', cost: 50, pal: ['#8c826e', '#bdb29c', '#ddd4c0'] },
 ];
 const DX8 = [1, -1, 0, 0, 1, 1, -1, -1], DY8 = [0, 0, 1, -1, 1, -1, 1, -1];
-const SITE_COUNT = { 36: 3, 72: 5, 108: 7, 144: 9 };
+const SITE_COUNT = { 36: 4, 72: 6, 108: 8, 144: 10 }; // miejsca pod miasta = najwięcej graczy na mapie
 const STEP_TIME = 0.14, HERO_SIGHT = 5;
 
 // ==================== DANE: STWORZENIA ==================================================
@@ -242,7 +260,10 @@ const CREATURES = {
   troll: { name: 'Troll', plural: 'Trolle', gen: 'trolli', acc: 'trolle', level: 4, att: 10, def: 9, dmin: 4, dmax: 9, hp: 40, spd: 6, growth: 4, value: 600, shots: 0, abil: ['regen'], look: { kind: 'hum', skin: '#6a7a6a', cloth: '#4a3a2a', size: 1.3, weapon: 'club', hair: '#3a4a3a', ears: true, hunch: true, tusks: true } },
   ogre: { name: 'Ogr', plural: 'Ogry', gen: 'ogrów', acc: 'ogry', level: 5, att: 13, def: 7, dmin: 6, dmax: 12, hp: 60, spd: 5, growth: 3, value: 900, shots: 0, look: { kind: 'hum', skin: '#c49a6a', cloth: '#6a3a1a', size: 1.45, weapon: 'club', hair: '#3a2410', beard: '#4a2a14', hunch: true } },
 };
-const NEUTRALS_BY_LEVEL = { 1: ['goblin', 'skeleton'], 2: ['wolf'], 3: ['orc'], 4: ['troll'], 5: ['ogre'] };
+// Potwory na mapie: własne stwory neutralne i podstawowe (nieulepszone) jednostki wszystkich frakcji; uzupełnia je
+// fillNeutrals() po wczytaniu wszystkich frakcji (poziomy 6 i 7 to wyłącznie jednostki frakcji).
+const NEUTRALS_BY_LEVEL = { 1: ['goblin', 'skeleton'], 2: ['wolf'], 3: ['orc'], 4: ['troll'], 5: ['ogre'], 6: [], 7: [] };
+function fillNeutrals() { for (const [id, c] of Object.entries(CREATURES)) if (c.faction && c.up && !NEUTRALS_BY_LEVEL[c.level].includes(id)) NEUTRALS_BY_LEVEL[c.level].push(id); }
 const QTY = [[1, 'Kilka'], [5, 'Grupa'], [10, 'Oddział'], [20, 'Mnóstwo'], [50, 'Horda'], [100, 'Tłum'], [250, 'Rój'], [500, 'Zatrzęsienie'], [1000, 'Legion']];
 function qtyName(c) { let s = QTY[0][1]; for (const [m, nm] of QTY) if (c >= m) s = nm; return s; }
 // Jednostki frakcji Przystań
@@ -279,19 +300,19 @@ Object.assign(CREATURES, {
   sunPhoenix: mkU('Słoneczny feniks', 'Słoneczne feniksy', 'słonecznych feniksów', 6, 19, 15, 20, 26, 110, 14, 2, 2400, { gold: 1600, mercury: 2 }, { abil: ['fly', 'breath'], faction: 'sylvan', fly: true, look: { kind: 'phoenix', size: 1.15 } }),
   emeraldDragon: mkU('Szmaragdowy smok', 'Szmaragdowe smoki', 'szmaragdowych smoków', 7, 19, 19, 40, 50, 200, 10, 1, 4500, { gold: 2400, crystal: 1 }, { abil: ['fly', 'breath'], faction: 'sylvan', fly: true, up: 'jadeDragon', look: { kind: 'dragon', fur: '#3a9a5a' } }),
   jadeDragon: mkU('Nefrytowy smok', 'Nefrytowe smoki', 'nefrytowych smoków', 7, 23, 23, 40, 55, 250, 14, 1, 6200, { gold: 4000, crystal: 2 }, { abil: ['fly', 'breath'], faction: 'sylvan', fly: true, look: { kind: 'dragon', fur: '#4ab88a', size: 1.08, horn: '#f0e0a0' } }),
-  boneWarrior: mkU('Kościotrup', 'Kościotrupy', 'kościotrupów', 1, 5, 4, 1, 3, 6, 4, 12, 75, { gold: 60 }, { abil: ['undead'], faction: 'barrow', up: 'boneGuard', look: { kind: 'hum', bony: true, skin: '#e8e2cc', size: 0.95, weapon: 'sword', shield: '#5a4a3a', metal: '#9aa0a8', eyes: '#8af0b8' } }),
+  boneWarrior: mkU('Kościotrup', 'Kościotrupy', 'kościotrupów', 1, 5, 4, 1, 3, 7, 4, 14, 75, { gold: 60 }, { abil: ['undead'], faction: 'barrow', up: 'boneGuard', look: { kind: 'hum', bony: true, skin: '#e8e2cc', size: 0.95, weapon: 'sword', shield: '#5a4a3a', metal: '#9aa0a8', eyes: '#8af0b8' } }),
   boneGuard: mkU('Kościany gwardzista', 'Kościani gwardziści', 'kościanych gwardzistów', 1, 6, 6, 1, 3, 6, 5, 12, 100, { gold: 70 }, { abil: ['undead'], faction: 'barrow', look: { kind: 'hum', bony: true, skin: '#ece6d2', size: 1, weapon: 'halberd', shield: '#4a4450', metal: '#8a909a', helm: 'helm', helmCol: '#6a6a72', eyes: '#8af0b8' } }),
-  ghoul: mkU('Ghul', 'Ghule', 'ghuli', 2, 5, 5, 2, 3, 15, 3, 8, 110, { gold: 100 }, { abil: ['undead'], faction: 'barrow', up: 'plagueGhoul', look: { kind: 'hum', skin: '#8a9a78', cloth: '#3a3a2a', size: 1, weapon: 'none', claws: true, hunch: true, hair: '#2a2a1a', eyes: '#f0e060' } }),
+  ghoul: mkU('Ghul', 'Ghule', 'ghuli', 2, 5, 6, 2, 4, 17, 4, 8, 110, { gold: 100 }, { abil: ['undead'], faction: 'barrow', up: 'plagueGhoul', look: { kind: 'hum', skin: '#8a9a78', cloth: '#3a3a2a', size: 1, weapon: 'none', claws: true, hunch: true, hair: '#2a2a1a', eyes: '#f0e060' } }),
   plagueGhoul: mkU('Morowy ghul', 'Morowe ghule', 'morowych ghuli', 2, 6, 6, 2, 3, 20, 4, 8, 150, { gold: 125 }, { abil: ['undead'], faction: 'barrow', look: { kind: 'hum', skin: '#7a8a5a', cloth: '#2a3a1a', size: 1.02, weapon: 'none', claws: true, hunch: true, eyes: '#a0f060' } }),
-  wraith: mkU('Zjawa', 'Zjawy', 'zjaw', 3, 7, 7, 3, 5, 18, 5, 7, 280, { gold: 200 }, { abil: ['undead', 'fly'], faction: 'barrow', fly: true, up: 'banshee', look: { kind: 'ghost', fur: '#c8d0e8', size: 1.2, scythe: true } }),
+  wraith: mkU('Zjawa', 'Zjawy', 'zjaw', 3, 8, 7, 3, 5, 22, 6, 7, 280, { gold: 200 }, { abil: ['undead', 'fly'], faction: 'barrow', fly: true, up: 'banshee', look: { kind: 'ghost', fur: '#c8d0e8', size: 1.2, scythe: true } }),
   banshee: mkU('Wyjąca zjawa', 'Wyjące zjawy', 'wyjących zjaw', 3, 8, 7, 3, 5, 18, 7, 7, 340, { gold: 230 }, { abil: ['undead', 'fly', 'noRetal'], faction: 'barrow', fly: true, look: { kind: 'ghost', fur: '#d8e0f8', size: 1.3, longHair: '#e8eef8', eyes: '#ff8aa0' } }),
-  vampire: mkU('Wampir', 'Wampiry', 'wampirów', 4, 10, 9, 5, 8, 30, 6, 4, 555, { gold: 360 }, { abil: ['undead', 'fly', 'noRetal'], faction: 'barrow', fly: true, up: 'vampireLord', look: { kind: 'hum', skin: '#d8d0d8', cloth: '#1a1a22', size: 1, weapon: 'sword', cape: '#6a1020', hair: '#1a1a1a', eyes: '#ff3030', metal: '#d8dce4' } }),
+  vampire: mkU('Wampir', 'Wampiry', 'wampirów', 4, 10, 10, 5, 8, 34, 6, 4, 555, { gold: 360 }, { abil: ['undead', 'fly', 'noRetal'], faction: 'barrow', fly: true, up: 'vampireLord', look: { kind: 'hum', skin: '#d8d0d8', cloth: '#1a1a22', size: 1, weapon: 'sword', cape: '#6a1020', hair: '#1a1a1a', eyes: '#ff3030', metal: '#d8dce4' } }),
   vampireLord: mkU('Władca wampirów', 'Władcy wampirów', 'władców wampirów', 4, 11, 10, 5, 8, 40, 9, 4, 780, { gold: 500 }, { abil: ['undead', 'fly', 'noRetal', 'lifeDrain'], faction: 'barrow', fly: true, look: { kind: 'hum', skin: '#e0d8e0', cloth: '#2a1a2a', size: 1.05, weapon: 'sword', cape: '#8a1020', hair: '#101010', eyes: '#ff3030', helm: 'crown', metal: '#d8dce4' } }),
-  necromancer: mkU('Nekromanta', 'Nekromanci', 'nekromantów', 5, 13, 10, 11, 13, 30, 6, 3, 850, { gold: 550 }, { abil: ['undead'], shots: 12, faction: 'barrow', shots: 12, up: 'archNecro', look: { kind: 'hum', skin: '#d8d0c0', cloth: '#3a2a4a', size: 1.05, weapon: 'staff', robe: true, helm: 'hood', hoodCol: '#2a1e36', orb: '#a6f0a8', eyes: '#a6f0a8' } }),
+  necromancer: mkU('Nekromanta', 'Nekromanci', 'nekromantów', 5, 13, 11, 11, 14, 35, 6, 3, 850, { gold: 550 }, { abil: ['undead'], shots: 12, faction: 'barrow', shots: 12, up: 'archNecro', look: { kind: 'hum', skin: '#d8d0c0', cloth: '#3a2a4a', size: 1.05, weapon: 'staff', robe: true, helm: 'hood', hoodCol: '#2a1e36', orb: '#a6f0a8', eyes: '#a6f0a8' } }),
   archNecro: mkU('Arcynekromanta', 'Arcynekromanci', 'arcynekromantów', 5, 15, 10, 11, 15, 40, 7, 3, 1050, { gold: 600 }, { abil: ['undead', 'noMeleePenalty'], shots: 24, faction: 'barrow', shots: 24, look: { kind: 'hum', skin: '#e0d8c8', cloth: '#4a2a6a', size: 1.1, weapon: 'staff', robe: true, helm: 'skull', cape: '#2a1a3a', orb: '#c080ff', eyes: '#c080ff' } }),
-  doomKnight: mkU('Rycerz Zagłady', 'Rycerze Zagłady', 'rycerzy Zagłady', 6, 16, 16, 15, 30, 120, 7, 2, 2000, { gold: 1500 }, { abil: ['undead', 'jousting'], faction: 'barrow', up: 'dreadLord', look: { kind: 'rider', horse: '#2e2a36', mane: '#a6f0a8', skin: '#3a3a44', cloth: '#1a1a22', weapon: 'axe', helm: 'horn', armor: true, metal: '#4a4458', eyes: '#a6f0a8', barding: '#2a2430', trim: '#6a6478' } }),
+  doomKnight: mkU('Rycerz Zagłady', 'Rycerze Zagłady', 'rycerzy Zagłady', 6, 17, 17, 16, 30, 130, 7, 2, 2000, { gold: 1500 }, { abil: ['undead', 'jousting'], faction: 'barrow', up: 'dreadLord', look: { kind: 'rider', horse: '#2e2a36', mane: '#a6f0a8', skin: '#3a3a44', cloth: '#1a1a22', weapon: 'axe', helm: 'horn', armor: true, metal: '#4a4458', eyes: '#a6f0a8', barding: '#2a2430', trim: '#6a6478' } }),
   dreadLord: mkU('Władca Grozy', 'Władcy Grozy', 'władców Grozy', 6, 18, 18, 15, 30, 120, 9, 2, 2400, { gold: 1500, mercury: 1 }, { abil: ['undead', 'jousting', 'lifeDrain'], faction: 'barrow', look: { kind: 'rider', horse: '#3a2a40', mane: '#ff5040', skin: '#4a3a54', cloth: '#2a1a32', weapon: 'axe', helm: 'horn', armor: true, metal: '#5a4a64', cape: '#6a1020', barding: '#3a2040', trim: '#a02030' } }),
-  boneWyvern: mkU('Kościsty wywern', 'Kościste wywerny', 'kościstych wywern', 7, 17, 15, 25, 50, 150, 9, 1, 3400, { gold: 1800 }, { abil: ['undead', 'fly'], faction: 'barrow', fly: true, up: 'ghostWyvern', look: { kind: 'dragon', fur: '#d8d2c0', bony: true } }),
+  boneWyvern: mkU('Kościsty wywern', 'Kościste wywerny', 'kościstych wywern', 7, 19, 17, 28, 50, 180, 10, 1, 3400, { gold: 1800 }, { abil: ['undead', 'fly'], faction: 'barrow', fly: true, up: 'ghostWyvern', look: { kind: 'dragon', fur: '#d8d2c0', bony: true } }),
   ghostWyvern: mkU('Upiorny wywern', 'Upiorne wywerny', 'upiornych wywern', 7, 19, 17, 25, 50, 200, 14, 1, 4700, { gold: 3000, mercury: 1 }, { abil: ['undead', 'fly', 'breath'], faction: 'barrow', fly: true, look: { kind: 'dragon', fur: '#b8c8e0', bony: true, size: 1.08 } }),
 });
 
@@ -319,13 +340,13 @@ Object.assign(CREATURES, {
   lizardWarrior: mkU('Jaszczurzy wojownik', 'Jaszczurzy wojownicy', 'jaszczurzych wojowników', 2, 6, 7, 2, 4, 15, 5, 9, 195, { gold: 140 }, { abil: ['noMeleePenalty'], shots: 24, faction: 'fortress', look: { kind: 'hum', skin: '#4a7a5a', cloth: '#3a4a2a', size: 1.05, weapon: 'bow', snout: true, tail: '#3e6a4a', helm: 'cap', helmCol: '#6a4a2a', feather: '#c83a2a', eyes: '#f0d040' } }),
   dragonfly: mkU('Ważka', 'Ważki', 'ważek', 3, 7, 10, 1, 3, 20, 9, 8, 268, { gold: 220 }, { abil: ['fly'], fly: true, faction: 'fortress', up: 'venomFly', look: { kind: 'insect', fur: '#3a7ac8', wing: '#d0ecff', eyes: '#a0f070', size: 1.2 } }),
   venomFly: mkU('Ważka jadowita', 'Ważki jadowite', 'ważek jadowitych', 3, 8, 10, 2, 5, 20, 13, 8, 312, { gold: 240 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'fortress', look: { kind: 'insect', fur: '#5aa83a', wing: '#e8f8c8', eyes: '#ff5a3a', size: 1.3 } }),
-  basilisk: mkU('Bazyliszek', 'Bazyliszki', 'bazyliszków', 4, 11, 11, 6, 10, 35, 5, 4, 552, { gold: 325 }, { abil: ['noRetal'], faction: 'fortress', up: 'greatBasilisk', look: { kind: 'lizard', fur: '#6a7a3a', spikes: '#3a4a1e', eyes: '#f0e040' } }),
+  basilisk: mkU('Bazyliszek', 'Bazyliszki', 'bazyliszków', 4, 11, 11, 6, 10, 35, 5, 4, 552, { gold: 325 }, { faction: 'fortress', up: 'greatBasilisk', look: { kind: 'lizard', fur: '#6a7a3a', spikes: '#3a4a1e', eyes: '#f0e040' } }),
   greatBasilisk: mkU('Wielki bazyliszek', 'Wielkie bazyliszki', 'wielkich bazyliszków', 4, 12, 12, 6, 10, 40, 7, 4, 714, { gold: 400 }, { abil: ['noRetal'], faction: 'fortress', look: { kind: 'lizard', fur: '#8a8a4a', spikes: '#6a2a1a', eyes: '#ff9a2a', size: 1.12 } }),
-  gorgon: mkU('Gorgona', 'Gorgony', 'gorgon', 5, 10, 12, 12, 16, 70, 5, 3, 850, { gold: 525 }, { faction: 'fortress', up: 'mightyGorgon', look: { kind: 'bull', fur: '#6a7a5a', horn: '#e8e0cc' } }),
+  gorgon: mkU('Gorgona', 'Gorgony', 'gorgon', 5, 10, 12, 12, 16, 60, 5, 3, 850, { gold: 525 }, { faction: 'fortress', up: 'mightyGorgon', look: { kind: 'bull', fur: '#6a7a5a', horn: '#e8e0cc' } }),
   mightyGorgon: mkU('Potężna gorgona', 'Potężne gorgony', 'potężnych gorgon', 5, 11, 14, 12, 16, 70, 6, 3, 980, { gold: 600 }, { abil: ['breath'], faction: 'fortress', look: { kind: 'bull', fur: '#5a6a7a', horn: '#f0d890', breath: '#a0f0a0', size: 1.08 } }),
   wyvern: mkU('Wywern', 'Wywerny', 'wywern', 6, 14, 14, 14, 18, 70, 7, 2, 1350, { gold: 800 }, { abil: ['fly'], fly: true, faction: 'fortress', up: 'wyvernKing', look: { kind: 'dragon', fur: '#7a8a3a', horn: '#d8c890', size: 0.92 } }),
   wyvernKing: mkU('Król wywern', 'Królowie wywern', 'królów wywern', 6, 14, 14, 18, 22, 70, 11, 2, 1518, { gold: 1100 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'fortress', look: { kind: 'dragon', fur: '#9a6a2a', horn: '#f0e0a0' } }),
-  hydra: mkU('Hydra', 'Hydry', 'hydr', 7, 16, 18, 25, 45, 160, 5, 1, 3900, { gold: 2200, sulfur: 1 }, { abil: ['noRetal', 'regen'], faction: 'fortress', up: 'chaosHydra', look: { kind: 'hydra', fur: '#4a7a4a', heads: 5 } }),
+  hydra: mkU('Hydra', 'Hydry', 'hydr', 7, 16, 17, 25, 45, 160, 5, 1, 3900, { gold: 2200, sulfur: 1 }, { abil: ['noRetal'], faction: 'fortress', up: 'chaosHydra', look: { kind: 'hydra', fur: '#4a7a4a', heads: 5 } }),
   chaosHydra: mkU('Hydra chaosu', 'Hydry chaosu', 'hydr chaosu', 7, 18, 20, 25, 45, 220, 7, 1, 5600, { gold: 3500, sulfur: 1 }, { abil: ['noRetal', 'regen', 'breath'], faction: 'fortress', look: { kind: 'hydra', fur: '#6a4a7a', heads: 7, size: 1.08 } }),
 });
 // Jednostki frakcji Inferno (lawa)
@@ -345,6 +366,7 @@ Object.assign(CREATURES, {
   devil: mkU('Diabeł', 'Diabły', 'diabłów', 7, 19, 21, 30, 40, 180, 11, 1, 5400, { gold: 2700, mercury: 1 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'inferno', up: 'archDevil', look: { kind: 'hum', skin: '#7a1a1a', cloth: '#1a0808', size: 1.38, weapon: 'spear', horns: '#1a1010', tail: '#6a1414', wings: '#2a0a0a', eyes: '#ffd040', metal: '#c8c0b0', cape: '#4a0e0e' } }),
   archDevil: mkU('Arcydiabeł', 'Arcydiabły', 'arcydiabłów', 7, 24, 24, 30, 40, 220, 17, 1, 7400, { gold: 4500, mercury: 2 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'inferno', look: { kind: 'hum', skin: '#5a0e14', cloth: '#0e0406', size: 1.45, weapon: 'halberd', horns: '#f0e0c0', tail: '#4a0a10', wings: '#1a0406', eyes: '#ff4020', metal: '#ffd060', cape: '#8a0a0a', glow: '#ff6a2a', armor: true, helm: 'crown' } }),
 });
+fillNeutrals();
 // ==================== DANE: FRAKCJE, BOHATEROWIE, BUDOWLE, KOPALNIE =====================
 // Wszystko, co różni frakcje, jest w FACTIONS. BUILDINGS opisuje budowle wspólne dla frakcji.
 // Klasy bohaterów. look = wygląd wspólny dla postaci na mapie i portretu w panelu.
@@ -442,6 +464,7 @@ const BUILDINGS = [
   { id: 'tavern', name: 'Tawerna', slot: 12, cost: { gold: 500, wood: 5 }, req: [], emblem: 'mug', desc: 'Najem bohaterów: co tydzień dwóch nowych chętnych.' },
   { id: 'market', name: 'Rynek', slot: 13, cost: { gold: 500, wood: 5 }, req: [], emblem: 'scale', desc: 'Handel surowcami. Każdy kolejny rynek w królestwie daje lepszy kurs.' },
   { id: 'silo', name: 'Skarbiec zasobów', slot: 9, cost: { gold: 5000, ore: 5 }, req: ['market'], emblem: 'barrel', desc: 'Codziennie dodaje 1 drewna i 1 rudy.' },
+  { id: 'shipyard', name: 'Stocznia', cost: { gold: 2000, wood: 20 }, req: [], emblem: 'anchor', desc: 'Buduje łodzie (1000 złota i 10 drewna) na wodzie przy mieście. Tylko w mieście nad wodą.' },
   { id: 'smith', name: 'Kuźnia', slot: 8, cost: { gold: 1000, ore: 5 }, req: [], emblem: 'anvil', desc: 'Sprzedaje machiny wojenne bohaterowi stojącemu w mieście: balistę, namiot medyka i wóz z amunicją.' },
   { id: 'guild1', slot: 2, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['tavern'], emblem: 'book', desc: 'Uczy bohaterów czarów 1 poziomu i odnawia im manę.' },
   { id: 'guild2', slot: 2, cost: { gold: 1000, wood: 5, ore: 5 }, req: ['guild1'], emblem: 'book', desc: 'Dodaje czary 2 poziomu.' },
@@ -629,6 +652,26 @@ const SITES = {
   lookout: { name: 'Wieża obserwacyjna', use: 'player', per: 1600, ai: 500, desc: 'odsłania okolicę w promieniu 12 pól' },
 };
 const SITE_EXP = 1000, SITE_MP = 400, LOOKOUT_R = 12;
+// Skarbce (obiekt type: 'bank', kind): silna załoga z kilku oddziałów, po zwycięstwie jednorazowy łup, potem obiekt stoi pusty.
+// guards: [stwór, liczba] (liczby rosną z poziomem trudności), loot: surowce, arts: artefakty [rzadkość, ile], units: stwory dołączają do armii.
+// per = jeden na tyle pól mapy, min = najmniej na każdej mapie, dd = najmniejsza odległość od startu (0–1, jak siła potworów).
+const BANKS = {
+  crypt: { name: 'Krypta', per: 1300, min: 1, dd: 0.15, guards: [['skeleton', 24], ['ghoul', 12], ['wraith', 5]],
+    loot: { gold: 2500 }, arts: [['treasure', 1]], desc: 'nieumarli strzegą grobowych skarbów' },
+  orcFort: { name: 'Orcza warownia', per: 1900, min: 1, dd: 0.25, guards: [['orc', 22], ['troll', 5], ['ogre', 4]],
+    loot: { gold: 4000, wood: 10, ore: 10 }, desc: 'orkowie i trolle pilnują łupów z wypraw' },
+  griffinNest: { name: 'Gniazdo gryfów', per: 2600, min: 0, dd: 0.35, guards: [['griffin', 22], ['royalGriffin', 10]],
+    loot: { gold: 3000 }, units: ['champion', 3], desc: 'gryfy bronią gniazd; w podziemiach czekają uwięzieni czempioni' },
+  hydraLair: { name: 'Leże hydr', per: 3600, min: 0, dd: 0.5, guards: [['hydra', 5], ['basilisk', 12], ['gorgon', 6]],
+    loot: { gold: 8000, mercury: 5, sulfur: 5, crystal: 5, gems: 5 }, arts: [['minor', 1]], desc: 'hydry z bagien strzegą zatopionych skarbów' },
+  dragonUtopia: { name: 'Smocza Utopia', per: 6000, min: 1, dd: 0.6, guards: [['emeraldDragon', 4], ['jadeDragon', 2], ['ghostWyvern', 3], ['archDevil', 2], ['chaosHydra', 1]],
+    loot: { gold: 20000 }, arts: [['major', 2], ['minor', 1]], desc: 'legowisko smoków: ogromne skarby dla najsilniejszych armii' },
+};
+// Siła potworów na mapie tuż przy starcie gracza (liczebność = siła / wartość stwora), rośnie z odległością (placeObjects)
+const MONSTER_POWER = 700;
+// Potwory na mapie rosną co tydzień o tyle (część ułamkowa w górę), do MONSTER_GROW_MAX razy stanu początkowego
+const MONSTER_GROW = 0.08, MONSTER_GROW_MAX = 3;
+const bankGuards = (kind, diff) => BANKS[kind].guards.map(([cid, n]) => [cid, Math.max(1, Math.round(n * (0.6 + 0.4 * DIFFICULTIES[diff].rating / 100)))]);
 // ==================== STAN GRY I USTAWIENIA =============================================
 // G trzyma stan programu; G.state to stan jednej rozgrywki (to, co kiedyś trafi do zapisu gry).
 const G = {
@@ -637,7 +680,7 @@ const G = {
   mouse: { x: -1, y: -1, down: false },
   hover: null, downTarget: null, modal: null, keys: new Set(), popup: null, pressTimer: 0, longPress: false,
   fade: { a: 1, target: 0, next: null },
-  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, sfx: 0.7, mus: 0.7 }, rs: 1,
+  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, sfx: 0.7, mus: 0.7 }, rs: 1,
   state: null,
 };
 function loadSettings() {
@@ -650,14 +693,38 @@ function loadSettings() {
   if (!BONUSES.some(b => b.id === S.bonus)) S.bonus = 'gold';
   if (!FACTIONS.some(f => f.id === S.faction)) S.faction = 'haven';
   for (const [k, d] of [['sfx', 0.7], ['mus', 0.7]]) if (!SOUND_LEVELS.includes(S[k])) S[k] = d;
+  S.slots = validSlots(S.slots) || legacySlots(S);
 }
+// Miejsca graczy na ekranie nowej gry: 8 miejsc { type: 'human' | 'ai' | 'off', color, faction ('random' = losowa) }.
+// Kolejność miejsc = kolejność tur. Stare ustawienia (kolor, frakcja, liczba rywali) zamieniamy na miejsca.
+const SLOT_TYPES = ['human', 'ai', 'off'];
+function validSlots(a) {
+  if (!Array.isArray(a) || a.length !== MAX_PLAYERS) return null;
+  const used = new Set(), out = a.map(o => ({ type: SLOT_TYPES.includes(o && o.type) ? o.type : 'off', color: o && o.color, faction: o && (o.faction === 'random' || FACTIONS.some(f => f.id === o.faction)) ? o.faction : 'random' }));
+  for (const o of out) { if (!PLAYER_COLORS.some(c => c.id === o.color) || used.has(o.color)) o.color = null; else used.add(o.color); }
+  for (const o of out) if (!o.color) { o.color = PLAYER_COLORS.find(c => !used.has(c.id)).id; used.add(o.color); }
+  if (!out.some(o => o.type === 'human')) out[0].type = 'human';
+  return out;
+}
+function legacySlots(S) {
+  const colors = [S.color || 'red', ...PLAYER_COLORS.map(c => c.id).filter(id => id !== (S.color || 'red'))], foes = S.opponents == null ? 1 : S.opponents;
+  return colors.map((color, i) => ({ type: i === 0 ? 'human' : i <= foes ? 'ai' : 'off', color, faction: i === 0 ? S.faction || 'haven' : 'random' }));
+}
+// Aktywne miejsca do createNewGame. Bez S.slots (testy, stare ustawienia) liczą się kolor, frakcja i liczba rywali.
+const playerSlots = S => (validSlots(S.slots) || legacySlots(S)).filter(o => o.type !== 'off');
 function saveSettings() { try { localStorage.setItem('kk_settings', JSON.stringify(G.settings)); } catch (e) {} }
 const colorHex = id => (PLAYER_COLORS.find(c => c.id === id) || PLAYER_COLORS[0]).hex;
 // --- skróty do stanu rozgrywki (st = G.state) ---
-const ME = 0; // indeks gracza-człowieka; przeciwnicy komputerowi dostaną kolejne numery
+// ME = numer gracza-człowieka, który teraz gra (w hot-seat zmienia się co turę: setViewer). Mgła, surowce i „ty” w tekstach dotyczą jego.
+let ME = 0;
 const human = st => st.players[ME];
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const humanCount = st => st.players.filter(p => p.human).length;
+const hotseat = st => humanCount(st) > 1; // gra hot-seat (zwycięzca = ostatni gracz na placu)
+const sharedScreen = st => st.players.filter(p => p.human && !p.out).length > 1; // zasłona między turami: przy ekranie więcej niż jeden człowiek
+const playerName = (st, id) => `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[id].color) || PLAYER_COLORS[0]).name.toLowerCase()}`;
 const playerOf = (st, owner) => st.players[owner]; // gracz o danym numerze (surowce, frakcja, odkryta mapa)
-const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[owner].color) || PLAYER_COLORS[0]).name.toLowerCase()}` : 'nikt');
+const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? playerName(st, owner) : 'nikt');
 const ownerColor = (st, owner) => (st.players[owner] ? colorHex(st.players[owner].color) : NEUTRAL_COLOR);
 // Wybrany bohater gracza-człowieka; null, gdy gracz nie ma już bohaterów (może wtedy nająć nowego w tawernie)
 const hero = st => { const h = st.heroes[st.selHero || 0]; return h && h.owner === ME ? h : st.heroes.find(o => o.owner === ME) || null; };
@@ -954,6 +1021,7 @@ const SFX = {
   day(t) { this.tone(880, t, 1.4, { vol: 0.12, d: 1.3 }); this.tone(1320, t, 1.0, { vol: 0.04 }); this.tone(1760, t + 0.01, 0.7, { vol: 0.03 }); },
   week(t) { [[55, 0], [59, 0.25], [62, 0.5]].forEach(([m, dt]) => this.tone(NOTE(m), t + dt, 1.3 - dt, { type: 'sawtooth', vol: 0.07, lp: 1400, a: 0.06 })); },
   levelup(t) { [60, 64, 67, 72, 76, 79].forEach((m, i) => this.tone(NOTE(m + 12), t + i * 0.08, i === 5 ? 0.7 : 0.16, { type: 'square', vol: 0.1, lp: 3500 })); },
+  boat(t) { this.noise(t, 0.6, { f: 500, to: 1400, q: 0.8, vol: 0.18, a: 0.15 }); this.noise(t + 0.3, 0.7, { f: 1200, to: 400, q: 0.8, vol: 0.12, a: 0.1 }); this.tone(180, t + 0.05, 0.25, { to: 140, type: 'triangle', vol: 0.12 }); },
   error(t) { this.tone(160, t, 0.1, { type: 'square', vol: 0.08, lp: 1200 }); this.tone(130, t + 0.12, 0.14, { type: 'square', vol: 0.08, lp: 1200 }); },
   swing(t) { this.noise(t, 0.18, { f: 3200, to: 700, q: 1.2, vol: 0.28 }); },
   hit(t) { this.noise(t, 0.12, { f: 700, filter: 'lowpass', vol: 0.5 }); this.tone(120, t, 0.16, { to: 55, vol: 0.4 }); },
@@ -1113,7 +1181,7 @@ class Button {
     ctx.lineWidth = 1.2; ctx.strokeStyle = this.disabled ? '#6d665c' : (hover || sel ? '#ffd970' : '#b8913f'); rr(ctx, x + 3, y + 3, w - 6, h - 6, 3); ctx.stroke();
     let cx = x + w / 2;
     if (this.swatch) {
-      ctx.fillStyle = this.swatch; ctx.fillRect(x + 10, y + h / 2 - 8, 16, 16);
+      ctx.fillStyle = typeof this.swatch === 'function' ? this.swatch() : this.swatch; ctx.fillRect(x + 10, y + h / 2 - 8, 16, 16);
       ctx.lineWidth = 1.5; ctx.strokeStyle = '#e0b24a'; ctx.strokeRect(x + 10, y + h / 2 - 8, 16, 16); cx = x + (w + 26) / 2;
     }
     if (this.icon) {
@@ -1234,42 +1302,46 @@ function resourceBarInfo(st, x, y, dy = 0) {
 function drawResIcon(ctx, id, cx, cy, s = 24) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s / 24, s / 24); ctx.lineWidth = 1.2; ctx.strokeStyle = '#1a0e04';
   const poly = (pts, fill) => { ctx.beginPath(); pts.forEach(([px, py], i) => i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.stroke(); };
+  // bryłka w stylu rudy: podstawa, jasna ścianka u góry, ciemna z prawej, iskra odblasku; pal = [podstawa, jasna, ciemna]
+  const nugget = (ox, oy, k, pal, vein) => {
+    const P = (x, y) => [ox + x * k, oy + y * k];
+    poly([P(-7, 3), P(-5, -4), P(1, -7), P(7, -3), P(7, 4), P(1, 6)], pal[0]);
+    poly([P(-5, -4), P(1, -7), P(7, -3), P(1, -1)], pal[1]);
+    poly([P(1, -1), P(7, -3), P(7, 4), P(1, 6)], pal[2]);
+    if (vein) { ctx.strokeStyle = vein; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(...P(-5, 2)); ctx.lineTo(...P(-2, 0)); ctx.lineTo(...P(0, 3)); ctx.stroke(); }
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(...P(-1, -5), 1.6, 1.6); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
+  };
+  const heap = (pal, vein) => { for (const [ox, oy, k] of [[1, -4, 1.05], [-5, 3, 0.9], [6, 4, 0.8]]) nugget(ox, oy, k, pal, vein); };
   switch (id) {
-    case 'wood':
-      for (const [oy, len] of [[4, 20], [-4, 17]]) {
-        ctx.fillStyle = '#7a4a22'; rr(ctx, -len / 2, oy - 4, len, 8, 3); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#d9aa6c'; ctx.beginPath(); ctx.ellipse(len / 2 - 1, oy, 2.6, 3.8, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    case 'wood': // stos trzech kłód: kora ze ścianką jasną i ciemną, czoła z słojami
+      for (const [ox, oy, len] of [[-2, 5, 20], [2, 5, 18], [0, -3, 18]].slice(0, 3)) {
+        const x0 = ox - len / 2, x1 = ox + len / 2 - 2;
+        poly([[x0, oy - 4], [x1, oy - 4], [x1, oy + 4], [x0, oy + 4]], '#6e4220');
+        ctx.fillStyle = '#9a6634'; ctx.fillRect(x0 + 1, oy - 3.4, x1 - x0 - 2, 2.4); ctx.fillStyle = '#4a2a12'; ctx.fillRect(x0 + 1, oy + 1.6, x1 - x0 - 2, 1.8); ctx.strokeStyle = '#1a0e04';
+        ctx.fillStyle = '#d9aa6c'; ctx.beginPath(); ctx.ellipse(x1, oy, 2.8, 4, 0, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#a0703c'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.ellipse(x1, oy, 1.3, 2, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
       } break;
-    case 'mercury': {
-      ctx.fillStyle = '#b8bcc8'; ctx.fillRect(-3, -11, 6, 9); ctx.strokeRect(-3, -11, 6, 9);
-      const g = ctx.createRadialGradient(-3, 1, 1, 0, 4, 9); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#8a90a0');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 4, 8, 0, TAU); ctx.fill(); ctx.stroke(); break;
+    case 'mercury': { // kanciasta fiolka z rtęcią: szkło ze ściankami, srebrna ciecz z odblaskiem
+      poly([[-3, -12], [3, -12], [3, -6], [-3, -6]], '#8a6a4a');
+      poly([[-4, -6], [4, -6], [9, 1], [7, 9], [-7, 9], [-9, 1]], '#9aa6b8');
+      poly([[-4, -6], [0, -6], [-2, 9], [-7, 9], [-9, 1]], '#d8e0ec');
+      poly([[-8, 2], [8, 2], [7, 9], [-7, 9]], '#c4ccd8'); poly([[1, 2], [8, 2], [7, 9], [2, 9]], '#7a8496');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-5, 3, 2, 2); ctx.fillRect(-6, -2, 1.5, 3); break;
     }
-    case 'ore': // kupka ciemnych, metalicznych bryłek z rdzawymi żyłkami (nie szary głaz jak kamienie na mapie)
-      for (const [ox, oy, k] of [[1, -4, 1.05], [-5, 3, 0.9], [6, 4, 0.8]]) {
-        const P = (x, y) => [ox + x * k, oy + y * k];
-        poly([P(-7, 3), P(-5, -4), P(1, -7), P(7, -3), P(7, 4), P(1, 6)], '#3b4150');
-        poly([P(-5, -4), P(1, -7), P(7, -3), P(1, -1)], '#6c7a92');
-        poly([P(1, -1), P(7, -3), P(7, 4), P(1, 6)], '#2a2e3a');
-        ctx.strokeStyle = '#c0682a'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(...P(-5, 2)); ctx.lineTo(...P(-2, 0)); ctx.lineTo(...P(0, 3)); ctx.stroke();
-        ctx.fillStyle = '#e8f0ff'; ctx.fillRect(...P(-1, -5), 1.6, 1.6); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
-      } break;
-    case 'sulfur':
-      ctx.beginPath(); ctx.moveTo(-11, 8); ctx.quadraticCurveTo(-6, -10, 0, -9); ctx.quadraticCurveTo(7, -9, 11, 8); ctx.closePath();
-      ctx.fillStyle = '#e4c629'; ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff38a';
-      for (const [dx, dy] of [[-3, -3], [3, 0], [-5, 4], [2, 5]]) { ctx.beginPath(); ctx.arc(dx, dy, 1.4, 0, TAU); ctx.fill(); } break;
+    case 'ore': heap(['#3b4150', '#6c7a92', '#2a2e3a'], '#c0682a'); break; // ciemne, metaliczne bryłki z rdzawymi żyłkami
+    case 'sulfur': heap(['#c8cc3a', '#f4f6a8', '#7e8a1e'], null); break; // blade, cytrynowe grudy siarki (złoto jest cieplejsze)
     case 'crystal':
       poly([[7, -4], [11, 2], [9, 9], [5, 9], [4, 1]], '#a81f28');
+      poly([[-7, 0], [-4, 9], [-9, 9], [-10, 3]], '#c02a34');
       poly([[0, -11], [6, -2], [3, 9], [-3, 9], [-6, -2]], '#d8303a');
-      poly([[0, -11], [-1, 9], [-3, 9], [-6, -2]], '#ff7a82'); break;
-    case 'gems': {
-      const gem = (gx, gy, c) => poly([[gx, gy - 6], [gx + 5, gy], [gx, gy + 6], [gx - 5, gy]], c);
+      poly([[0, -11], [-1, 9], [-3, 9], [-6, -2]], '#ff7a82'); ctx.fillStyle = '#ffffff'; ctx.fillRect(-3, -5, 1.6, 1.6); break;
+    case 'gems': { // oszlifowane kamienie: jasna ścianka z lewej u góry, ciemna z prawej u dołu
+      const gem = (gx, gy, c) => { poly([[gx, gy - 6], [gx + 5, gy], [gx, gy + 6], [gx - 5, gy]], c); poly([[gx, gy - 6], [gx, gy], [gx - 5, gy]], shadeHex(c, 0.35)); poly([[gx, gy], [gx + 5, gy], [gx, gy + 6]], shadeHex(c, -0.3)); ctx.fillStyle = '#ffffff'; ctx.fillRect(gx - 2, gy - 3, 1.5, 1.5); };
       gem(0, -4, '#b04ad0'); gem(-5, 4, '#2fb85a'); gem(5, 4, '#3a7de0'); break;
     }
-    case 'gold':
-      for (const [sx, n] of [[-4, 4], [6, 2]]) for (let i = 0; i < n; i++) {
-        ctx.fillStyle = i === n - 1 ? '#ffe070' : '#d9a520'; ctx.beginPath(); ctx.ellipse(sx, 8 - i * 4, 6, 3, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      } break;
+    case 'gold': // złote samorodki z monetą na wierzchu
+      heap(['#d8901c', '#ffd860', '#8a4e0c'], null);
+      for (const [cx, cy] of [[-6, -6], [-6, -9], [-6, -12], [4, -9]]) { ctx.fillStyle = '#f0b830'; ctx.beginPath(); ctx.ellipse(cx, cy, 4.5, 2, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff0a0'; ctx.fillRect(cx - 2.5, cy - 1, 2, 1); } break;
   }
   ctx.restore();
 }
@@ -1820,8 +1892,26 @@ function drawSkeleton(ctx, x, y, sc, t, dir, spear) {
 }
 
 // --- bohater: postać na koniu (mapa) i portret (panel) z jednego opisu wyglądu -----------------
-function drawHeroSprite(ctx, x, y, dir, col, t, moving, look = HERO_CLASSES.knight.look) {
+// Łódź: kadłub z desek, maszt; sail = kolor żagla (null = żagiel zwinięty)
+function drawBoat(ctx, t, sail) {
+  const rock = Math.sin(t * 3) * 0.6;
+  ctx.strokeStyle = 'rgba(220,235,255,.55)'; ctx.lineWidth = 1; for (const [x0, y0] of [[-17, 8], [10, 9], [-4, 11]]) { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + 7, y0); ctx.stroke(); }
+  fillPoly(ctx, [[-15, -1 + rock], [16, -2 - rock], [11, 7], [-11, 7]], '#6a4424'); fillPoly(ctx, [[-15, -1 + rock], [16, -2 - rock], [15, 1 - rock], [-14, 2 + rock]], '#9a6a38');
+  ctx.strokeStyle = '#4a2e14'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-12, 3); ctx.lineTo(13, 3); ctx.moveTo(-11, 5.2); ctx.lineTo(12, 5.2); ctx.stroke();
+  fillPoly(ctx, [[14, -2 - rock], [19, -6 - rock], [17, -1 - rock]], '#6a4424');
+  ctx.strokeStyle = '#3a2412'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(1, 0); ctx.lineTo(1, -27); ctx.stroke();
+  if (sail) { ctx.fillStyle = sail; ctx.beginPath(); ctx.moveTo(1.5, -26); ctx.quadraticCurveTo(12 + Math.sin(t * 4) * 1.2, -18, 2, -8); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(1.5, -18, 5, 1.5); }
+  else { ctx.fillStyle = '#e0d4b0'; ctx.fillRect(-1, -24, 5, 3); }
+}
+function drawHeroSprite(ctx, x, y, dir, col, t, moving, look = HERO_CLASSES.knight.look, boat = false) {
   ctx.save(); ctx.translate(x, y + 4); ctx.scale(dir, 1);
+  if (boat) { // bohater w łodzi: kadłub, żagiel w barwach gracza, postać na rufie
+    drawBoat(ctx, t, col); const ry = -1 + Math.sin(t * 3) * 0.5;
+    ctx.fillStyle = look.armor; rr(ctx, -10, ry - 11, 7, 10, 2); ctx.fill(); ctx.fillStyle = col; ctx.fillRect(-9, ry - 8, 5, 6);
+    if (look.hood) { circ(ctx, -6.5, ry - 13.5, 3, look.skin); ctx.fillStyle = look.hood; ctx.beginPath(); ctx.moveTo(-10, ry - 10); ctx.quadraticCurveTo(-10.5, ry - 18, -6.5, ry - 18.5); ctx.quadraticCurveTo(-3, ry - 17, -3, ry - 13); ctx.lineTo(-6, ry - 15); ctx.closePath(); ctx.fill(); }
+    else { circ(ctx, -6.5, ry - 14, 3.4, look.helm); ctx.fillStyle = '#1a1a22'; ctx.fillRect(-6, ry - 14.5, 3, 1.2); }
+    ctx.restore(); return;
+  }
   const bob = moving ? Math.sin(t * 22) * 1.2 : 0, hc = look.horse;
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 9, 14, 4, 0, 0, TAU); ctx.fill();
   ctx.lineCap = 'round';
@@ -1896,6 +1986,7 @@ const obstacleSprite = (o, t, v) => sprite(`ob${o}_${t}_${v}`, 40, 38, 20, 26, p
 const decorSprite = (t, v) => sprite(`dec${t}_${v}`, 12, 10, 6, 7, p => drawDecor(p, t, v), null);
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
+const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
 // Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki
 const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1 };
@@ -1929,7 +2020,7 @@ function tintSprite(s, col) {
 }
 function heroSprite(h, col) {
   const moving = !!h.anim, fr = Math.floor(G.time * (moving ? 12 : 4)) % 4, tk = moving ? fr * TAU / 88 : fr * TAU / 20;
-  return sprite(`hero_${h.cls}_${col}_${h.dir}_${moving ? 1 : 0}_${fr}`, 26, 26, 13, 17, p => drawHeroSprite(p, 0, 0, h.dir, col, tk, moving, heroClass(h).look));
+  return sprite(`hero_${h.cls}_${col}_${h.dir}_${moving ? 1 : 0}_${fr}_${h.boat ? 1 : 0}`, 26, 26, 13, 17, p => drawHeroSprite(p, 0, 0, h.dir, col, h.boat ? fr * TAU / 12 : tk, moving, heroClass(h).look, !!h.boat));
 }
 function flagSprite(col, len, hgt) {
   const fr = Math.floor(G.time * 6) % 4;
@@ -2841,6 +2932,63 @@ function drawHydra(ctx, L, P = {}) {
   quadLegs(ctx, [[-7, Math.PI, false], [9, 0, false]], -6, 6, f, P, 3.2);
   ctx.restore();
 }
+// ==================== GRAFIKA: SKARBCE ====================================================
+// Skarbce (BANKS) na mapie: 2×2 pola jak kopalnia, (0,0) = lewy górny róg, ziemia na y ≈ 58, wejście w prawym dolnym polu.
+// Styl jak ruda i góry: bryły ze ściankami jasną i ciemną. Splądrowany skarbiec jest ciemniejszy i bez skarbów.
+function drawBank(ctx, kind, cleared) {
+  const C = c => (cleared ? DK(c, 0.3) : c), P = (pts, c) => fillPoly(ctx, pts, C(c));
+  const rock = (x, y, w, h, c) => { P([[x, y + h], [x + w * 0.15, y + h * 0.3], [x + w * 0.45, y], [x + w * 0.8, y + h * 0.25], [x + w, y + h]], c); P([[x, y + h], [x + w * 0.15, y + h * 0.3], [x + w * 0.45, y], [x + w * 0.4, y + h * 0.55], [x + w * 0.3, y + h]], LT(c, 0.18)); };
+  const gold = (x, y, s) => { if (cleared) return; P([[x - 7 * s, y], [x - 3 * s, y - 5 * s], [x + 3 * s, y - 6 * s], [x + 8 * s, y]], '#e0b030'); P([[x - 3 * s, y - 5 * s], [x + 3 * s, y - 6 * s], [x + 1 * s, y - 2 * s]], '#fff0a0'); circ(ctx, x + 5 * s, y - 2 * s, 1.6 * s, '#f8e070'); };
+  const door = (x, y, w, h) => { ctx.fillStyle = '#140c08'; ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y + w / 2); ctx.arc(x + w / 2, y + w / 2, w / 2, Math.PI, 0); ctx.lineTo(x + w, y + h); ctx.fill(); };
+  oval(ctx, 34, 58, 31, 7, '#00000055');
+  if (kind === 'crypt') { // grobowiec z kolumnami i trójkątnym szczytem, nagrobki
+    for (const [x, h] of [[6, 12], [14, 9]]) { P([[x, 58], [x, 58 - h], [x + 3, 55 - h], [x + 6, 58 - h], [x + 6, 58]], '#8a8a86'); P([[x, 58], [x, 58 - h], [x + 3, 55 - h], [x + 3, 58]], '#a6a6a0'); }
+    P([[24, 58], [24, 26], [62, 26], [62, 58]], '#7a7872'); P([[24, 58], [24, 26], [34, 26], [34, 58]], '#96948c');
+    P([[20, 27], [43, 8], [66, 27]], '#5a5854'); P([[20, 27], [43, 8], [43, 27]], '#76746e');
+    for (const x of [27, 55]) P([[x, 58], [x, 30], [x + 4, 30], [x + 4, 58]], '#b0aea6');
+    door(37, 34, 12, 24); P([[41.5, 13], [44.5, 13], [44.5, 22], [41.5, 22]], '#d8d4c8'); P([[39, 16], [47, 16], [47, 18.5], [39, 18.5]], '#d8d4c8');
+    if (!cleared) { circ(ctx, 43, 44, 1.6, '#7ae0c0'); circ(ctx, 43, 44, 0.8, '#e8fff8'); }
+  } else if (kind === 'orcFort') { // częstokół z zaostrzonych pali przed chatą ze skór, wieża strażnicza, czaszka na tyczce, proporzec
+    P([[14, 34], [26, 12], [44, 12], [54, 34]], '#7a5a3a'); P([[14, 34], [26, 12], [32, 12], [26, 34]], '#9a7448'); // dach z futer
+    P([[46, 58], [46, 16], [62, 16], [62, 58]], '#5a3a1e'); P([[46, 58], [46, 16], [51, 16], [51, 58]], '#7a5430'); // wieża
+    P([[43, 17], [65, 17], [65, 12], [43, 12]], '#8a6238'); P([[44, 12], [54, 3], [64, 12]], '#a8402a'); P([[44, 12], [54, 3], [54, 12]], '#c85a3a');
+    for (let i = 0; i < 9; i++) { const x = 2 + i * 5, h = 20 + (i % 3) * 3; P([[x, 58], [x, 58 - h], [x + 2, 55 - h], [x + 4, 58 - h], [x + 4, 58]], i % 2 ? '#8a6034' : '#b08048'); P([[x + 4, 58], [x + 4, 58 - h], [x + 5, 58 - h], [x + 5, 58]], '#3a2410'); }
+    P([[18, 58], [18, 46], [28, 46], [28, 58]], '#1a100a'); limb(ctx, 16, 46, 30, 46, 1.4, C('#5a3a1a'));
+    limb(ctx, 40, 58, 40, 24, 1.6, C('#5a3a1a')); circ(ctx, 40, 22, 3.4, C('#e8e0c8')); circ(ctx, 38.8, 21.6, 0.9, '#1a1008'); circ(ctx, 41.2, 21.6, 0.9, '#1a1008');
+    limb(ctx, 54, 3, 54, -8, 1.2, C('#4a3018')); P([[54, -8], [66, -5], [54, -2]], '#c82a1a');
+    gold(58, 58, 0.8);
+  } else if (kind === 'griffinNest') { // skalna iglica z gniazdem z gałęzi, pióra
+    rock(8, 26, 30, 32, '#7a6a58'); rock(26, 6, 30, 52, '#8a7862'); rock(44, 30, 22, 28, '#6e604e');
+    P([[28, 12], [54, 12], [50, 18], [32, 18]], '#6a4a26'); for (let i = 0; i < 6; i++) limb(ctx, 28 + i * 4.4, 11 + (i % 2) * 5, 33 + i * 4.4, 17 - (i % 2) * 4, 1.2, C('#8a6434'));
+    if (!cleared) { oval(ctx, 38, 10, 3, 3.8, '#f0e0b0'); oval(ctx, 44, 10.5, 3, 3.8, '#e8c060'); }
+    P([[16, 52], [22, 46], [21, 52]], '#e8d8a8'); P([[58, 52], [62, 47], [63, 52]], '#c8a860');
+    door(43, 44, 10, 14);
+  } else if (kind === 'hydraLair') { // bagienna pieczara: omszały pagórek, zielona toń, trzciny, z pieczary wychylają się szyje hydry
+    oval(ctx, 20, 55, 20, 5, C('#2e5a4a')); oval(ctx, 18, 54, 15, 3, C('#4a9a7a'));
+    rock(18, 14, 48, 44, '#4a5a3a'); P([[24, 26], [42, 14], [60, 26], [44, 21]], '#6a9a4a'); P([[30, 20], [36, 16], [40, 20]], '#8aba5a');
+    door(36, 36, 18, 22);
+    if (!cleared) for (const [x, y, a] of [[38, 36, -0.9], [45, 32, -0.2], [52, 36, 0.6]]) { // trzy łby hydry
+      ctx.strokeStyle = '#3a7a4a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(45, 56); ctx.quadraticCurveTo(45 + a * 6, 46, x, y); ctx.stroke();
+      P([[x - 3, y - 2], [x + 3 + a * 2, y - 3], [x + 5 + a * 3, y], [x - 2, y + 2]], '#4a9a5a'); circ(ctx, x + 1, y - 1.2, 0.9, '#f0e060');
+    }
+    for (const [x, h] of [[4, 14], [8, 18], [12, 12], [62, 14], [66, 10]]) { limb(ctx, x, 58, x + 1, 58 - h, 1.2, C('#6a8a2a')); oval(ctx, x + 1, 58 - h, 1.3, 3, C('#7a5a2a')); }
+    gold(28, 58, 0.7);
+  } else if (kind === 'dragonUtopia') { // smocza góra: czerwone skały z żyłami lawy, skrzydła smoka na szczycie, złoty skarb w pieczarze
+    rock(-18, 10, 40, 48, '#7a3a34'); rock(40, 4, 42, 54, '#6a3430'); rock(4, -30, 56, 88, '#8a4a3c');
+    for (const [x1, y1, x2, y2] of [[10, 0, 16, 20], [52, 14, 58, 30], [-6, 30, 0, 46], [46, -6, 42, 8]]) limb(ctx, x1, y1, x2, y2, 1.4, cleared ? '#4a2a22' : '#ff8a2a');
+    P([[26, -30], [32, -44], [36, -30]], '#9a5a4a');
+    P([[29, -36], [4, -52], [10, -40], [-2, -38], [22, -28]], '#5a1a1a'); P([[33, -36], [58, -52], [52, -40], [64, -38], [40, -28]], '#5a1a1a'); // skrzydła
+    P([[29, -36], [4, -52], [16, -36]], '#8a2a22'); P([[33, -36], [58, -52], [46, -36]], '#8a2a22');
+    P([[27, -44], [31, -52], [35, -44]], '#6a1a14'); circ(ctx, 29.5, -46, 0.9, cleared ? '#3a1a10' : '#ffd040');
+    ctx.fillStyle = C('#1a0a06'); ctx.beginPath(); ctx.moveTo(18, 58); ctx.lineTo(18, 34); ctx.arc(34, 34, 16, Math.PI, 0); ctx.lineTo(50, 58); ctx.fill();
+    if (!cleared) { oval(ctx, 34, 55, 15, 4, '#c88a1a'); gold(26, 57, 1.3); gold(40, 57, 1.1); gold(33, 52, 0.8); circ(ctx, 30, 30, 1.8, '#ff5a2a'); circ(ctx, 38, 30, 1.8, '#ff5a2a'); }
+    for (const [x, y] of [[-6, 22], [70, 18], [16, -8]]) P([[x, y], [x + 3, y - 4], [x + 6, y]], '#e8c888');
+  }
+}
+// Większa Smocza Utopia wychodzi poza 2×2 pola (w lewo i do góry)
+const bankSprite = (k, cleared) => (k === 'dragonUtopia'
+  ? sprite(`bank_${k}_${cleared ? 1 : 0}`, 54, 66, 12, 32, p => drawBank(p, k, cleared))
+  : sprite(`bank_${k}_${cleared ? 1 : 0}`, 36, 38, 2, 4, p => drawBank(p, k, cleared)));
 // ==================== ŚWIAT: TWORZENIE NOWEJ GRY ========================================
 // Generator mapy, rozmieszczanie obiektów, miasta i bohaterowie startowi.
 function smoothTerrain(ter, n) {
@@ -2968,27 +3116,33 @@ function placeObjects(st) {
     for (let d = 0; d < 8; d++) { const nx = x + DX8[d], ny = y + DY8[d]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (!reach[j] && map.terrain[j] !== TER.WATER && !map.obst[j]) { reach[j] = 1; q.push(j); } }
   }
   const ok = (x, y) => x >= 1 && y >= 1 && x < n - 1 && y < n - 1 && reach[y * n + x] && !occ[y * n + x];
-  const dStart = (x, y) => Math.hypot(x - map.start.x, y - map.start.y), d01 = (x, y) => clamp(dStart(x, y) / (n * 0.75), 0, 1);
+  // odległość od najbliższego startu gracza (pierwsze miejsca na liście); d01 = 0 przy starcie, 1 daleko od wszystkich graczy
+  const starts = map.sites.slice(0, clamp(playerSlots(st.settings).length, 1, map.sites.length)), spread = n / Math.sqrt(starts.length) * 0.7;
+  const dStart = (x, y) => Math.min(...starts.map(s => Math.hypot(x - s.x, y - s.y))), d01 = (x, y) => clamp(dStart(x, y) / spread, 0, 1);
   const pick = (cond, tries = 500) => { for (let k = 0; k < tries; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (ok(x, y) && cond(x, y)) return [x, y]; } return null; };
   const add = (o, tiles) => { o.id = objs.length; objs.push(o); for (const i of tiles) occ[i] = 1; return o; };
+  // Potwór: siła rośnie wykładniczo z odległością od startu (blisko ~armia startowa, na krańcach mapy kilkanaście razy więcej),
+  // strażnicy cenniejszych rzeczy (boost) są mocniejsi, a poziom trudności mnoży liczebność
+  const diff = DIFFICULTIES[st.settings.difficulty].rating / 100;
   const monster = (x, y, boost = 0) => {
-    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 3.2 + rng() * 1.6) + boost, 1, 5), list = NEUTRALS_BY_LEVEL[lvl];
-    const base = { 1: [10, 22], 2: [6, 14], 3: [4, 10], 4: [3, 6], 5: [2, 4] }[lvl];
-    const count = Math.max(1, Math.round((base[0] + rng() * (base[1] - base[0])) * (0.8 + dd * 0.8)));
-    return add({ type: 'monster', cid: list[Math.floor(rng() * list.length)], count, x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
+    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), list = NEUTRALS_BY_LEVEL[lvl], cid = list[Math.floor(rng() * list.length)];
+    const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff);
+    return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
   };
-  const placeMine = (kind, near, dmin, dmax) => {
-    const p = pick((x, y) => {
-      const d = Math.hypot(x - near.x, y - near.y); if (d < dmin || d > dmax || y + 1 >= n) return false;
+  // Obiekt 2×2 (kopalnia, skarbiec): wejście w prawym dolnym polu, pozostałe trzy pola zablokowane, pole przed wejściem wolne
+  const footprint = (near, dmin, dmax, extra = () => true) => pick((x, y) => {
+      const d = Math.hypot(x - near.x, y - near.y); if (d < dmin || d > dmax || y + 1 >= n || !extra(x, y)) return false;
       for (const [dx, dy] of [[-1, 0], [-1, -1], [0, -1]]) { const j = (y + dy) * n + x + dx; if (map.terrain[j] === TER.WATER || map.obst[j] || occ[j] || map.road[j]) return false; }
       const f = (y + 1) * n + x; return map.terrain[f] !== TER.WATER && !map.obst[f];
     }, 800);
+  const placeMine = (kind, near, dmin, dmax) => {
+    const p = footprint(near, dmin, dmax);
     if (!p) return null; const [x, y] = p, blocks = [y * n + x - 1, (y - 1) * n + x - 1, (y - 1) * n + x];
     const m = add({ type: 'mine', kind, x, y, owner: -1, blocks }, [y * n + x, ...blocks]); occ[(y + 1) * n + x] = 1; return m;
   };
   const guard = (m, boost) => { for (const [dx, dy] of [[1, 0], [1, 1], [-1, 1], [1, -1]]) { const x = m.x + dx, y = m.y + dy; if (ok(x, y) && dStart(x, y) >= 6) { monster(x, y, boost); return; } } };
   map.sites.forEach((s, k) => {
-    for (const kind of ['wood', 'ore']) { const m = placeMine(kind, s, 4, 9); if (m && k !== 0) guard(m, 0); }
+    for (const kind of ['wood', 'ore']) { const m = placeMine(kind, s, 4, 9); if (m && k >= starts.length) guard(m, 0); }
     const m = placeMine(RARE[Math.floor(rng() * 4)], s, 6, 14); if (m) guard(m, 0);
   });
   for (let g = 0; g < Math.max(1, Math.floor(map.sites.length / 2)); g++) { const m = placeMine('gold', map.start, n * 0.25, n * 2); if (m) guard(m, 1); }
@@ -3009,6 +3163,21 @@ function placeObjects(st) {
     const a = add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x: p[0], y: p[1] }, [p[1] * n + p[0]]);
     guard(a, rar === 'major' ? 2 : rar === 'minor' ? 1 : 0);
   }
+  // skarbce: jedna na tyle pól (co najmniej min), dalej od startu niż BANKS[].dd; Smocza Utopia możliwie na krańcu mapy
+  for (const [kind, B] of Object.entries(BANKS)) {
+    const want = N / B.per, cnt = Math.max(B.min, Math.floor(want) + (rng() < want % 1 ? 1 : 0));
+    for (let k = 0; k < cnt; k++) {
+      let p = null; for (let dd = B.dd; !p && dd >= 0; dd -= 0.1) p = footprint(map.start, 6, n * 2, (x, y) => d01(x, y) >= dd);
+      if (!p) continue; const [x, y] = p, blocks = [y * n + x - 1, (y - 1) * n + x - 1, (y - 1) * n + x];
+      add({ type: 'bank', kind, x, y, blocks, guards: bankGuards(kind, st.settings.difficulty), cleared: false }, [y * n + x, ...blocks]); occ[(y + 1) * n + x] = 1;
+    }
+  }
+  // łodzie przy brzegu: w zasięgu lądu dostępnego ze startu, pierwsza możliwie blisko gracza
+  const coastBoat = near => { for (let k = 0; k < 600; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x;
+    if (map.terrain[i] !== TER.WATER || occ[i] || (near && dStart(x, y) > near)) continue;
+    let land = false; for (let d = 0; d < 8; d++) { const j = (y + DY8[d]) * n + x + DX8[d]; if (reach[j] && !occ[j]) land = true; }
+    if (land) return add({ type: 'boat', x, y }, [i]); } return null; };
+  if (!coastBoat(n * 0.3)) coastBoat(0); for (let k = Math.round(N / 3000); k > 0; k--) coastBoat(0);
   // miejsca (SITES): liczba wg gęstości, na małej mapie rzadsze z losowaniem; część pilnują potwory
   for (const [kind, S] of Object.entries(SITES)) {
     const want = N / S.per, cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);
@@ -3034,10 +3203,11 @@ function createTown(st, x, y, owner, fac = 'haven') {
   st.objects.push({ id: st.objects.length, type: 'town', townId: t.id, x, y, owner, blocks });
   return t;
 }
-// Miasto niezależne w miejscu startowym: losowa frakcja, garnizon tym silniejszy, im dalej od gracza
+// Miasto niezależne w miejscu startowym: losowa frakcja, garnizon tym silniejszy, im dalej od graczy
 // (i im wyższy poziom trudności). Daleko stoją też mury (oblężenie w bitwie).
 function createNeutralTown(st, site, rng) {
-  const n = st.map.n, dd = clamp(Math.hypot(site.x - st.map.start.x, site.y - st.map.start.y) / (n * 0.75), 0, 1);
+  const n = st.map.n, own = st.towns.filter(t => t.owner >= 0), spread = n / Math.sqrt(Math.max(1, own.length)) * 0.75;
+  const dd = clamp(Math.min(...own.map(t => Math.hypot(site.x - t.x, site.y - t.y))) / spread, 0, 1); // daleko od wszystkich graczy = silniej
   const fac = FACTIONS[Math.floor(rng() * FACTIONS.length)].id, t = createTown(st, site.x, site.y, -1, fac), F = factionOf(fac);
   t.built.push('dw1', 'dw2'); if (dd > 0.45) t.built.push('fort', 'dw3'); if (dd > 0.8) t.built.push('tavern');
   const k = (0.8 + dd * 1.4) * DIFFICULTIES[st.settings.difficulty].rating / 100;
@@ -3060,31 +3230,33 @@ function createHero(st, owner, x, y, pick = null) {
 // seed podaje się tylko w testach (powtarzalny świat); w grze jest losowy.
 function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   const rng = mulberry32(seed), d = DIFFICULTIES[S.difficulty];
-  const resources = { ...d.res }; let bonusText = '';
-  if (S.bonus === 'gold') { const g = 500 + Math.floor(rng() * 6) * 100; resources.gold += g; bonusText = `+${g} złota`; }
-  else if (S.bonus === 'resource') { const a = 5 + Math.floor(rng() * 6); resources.wood += a; resources.ore += a; bonusText = `+${a} drewna i rudy`; }
-  const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S }, bonusText, selHero: 0, cam: null,
-    players: [{ id: ME, color: S.color, human: true, faction: S.faction, resources }], heroes: [], towns: [], objects: [] };
+  const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S }, bonusText: '', selHero: 0, cam: null, players: [], heroes: [], towns: [], objects: [] };
   const map = st.map = generateMap(MAP_SIZES.find(m => m.id === S.mapSize).n, seed);
-  human(st).explored = new Uint8Array(map.n * map.n);
   st.objects = placeObjects(st);
-  createTown(st, map.start.x, map.start.y, ME, S.faction);
-  // przeciwnicy komputerowi w kolejnych miejscach startowych (drugie = najdalej od gracza), reszta miast jest niezależna
-  const trng = mulberry32(seed ^ 0x70a7), others = map.sites.filter(s => s !== map.start), foes = others.slice(0, clamp(S.opponents == null ? 1 : S.opponents, 0, others.length));
-  const colors = PLAYER_COLORS.filter(c => c.id !== S.color);
-  foes.forEach((s, k) => {
-    const id = st.players.length, fac = FACTIONS[Math.floor(trng() * FACTIONS.length)].id;
-    st.players.push({ id, color: colors[k % colors.length].id, human: false, faction: fac, resources: { ...DIFFICULTIES[1].res }, explored: new Uint8Array(map.n * map.n) });
-    createTown(st, s.x, s.y, id, fac);
+  // gracze (ludzie i komputer) w kolejnych miejscach startowych (pierwsze = map.start, drugie = najdalej od niego), reszta miast jest niezależna
+  const trng = mulberry32(seed ^ 0x70a7), slots = playerSlots(S).slice(0, map.sites.length), others = map.sites.filter(s => s !== map.start), sites = [map.start, ...others];
+  slots.forEach((o, id) => {
+    const fac = o.faction === 'random' ? FACTIONS[Math.floor(trng() * FACTIONS.length)].id : o.faction, isHuman = o.type === 'human';
+    st.players.push({ id, color: o.color, human: isHuman, faction: fac, resources: { ...(isHuman ? d : DIFFICULTIES[1]).res }, explored: new Uint8Array(map.n * map.n) });
+    createTown(st, sites[id].x, sites[id].y, id, fac);
   });
-  for (const s of others.slice(foes.length)) createNeutralTown(st, s, trng);
+  for (const s of sites.slice(slots.length)) createNeutralTown(st, s, trng);
   rebuildObjIndex(st);
-  const h = createHero(st, ME, map.start.x, map.start.y);
-  for (const p of st.players) if (!p.human) createHero(st, p.id, st.towns.find(t => t.owner === p.id).x, st.towns.find(t => t.owner === p.id).y);
-  if (S.bonus === 'artifact') { const pool = ARTS_BY_RARITY('treasure'), id = pool[Math.floor(rng() * pool.length)]; giveArtifact(h, id); st.bonusText = `artefakt: ${ARTIFACTS[id].name}`; h.mp = heroMaxMP(h); }
-  reveal(st, h.x, h.y, HERO_SIGHT + 1);
-  for (const o of st.heroes) if (o.owner !== ME) reveal(st, o.x, o.y, HERO_SIGHT + 1, o.owner);
+  for (const p of st.players) {
+    const t = st.towns.find(t => t.owner === p.id), h = createHero(st, p.id, t.x, t.y);
+    if (p.human) p.bonusText = startBonus(st, S.bonus, p, h, rng);
+    reveal(st, h.x, h.y, HERO_SIGHT + 1, p.id);
+  }
+  st.cur = ME = st.players.find(p => p.human).id; st.bonusText = human(st).bonusText; st.selHero = st.heroes.findIndex(h => h.owner === ME);
   return st;
+}
+// Bonus startowy gracza-człowieka: złoto, drewno i ruda albo artefakt dla pierwszego bohatera
+function startBonus(st, bonus, p, h, rng) {
+  const R = p.resources;
+  if (bonus === 'gold') { const g = 500 + Math.floor(rng() * 6) * 100; R.gold += g; return `+${g} złota`; }
+  if (bonus === 'resource') { const a = 5 + Math.floor(rng() * 6); R.wood += a; R.ore += a; return `+${a} drewna i rudy`; }
+  if (bonus === 'artifact') { const pool = ARTS_BY_RARITY('treasure'), id = pool[Math.floor(rng() * pool.length)]; giveArtifact(h, id); h.mp = heroMaxMP(h); return `artefakt: ${ARTIFACTS[id].name}`; }
+  return '';
 }
 function startNewGame() { saveSettings(); G.state = createNewGame(G.settings); G.go('adventure', { welcome: true }); }
 
@@ -3103,15 +3275,44 @@ function reveal(st, cx, cy, r, owner = ME) {
   }
   if (changed && owner === ME) MapRender.miniDirty = true;
 }
-function passableTile(st, x, y) {
+// Pole, na które można wejść. Woda tylko dla bohatera w łodzi albo jako pole z łodzią (wsiadanie).
+function passableTile(st, x, y, h = null) {
   const map = st.map, n = map.n; if (x < 0 || y < 0 || x >= n || y >= n) return false;
-  const i = y * n + x; return !!human(st).explored[i] && map.terrain[i] !== TER.WATER && !map.obst[i];
+  const i = y * n + x; if (!human(st).explored[i] || map.obst[i]) return false;
+  return map.terrain[i] !== TER.WATER || !!(h && (h.boat || boatAt(st, i)));
+}
+// --- statki: łódź to obiekt na wodzie; bohater wsiada, wchodząc na nią, a wysiada na brzeg (koniec ruchu na dziś) ---
+const BOAT_COST = { gold: 1000, wood: 10 };
+const boatAt = (st, i) => { const o = objectAt(st, i); return !!(o && o.type === 'boat'); };
+function addBoat(st, x, y) { const ob = { id: st.objects.length, type: 'boat', x, y }; st.objects.push(ob); rebuildObjIndex(st); return ob; }
+// Krok po wodzie: w łodzi tylko po wodzie, brzeg wyłącznie jako cel; pieszo woda tylko jako cel (łódź)
+function legOk(st, h, i, j, target) {
+  const w = st.map.terrain; return h && h.boat ? (w[j] === TER.WATER || (j === target && w[i] === TER.WATER)) : (w[j] !== TER.WATER || j === target);
+}
+// Miejsce na nową łódź ze stoczni: najbliższa wolna woda przy brzegu w promieniu 4 pól od miasta
+function shipyardSpot(st, t) {
+  const map = st.map, n = map.n; let best = null;
+  for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+    const x = t.x + dx, y = t.y + dy, i = y * n + x; if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1 || map.terrain[i] !== TER.WATER || st.objAt[i] || heroAt(st, x, y)) continue;
+    let coast = false; for (let d = 0; d < 8; d++) { const j = (y + DY8[d]) * n + x + DX8[d]; if (map.terrain[j] !== TER.WATER && !map.obst[j]) coast = true; }
+    const d = dx * dx + dy * dy; if (coast && (!best || d < best.d)) best = { x, y, d };
+  }
+  return best;
+}
+// Czy miasto leży nad wodą (stocznię można zbudować tylko nad wodą)
+function townCoastal(st, t) { const map = st.map, n = map.n; for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = t.x + dx, y = t.y + dy; if (x >= 0 && y >= 0 && x < n && y < n && map.terrain[y * n + x] === TER.WATER) return true; } return false; }
+// Kupno łodzi w stoczni. Zwraca błąd albo null.
+function buyBoat(st, t) {
+  if (!hasB(t, 'shipyard')) return 'Brak stoczni'; if (!canAfford(st, BOAT_COST, t.owner)) return 'Brakuje zasobów na łódź';
+  const p = shipyardSpot(st, t); if (!p) return 'Przy stoczni nie ma wolnego miejsca na wodzie';
+  const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (BOAT_COST[r.id]) R[r.id] -= BOAT_COST[r.id];
+  addBoat(st, p.x, p.y); return null;
 }
 // Koszt kroku liczony wg terenu, z którego bohater wychodzi; droga działa, gdy oba pola mają drogę.
 // Znajdowanie drogi (h) zmniejsza narzut trudnego terenu ponad 100.
 function baseCost(map, i, j, h) {
   if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
-  const c = TERRAINS[map.terrain[i]].cost, pf = h ? skillVal(h, 'pathfinding') : 0;
+  const c = TERRAINS[map.terrain[i]].cost || 100, pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
   return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
 }
 function stepCost(map, fx, fy, tx, ty, h) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx, h); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
@@ -3136,20 +3337,20 @@ function removeObject(st, ob) { ob.dead = true; rebuildObjIndex(st); }
 function objBlocks(st, j, target, tg = 0) {
   if (j !== target && heroAt(st, j % st.map.n, (j / st.map.n) | 0)) return true;
   const ob = objectAt(st, j);
-  if (ob) { if ((ob.type === 'mine' || ob.type === 'town') && j !== ob.y * st.map.n + ob.x) return true; if (j !== target) return true; }
+  if (ob) { if ((ob.type === 'mine' || ob.type === 'town' || ob.type === 'bank') && j !== ob.y * st.map.n + ob.x) return true; if (j !== target) return true; }
   return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
 }
 function computePath(st, h, tx, ty) {
-  if (!passableTile(st, tx, ty)) return null; const map = st.map, n = map.n, t = ty * n + tx;
+  if (!passableTile(st, tx, ty, h)) return null; const map = st.map, n = map.n, t = ty * n + tx;
   if (objBlocks(st, t, t)) return null;
   const tob = objectAt(st, t), tg = tob && tob.type === 'monster' ? tob.id + 1 : 0;
-  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j, h) : Infinity, 50);
+  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0, h) && legOk(st, h, i, j, t) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j, h) : Infinity, 50);
   return p && p.length > 1 ? p.slice(1).map(i => [i % n, (i / n) | 0]) : null;
 }
 function heroCanStillMove(st, h) {
   if (!armySize(h.army)) return false;
   const n = st.map.n;
-  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y, h) <= h.mp) return true; }
+  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y, h) && legOk(st, h, h.y * n + h.x, j, j) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y, h) <= h.mp) return true; }
   return false;
 }
 function heroStep(st, h) {
@@ -3163,6 +3364,8 @@ function heroStep(st, h) {
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h)); if (h.owner === ME) Sound.play('step');
   if (!h.path.length) { h.path = null; h.dest = null; }
+  if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); if (h.owner === ME) Sound.play('boat'); return true; }
+  if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; if (h.owner === ME) Sound.play('boat'); } // wysiadka: łódź zostaje przy brzegu
   if (st.guard[ni]) { const m = st.objects[st.guard[ni] - 1]; halt(); h.pending = () => startEncounter(st, h, m); }
   else if (ob) { halt(); h.pending = () => visitObject(st, h, ob); }
   return true;
@@ -3188,6 +3391,9 @@ function visitObject(st, h, ob) {
       { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5) });
   } else if (ob.type === 'town') {
     if (ob.owner === h.owner) G.go('town', { townId: ob.townId }); else startTownAssault(st, h, st.towns[ob.townId]);
+  } else if (ob.type === 'bank') {
+    if (ob.cleared) { G.screens.adventure.flash(`${BANKS[ob.kind].name}: splądrowane, nic tu już nie ma`); return; }
+    startBankAssault(st, h, ob);
   } else if (ob.type === 'mine') {
     const M = MINES[ob.kind];
     if (ob.owner === h.owner) { G.screens.adventure.flash(`${M.name} już należy do ciebie`); return; }
@@ -3201,6 +3407,30 @@ function startEncounter(st, h, m) {
   // h.prev jest puste, gdy bohater sam wszedł na potwora; ustawione, gdy wszedł w strefę strażnika
   const who = h.prev ? `${qtyName(m.count)} ${c.gen} atakuje twojego bohatera!` : `${h.name} atakuje: ${qtyName(m.count).toLowerCase()} ${c.gen}.`;
   offerBattle(st, h, m, who, m.count * c.value, (ctx, cx, cy) => drawSprite(ctx, creatureSprite(m.cid, 1), cx, cy + 34, 2));
+}
+// Skarbiec: opis załogi i łupu, potem zwykłe okno przed bitwą (odwrót cofa bohatera o pole)
+const bankPower = ob => ob.guards.reduce((s, [cid, n]) => s + n * CREATURES[cid].value, 0);
+const bankGuardText = ob => ob.guards.map(([cid, n]) => `${qtyName(n).toLowerCase()} ${CREATURES[cid].gen}`).join(', ');
+function bankLootText(kind) {
+  const B = BANKS[kind], parts = RESOURCES.filter(r => B.loot[r.id]).map(r => `${B.loot[r.id]} ${r.id === 'gold' ? 'złota' : resName(r.id).toLowerCase()}`);
+  for (const [rar, k] of B.arts || []) parts.push(k > 1 ? `${k} artefakty (${{ treasure: 'skarby', minor: 'pomniejsze', major: 'potężne' }[rar]})` : `artefakt (${RARITY[rar]})`);
+  if (B.units) parts.push(`${B.units[1]} ${CREATURES[B.units[0]].gen} do armii`);
+  return parts.join(', ');
+}
+function startBankAssault(st, h, ob) {
+  const B = BANKS[ob.kind];
+  offerBattle(st, h, ob, `${B.name}: ${B.desc}. Załoga: ${bankGuardText(ob)}. Łup: ${bankLootText(ob.kind)}.`, bankPower(ob),
+    (ctx, cx, cy) => { const sp = bankSprite(ob.kind, false), k = Math.min(1.1, 40 / sp.c.height); drawSpriteBox(ctx, sp, cx - sp.c.width * k, cy - sp.c.height * k, k); });
+}
+// Łup ze skarbca dla zwycięzcy (człowieka albo SI); zwraca opis do okna wyniku
+function lootBank(st, h, ob) {
+  const B = BANKS[ob.kind], R = playerOf(st, h.owner).resources, r = mulberry32(st.seed ^ (ob.id * 7919) ^ st.dayTotal), got = [];
+  ob.cleared = true; MapRender.miniDirty = true;
+  for (const res of RESOURCES) if (B.loot[res.id]) R[res.id] += B.loot[res.id];
+  for (const [rar, k] of B.arts || []) for (let i = 0; i < k; i++) { const pool = ARTS_BY_RARITY(rar), id = pool[Math.floor(r() * pool.length)]; giveArtifact(h, id); got.push(ARTIFACTS[id].name); }
+  let joined = '';
+  if (B.units) { if (armyAdd(h.army, B.units[0], B.units[1])) joined = ` Do armii dołączają: ${CREATURES[B.units[0]].plural.toLowerCase()} (${B.units[1]}).`; else joined = ` Uwolnieni ${CREATURES[B.units[0]].plural.toLowerCase()} odchodzą: w armii nie ma miejsca.`; }
+  return ` Łup: ${RESOURCES.filter(x => B.loot[x.id]).map(x => `${B.loot[x.id]} ${x.id === 'gold' ? 'złota' : resName(x.id).toLowerCase()}`).join(', ')}${got.length ? `; artefakty: ${got.join(', ')}` : ''}.${joined}`;
 }
 function startHeroEncounter(st, h, foe) {
   offerBattle(st, h, foe, `${h.name} atakuje: ${heroTitle(foe)} (${ownerName(st, foe.owner)}).`, Math.round(armyPower(foe.army) * heroFactor(foe)),
@@ -3335,6 +3565,7 @@ function castAdventure(st, h, id) {
     if (h.mp < 300) return 'Za mało punktów ruchu (potrzeba 300)';
     const t = st.towns.filter(t => t.owner === h.owner && !heroAt(st, t.x, t.y)).sort((a, b) => Math.hypot(a.x - h.x, a.y - h.y) - Math.hypot(b.x - h.x, b.y - h.y))[0];
     if (!t) return 'Brak wolnego własnego miasta';
+    if (h.boat) { h.boat = false; addBoat(st, h.x, h.y); } // łódź zostaje na wodzie
     h.x = t.x; h.y = t.y; h.mp -= 300; h.path = null; h.dest = null; reveal(st, h.x, h.y, heroSight(h)); centerCam(st, h.x, h.y);
   }
   h.mana -= S.cost; return null;
@@ -3413,7 +3644,10 @@ function monthInfo(st) {
 // Wieści na nowy tydzień (i miesiąc) oraz jednorazowe skutki miesiąca
 function startWeek(st, newMonth) {
   const M = newMonth ? monthInfo(st) : null, W = weekInfo(st);
-  if (M && M.kind === 'monsters') for (const o of st.objects) if (o.type === 'monster' && !o.dead) o.count = Math.ceil(o.count * 1.5);
+  for (const o of st.objects) if (o.type === 'monster' && !o.dead) { // potwory rosną co tydzień (do MONSTER_GROW_MAX razy), Miesiąc Potworów dokłada połowę
+    o.base = o.base || o.count; o.count = Math.min(Math.ceil(o.count * (1 + MONSTER_GROW)), Math.ceil(o.base * MONSTER_GROW_MAX));
+    if (M && M.kind === 'monsters') o.count = Math.ceil(o.count * 1.5);
+  }
   for (const t of st.towns) townGrowthWeek(t, st);
   const head = newMonth ? (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
   return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
@@ -3460,7 +3694,7 @@ const hasB = (t, id) => t.built.includes(id);
 const canAfford = (st, cost, owner = ME) => RESOURCES.every(r => (playerOf(st, owner).resources[r.id] || 0) >= (cost[r.id] || 0));
 const reqMet = (t, B) => B.req.every(r => hasB(t, r));
 function townGold(t) { let g = 0; for (const id of ['hall1', 'hall2', 'hall3', 'hall4']) if (hasB(t, id)) g = BUILD_BY_ID[id].gold; return g; }
-function availableBuildings(t) { return BUILDINGS.filter(B => !hasB(t, B.id) && reqMet(t, B)); }
+function availableBuildings(t, st = G.state) { return BUILDINGS.filter(B => !hasB(t, B.id) && reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t)))); }
 function slotBuilding(t, slot) { let best = null; for (const B of BUILDINGS) if (B.slot === slot && hasB(t, B.id)) best = B; return best; }
 function buildIn(st, t, B) {
   const R = playerOf(st, t.owner).resources;
@@ -3592,6 +3826,10 @@ const spreadRows = k => Array.from({ length: k }, (_, i) => Math.round((i + 0.5)
 // B.sides[s] = { owner, hero, monster, town }; oddział pamięta, skąd przyszedł (src + slot), żeby tam wrócić po bitwie.
 const armyEntries = (a, src) => a.map((s, slot) => s && { cid: s.cid, n: s.n, src, slot }).filter(Boolean);
 function battleSide(st, foe) {
+  if (foe.type === 'bank') { // załoga skarbca: każdy rodzaj w jednym oddziale, liczne rozbite na dwa (najwyżej 7 oddziałów)
+    const stacks = []; for (const [cid, n] of foe.guards) (n >= 10 && foe.guards.length <= 3 ? [Math.ceil(n / 2), Math.floor(n / 2)] : [n]).forEach(k => stacks.push({ cid, n: k, src: null, slot: null }));
+    return { owner: -1, hero: null, monster: null, bank: foe, town: null, key: foe.id, stacks: stacks.slice(0, 7) };
+  }
   if (foe.type === 'monster') return { owner: -1, hero: null, monster: foe, town: null, key: foe.id, stacks: splitMonster(foe.count).map(n => ({ cid: foe.cid, n, src: null, slot: null })) };
   if (foe.garrison) { // miasto: bohater stojący w mieście broni się razem z garnizonem
     const h = heroInTown(st, foe);
@@ -3655,10 +3893,10 @@ function actCatapult(B, u) {
   B.log.push(hit ? (w.hp <= 0 ? `Katapulta: ${what} ${w.kind === 'gate' ? 'rozbita' : 'runął'}!` : `Katapulta trafia: ${what} słabnie.`) : 'Katapulta chybia.');
   if (B.fx) B.fx.push({ kind: 'siege', a: u, x: w.x, y: w.y, hit, broken: hit && w.hp <= 0 });
 }
-// foe: potwór z mapy, bohater albo miasto
+// foe: potwór z mapy, skarbiec, bohater albo miasto
 function createBattle(st, h, foe) {
   const D = battleSide(st, foe);
-  const B = { st, h, sides: [{ owner: h.owner, hero: h, monster: null, town: null }, { owner: D.owner, hero: D.hero, monster: D.monster, town: D.town }],
+  const B = { st, h, sides: [{ owner: h.owner, hero: h, monster: null, town: null }, { owner: D.owner, hero: D.hero, monster: D.monster, bank: D.bank || null, town: D.town }],
     round: 0, order: [], waitQ: [], active: null, units: [], log: [], over: null, auto: false, obst: new Map(), cast: [false, false],
     rng: mulberry32(st.seed ^ (st.dayTotal * 7919) ^ (D.key * 104729)), prevPos: h.prev ? [...h.prev] : null };
   placeSide(B, 0, armyEntries(h.army, 'hero'));
@@ -3687,7 +3925,7 @@ function armyMorale(cids, hero, town) {
   return clamp(m, -3, 3);
 }
 const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') + ((h.boost || {}).luck || 0) : 0, -3, 3);
-function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side && !isMachine(u)).map(u => u.cid), S.hero, S.town); }
+function sideMorale(B, side) { const S = B.sides[side]; return S.monster || S.bank ? 0 : armyMorale(B.units.filter(u => u.side === side && !isMachine(u)).map(u => u.cid), S.hero, S.town); }
 const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
 // Nieumarli nie znają strachu ani zapału: morale zawsze 0
 const unitMorale = (B, u) => (hasAb(u, 'undead') || isMachine(u) || !B.morale ? 0 : B.morale[u.side]);
@@ -3741,7 +3979,8 @@ const sideHero = (B, side) => B.sides[side].hero;
 const sideAtt = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'att') : 0);
 const sideDef = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'def') : 0); // mury miasta chronią fizycznie (oblężenie)
 // Którą stroną dowodzi człowiek (resztą SI). Na razie człowiek zawsze atakuje, więc to strona 0.
-const humanSide = (B, side) => B.sides[side].owner === ME;
+// Strona dowodzona przez człowieka: gracz przed ekranem albo (hot-seat) inny człowiek, który się broni
+const humanSide = (B, side) => { const o = B.sides[side].owner; return o === ME || (o >= 0 && !!B.st.players[o] && B.st.players[o].human); };
 // Obrażenia jak w oryginale: podstawa × (1 + 5% za każdy punkt przewagi ataku), albo −2,5% za punkt przewagi obrony.
 // moved = liczba pól rozpędu (szarża), ranged = strzał; strzelec wręcz bije za połowę, chyba że ma „Walkę wręcz”.
 function damageRoll(B, a, t, ranged, moved = 0) {
@@ -3972,6 +4211,7 @@ function simulateBattle(B) {
 function writeBackSide(B, side) {
   const S = B.sides[side], units = B.units.filter(u => u.side === side);
   if (S.monster) { S.monster.count = units.reduce((s, u) => s + (u.dead ? 0 : u.n), 0); return; }
+  if (S.bank) { const g = new Map(); for (const u of units) if (!u.dead && u.n > 0) g.set(u.cid, (g.get(u.cid) || 0) + u.n); S.bank.guards = [...g]; return; } // ocalała załoga zostaje w skarbcu
   for (const u of units) {
     if (u.src === 'siege') continue; // katapulta i wieże należą do bitwy, nie do armii
     if (u.src === 'machine') { if (u.dead) S.hero.machines = S.hero.machines.filter(id => id !== u.cid); continue; } // zniszczona machina przepada
@@ -4011,6 +4251,7 @@ function resolveBattle(B, fled) {
   if (outcome === 'win') {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);
+    if (D.bank) res.bankText = lootBank(st, h, D.bank);
     if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; removeHero(st, D.hero); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
   } else {
@@ -4030,7 +4271,7 @@ function resolveBattle(B, fled) {
 // ==================== GRACZE KOMPUTEROWI ================================================
 // Tura przeciwnika dzieje się natychmiast (bez animacji), po turze człowieka, a przed nowym dniem.
 // SI widzi całą mapę. Kolejność: miasta (budowa, werbunek, najem), potem bohaterowie wybierają cele
-// z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do news.
+// z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do jego skrzynki (tell), zobaczy je na początku swojej tury.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
   'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u', 'guild4', 'guild5'];
 // Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
@@ -4045,7 +4286,7 @@ function buyMissing(st, owner, cost) {
 const aiMaxHeroes = st => (st.map.n >= 108 ? 3 : 2);
 // Rozejm: przez tyle dni SI nie atakuje miast ani bohaterów człowieka (Łatwy 21, Normalny 14, Trudny 7, wyżej 0)
 const AI_PEACE_DAYS = [21, 14, 7, 0, 0];
-const aiPeace = (st, owner) => owner === ME && st.dayTotal <= AI_PEACE_DAYS[st.settings.difficulty];
+const aiPeace = (st, owner) => owner >= 0 && playerOf(st, owner).human && st.dayTotal <= AI_PEACE_DAYS[st.settings.difficulty];
 // Daily bonus złota SI na wyższych poziomach trudności (Trudny +300, Ekspert +600, Niemożliwy +1000)
 const aiGoldBonus = st => Math.max(0, DIFFICULTIES[st.settings.difficulty].rating - 100) * 10;
 const armyStrength = h => Math.round(armyPower(h.army) * heroFactor(h));
@@ -4116,7 +4357,7 @@ function aiPickTarget(st, h, R) {
     const i = t.y * n + t.x, occupant = heroAt(st, t.x, t.y);
     if (t.owner === h.owner) { if (!occupant && armyPower(t.garrison) > 0) add(i, armyPower(t.garrison) * (hasArmy ? 3 : 20), 'reinforce'); continue; }
     if (!hasArmy || aiPeace(st, t.owner)) continue;
-    const tp = townPower(st, t); if (power > tp * 0.8) add(i, (t.owner === ME ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
+    const tp = townPower(st, t); if (power > tp * 0.8) add(i, (t.owner >= 0 && playerOf(st, t.owner).human ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
   }
   if (hasArmy) {
     for (const ob of st.objects) {
@@ -4134,8 +4375,9 @@ function aiPickTarget(st, h, R) {
       else if (ob.type === 'art') add(i, 2500, 'art');
       else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob); if (v > 0) add(i, v, 'site'); }
       else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
+      else if (ob.type === 'bank' && !ob.cleared && power > bankPower(ob) * 1.3) add(i, 2000 + bankPower(ob) * 0.4, 'bank', ob);
     }
-    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, o.owner === ME ? 15000 : 8000, 'hero', o);
+    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, playerOf(st, o.owner).human ? 15000 : 8000, 'hero', o);
     // zwiad: wolne pole na skraju odkrytego terenu, tym cenniejsze, im więcej mgły wokół
     const r = 3, m = n + 1, S = new Int32Array(m * m); let best = -1, bestScore = 0; // sumy prefiksowe nieodkrytych pól
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) S[(y + 1) * m + x + 1] = (ex[y * n + x] ? 0 : 1) + S[y * m + x + 1] + S[(y + 1) * m + x] - S[y * m + x];
@@ -4160,11 +4402,11 @@ function aiPickTarget(st, h, R) {
 // odtworzyć), atak na człowieka ({ kind: 'defend' }: wynik bitwy wraca przez gen.next(res)) i początek tury gracza.
 // Bez ekranu (testy, symulacje, szybka tura) generator rozgrywa runAiSync: obrona jest wtedy automatyczna.
 function* aiBattle(st, h, foe, news) {
-  const defOwner = foe.type === 'monster' ? -1 : foe.owner, defName = foe.type === 'monster' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
+  const defOwner = foe.type === 'monster' || foe.type === 'bank' ? -1 : foe.owner, defName = foe.type === 'monster' || foe.type === 'bank' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
   let res;
-  if (defOwner === ME) {
-    const act = { kind: 'defend', h, foe }; res = yield act;
-    if (!act.shown) news.push(`${h.name} (${ownerName(st, h.owner)}) atakuje: ${defName}. ${res.outcome === 'win' ? (res.captured ? 'Miasto przepadło.' : 'Twój bohater poległ.') : 'Obrona się udała!'}`);
+  if (defOwner >= 0 && playerOf(st, defOwner).human) {
+    const act = { kind: 'defend', h, foe, owner: defOwner }; res = yield act;
+    if (!act.shown) tell(st, defOwner, `${h.name} (${ownerName(st, h.owner)}) atakuje: ${defName}. ${res.outcome === 'win' ? (res.captured ? 'Miasto przepadło.' : 'Twój bohater poległ.') : 'Obrona się udała!'}`);
   } else res = resolveBattle(simulateBattle(createBattle(st, h, foe)), false);
   if (res.outcome === 'win') gainExp(st, h, res.exp);
   return res.outcome === 'win';
@@ -4187,7 +4429,7 @@ function* aiVisit(st, h, i, news) {
   if (ob && ob.type === 'town') {
     const t = st.towns[ob.townId];
     if (t.owner === h.owner) { armyTransfer(t.garrison, h.army); return; }
-    if (!armySize(t.garrison) && !heroInTown(st, t)) { if (t.owner === ME) news.push(`${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
+    if (!armySize(t.garrison) && !heroInTown(st, t)) { tell(st, t.owner, `${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
     else yield* aiBattle(st, h, t, news);
     return;
   }
@@ -4197,7 +4439,8 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
   else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); }
-  else if (ob.type === 'mine') { if (ob.owner === ME) news.push(`Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
+  else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
+  else if (ob.type === 'mine') { tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
 function* aiMoveHero(st, h, news) {
   for (let plan = 0; plan < 12 && st.heroes.includes(h); plan++) {
@@ -4219,39 +4462,74 @@ function* aiTurn(st, p, news) {
   for (const h of st.heroes.filter(h => h.owner === p.id)) yield* aiMoveHero(st, h, news);
   for (const t of st.towns.filter(t => t.owner === p.id)) { const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army); }
 }
-function* aiAllTurns(st, news) { for (const p of st.players) if (!p.human && !p.out) yield* aiTurn(st, p, news); }
+// Kolejka tur po graczu `from`: komputery po kolei, przy przejściu przez koniec listy nowy dzień ({ kind: 'day' }),
+// aż do następnego człowieka w grze. Wartość zwracana = numer człowieka, który gra teraz (przy jednym człowieku znowu from).
+function* turnsAfter(st, from, news) {
+  const N = st.players.length;
+  for (let k = 1; k <= N; k++) {
+    const id = (from + k) % N;
+    if (id === 0) { const d = advanceDay(st); yield { kind: 'day', newWeek: d.newWeek }; }
+    const p = st.players[id]; if (p.out) continue;
+    if (!playerAlive(st, p)) { p.out = true; continue; } // bez miast i bohaterów: odpada (ogłasza to ekran)
+    if (p.human) return id;
+    yield* aiTurn(st, p, news);
+  }
+  return from;
+}
+// Nowy dzień dla wszystkich: data, ruch i mana bohaterów, dochód, tydzień; wieści trafiają do skrzynek ludzi
+function advanceDay(st) {
+  st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
+  if (st.day > 7) { st.day = 1; st.week++; newWeek = true; if (st.week > 4) { st.week = 1; st.month++; newMonth = true; } }
+  for (const h of st.heroes) {
+    h.mp = heroMaxMP(h);
+    const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
+    if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
+  }
+  collectIncome(st);
+  for (const t of st.towns) t.builtToday = false;
+  if (newWeek) tell(st, -1, startWeek(st, newMonth));
+  dailyTownCheck(st); rebuildObjIndex(st); MapRender.miniDirty = true;
+  return { newWeek };
+}
 // Obrona człowieka bez ekranu bitwy: walka automatyczna, doświadczenie dla obrońcy
 function autoDefend(st, act) {
   const D = act.foe.garrison ? heroInTown(st, act.foe) : act.foe, res = resolveBattle(simulateBattle(createBattle(st, act.h, act.foe)), false);
   if (res.outcome !== 'win' && D && res.foeExp) gainExp(st, D, res.foeExp);
   return res;
 }
-function runAiSync(st, gen) { let input; for (;;) { const r = gen.next(input); input = undefined; if (r.done) return; if (r.value.kind === 'defend') input = autoDefend(st, r.value); } }
+function runAiSync(st, gen) { let input; for (;;) { const r = gen.next(input); input = undefined; if (r.done) return r.value; if (r.value.kind === 'defend') input = autoDefend(st, r.value); } }
 
 // --- koniec gry: gracz odpada, gdy nie ma miast ani bohaterów albo przez 7 dni nie ma żadnego miasta ---
 const NO_TOWN_DAYS = 7;
 const playerAlive = (st, p) => !p.out && (st.towns.some(t => t.owner === p.id) || st.heroes.some(h => h.owner === p.id));
 function eliminate(st, p) { p.out = true; for (const h of st.heroes.filter(h => h.owner === p.id)) removeHero(st, h); }
-// Po każdym dniu: licznik dni bez miasta. Zwraca wieści dla człowieka.
+// Po każdym dniu: licznik dni bez miasta; ostrzeżenia i wieści trafiają do skrzynek ludzi
 function dailyTownCheck(st) {
-  const news = [];
   for (const p of st.players) {
     if (p.out) continue;
     if (st.towns.some(t => t.owner === p.id)) { p.noTownDays = 0; continue; }
     p.noTownDays = (p.noTownDays || 0) + 1;
-    if (p.noTownDays >= NO_TOWN_DAYS) { eliminate(st, p); if (!p.human) news.push(`Gracz ${ownerName(st, p.id).replace('gracz ', '')} nie odzyskał miasta i odpada z gry.`); }
-    else if (p.human) news.push(`Nie masz żadnego miasta! Zdobądź je w ciągu ${NO_TOWN_DAYS - p.noTownDays + 1} dni, inaczej przegrasz.`);
+    if (p.noTownDays >= NO_TOWN_DAYS) { eliminate(st, p); tell(st, -1, `Gracz ${playerName(st, p.id).replace('gracz ', '')} nie odzyskał miasta i odpada z gry.`); }
+    else tell(st, p.id, `Nie masz żadnego miasta! Zdobądź je w ciągu ${NO_TOWN_DAYS - p.noTownDays + 1} dni, inaczej przegrasz.`);
   }
-  return news;
 }
+// Skrzynka wieści gracza-człowieka (to = -1: wszyscy ludzie w grze). Komputer wieści nie potrzebuje.
+function tell(st, to, text) { for (const p of st.players) if (p.human && !p.out && (to < 0 || p.id === to)) (p.inbox = p.inbox || []).push(text); }
+function takeInbox(p) { const a = p.inbox || []; p.inbox = []; return a; }
 // Wynik gry: 'win', 'lose' albo null. Bez przeciwników (tryb swobodny) nie ma zwycięstwa.
+// Hot-seat: 'lose', gdy odpadli wszyscy ludzie; 'win', gdy został jeden gracz i jest człowiekiem (st.winner).
 function gameResult(st) {
-  const me = human(st); if (me.out || !playerAlive(st, me)) return 'lose';
+  for (const p of st.players) if (!p.out && !playerAlive(st, p)) p.out = true;
+  if (hotseat(st)) {
+    const left = st.players.filter(p => !p.out);
+    if (!left.some(p => p.human)) return 'lose';
+    if (left.length === 1) { st.winner = left[0].id; return 'win'; }
+    return null;
+  }
+  const me = human(st); if (me.out) return 'lose';
   const foes = st.players.filter(p => !p.human); if (!foes.length) return null;
-  for (const p of foes) if (!p.out && !playerAlive(st, p)) p.out = true;
   return foes.every(p => p.out) ? 'win' : null;
 }
-
 // ==================== ZAPIS I ODCZYT GRY ================================================
 // Zapis = zwykły obiekt JSON (serializeGame) w jednym z miejsc (SaveStore): na koncie Claude
 // (magazyn db opublikowanej strony, prywatny dla każdego gracza) albo w pamięci przeglądarki.
@@ -4275,7 +4553,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0 },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -4288,11 +4566,44 @@ function deserializeGame(d) {
   const map = { n, seed: d.map.seed, sites: d.map.sites, terrain: unpackBytes(d.map.terrain, N), obst: unpackBytes(d.map.obst, N), road: unpackBytes(d.map.road, N) };
   map.start = map.sites[d.map.startIdx] || map.sites[0];
   const st = { ...d.core, map, players: d.players.map(p => ({ ...p, explored: unpackBytes(p.explored, N) })), heroes: d.heroes, towns: d.towns, objects: d.objects };
-  // zapisy sprzed rekrutacji: brak armii bohatera, garnizonu i puli jednostek
-  const r = mulberry32(st.seed);
-  for (const h of st.heroes) { if (!Array.isArray(h.army)) h.army = startingArmy(st.players[h.owner].faction, r); delete h.slowest; initHeroProgress(h); while (h.exp >= expForLevel(h.level + 1)) h.level++; }
-  for (const t of st.towns) { if (!Array.isArray(t.garrison) || t.garrison.length !== ARMY_SLOTS) t.garrison = emptyArmy(); if (!t.avail) t.avail = {}; for (let L = 1; L <= guildLevel(t); L++) if (!t.guild || !t.guild[L]) rollGuildLevel(st, t, L); }
-  rebuildObjIndex(st); return st;
+  migrateSave(st); ME = st.cur; rebuildObjIndex(st); return st;
+}
+// Naprawa zapisów ze starszych wersji gry: brakujące pola dostają wartości domyślne, a to, czego gra już nie zna
+// (usunięte stwory, budowle, artefakty, miejsca), znika zamiast psuć rozgrywkę. Kolejne kroki w kolejności powstawania gry.
+function migrateSave(st) {
+  const r = mulberry32(st.seed), cr = s => (s && CREATURES[s.cid] && s.n > 0 ? s : null), armyFix = a => Array.from({ length: ARMY_SLOTS }, (_, i) => cr(a && a[i]));
+  if (!(st.settings.difficulty >= 0 && st.settings.difficulty < DIFFICULTIES.length)) st.settings.difficulty = 1;
+  // gracze: znane frakcje i kolory, komplet surowców
+  const used = new Set();
+  for (const p of st.players) {
+    if (!FACTIONS.some(f => f.id === p.faction)) p.faction = 'haven';
+    if (!PLAYER_COLORS.some(c => c.id === p.color) || used.has(p.color)) p.color = PLAYER_COLORS.find(c => !used.has(c.id)).id; used.add(p.color);
+    for (const res of RESOURCES) if (!(p.resources[res.id] >= 0)) p.resources[res.id] = 0;
+  }
+  // bohaterowie: armia (zapisy sprzed rekrutacji), cechy, poziom, machiny, łódź
+  for (const h of st.heroes) {
+    if (!Array.isArray(h.army)) h.army = startingArmy(st.players[h.owner].faction, r); h.army = armyFix(h.army);
+    delete h.slowest; initHeroProgress(h); while (h.exp >= expForLevel(h.level + 1)) h.level++;
+    h.spells = h.spells.filter(id => SPELLS[id]); h.bag = h.bag.filter(id => ARTIFACTS[id]);
+    for (const k of Object.keys(h.equip)) if (h.equip[k] && !ARTIFACTS[h.equip[k]]) h.equip[k] = null;
+    h.machines = h.machines.filter(id => CREATURES[id]); if (h.boat && st.map.terrain[h.y * st.map.n + h.x] !== TER.WATER) delete h.boat; // łódź tylko na wodzie
+  }
+  // miasta: znana frakcja i budowle, garnizon, pula jednostek, gildia magów
+  for (const t of st.towns) {
+    if (!FACTIONS.some(f => f.id === t.faction)) t.faction = 'haven';
+    t.built = t.built.filter(id => BUILDINGS.some(b => b.id === id)); if (!t.built.includes('hall1')) t.built.unshift('hall1');
+    t.garrison = armyFix(Array.isArray(t.garrison) ? t.garrison : null); if (!t.avail) t.avail = {};
+    for (let L = 1; L <= guildLevel(t); L++) if (!t.guild || !t.guild[L]) rollGuildLevel(st, t, L);
+  }
+  // obiekty: nieznane stwory, artefakty i miejsca znikają; skarbce mają załogę
+  for (const o of st.objects) {
+    if ((o.type === 'monster' && !CREATURES[o.cid]) || (o.type === 'art' && !ARTIFACTS[o.art]) || (o.type === 'site' && !SITES[o.kind]) || (o.type === 'bank' && !BANKS[o.kind])) o.dead = true;
+    if (o.type === 'bank' && !Array.isArray(o.guards)) o.guards = o.cleared ? [] : bankGuards(o.kind, st.settings.difficulty);
+    if (o.type === 'bank') o.guards = o.guards.filter(([cid, n]) => CREATURES[cid] && n > 0);
+  }
+  // zapisy sprzed hot-seat: jeden człowiek (numer 0), powitanie już było
+  if (!(st.cur >= 0 && st.players[st.cur] && st.players[st.cur].human)) st.cur = Math.max(0, st.players.findIndex(p => p.human));
+  for (const p of st.players) if (p.human && p.welcomed === undefined) p.welcomed = true;
 }
 // Krótki opis zapisu do listy slotów (bez wczytywania całej gry)
 function saveMeta(st) {
@@ -4370,16 +4681,17 @@ function drawOak(g, x, y, s, r = mulberry32(1)) {
   const cl = [[0, -24, 7.5], [-7, -19, 7], [7, -18, 7], [-3, -13, 7], [5, -12, 6.5]].map(([dx, dy, R]) => [x + (dx + (r() - 0.5) * 2) * s, y + dy * s, R * s * (0.9 + r() * 0.2)]);
   leafCrown(g, cl, pal, r);
 }
-function drawPine(g, x, y, s, snowy, r = mulberry32(1)) {
-  shadowAt(g, x, y, 7 * s);
-  g.fillStyle = '#3e2614'; g.fillRect(x - 1.3 * s, y - 6 * s, 2.6 * s, 6 * s); g.fillStyle = '#6a4424'; g.fillRect(x - 1.3 * s, y - 6 * s, 1.1 * s, 6 * s);
-  for (let i = 0; i < 4; i++) {
-    const by = y - 4 * s - i * 6 * s, w = (9 - i * 2) * s, top = by - 10 * s, zig = [];
-    for (let k = 0; k <= 6; k++) zig.push([x + w - k * w / 3, by - (k % 2 ? 2.2 * s : 0)]);
-    mpoly(g, [[x, top], ...zig], '#143a20');
-    mpoly(g, [[x, top], [x - w * 0.05, by - 1.5 * s], ...zig.slice(4)], '#2e7440');
-    mpoly(g, [[x - 0.5 * s, top + 2 * s], [x - w * 0.7, by - 1.2 * s], [x - w * 0.45, by - 1.8 * s]], '#62ae5e');
-    if (snowy) { mpoly(g, [[x, top], [x - w * 0.6, by - 4 * s], [x - w * 0.2, by - 5 * s], [x + w * 0.1, by - 3.5 * s], [x + w * 0.5, by - 4.5 * s]], '#f4f8fc'); mpoly(g, [[x, top], [x + w * 0.1, by - 3.5 * s], [x + w * 0.5, by - 4.5 * s]], '#b8c6d8'); }
+function drawPine(g, x, y, s, snowy, r = mulberry32(1)) { // świerk: trzy–cztery piętra ze ścianką jasną z lewej i ciemną z prawej
+  shadowAt(g, x, y, 8 * s);
+  mpoly(g, [[x - 1.7 * s, y + 1], [x - 1.4 * s, y - 8 * s], [x + 1.4 * s, y - 8 * s], [x + 1.7 * s, y + 1]], '#4a2e18'); mpoly(g, [[x - 1.7 * s, y + 1], [x - 1.4 * s, y - 8 * s], [x - 0.2 * s, y - 8 * s], [x - 0.3 * s, y + 1]], '#80563a');
+  const tiers = 3 + (r() < 0.4 ? 1 : 0), step = tiers === 4 ? 6 : 7.5;
+  for (let i = 0; i < tiers; i++) {
+    const by = y - 5 * s - i * step * s, w = (11.5 - i * (tiers === 4 ? 2.3 : 3)) * s, top = by - (tiers === 4 ? 10 : 12) * s;
+    mpoly(g, [[x, top], [x + w, by], [x + w * 0.45, by - 1.8 * s], [x, by + 0.8 * s], [x - w * 0.45, by - 1.8 * s], [x - w, by]], '#184a2a'); // bryła piętra
+    mpoly(g, [[x, top], [x - w, by], [x - w * 0.45, by - 1.8 * s], [x - 0.3 * s, by - 0.6 * s]], '#3a8848'); // jasna ścianka
+    mpoly(g, [[x - 0.3 * s, top + 2 * s], [x - w * 0.8, by - 0.8 * s], [x - w * 0.55, by - 2.6 * s]], '#72bc68'); // odblask
+    mpoly(g, [[x + w * 0.2, by - 1 * s], [x + w, by], [x + w * 0.45, by - 1.8 * s]], '#0e3420'); // cień pod gałęziami
+    if (snowy) { mpoly(g, [[x, top], [x - w * 0.6, by - 4.5 * s], [x - w * 0.2, by - 5.5 * s], [x + w * 0.15, by - 4 * s], [x + w * 0.55, by - 5 * s]], '#f4f8fc'); mpoly(g, [[x, top], [x + w * 0.15, by - 4 * s], [x + w * 0.55, by - 5 * s]], '#b8c6d8'); }
   }
 }
 function drawPalm(g, x, y, s, r = mulberry32(1)) {
@@ -4398,6 +4710,17 @@ function drawDeadTree(g, x, y, s, col, r = mulberry32(1)) {
   mpoly(g, [[x - 2 * s, y], [x - 1.2 * s, y - 16 * s], [x - 0.3 * s, y - 16 * s], [x - 0.6 * s, y]], lt);
   mline(g, [[x, y - 9 * s], [x - 6 * s, y - 15 * s], [x - 8 * s, y - 15 * s]], col, 1.6 * s); mline(g, [[x, y - 12 * s], [x + 6 * s, y - 18 * s], [x + 7 * s, y - 21 * s]], col, 1.5 * s);
   mline(g, [[x - 3 * s, y - 12 * s], [x - 7 * s, y - 11 * s]], col, 1.2 * s); mline(g, [[x + 3.5 * s, y - 15 * s], [x + 7 * s, y - 14 * s]], col, 1.1 * s);
+}
+// Zwęglone drzewo na lawie: szary pień z jaśniejszą krawędzią, żarzące się pęknięcia i rozżarzone końce gałęzi
+function drawCharredTree(g, x, y, s, r = mulberry32(1)) {
+  shadowAt(g, x, y, 7 * s); const c = '#4a3c38', lt = '#86706a', dk = '#261c1a';
+  mpoly(g, [[x - 5 * s, y + 1], [x - 2 * s, y - 3 * s], [x + 2 * s, y - 3 * s], [x + 5 * s, y + 1]], '#2e2624'); // kopczyk popiołu
+  mpoly(g, [[x - 2.6 * s, y], [x - 1.3 * s, y - 18 * s], [x + 1.3 * s, y - 18 * s], [x + 2.6 * s, y]], c);
+  mpoly(g, [[x - 2.4 * s, y], [x - 1.3 * s, y - 17 * s], [x - 0.2 * s, y - 17 * s], [x - 0.8 * s, y]], lt); mpoly(g, [[x + 0.8 * s, y], [x + 0.6 * s, y - 17 * s], [x + 1.3 * s, y - 18 * s], [x + 2.6 * s, y]], dk);
+  const side = r() < 0.5 ? 1 : -1, br = [[0, -10, -7, -16], [0, -13, 7, -20], [-0.5, -6, -5, -8], [0.5, -15, 5, -16]];
+  for (const [a, b, c2, d] of br) { mline(g, [[x + a * s * side, y + b * s], [x + c2 * s * side, y + d * s]], c, 1.7 * s); g.fillStyle = '#ffb040'; g.fillRect(x + c2 * s * side - 1, y + d * s - 1, 2, 2); }
+  mline(g, [[x - 0.3 * s, y - 2 * s], [x + 0.6 * s, y - 6 * s], [x - 0.4 * s, y - 9 * s], [x + 0.5 * s, y - 12 * s]], '#ff7a2a', 1.2 * s); // żar w pęknięciu
+  g.fillStyle = '#ffd060'; g.fillRect(x, y - 6 * s, 1.6, 1.6);
 }
 function drawWillow(g, x, y, s, r = mulberry32(1)) {
   shadowAt(g, x, y, 9 * s);
@@ -4457,7 +4780,7 @@ function drawObstacle(g, o, t, px, py, r) {
     const x = px + spots[k][0], y = py + spots[k][1], s = 0.8 + r() * 0.3;
     if (t === TER.SNOW || t === TER.ROUGH) drawPine(g, x, y, s, t === TER.SNOW, r);
     else if (t === TER.SAND) drawPalm(g, x, y, s, r);
-    else if (t === TER.LAVA) drawDeadTree(g, x, y, s, '#1a1210', r);
+    else if (t === TER.LAVA) drawCharredTree(g, x, y, s, r);
     else if (t === TER.SWAMP) { if (r() < 0.5) drawDeadTree(g, x, y, s, '#2e2618', r); else drawWillow(g, x, y, s, r); }
     else if (t === TER.DIRT && r() < 0.5) drawPine(g, x, y, s, false, r);
     else drawOak(g, x, y, s, r);
@@ -4526,6 +4849,7 @@ function renderChunkPixel(map, cx, cy) {
     if (!any) segs.push([px, py, px, py, t]);
   }
   const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), img = g.createImageData(S, S), d = img.data;
+  const wm = new Uint8Array(S * S); let wet = false; // maska wody: 1 = głębia (fale), 2 = pas przy brzegu (piana)
   for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
     const k = (py * S + px) * 4, ax = bx + px, ay = by + py; let col;
     if (ax >= lim || ay >= lim) col = PC.void;
@@ -4533,6 +4857,7 @@ function renderChunkPixel(map, cx, cy) {
       const t = TT(px, py), hh = thash(ax, ay, 77) / 4294967296;
       if (t === TER.WATER) {
         let near = 9; for (const r of RING) if (TT(px + r[0], py + r[1]) !== TER.WATER) { near = r[2]; break; }
+        wm[py * S + px] = near <= 2 ? 2 : 1; wet = true;
         if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
         else { const P = TPAL[0]; col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; }
       } else {
@@ -4542,6 +4867,7 @@ function renderChunkPixel(map, cx, cy) {
       if (segs.length) {
         let best = 99, bt = 0;
         for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5, py + 0.5, s); if (dd < best) { best = dd; bt = s[4]; } }
+        if (best <= 4.3) wm[py * S + px] = 0;
         if (best <= 3.3) col = roadColor(bt, ax, ay, hh); else if (best <= 4.3) col = PC.edge;
       }
     }
@@ -4561,8 +4887,44 @@ function renderChunkPixel(map, cx, cy) {
     const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     g.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
   }
+  if (wet) { // maski do animacji wody (WaterFx); przeszkody stojące nad wodą (drzewa, góry przy brzegu) ją zasłaniają
+    const mk = v => { const m = document.createElement('canvas'); m.width = m.height = S; const mg = m.getContext('2d'), mi = mg.createImageData(S, S);
+      for (let i = 0; i < S * S; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out';
+      for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
+        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); mg.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
+      }
+      return m; };
+    c._deep = mk(1); c._shore = mk(2);
+  }
   return c;
 }
+// Żywa woda: po głębi płyną dwie warstwy błysków fal (w przeciwnych kierunkach), pas przy brzegu pulsuje pianą.
+// Rysowane co klatkę na gotowy fragment mapy, przycięte jego maskami; wzór jest ciągły między fragmentami.
+const WaterFx = {
+  pat: null, tmp: null,
+  pattern() {
+    if (this.pat) return this.pat; const P = 48, c = document.createElement('canvas'); c.width = c.height = P; const g = c.getContext('2d'), r = mulberry32(4242);
+    for (let k = 0; k < 16; k++) { // krótkie łuki fal: jasny grzbiet i ciemniejszy cień pod nim
+      const x = Math.floor(r() * P), y = Math.floor(r() * P), w = 3 + Math.floor(r() * 4);
+      for (let i = 0; i < w; i++) { const yy = y - (i > 0 && i < w - 1 ? 1 : 0); g.fillStyle = k % 4 ? '#8cb6da' : '#d4eaf6'; g.fillRect((x + i) % P, (yy + P) % P, 1, 1); g.fillStyle = '#1e3e66'; g.fillRect((x + i) % P, (yy + 1 + P) % P, 1, 1); }
+    }
+    return this.pat = c;
+  },
+  draw(b, ch, dx, dy, size, wx, wy) {
+    if (!ch._deep) return; const S = ch.width, t = G.time;
+    const tmp = this.tmp || (this.tmp = document.createElement('canvas')); if (tmp.width !== S) { tmp.width = tmp.height = S; }
+    const g = tmp.getContext('2d'), pat = g.createPattern(this.pattern(), 'repeat');
+    const layer = (ox, oy, a) => { g.save(); g.globalAlpha = a; g.translate(ox, oy); g.fillStyle = pat; g.fillRect(-ox, -oy, S, S); g.restore(); };
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S);
+    layer(Math.floor(t * 4) - wx, Math.floor(t * 1.5) - wy, 0.5 + 0.2 * Math.sin(t * 1.3));
+    layer(-Math.floor(t * 3) - wx + 21, Math.floor(t * 2) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0);
+    b.drawImage(tmp, dx, dy, size, size);
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = '#eef8fc'; g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0); g.globalCompositeOperation = 'source-over';
+    b.drawImage(tmp, dx, dy, size, size);
+  },
+};
 // Minimapa: 1 piksel na pole, kolory bazowe z palety terenu po korekcji barw mapy
 function buildMinimap(map, ex) {
   const n = map.n, c = document.createElement('canvas'); c.width = c.height = n;
@@ -4655,7 +5017,7 @@ function drawWorldPixel(b, st) {
   const c0 = Math.max(0, Math.floor(camX / CP)), c1 = Math.min(nC - 1, Math.floor((camX + VIEW.w - 1) / CP));
   const r0 = Math.max(0, Math.floor(camY / CP)), r1 = Math.min(nC - 1, Math.floor((camY + VIEW.h - 1) / CP));
   const ox = VIEW.x - camX, oy = VIEW.y - camY;
-  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) b.drawImage(MapRender.get(cx, cy), ox + cx * CP, oy + cy * CP, CP, CP);
+  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) { const ch = MapRender.get(cx, cy); b.drawImage(ch, ox + cx * CP, oy + cy * CP, CP, CP); WaterFx.draw(b, ch, ox + cx * CP, oy + cy * CP, CP, cx * ch.width, cy * ch.width); }
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
@@ -4668,8 +5030,10 @@ function drawWorldPixel(b, st) {
     if (ob.type === 'monster') { shadow(10, px, py + 10); blit(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
     else if (ob.type === 'res') { shadow(10, px, py + 9); blit(b, resSprite(ob.res), px, py + 2); }
     else if (ob.type === 'chest') { shadow(10, px, py + 9); blit(b, chestSprite(), px, py + 2); }
+    else if (ob.type === 'boat') blit(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py);
     else if (ob.type === 'site') { shadow(14, px, py + 12); blit(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
     else if (ob.type === 'art') { shadow(9, px, py + 10); blit(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
+    else if (ob.type === 'bank') blit(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
     else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blit(b, mineSprite(ob.kind), mx, my); blit(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
     else if (ob.type === 'town') {
       const t = st.towns[ob.townId], lvl = townLevel(t), mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, fc = ownerColor(st, ob.owner);
@@ -4734,6 +5098,8 @@ function tileInfo(st, tx, ty) {
     if (ob.type === 'site') { const h = hero(st); return `${SITES[ob.kind].name}${h && siteUsed(st, ob, h) ? ' (odwiedzone)' : ''}`; }
     if (ob.type === 'art') return `Artefakt: ${ARTIFACTS[ob.art].name}`;
     if (ob.type === 'res') return resName(ob.res);
+    if (ob.type === 'boat') return 'Łódź';
+    if (ob.type === 'bank') return `${BANKS[ob.kind].name}${ob.cleared ? ' (splądrowane)' : ''}`;
   }
   const t = map.terrain[i]; if (t === TER.WATER) return 'Woda (potrzebna łódź)';
   let s = TERRAINS[t].name, cost = TERRAINS[t].cost;
@@ -4784,6 +5150,7 @@ function drawEmblem(ctx, kind, cx, cy, s, col) {
     case 'ghost': ctx.beginPath(); ctx.arc(0, -3, 7, Math.PI, 0); ctx.lineTo(7, 9); ctx.lineTo(3.5, 6); ctx.lineTo(0, 9); ctx.lineTo(-3.5, 6); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill(); ctx.fillStyle = dark; ctx.fillRect(-3.5, -4, 2.2, 3); ctx.fillRect(1.3, -4, 2.2, 3); break;
     case 'bat': ctx.beginPath(); [[0, -3], [3, -7], [4, -3], [10, -7], [9, 1], [6, -1], [3, 4], [0, 1], [-3, 4], [-6, -1], [-9, 1], [-10, -7], [-4, -3], [-3, -7]].forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); ctx.fill(); break;
     case 'moon': ctx.beginPath(); ctx.arc(0, 0, 9, 0.9, TAU - 0.9); ctx.arc(5, 0, 7.5, TAU - 1.25, 1.25, true); ctx.closePath(); ctx.fill(); break;
+    case 'anchor': ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(0, 8); ctx.moveTo(-5, -3); ctx.lineTo(5, -3); ctx.moveTo(-8, 2); ctx.quadraticCurveTo(-7, 9, 0, 8); ctx.quadraticCurveTo(7, 9, 8, 2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, -9, 2.2, 0, TAU); ctx.stroke(); break;
     case 'eye': ctx.beginPath(); ctx.ellipse(0, 0, 10, 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(0, 0, 2, 5, 0, 0, TAU); ctx.fill(); break;
     case 'fork': ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(0, -4); ctx.moveTo(-6, -9); ctx.lineTo(-6, -3); ctx.quadraticCurveTo(0, 2, 6, -3); ctx.lineTo(6, -9); ctx.moveTo(0, -4); ctx.lineTo(0, -10); ctx.stroke(); break;
   }
@@ -6270,35 +6637,65 @@ G.screens.menu = {
     text(ctx, `Kroniki Królestw · wersja ${VERSION}`, 12, H - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
   },
 };
+// Nowa gra: mapa, trudność, bonus i 8 miejsc graczy (człowiek / komputer / wolne, kolor, frakcja).
+// Kilku ludzi = hot-seat: grają na zmianę przy jednym ekranie, każdy ze swoją mgłą wojny.
+const setupCap = S => (SITE_COUNT[(MAP_SIZES.find(m => m.id === S.mapSize) || MAP_SIZES[0]).n] || 4);
+const SLOT_LABEL = { human: 'Człowiek', ai: 'Komputer', off: '—' };
 G.screens.setup = {
   backdrop() {}, // scena menu maluje całe okno
   buttons: [],
   enter() {
-    const S = G.settings, B = [];
-    MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 118, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}` })));
-    DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 180, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
-    PLAYER_COLORS.forEach((c, i) => B.push(new Button(230 + i * 128, 276, 118, 40, c.name, () => { S.color = c.id; }, { selected: () => S.color === c.id, size: 13, swatch: c.hex })));
-    const fw = Math.min(154, Math.floor(506 / FACTIONS.length) - 6); FACTIONS.forEach((f, i) => B.push(new Button(230 + i * (fw + 6), 330, fw, 40, f.name, () => { S.faction = f.id; }, { selected: () => S.faction === f.id, size: fw < 110 ? 14 : 16 })));
-    BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 440, 100, 44, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, sub: b.sub })));
-    [1, 2, 3].forEach((k, i) => B.push(new Button(628 + i * 38, 440, 34, 44, String(k), () => { S.opponents = k; }, { selected: () => (S.opponents || 1) === k, size: 17,
-      tip: 'Liczba przeciwników komputerowych. Na małej mapie zmieszczą się najwyżej dwaj.' })));
-    B.push(new Button(150, 506, 200, 46, 'Rozpocznij', () => startNewGame(), { key: 'enter', size: 19 }));
-    B.push(new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
+    const S = G.settings, B = []; S.slots = validSlots(S.slots) || legacySlots(S);
+    MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 114, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}`, tip: `Na tej mapie zmieści się do ${SITE_COUNT[m.n]} graczy.` })));
+    DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 168, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
+    BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 254, 100, 36, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, tip: `Bonus startowy: ${b.sub}.` })));
+    this.slotBtns = S.slots.map((o, i) => {
+      const x = 80 + (i % 2) * 340, y = 318 + (i >> 1) * 42, col = () => S.slots[i];
+      const sw = new Button(x, y, 40, 34, '', () => this.nextColor(i), { swatch: () => colorHex(col().color), tip: 'Kolor gracza (kliknij, aby zmienić).' });
+      const ty = new Button(x + 46, y, 118, 34, '', () => this.nextType(i), { size: 14, selected: () => col().type === 'human', tip: 'Człowiek, komputer albo wolne miejsce. Kilku ludzi gra na zmianę przy jednym ekranie (hot-seat).' });
+      const fa = new Button(x + 170, y, 150, 34, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; }, { size: 14, tip: 'Frakcja gracza (kliknij, aby zmienić).' });
+      B.push(sw, ty, fa); return { sw, ty, fa };
+    });
+    this.bStart = new Button(150, 506, 200, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19 });
+    B.push(this.bStart, new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
     this.buttons = B;
   },
+  nextColor(i) {
+    const S = G.settings, o = S.slots[i], k = PLAYER_COLORS.findIndex(c => c.id === o.color);
+    for (let d = 1; d < PLAYER_COLORS.length; d++) {
+      const c = PLAYER_COLORS[(k + d) % PLAYER_COLORS.length], j = S.slots.findIndex(q => q.color === c.id);
+      if (j < 0 || S.slots[j].type === 'off') { if (j >= 0) S.slots[j].color = o.color; o.color = c.id; return; } // zamiana z wolnym miejscem
+    }
+  },
+  nextType(i) {
+    const S = G.settings, o = S.slots[i], t = SLOT_TYPES[(SLOT_TYPES.indexOf(o.type) + 1) % SLOT_TYPES.length];
+    if (o.type === 'human' && !S.slots.some((q, j) => j !== i && q.type === 'human')) { o.type = 'ai'; S.slots[i === 0 ? 1 : 0].type = 'human'; return; } // zawsze choć jeden człowiek
+    o.type = t;
+  },
+  active() { return G.settings.slots.filter(o => o.type !== 'off').length; },
+  start() {
+    const n = this.active(), cap = setupCap(G.settings);
+    if (n > cap) { showDialog(`Na tej mapie zmieści się najwyżej ${cap} graczy, a wybranych jest ${n}. Wybierz większą mapę albo zwolnij miejsca.`, [{ label: 'OK', key: 'enter' }]); return; }
+    const hu = G.settings.slots.find(o => o.type === 'human'); G.settings.color = hu.color; if (hu.faction !== 'random') G.settings.faction = hu.faction;
+    G.settings.opponents = G.settings.slots.filter(o => o.type === 'ai').length;
+    startNewGame();
+  },
   draw(ctx) {
+    const S = G.settings;
+    for (const [i, b] of (this.slotBtns || []).entries()) {
+      const o = S.slots[i]; b.ty.label = SLOT_LABEL[o.type]; b.fa.label = o.faction === 'random' ? 'Losowa' : factionOf(o.faction).name; b.fa.disabled = b.sw.disabled = o.type === 'off';
+    }
     dimmedMenuScene(ctx, 0.5);
     drawParchment(ctx, 40, 22, 720, 556);
     text(ctx, 'Nowa gra', W / 2, 58, { size: 30, align: 'center', color: '#3a1e08', fam: 'title' });
-    text(ctx, 'Pojedynczy scenariusz na losowej mapie', W / 2, 88, { size: 18, align: 'center', color: '#5a3814', italic: true, weight: 500 });
-    divider(ctx, 80, 720, 104);
+    text(ctx, 'Losowa mapa, do 8 graczy: ludzie na zmianę przy jednym ekranie i komputer', W / 2, 88, { size: 17, align: 'center', color: '#5a3814', italic: true, weight: 500 });
+    divider(ctx, 80, 720, 102);
     const L = (s, y, x = 80) => text(ctx, s, x, y, { size: 17, color: '#3a1e08', fam: 'title' });
-    L('Mapa', 140); L('Trudność', 202); L('Zasoby', 248); L('Kolor', 296); L('Frakcja', 350); L('Bonus', 462); L('Rywale', 462, 562);
-    const d = DIFFICULTIES[G.settings.difficulty];
-    RESOURCES.forEach((r, i) => { const x = 230 + i * 72; resIcon(ctx, r.id, x + 10, 248, 24); text(ctx, String(d.res[r.id]), x + 25, 249, { size: 16 }); });
-    const f = FACTIONS.find(f => f.id === G.settings.faction) || FACTIONS[0];
-    ctx.font = font(16, 500, 'body');
-    wrapText(ctx, f.desc, 490).slice(0, 2).forEach((l, i) => text(ctx, l, 230, 388 + i * 19, { size: 16, weight: 500, italic: true, color: '#4a2c0e' }));
+    L('Mapa', 136); L('Trudność', 190); L('Zasoby', 234); L('Bonus', 272);
+    const d = DIFFICULTIES[S.difficulty];
+    RESOURCES.forEach((r, i) => { const x = 230 + i * 72; resIcon(ctx, r.id, x + 10, 234, 24); text(ctx, String(d.res[r.id]), x + 25, 235, { size: 16 }); });
+    const n = this.active(), cap = setupCap(S), hu = S.slots.filter(o => o.type === 'human').length;
+    text(ctx, `Gracze: ${n} z ${cap} miejsc na tej mapie${hu > 1 ? ` · hot-seat: ${hu} ludzi` : ''}`, 80, 304, { size: 16, weight: 600, color: n > cap ? '#a02010' : '#3a1e08' });
     this.buttons.forEach(b => b.draw(ctx));
   },
 };
@@ -6536,18 +6933,42 @@ G.screens.adventure = {
   },
   enter(p) {
     const st = G.state;
-    rebuildObjIndex(st); this.floats = []; this.banner = null; this.flashMsg = null;
+    rebuildObjIndex(st); this.floats = []; this.banner = null; this.flashMsg = null; this.curtain = null;
     MapRender.reset(st.map, human(st).explored); layoutAdventure();
     if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
     if (this.aiRun && this.aiRun.st !== st) this.aiRun = null; // tura z poprzedniej gry
     this.layout(true); // przyciski panelu; w trakcie tury przeciwnika (powrót z bitwy obronnej) zablokowane
     if (p.flash) this.flash(p.flash);
     if (p.after) p.after();
-    if (p.welcome) {
-      const h = hero(st), foes = st.players.filter(q => !q.human);
-      const goal = foes.length ? ` Twoi rywale: ${foes.map(q => `${ownerName(st, q.id)} (${factionOf(q.faction).name})`).join(', ')}. Pokonaj ich wszystkich: zdobądź ich miasta i rozbij ich bohaterów.` : ' Nie masz rywali: to gra swobodna, bez zwycięstwa.';
-      showDialog(`Rozpoczyna się twoja kronika. ${h.name} (${heroTitle(h).split(', ')[1]}) czeka na rozkazy w mieście ${st.towns[0].name}.${goal} Bonus startowy: ${st.bonusText}.`, [{ label: 'Do dzieła', key: 'enter' }]);
-    }
+    if (p.welcome) this.startHumanTurn(st, true); else human(st).welcomed = true; // gra wczytana albo powrót z innego ekranu
+  },
+  // Powitanie gracza na początku jego pierwszej tury: frakcja, rywale, bonus startowy
+  welcomeText(st) {
+    const me = human(st), h = hero(st), t = myTowns(st)[0], foes = st.players.filter(q => q.id !== ME);
+    const goal = foes.length ? ` Twoi rywale: ${foes.map(q => `${ownerName(st, q.id)}${q.human ? ' (człowiek)' : ''} (${factionOf(q.faction).name})`).join(', ')}. Pokonaj ich wszystkich: zdobądź ich miasta i rozbij ich bohaterów.` : ' Nie masz rywali: to gra swobodna, bez zwycięstwa.';
+    return `Rozpoczyna się twoja kronika. ${h.name} (${heroTitle(h).split(', ')[1]}) czeka na rozkazy w mieście ${t ? t.name : ''}.${goal} Bonus startowy: ${me.bonusText || st.bonusText}.`;
+  },
+  // Początek tury człowieka. W hot-seat najpierw zasłona: mapa ukryta, dopóki właściwy gracz nie usiądzie do ekranu.
+  // Potem powitanie (pierwsza tura) i wieści ze skrzynki (ataki komputera, nowy tydzień, brak miasta).
+  startHumanTurn(st, live) {
+    const p = human(st), msgs = [];
+    if (!p.welcomed) { p.welcomed = true; msgs.push([this.welcomeText(st), 'Do dzieła']); }
+    const inbox = takeInbox(p); if (inbox.length) msgs.push([inbox.join(' '), 'OK']);
+    const next = () => { const m = msgs.shift(); if (m) showDialog(m[0], [{ label: m[1], key: 'enter', action: next }]); };
+    if (live && sharedScreen(st)) {
+      this.curtain = ME;
+      showDialog(`Tura: ${cap1(playerName(st, ME))} (${factionOf(p.faction).name}), ${dateText(st).toLowerCase()}. Pozostali gracze, nie patrzcie na ekran.`, [{ label: 'Zaczynam', key: 'enter', action: () => { this.curtain = null; next(); } }],
+        { locked: true, iconH: 70, icon: (ctx, cx, cy) => { ctx.save(); ctx.translate(cx - 30, cy - 24); ctx.scale(2.4, 2.4); drawFlag(ctx, 0, 0, 24, 13, G.time, ownerColor(st, ME)); ctx.restore(); } });
+    } else next();
+  },
+  // Zmiana gracza przed ekranem: jego mgła, kamera i wybrany bohater (poprzedni gracz zachowuje swoje)
+  setViewer(st, id) {
+    const prev = st.players[ME]; if (prev && prev.human) { prev.cam = st.cam; prev.selHero = st.selHero; }
+    ME = st.cur = id; const p = st.players[id];
+    st.cam = p.cam ? { ...p.cam } : null; st.selHero = p.selHero != null ? p.selHero : Math.max(0, st.heroes.findIndex(h => h.owner === id));
+    MapRender.reset(st.map, p.explored); MapRender.miniDirty = true;
+    if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
+    this.layout(true);
   },
   flash(msg) { this.flashMsg = { text: msg, t: G.time }; },
   systemMenu() {
@@ -6588,10 +7009,12 @@ G.screens.adventure = {
         return `${t.name}. Dochód: ${townGold(t)} złota dziennie. Budowli: ${t.built.length}. ` + (t.owner === ME ? 'Wejdź bohaterem albo wybierz miasto z listy po prawej.' : `${t.owner < 0 ? 'Miasto niezależne' : `Właściciel: ${ownerName(st, t.owner)}`}. Siła obrońców ${townPower(st, t)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}. Wejdź, aby je zdobyć.`);
       }
       if (ob && ob.type === 'mine') { const M = MINES[ob.kind]; return `${M.name}. Właściciel: ${ownerName(st, ob.owner)}. Dochód dzienny: ${M.income} (${resName(ob.kind).toLowerCase()}).`; }
+      if (ob && ob.type === 'bank') { const B = BANKS[ob.kind]; return ob.cleared ? `${B.name}: splądrowane, nic tu już nie ma.` : `${B.name}: ${B.desc}. Załoga: ${bankGuardText(ob)} (siła ${bankPower(ob)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Łup: ${bankLootText(ob.kind)}.`; }
       if (ob && ob.type === 'site') return siteInfo(st, ob, hero(st));
       if (ob && ob.type === 'chest') return 'Skrzynia ze skarbem. Wybierzesz złoto albo doświadczenie dla bohatera.';
       if (ob && ob.type === 'art') return `${artInfo(ob.art)} Wejdź na to pole, aby go podnieść.`;
       if (ob && ob.type === 'res') return `${resName(ob.res)}: ${ob.amount}. Wejdź na to pole, aby zabrać.`;
+      if (ob && ob.type === 'boat') return 'Łódź. Wejdź na nią z brzegu, aby płynąć po wodzie; wysiadka na brzeg kończy ruch na dziś.';
       return tileInfo(st, tx, ty);
     }
     if (inRect(x, y, { x: MINI.x, y: MINI.y, w: MINI.s, h: MINI.s })) return 'Minimapa. Kliknij albo przeciągnij, aby przenieść widok.';
@@ -6638,12 +7061,17 @@ G.screens.adventure = {
     if (idle.length) showDialog(`${idle.length > 1 ? 'Niektórzy bohaterowie mogą' : `${idle[0].name} może`} się jeszcze poruszyć. Czy na pewno zakończyć turę?`, [{ label: 'Tak', key: 'enter', action: () => this.doEndTurn({ live: true }) }, { label: 'Nie', key: 'escape' }]);
     else this.doEndTurn({ live: true });
   },
-  // Koniec dnia: najpierw tura przeciwników, potem nowy dzień (finishDay).
+  // Koniec tury: kolejni gracze komputerowi (turnsAfter), przy końcu kolejki nowy dzień, aż do następnego człowieka.
   // { live: true } (przycisk) odtwarza turę SI na mapie i pyta o obronę; bez opcji (testy, symulacje) wszystko dzieje się od razu.
   doEndTurn(opts = {}) {
-    const st = G.state, news = [], gen = aiAllTurns(st, news);
-    if (!opts.live) { runAiSync(st, gen); this.finishDay(st, news); return; }
+    const st = G.state, news = [], gen = turnsAfter(st, ME, news);
+    if (!opts.live) { const next = runAiSync(st, gen); this.nextHuman(st, next, false); return; }
     this.aiRun = { st, gen, news, input: undefined, wait: false, who: null, anim: null, seen: new Set() }; this.lockButtons(true);
+  },
+  nextHuman(st, id, live) {
+    if (id !== ME) this.setViewer(st, id);
+    if (live) this.autosave(st);
+    this.startHumanTurn(st, live);
   },
   lockButtons(on) { for (const b of this.buttons) { if (on) { b._was = b.disabled; b.disabled = true; } else if (b._was !== undefined) { b.disabled = b._was; delete b._was; } } },
   // Odtwarzanie tury SI: widoczne kroki (na odkrytej mapie) z animacją i kamerą, reszta od razu; atak na gracza czeka na jego decyzję
@@ -6659,15 +7087,22 @@ G.screens.adventure = {
     const ex = human(st).explored, n = st.map.n;
     for (let k = 0; k < 2000; k++) {
       const r = R.gen.next(R.input); R.input = undefined;
-      if (r.done) { this.aiRun = null; this.lockButtons(false); this.finishDay(st, R.news); return; }
+      if (r.done) { this.aiRun = null; this.lockButtons(false); this.nextHuman(st, r.value, true); return; }
       const a = r.value;
       if (a.kind === 'player') { R.who = a.p; continue; }
-      if (a.kind === 'step') {
-        if (!st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
+      if (a.kind === 'day') { this.banner = { text: `Dzień ${st.day}`, t: G.time }; Sound.play(a.newWeek ? 'week' : 'day'); continue; }
+      if (a.kind === 'step') { // w hot-seat ruchów komputera nie pokazujemy (mgła każdego gracza jest tajna)
+        if (sharedScreen(st) || !st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
         if (!R.seen.has(a.h)) { R.seen.add(a.h); centerCam(st, a.fx, a.fy); }
         a.h.anim = { fx: a.fx, fy: a.fy, t: 0 }; R.anim = a.h; return;
       }
-      if (a.kind === 'defend') { R.wait = true; this.askDefense(st, a, res => { R.input = res; R.wait = false; }); return; }
+      if (a.kind === 'defend') {
+        R.wait = true; const ask = () => this.askDefense(st, a, res => { R.input = res; R.wait = false; });
+        if (a.owner === ME) { ask(); return; }
+        this.setViewer(st, a.owner); this.curtain = ME; // hot-seat: broni się inny człowiek, siada do ekranu
+        showDialog(`${cap1(playerName(st, ME))}: komputer atakuje twoje ziemie! Podejdź do ekranu.`, [{ label: 'Jestem', key: 'enter', action: () => { this.curtain = null; ask(); } }], { locked: true, iconH: 70, icon: (ctx, cx, cy) => { ctx.save(); ctx.translate(cx - 30, cy - 24); ctx.scale(2.4, 2.4); drawFlag(ctx, 0, 0, 24, 13, G.time, ownerColor(st, ME)); ctx.restore(); } });
+        return;
+      }
     }
   },
   // Przeciwnik atakuje bohatera albo miasto gracza: walka na ekranie bitwy (gracz po prawej) albo automatyczna
@@ -6687,28 +7122,19 @@ G.screens.adventure = {
     showDialog(msg, [{ label: 'OK', key: 'enter', action: () => { if (held && D && res.foeExp && st.heroes.includes(D)) gainExp(st, D, res.foeExp); } }]);
     done(res);
   },
-  finishDay(st, news) {
-    st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
-    if (st.day > 7) { st.day = 1; st.week++; newWeek = true; if (st.week > 4) { st.week = 1; st.month++; newMonth = true; } }
-    for (const h of st.heroes) {
-      h.mp = heroMaxMP(h);
-      const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
-      if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
-    }
-    collectIncome(st);
-    for (const t of st.towns) t.builtToday = false;
-    this.banner = { text: `Dzień ${st.day}`, t: G.time }; Sound.play(newWeek ? 'week' : 'day');
-    this.autosave(st);
-    const weekNews = newWeek ? startWeek(st, newMonth) : null;
-    news.push(...dailyTownCheck(st)); rebuildObjIndex(st); MapRender.miniDirty = true;
-    if (weekNews) news.unshift(weekNews);
-    if (news.length) showDialog(news.join(' '), [{ label: 'OK', key: 'enter' }]);
-  },
   // Koniec gry sprawdzamy w każdej klatce bez otwartego okna: po bitwie, zdobyciu miasta i turze przeciwników
   checkGameEnd(st) {
-    if (st.over || G.modal) return; const r = gameResult(st); if (!r) return;
-    st.over = r; if (r === 'win') recordScore(st); Sound.play(r === 'win' ? 'victory' : 'defeat');
-    const msg = r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}. Twoja kronika trafia do księgi najlepszych wyników.`
+    if (st.over || G.modal) return; const r = gameResult(st);
+    if (!r && hotseat(st)) { // hot-seat: człowiek odpada, reszta gra dalej
+      const p = st.players.find(q => q.human && q.out && !q.told); if (!p) return; p.told = true; Sound.play('defeat');
+      showDialog(`${cap1(playerName(st, p.id))} odpada z gry: nie ma już miast ani bohaterów.`, [{ label: 'OK', key: 'enter', action: () => { if (p.id === ME && !this.aiRun) this.doEndTurn({ live: true }); } }], { locked: true });
+      return;
+    }
+    if (!r) return;
+    st.over = r; if (r === 'win' && !hotseat(st)) recordScore(st); Sound.play(r === 'win' ? 'victory' : 'defeat');
+    const days = `${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}`;
+    const msg = hotseat(st) ? (r === 'win' ? `Zwycięstwo! ${cap1(playerName(st, st.winner))} (${factionOf(st.players[st.winner].faction).name}) pokonuje wszystkich rywali w ${days}.` : 'Koniec gry: wszyscy ludzie przegrali, królestwa należą do komputera.')
+      : r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${days}. Twoja kronika trafia do księgi najlepszych wyników.`
       : 'Porażka. Twoje królestwo upadło: nie masz już miast ani bohaterów, którzy mogliby walczyć dalej.';
     showDialog(msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])], { locked: true });
   },
@@ -6775,6 +7201,9 @@ G.screens.adventure = {
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
     this.buttons.forEach(b => b.draw(ctx));
     drawResourceBar(ctx, st, VH - H, VW);
+    if (this.curtain != null) viewportDraw(ctx, c => { // zasłona hot-seat: nic z mapy poprzedniego gracza
+      c.fillStyle = '#140c06'; c.fillRect(0, 0, VW, VH); c.globalAlpha = 0.25; c.fillStyle = ownerColor(st, this.curtain); c.fillRect(0, 0, VW, VH); c.globalAlpha = 1;
+    });
   },
 };
 
@@ -7024,10 +7453,44 @@ function paintBattleBg(c, terr, fac) {
     } else { const n = vnoise2(x / 9, y / 6, 17) * 0.7 + vnoise2(x / 3, y / 3, 5) * 0.3 + (BAYER4[(y & 3) * 4 + (x & 3)] / 16 - 0.5) * 0.18; col = P[n < 0.32 ? 0 : n < 0.62 ? 1 : n < 0.8 ? 2 : 3]; }
     img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
   }
-  g.putImageData(img, 0, 0); c.imageSmoothingEnabled = false; c.drawImage(off, 0, 0, W, H);
+  g.putImageData(img, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = false; c.drawImage(off, 0, 0, W, H);
   c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1;
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { hexPath(c, x, y, 1); c.stroke(); }
   stoneFill(c, 0, 490, W, 110); c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, W, 38);
+}
+// Tło bitwy zależne od terenu (w połowie rozdzielczości, przed powiększeniem): horyzont pod paskiem u góry
+// i drobne malowane szczegóły na polu (kępki, kamyki, kałuże, pęknięcia z żarem). Nie wpływają na walkę.
+function battleDecor(g, terr, w, h, fac) {
+  const r = mulberry32(9001 + terr * 131), P = TPAL[terr].map(c => `rgb(${gradeRgb(c).map(Math.round).join(',')})`), px = (x, y, c, k = 1) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), k, k); };
+  const maxX = fac ? PAVE_X / 2 - 8 : w;
+  // horyzont: odległe wzgórza, las, wydmy, szczyty albo wulkany w kolorach terenu, zlewające się z polem
+  const far = { [TER.GRASS]: '#2e4a2a', [TER.DIRT]: '#4a3a28', [TER.SAND]: '#8a7050', [TER.SNOW]: '#8a98b0', [TER.SWAMP]: '#2a3a2a', [TER.ROUGH]: '#4a4436', [TER.LAVA]: '#2a1614', [TER.WATER]: '#2a4a6a' }[terr] || '#3a3a3a';
+  g.fillStyle = far; g.beginPath(); g.moveTo(0, 26);
+  for (let x = 0; x <= w; x += 4) { const peak = terr === TER.SNOW || terr === TER.ROUGH || terr === TER.LAVA ? Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 + Math.abs(Math.sin(x * 0.11)) * 4 : (terr === TER.GRASS || terr === TER.SWAMP) ? 4 + (thash(x >> 2, 3, terr) % 4) : Math.sin(x * 0.03) * 3 + 3; g.lineTo(x, 22 - peak); }
+  g.lineTo(w, 26); g.closePath(); g.fill();
+  if (terr === TER.LAVA) for (let x = 60; x < w; x += 150) { px(x, 10, '#ff7a2a', 2); px(x + 1, 8, '#ffd060'); }
+  if (terr === TER.SNOW) for (let x = 0; x < w; x += 3) if (Math.abs(Math.sin(x * 0.045 + 1.3)) > 0.8) px(x, 22 - Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 - Math.abs(Math.sin(x * 0.11)) * 4 + 1, '#f4f8fc', 2);
+  // większe plamy (jaśniejsza trawa, piach, zaspy, muł, zastygła lawa), potem drobne szczegóły
+  const patch = { [TER.GRASS]: '#4a7a34', [TER.DIRT]: P[0], [TER.SAND]: P[0], [TER.SNOW]: '#c8d2e0', [TER.SWAMP]: '#1e3a30', [TER.ROUGH]: P[0], [TER.LAVA]: '#3a1a14', [TER.WATER]: P[0] }[terr];
+  g.fillStyle = patch;
+  for (let k = 0; k < 14; k++) { // rozproszone w szachownicę, żeby wtapiały się w teren; środek gęstszy
+    const x0 = Math.round(20 + r() * (maxX - 40)), y0 = Math.round(40 + r() * (h - 110)), rx = 8 + r() * 12, ry = 3 + r() * 4;
+    for (let y = -Math.ceil(ry); y <= ry; y++) for (let x = -Math.ceil(rx); x <= rx; x++) { const d = (x / rx) ** 2 + (y / ry) ** 2; if (d <= 1 && (d < 0.35 || ((x0 + x + y0 + y) & 1))) g.fillRect(x0 + x, y0 + y, 1, 1); }
+  }
+  const tuft = (x, y, a, b) => { px(x, y - 2, a); px(x + 1, y - 3, b); px(x + 1, y - 2, b); px(x + 2, y - 4, b); px(x + 3, y - 3, a); px(x + 3, y - 2, a); px(x + 4, y - 2, b); };
+  const stone = (x, y, pal) => { g.fillStyle = pal[1]; g.fillRect(Math.round(x), Math.round(y) - 2, 4, 3); px(x, y - 2, pal[0], 2); px(x + 3, y, pal[2]); };
+  for (let k = 0; k < 120; k++) {
+    const x = 8 + r() * (maxX - 16), y = 34 + r() * (h - 96), v = r();
+    switch (terr) {
+      case TER.GRASS: if (v < 0.5) tuft(x, y, '#2e5a24', '#6aa844'); else if (v < 0.8) { const c = ['#e8d040', '#f4f0e8', '#d8503a', '#9a70d0'][k % 4]; px(x, y, c, 2); px(x + 3, y + 1, c); } else stone(x, y, ['#b0aca0', '#86847a', '#5a5850']); break;
+      case TER.DIRT: case TER.ROUGH: if (v < 0.45) stone(x, y, ['#a89880', '#7a6a58', '#4a3e32']); else if (v < 0.75) { for (let i = 0; i < 7; i++) px(x + i, y + (i % 3 === 1 ? 1 : 0), P[3]); } else tuft(x, y, '#6a6030', '#a89a50'); break;
+      case TER.SAND: if (v < 0.6) { for (let i = 0; i < 10; i++) px(x + i, y + Math.round(Math.sin(i * 0.7) * 1.2), P[2]); } else if (v < 0.72) { px(x, y, '#eee6d0', 4); px(x + 4, y + 1, '#eee6d0', 2); } else if (v < 0.8) { g.fillStyle = '#4a8a3a'; g.fillRect(Math.round(x), Math.round(y) - 6, 2, 7); g.fillRect(Math.round(x) - 2, Math.round(y) - 4, 2, 1); g.fillRect(Math.round(x) - 2, Math.round(y) - 5, 1, 2); } else stone(x, y, ['#e0c898', '#b09060', '#7a5a38']); break;
+      case TER.SNOW: if (v < 0.5) { for (let i = 0; i < 12; i++) px(x + i, y + (i > 2 && i < 9 ? 0 : 1), '#a0b0c8'); for (let i = 3; i < 9; i++) px(x + i, y - 1, '#ffffff'); } else if (v < 0.75) stone(x, y, ['#e8eef4', '#a0acba', '#6a7686']); else px(x, y, '#ffffff', 2); break;
+      case TER.SWAMP: if (v < 0.3) { g.fillStyle = '#16302c'; g.beginPath(); g.ellipse(Math.round(x), Math.round(y), 7, 3, 0, 0, TAU); g.fill(); px(x - 4, y - 1, '#4a8a7a', 2); } else if (v < 0.65) { for (let i = 0; i < 3; i++) { g.fillStyle = '#5a7a2a'; g.fillRect(Math.round(x + i * 2), Math.round(y) - 6, 1, 6); } px(x + 2, y - 8, '#6a4a26', 1); px(x + 2, y - 7, '#6a4a26'); } else if (v < 0.8) px(x, y, '#c83a2a', 2); else tuft(x, y, '#2a4a24', '#5a7a34'); break;
+      case TER.LAVA: if (v < 0.45) { let cx = x, cy = y; for (let i = 0; i < 10; i++) { px(cx, cy, i % 3 ? '#e0601a' : '#ffb040'); cx += 1; cy += r() < 0.5 ? 1 : -1; } } else stone(x, y, ['#5a4a42', '#3a2e2a', '#1e1714']); break;
+      case TER.WATER: if (v < 0.6) for (let i = 0; i < 5; i++) px(x + i, y - (i > 0 && i < 4 ? 1 : 0), '#8cb6da'); break;
+    }
+  }
 }
 // Szacunek obrażeń do podglądu ataku: [min, max] i ilu zginie
 function estimateStrike(B, a, t, ranged, moved = 0) {
@@ -7066,6 +7529,7 @@ G.screens.battle = {
     this.bCast = mk(2, 0, 'Czar', () => this.openBook(), { key: 'c', tip: 'Księga czarów bohatera: jeden czar na rundę, przed ruchem oddziału (klawisz C).' });
     this.bInfo = mk(2, 1, 'Mana', null, { disabled: true, tip: 'Mana bohatera. Odnawia się o 1 dziennie, a w pełni w mieście z gildią magów.' });
     this.casting = null; this.resume = false;
+    this.fleeTip = this.bFlee.tip;
     if (this.me === 1) { this.bFlee.disabled = true; this.bFlee.tip = 'Obrońca nie może uciec z pola bitwy.'; }
     this.buttons = [this.bWait, this.bDef, this.bAuto, this.bFlee, this.bCast, this.bInfo];
     this.phase = 'intro';
@@ -7087,6 +7551,7 @@ G.screens.battle = {
     if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
     if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
     this.phase = 'input'; this.reach = battleDist(B, u, unitSpd(u));
+    if (this.me !== u.side) { this.me = u.side; this.bFlee.disabled = u.side === 1; this.bFlee.tip = u.side ? 'Obrońca nie może uciec z pola bitwy.' : this.fleeTip; } // hot-seat: dowodzą na zmianę dwaj ludzie
     this.bWait.disabled = u.waited; this.onPointerMove(G.mouse.x, G.mouse.y);
   },
   player(fn) { if (this.phase !== 'input') return; this.casting = null; fn(this.B.active); this.phase = 'play'; },
@@ -7232,7 +7697,7 @@ G.screens.battle = {
     if (!u) return null;
     const c = CREATURES[u.cid];
     const ab = abilText(c);
-    return `${c.plural}: ${u.n} (${humanSide(this.B, u.side) ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''} Morale ${signed(unitMorale(this.B, u))}, szczęście ${signed(unitLuck(this.B, u))}.${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
+    return `${c.plural}: ${u.n} (${u.side === this.me ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''} Morale ${signed(unitMorale(this.B, u))}, szczęście ${signed(unitLuck(this.B, u))}.${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
   },
   draw(ctx) {
     const B = this.B, st = B.st, u0 = B.active, col = ownerColor(st, B.h.owner);
@@ -7289,7 +7754,7 @@ G.screens.battle = {
     text(ctx, `Runda ${B.round}`, W / 2, 19, { size: 16, align: 'center', color: '#f0e4c0', fam: 'title' });
     const D = B.sides[1], foeCol = ownerColor(st, D.owner), right = D.hero ? W - 50 : W - 12;
     if (D.hero) drawHeroPortrait(ctx, W - 44, 1, D.hero, foeCol);
-    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: '#ecd9a8', fam: 'title' });
+    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: '#ecd9a8', fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
@@ -7308,10 +7773,10 @@ function showBattleResult(st, h, res) {
   const lost = res.lost.length ? `Straty: ${res.lost.join(', ')}.` : 'Bez strat.';
   Sound.play(res.outcome === 'win' ? 'victory' : 'defeat');
   if (res.outcome === 'win') {
-    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '');
+    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
     showDialog(`Zwycięstwo!${extra} ${lost}${raisedText(res.raised)} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
       advFloat(`+${res.exp} dośw.`, h.x, h.y);
-      gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster') visitObject(st, h, here); });
+      gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank') visitObject(st, h, here); });
     } }]);
   } else if (res.outcome === 'fled') showDialog(`${h.name} wycofuje się z pola bitwy. ${lost} Na dziś koniec marszu.`, [{ label: 'OK', key: 'enter' }]);
   else if (res.heroLost) showDialog(`Porażka. Armia została rozbita, a ${h.name} opuszcza twoją służbę: wszystkie bramy twoich miast są zajęte.`, [{ label: 'OK', key: 'enter' }]);
@@ -7331,9 +7796,17 @@ G.screens.town = {
       new Button(596, 448, 192, 40, 'Rekrutacja', () => showRecruitList(G.state, this.town(), m => this.say(m)), { key: 'r', size: 16, tip: 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).' }),
       new Button(596, 496, 192, 40, 'Powrót na mapę', () => G.go('adventure'), { key: 'escape', size: 16, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
     ];
+    this.bRecruitHalf = new Button(596, 448, 94, 40, 'Rekrutacja', this.baseButtons[0].action, { key: 'r', size: 14, tip: this.baseButtons[0].tip });
+    this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
     this.btnUp = new Button(596, 392, 44, 28, 'W górę', () => this.onWheel(-1), { icon: iconArrow(-1), tip: 'Przewiń listę budowli w górę.' });
     this.btnDown = new Button(744, 392, 44, 28, 'W dół', () => this.onWheel(1), { icon: iconArrow(1), tip: 'Przewiń listę budowli w dół.' });
     this.buttons = this.baseButtons;
+  },
+  showShipyard() {
+    const st = G.state, t = this.town();
+    showDialog(`Stocznia. Łódź kosztuje ${BOAT_COST.gold} złota i ${BOAT_COST.wood} drewna i czeka na wodzie przy mieście. Bohater wsiada, wchodząc na nią z brzegu.`, [
+      { label: 'Kup łódź', key: 'enter', action: () => { const e = buyBoat(st, t); Sound.play(e ? 'error' : 'boat'); this.say(e || 'Łódź czeka na wodzie przy mieście'); } },
+      { label: 'Wyjdź', key: 'escape' }]);
   },
   onWheel(d) { const n = availableBuildings(this.town()).length; this.scroll = clamp(this.scroll + d, 0, Math.max(0, n - this.LIST_ROWS)); },
   say(m) { this.msg = m; this.msgT = G.time; },
@@ -7471,7 +7944,8 @@ G.screens.town = {
     });
     if (!list.length) text(ctx, 'Brak dostępnych budowli', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
-    this.buttons = paged ? [...this.baseButtons, this.btnUp, this.btnDown] : this.baseButtons;
+    const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, this.baseButtons[1]] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
+    this.buttons = paged ? [...base, this.btnUp, this.btnDown] : base;
     if (paged) {
       this.btnUp.disabled = this.scroll === 0; this.btnDown.disabled = this.scroll >= list.length - N;
       text(ctx, `${this.scroll + 1}–${Math.min(list.length, this.scroll + N)} z ${list.length}`, 692, 406, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });

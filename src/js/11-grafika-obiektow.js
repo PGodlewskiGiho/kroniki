@@ -3,42 +3,46 @@
 function drawResIcon(ctx, id, cx, cy, s = 24) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s / 24, s / 24); ctx.lineWidth = 1.2; ctx.strokeStyle = '#1a0e04';
   const poly = (pts, fill) => { ctx.beginPath(); pts.forEach(([px, py], i) => i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.stroke(); };
+  // bryłka w stylu rudy: podstawa, jasna ścianka u góry, ciemna z prawej, iskra odblasku; pal = [podstawa, jasna, ciemna]
+  const nugget = (ox, oy, k, pal, vein) => {
+    const P = (x, y) => [ox + x * k, oy + y * k];
+    poly([P(-7, 3), P(-5, -4), P(1, -7), P(7, -3), P(7, 4), P(1, 6)], pal[0]);
+    poly([P(-5, -4), P(1, -7), P(7, -3), P(1, -1)], pal[1]);
+    poly([P(1, -1), P(7, -3), P(7, 4), P(1, 6)], pal[2]);
+    if (vein) { ctx.strokeStyle = vein; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(...P(-5, 2)); ctx.lineTo(...P(-2, 0)); ctx.lineTo(...P(0, 3)); ctx.stroke(); }
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(...P(-1, -5), 1.6, 1.6); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
+  };
+  const heap = (pal, vein) => { for (const [ox, oy, k] of [[1, -4, 1.05], [-5, 3, 0.9], [6, 4, 0.8]]) nugget(ox, oy, k, pal, vein); };
   switch (id) {
-    case 'wood':
-      for (const [oy, len] of [[4, 20], [-4, 17]]) {
-        ctx.fillStyle = '#7a4a22'; rr(ctx, -len / 2, oy - 4, len, 8, 3); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#d9aa6c'; ctx.beginPath(); ctx.ellipse(len / 2 - 1, oy, 2.6, 3.8, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    case 'wood': // stos trzech kłód: kora ze ścianką jasną i ciemną, czoła z słojami
+      for (const [ox, oy, len] of [[-2, 5, 20], [2, 5, 18], [0, -3, 18]].slice(0, 3)) {
+        const x0 = ox - len / 2, x1 = ox + len / 2 - 2;
+        poly([[x0, oy - 4], [x1, oy - 4], [x1, oy + 4], [x0, oy + 4]], '#6e4220');
+        ctx.fillStyle = '#9a6634'; ctx.fillRect(x0 + 1, oy - 3.4, x1 - x0 - 2, 2.4); ctx.fillStyle = '#4a2a12'; ctx.fillRect(x0 + 1, oy + 1.6, x1 - x0 - 2, 1.8); ctx.strokeStyle = '#1a0e04';
+        ctx.fillStyle = '#d9aa6c'; ctx.beginPath(); ctx.ellipse(x1, oy, 2.8, 4, 0, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#a0703c'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.ellipse(x1, oy, 1.3, 2, 0, 0, TAU); ctx.stroke(); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
       } break;
-    case 'mercury': {
-      ctx.fillStyle = '#b8bcc8'; ctx.fillRect(-3, -11, 6, 9); ctx.strokeRect(-3, -11, 6, 9);
-      const g = ctx.createRadialGradient(-3, 1, 1, 0, 4, 9); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#8a90a0');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 4, 8, 0, TAU); ctx.fill(); ctx.stroke(); break;
+    case 'mercury': { // kanciasta fiolka z rtęcią: szkło ze ściankami, srebrna ciecz z odblaskiem
+      poly([[-3, -12], [3, -12], [3, -6], [-3, -6]], '#8a6a4a');
+      poly([[-4, -6], [4, -6], [9, 1], [7, 9], [-7, 9], [-9, 1]], '#9aa6b8');
+      poly([[-4, -6], [0, -6], [-2, 9], [-7, 9], [-9, 1]], '#d8e0ec');
+      poly([[-8, 2], [8, 2], [7, 9], [-7, 9]], '#c4ccd8'); poly([[1, 2], [8, 2], [7, 9], [2, 9]], '#7a8496');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-5, 3, 2, 2); ctx.fillRect(-6, -2, 1.5, 3); break;
     }
-    case 'ore': // kupka ciemnych, metalicznych bryłek z rdzawymi żyłkami (nie szary głaz jak kamienie na mapie)
-      for (const [ox, oy, k] of [[1, -4, 1.05], [-5, 3, 0.9], [6, 4, 0.8]]) {
-        const P = (x, y) => [ox + x * k, oy + y * k];
-        poly([P(-7, 3), P(-5, -4), P(1, -7), P(7, -3), P(7, 4), P(1, 6)], '#3b4150');
-        poly([P(-5, -4), P(1, -7), P(7, -3), P(1, -1)], '#6c7a92');
-        poly([P(1, -1), P(7, -3), P(7, 4), P(1, 6)], '#2a2e3a');
-        ctx.strokeStyle = '#c0682a'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(...P(-5, 2)); ctx.lineTo(...P(-2, 0)); ctx.lineTo(...P(0, 3)); ctx.stroke();
-        ctx.fillStyle = '#e8f0ff'; ctx.fillRect(...P(-1, -5), 1.6, 1.6); ctx.strokeStyle = '#1a0e04'; ctx.lineWidth = 1.2;
-      } break;
-    case 'sulfur':
-      ctx.beginPath(); ctx.moveTo(-11, 8); ctx.quadraticCurveTo(-6, -10, 0, -9); ctx.quadraticCurveTo(7, -9, 11, 8); ctx.closePath();
-      ctx.fillStyle = '#e4c629'; ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff38a';
-      for (const [dx, dy] of [[-3, -3], [3, 0], [-5, 4], [2, 5]]) { ctx.beginPath(); ctx.arc(dx, dy, 1.4, 0, TAU); ctx.fill(); } break;
+    case 'ore': heap(['#3b4150', '#6c7a92', '#2a2e3a'], '#c0682a'); break; // ciemne, metaliczne bryłki z rdzawymi żyłkami
+    case 'sulfur': heap(['#c8cc3a', '#f4f6a8', '#7e8a1e'], null); break; // blade, cytrynowe grudy siarki (złoto jest cieplejsze)
     case 'crystal':
       poly([[7, -4], [11, 2], [9, 9], [5, 9], [4, 1]], '#a81f28');
+      poly([[-7, 0], [-4, 9], [-9, 9], [-10, 3]], '#c02a34');
       poly([[0, -11], [6, -2], [3, 9], [-3, 9], [-6, -2]], '#d8303a');
-      poly([[0, -11], [-1, 9], [-3, 9], [-6, -2]], '#ff7a82'); break;
-    case 'gems': {
-      const gem = (gx, gy, c) => poly([[gx, gy - 6], [gx + 5, gy], [gx, gy + 6], [gx - 5, gy]], c);
+      poly([[0, -11], [-1, 9], [-3, 9], [-6, -2]], '#ff7a82'); ctx.fillStyle = '#ffffff'; ctx.fillRect(-3, -5, 1.6, 1.6); break;
+    case 'gems': { // oszlifowane kamienie: jasna ścianka z lewej u góry, ciemna z prawej u dołu
+      const gem = (gx, gy, c) => { poly([[gx, gy - 6], [gx + 5, gy], [gx, gy + 6], [gx - 5, gy]], c); poly([[gx, gy - 6], [gx, gy], [gx - 5, gy]], shadeHex(c, 0.35)); poly([[gx, gy], [gx + 5, gy], [gx, gy + 6]], shadeHex(c, -0.3)); ctx.fillStyle = '#ffffff'; ctx.fillRect(gx - 2, gy - 3, 1.5, 1.5); };
       gem(0, -4, '#b04ad0'); gem(-5, 4, '#2fb85a'); gem(5, 4, '#3a7de0'); break;
     }
-    case 'gold':
-      for (const [sx, n] of [[-4, 4], [6, 2]]) for (let i = 0; i < n; i++) {
-        ctx.fillStyle = i === n - 1 ? '#ffe070' : '#d9a520'; ctx.beginPath(); ctx.ellipse(sx, 8 - i * 4, 6, 3, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      } break;
+    case 'gold': // złote samorodki z monetą na wierzchu
+      heap(['#d8901c', '#ffd860', '#8a4e0c'], null);
+      for (const [cx, cy] of [[-6, -6], [-6, -9], [-6, -12], [4, -9]]) { ctx.fillStyle = '#f0b830'; ctx.beginPath(); ctx.ellipse(cx, cy, 4.5, 2, 0, 0, TAU); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff0a0'; ctx.fillRect(cx - 2.5, cy - 1, 2, 1); } break;
   }
   ctx.restore();
 }
@@ -589,8 +593,26 @@ function drawSkeleton(ctx, x, y, sc, t, dir, spear) {
 }
 
 // --- bohater: postać na koniu (mapa) i portret (panel) z jednego opisu wyglądu -----------------
-function drawHeroSprite(ctx, x, y, dir, col, t, moving, look = HERO_CLASSES.knight.look) {
+// Łódź: kadłub z desek, maszt; sail = kolor żagla (null = żagiel zwinięty)
+function drawBoat(ctx, t, sail) {
+  const rock = Math.sin(t * 3) * 0.6;
+  ctx.strokeStyle = 'rgba(220,235,255,.55)'; ctx.lineWidth = 1; for (const [x0, y0] of [[-17, 8], [10, 9], [-4, 11]]) { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + 7, y0); ctx.stroke(); }
+  fillPoly(ctx, [[-15, -1 + rock], [16, -2 - rock], [11, 7], [-11, 7]], '#6a4424'); fillPoly(ctx, [[-15, -1 + rock], [16, -2 - rock], [15, 1 - rock], [-14, 2 + rock]], '#9a6a38');
+  ctx.strokeStyle = '#4a2e14'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-12, 3); ctx.lineTo(13, 3); ctx.moveTo(-11, 5.2); ctx.lineTo(12, 5.2); ctx.stroke();
+  fillPoly(ctx, [[14, -2 - rock], [19, -6 - rock], [17, -1 - rock]], '#6a4424');
+  ctx.strokeStyle = '#3a2412'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(1, 0); ctx.lineTo(1, -27); ctx.stroke();
+  if (sail) { ctx.fillStyle = sail; ctx.beginPath(); ctx.moveTo(1.5, -26); ctx.quadraticCurveTo(12 + Math.sin(t * 4) * 1.2, -18, 2, -8); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(1.5, -18, 5, 1.5); }
+  else { ctx.fillStyle = '#e0d4b0'; ctx.fillRect(-1, -24, 5, 3); }
+}
+function drawHeroSprite(ctx, x, y, dir, col, t, moving, look = HERO_CLASSES.knight.look, boat = false) {
   ctx.save(); ctx.translate(x, y + 4); ctx.scale(dir, 1);
+  if (boat) { // bohater w łodzi: kadłub, żagiel w barwach gracza, postać na rufie
+    drawBoat(ctx, t, col); const ry = -1 + Math.sin(t * 3) * 0.5;
+    ctx.fillStyle = look.armor; rr(ctx, -10, ry - 11, 7, 10, 2); ctx.fill(); ctx.fillStyle = col; ctx.fillRect(-9, ry - 8, 5, 6);
+    if (look.hood) { circ(ctx, -6.5, ry - 13.5, 3, look.skin); ctx.fillStyle = look.hood; ctx.beginPath(); ctx.moveTo(-10, ry - 10); ctx.quadraticCurveTo(-10.5, ry - 18, -6.5, ry - 18.5); ctx.quadraticCurveTo(-3, ry - 17, -3, ry - 13); ctx.lineTo(-6, ry - 15); ctx.closePath(); ctx.fill(); }
+    else { circ(ctx, -6.5, ry - 14, 3.4, look.helm); ctx.fillStyle = '#1a1a22'; ctx.fillRect(-6, ry - 14.5, 3, 1.2); }
+    ctx.restore(); return;
+  }
   const bob = moving ? Math.sin(t * 22) * 1.2 : 0, hc = look.horse;
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 9, 14, 4, 0, 0, TAU); ctx.fill();
   ctx.lineCap = 'round';
@@ -665,6 +687,7 @@ const obstacleSprite = (o, t, v) => sprite(`ob${o}_${t}_${v}`, 40, 38, 20, 26, p
 const decorSprite = (t, v) => sprite(`dec${t}_${v}`, 12, 10, 6, 7, p => drawDecor(p, t, v), null);
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
+const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
 // Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki
 const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1 };
@@ -698,7 +721,7 @@ function tintSprite(s, col) {
 }
 function heroSprite(h, col) {
   const moving = !!h.anim, fr = Math.floor(G.time * (moving ? 12 : 4)) % 4, tk = moving ? fr * TAU / 88 : fr * TAU / 20;
-  return sprite(`hero_${h.cls}_${col}_${h.dir}_${moving ? 1 : 0}_${fr}`, 26, 26, 13, 17, p => drawHeroSprite(p, 0, 0, h.dir, col, tk, moving, heroClass(h).look));
+  return sprite(`hero_${h.cls}_${col}_${h.dir}_${moving ? 1 : 0}_${fr}_${h.boat ? 1 : 0}`, 26, 26, 13, 17, p => drawHeroSprite(p, 0, 0, h.dir, col, h.boat ? fr * TAU / 12 : tk, moving, heroClass(h).look, !!h.boat));
 }
 function flagSprite(col, len, hgt) {
   const fr = Math.floor(G.time * 6) % 4;

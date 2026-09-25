@@ -73,7 +73,7 @@ class Button {
     ctx.lineWidth = 1.2; ctx.strokeStyle = this.disabled ? '#6d665c' : (hover || sel ? '#ffd970' : '#b8913f'); rr(ctx, x + 3, y + 3, w - 6, h - 6, 3); ctx.stroke();
     let cx = x + w / 2;
     if (this.swatch) {
-      ctx.fillStyle = this.swatch; ctx.fillRect(x + 10, y + h / 2 - 8, 16, 16);
+      ctx.fillStyle = typeof this.swatch === 'function' ? this.swatch() : this.swatch; ctx.fillRect(x + 10, y + h / 2 - 8, 16, 16);
       ctx.lineWidth = 1.5; ctx.strokeStyle = '#e0b24a'; ctx.strokeRect(x + 10, y + h / 2 - 8, 16, 16); cx = x + (w + 26) / 2;
     }
     if (this.icon) {

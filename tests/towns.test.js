@@ -23,7 +23,7 @@ const walkIntoTown = (townIndex, army) => page.evaluate(([ti, army]) => {
 
 test('garnizon rośnie z odległością od gracza i z poziomem trudności', async () => {
   const power = difficulty => page.evaluate(d => {
-    const st = createNewGame(Object.assign({}, G.settings, { mapSize: 'XL', difficulty: d, opponents: 0 }), 4242), s = st.map.start;
+    const st = createNewGame(Object.assign({}, G.settings, { slots: null,  mapSize: 'XL', difficulty: d, opponents: 0 }), 4242), s = st.map.start;
     return st.towns.slice(1).map(t => ({ d: Math.hypot(t.x - s.x, t.y - s.y), p: armyPower(t.garrison) })).sort((a, b) => a.d - b.d);
   }, difficulty);
   const easy = await power(0), hard = await power(4);

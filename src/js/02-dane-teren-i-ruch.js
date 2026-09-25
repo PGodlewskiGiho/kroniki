@@ -22,6 +22,6 @@ const ROADS = [null,
   { name: 'droga brukowana', cost: 50, pal: ['#8c826e', '#bdb29c', '#ddd4c0'] },
 ];
 const DX8 = [1, -1, 0, 0, 1, 1, -1, -1], DY8 = [0, 0, 1, -1, 1, -1, 1, -1];
-const SITE_COUNT = { 36: 3, 72: 5, 108: 7, 144: 9 };
+const SITE_COUNT = { 36: 4, 72: 6, 108: 8, 144: 10 }; // miejsca pod miasta = najwięcej graczy na mapie
 const STEP_TIME = 0.14, HERO_SIGHT = 5;
 
