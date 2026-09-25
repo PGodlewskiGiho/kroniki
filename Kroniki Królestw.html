@@ -107,6 +107,8 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    Tura przeciwnika na żywo: aiAllTurns to generator akcji (kroki, obrona), ekran mapy odtwarza go w updateAi
    (widoczne ruchy z animacją), atak na gracza pyta o walkę (askDefense) i otwiera bitwę z graczem po prawej
    (ekran bitwy: this.me, onDone). doEndTurn() bez opcji (testy) liczy wszystko od razu, z obroną automatyczną.
+   Spotkanie bohaterów (showMeeting). Mgła wojny dla SI: reveal(…, owner) odkrywa teren każdemu graczowi,
+   aiReach i aiPickTarget widzą tylko odkryte pola, a bez lepszego celu bohater SI idzie na zwiad (cel explore).
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
@@ -1953,6 +1955,7 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   for (const p of st.players) if (!p.human) createHero(st, p.id, st.towns.find(t => t.owner === p.id).x, st.towns.find(t => t.owner === p.id).y);
   if (S.bonus === 'artifact') { const pool = ARTS_BY_RARITY('treasure'), id = pool[Math.floor(rng() * pool.length)]; giveArtifact(h, id); st.bonusText = `artefakt: ${ARTIFACTS[id].name}`; h.mp = heroMaxMP(h); }
   reveal(st, h.x, h.y, HERO_SIGHT + 1);
+  for (const o of st.heroes) if (o.owner !== ME) reveal(st, o.x, o.y, HERO_SIGHT + 1, o.owner);
   return st;
 }
 function startNewGame() { saveSettings(); G.state = createNewGame(G.settings); G.go('adventure', { welcome: true }); }
@@ -1962,13 +1965,15 @@ function startNewGame() { saveSettings(); G.state = createNewGame(G.settings); G
 // Dzienny limit ruchu zależy od najwolniejszej jednostki w armii (jak w oryginale)
 function mpBySpeed(s) { return s <= 3 ? 1500 : s >= 11 ? 2000 : [1560, 1630, 1700, 1760, 1830, 1900, 1960][s - 4]; }
 function heroMaxMP(h) { return mpBySpeed(armySlowest(h.army)) + heroBonus(h, 'mp'); }
-function reveal(st, cx, cy, r) {
-  const n = st.map.n, ex = human(st).explored; let changed = false;
+// Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
+function reveal(st, cx, cy, r, owner = ME) {
+  const P = playerOf(st, owner); if (!P || !P.explored) return;
+  const n = st.map.n, ex = P.explored; let changed = false;
   for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
     if (dx * dx + dy * dy > r * r + r) continue; const x = cx + dx, y = cy + dy;
     if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; if (!ex[i]) { ex[i] = 1; changed = true; }
   }
-  if (changed) MapRender.miniDirty = true;
+  if (changed && owner === ME) MapRender.miniDirty = true;
 }
 function passableTile(st, x, y) {
   const map = st.map, n = map.n; if (x < 0 || y < 0 || x >= n || y >= n) return false;
@@ -2300,7 +2305,7 @@ function hireHero(st, t, k) {
   if (!o) return { error: 'Nikt więcej nie czeka w tawernie' };
   if (P.resources.gold < HERO_COST) return { error: `Najem kosztuje ${HERO_COST} złota` };
   P.resources.gold -= HERO_COST; P.tavern.offers[k] = null; P.tavern.hired++;
-  const h = createHero(st, owner, t.x, t.y, o); if (owner === ME) reveal(st, h.x, h.y, heroSight(h));
+  const h = createHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner);
   return { hero: h };
 }
 
@@ -2587,7 +2592,7 @@ function removeHero(st, h) {
 }
 // Zmiana właściciela miasta (i jego obiektu na mapie)
 function captureTown(st, t, owner) {
-  t.owner = owner;
+  t.owner = owner; if (owner >= 0) reveal(st, t.x, t.y, HERO_SIGHT, owner);
   for (const ob of st.objects) if (ob.type === 'town' && ob.townId === t.id) ob.owner = owner;
   MapRender.miniDirty = true;
 }
@@ -2607,7 +2612,7 @@ function resolveBattle(B, fled) {
     else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
       const towns = st.towns.filter(t => t.owner === h.owner), t = towns.find(t => !heroAt(st, t.x, t.y)) || (towns.length && st.heroes.filter(o => o.owner === h.owner).length === 1 ? towns[0] : null);
       h.army = emptyArmy(); h.mp = 0; res.home = t ? t.name : null;
-      if (t) { h.x = t.x; h.y = t.y; if (h.owner === ME) reveal(st, h.x, h.y, heroSight(h)); }
+      if (t) { h.x = t.x; h.y = t.y; reveal(st, h.x, h.y, heroSight(h), h.owner); }
       else if (towns.length) { removeHero(st, h); res.heroLost = true; }
     }
   }
@@ -2662,10 +2667,10 @@ function aiManageTown(st, p, t) {
   }
   const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army);
 }
-// Mapa odległości od bohatera (Dijkstra, koszty ruchu jak u człowieka). Pola z obiektem, strażnikiem
-// albo bohaterem są przystankami: można na nie wejść, ale nie przejść dalej.
+// Mapa odległości od bohatera (Dijkstra, koszty ruchu jak u człowieka) tylko po terenie odkrytym przez jego
+// gracza. Pola z obiektem, strażnikiem albo bohaterem są przystankami: można na nie wejść, ale nie przejść dalej.
 function aiReach(st, h) {
-  const map = st.map, n = map.n, N = n * n, dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1), start = h.y * n + h.x;
+  const map = st.map, n = map.n, N = n * n, ex = playerOf(st, h.owner).explored, dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1), start = h.y * n + h.x;
   const heap = [[0, start]], push = e => { heap.push(e); let i = heap.length - 1; while (i) { const q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; [heap[q], heap[i]] = [heap[i], heap[q]]; i = q; } };
   const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
   const stop = i => !!(st.objAt[i] || st.guard[i] || heroAt(st, i % n, (i / n) | 0));
@@ -2675,7 +2680,7 @@ function aiReach(st, h) {
     const x = i % n, y = (i / n) | 0;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX8[k], ny = y + DY8[k]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
-      const j = ny * n + nx; if (map.terrain[j] === TER.WATER || map.obst[j]) continue;
+      const j = ny * n + nx; if (!ex[j] || map.terrain[j] === TER.WATER || map.obst[j]) continue;
       const ob = objectAt(st, j); if (ob && ob.blocks && j !== ob.y * n + ob.x) continue; // bok miasta/kopalni: tylko przez wejście
       const nd = d + stepCost(map, x, y, nx, ny); if (nd < dist[j]) { dist[j] = nd; prev[j] = i; push([nd, j]); }
     }
@@ -2690,9 +2695,12 @@ function aiWorthFight(st, h, foe) {
   return lost <= armyPower(h.army) * 0.4;
 }
 // Najlepszy cel bohatera: wartość celu maleje z odległością (dzień marszu ≈ połowa wartości).
+// SI zna tylko to, co odkryła (mgła wojny): nieodkryte obiekty, miasta i bohaterowie nie są celami,
+// a gdy w zasięgu nie ma nic lepszego, bohater idzie na zwiad na skraj mgły.
 // Walki (potwory, miasta, bohaterowie) sprawdzamy symulacją dopiero wtedy, gdy są najlepszym kandydatem.
 function aiPickTarget(st, h, R) {
-  const n = st.map.n, cands = [], add = (i, value, what, foe) => { if (value > 0 && R.dist[i] < Infinity) cands.push({ i, score: value / (1 + R.dist[i] / 1500), what, foe }); };
+  const n = st.map.n, ex = playerOf(st, h.owner).explored, cands = [], start = h.y * n + h.x;
+  const add = (i, value, what, foe) => { if (value > 0 && i !== start && R.dist[i] < Infinity) cands.push({ i, score: value / (1 + R.dist[i] / 1500), what, foe }); };
   const hasArmy = armySize(h.army) > 0, power = armyStrength(h);
   for (const t of st.towns) {
     const i = t.y * n + t.x, occupant = heroAt(st, t.x, t.y);
@@ -2717,6 +2725,16 @@ function aiPickTarget(st, h, R) {
       else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
     }
     for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, o.owner === ME ? 15000 : 8000, 'hero', o);
+    // zwiad: wolne pole na skraju odkrytego terenu, tym cenniejsze, im więcej mgły wokół
+    const r = 3, m = n + 1, S = new Int32Array(m * m); let best = -1, bestScore = 0; // sumy prefiksowe nieodkrytych pól
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) S[(y + 1) * m + x + 1] = (ex[y * n + x] ? 0 : 1) + S[y * m + x + 1] + S[(y + 1) * m + x] - S[y * m + x];
+    for (let i = 0; i < n * n; i++) {
+      if (R.dist[i] === Infinity || i === start || st.objAt[i] || st.guard[i]) continue;
+      const x = i % n, y = (i / n) | 0, x0 = Math.max(0, x - r), y0 = Math.max(0, y - r), x1 = Math.min(n, x + r + 1), y1 = Math.min(n, y + r + 1);
+      const fog = S[y1 * m + x1] - S[y0 * m + x1] - S[y1 * m + x0] + S[y0 * m + x0]; if (fog < 4) continue;
+      const score = (300 + fog * 40) / (1 + R.dist[i] / 1500); if (score > bestScore) { bestScore = score; best = i; }
+    }
+    if (best >= 0) cands.push({ i: best, score: bestScore, what: 'explore' });
   }
   cands.sort((a, b) => b.score - a.score);
   let sims = 0;
@@ -2768,6 +2786,7 @@ function* aiMoveHero(st, h, news) {
     for (const [nx, ny] of path) {
       const c = stepCost(st.map, h.x, h.y, nx, ny); if (c > h.mp) return;
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
+      reveal(st, nx, ny, heroSight(h), h.owner);
       yield { kind: 'step', h, fx, fy };
     }
     yield* aiVisit(st, h, target.i, news); h.prev = null;
