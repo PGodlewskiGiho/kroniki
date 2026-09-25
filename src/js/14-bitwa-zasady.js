@@ -72,11 +72,11 @@ function armyMorale(cids, hero, town) {
   const facs = new Set(cids.map(cid => CREATURES[cid].faction)).size;
   let m = facs <= 1 ? 1 : facs === 2 ? 0 : facs === 3 ? -1 : -2;
   if (cids.some(cid => (CREATURES[cid].abil || []).includes('undead'))) m -= 1;
-  if (hero) m += heroBonus(hero, 'morale') + skillVal(hero, 'leadership');
+  if (hero) m += heroBonus(hero, 'morale') + skillVal(hero, 'leadership') + ((hero.boost || {}).morale || 0); // boost: świątynia do następnej bitwy
   if (town && hasB(town, 'tavern')) m += 1;
   return clamp(m, -3, 3);
 }
-const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') : 0, -3, 3);
+const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') + ((h.boost || {}).luck || 0) : 0, -3, 3);
 function sideMorale(B, side) { const S = B.sides[side]; return S.monster ? 0 : armyMorale(B.units.filter(u => u.side === side && !isMachine(u)).map(u => u.cid), S.hero, S.town); }
 const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
 // Nieumarli nie znają strachu ani zapału: morale zawsze 0
@@ -373,6 +373,7 @@ function resolveBattle(B, fled) {
   const { st, h } = B, D = B.sides[1], outcome = fled ? 'fled' : B.over;
   const res = { outcome, lost: sideLosses(B, 0), foeLost: sideLosses(B, 1), exp: 0, foeExp: 0, captured: null, heroDefeated: null };
   writeBackSide(B, 0); writeBackSide(B, 1);
+  for (const S of B.sides) if (S.hero) delete S.hero.boost; // premie ze świątyni i fontanny trwają do końca bitwy
   if (outcome === 'win') {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);

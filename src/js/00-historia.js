@@ -9,6 +9,7 @@
      DANE: FRAKCJE, BOHATEROWIE...   HERO_CLASSES, FACTIONS, BUILDINGS, MINES
      DANE: ARTEFAKTY I ROZWÓJ...     PRIMARY, CLASS_GROWTH, poziomy, EQUIP_SLOTS, ARTIFACTS
      DANE: CZARY                     SPELLS, efekty i opisy; GUILD_OFFER, CLASS_SPELLS
+     DANE: OBIEKTY MAPY              SITES: kapliczki, studnie, młyny, obozy… (działanie w ZASADY GRY)
      STAN GRY I USTAWIENIA           G (program), skróty do G.state: human, hero, ownerColor...
      NARZĘDZIA                       losowość, szum, A*, kolory
      RYSOWANIE: PODSTAWY I PIXEL ART tekst, cache warstw, sprite(), drawSprite(), blit()

@@ -91,6 +91,11 @@ function visitObject(st, h, ob) {
     removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
     showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}`, [{ label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art), cx, cy, 2) });
+  } else if (ob.type === 'site') {
+    const r = useSite(st, h, ob), S = SITES[ob.kind];
+    if (r.float) advFloat(r.float, h.x, h.y, r.res);
+    showDialog(`${S.name}. ${r.text}`, [{ label: 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); } }],
+      { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5) });
   } else if (ob.type === 'town') {
     if (ob.owner === h.owner) G.go('town', { townId: ob.townId }); else startTownAssault(st, h, st.towns[ob.townId]);
   } else if (ob.type === 'mine') {
@@ -433,4 +438,45 @@ function buyMachine(st, t, h, id) {
   const cost = CREATURES[id].cost; if (!canAfford(st, cost, h.owner)) return 'Brakuje złota';
   const R = playerOf(st, h.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id];
   h.machines.push(id); return null;
+}
+// --- miejsca na mapie (SITES) ---
+// Znacznik odwiedzin: dla kogo (bohater, gracz albo cały świat) i do kiedy nagroda jest wykorzystana
+function siteStamp(st, ob, h) {
+  const u = SITES[ob.kind].use, wk = weekIndex(st);
+  return u === 'hero' ? [h.id, 1] : u === 'day' ? [h.id, st.dayTotal] : u === 'heroWeek' ? [h.id, wk] : u === 'week' ? ['all', wk] : ['p' + h.owner, 1];
+}
+const siteUsed = (st, ob, h) => { const [k, v] = siteStamp(st, ob, h); return (ob.seen || {})[k] === v; };
+// Skutek odwiedzin (człowiek i SI). Zwraca { text, float?, res?, exp? }; doświadczenie dolicza wołający (okno awansu).
+function useSite(st, h, ob) {
+  const S = SITES[ob.kind], R = playerOf(st, h.owner).resources;
+  if (siteUsed(st, ob, h)) return { text: { hero: `${h.name} już tu był${h.female ? 'a' : ''}.`, day: 'Dziś już stąd korzystano. Wróć jutro.', heroWeek: 'W tym tygodniu już stąd korzystano.', week: 'W tym tygodniu plon już zebrano. Wróć w następnym.', player: 'Okolica jest już odsłonięta.' }[S.use] };
+  const [k, v] = siteStamp(st, ob, h); const mark = () => { ob.seen = ob.seen || {}; ob.seen[k] = v; };
+  switch (ob.kind) {
+    case 'shrine': {
+      const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
+      mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(heroStat(h, 'sp'))}.` };
+    }
+    case 'well': {
+      const max = heroMaxMana(h); if (h.mana >= max) return { text: 'Woda jest orzeźwiająca, ale mana bohatera jest już pełna.' };
+      mark(); h.mana = max; return { text: `Mana bohatera wraca do pełna (${max}).`, float: `mana ${max}` };
+    }
+    case 'windmill': { const a = 3 + thash(ob.id, weekIndex(st), st.seed) % 4; mark(); R[ob.res] += a; return { text: `Młynarz oddaje tygodniowy plon: ${a} (${resName(ob.res).toLowerCase()}).`, float: `+${a}`, res: ob.res }; }
+    case 'waterMill': mark(); R.gold += 1000; return { text: 'Młynarz oddaje tygodniowy utarg: 1000 złota.', float: '+1000', res: 'gold' };
+    case 'stone': mark(); return { text: `Runy na kamieniu dzielą się pradawną wiedzą: +${SITE_EXP} doświadczenia.`, float: `+${SITE_EXP} dośw.`, exp: SITE_EXP };
+    case 'temple': case 'fountain': {
+      const key = ob.kind === 'temple' ? 'morale' : 'luck'; mark(); h.boost = { ...(h.boost || {}), [key]: 1 };
+      return { text: ob.kind === 'temple' ? 'Modlitwa dodaje wojsku ducha: +1 do morale do końca następnej bitwy.' : 'Moneta wrzucona do fontanny przynosi szczęście: +1 do końca następnej bitwy.' };
+    }
+    case 'stables': mark(); h.mp += SITE_MP; return { text: `Świeże konie: +${SITE_MP} punktów ruchu na dziś.` };
+    case 'lookout': mark(); reveal(st, ob.x, ob.y, LOOKOUT_R, h.owner); MapRender.miniDirty = true; return { text: `Z wieży widać okolicę w promieniu ${LOOKOUT_R} pól.` };
+  }
+  if (S.stat) { mark(); h.stats[S.stat]++; const P = PRIMARY.find(p => p.id === S.stat); if (S.stat === 'kn') h.mana = Math.min(heroMaxMana(h), h.mana + 10); return { text: `${h.name}: ${P.name.toLowerCase()} +1 (teraz ${h.stats[S.stat]}).`, float: `${P.name} +1` }; }
+  return { text: '' };
+}
+// Opis miejsca w dymku: co daje i czy wybrany bohater już z niego skorzystał
+function siteInfo(st, ob, h) {
+  const S = SITES[ob.kind];
+  const what = ob.kind === 'shrine' ? `uczy czaru „${SPELLS[ob.spell].name}” (poziom ${SPELLS[ob.spell].level})` : ob.kind === 'windmill' ? `co tydzień 3–6 jednostek surowca (${resName(ob.res).toLowerCase()}) dla pierwszego gościa` : S.desc;
+  const used = h && siteUsed(st, ob, h) ? { hero: ' Ten bohater już tu był.', day: ' Dziś już wykorzystane.', heroWeek: ' W tym tygodniu już wykorzystane.', week: ' Plon z tego tygodnia już zebrany.', player: ' Już odwiedzone.' }[S.use] : '';
+  return `${S.name}: ${what}.${used}${st.guard[ob.y * st.map.n + ob.x] ? ' Pilnuje go potwór.' : ''}`;
 }

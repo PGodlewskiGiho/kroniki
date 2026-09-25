@@ -247,6 +247,7 @@ function drawWorldPixel(b, st) {
     if (ob.type === 'monster') { shadow(10, px, py + 10); blit(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
     else if (ob.type === 'res') { shadow(10, px, py + 9); blit(b, resSprite(ob.res), px, py + 2); }
     else if (ob.type === 'chest') { shadow(10, px, py + 9); blit(b, chestSprite(), px, py + 2); }
+    else if (ob.type === 'site') { shadow(14, px, py + 12); blit(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
     else if (ob.type === 'art') { shadow(9, px, py + 10); blit(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
     else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blit(b, mineSprite(ob.kind), mx, my); blit(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
     else if (ob.type === 'town') {
@@ -309,6 +310,7 @@ function tileInfo(st, tx, ty) {
     if (ob.type === 'town') { const t = st.towns[ob.townId]; return `${t.name}, ${ob.owner === ME ? 'twoje miasto' : ob.owner < 0 ? 'miasto niezależne' : 'obce miasto'}`; }
     if (ob.type === 'mine') return `${MINES[ob.kind].name} (${ob.owner === ME ? 'należy do ciebie' : 'bez właściciela'})`;
     if (ob.type === 'chest') return 'Skrzynia ze skarbem';
+    if (ob.type === 'site') { const h = hero(st); return `${SITES[ob.kind].name}${h && siteUsed(st, ob, h) ? ' (odwiedzone)' : ''}`; }
     if (ob.type === 'art') return `Artefakt: ${ARTIFACTS[ob.art].name}`;
     if (ob.type === 'res') return resName(ob.res);
   }
