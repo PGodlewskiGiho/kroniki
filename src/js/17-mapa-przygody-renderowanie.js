@@ -1,66 +1,131 @@
 // ==================== MAPA PRZYGODY: RENDEROWANIE =======================================
 // Teren generowany piksel po pikselu, przeszkody, minimapa, mgła, obiekty, kamera.
-function drawOak(g, x, y, s) {
-  shadowAt(g, x, y, 9 * s); g.fillStyle = '#4a2e18'; g.fillRect(x - 1.5 * s, y - 9 * s, 3 * s, 9 * s);
-  circ(g, x, y - 15 * s, 10 * s, '#1f4a1c'); circ(g, x - 3 * s, y - 17 * s, 8 * s, '#2e6a26');
-  circ(g, x + 3 * s, y - 13 * s, 6.5 * s, '#2a6224'); circ(g, x - 4 * s, y - 20 * s, 4.5 * s, '#4c9a3a');
-}
-function drawPine(g, x, y, s, snowy) {
-  shadowAt(g, x, y, 7 * s); g.fillStyle = '#3e2614'; g.fillRect(x - 1.2 * s, y - 5 * s, 2.4 * s, 5 * s);
-  for (let i = 0; i < 3; i++) {
-    const by = y - 4 * s - i * 7 * s, w = (8 - i * 2) * s, h = 11 * s;
-    g.fillStyle = '#1b4428'; g.beginPath(); g.moveTo(x - w, by); g.lineTo(x, by - h); g.lineTo(x + w, by); g.closePath(); g.fill();
-    g.fillStyle = '#2d6a3c'; g.beginPath(); g.moveTo(x - w, by); g.lineTo(x, by - h); g.lineTo(x - w * 0.1, by); g.closePath(); g.fill();
-    if (snowy) { g.fillStyle = '#f4f8fc'; g.beginPath(); g.moveTo(x - w * 0.45, by - h * 0.55); g.lineTo(x, by - h); g.lineTo(x + w * 0.45, by - h * 0.55); g.lineTo(x + w * 0.15, by - h * 0.45); g.lineTo(x - w * 0.1, by - h * 0.6); g.closePath(); g.fill(); }
+// Przeszkody i ozdoby mapy rysowane ściankami (jasna od lewej góry, cień z prawej), jak ikony surowców.
+const mpoly = (g, pts, col) => { g.fillStyle = col; g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill(); };
+const mline = (g, pts, col, w = 2) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); };
+// Korona z kęp liści: ciemna masa, jaśniejsze kępy przesunięte ku światłu, plamki słońca i dziury w listowiu
+function leafCrown(g, clumps, pal, r) {
+  for (const [cx, cy, R] of clumps) circ(g, cx, cy, R, pal[0]);
+  for (const [cx, cy, R] of clumps) circ(g, cx - R * 0.2, cy - R * 0.22, R * 0.78, pal[1]);
+  for (const [cx, cy, R] of clumps) if (cy < clumps[0][1] + 8) circ(g, cx - R * 0.4, cy - R * 0.42, R * 0.42, pal[2]);
+  for (const [cx, cy, R] of clumps) {
+    g.fillStyle = pal[3]; const a = -2.3 + r() * 0.9, d = R * (0.3 + r() * 0.3); g.fillRect(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 2, 2);
+    g.fillStyle = pal[0]; g.fillRect(cx + R * (0.1 + r() * 0.4), cy + R * (0.15 + r() * 0.35), 2, 2);
   }
 }
-function drawPalm(g, x, y, s) {
-  shadowAt(g, x, y, 7 * s); g.lineCap = 'round';
-  g.strokeStyle = '#7a5a30'; g.lineWidth = 2.6 * s; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 4 * s, y - 10 * s, x + 2 * s, y - 20 * s); g.stroke();
-  const tx = x + 2 * s, ty = y - 20 * s; g.strokeStyle = '#3f8a33'; g.lineWidth = 2.4 * s;
-  for (const a of [-2.7, -2.1, -1.2, -0.5, 0.2]) { g.beginPath(); g.moveTo(tx, ty); g.quadraticCurveTo(tx + Math.cos(a) * 7 * s, ty + Math.sin(a) * 7 * s - 2 * s, tx + Math.cos(a) * 11 * s, ty + Math.sin(a) * 11 * s + 4 * s); g.stroke(); }
+const OAK_PAL = [['#123414', '#24601e', '#4a9430', '#9ad056'], ['#1a3810', '#36601a', '#62922c', '#b8d04c'], ['#3a3010', '#645418', '#9a8028', '#e0bc4c']];
+function drawOak(g, x, y, s, r = mulberry32(1)) {
+  shadowAt(g, x, y, 10 * s);
+  mpoly(g, [[x - 4 * s, y + 1], [x - 1.8 * s, y - 2 * s], [x - 1.5 * s, y - 11 * s], [x + 1.5 * s, y - 11 * s], [x + 1.8 * s, y - 2 * s], [x + 4 * s, y + 1]], '#3a2412');
+  mpoly(g, [[x - 3 * s, y + 0.5], [x - 1.5 * s, y - 2 * s], [x - 1.4 * s, y - 11 * s], [x, y - 11 * s], [x - 0.2 * s, y]], '#6e4826');
+  const pal = OAK_PAL[r() < 0.12 ? 2 : r() < 0.35 ? 1 : 0];
+  const cl = [[0, -24, 7.5], [-7, -19, 7], [7, -18, 7], [-3, -13, 7], [5, -12, 6.5]].map(([dx, dy, R]) => [x + (dx + (r() - 0.5) * 2) * s, y + dy * s, R * s * (0.9 + r() * 0.2)]);
+  leafCrown(g, cl, pal, r);
 }
-function drawDeadTree(g, x, y, s, col) {
-  shadowAt(g, x, y, 6 * s); g.strokeStyle = col; g.lineCap = 'round';
-  g.lineWidth = 2.4 * s; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 16 * s); g.stroke();
-  g.lineWidth = 1.4 * s; g.beginPath(); g.moveTo(x, y - 9 * s); g.lineTo(x - 6 * s, y - 15 * s); g.moveTo(x, y - 12 * s); g.lineTo(x + 6 * s, y - 18 * s); g.moveTo(x - 3 * s, y - 12 * s); g.lineTo(x - 7 * s, y - 11 * s); g.stroke();
+function drawPine(g, x, y, s, snowy, r = mulberry32(1)) {
+  shadowAt(g, x, y, 7 * s);
+  g.fillStyle = '#3e2614'; g.fillRect(x - 1.3 * s, y - 6 * s, 2.6 * s, 6 * s); g.fillStyle = '#6a4424'; g.fillRect(x - 1.3 * s, y - 6 * s, 1.1 * s, 6 * s);
+  for (let i = 0; i < 4; i++) {
+    const by = y - 4 * s - i * 6 * s, w = (9 - i * 2) * s, top = by - 10 * s, zig = [];
+    for (let k = 0; k <= 6; k++) zig.push([x + w - k * w / 3, by - (k % 2 ? 2.2 * s : 0)]);
+    mpoly(g, [[x, top], ...zig], '#143a20');
+    mpoly(g, [[x, top], [x - w * 0.05, by - 1.5 * s], ...zig.slice(4)], '#2e7440');
+    mpoly(g, [[x - 0.5 * s, top + 2 * s], [x - w * 0.7, by - 1.2 * s], [x - w * 0.45, by - 1.8 * s]], '#62ae5e');
+    if (snowy) { mpoly(g, [[x, top], [x - w * 0.6, by - 4 * s], [x - w * 0.2, by - 5 * s], [x + w * 0.1, by - 3.5 * s], [x + w * 0.5, by - 4.5 * s]], '#f4f8fc'); mpoly(g, [[x, top], [x + w * 0.1, by - 3.5 * s], [x + w * 0.5, by - 4.5 * s]], '#b8c6d8'); }
+  }
 }
-function drawWillow(g, x, y, s) {
-  shadowAt(g, x, y, 9 * s); g.fillStyle = '#3a2a18'; g.fillRect(x - 1.5 * s, y - 8 * s, 3 * s, 8 * s);
-  circ(g, x, y - 14 * s, 9 * s, '#2c4a26'); g.strokeStyle = '#4a6a34'; g.lineWidth = 1.2 * s;
-  for (let k = -3; k <= 3; k++) { g.beginPath(); g.moveTo(x + k * 2.5 * s, y - 16 * s); g.quadraticCurveTo(x + k * 3.2 * s, y - 10 * s, x + k * 3 * s, y - 4 * s); g.stroke(); }
+function drawPalm(g, x, y, s, r = mulberry32(1)) {
+  shadowAt(g, x, y, 7 * s);
+  const tx = x + 3 * s, ty = y - 21 * s;
+  for (let i = 0; i < 6; i++) { const f0 = i / 6, f1 = (i + 1) / 6, p = f => [x + 3 * s * Math.sin(f * 1.6), y - 21 * s * f]; const [ax, ay] = p(f0), [bx, by] = p(f1); mpoly(g, [[ax - 1.6 * s, ay], [bx - 1.3 * s, by], [bx + 1.3 * s, by], [ax + 1.6 * s, ay]], i % 2 ? '#8a6232' : '#6a4a24'); }
+  for (const a of [-2.8, -2.2, -1.5, -0.8, -0.2, 0.4]) {
+    const ex = tx + Math.cos(a) * 12 * s, ey = ty + Math.sin(a) * 9 * s + 5 * s, mx = tx + Math.cos(a) * 7 * s, my = ty + Math.sin(a) * 7 * s - 2 * s;
+    mpoly(g, [[tx, ty], [mx, my - 1.8 * s], [ex, ey], [mx, my + 1.8 * s]], a < -1.2 ? '#4a9a3a' : '#2e6a26');
+  }
+  circ(g, tx - 1.5 * s, ty + 2 * s, 1.8 * s, '#5a3a1a'); circ(g, tx + 1.5 * s, ty + 2.5 * s, 1.8 * s, '#4a2e14');
+}
+function drawDeadTree(g, x, y, s, col, r = mulberry32(1)) {
+  shadowAt(g, x, y, 6 * s); const lt = shadeHex(col, 0.45);
+  mpoly(g, [[x - 2.5 * s, y + 1], [x - 1.2 * s, y - 17 * s], [x + 1.2 * s, y - 17 * s], [x + 2.5 * s, y + 1]], col);
+  mpoly(g, [[x - 2 * s, y], [x - 1.2 * s, y - 16 * s], [x - 0.3 * s, y - 16 * s], [x - 0.6 * s, y]], lt);
+  mline(g, [[x, y - 9 * s], [x - 6 * s, y - 15 * s], [x - 8 * s, y - 15 * s]], col, 1.6 * s); mline(g, [[x, y - 12 * s], [x + 6 * s, y - 18 * s], [x + 7 * s, y - 21 * s]], col, 1.5 * s);
+  mline(g, [[x - 3 * s, y - 12 * s], [x - 7 * s, y - 11 * s]], col, 1.2 * s); mline(g, [[x + 3.5 * s, y - 15 * s], [x + 7 * s, y - 14 * s]], col, 1.1 * s);
+}
+function drawWillow(g, x, y, s, r = mulberry32(1)) {
+  shadowAt(g, x, y, 9 * s);
+  mpoly(g, [[x - 3 * s, y + 1], [x - 1.5 * s, y - 10 * s], [x + 1.5 * s, y - 10 * s], [x + 3 * s, y + 1]], '#3a2a18'); g.fillStyle = '#5e4628'; g.fillRect(x - 1.5 * s, y - 10 * s, 1.2 * s, 10 * s);
+  leafCrown(g, [[x, y - 17 * s, 7 * s], [x - 6 * s, y - 14 * s, 6 * s], [x + 6 * s, y - 14 * s, 6 * s]], ['#1e3418', '#2e4a24', '#46663a', '#7a9a58'], r);
+  for (let k = -3; k <= 3; k++) mline(g, [[x + k * 2.6 * s, y - 14 * s], [x + k * 3.2 * s, y - 9 * s], [x + k * 3 * s, y - 3 * s - (k & 1) * 2 * s]], k < 0 ? '#5a7a40' : '#3a5a2c', 1.4 * s);
+}
+// Góry: [jasna ściana, środek, cień, głęboki cień]; mocny kontrast, bo mapa jest potem przygaszana (GRADE)
+const MOUNT_PAL = { def: ['#dccaa6', '#9c8a6e', '#5c5244', '#342c24'], snow: ['#ffffff', '#b8c4d2', '#74829a', '#46506a'], lava: ['#806a5c', '#50403a', '#2a201c', '#120c0a'], sand: ['#f8dca0', '#c49860', '#865e38', '#553a22'] };
+function mountPeak(g, bx, by, bw, h, tx, pal, r, snow, lava) {
+  const ty = by - h, lerp2 = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], j = k => (r() - 0.5) * k;
+  const BL = [bx - bw, by], BR = [bx + bw, by], P = [tx, ty];
+  const left = [0.22, 0.45, 0.7, 0.86].map(f => { const p = lerp2(BL, P, f); return [p[0] + j(5), p[1] + j(5)]; });
+  const right = [0.86, 0.7, 0.45, 0.22].map(f => { const p = lerp2(BR, P, f); return [p[0] + j(5), p[1] + j(5)]; });
+  const ridge = [0.2, 0.42, 0.66, 1].map(f => [tx + f * bw * 0.22 + j(5), ty + h * f]);
+  mpoly(g, [BL, ...left, P, ...right, BR], pal[2]); // cała bryła w cieniu
+  mpoly(g, [P, ...left.slice().reverse(), BL, ...ridge.slice().reverse()], pal[0]); // jasna ściana od lewej
+  mpoly(g, [P, ...ridge, [ridge[3][0] - bw * 0.3, by], [ridge[2][0] - bw * 0.2, ridge[2][1]], [ridge[1][0] - bw * 0.1, ridge[1][1]]], pal[1]); // przełamanie przy grani
+  mpoly(g, [right[1], right[2], right[3], BR, [bx + bw * 0.45, by], [ridge[2][0] + bw * 0.3, ridge[2][1] + 4]], pal[3]); // głęboki cień
+  for (let i = 0; i < 3; i++) { const a = lerp2(left[1 + (i & 1)], ridge[1 + (i >> 1)], 0.25 + r() * 0.35); mline(g, [a, [a[0] + 3, a[1] + 5], [a[0] + 2, a[1] + 10]], pal[1], 2); } // żleby
+  for (let i = 0; i < 2; i++) { const a = lerp2(ridge[1 + i], right[1 + i], 0.35 + r() * 0.3); mline(g, [a, [a[0] + 5, a[1] + 3]], pal[1], 2); }
+  if (snow) {
+    const sL = left[2], sR = right[1], m1 = lerp2(sL, P, 0.3), m2 = lerp2(ridge[1], P, 0.25);
+    mpoly(g, [P, left[3], sL, [m1[0] + 3, m1[1] + 4], [m2[0] - 2, m2[1] + 3], [ridge[1][0] + 1, ridge[1][1] - 2], [sR[0] - 2, sR[1] - 3], sR, right[0]], '#f6f9fc');
+    mpoly(g, [P, [ridge[1][0] + 1, ridge[1][1] - 2], [sR[0] - 2, sR[1] - 3], sR, right[0]], '#aebed2');
+  }
+  if (lava) { mline(g, [[tx, ty + 3], [tx - 2, ty + 12], [tx + 1, ty + 20], [tx - 1, ty + 28]], '#ff7a2a', 2.4); g.fillStyle = '#ffd060'; g.fillRect(tx - 2, ty + 11, 2, 2); }
+}
+// Mały głaz ze ściankami (też u stóp gór)
+function boulder(g, x, y, k, pal) {
+  const P = (a, b) => [x + a * k, y + b * k];
+  mpoly(g, [P(-9, 0), P(-7, -8), P(-1, -11), P(7, -8), P(9, -1), P(4, 2), P(-5, 2)], pal[1]);
+  mpoly(g, [P(-7, -8), P(-1, -11), P(7, -8), P(1, -5), P(-4, -4)], pal[0]);
+  mpoly(g, [P(1, -5), P(7, -8), P(9, -1), P(4, 2), P(2, -1)], pal[2]);
 }
 function drawMountain(g, px, py, t, r) {
-  const bw = 21 + r() * 6, h = 30 + r() * 14, bx = px + (r() - 0.5) * 6, by = py + 13, tx = bx + (r() - 0.5) * 10, ty = by - h;
-  const pal = t === TER.SNOW ? ['#8e9aaa', '#c4ced9', '#66727f'] : t === TER.LAVA ? ['#3a2e2a', '#5a4840', '#221a18'] : t === TER.SAND ? ['#a98656', '#d2ae7a', '#7a5a38'] : ['#7c6e5c', '#a99b84', '#544a3e'];
-  const poly = (pts, col) => { g.fillStyle = col; g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill(); };
+  const pal = t === TER.SNOW ? MOUNT_PAL.snow : t === TER.LAVA ? MOUNT_PAL.lava : t === TER.SAND ? MOUNT_PAL.sand : MOUNT_PAL.def;
+  const big = r() < 0.3, bw = (big ? 26 : 18) + r() * 8, h = (big ? 44 : 26) + r() * 12, bx = px + (r() - 0.5) * 10, by = py + 12 + r() * 4, tx = bx + (r() - 0.5) * bw * 0.6;
   g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(bx + 5, by, bw + 2, 6, 0, 0, TAU); g.fill();
-  const L = [bx - bw, by], LS = [bx - bw * 0.45, by - h * 0.55], P = [tx, ty], RS = [bx + bw * 0.5, by - h * 0.5], R = [bx + bw, by];
-  poly([L, LS, P, RS, R], pal[0]);
-  poly([L, LS, P, [tx - 2, by - h * 0.35], [bx - bw * 0.15, by]], pal[1]);
-  poly([P, RS, R, [bx + bw * 0.35, by], [tx + 3, by - h * 0.45]], pal[2]);
-  if (t === TER.SNOW || r() < 0.35) poly([P, [tx - 7, ty + 10], [tx - 2, ty + 7], [tx + 1, ty + 11], [tx + 6, ty + 8]], '#f3f7fa');
-  if (t === TER.LAVA) { g.strokeStyle = '#ff7a2a'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(tx, ty + 2); g.lineTo(tx - 2, ty + 12); g.lineTo(tx + 1, ty + 20); g.stroke(); }
-  g.strokeStyle = 'rgba(20,14,8,.45)'; g.lineWidth = 1; g.beginPath(); [L, LS, P, RS, R].forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke();
+  if (r() < 0.6) { const side = r() < 0.5 ? -1 : 1, sw = bw * 0.6; mountPeak(g, bx + side * bw * 0.55, by - 3, sw, h * 0.62, bx + side * bw * 0.6 + (r() - 0.5) * 6, pal, r, t === TER.SNOW, false); }
+  mountPeak(g, bx, by, bw, h, tx, pal, r, t === TER.SNOW || (pal === MOUNT_PAL.def && h > 40), t === TER.LAVA);
+  const n = 1 + Math.floor(r() * 3); for (let i = 0; i < n; i++) boulder(g, bx + (r() - 0.5) * bw * 1.6, by + 1 + r() * 3, 0.35 + r() * 0.2, pal);
 }
-function drawRock(g, x, y, r) {
-  shadowAt(g, x, y + 1, 8); g.fillStyle = '#6e685f'; g.beginPath(); g.ellipse(x, y - 3, 8, 6, 0, 0, TAU); g.fill();
-  g.fillStyle = '#9d968a'; g.beginPath(); g.ellipse(x - 2.5, y - 5, 4, 2.6, -0.3, 0, TAU); g.fill();
-  if (r() < 0.5) { g.fillStyle = '#5e584f'; g.beginPath(); g.ellipse(x + 7, y, 4, 3, 0, 0, TAU); g.fill(); }
+const ROCK_PAL = { def: ['#aaa394', '#77716a', '#4e4942'], snow: ['#dfe6ee', '#9aa6b4', '#66727f'], lava: ['#5a4a42', '#3a2e2a', '#1e1714'], sand: ['#d8b684', '#a88658', '#76583a'] };
+function drawRock(g, x, y, r, t = TER.GRASS) {
+  const pal = t === TER.SNOW ? ROCK_PAL.snow : t === TER.LAVA ? ROCK_PAL.lava : t === TER.SAND ? ROCK_PAL.sand : ROCK_PAL.def, k = 0.85 + r() * 0.3;
+  shadowAt(g, x, y + 1, 9 * k); boulder(g, x, y, k, pal);
+  mline(g, [[x - 5 * k, y - 2 * k], [x - 2 * k, y - 4 * k], [x, y - 2 * k]], pal[2], 1.6);
+  if (t === TER.GRASS || t === TER.SWAMP || t === TER.DIRT) { mpoly(g, [[x - 5 * k, y - 8 * k], [x - 1 * k, y - 10.5 * k], [x + 3 * k, y - 8.5 * k], [x - 1 * k, y - 7 * k]], '#5a7a34'); g.fillStyle = '#86a848'; g.fillRect(x - 2 * k, y - 10 * k, 2, 2); }
+  if (r() < 0.6) boulder(g, x + 9 * k, y + 2, 0.4, pal);
 }
 function drawObstacle(g, o, t, px, py, r) {
   if (o === OBST.MOUNT) return drawMountain(g, px, py, t, r);
-  if (o === OBST.ROCK) return drawRock(g, px + (r() - 0.5) * 8, py + 6, r);
+  if (o === OBST.ROCK) return drawRock(g, px + (r() - 0.5) * 8, py + 6, r, t);
   const spots = [[(r() - 0.5) * 8, -2], [-8 + (r() - 0.5) * 4, 9], [8 + (r() - 0.5) * 4, 10]], cnt = r() < 0.3 ? 2 : 3;
   for (let k = 0; k < cnt; k++) {
     const x = px + spots[k][0], y = py + spots[k][1], s = 0.8 + r() * 0.3;
-    if (t === TER.SNOW || t === TER.ROUGH) drawPine(g, x, y, s, t === TER.SNOW);
-    else if (t === TER.SAND) drawPalm(g, x, y, s);
-    else if (t === TER.LAVA) drawDeadTree(g, x, y, s, '#1a1210');
-    else if (t === TER.SWAMP) { if (r() < 0.5) drawDeadTree(g, x, y, s, '#2e2618'); else drawWillow(g, x, y, s); }
-    else if (t === TER.DIRT && r() < 0.5) drawPine(g, x, y, s, false);
-    else drawOak(g, x, y, s);
+    if (t === TER.SNOW || t === TER.ROUGH) drawPine(g, x, y, s, t === TER.SNOW, r);
+    else if (t === TER.SAND) drawPalm(g, x, y, s, r);
+    else if (t === TER.LAVA) drawDeadTree(g, x, y, s, '#1a1210', r);
+    else if (t === TER.SWAMP) { if (r() < 0.5) drawDeadTree(g, x, y, s, '#2e2618', r); else drawWillow(g, x, y, s, r); }
+    else if (t === TER.DIRT && r() < 0.5) drawPine(g, x, y, s, false, r);
+    else drawOak(g, x, y, s, r);
   }
+}
+// Drobne ozdoby na pustych polach (kępki trawy, kwiaty, kamyki, trzcina, grzyby, żar): tylko wygląd, nie blokują ruchu
+function drawDecor(g, t, v) {
+  const tuft = (x, y, a, b) => { mline(g, [[x - 3, y], [x - 5, y - 6]], a); mline(g, [[x, y], [x, y - 8]], b); mline(g, [[x + 3, y], [x + 5, y - 5]], a); };
+  const pebbles = pal => { boulder(g, -3, 2, 0.35, pal); boulder(g, 4, 3, 0.25, pal); };
+  const GR = ['#4a8a30', '#78b848'], DRY = ['#9a8a40', '#ccb45a'];
+  if (t === TER.GRASS) [() => tuft(0, 4, ...GR), () => { tuft(0, 4, ...GR); for (const [x, y, c] of [[-4, -3, '#e8d040'], [1, -5, '#f4f4f0'], [5, -2, '#d84a3a']]) { g.fillStyle = c; g.fillRect(x, y, 2.4, 2.4); } }, () => pebbles(ROCK_PAL.def), () => { circ(g, 0, 0, 5, '#24561f'); circ(g, -1, -1, 3.6, '#3c7c2c'); g.fillStyle = '#d84a3a'; g.fillRect(1, -2, 2, 2); }][v](); // krzaczek z owocem
+  else if (t === TER.DIRT || t === TER.ROUGH) [() => tuft(0, 4, ...DRY), () => pebbles(ROCK_PAL.def), () => { tuft(-3, 4, ...DRY); boulder(g, 5, 4, 0.3, ROCK_PAL.def); }, () => mline(g, [[-6, 3], [0, 1], [5, 2], [7, -1]], '#5a4028', 1.6)][v]();
+  else if (t === TER.SAND) [() => pebbles(ROCK_PAL.sand), () => { mpoly(g, [[-1.5, 4], [-1.5, -7], [1.5, -7], [1.5, 4]], '#4a8a3a'); mpoly(g, [[-1.5, -1], [-5, -2], [-5, -5], [-3.5, -5], [-3.5, -3], [-1.5, -3]], '#4a8a3a'); g.fillStyle = '#7ab85a'; g.fillRect(-1.5, -7, 1.2, 10); }, () => tuft(0, 4, ...DRY), () => { mline(g, [[-5, 2], [4, 0]], '#eee6d0', 2); circ(g, 5, -0.5, 1.6, '#eee6d0'); }][v](); // kaktus, kość
+  else if (t === TER.SNOW) [() => pebbles(ROCK_PAL.snow), () => tuft(0, 4, '#8a8a6a', '#aaa888'), () => { mpoly(g, [[-6, 3], [-3, -2], [3, -3], [7, 3]], '#ffffff'); mpoly(g, [[3, -3], [7, 3], [1, 3]], '#c8d4e4'); }, () => pebbles(ROCK_PAL.snow)][v]();
+  else if (t === TER.SWAMP) [() => { for (const dx of [-3, 0, 3]) { mline(g, [[dx, 4], [dx + dx * 0.3, -7]], '#4a6a34', 1.4); mpoly(g, [[dx - 1, -4], [dx + 1, -4], [dx + 1, -9], [dx - 1, -9]], '#6a4424'); } }, () => { for (const [x, c] of [[-3, '#c83a2a'], [3, '#b8a060']]) { g.fillStyle = '#e8e0cc'; g.fillRect(x - 0.8, -1, 1.6, 4); mpoly(g, [[x - 3, -1], [x, -4], [x + 3, -1]], c); } }, () => tuft(0, 4, '#3a5a2c', '#5a7a40'), () => pebbles(ROCK_PAL.def)][v]();
+  else if (t === TER.LAVA) [() => pebbles(ROCK_PAL.lava), () => { pebbles(ROCK_PAL.lava); g.fillStyle = '#ff7a2a'; g.fillRect(-3, 0, 2, 2); g.fillStyle = '#ffd060'; g.fillRect(4, 1, 2, 2); }, () => { mpoly(g, [[-2, 3], [0, -6], [2, 3]], '#ff7a2a'); mpoly(g, [[-0.5, 3], [0, -3], [0.8, 3]], '#ffd060'); }, () => pebbles(ROCK_PAL.lava)][v]();
 }
 // --- teren generowany piksel po pikselu ---
 // Palety pikselowe (RGB) wyliczone z danych TERRAINS/ROADS
@@ -135,9 +200,17 @@ function renderChunkPixel(map, cx, cy) {
     d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2]; d[k + 3] = 255;
   }
   g.putImageData(img, 0, 0);
+  // ozdoby: pola bez przeszkody, drogi i obiektu; teren sprawdzany w miejscu ozdoby (brzegi terenu są poszarpane)
+  const oa = G.state && G.state.map === map ? G.state.objAt : null;
+  for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x0 + CHUNK + 1); x++) {
+    const i = y * n + x, h = thash(x, y, map.seed + 5); if (map.obst[i] || rd[i] || (oa && oa[i]) || h % 100 >= 22) continue;
+    const lx = x * AP + 8 - bx + ((h >>> 8) % 9) - 4, ly = y * AP + 8 - by + ((h >>> 12) % 7) - 3, t = map.terrain[i];
+    if (t === TER.WATER || lx < -M || ly < -M || lx >= S + M || ly >= S + M || TT(lx, ly) !== t) continue;
+    const s = decorSprite(t, (h >>> 16) % 4); g.drawImage(s.c, lx - s.ax, ly - s.ay);
+  }
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
     const o = map.obst[y * n + x]; if (!o) continue;
-    const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % 4);
+    const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     g.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
   }
   return c;
