@@ -57,6 +57,9 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
      (k = 1 to rozmiar jak na mapie). Nie rysuj obiektów w interfejsie funkcjami wektorowymi wprost.
    • Właściciel zamiast „gracza 0”: kolory przez ownerColor(st, owner), gracz-człowiek to ME.
 
+   • Testy: npm test (katalog tests/, Chromium bez okna przez Playwright). Po zmianie zasad gry dopisz test;
+     createNewGame(S, seed) ze stałym seedem daje zawsze ten sam świat.
+
    WSPÓŁRZĘDNE I JEDNOSTKI
    • Ekran logiczny W×H = 800×600; płótno skaluje się do okna (G.rs).
    • Pole mapy T = 32 px logiczne; świat rysujemy w buforze o połowie rozdzielczości,
@@ -1806,8 +1809,9 @@ function createHero(st, owner, x, y) {
 }
 // Cały świat powstaje tutaj, zanim pokaże się jakikolwiek ekran. Stan (st) nie zawiera nic z grafiki,
 // dlatego da się go później zapisać i wczytać (krok 14).
-function createNewGame(S) {
-  const seed = (Math.random() * 1e9) | 0, rng = mulberry32(seed), d = DIFFICULTIES[S.difficulty];
+// seed podaje się tylko w testach (powtarzalny świat); w grze jest losowy.
+function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
+  const rng = mulberry32(seed), d = DIFFICULTIES[S.difficulty];
   const resources = { ...d.res }; let bonusText = '';
   if (S.bonus === 'gold') { const g = 500 + Math.floor(rng() * 6) * 100; resources.gold += g; bonusText = `+${g} złota`; }
   else if (S.bonus === 'resource') { const a = 5 + Math.floor(rng() * 6); resources.wood += a; resources.ore += a; bonusText = `+${a} drewna i rudy`; }

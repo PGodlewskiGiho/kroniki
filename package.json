@@ -1,0 +1,11 @@
+{
+  "name": "kroniki-krolestw",
+  "private": true,
+  "description": "Kroniki Królestw — turowa strategia fantasy w jednym pliku HTML",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}
