@@ -180,7 +180,7 @@ G.screens.adventure = {
   toggleSleep() { const h = hero(G.state); if (!h) return; h.asleep = !h.asleep; if (h.asleep) { h.path = null; h.dest = null; } this.flash(h.asleep ? `${h.name} odpoczywa` : `${h.name} znów rusza w drogę`); },
   rightInfo(x, y) {
     const st = G.state;
-    if (inRect(x, y, { x: INFOBOX.x, y: INFOBOX.y, w: INFOBOX.w, h: 32 })) { const W = weekInfo(st), M = monthInfo(st); return `Tydzień ${W.name}: ${W.text || 'spokojny tydzień, bez szczególnych skutków'}.${M.name ? ` Miesiąc ${M.name}: ${M.text}.` : ''} Co tydzień los wybiera nowy efekt.`; }
+    if (inRect(x, y, { x: INFOBOX.x, y: INFOBOX.y, w: INFOBOX.w, h: 32 })) { const W = weekInfo(st), M = monthInfo(st); const S = seasonOf(st); return `${S.name}: ${S.text}. Tydzień ${W.name}: ${W.text || 'spokojny tydzień, bez szczególnych skutków'}.${M.name ? ` Miesiąc ${M.name}: ${M.text}.` : ''} Co tydzień los wybiera nowy efekt, a co miesiąc zmienia się pora roku.`; }
     if (inRect(x, y, VIEW)) {
       const { tx, ty } = screenToTile(st, x, y), n = st.map.n;
       if (tx < 0 || ty < 0 || tx >= n || ty >= n) return null;

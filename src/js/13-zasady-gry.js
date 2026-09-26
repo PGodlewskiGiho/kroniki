@@ -2,7 +2,7 @@
 // Ruch, odkrywanie mapy, obiekty, potyczki, dochód, budowanie.
 // Dzienny limit ruchu zależy od najwolniejszej jednostki w armii (jak w oryginale)
 function mpBySpeed(s) { return s <= 3 ? 1500 : s >= 11 ? 2000 : [1560, 1630, 1700, 1760, 1830, 1900, 1960][s - 4]; }
-function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100)) + heroBonus(h, 'mp'); }
+function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp'); }
 // Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
 function reveal(st, cx, cy, r, owner = ME) {
   const P = playerOf(st, owner); if (!P || !P.explored) return;
@@ -50,7 +50,8 @@ function buyBoat(st, t) {
 // Znajdowanie drogi (h) zmniejsza narzut trudnego terenu ponad 100.
 function baseCost(map, i, j, h) {
   if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
-  const c = TERRAINS[map.terrain[i]].cost || 100, pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
+  const t = map.terrain[i]; let c = TERRAINS[t].cost || 100; const pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
+  if (h && ((heroTrait(h, 'fortress') && (t === TER.SWAMP || t === TER.ROUGH)) || (heroTrait(h, 'academy') && t === TER.SNOW))) c = 100; // cechy frakcji
   return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
 }
 function stepCost(map, fx, fy, tx, ty, h) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx, h); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
@@ -234,7 +235,7 @@ const aiPickSkill = offer => offer.slice().sort((a, b) => AI_SKILL_ORDER.indexOf
 // Suma premii z założonych artefaktów (plecak nie działa)
 const heroBonus = (h, key) => Object.values(h.equip || {}).reduce((s, id) => s + (id ? ARTIFACTS[id].bonus[key] || 0 : 0), 0);
 const heroStat = (h, key) => h.stats[key] + heroBonus(h, key);
-const heroSight = h => h.sight + heroBonus(h, 'sight') + skillVal(h, 'scouting');
+const heroSight = h => h.sight + heroBonus(h, 'sight') + skillVal(h, 'scouting') + (heroTrait(h, 'dungeon') ? 2 : 0);
 // Premia bohatera do siły armii w potyczce: +5% za każdy punkt ataku i obrony
 const heroFactor = h => 1 + 0.05 * (heroStat(h, 'att') + heroStat(h, 'def'));
 // Doświadczenie z awansami. Wzrost cechy losowany deterministycznie (ziarno gry, bohater, poziom).
@@ -343,7 +344,7 @@ function dwellingUnits(t, L) {
 // Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
 function weeklyGrowth(t, L, st) {
   const cid = factionOf(t.faction).dw['dw' + L][1], base = CREATURES[cid].growth, W = st && weekInfo(st);
-  return Math.floor(base * (hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
+  return Math.floor(base * (hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) * (t.faction === 'stronghold' ? 1.25 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
 }
 // Nowy tydzień: przyrost w siedliskach; w Miesiącu Zarazy zamiast przyrostu pula topnieje o połowę
 function townGrowthWeek(t, st) {
@@ -387,7 +388,7 @@ function startWeek(st, newMonth) {
     if (M && M.kind === 'monsters') o.count = Math.ceil(o.count * 1.5);
   }
   for (const t of st.towns) townGrowthWeek(t, st);
-  const head = newMonth ? (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
+  const S = seasonOf(st), head = newMonth ? `Nadchodzi ${S.name.toLowerCase()}: ${S.text}. ` + (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
   return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
 }
 const unitCost = cid => CREATURES[cid].cost || { gold: CREATURES[cid].value };
@@ -436,7 +437,11 @@ function armySplit(fromA, i, toA, j, n, heroArmies = []) {
 function dailyIncomeAll(st, owner = ME) {
   const inc = Object.fromEntries(RESOURCES.map(r => [r.id, 0]));
   for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === owner) inc[ob.kind] += MINES[ob.kind].income * (weekKind(st, 'mines') ? 2 : 1);
-  for (const t of st.towns) if (t.owner === owner) { inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; } }
+  const autumn = seasonIdx(st) === 2;
+  for (const t of st.towns) if (t.owner === owner) {
+    inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; }
+    if (autumn) { inc.wood += 1; inc.ore += 1; } if (t.faction === 'inferno') inc.sulfur += 1; // jesienne zbiory, cecha Inferna
+  }
   for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates');
   return inc;
 }

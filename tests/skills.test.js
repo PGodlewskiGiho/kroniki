@@ -113,7 +113,7 @@ test('nekromancja: po zwycięstwie z poległych wstają kościotrupy', async () 
     return { outcome: res.outcome, raised: res.raised, bones: bones && bones.n, text: raisedText(res.raised) };
   });
   assert.equal(r.outcome, 'win');
-  assert.equal(r.raised, Math.floor(50 * 10 * 0.3 / 7)); // 30% życia poległych / 7 pż kościotrupa
+  assert.equal(r.raised, Math.floor(50 * 10 * 0.4 / 7)); // 30% z umiejętności + 10% cechy Kurhanu, / 7 pż kościotrupa
   assert.equal(r.bones, r.raised); assert.match(r.text, /Nekromancja: wstaj/);
 });
 

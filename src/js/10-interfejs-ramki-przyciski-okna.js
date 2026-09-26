@@ -206,9 +206,21 @@ function drawResourceBar(ctx, st, dy = 0, w = W) {
   const R = human(st).resources, y = RESBAR.y + dy;
   RESOURCES.forEach((r, i) => { const x = RESBAR.x + i * RESBAR.step; resIcon(ctx, r.id, x + 10, y, 24); text(ctx, String(R[r.id]), x + 25, y + 1, { size: 16, color: '#ecd9a8' }); });
   text(ctx, dateText(st), w - 18, y + 1, { size: 15, weight: 500, align: 'right', color: '#ecd9a8' });
+  drawSeasonIcon(ctx, seasonIdx(st), w - 30 - ctx.measureText(dateText(st)).width, y);
+}
+// Znaczek pory roku przy dacie: kwiat, słońce, liść, płatek śniegu
+function drawSeasonIcon(ctx, s, x, y) {
+  ctx.save(); ctx.translate(x, y); ctx.lineCap = 'round';
+  if (s === 0) { for (let i = 0; i < 5; i++) { const a = i * TAU / 5; circ(ctx, Math.cos(a) * 4, Math.sin(a) * 4, 3, '#f0a0c0'); } circ(ctx, 0, 0, 2.4, '#ffe070'); }
+  else if (s === 1) { ctx.strokeStyle = '#ffc040'; ctx.lineWidth = 1.6; for (let i = 0; i < 8; i++) { const a = i * TAU / 8; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 5.5, Math.sin(a) * 5.5); ctx.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); ctx.stroke(); } circ(ctx, 0, 0, 4.5, '#ffd040'); }
+  else if (s === 2) { ctx.rotate(-0.6); ctx.fillStyle = '#d8702a'; ctx.beginPath(); ctx.ellipse(0, 0, 4.5, 8, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#7a3a14'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(0, 9); ctx.stroke(); }
+  else { ctx.strokeStyle = '#d8ecff'; ctx.lineWidth = 1.6; for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 8, Math.sin(a) * 8); ctx.lineTo(-Math.cos(a) * 8, -Math.sin(a) * 8); ctx.stroke(); } }
+  ctx.restore();
 }
 function resourceBarInfo(st, x, y, dy = 0) {
-  if (y < 566 + dy) return null; const i = Math.floor((x - RESBAR.x) / RESBAR.step); if (i < 0 || i >= RESOURCES.length) return null;
+  if (y < 566 + dy) return null; const i = Math.floor((x - RESBAR.x) / RESBAR.step);
+  if (i >= RESOURCES.length) { const S = seasonOf(st); return `${dateText(st)}. Pora roku: ${S.name.toLowerCase()} (${S.text}). Pora zmienia się co miesiąc.`; }
+  if (i < 0) return null;
   const r = RESOURCES[i]; return `${r.name}: ${human(st).resources[r.id]}. Dochód dzienny: ${dailyIncome(st, r.id)}.`;
 }
 

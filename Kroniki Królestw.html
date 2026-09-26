@@ -164,6 +164,11 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    (L.plain, barding). Woda 'glow' i 'oasis', rekwizyty glowShroom/stalagmite/acacia/cactus/totem, pogoda 'spores' i 'dust'.
    Koniec bitwy (22, startEnding/endingStep/drawEnding): zwycięstwo = złote promienie, fajerwerki, konfetti, sztandar ze sprężystym
    wejściem i podskakujący zwycięzcy; porażka = szarość, czerwona winieta, popiół i dym, opadający postrzępiony sztandar z pęknięciem.
+   Pory roku (SEASONS, seasonIdx: miesiąc 1 wiosna, 2 lato, 3 jesień, 4 zima, potem od nowa): lato +10% ruchu, jesień +1 drewna
+   i rudy z miasta, zima −20% ruchu. Wygląd: seasonLand (barwy terenu), lód przy brzegach, drzewa i ozdoby wg SEASON_DRAW
+   (obstacleSprite/decorSprite z porą w kluczu), MapRender.setSeason czyści kawałki, drawSeasonFx (śnieg, liście).
+   Cechy frakcji (FACTION_TRAITS, heroFaction z klasy bohatera): morale Przystani, szczęście Kniei, nekromancja Kurhanu,
+   bagna Twierdzy, siarka Inferna, zima i śnieg Akademii, wzrok Lochu, przyrost Cytadeli; opisy w dymkach (nowa gra, miasto, bohater).
    Słaby laptop: menu i miasto bez pixelQuantize co klatkę (paleta wypalona w nieruchomym tle), płótno bez przezroczystości
    (alpha: false), bufory mapy, mgły i sprite'ów bez willReadFrequently (przy karcie graficznej zostają na niej), niska jakość
    = pół piksela płótna na piksel ekranu i bez fal na wodzie, Perf schodzi do 0,5 także przy spóźnionych klatkach, licznik pod F.
@@ -571,6 +576,33 @@ const FACTIONS = [
   },
 ];
 const factionOf = id => FACTIONS.find(f => f.id === id) || FACTIONS[0];
+// Cechy frakcji: jedna premia na frakcję. Bohater ma cechę frakcji swojej klasy, miasto: frakcji miasta.
+// Działanie: morale i szczęście (BITWA: ZASADY armyMorale/heroLuck), nekromancja (raiseDead), koszt terenu (baseCost),
+// zima (seasonMpMul), widzenie (heroSight), dochód (dailyIncomeAll), przyrost (weeklyGrowth).
+const FACTION_TRAITS = {
+  haven: { name: 'Rycerski duch', desc: 'armia bohatera Przystani ma +1 do morale' },
+  sylvan: { name: 'Łaska lasu', desc: 'armia bohatera Kniei ma +1 do szczęścia' },
+  barrow: { name: 'Wieczny zastęp', desc: 'bohaterowie Kurhanu wskrzeszają po bitwie o 10% więcej poległych' },
+  fortress: { name: 'Bagienne ścieżki', desc: 'bohaterowie Twierdzy chodzą po bagnach i nierównym terenie bez kary' },
+  inferno: { name: 'Siarkowe źródła', desc: 'każde miasto Inferna daje dziennie +1 siarki' },
+  academy: { name: 'Dzieci zimy', desc: 'bohaterowie Akademii nie tracą ruchu zimą ani na śniegu' },
+  dungeon: { name: 'Oczy ciemności', desc: 'bohaterowie Lochu widzą o 2 pola dalej' },
+  stronghold: { name: 'Horda', desc: 'siedliska w miastach Cytadeli dają o 25% więcej jednostek' },
+};
+const CLASS_FACTION = {}; for (const F of FACTIONS) for (const [, cls] of F.heroes) CLASS_FACTION[cls] = F.id;
+const heroFaction = h => (h && CLASS_FACTION[h.cls]) || null;
+const heroTrait = (h, fac) => heroFaction(h) === fac;
+const traitText = fac => { const T = FACTION_TRAITS[fac]; return T ? `${T.name}: ${T.desc}` : ''; };
+// Pory roku: każdy miesiąc to jedna pora (wiosna, lato, jesień, zima i od nowa). Wygląd mapy w MAPA: RENDEROWANIE.
+const SEASONS = [
+  { id: 'spring', name: 'Wiosna', text: 'łagodna pogoda, bez zmian' },
+  { id: 'summer', name: 'Lato', text: 'bohaterowie mają o 10% więcej ruchu' },
+  { id: 'autumn', name: 'Jesień', text: 'zbiory: każde miasto daje dziennie +1 drewna i +1 rudy' },
+  { id: 'winter', name: 'Zima', text: 'bohaterowie mają o 20% mniej ruchu (poza Akademią)' },
+];
+const seasonIdx = st => (st && st.month ? (st.month - 1) % 4 : 0);
+const seasonOf = st => SEASONS[seasonIdx(st)];
+function seasonMpMul(st, h) { const s = seasonIdx(st); return s === 1 ? 1.1 : s === 3 && !heroTrait(h, 'academy') ? 0.8 : 1; }
 // Budowle wspólne dla frakcji. Nazwy siedlisk i gildii bierze z FACTIONS funkcja bInfo().
 const BUILDINGS = [
   { id: 'hall1', name: 'Ratusz', slot: 0, cost: {}, req: [], gold: 500, emblem: 'coin', desc: 'Przynosi 500 złota dziennie.' },
@@ -1268,9 +1300,21 @@ function drawResourceBar(ctx, st, dy = 0, w = W) {
   const R = human(st).resources, y = RESBAR.y + dy;
   RESOURCES.forEach((r, i) => { const x = RESBAR.x + i * RESBAR.step; resIcon(ctx, r.id, x + 10, y, 24); text(ctx, String(R[r.id]), x + 25, y + 1, { size: 16, color: '#ecd9a8' }); });
   text(ctx, dateText(st), w - 18, y + 1, { size: 15, weight: 500, align: 'right', color: '#ecd9a8' });
+  drawSeasonIcon(ctx, seasonIdx(st), w - 30 - ctx.measureText(dateText(st)).width, y);
+}
+// Znaczek pory roku przy dacie: kwiat, słońce, liść, płatek śniegu
+function drawSeasonIcon(ctx, s, x, y) {
+  ctx.save(); ctx.translate(x, y); ctx.lineCap = 'round';
+  if (s === 0) { for (let i = 0; i < 5; i++) { const a = i * TAU / 5; circ(ctx, Math.cos(a) * 4, Math.sin(a) * 4, 3, '#f0a0c0'); } circ(ctx, 0, 0, 2.4, '#ffe070'); }
+  else if (s === 1) { ctx.strokeStyle = '#ffc040'; ctx.lineWidth = 1.6; for (let i = 0; i < 8; i++) { const a = i * TAU / 8; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 5.5, Math.sin(a) * 5.5); ctx.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); ctx.stroke(); } circ(ctx, 0, 0, 4.5, '#ffd040'); }
+  else if (s === 2) { ctx.rotate(-0.6); ctx.fillStyle = '#d8702a'; ctx.beginPath(); ctx.ellipse(0, 0, 4.5, 8, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#7a3a14'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(0, 9); ctx.stroke(); }
+  else { ctx.strokeStyle = '#d8ecff'; ctx.lineWidth = 1.6; for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 8, Math.sin(a) * 8); ctx.lineTo(-Math.cos(a) * 8, -Math.sin(a) * 8); ctx.stroke(); } }
+  ctx.restore();
 }
 function resourceBarInfo(st, x, y, dy = 0) {
-  if (y < 566 + dy) return null; const i = Math.floor((x - RESBAR.x) / RESBAR.step); if (i < 0 || i >= RESOURCES.length) return null;
+  if (y < 566 + dy) return null; const i = Math.floor((x - RESBAR.x) / RESBAR.step);
+  if (i >= RESOURCES.length) { const S = seasonOf(st); return `${dateText(st)}. Pora roku: ${S.name.toLowerCase()} (${S.text}). Pora zmienia się co miesiąc.`; }
+  if (i < 0) return null;
   const r = RESOURCES[i]; return `${r.name}: ${human(st).resources[r.id]}. Dochód dzienny: ${dailyIncome(st, r.id)}.`;
 }
 
@@ -1977,8 +2021,9 @@ function drawTownMap(ctx, x0, y0, fac = 'haven', lvl = 1) {
 }
 
 // --- sprite'y (cache): mapa rysuje je w buforze pikselowym, interfejs przez drawSprite() -------
-const obstacleSprite = (o, t, v) => sprite(`ob${o}_${t}_${v}`, 40, 38, 20, 26, p => drawObstacle(p, o, t, 0, 0, mulberry32(v * 7919 + o * 31 + t * 7)));
-const decorSprite = (t, v) => sprite(`dec${t}_${v}`, 12, 10, 6, 7, p => drawDecor(p, t, v), null);
+// season: pora roku (0 wiosna … 3 zima) zmienia drzewa i szczyty; pole bitwy rysuje przeszkody zawsze wiosenne
+const obstacleSprite = (o, t, v, season = 0) => sprite(`ob${o}_${t}_${v}_${season}`, 40, 38, 20, 26, p => { SEASON_DRAW = season; drawObstacle(p, o, t, 0, 0, mulberry32(v * 7919 + o * 31 + t * 7)); SEASON_DRAW = 0; });
+const decorSprite = (t, v, season = 0) => sprite(`dec${t}_${v}_${season}`, 12, 10, 6, 7, p => { SEASON_DRAW = season; drawDecor(p, t, v); SEASON_DRAW = 0; }, null);
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
 const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
@@ -3359,7 +3404,7 @@ function startNewGame() { saveSettings(); G.state = createNewGame(G.settings); G
 // Ruch, odkrywanie mapy, obiekty, potyczki, dochód, budowanie.
 // Dzienny limit ruchu zależy od najwolniejszej jednostki w armii (jak w oryginale)
 function mpBySpeed(s) { return s <= 3 ? 1500 : s >= 11 ? 2000 : [1560, 1630, 1700, 1760, 1830, 1900, 1960][s - 4]; }
-function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100)) + heroBonus(h, 'mp'); }
+function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp'); }
 // Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
 function reveal(st, cx, cy, r, owner = ME) {
   const P = playerOf(st, owner); if (!P || !P.explored) return;
@@ -3407,7 +3452,8 @@ function buyBoat(st, t) {
 // Znajdowanie drogi (h) zmniejsza narzut trudnego terenu ponad 100.
 function baseCost(map, i, j, h) {
   if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
-  const c = TERRAINS[map.terrain[i]].cost || 100, pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
+  const t = map.terrain[i]; let c = TERRAINS[t].cost || 100; const pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
+  if (h && ((heroTrait(h, 'fortress') && (t === TER.SWAMP || t === TER.ROUGH)) || (heroTrait(h, 'academy') && t === TER.SNOW))) c = 100; // cechy frakcji
   return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
 }
 function stepCost(map, fx, fy, tx, ty, h) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx, h); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
@@ -3591,7 +3637,7 @@ const aiPickSkill = offer => offer.slice().sort((a, b) => AI_SKILL_ORDER.indexOf
 // Suma premii z założonych artefaktów (plecak nie działa)
 const heroBonus = (h, key) => Object.values(h.equip || {}).reduce((s, id) => s + (id ? ARTIFACTS[id].bonus[key] || 0 : 0), 0);
 const heroStat = (h, key) => h.stats[key] + heroBonus(h, key);
-const heroSight = h => h.sight + heroBonus(h, 'sight') + skillVal(h, 'scouting');
+const heroSight = h => h.sight + heroBonus(h, 'sight') + skillVal(h, 'scouting') + (heroTrait(h, 'dungeon') ? 2 : 0);
 // Premia bohatera do siły armii w potyczce: +5% za każdy punkt ataku i obrony
 const heroFactor = h => 1 + 0.05 * (heroStat(h, 'att') + heroStat(h, 'def'));
 // Doświadczenie z awansami. Wzrost cechy losowany deterministycznie (ziarno gry, bohater, poziom).
@@ -3700,7 +3746,7 @@ function dwellingUnits(t, L) {
 // Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
 function weeklyGrowth(t, L, st) {
   const cid = factionOf(t.faction).dw['dw' + L][1], base = CREATURES[cid].growth, W = st && weekInfo(st);
-  return Math.floor(base * (hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
+  return Math.floor(base * (hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) * (t.faction === 'stronghold' ? 1.25 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
 }
 // Nowy tydzień: przyrost w siedliskach; w Miesiącu Zarazy zamiast przyrostu pula topnieje o połowę
 function townGrowthWeek(t, st) {
@@ -3744,7 +3790,7 @@ function startWeek(st, newMonth) {
     if (M && M.kind === 'monsters') o.count = Math.ceil(o.count * 1.5);
   }
   for (const t of st.towns) townGrowthWeek(t, st);
-  const head = newMonth ? (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
+  const S = seasonOf(st), head = newMonth ? `Nadchodzi ${S.name.toLowerCase()}: ${S.text}. ` + (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
   return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
 }
 const unitCost = cid => CREATURES[cid].cost || { gold: CREATURES[cid].value };
@@ -3793,7 +3839,11 @@ function armySplit(fromA, i, toA, j, n, heroArmies = []) {
 function dailyIncomeAll(st, owner = ME) {
   const inc = Object.fromEntries(RESOURCES.map(r => [r.id, 0]));
   for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === owner) inc[ob.kind] += MINES[ob.kind].income * (weekKind(st, 'mines') ? 2 : 1);
-  for (const t of st.towns) if (t.owner === owner) { inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; } }
+  const autumn = seasonIdx(st) === 2;
+  for (const t of st.towns) if (t.owner === owner) {
+    inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; }
+    if (autumn) { inc.wood += 1; inc.ore += 1; } if (t.faction === 'inferno') inc.sulfur += 1; // jesienne zbiory, cecha Inferna
+  }
   for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates');
   return inc;
 }
@@ -4032,10 +4082,11 @@ function armyMorale(cids, hero, town) {
   let m = facs <= 1 ? 1 : facs === 2 ? 0 : facs === 3 ? -1 : -2;
   if (cids.some(cid => (CREATURES[cid].abil || []).includes('undead'))) m -= 1;
   if (hero) m += heroBonus(hero, 'morale') + skillVal(hero, 'leadership') + ((hero.boost || {}).morale || 0); // boost: świątynia do następnej bitwy
+  if (heroTrait(hero, 'haven')) m += 1; // cecha Przystani
   if (town && hasB(town, 'tavern')) m += 1;
   return clamp(m, -3, 3);
 }
-const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') + ((h.boost || {}).luck || 0) : 0, -3, 3);
+const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') + ((h.boost || {}).luck || 0) + (heroTrait(h, 'sylvan') ? 1 : 0) : 0, -3, 3);
 function sideMorale(B, side) { const S = B.sides[side]; return S.monster || S.bank ? 0 : armyMorale(B.units.filter(u => u.side === side && !isMachine(u)).map(u => u.cid), S.hero, S.town); }
 const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
 // Nieumarli nie znają strachu ani zapału: morale zawsze 0
@@ -4345,7 +4396,7 @@ function captureTown(st, t, owner) {
 // Zapisuje wynik w stanie gry i zwraca opis dla okna podsumowania (z punktu widzenia atakującego, strona 0)
 // Nekromancja zwycięzcy: z pct% życia poległych żywych wrogów wstają kościotrupy w armii bohatera (gdy jest miejsce)
 function raiseDead(B, side) {
-  const h = sideHero(B, side), pct = skillVal(h, 'necromancy'); if (!pct) return 0;
+  const h = sideHero(B, side), pct = skillVal(h, 'necromancy') + (heroTrait(h, 'barrow') ? 10 : 0); if (!pct) return 0; // cecha Kurhanu
   const hp = B.units.filter(u => u.side !== side && !hasAb(u, 'undead') && !isMachine(u)).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
   const n = Math.floor(hp * pct / 100 / CREATURES.boneWarrior.hp);
   const i = h.army.findIndex(s => s && s.cid === 'boneWarrior'), k = i >= 0 ? i : h.army.findIndex(s => !s);
@@ -4789,12 +4840,19 @@ function leafCrown(g, clumps, pal, r) {
     g.fillStyle = pal[0]; g.fillRect(cx + R * (0.1 + r() * 0.4), cy + R * (0.15 + r() * 0.35), 2, 2);
   }
 }
+let SEASON_DRAW = 0; // pora roku dla rysowanych właśnie przeszkód i ozdób (ustawia obstacleSprite/decorSprite)
+const AUTUMN_OAK = [['#4a1a0a', '#8a2e14', '#c8501e', '#f09040'], ['#4a2a08', '#8a5210', '#c8841e', '#f0c040'], ['#3a2410', '#6a4418', '#9a6a28', '#c89a4a']];
 const OAK_PAL = [['#123414', '#24601e', '#4a9430', '#9ad056'], ['#1a3810', '#36601a', '#62922c', '#b8d04c'], ['#3a3010', '#645418', '#9a8028', '#e0bc4c']];
 function drawOak(g, x, y, s, r = mulberry32(1)) {
   shadowAt(g, x, y, 10 * s);
   mpoly(g, [[x - 4 * s, y + 1], [x - 1.8 * s, y - 2 * s], [x - 1.5 * s, y - 11 * s], [x + 1.5 * s, y - 11 * s], [x + 1.8 * s, y - 2 * s], [x + 4 * s, y + 1]], '#3a2412');
   mpoly(g, [[x - 3 * s, y + 0.5], [x - 1.5 * s, y - 2 * s], [x - 1.4 * s, y - 11 * s], [x, y - 11 * s], [x - 0.2 * s, y]], '#6e4826');
-  const pal = OAK_PAL[r() < 0.12 ? 2 : r() < 0.35 ? 1 : 0];
+  const k = r(), pal = SEASON_DRAW === 2 ? AUTUMN_OAK[(k * 3) | 0] : OAK_PAL[k < 0.12 ? 2 : r() < 0.35 ? 1 : 0];
+  if (SEASON_DRAW === 3) { // zima: gołe gałęzie przyprószone śniegiem
+    for (const [dx, dy, ex, ey] of [[0, -10, -7, -22], [0, -12, 7, -21], [0, -11, 0, -27], [-3, -16, -10, -18], [3, -16, 10, -15]]) mline(g, [[x + dx * s, y + dy * s], [x + ex * s, y + ey * s]], '#4a3422', 1.6 * s);
+    for (const [ex, ey] of [[-7, -22], [7, -21], [0, -27], [-10, -18], [10, -15]]) { g.fillStyle = '#f4f8fc'; g.fillRect(x + ex * s - 1.5, y + ey * s - 1, 3, 2); }
+    return;
+  }
   const cl = [[0, -24, 7.5], [-7, -19, 7], [7, -18, 7], [-3, -13, 7], [5, -12, 6.5]].map(([dx, dy, R]) => [x + (dx + (r() - 0.5) * 2) * s, y + dy * s, R * s * (0.9 + r() * 0.2)]);
   leafCrown(g, cl, pal, r);
 }
@@ -4890,21 +4948,24 @@ function drawRock(g, x, y, r, t = TER.GRASS) {
   if (r() < 0.6) boulder(g, x + 9 * k, y + 2, 0.4, pal);
 }
 function drawObstacle(g, o, t, px, py, r) {
+  if (SEASON_DRAW === 3 && (t === TER.GRASS || t === TER.DIRT || t === TER.ROUGH || t === TER.SWAMP) && o !== OBST.TREE) t = TER.SNOW; // zimą góry i skały w śniegu
   if (o === OBST.MOUNT) return drawMountain(g, px, py, t, r);
   if (o === OBST.ROCK) return drawRock(g, px + (r() - 0.5) * 8, py + 6, r, t);
   const spots = [[(r() - 0.5) * 8, -2], [-8 + (r() - 0.5) * 4, 9], [8 + (r() - 0.5) * 4, 10]], cnt = r() < 0.3 ? 2 : 3;
   for (let k = 0; k < cnt; k++) {
     const x = px + spots[k][0], y = py + spots[k][1], s = 0.8 + r() * 0.3;
-    if (t === TER.SNOW || t === TER.ROUGH) drawPine(g, x, y, s, t === TER.SNOW, r);
+    if (t === TER.SNOW || t === TER.ROUGH) drawPine(g, x, y, s, t === TER.SNOW || SEASON_DRAW === 3, r);
     else if (t === TER.SAND) drawPalm(g, x, y, s, r);
     else if (t === TER.LAVA) drawCharredTree(g, x, y, s, r);
     else if (t === TER.SWAMP) { if (r() < 0.5) drawDeadTree(g, x, y, s, '#2e2618', r); else drawWillow(g, x, y, s, r); }
-    else if (t === TER.DIRT && r() < 0.5) drawPine(g, x, y, s, false, r);
+    else if (t === TER.DIRT && r() < 0.5) drawPine(g, x, y, s, SEASON_DRAW === 3, r);
     else drawOak(g, x, y, s, r);
   }
 }
 // Drobne ozdoby na pustych polach (kępki trawy, kwiaty, kamyki, trzcina, grzyby, żar): tylko wygląd, nie blokują ruchu
 function drawDecor(g, t, v) {
+  if (SEASON_DRAW === 3 && t !== TER.LAVA && t !== TER.SAND) t = TER.SNOW; // zimą ozdoby w śniegu
+  if (SEASON_DRAW === 2 && t === TER.GRASS && v % 2) { for (const [x, y, c] of [[-4, 1, '#c8501e'], [2, -1, '#e0a030'], [5, 3, '#8a3a14'], [-1, 4, '#d87a2a']]) { g.fillStyle = c; g.fillRect(x, y, 3, 2); } return; } // jesienne liście
   const tuft = (x, y, a, b) => { mline(g, [[x - 3, y], [x - 5, y - 6]], a); mline(g, [[x, y], [x, y - 8]], b); mline(g, [[x + 3, y], [x + 5, y - 5]], a); };
   const pebbles = pal => { boulder(g, -3, 2, 0.35, pal); boulder(g, 4, 3, 0.25, pal); };
   const GR = ['#4a8a30', '#78b848'], DRY = ['#9a8a40', '#ccb45a'];
@@ -4952,7 +5013,19 @@ function landColor(t, ax, ay, hh) {
   }
   return col;
 }
+// Pory roku: lato przypala trawę, jesień barwi ją plamami rdzy i złota, zima przykrywa śniegiem (poza lawą i pustynią)
+const SNOWC = [[236, 242, 248], [214, 226, 238], [248, 250, 252]], AUTC = [[176, 104, 38], [150, 86, 36], [196, 146, 56], [128, 110, 44]];
+const mixRgb = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+function seasonLand(col, t, ax, ay, hh, S) {
+  if (!S || t === TER.LAVA || t === TER.SNOW) return col;
+  if (S === 1) return t === TER.GRASS ? mixRgb(col, [168, 158, 72], 0.2) : col;
+  if (S === 2) { if (t === TER.SAND) return col; const v = vnoise2(ax / 11, ay / 11, 91); return mixRgb(col, AUTC[clamp((v * 4) | 0, 0, 3)], t === TER.GRASS ? 0.55 : 0.28); }
+  const v = vnoise2(ax / 9, ay / 9, 97);
+  if (t === TER.SAND) return mixRgb(col, SNOWC[0], v > 0.45 ? 0.6 : 0.25); // piasek tylko przyprószony
+  return mixRgb(col, SNOWC[hh < 0.3 ? 1 : hh > 0.97 ? 2 : 0], v > 0.3 ? 0.9 : 0.55);
+}
 function renderChunkPixel(map, cx, cy) {
+  const SN = MapRender.season || 0;
   const n = map.n, S = CHUNK * AP, M = 5, R = S + 2 * M, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
   for (let y = 0; y < R; y++) for (let x = 0; x < R; x++) {
     const ax = bx + x - M, ay = by + y - M, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
@@ -4975,17 +5048,18 @@ function renderChunkPixel(map, cx, cy) {
       if (t === TER.WATER) {
         let near = 9; for (const r of RING) if (TT(px + r[0], py + r[1]) !== TER.WATER) { near = r[2]; break; }
         wm[py * S + px] = near <= 2 ? 2 : 1; wet = true;
-        if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
+        if (SN === 3 && near <= 4) { wm[py * S + px] = 0; col = near === 1 ? SNOWC[2] : (thash(ax >> 1, ay >> 2, 81) % 23 === 0) ? [150, 186, 214] : near <= 2 ? [206, 226, 240] : [184, 212, 232]; } // zimą lód przy brzegu
+        else if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
         else { const P = TPAL[0]; col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; }
       } else {
-        col = landColor(t, ax, ay, hh);
+        col = seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN);
         const below = TT(px, py + 1); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
       }
       if (segs.length) {
         let best = 99, bt = 0;
         for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5, py + 0.5, s); if (dd < best) { best = dd; bt = s[4]; } }
         if (best <= 4.3) wm[py * S + px] = 0;
-        if (best <= 3.3) col = roadColor(bt, ax, ay, hh); else if (best <= 4.3) col = PC.edge;
+        if (best <= 3.3) col = SN === 3 ? mixRgb(roadColor(bt, ax, ay, hh), SNOWC[0], 0.3) : roadColor(bt, ax, ay, hh); else if (best <= 4.3) col = PC.edge;
       }
     }
     d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2]; d[k + 3] = 255;
@@ -4997,11 +5071,11 @@ function renderChunkPixel(map, cx, cy) {
     const i = y * n + x, h = thash(x, y, map.seed + 5); if (map.obst[i] || rd[i] || (oa && oa[i]) || h % 100 >= 22) continue;
     const lx = x * AP + 8 - bx + ((h >>> 8) % 9) - 4, ly = y * AP + 8 - by + ((h >>> 12) % 7) - 3, t = map.terrain[i];
     if (t === TER.WATER || lx < -M || ly < -M || lx >= S + M || ly >= S + M || TT(lx, ly) !== t) continue;
-    const s = decorSprite(t, (h >>> 16) % 4); g.drawImage(s.c, lx - s.ax, ly - s.ay);
+    const s = decorSprite(t, (h >>> 16) % 4, SN); g.drawImage(s.c, lx - s.ax, ly - s.ay);
   }
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
     const o = map.obst[y * n + x]; if (!o) continue;
-    const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
+    const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     g.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
   }
   gradeCanvas(c, bx, by);
@@ -5009,7 +5083,7 @@ function renderChunkPixel(map, cx, cy) {
     const mk = v => { const m = document.createElement('canvas'); m.width = m.height = S; const mg = m.getContext('2d'), mi = mg.createImageData(S, S);
       for (let i = 0; i < S * S; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out';
       for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
-        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); mg.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
+        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); mg.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
       }
       return m; };
     c._deep = mk(1); c._shore = mk(2);
@@ -5056,8 +5130,10 @@ function buildMinimap(map, ex) {
 }
 // Pamięć podręczna wyrenderowanych fragmentów mapy (8×8 pól)
 const MapRender = {
-  map: null, explored: null, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
+  map: null, explored: null, season: 0, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
   reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; },
+  // Pora roku: po zmianie wszystkie kawałki terenu rysują się od nowa
+  setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); } },
   // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
   get(cx, cy, allow = true) {
     const key = cx + ',' + cy; let c = this.cache.get(key);
@@ -5238,6 +5314,7 @@ function mapLight(w, h) {
   }, 1);
 }
 function drawMapView(ctx, st, scr) {
+  MapRender.setSeason(seasonIdx(st));
   {
     const wb = pixBuf('world', VIEW.w / 2, VIEW.h / 2), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
     b.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / 2, VIEW.h / 2), 0, 0); b.restore();
@@ -5261,6 +5338,7 @@ function drawMapView(ctx, st, scr) {
     else { const g = ctx.createLinearGradient(0, y - 160, 0, y); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, e.col); ctx.fillStyle = g; ctx.fillRect(x - 18 * (1 - f * 0.5), y - 160, 36 * (1 - f * 0.5), 170); }
     ctx.restore();
   }
+  drawSeasonFx(ctx, seasonIdx(st));
   if (scr.banner) {
     const a = clamp(1.8 - (G.time - scr.banner.t), 0, 1);
     if (a > 0) { ctx.globalAlpha = a; drawParchment(ctx, VIEW.x + VIEW.w / 2 - 90, VIEW.y + 16, 180, 44); text(ctx, scr.banner.text, VIEW.x + VIEW.w / 2, VIEW.y + 39, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' }); ctx.globalAlpha = 1; }
@@ -5292,6 +5370,17 @@ function tileInfo(st, tx, ty) {
   return s;
 }
 
+// Opady pory roku nad mapą: płatki śniegu zimą, spadające liście jesienią (bez nich przy niskiej jakości)
+function drawSeasonFx(ctx, S) {
+  if ((S !== 2 && S !== 3) || G.settings.quality === 'low') return;
+  const t = G.time, n = S === 3 ? 70 : 22;
+  for (let i = 0; i < n; i++) {
+    const sp = S === 3 ? 0.05 + (i % 5) * 0.012 : 0.035 + (i % 4) * 0.008, u = (t * sp + i * 0.137) % 1, sway = Math.sin(t * (S === 3 ? 0.9 : 1.6) + i * 1.7);
+    const x = VIEW.x + ((i * 97 + (S === 2 ? t * 14 : 0)) % VIEW.w) + sway * (S === 3 ? 10 : 18), y = VIEW.y + u * VIEW.h;
+    if (S === 3) { ctx.fillStyle = `rgba(255,255,255,${(0.55 + 0.35 * Math.sin(i)).toFixed(2)})`; const r = i % 3 ? 1.5 : 2.5; ctx.fillRect(x - r / 2, y - r / 2, r, r); }
+    else { ctx.save(); ctx.translate(x, y); ctx.rotate(t * 2 + i); ctx.fillStyle = ['#c8501e', '#e0a030', '#8a3a14', '#d87a2a'][i % 4]; ctx.fillRect(-3, -1.5, 6, 3); ctx.restore(); }
+  }
+}
 // ==================== MIASTO: GRAFIKA ===================================================
 // Style frakcji (TOWN_ART), budowle (BUILD_ART), układy scen w perspektywie (TOWN_LAYOUTS), efekty animowane.
 const TOWN_ART = {
@@ -7711,6 +7800,7 @@ G.screens.setup = {
       const ty = new Button(x + 38, y, 88, 34, '', () => this.nextType(i), { size: 13, selected: () => col().type === 'human', tip: 'Człowiek, komputer albo wolne miejsce. Kilku ludzi gra na zmianę przy jednym ekranie (hot-seat).' });
       const nm = new Button(x + 130, y, 96, 34, '', () => askText(`Imię gracza (${PLAYER_COLORS.find(c => c.id === col().color).name.toLowerCase()}). Puste = nazwa od koloru.`, col().name, v => { col().name = v; saveSettings(); }), { size: 13, tip: 'Imię człowieka widoczne w turach i wieściach (kliknij, aby wpisać).' });
       const fa = new Button(x + 230, y, 90, 34, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; }, { size: 13, tip: 'Frakcja gracza (kliknij, aby zmienić).' });
+      Object.defineProperty(fa, 'tip', { get: () => { const f = col().faction; return f === 'random' ? 'Frakcja gracza: losowa (kliknij, aby zmienić).' : `${factionOf(f).name}: ${factionOf(f).desc} Cecha: ${traitText(f)}. Kliknij, aby zmienić.`; }, set() {} });
       B.push(sw, ty, nm, fa); return { sw, ty, nm, fa };
     });
     this.bStart = new Button(150, 506, 200, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19 });
@@ -8063,7 +8153,7 @@ G.screens.adventure = {
   toggleSleep() { const h = hero(G.state); if (!h) return; h.asleep = !h.asleep; if (h.asleep) { h.path = null; h.dest = null; } this.flash(h.asleep ? `${h.name} odpoczywa` : `${h.name} znów rusza w drogę`); },
   rightInfo(x, y) {
     const st = G.state;
-    if (inRect(x, y, { x: INFOBOX.x, y: INFOBOX.y, w: INFOBOX.w, h: 32 })) { const W = weekInfo(st), M = monthInfo(st); return `Tydzień ${W.name}: ${W.text || 'spokojny tydzień, bez szczególnych skutków'}.${M.name ? ` Miesiąc ${M.name}: ${M.text}.` : ''} Co tydzień los wybiera nowy efekt.`; }
+    if (inRect(x, y, { x: INFOBOX.x, y: INFOBOX.y, w: INFOBOX.w, h: 32 })) { const W = weekInfo(st), M = monthInfo(st); const S = seasonOf(st); return `${S.name}: ${S.text}. Tydzień ${W.name}: ${W.text || 'spokojny tydzień, bez szczególnych skutków'}.${M.name ? ` Miesiąc ${M.name}: ${M.text}.` : ''} Co tydzień los wybiera nowy efekt, a co miesiąc zmienia się pora roku.`; }
     if (inRect(x, y, VIEW)) {
       const { tx, ty } = screenToTile(st, x, y), n = st.map.n;
       if (tx < 0 || ty < 0 || tx >= n || ty >= n) return null;
@@ -8326,6 +8416,7 @@ G.screens.hero = {
     if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
+    if (x >= 32 && x <= 330 && y >= 32 && y <= 104) { const f = heroFaction(h); return f ? `${heroTitle(h)}. Cecha frakcji (${factionOf(f).name}) — ${traitText(f)}.` : null; }
     const si = this.skillAt(x, y);
     if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
@@ -9056,6 +9147,7 @@ G.screens.town = {
     if (row) { const inf = bInfo(row.B, fac); return `${inf.name}. ${inf.desc}`; }
     const slot = this.armySlotAt(x, y);
     if (slot) return slot.a[slot.i] ? stackInfo(slot.a[slot.i]) : 'Wolne miejsce. Kliknij oddział, a potem miejsce, aby go przenieść, połączyć z takim samym albo zamienić.';
+    if (x >= 600 && x <= 784 && y >= 40 && y <= 60) { const F = factionOf(fac); return `${F.name}: ${F.desc} Cecha frakcji — ${traitText(fac)}.`; }
     const i = this.slotAt(x, y); if (i === null) return resourceBarInfo(G.state, x, y);
     const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'smith' ? ' Kliknij, aby kupić machiny wojenne.' : B.id === 'market' ? ' Kliknij, aby handlować.' : ''); }
     const next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id)); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }

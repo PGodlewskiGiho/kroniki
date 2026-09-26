@@ -48,6 +48,7 @@ G.screens.hero = {
     if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
+    if (x >= 32 && x <= 330 && y >= 32 && y <= 104) { const f = heroFaction(h); return f ? `${heroTitle(h)}. Cecha frakcji (${factionOf(f).name}) — ${traitText(f)}.` : null; }
     const si = this.skillAt(x, y);
     if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
