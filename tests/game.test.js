@@ -218,7 +218,7 @@ test('menu: „Nowa gra” prowadzi do ustawień, „Wróć” z powrotem; scena
   await page.evaluate(() => setScreen('menu', {}));
   await frames(page, 3);
   const r = await page.evaluate(() => ({ labels: G.screens.menu.buttons.map(b => b.label), buf: [PixBufs.menuScene.width, PixBufs.menuScene.height] }));
-  assert.deepEqual(r.labels, ['Nowa gra', 'Wczytaj grę', 'Najlepsze wyniki', 'Twórcy', 'Wyjście']);
+  assert.deepEqual(r.labels, ['Nowa gra', 'Wczytaj grę', 'Najlepsze wyniki', 'Grafika', 'Twórcy', 'Wyjście']);
   assert.deepEqual(r.buf, [400, 300], 'scena rysowana w połowie rozdzielczości');
   await page.evaluate(() => G.screens.menu.buttons[0].action());
   await page.waitForFunction(() => G.screenName === 'setup');

@@ -228,6 +228,7 @@ function renderChunkPixel(map, cx, cy) {
     const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     g.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
   }
+  gradeCanvas(c, bx, by);
   if (wet) { // maski do animacji wody (WaterFx); przeszkody stojące nad wodą (drzewa, góry przy brzegu) ją zasłaniają
     const mk = v => { const m = document.createElement('canvas'); m.width = m.height = S; const mg = m.getContext('2d'), mi = mg.createImageData(S, S);
       for (let i = 0; i < S * S; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out';
@@ -249,7 +250,7 @@ const WaterFx = {
       const x = Math.floor(r() * P), y = Math.floor(r() * P), w = 3 + Math.floor(r() * 4);
       for (let i = 0; i < w; i++) { const yy = y - (i > 0 && i < w - 1 ? 1 : 0); g.fillStyle = k % 4 ? '#8cb6da' : '#d4eaf6'; g.fillRect((x + i) % P, (yy + P) % P, 1, 1); g.fillStyle = '#1e3e66'; g.fillRect((x + i) % P, (yy + 1 + P) % P, 1, 1); }
     }
-    return this.pat = c;
+    return this.pat = gradeCanvas(c); // kolory fal po tej samej korekcji co teren
   },
   draw(b, ch, dx, dy, size, wx, wy) {
     if (!ch._deep) return; const S = ch.width, t = G.time;
@@ -261,7 +262,7 @@ const WaterFx = {
     layer(-Math.floor(t * 3) - wx + 21, Math.floor(t * 2) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
     g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0);
     b.drawImage(tmp, dx, dy, size, size);
-    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = '#eef8fc'; g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = this.foam || (this.foam = `rgb(${gradeRgb(hexRgb('#eef8fc')).map(Math.round).join(',')})`); g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
     g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0); g.globalCompositeOperation = 'source-over';
     b.drawImage(tmp, dx, dy, size, size);
   },
@@ -279,8 +280,8 @@ function buildMinimap(map, ex) {
 }
 // Pamięć podręczna wyrenderowanych fragmentów mapy (8×8 pól)
 const MapRender = {
-  map: null, explored: null, cache: new Map(), mini: null, miniDirty: false,
-  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.mini = null; },
+  map: null, explored: null, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
+  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; },
   get(cx, cy) {
     const key = cx + ',' + cy; let c = this.cache.get(key);
     if (c) { this.cache.delete(key); this.cache.set(key, c); return c; }
@@ -341,16 +342,37 @@ function drawPathPixel(b, st, h, ox, oy) {
   if (!h.path || !h.path.length) return; let mp = h.mp, px = h.x, py = h.y;
   h.path.forEach(([x, y], k) => {
     mp -= stepCost(st.map, px, py, x, y, h); const col = mp >= 0 ? '#3ad14c' : '#e03a3a', last = k === h.path.length - 1;
-    blit(b, last ? markSprite(col, 'x', 0) : markSprite(col, h.path[k + 1][0] - x, h.path[k + 1][1] - y), ox + x * T + 16, oy + y * T + 16); px = x; py = y;
+    blitG(b, last ? markSprite(col, 'x', 0) : markSprite(col, h.path[k + 1][0] - x, h.path[k + 1][1] - y), ox + x * T + 16, oy + y * T + 16); px = x; py = y;
   });
 }
-function drawFogPixel(b, st, ox, oy, camX, camY) {
-  const fw = VIEW.w / 2, fh = VIEW.h / 2, fb = pixBuf('fog', fw, fh, true), f = fb._ctx, par = (camX / 2 + camY / 2) & 1;
-  f.setTransform(1, 0, 0, 1, 0, 0); f.clearRect(0, 0, fw, fh); f.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5);
-  drawFog(f, st, ox, oy, camX, camY);
-  const img = f.getImageData(0, 0, fw, fh), d = img.data;
-  for (let y = 0, k = 0; y < fh; y++) for (let x = 0; x < fw; x++, k += 4) { const a = d[k + 3]; d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = (a >= 225 || (a >= 70 && ((x + y + par) & 1))) ? 255 : 0; }
-  f.putImageData(img, 0, 0); b.drawImage(fb, VIEW.x, VIEW.y, VIEW.w, VIEW.h);
+// Mgła wojny w kawałkach 8×8 pól (jak teren): kółka nad nieodkrytymi polami, progowanie alfy na twardą krawędź
+// z ditheringiem w szachownicę. Kawałek przelicza się tylko wtedy, gdy zmieni się odkrycie pól w nim i wokół niego.
+function fogChunk(ex, n, cx, cy) {
+  const S = CHUNK * AP, x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1, x1 = x0 + CHUNK + 1, y1 = y0 + CHUNK + 1; let sig = 0, any = false;
+  for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (!ex[y * n + x]) { sig = (sig * 31 + y * n + x) | 0; any = true; }
+  const key = cx + ',' + cy, old = MapRender.fog.get(key); if (old && old._sig === sig) return old.c;
+  let c = null;
+  if (any) {
+    c = document.createElement('canvas'); c.width = c.height = S; const f = c.getContext('2d', { willReadFrequently: true }), ox = -cx * CHUNK * T, oy = -cy * CHUNK * T;
+    f.setTransform(0.5, 0, 0, 0.5, 0, 0);
+    for (const [alpha, extra] of [[0.45, 7], [1, 0]]) {
+      f.fillStyle = `rgba(0,0,0,${alpha})`; f.beginPath();
+      for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) {
+        if (ex[y * n + x]) continue; const r0 = T * 0.72 + (thash(x, y, 3) % 4) + extra, px = ox + x * T + 16, py = oy + y * T + 16;
+        f.moveTo(px + r0, py); f.arc(px, py, r0, 0, TAU);
+      }
+      f.fill();
+    }
+    const img = f.getImageData(0, 0, S, S), d = img.data, bx = cx * S, by = cy * S;
+    for (let y = 0, k = 0; y < S; y++) for (let x = 0; x < S; x++, k += 4) { const a = d[k + 3]; d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = (a >= 225 || (a >= 70 && ((bx + x + by + y) & 1))) ? 255 : 0; }
+    f.putImageData(img, 0, 0);
+  }
+  MapRender.fog.set(key, { c, _sig: sig }); if (MapRender.fog.size > 80) MapRender.fog.delete(MapRender.fog.keys().next().value);
+  return c;
+}
+function drawFogPixel(b, st, ox, oy, c0, c1, r0, r1) {
+  const ex = human(st).explored, n = st.map.n, CP = CHUNK * T;
+  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) { const f = fogChunk(ex, n, cx, cy); if (f) b.drawImage(f, ox + cx * CP, oy + cy * CP, CP, CP); }
 }
 function drawWorldPixel(b, st) {
   const map = st.map, n = map.n, CP = CHUNK * T, camX = Math.round(st.cam.x / 2) * 2, camY = Math.round(st.cam.y / 2) * 2, nC = Math.ceil(n / CHUNK);
@@ -364,41 +386,65 @@ function drawWorldPixel(b, st) {
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
   for (const h of st.heroes) { const [hx, hy] = heroDrawPos(h); list.push({ y: hy + 0.5, hero: h, hx, hy }); }
   list.sort((a, c) => a.y - c.y);
-  const shadow = (w, x, y) => { b.globalAlpha = 0.3; blit(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
+  const shadow = (w, x, y) => { b.globalAlpha = 0.3; blitG(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
   for (const it of list) {
-    if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16; shadow(14, x, y + 13); blit(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
+    if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16; shadow(14, x, y + 13); blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
     const ob = it.ob, px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
-    if (ob.type === 'monster') { shadow(10, px, py + 10); blit(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
-    else if (ob.type === 'res') { shadow(10, px, py + 9); blit(b, resSprite(ob.res), px, py + 2); }
-    else if (ob.type === 'chest') { shadow(10, px, py + 9); blit(b, chestSprite(), px, py + 2); }
-    else if (ob.type === 'boat') blit(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py);
-    else if (ob.type === 'site') { shadow(14, px, py + 12); blit(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
-    else if (ob.type === 'art') { shadow(9, px, py + 10); blit(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
-    else if (ob.type === 'bank') blit(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
-    else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blit(b, mineSprite(ob.kind), mx, my); blit(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
+    if (ob.type === 'monster') { shadow(10, px, py + 10); blitG(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
+    else if (ob.type === 'res') { shadow(10, px, py + 9); blitG(b, resSprite(ob.res), px, py + 2); }
+    else if (ob.type === 'chest') { shadow(10, px, py + 9); blitG(b, chestSprite(), px, py + 2); }
+    else if (ob.type === 'boat') blitG(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py);
+    else if (ob.type === 'site') { shadow(14, px, py + 12); blitG(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
+    else if (ob.type === 'art') { shadow(9, px, py + 10); blitG(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
+    else if (ob.type === 'bank') blitG(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
+    else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blitG(b, mineSprite(ob.kind), mx, my); blitG(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
     else if (ob.type === 'town') {
       const t = st.towns[ob.townId], lvl = townLevel(t), mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, fc = ownerColor(st, ob.owner);
-      blit(b, townSprite(t.faction, lvl), mx, my);
-      for (const [fx, fy] of TOWN_FLAG_POINTS[lvl]) blit(b, flagSprite(fc, 10, 6), mx + fx, my + fy - 20); // drzewce stoi na szczycie dachu
+      blitG(b, townSprite(t.faction, lvl), mx, my);
+      for (const [fx, fy] of TOWN_FLAG_POINTS[lvl]) blitG(b, flagSprite(fc, 10, 6), mx + fx, my + fy - 20); // drzewce stoi na szczycie dachu
     }
   }
-  drawFogPixel(b, st, ox, oy, camX, camY);
+  drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, VIEW)) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
     b.fillStyle = 'rgba(255,240,190,.55)'; b.fillRect(x, y, T, 2); b.fillRect(x, y + T - 2, T, 2); b.fillRect(x, y + 2, 2, T - 4); b.fillRect(x + T - 2, y + 2, 2, T - 4);
   }
 }
-function mapGrade(b) {
-  const x = VIEW.x, y = VIEW.y, w = VIEW.w, h = VIEW.h;
-  b.save(); b.globalCompositeOperation = 'multiply'; b.fillStyle = GRADE.mul; b.fillRect(x, y, w, h);
-  b.globalCompositeOperation = 'saturation'; b.globalAlpha = GRADE.desat; b.fillStyle = '#808080'; b.fillRect(x, y, w, h); b.restore();
-  const lg = b.createLinearGradient(x, y, x + w, y + h); lg.addColorStop(0, 'rgba(255,200,130,.13)'); lg.addColorStop(0.5, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(18,22,60,.24)'); b.fillStyle = lg; b.fillRect(x, y, w, h);
-  const vg = b.createRadialGradient(x + w / 2, y + h / 2, h * 0.35, x + w / 2, y + h / 2, h * 0.85); vg.addColorStop(0, 'rgba(6,6,14,0)'); vg.addColorStop(1, 'rgba(6,6,14,.5)'); b.fillStyle = vg; b.fillRect(x, y, w, h);
+// Korekcja barw mapy (przyciemnienie i odbarwienie jak gradeRgb) oraz paleta z ditheringiem są wypalone raz: w kawałkach
+// terenu (renderChunkPixel) i w kopiach sprite'ów (blitG). Co klatkę dochodzi tylko gotowa nakładka światła i winiety.
+function gradeCanvas(c, ox = 0, oy = 0, step = 18) {
+  const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data;
+  const [mr, mg, mb] = hexRgb(GRADE.mul).map(v => v / 255), ds = GRADE.desat;
+  for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k += 4) {
+    if (!d[k + 3]) continue;
+    const r = d[k] * mr, gg = d[k + 1] * mg, b = d[k + 2] * mb, l = 0.3 * r + 0.59 * gg + 0.11 * b, o = (BAYER4[((y + oy) & 3) * 4 + ((x + ox) & 3)] / 16 - 0.5) * step;
+    d[k] = clamp(Math.round((r + (l - r) * ds + o) / step) * step, 0, 255); d[k + 1] = clamp(Math.round((gg + (l - gg) * ds + o) / step) * step, 0, 255); d[k + 2] = clamp(Math.round((b + (l - b) * ds + o) / step) * step, 0, 255);
+  }
+  g.putImageData(img, 0, 0); return c;
+}
+function gradedSprite(s) {
+  if (!s._g) { const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; c.getContext('2d').drawImage(s.c, 0, 0); s._g = { c: gradeCanvas(c), ax: s.ax, ay: s.ay }; }
+  return s._g;
+}
+const blitG = (b, s, x, y) => blit(b, gradedSprite(s), x, y);
+// Nakładka: ciepłe światło z lewej u góry, chłodny cień z prawej u dołu i winieta; alfa w 8 stopniach z ditheringiem
+function mapLight(w, h) {
+  return Layers.get(`mapLight_${w}x${h}`, w, h, c => {
+    const img = c.createImageData(w, h), d = img.data, cx = w / 2, cy = h / 2;
+    for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k += 4) {
+      const t = (x / w + y / h) / 2, warm = Math.max(0, 0.13 * (1 - t * 2)), cool = Math.max(0, 0.24 * (t * 2 - 1));
+      const rr = Math.hypot(x - cx, y - cy), v = clamp((rr - h * 0.35) / (h * 0.5), 0, 1) * 0.5;
+      let a = warm + cool + v, r = (255 * warm + 18 * cool + 6 * v) / (a || 1), g = (200 * warm + 22 * cool + 6 * v) / (a || 1), b = (130 * warm + 60 * cool + 14 * v) / (a || 1);
+      const q = Math.floor(a * 8 + BAYER4[(y & 3) * 4 + (x & 3)] / 16) / 8;
+      d[k] = r; d[k + 1] = g; d[k + 2] = b; d[k + 3] = clamp(q, 0, 1) * 255;
+    }
+    c.putImageData(img, 0, 0);
+  }, 1);
 }
 function drawMapView(ctx, st, scr) {
   {
     const wb = pixBuf('world', VIEW.w / 2, VIEW.h / 2, true), b = wb._ctx;
-    b.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); mapGrade(b); pixelQuantize(wb);
+    b.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / 2, VIEW.h / 2), 0, 0); b.restore();
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(wb, VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.restore();
   }
   const ox = VIEW.x - Math.round(st.cam.x / 2) * 2, oy = VIEW.y - Math.round(st.cam.y / 2) * 2; // to samo zaokrąglenie co w drawWorldPixel

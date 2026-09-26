@@ -74,15 +74,19 @@ function estimateStrike(B, a, t, ranged, moved = 0) {
   return { min: out[0], max: out[1], kmin: kills(out[0]), kmax: kills(out[1]) };
 }
 G.screens.battle = {
+  fps() { return this.phase === 'input' && !this.play && !this.floats.length ? 24 : 60; }, // czekając na rozkaz wystarczy spokojna animacja
   // Szersze okno: pole walki ciągnie się na boki (lustrzane odbicie brzegów tła, lekko przyciemnione)
-  backdrop(ctx) {
-    const bg = this.bg(), k = bg.width / W, sw = Math.min(OX, W);
-    stoneFill(ctx, 0, 0, VW, VH);
-    if (sw > 0) {
-      ctx.save(); ctx.translate(OX, OY); ctx.scale(-1, 1); ctx.drawImage(bg, 0, 0, sw * k, bg.height, 0, 0, sw, H); ctx.restore();
-      ctx.save(); ctx.translate(OX + W, OY); ctx.scale(-1, 1); ctx.drawImage(bg, (W - sw) * k, 0, sw * k, bg.height, -sw, 0, sw, H); ctx.restore();
-    }
-    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(0, 0, VW, VH);
+  backdrop(ctx) { // gotowy obraz na dany rozmiar okna i teren (kamień, odbite brzegi pola, przyciemnienie): jedna warstwa zamiast pięciu
+    const f = this.B && this.B.walls ? this.B.sides[1].town.faction : '';
+    drawLayer(ctx, Layers.get(`battleBack_${VW}x${VH}_${this.terr}_${f}`, VW, VH, c => {
+      const bg = this.bg(), k = bg.width / W, sw = Math.min(OX, W);
+      stoneFill(c, 0, 0, VW, VH);
+      if (sw > 0) {
+        c.save(); c.translate(OX, OY); c.scale(-1, 1); c.drawImage(bg, 0, 0, sw * k, bg.height, 0, 0, sw, H); c.restore();
+        c.save(); c.translate(OX + W, OY); c.scale(-1, 1); c.drawImage(bg, (W - sw) * k, 0, sw * k, bg.height, -sw, 0, sw, H); c.restore();
+      }
+      c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(0, 0, VW, VH);
+    }), 0, 0);
   },
   bg() { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}`, W, H, c => paintBattleBg(c, this.terr, f)); },
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
@@ -273,7 +277,7 @@ G.screens.battle = {
   },
   draw(ctx) {
     const B = this.B, st = B.st, u0 = B.active, col = ownerColor(st, B.h.owner);
-    ctx.drawImage(this.bg(), 0, 0, W, H);
+    drawLayer(ctx, this.bg(), 0, 0);
     const sh = BattleFX.shake; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, 490); ctx.clip(); if (sh > 0) ctx.translate((Math.random() - 0.5) * sh * 2, (Math.random() - 0.5) * sh * 2);
     if (this.phase === 'input' && this.casting) {
       const p = this.preview;

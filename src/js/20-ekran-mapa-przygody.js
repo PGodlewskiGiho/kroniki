@@ -100,6 +100,14 @@ function drawPanel(ctx, st, scr) {
   wrapText(ctx, info.text, INFOBOX.w - 24).slice(0, 4).forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18, { size: 14, weight: 500, align: 'center', color: info.col }));
 }
 G.screens.adventure = {
+  // Płynnie (60 klatek) tylko, gdy coś się rusza: bohater, kamera, tura komputera, napisy; w spoczynku woda i stwory w 20 klatkach
+  fps() {
+    const st = G.state; if (!st || !st.map || !st.cam) return 4;
+    const cam = st.cam.x + ',' + st.cam.y, moved = cam !== this._cam; this._cam = cam;
+    const busy = moved || this.aiRun || this.drag || G.keys.size || (this.floats && this.floats.length) || (this.mapFx && this.mapFx.length)
+      || (this.banner && G.time - this.banner.t < 3) || (this.flashMsg && G.time - this.flashMsg.t < 3) || st.heroes.some(h => h.anim || h.moving);
+    return busy ? 60 : 20;
+  },
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
   fill: true, // rysuje w całym oknie, układ z layoutAdventure()
@@ -154,6 +162,7 @@ G.screens.adventure = {
       { label: 'Wróć do gry', key: 'escape' },
       { label: 'Zapisz', key: 'z', action: () => this.openSaves('save') },
       { label: 'Wczytaj', key: 'w', action: () => this.openSaves('load') },
+      { label: 'Grafika', key: 'g', action: () => showGfxSettings(() => this.systemMenu()) },
       { label: 'Menu główne', action: () => askToMenu() }]);
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
@@ -374,7 +383,7 @@ G.screens.adventure = {
   draw(ctx) {
     const st = G.state; if (!st || !st.map) return;
     this.layout();
-    ctx.drawImage(Layers.get(`advChrome_${VW}x${VH}`, VW, VH, paintAdvChrome), 0, 0, VW, VH);
+    drawLayer(ctx, Layers.get(`advChrome_${VW}x${VH}`, VW, VH, paintAdvChrome), 0, 0);
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
     this.buttons.forEach(b => b.draw(ctx));
     drawResourceBar(ctx, st, VH - H, VW);

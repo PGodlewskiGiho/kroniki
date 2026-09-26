@@ -23,7 +23,9 @@ function drawStone(ctx, x, y, w, h) {
   drawCorners(ctx, x, y, w, h);
   ctx.restore();
 }
-function drawParchment(ctx, x, y, w, h) {
+// Pergamin (tło okien i paneli): gotowy obraz danego rozmiaru z pamięci (Layers), bo gradient, szum i przycinanie co klatkę kosztują
+function drawParchment(ctx, x, y, w, h) { drawLayer(ctx, Layers.get(`parch_${w}x${h}`, w + 16, h + 16, c => paintParchment(c, 4, 4, w, h)), x - 4, y - 4); }
+function paintParchment(ctx, x, y, w, h) {
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,.6)'; rr(ctx, x + 5, y + 7, w, h, 8); ctx.fill();
   rr(ctx, x, y, w, h, 8); ctx.fillStyle = '#d8bf88'; ctx.fill();
@@ -42,14 +44,18 @@ function divider(ctx, x1, x2, y) {
   const cx = (x1 + x2) / 2; ctx.fillStyle = '#8a5a1e';
   ctx.beginPath(); ctx.moveTo(cx, y - 4); ctx.lineTo(cx + 6, y); ctx.lineTo(cx, y + 4); ctx.lineTo(cx - 6, y); ctx.closePath(); ctx.fill();
 }
-function stoneFill(c, x, y, w, h) {
-  const g = c.createLinearGradient(x, y, x, y + h); g.addColorStop(0, '#554d44'); g.addColorStop(1, '#2b2621');
-  c.fillStyle = g; c.fillRect(x, y, w, h); c.fillStyle = noise(c); c.fillRect(x, y, w, h);
-  c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 1;
-  for (let yy = y + 20, row = 0; yy < y + h; yy += 20, row++) {
-    c.beginPath(); c.moveTo(x, yy); c.lineTo(x + w, yy); c.stroke();
-    for (let xx = x + (row % 2 ? 22 : 0); xx < x + w; xx += 44) { c.beginPath(); c.moveTo(xx, yy - 20); c.lineTo(xx, yy); c.stroke(); }
+// Kamienne tło z fugami. Rysowanie setek kresek co klatkę było najdroższą częścią kilku ekranów,
+// dlatego gotowy obraz danego rozmiaru trzymamy w pamięci (Layers) i tylko go wklejamy.
+function stoneFill(c, x, y, w, h) { drawLayer(c, Layers.get(`stone_${w}x${h}`, w, h, paintStone), x, y); }
+function paintStone(c, w, h) {
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#554d44'); g.addColorStop(1, '#2b2621');
+  c.fillStyle = g; c.fillRect(0, 0, w, h); c.fillStyle = noise(c); c.fillRect(0, 0, w, h);
+  c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 1; c.beginPath();
+  for (let yy = 20, row = 0; yy < h; yy += 20, row++) {
+    c.moveTo(0, yy); c.lineTo(w, yy);
+    for (let xx = row % 2 ? 22 : 0; xx < w; xx += 44) { c.moveTo(xx, yy - 20); c.lineTo(xx, yy); }
   }
+  c.stroke();
 }
 function goldFrame(c, x, y, w, h) { c.fillStyle = '#000'; c.fillRect(x - 3, y - 3, w + 6, h + 6); c.strokeStyle = '#b8913f'; c.lineWidth = 1.5; c.strokeRect(x - 4.5, y - 4.5, w + 9, h + 9); }
 class Button {

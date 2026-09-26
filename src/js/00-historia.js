@@ -124,6 +124,9 @@
    zwycięzca = ostatni gracz na placu. Miejsc na miasta: 4/6/8/10 zależnie od mapy (SITE_COUNT).
    Imiona graczy: pole tekstowe askText (prawdziwy <input> nad oknem), slot.name → player.name, playerName.
    Podział oddziału: splitLimit/armySplit, okno showSplit (przycisk „Dziel” albo Shift+klik) w spotkaniu, mieście i u bohatera.
+   Wydajność: klatka rysowana tylko w razie potrzeby (screen.fps, G.dirty), kamienne tło i pergamin z pamięci (Layers, drawLayer
+   w całych pikselach), mapa bez przeliczania całego obrazu co klatkę (gradeCanvas w kawałkach terenu i kopiach sprite'ów, mgła
+   w kawałkach fogChunk, nakładka mapLight), scena menu i efekty miasta ~12–15 klatek/s, jakość grafiki (auto/wysoka/niska, Perf).
    Porządki i trudniejsza mapa: potwory neutralne to też jednostki frakcji (poziomy 1–7, fillNeutrals), siła rośnie
    wykładniczo z odległością od najbliższego startu (MONSTER_POWER, d01) i z trudnością, potwory rosną co tydzień
    (MONSTER_GROW do MONSTER_GROW_MAX). Skarbce BANKS (Krypta, Orcza warownia, Gniazdo gryfów, Leże hydr, Smocza Utopia):

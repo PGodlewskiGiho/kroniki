@@ -103,8 +103,14 @@ function menuRider(b, t) {
 }
 // Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize)
 // i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
+// Scena menu zmienia się powoli (chmury, ognie w oknach), więc przeliczamy ją najwyżej 12 razy na sekundę, a pomiędzy wklejamy gotową
 function drawMenuScene(ctx) {
-  const t = G.time, pb = pixBuf('menuScene', VW / 2, VH / 2, true), b = pb._ctx, span = VW + 300;
+  const pb = pixBuf('menuScene', VW / 2, VH / 2, true);
+  if (!(pb._t != null && G.time >= pb._t && G.time - pb._t < 1 / 12)) { paintMenuScene(pb); pb._t = G.time; }
+  viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
+}
+function paintMenuScene(pb) {
+  const t = G.time, b = pb._ctx, span = VW + 300;
   const layer = paint => c => { c.translate(OX, OY); paint(c); };
   b.setTransform(0.5, 0, 0, 0.5, OX / 2, OY / 2); b.imageSmoothingEnabled = false;
   b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 0.5), -OX, -OY, VW, VH);
@@ -128,7 +134,6 @@ function drawMenuScene(ctx) {
     b.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; b.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
   }
   pixelQuantize(pb, 14);
-  viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
 }
 function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); dimScreen(ctx, a); }
 function askQuit() {
@@ -139,6 +144,7 @@ function askToMenu() {
     { label: 'Tak', key: 'enter', action: () => G.go('menu') }, { label: 'Nie', key: 'escape' }]);
 }
 G.screens.menu = {
+  fps: 12, // animowana scena menu w tle
   backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'main',
   enter(p) { G.state = null; this.setMode(p.mode || 'main'); },
@@ -149,6 +155,7 @@ G.screens.menu = {
       B('Nowa gra', () => G.go('setup'), { key: 'n' }),
       B('Wczytaj grę', () => G.go('load', { mode: 'load' }), { key: 'l' }),
       B('Najlepsze wyniki', () => G.go('scores'), { key: 'h' }),
+      B('Grafika', () => showGfxSettings(), { key: 'g' }),
       B('Twórcy', () => G.go('credits'), { key: 'c' }),
       B('Wyjście', () => askQuit(), { key: 'q' }),
     ];
@@ -157,7 +164,7 @@ G.screens.menu = {
   onBack() { askQuit(); },
   draw(ctx) {
     drawMenuScene(ctx);
-    drawStone(ctx, 520, 172, 260, 298);
+    drawStone(ctx, 520, 172, 260, 354);
     this.buttons.forEach(b => b.draw(ctx));
     goldText(ctx, 'KRONIKI KRÓLESTW', W / 2, 62, 44);
     text(ctx, 'Czas bohaterów', W / 2, 104, { size: 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
@@ -169,6 +176,7 @@ G.screens.menu = {
 const setupCap = S => (SITE_COUNT[(MAP_SIZES.find(m => m.id === S.mapSize) || MAP_SIZES[0]).n] || 4);
 const SLOT_LABEL = { human: 'Człowiek', ai: 'Komputer', off: '—' };
 G.screens.setup = {
+  fps: 12, // animowana scena menu w tle
   backdrop() {}, // scena menu maluje całe okno
   buttons: [],
   enter() {
@@ -229,6 +237,7 @@ G.screens.setup = {
 };
 function makeListScreen(title, drawBody) {
   return {
+    fps: 12,
     backdrop() {}, // scena menu maluje całe okno
     buttons: [],
     enter() { this.buttons = [new Button(300, 478, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 })]; },
@@ -241,6 +250,7 @@ function makeListScreen(title, drawBody) {
 }
 // Lista slotów zapisu. mode 'load' (z menu albo z gry) lub 'save' (z gry).
 G.screens.load = {
+  fps: 12, // animowana scena menu w tle
   backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'load', slots: null, err: null, busy: false, token: 0, hover: -1,
   ROW: { x: 180, y: 132, w: 440, h: 44, gap: 50 },
@@ -319,6 +329,7 @@ G.screens.scores = makeListScreen('Najlepsze wyniki', ctx => {
   });
 });
 G.screens.credits = {
+  fps: 30,
   backdrop() {}, // scena menu maluje całe okno
   lines: ['#KRONIKI KRÓLESTW', 'Turowa strategia w klimacie klasycznych gier fantasy', '', '#Pomysł i testy', 'Ty', '',
     '#Kod, grafika i interfejs', 'Claude', '', '#Technologia', 'HTML5 Canvas i czysty JavaScript', '',
@@ -337,6 +348,7 @@ G.screens.credits = {
   },
 };
 G.screens.bye = {
+  fps: 30,
   backdrop() {}, // scena menu maluje całe okno
   enter() { this.t0 = G.time; },
   onClick() { G.go('menu'); }, onBack() { G.go('menu'); },
