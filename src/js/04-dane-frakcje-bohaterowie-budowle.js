@@ -13,6 +13,8 @@ const HERO_CLASSES = {
   witch: { name: 'Szaman', nameF: 'Wiedźma', look: { horse: '#5a6a4a', mane: '#2a3a20', armor: '#4a5a3a', hood: '#3a5a3a', skin: '#d8b890' } },
   demoniac: { name: 'Piekielny rycerz', nameF: 'Piekielna rycerka', look: { horse: '#2a1a1a', mane: '#ff6a2a', armor: '#6a2a24', helm: '#4a1e1a', skin: '#d8a888' } },
   heretic: { name: 'Heretyk', nameF: 'Heretyczka', look: { horse: '#3a2020', mane: '#c83a1a', armor: '#5a1e1e', hood: '#2a0e10', skin: '#d8b090' } },
+  alchemist: { name: 'Alchemik', nameF: 'Alchemiczka', look: { horse: '#c8c8d0', mane: '#6a6a7a', armor: '#7a8aa0', hood: '#4a6a9a', skin: '#e8c8a0' } },
+  wizard: { name: 'Czarodziej', nameF: 'Czarodziejka', look: { horse: '#e8e8f0', mane: '#a8b0c8', armor: '#3a4a8a', hood: '#2a3a7a', skin: '#e8c8a0' } },
 };
 // Wszystko, co wyróżnia frakcję. dw: siedliska [nazwa, jednostka], emb: symbole siedlisk poziomów 1–7.
 const FACTIONS = [
@@ -79,6 +81,19 @@ const FACTIONS = [
       dw3: ['Psiarnia', 'hellHound'], dw3u: ['Legowisko cerberów', 'cerberus'], dw4: ['Brama demonów', 'demon'], dw4u: ['Wrota rogatych', 'hornedDemon'],
       dw5: ['Szyb czartów', 'pitFiend'], dw5u: ['Otchłań władców', 'pitLord'], dw6: ['Pałac ifrytów', 'efreet'], dw6u: ['Pałac sułtanów', 'efreetSultan'],
       dw7: ['Wrota piekieł', 'devil'], dw7u: ['Tron ognia', 'archDevil'],
+    },
+  },
+  {
+    id: 'academy', name: 'Akademia', terrain: TER.SNOW,
+    desc: 'Miasto magów w ośnieżonych górach: gremliny, gargulce, golemy, magowie, dżiny, nagi i tytani.',
+    heroes: [['Ostromir', 'wizard'], ['Jagna Mróz', 'wizard', 1], ['Zbylut', 'alchemist'], ['Mirosława', 'alchemist', 1]],
+    towns: ['Szronowa Wieża', 'Białe Iglice', 'Lodowa Przełęcz', 'Mroźny Gród', 'Kryształowe Wzgórze', 'Śnieżna Turnia', 'Zimna Toń'],
+    guild: 'Wieża wiedzy', emb: ['anvil', 'wing', 'wall', 'book', 'moon', 'eye', 'sun'],
+    dw: {
+      dw1: ['Warsztat', 'gremlin'], dw1u: ['Wielki warsztat', 'masterGremlin'], dw2: ['Parapet', 'stoneGargoyle'], dw2u: ['Wysoki parapet', 'obsidianGargoyle'],
+      dw3: ['Kuźnia golemów', 'stoneGolem'], dw3u: ['Wielka kuźnia', 'ironGolem'], dw4: ['Wieża magów', 'mage'], dw4u: ['Wieża arcymagów', 'archMage'],
+      dw5: ['Ołtarz życzeń', 'genie'], dw5u: ['Złoty ołtarz', 'masterGenie'], dw6: ['Złoty pawilon', 'naga'], dw6u: ['Pałac nag', 'nagaQueen'],
+      dw7: ['Chmurna świątynia', 'giant'], dw7u: ['Niebiańska świątynia', 'titan'],
     },
   },
 ];

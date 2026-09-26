@@ -151,6 +151,9 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    w całych pikselach), mapa bez przeliczania całego obrazu co klatkę (gradeCanvas w kawałkach terenu i kopiach sprite'ów, mgła
    w kawałkach fogChunk, nakładka mapLight), scena menu i efekty miasta ~12–15 klatek/s, jakość grafiki (auto/wysoka/niska, Perf).
    Kawałki terenu: budżet ~10 ms na klatkę (MapRender.get allow, zastępczy placeholder), generowanie wokół widoku z wyprzedzeniem.
+   Akademia (śnieg, TER.SNOW): gremliny, gargulce, golemy, magowie, dżiny, nagi (nowy wężowy ogon L.serpent), olbrzymi i tytani;
+   klasy Alchemik i Czarodziej, miasto białych wież ze złotymi kopułami i padającym śniegiem (18b), mury i portrety. Pocisk z look.orb
+   bez laski to kula (gremlin, tytan). SI bierze z garnizonu tylko to, co zmieści (takeableArmy), więc nie krąży między miastami.
    Słaby laptop: menu i miasto bez pixelQuantize co klatkę (paleta wypalona w nieruchomym tle), płótno bez przezroczystości
    (alpha: false), bufory mapy, mgły i sprite'ów bez willReadFrequently (przy karcie graficznej zostają na niej), niska jakość
    = pół piksela płótna na piksel ekranu i bez fal na wodzie, Perf schodzi do 0,5 także przy spóźnionych klatkach, licznik pod F.
@@ -374,6 +377,23 @@ Object.assign(CREATURES, {
   devil: mkU('Diabeł', 'Diabły', 'diabłów', 7, 19, 21, 30, 40, 180, 11, 1, 5400, { gold: 2700, mercury: 1 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'inferno', up: 'archDevil', look: { kind: 'hum', skin: '#7a1a1a', cloth: '#1a0808', size: 1.38, weapon: 'spear', horns: '#1a1010', tail: '#6a1414', wings: '#2a0a0a', eyes: '#ffd040', metal: '#c8c0b0', cape: '#4a0e0e' } }),
   archDevil: mkU('Arcydiabeł', 'Arcydiabły', 'arcydiabłów', 7, 24, 24, 30, 40, 220, 17, 1, 7400, { gold: 4500, mercury: 2 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'inferno', look: { kind: 'hum', skin: '#5a0e14', cloth: '#0e0406', size: 1.45, weapon: 'halberd', horns: '#f0e0c0', tail: '#4a0a10', wings: '#1a0406', eyes: '#ff4020', metal: '#ffd060', cape: '#8a0a0a', glow: '#ff6a2a', armor: true, helm: 'crown' } }),
 });
+// Jednostki frakcji Akademia (śnieg, magowie). Postać: serpent (wężowy ogon zamiast nóg, nagi); dżiny to postać z płomieniem jak ifryt.
+Object.assign(CREATURES, {
+  gremlin: mkU('Gremlin', 'Gremliny', 'gremlinów', 1, 3, 3, 1, 2, 4, 4, 16, 44, { gold: 30 }, { faction: 'academy', up: 'masterGremlin', look: { kind: 'hum', skin: '#8a96a8', cloth: '#6a5a44', leather: '#3a2e20', size: 0.7, weapon: 'club', ears: true, eyes: '#f0e070', metal: '#8a8a90' } }),
+  masterGremlin: mkU('Starszy gremlin', 'Starsze gremliny', 'starszych gremlinów', 1, 4, 4, 1, 2, 4, 5, 16, 66, { gold: 40 }, { shots: 8, faction: 'academy', look: { kind: 'hum', skin: '#7a8aa8', cloth: '#4a5a7a', leather: '#2a2a34', size: 0.74, weapon: 'club', ears: true, eyes: '#f0e070', helm: 'cap', helmCol: '#6a4a2a', orb: '#c8d0e0', metal: '#a0a4b0' } }),
+  stoneGargoyle: mkU('Kamienny gargulec', 'Kamienne gargulce', 'kamiennych gargulców', 2, 6, 6, 2, 3, 16, 6, 9, 165, { gold: 130 }, { abil: ['fly'], fly: true, faction: 'academy', up: 'obsidianGargoyle', look: { kind: 'hum', skin: '#8a8a8e', cloth: '#6a6a70', size: 0.95, weapon: 'none', claws: true, horns: '#5a5a60', wings: '#6a6a72', tail: '#7a7a80', hunch: true, eyes: '#e0e0a0' } }),
+  obsidianGargoyle: mkU('Obsydianowy gargulec', 'Obsydianowe gargulce', 'obsydianowych gargulców', 2, 7, 7, 2, 3, 16, 9, 9, 201, { gold: 160 }, { abil: ['fly'], fly: true, faction: 'academy', look: { kind: 'hum', skin: '#34303e', cloth: '#26222e', size: 1, weapon: 'none', claws: true, horns: '#18141e', wings: '#2a2634', tail: '#302c3a', hunch: true, eyes: '#ff6a40' } }),
+  stoneGolem: mkU('Kamienny golem', 'Kamienne golemy', 'kamiennych golemów', 3, 7, 10, 4, 5, 30, 3, 6, 250, { gold: 150 }, { faction: 'academy', up: 'ironGolem', look: { kind: 'hum', skin: '#9a9282', cloth: '#7a7466', size: 1.25, weapon: 'none', hunch: true, armor: true, metal: '#8a8474', eyes: '#80d0ff' } }),
+  ironGolem: mkU('Żelazny golem', 'Żelazne golemy', 'żelaznych golemów', 3, 9, 10, 4, 5, 35, 5, 6, 412, { gold: 200 }, { faction: 'academy', look: { kind: 'hum', skin: '#6a7078', cloth: '#4a5058', size: 1.28, weapon: 'none', hunch: true, armor: true, metal: '#a0a8b4', helm: 'greathelm', helmCol: '#8a929e', eyes: '#40d0ff' } }),
+  mage: mkU('Mag', 'Magowie', 'magów', 4, 11, 8, 7, 9, 25, 5, 4, 570, { gold: 350 }, { abil: ['noMeleePenalty'], shots: 24, faction: 'academy', up: 'archMage', look: { kind: 'hum', skin: '#e8c8a0', cloth: '#3a4a9a', size: 1, weapon: 'staff', orb: '#80c0ff', robe: true, helm: 'hood', hoodCol: '#2a3a7a', beard: '#d8d4cc' } }),
+  archMage: mkU('Arcymag', 'Arcymagowie', 'arcymagów', 4, 12, 9, 7, 9, 30, 7, 4, 680, { gold: 450 }, { abil: ['noMeleePenalty'], shots: 24, faction: 'academy', look: { kind: 'hum', skin: '#e8c8a0', cloth: '#5a2a8a', size: 1.04, weapon: 'staff', orb: '#e0a0ff', robe: true, cape: '#2a1a4a', helm: 'hood', hoodCol: '#3a1a5a', beard: '#e8e4dc', glow: '#c080ff' } }),
+  genie: mkU('Dżin', 'Dżiny', 'dżinów', 5, 12, 12, 13, 16, 40, 7, 3, 884, { gold: 550 }, { abil: ['fly'], fly: true, faction: 'academy', up: 'masterGenie', look: { kind: 'hum', skin: '#4a8ad8', cloth: '#d8b040', size: 1.12, weapon: 'none', robe: true, flame: '#60b0ff', eyes: '#fff0a0', glow: '#80c0ff', hair: '#1a1a2a' } }),
+  masterGenie: mkU('Wielki dżin', 'Wielkie dżiny', 'wielkich dżinów', 5, 13, 13, 13, 16, 40, 11, 3, 942, { gold: 600 }, { abil: ['fly'], fly: true, faction: 'academy', look: { kind: 'hum', skin: '#3a7ad0', cloth: '#f0d060', size: 1.18, weapon: 'sword', robe: true, flame: '#a0e0ff', helm: 'crown', eyes: '#ffffff', metal: '#ffd060', glow: '#a0e0ff' } }),
+  naga: mkU('Naga', 'Nagi', 'nag', 6, 16, 13, 20, 20, 110, 5, 2, 2016, { gold: 1100 }, { abil: ['noRetal'], faction: 'academy', up: 'nagaQueen', look: { kind: 'hum', skin: '#d8b088', cloth: '#c89a3a', size: 1.2, weapon: 'sword', serpent: '#4a8a5a', longHair: '#1a1a14', hair: '#1a1a14', metal: '#e0d8c8' } }),
+  nagaQueen: mkU('Królowa nag', 'Królowe nag', 'królowych nag', 6, 16, 13, 30, 30, 110, 7, 2, 2840, { gold: 1600 }, { abil: ['noRetal'], faction: 'academy', look: { kind: 'hum', skin: '#e0b890', cloth: '#e0b040', size: 1.26, weapon: 'sword', serpent: '#3a6a8a', longHair: '#241a14', hair: '#241a14', helm: 'crown', metal: '#ffd060', eyes: '#80f0ff' } }),
+  giant: mkU('Olbrzym', 'Olbrzymy', 'olbrzymów', 7, 19, 16, 40, 60, 150, 7, 1, 3718, { gold: 2000, gems: 1 }, { faction: 'academy', up: 'titan', look: { kind: 'hum', skin: '#e0b890', cloth: '#6a7a9a', leather: '#4a3a2a', size: 1.42, weapon: 'club', hair: '#7a5a3a', beard: '#7a5a3a' } }),
+  titan: mkU('Tytan', 'Tytani', 'tytanów', 7, 24, 24, 40, 60, 300, 11, 1, 7500, { gold: 5000, gems: 2 }, { abil: ['noMeleePenalty'], shots: 24, faction: 'academy', look: { kind: 'hum', skin: '#e8c8a8', cloth: '#e8e8f0', size: 1.45, weapon: 'none', armor: true, metal: '#e0c060', helm: 'greathelm', helmCol: '#e0c060', cape: '#3a5aa8', orb: '#c0e8ff', glow: '#a0d0ff', beard: '#e8e0c8' } }),
+});
 fillNeutrals();
 // ==================== DANE: FRAKCJE, BOHATEROWIE, BUDOWLE, KOPALNIE =====================
 // Wszystko, co różni frakcje, jest w FACTIONS. BUILDINGS opisuje budowle wspólne dla frakcji.
@@ -390,6 +410,8 @@ const HERO_CLASSES = {
   witch: { name: 'Szaman', nameF: 'Wiedźma', look: { horse: '#5a6a4a', mane: '#2a3a20', armor: '#4a5a3a', hood: '#3a5a3a', skin: '#d8b890' } },
   demoniac: { name: 'Piekielny rycerz', nameF: 'Piekielna rycerka', look: { horse: '#2a1a1a', mane: '#ff6a2a', armor: '#6a2a24', helm: '#4a1e1a', skin: '#d8a888' } },
   heretic: { name: 'Heretyk', nameF: 'Heretyczka', look: { horse: '#3a2020', mane: '#c83a1a', armor: '#5a1e1e', hood: '#2a0e10', skin: '#d8b090' } },
+  alchemist: { name: 'Alchemik', nameF: 'Alchemiczka', look: { horse: '#c8c8d0', mane: '#6a6a7a', armor: '#7a8aa0', hood: '#4a6a9a', skin: '#e8c8a0' } },
+  wizard: { name: 'Czarodziej', nameF: 'Czarodziejka', look: { horse: '#e8e8f0', mane: '#a8b0c8', armor: '#3a4a8a', hood: '#2a3a7a', skin: '#e8c8a0' } },
 };
 // Wszystko, co wyróżnia frakcję. dw: siedliska [nazwa, jednostka], emb: symbole siedlisk poziomów 1–7.
 const FACTIONS = [
@@ -456,6 +478,19 @@ const FACTIONS = [
       dw3: ['Psiarnia', 'hellHound'], dw3u: ['Legowisko cerberów', 'cerberus'], dw4: ['Brama demonów', 'demon'], dw4u: ['Wrota rogatych', 'hornedDemon'],
       dw5: ['Szyb czartów', 'pitFiend'], dw5u: ['Otchłań władców', 'pitLord'], dw6: ['Pałac ifrytów', 'efreet'], dw6u: ['Pałac sułtanów', 'efreetSultan'],
       dw7: ['Wrota piekieł', 'devil'], dw7u: ['Tron ognia', 'archDevil'],
+    },
+  },
+  {
+    id: 'academy', name: 'Akademia', terrain: TER.SNOW,
+    desc: 'Miasto magów w ośnieżonych górach: gremliny, gargulce, golemy, magowie, dżiny, nagi i tytani.',
+    heroes: [['Ostromir', 'wizard'], ['Jagna Mróz', 'wizard', 1], ['Zbylut', 'alchemist'], ['Mirosława', 'alchemist', 1]],
+    towns: ['Szronowa Wieża', 'Białe Iglice', 'Lodowa Przełęcz', 'Mroźny Gród', 'Kryształowe Wzgórze', 'Śnieżna Turnia', 'Zimna Toń'],
+    guild: 'Wieża wiedzy', emb: ['anvil', 'wing', 'wall', 'book', 'moon', 'eye', 'sun'],
+    dw: {
+      dw1: ['Warsztat', 'gremlin'], dw1u: ['Wielki warsztat', 'masterGremlin'], dw2: ['Parapet', 'stoneGargoyle'], dw2u: ['Wysoki parapet', 'obsidianGargoyle'],
+      dw3: ['Kuźnia golemów', 'stoneGolem'], dw3u: ['Wielka kuźnia', 'ironGolem'], dw4: ['Wieża magów', 'mage'], dw4u: ['Wieża arcymagów', 'archMage'],
+      dw5: ['Ołtarz życzeń', 'genie'], dw5u: ['Złoty ołtarz', 'masterGenie'], dw6: ['Złoty pawilon', 'naga'], dw6u: ['Pałac nag', 'nagaQueen'],
+      dw7: ['Chmurna świątynia', 'giant'], dw7u: ['Niebiańska świątynia', 'titan'],
     },
   },
 ];
@@ -525,6 +560,7 @@ const CLASS_GROWTH = {
   deathKnight: { base: [1, 2, 2, 1], grow: [30, 25, 25, 20] }, necro: { base: [1, 0, 2, 2], grow: [15, 15, 35, 35] },
   beastmaster: { base: [0, 4, 1, 1], grow: [30, 50, 10, 10] }, witch: { base: [0, 1, 2, 2], grow: [5, 15, 40, 40] },
   demoniac: { base: [2, 2, 1, 1], grow: [40, 35, 15, 10] }, heretic: { base: [1, 1, 2, 1], grow: [15, 15, 40, 30] },
+  alchemist: { base: [1, 1, 2, 2], grow: [30, 30, 20, 20] }, wizard: { base: [0, 0, 2, 3], grow: [10, 10, 40, 40] },
 };
 // Umiejętności drugorzędne (jak w oryginale): bohater ma ich najwyżej MAX_SKILLS, każdą na poziomie 1–3.
 // v: wartość na poziomach 1–3 (działanie w ZASADY GRY i BITWA: ZASADY), desc: opis dla wartości.
@@ -552,6 +588,7 @@ const CLASS_SKILLS = {
   deathKnight: [['necromancy', 1], ['offense', 1]], necro: [['necromancy', 1], ['sorcery', 1]],
   beastmaster: [['armorer', 1], ['pathfinding', 1]], witch: [['mysticism', 1], ['learning', 1]],
   demoniac: [['offense', 1], ['logistics', 1]], heretic: [['sorcery', 1], ['intelligence', 1]],
+  alchemist: [['armorer', 1], ['estates', 1]], wizard: [['mysticism', 1], ['intelligence', 1]],
 };
 const NECRO_CLASSES = ['deathKnight', 'necro'];
 // Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
@@ -636,7 +673,7 @@ const BAD_BUFFS = ['slow', 'weakness'];
 const GUILD_OFFER = { 1: 3, 2: 2, 3: 2, 4: 2, 5: 1 };
 const GUILD_MAX = 5;
 // Czar startowy klas magicznych
-const CLASS_SPELLS = { cleric: ['bless'], druid: ['cure'], necro: ['magicArrow'], witch: ['slow'], heretic: ['magicArrow'] };
+const CLASS_SPELLS = { cleric: ['bless'], druid: ['cure'], necro: ['magicArrow'], witch: ['slow'], heretic: ['magicArrow'], alchemist: ['stoneSkin'], wizard: ['haste'] };
 
 
 // ==================== DANE: OBIEKTY MAPY =================================================
@@ -1403,7 +1440,12 @@ function drawHumanoid(ctx, L, P = {}) {
     if (!bony) { ctx.fillStyle = back ? DK(boot, 0.25) : boot; rr(ctx, fx - 1.7, fy - 2.6, 4.4, 2.6, 0.8); ctx.fill(); }
   };
   if (L.mounted) { limb(ctx, 1, hipY, 3.5, hipY + 5, 2.6, legCol); ctx.fillStyle = boot; rr(ctx, 2, hipY + 4, 4, 2.4, 0.8); ctx.fill(); }
-  else if (!L.robe) leg(-1.8, -sw * 3.6, true);
+  else if (!L.robe && !L.serpent) leg(-1.8, -sw * 3.6, true);
+  if (L.serpent) { // wężowy ogon zamiast nóg (nagi): od bioder w dół i zwinięty za plecami, jaśniejszy brzuch z przodu
+    const sv = Math.sin(t * 2.5 + (walking ? ph : 0)) * 1.2, pts = [[0.6, hipY + 1], [1.6, -3.2], [-1, -1], [-6, -0.8 + sv * 0.3], [-11, -2.2 + sv], [-13.5, -5.5 + sv]];
+    for (let i = 0; i < pts.length - 1; i++) limb(ctx, ...pts[i], ...pts[i + 1], 3.6 - i * 0.55, i % 2 ? L.serpent : DK(L.serpent, 0.12));
+    limb(ctx, 1.9, hipY + 2.5, 2.3, -3, 1.2, LT(L.serpent, 0.35));
+  }
   if (L.tail) { // ogon: od bioder do tyłu, lekko falujący; diabły mają grot na końcu
     const tw = Math.sin(t * 3 + (walking ? ph : 0)) * 1.6, e1 = [-7, hipY + 4 + tw * 0.5], e2 = [-12, hipY - 1 + tw];
     limb(ctx, -2, hipY, ...e1, 2.2, DK(L.tail, 0.1)); limb(ctx, ...e1, ...e2, 1.4, L.tail);
@@ -1496,7 +1538,7 @@ function drawHumanoid(ctx, L, P = {}) {
   if (W === 'bow') drawWeapon(ctx, L, 'bow', hd[0], hd[1], 0, arm.pull);
   if (style === 'cast' && P.atk != null && P.atk > 0.3 && P.atk < 0.7) circ(ctx, hd[0] + Math.sin(wAng) * 18.5, hd[1] - Math.cos(wAng) * 18.5, 4, L.orb || '#f0d890');
   ctx.restore();
-  if (!L.robe && !L.mounted) leg(1.8, sw * 3.6, false);
+  if (!L.robe && !L.mounted && !L.serpent) leg(1.8, sw * 3.6, false);
   if (L.robe && !L.mounted && !L.flame) { ctx.fillStyle = boot; ctx.fillRect(1 + sw * 1.5, -2.4, 3.6, 2.4); }
   ctx.restore();
 }
@@ -2234,9 +2276,9 @@ function resIcon(ctx, id, cx, cy, size = 24) { drawSprite(ctx, resSprite(id), cx
 const PORTRAIT_N = 36;
 const PORTRAITS = new Map();
 const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058',
-  beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e' };
+  beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e', alchemist: '#5a5e70', wizard: '#2e3a6a' };
 // Nowe klasy korzystają z ubioru klasy o podobnym stroju (zbroja, skóry, szaty)
-const PORTRAIT_DRESS = { beastmaster: 'ranger', witch: 'druid', demoniac: 'knight', heretic: 'necro' };
+const PORTRAIT_DRESS = { beastmaster: 'ranger', witch: 'druid', demoniac: 'knight', heretic: 'necro', alchemist: 'ranger', wizard: 'cleric' };
 const INFERNAL = ['demoniac', 'heretic'];
 const PORTRAIT_HAIR = ['#241a14', '#3e2a1a', '#5e3e22', '#7c4c26', '#a0602c', '#c89450', '#e2c47e', '#8e8a86', '#d8d4cc'];
 const PORTRAIT_SKIN = ['#f0c8a0', '#e2b28a', '#d09c74', '#b07c56', '#8e603e'];
@@ -2264,6 +2306,10 @@ const HERO_LOOKS = {
   'Azgar': { hair: '#241a14', style: 'crop', beard: 'goatee', head: 'horned', eyes: 'glow', brow: 'angry', mouth: 'smirk', marks: ['scar'], armor: '#6a2a24', bg: 'fire', flip: false },
   'Kalida': { hair: '#e2c47e', style: 'long', head: 'spikecrown', eyes: 'glow', brow: 'arched', mouth: 'smirk', armor: '#7a3a2a', bg: 'fire', flip: true },
   'Moloch': { age: 'old', style: 'bald', beard: 'mustache', hair: '#d8d4cc', head: 'horned', eyes: 'glow', nose: 'long', mouth: 'frown', marks: ['tattoo'], robe: '#4a1414', bg: 'night', flip: true },
+  'Ostromir': { age: 'old', hair: '#d8d4cc', style: 'long', beard: 'long', head: 'cowl', brow: 'bushy', nose: 'long', mouth: 'neutral', robe: '#2a3a7a', bg: 'night', flip: false },
+  'Jagna Mróz': { hair: '#e2c47e', style: 'long', head: 'circlet', brow: 'thin', eyes: 'wide', mouth: 'smile', robe: '#4a3a8a', bg: 'sky', flip: true },
+  'Zbylut': { age: 'adult', hair: '#5e3e22', style: 'short', beard: 'goatee', head: 'headband', brow: 'straight', nose: 'hooked', mouth: 'smirk', marks: ['scar'], robe: '#6a6a74', bg: 'window', flip: true },
+  'Mirosława': { hair: '#241a14', style: 'bun', head: 'none', brow: 'arched', mouth: 'neutral', marks: ['mole'], robe: '#5a4a6a', bg: 'window', flip: false },
   'Wiera Popiół': { hair: '#8e8a86', style: 'bun', head: 'circlet', eyes: 'glow', brow: 'thin', mouth: 'neutral', marks: ['mole'], robe: '#2a1418', bg: 'fire', flip: false },
 };
 function heroLookSeed(h) { let s = 2166136261; for (const ch of String(h.name || '')) s = Math.imul(s ^ ch.charCodeAt(0), 16777619); return s >>> 0; }
@@ -2280,12 +2326,14 @@ function heroFace(h) {
   F.beard = f ? 'none' : pick(['none', 'none', 'stubble', 'goatee', 'full', 'mustache', ...(age === 'old' ? ['full', 'long'] : [])]);
   F.head = { knight: ['helm', 'crest', 'none', 'circlet'], cleric: ['diadem', 'veil', 'mitre', 'none'], ranger: ['hood', 'feather', 'headband', 'none'],
     druid: ['wreath', 'antlers', 'flowers'], necro: ['cowl', 'skullcrown', 'none'], deathKnight: ['horned', 'skullhelm', 'spikecrown'],
-    beastmaster: ['horned', 'feather', 'headband', 'none'], witch: ['hood', 'flowers', 'antlers'], demoniac: ['horned', 'spikecrown', 'helm'], heretic: ['cowl', 'horned', 'circlet'] }[cls][Math.floor(r() * 4) % (['druid', 'necro', 'deathKnight', 'witch', 'demoniac', 'heretic'].includes(cls) ? 3 : 4)];
+    beastmaster: ['horned', 'feather', 'headband', 'none'], witch: ['hood', 'flowers', 'antlers'], demoniac: ['horned', 'spikecrown', 'helm'], heretic: ['cowl', 'horned', 'circlet'],
+    alchemist: ['headband', 'hood', 'circlet', 'none'], wizard: ['cowl', 'circlet', 'hood'] }[cls][Math.floor(r() * 4) % (['druid', 'necro', 'deathKnight', 'witch', 'demoniac', 'heretic', 'wizard'].includes(cls) ? 3 : 4)];
   F.brow = pick(['straight', 'arched', 'angry', 'bushy', 'thin']); F.eyes = undead ? 'glow' : pick(['normal', 'normal', 'narrow', 'wide']);
   F.nose = pick(['small', 'long', 'hooked', 'broad']); F.mouth = pick(['neutral', 'smile', 'frown', 'smirk']); F.face = pick(['oval', 'oval', 'round', 'long']);
   F.armor = pick(['#a8b2c4', '#c8b070', '#8a9ab8', '#b8c0cc']); F.robe = pick({ cleric: ['#e6dcc2', '#f0ead8', '#d8e0f0'], ranger: ['#7a5a34', '#5e4a2a'], druid: ['#6e5a34', '#6e7a34'], necro: ['#3a2c52', '#2a2236', '#3e2438'] }[cls] || ['#6e5a34']);
   if (INFERNAL.includes(cls)) { F.eyes = r() < 0.6 ? 'glow' : F.eyes; F.armor = pick(['#6a2a24', '#5a1e1e', '#7a3a2a']); F.robe = pick(['#4a1414', '#2a1418', '#5a1e1e']); }
   if (cls === 'beastmaster') F.robe = pick(['#6a5030', '#7a5a34', '#5a4a2a']); if (cls === 'witch') F.robe = pick(['#3e5a3a', '#4a5a34', '#34503e']);
+  if (cls === 'wizard') F.robe = pick(['#2a3a7a', '#4a3a8a', '#3a5a8a']); if (cls === 'alchemist') F.robe = pick(['#6a6a74', '#5a4a6a', '#7a6a5a']);
   F.bg = pick(['plain', 'sky', 'window', 'night', 'fire', 'forest']); F.flip = r() < 0.5;
   Object.assign(F, HERO_LOOKS[h.name] || {});
   if (F.undead && !HERO_LOOKS[h.name]) F.skin = pick(['#cac6b6', '#b8beb0', '#d2c8c0']);
@@ -2604,7 +2652,7 @@ function paintHeadgearPx(P, F, face, S, CL, look) {
 // Cały mur to jeden sprite (pixel art), rysowany zanim staną oddziały.
 const SIEGE_WX = 532, SIEGE_HALF = 23.5, TOWER_H = 56;
 const WALL = { face: 13, walk: 50, depth: 16 }; // lico 0..face, chodnik face..walk; depth: wysokość czoła muru widocznego od południa
-const SIEGE_STONE = { haven: '#b8ae98', sylvan: '#9aa086', barrow: '#6c6676', fortress: '#8e8a6a', inferno: '#5e403c' };
+const SIEGE_STONE = { haven: '#b8ae98', sylvan: '#9aa086', barrow: '#6c6676', fortress: '#8e8a6a', inferno: '#5e403c', academy: '#c4c8d2' };
 function stonePal(fac) {
   const c = SIEGE_STONE[fac] || SIEGE_STONE.haven;
   return { top: LT(c, 0.22), lit: LT(c, 0.08), base: c, sh: DK(c, 0.25), dk: DK(c, 0.45), mortar: DK(c, 0.34), crack: '#201a1a', moss: fac === 'sylvan' ? '#5a7a34' : fac === 'barrow' ? '#3e4e3a' : '#6a7a44' };
@@ -2739,7 +2787,7 @@ function castleSprite(fac, col, walls) {
   }, OUTLINE, 0.5);
 }
 // Bruk dziedzińca za murem (tło bitwy): kolor płyt [jasny, ciemny] wg frakcji
-const SIEGE_PAVE = { haven: [[176, 164, 140], [142, 130, 108]], sylvan: [[140, 146, 118], [108, 116, 90]], barrow: [[104, 98, 114], [78, 74, 88]], fortress: [[132, 126, 98], [102, 98, 74]], inferno: [[96, 64, 58], [70, 44, 40]] };
+const SIEGE_PAVE = { haven: [[176, 164, 140], [142, 130, 108]], sylvan: [[140, 146, 118], [108, 116, 90]], barrow: [[104, 98, 114], [78, 74, 88]], fortress: [[132, 126, 98], [102, 98, 74]], inferno: [[96, 64, 58], [70, 44, 40]], academy: [[188, 194, 206], [150, 156, 170]] };
 // ==================== GRAFIKA: STWORY TWIERDZY I INFERNA =================================
 // Rodzaje ciała spoza postaci i czworonogów: ważka ('insect'), bazyliszek ('lizard'), gorgona ('bull'), hydra ('hydra').
 // Jak pozostałe stwory: (0,0) = ziemia pod stworem, przód w stronę +x, P = { t, walk, atk, hurt }.
@@ -4201,6 +4249,12 @@ function armyTransfer(from, to) {
     if (k < 0) continue; if (to[k]) to[k].n += s.n; else to[k] = { cid: s.cid, n: s.n }; from[i] = null;
   }
 }
+// Część garnizonu, którą bohater naprawdę zabierze (armyTransfer): ten sam rodzaj albo wolne miejsce w armii.
+// Bez tego SI z pełną armią krążyła między własnymi miastami po jednostki, których nie mogła wziąć.
+function takeableArmy(from, to) {
+  let free = to.filter(x => !x).length; const have = new Set(to.filter(Boolean).map(x => x.cid));
+  return from.map(s => { if (!s) return null; if (have.has(s.cid)) return s; if (free > 0) { free--; have.add(s.cid); return s; } return null; });
+}
 function aiManageTown(st, p, t) {
   // pierwsza osiągalna z trzech kolejnych budowli z listy (żeby brak rudy na Fort nie wstrzymał wszystkiego)
   if (!t.builtToday) {
@@ -4258,7 +4312,7 @@ function aiPickTarget(st, h, R) {
   const hasArmy = armySize(h.army) > 0, power = armyStrength(h);
   for (const t of st.towns) {
     const i = t.y * n + t.x, occupant = heroAt(st, t.x, t.y);
-    if (t.owner === h.owner) { if (!occupant && armyPower(t.garrison) > 0) add(i, armyPower(t.garrison) * (hasArmy ? 3 : 20), 'reinforce'); continue; }
+    if (t.owner === h.owner) { const take = armyPower(takeableArmy(t.garrison, h.army)); if (!occupant && take > 0) add(i, take * (hasArmy ? 3 : 20), 'reinforce'); continue; }
     if (!hasArmy || aiPeace(st, t.owner)) continue;
     const tp = townPower(st, t); if (power > tp * 0.8) add(i, (t.owner >= 0 && playerOf(st, t.owner).human ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
   }
@@ -5785,6 +5839,18 @@ const PROP_BOX = { giant: [-110, -300, 220, 310] };
 function extraProp(c, fac, kind, x, b, r, fx) {
   if (kind === 'giant') { trunk(c, x, b, 44, 190, '#5a4028'); c.strokeStyle = '#4a3220'; c.lineWidth = 6; c.beginPath(); c.moveTo(x - 30, b); c.quadraticCurveTo(x - 50, b - 4, x - 64, b + 2); c.moveTo(x + 30, b); c.quadraticCurveTo(x + 48, b - 3, x + 60, b + 3); c.stroke(); canopy(c, x, b - 200, 70, '#2e5a2a', 77); canopy(c, x - 40, b - 170, 40, '#346430', 78); canopy(c, x + 44, b - 176, 42, '#2a5226', 79); return true; }
   if (kind === 'rock') { rockMound(c, x - 14, b, 28, 16, '#6a6660', 2); return true; }
+  if (kind === 'snowPine') { // świerk w śniegu (Akademia): trzy piętra gałęzi z białymi czapami
+    c.fillStyle = '#3a2a1c'; c.fillRect(x - 2, b - 8, 4, 8);
+    for (const [y0, hw, hh] of [[b - 6, 15, 18], [b - 18, 12, 16], [b - 29, 8, 14]]) {
+      fillPoly(c, [[x - hw, y0], [x, y0 - hh], [x + hw, y0]], '#27403a'); fillPoly(c, [[x, y0 - hh], [x + hw, y0], [x + 1, y0]], '#1e322e');
+      fillPoly(c, [[x - hw * 0.7, y0 - hh * 0.35], [x, y0 - hh], [x + hw * 0.55, y0 - hh * 0.4], [x, y0 - hh * 0.55]], 'rgba(244,248,255,.95)');
+    }
+    return true;
+  }
+  if (kind === 'iceCrystal') { // lodowe kryształy wystające ze śniegu
+    for (const [dx, hh, a] of [[-5, 14, -0.3], [0, 22, 0], [6, 12, 0.35]]) { c.save(); c.translate(x + dx, b); c.rotate(a); fillPoly(c, [[-3, 0], [-3, -hh + 4], [0, -hh], [3, -hh + 4], [3, 0]], '#bfe4f8'); fillPoly(c, [[0, 0], [0, -hh], [3, -hh + 4], [3, 0]], '#8cc4e4'); c.restore(); }
+    if (fx) fx.glows.push([x, b - 10, 16, '#a8e0ff']); return true;
+  }
   if (kind === 'fern') { c.strokeStyle = '#4a8a3a'; c.lineWidth = 1.6; for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(x, b); c.quadraticCurveTo(x + i * 4, b - 12, x + i * 7, b - 8 + Math.abs(i)); c.stroke(); } return true; }
   if (kind === 'bones') { c.fillStyle = '#e0d8c4'; for (let i = 0; i < 4; i++) { c.save(); c.translate(x - 6 + i * 4, b - 2); c.rotate(i * 0.8); c.fillRect(-5, -1, 10, 2); c.restore(); } skullAt(c, x + 6, b - 5, 0.6); return true; }
   return false;
@@ -6150,6 +6216,10 @@ function drawTownFX(ctx, t, fx) {
     for (let i = 0; i < 30; i++) { const u = (tm * 0.12 + i * 0.137) % 1, x = 20 + ((i * 83) % 560) + Math.sin(tm + i) * 8, y = 430 - u * 360; circ(ctx, x, y, 1.2, `rgba(255,${130 + (i % 5) * 20},50,${(0.8 * (1 - u)).toFixed(2)})`); }
     const g = ctx.createLinearGradient(0, 300, 0, 440); g.addColorStop(0, 'rgba(255,90,20,0)'); g.addColorStop(1, `rgba(255,90,20,${(0.1 + 0.04 * Math.sin(tm * 2)).toFixed(3)})`); ctx.fillStyle = g; ctx.fillRect(8, 300, 576, 140);
   }
+  if (LL.snow) for (let i = 0; i < 60; i++) { // sypiący śnieg (Akademia): płatki opadają z lekkim kołysaniem
+    const u = (tm * (0.05 + (i % 5) * 0.012) + i * 0.173) % 1, x = 10 + ((i * 97) % 572) + Math.sin(tm * 0.8 + i) * 9, y = 10 + u * 420;
+    circ(ctx, x, y, i % 3 ? 1 : 1.5, `rgba(255,255,255,${(0.55 + 0.35 * Math.sin(i)).toFixed(2)})`);
+  }
   if (fac === 'barrow') {
     for (let i = 0; i < 3; i++) { const x = ((i * 260 + tm * 12) % 900) - 150, y = 300 + i * 45; const g = ctx.createRadialGradient(x, y, 0, x, y, 140); g.addColorStop(0, 'rgba(190,180,220,.16)'); g.addColorStop(1, 'rgba(190,180,220,0)'); ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.3); ctx.translate(-x, -y); ctx.fillStyle = g; ctx.fillRect(x - 140, y - 140, 280, 280); ctx.restore(); }
     for (let i = 0; i < 3; i++) { const x = 100 + ((tm * 40 + i * 180) % 500), y = 60 + i * 25 + Math.sin(tm * 2 + i) * 12, f = Math.sin(tm * 14 + i) * 4;
@@ -6438,6 +6508,155 @@ TOWN_LAYOUTS.inferno = {
   walksW: [[[-190, 1.62], [-130, 1.52], [-80, 1.46], [80, 1.46], [150, 1.52], [220, 1.66]]], walkCols: ['#8a2a1a', '#5a1a14', '#a0402a', '#6a2a20'],
   guardsW: [[-26, 2.47, 76], [26, 2.47, 76]], guardCol: '#6a1a14',
   floaters: [{ kind: 'ember', X: 0, Z: 1.3, e: 10, n: 10, spread: 90, spreadZ: 0.4 }], birds: true, birdCol: 'rgba(20,4,2,.9)', embers: true,
+};
+// ==================== MIASTO: AKADEMIA =====================================================
+// Miasto magów w ośnieżonych górach: białe wieże ze stożkowymi dachami, złote kopuły, kryształy i padający śnieg.
+// Budowle dostają s = { x, b, w, h } (podstawa b) i poziom (tier), jak w MIASTO: GRAFIKA i MIASTO: TWIERDZA I INFERNO.
+TOWN_ART.academy = {
+  sky: ['#4a6a9a', '#9ab4d8', '#eef0f6'], far: ['#8a9ab8', '#a8b6cc'], back: ['#c8d2e0', '#a8b4c6'], mid: ['#d4dce8', '#b4c0d0'], front: ['#e0e6ee', '#c0cad8'],
+  path: ['#a8a6a4', '#7c7a78'], wall: ['#e2e4ea', '#9ea4b4'], mortar: 'rgba(60,70,90,.3)', roof: { hall: '#2e4e9e', dw: '#4a64b0', util: '#5a6a8e', tower: '#243e8a', wall: '#3e5890' },
+  roofShape: 'spire', tex: 'blocks', glow: '#a8e0ff', door: '#1a2030', trim: '#e0c060',
+};
+// --- klocki Akademii: śnieg na dachach, smukłe wieże, kryształy, koła zębate ---
+function snowCap(c, x, y, w, rh) { // czapa śniegu na stożkowym dachu i okapie
+  c.fillStyle = 'rgba(244,248,255,.92)'; const cx = x + w / 2;
+  fillPoly(c, [[cx, y - rh], [cx - w * 0.2, y - rh * 0.56], [cx - w * 0.06, y - rh * 0.64], [cx + w * 0.07, y - rh * 0.52], [cx + w * 0.18, y - rh * 0.62]], 'rgba(244,248,255,.92)');
+  c.fillRect(x - 3, y - 1.5, w + 6, 2.2);
+}
+function magicTower(c, A, x, b, w, h, roof, fx, glow) { // wieża maga: okna jedno nad drugim, stożkowy dach ze śniegiem
+  wallRect(c, A, x, b - h, w, h);
+  for (let y = b - h + 8; y < b - 16; y += 18) archWin(c, x + w / 2 - 3, y, 6, 9, glow || A.glow, fx);
+  roofArt(c, A, roof, x, b - h, w, w * 1.3); snowCap(c, x, b - h, w, w * 1.3);
+}
+function crystal(c, cx, cy, s, col, fx) { // unoszący się kryształ z poświatą
+  fillPoly(c, [[cx, cy - s * 1.6], [cx + s * 0.7, cy], [cx, cy + s], [cx - s * 0.7, cy]], col);
+  fillPoly(c, [[cx, cy - s * 1.6], [cx, cy + s], [cx - s * 0.7, cy]], shadeHex(col, -0.25));
+  if (fx) fx.glows.push([cx, cy, s * 3.5, col]);
+}
+function gear(c, cx, cy, r, col) {
+  for (let i = 0; i < 8; i++) { c.save(); c.translate(cx, cy); c.rotate(i / 8 * TAU); c.fillStyle = col; c.fillRect(-1.5, -r - 2.5, 3, 3); c.restore(); }
+  circ(c, cx, cy, r, col); circ(c, cx, cy, r * 0.4, shadeHex(col, -0.35));
+}
+function snowRock(c, x, b, w, h, seed) { rockMound(c, x, b, w, h, '#8a94a6', seed); c.fillStyle = 'rgba(244,248,255,.85)'; c.beginPath(); c.ellipse(x + w * 0.45, b - h * 0.8, w * 0.28, h * 0.14, 0, 0, TAU); c.fill(); }
+function goldDome(c, cx, y, r, fx) { // złota kopuła z iglicą (podstawa y)
+  c.fillStyle = '#d8a830'; c.beginPath(); c.moveTo(cx - r, y); c.quadraticCurveTo(cx - r, y - r * 1.2, cx, y - r * 1.4); c.quadraticCurveTo(cx + r, y - r * 1.2, cx + r, y); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.moveTo(cx, y - r * 1.4); c.quadraticCurveTo(cx + r, y - r * 1.2, cx + r, y); c.lineTo(cx, y); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(244,248,255,.85)'; c.beginPath(); c.ellipse(cx - r * 0.2, y - r * 1.25, r * 0.4, r * 0.16, 0, 0, TAU); c.fill();
+  c.strokeStyle = '#e0c060'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx, y - r * 1.4); c.lineTo(cx, y - r * 1.4 - 8); c.stroke(); circ(c, cx, y - r * 1.4 - 9, 1.6, '#fff0a0');
+  if (fx) fx.glows.push([cx, y - r * 0.7, r * 1.6, '#ffdc78']);
+}
+const ACADEMY_ART = {
+  hall(c, A, s, tier, col, fx) { // pałac z wysoką wieżą, na wyższych poziomach wieże boczne i kryształ nad dachem
+    const { x, b, w, h } = s, cx = x + w / 2;
+    if (tier === 4) for (const tx of [x - 2, x + w - 16]) magicTower(c, A, tx, b, 18, h * 0.38, A.roof.tower, fx);
+    if (tier >= 2) for (const tx of [x + 10, x + w - 32]) magicTower(c, A, tx, b, 22, h * 0.52, A.roof.dw, fx);
+    const bw = w * 0.46, bh = h * (0.3 + tier * 0.04), bx = cx - bw / 2; wallRect(c, A, bx, b - bh, bw, bh);
+    for (let i = 0; i < 2; i++) archWin(c, bx + bw * (0.22 + i * 0.44) - 4, b - bh + 10, 8, 13, A.glow, fx);
+    doorArt(c, A, cx - 8, b, 16, 22);
+    c.fillStyle = 'rgba(244,248,255,.9)'; c.fillRect(bx - 2, b - bh - 1.5, bw + 4, 2.4);
+    const tw = bw * 0.46, th = h * (0.6 + tier * 0.07); magicTower(c, A, cx - tw / 2, b - bh + 1, tw, th - bh, A.roof.hall, fx);
+    bannerArt(c, cx, b - th - tw * 1.3 - 12, col);
+    if (tier >= 3) crystal(c, cx + tw * 1.3, b - th - 6, 6, '#a0e8ff', fx);
+  },
+  fort(c, A, s, tier, col, fx) { // białe mury z blankami, dwie wieże, na wyższych poziomach cytadela
+    const { x, b, w, h } = s, cx = x + w / 2;
+    if (tier >= 2) { const kw = tier >= 3 ? 56 : 44, kh = h * (tier >= 3 ? 0.95 : 0.78); magicTower(c, A, cx - kw / 2, b - 12, kw, kh - 12, A.roof.wall, fx); bannerArt(c, cx, b - kh - kw * 1.3 - 16, col); }
+    const wh = h * 0.34; wallRect(c, A, x + 14, b - wh, w - 28, wh);
+    c.fillStyle = A.wall[0]; for (let px = x + 16; px < x + w - 20; px += 10) c.fillRect(px, b - wh - 5, 6, 5);
+    c.fillStyle = 'rgba(244,248,255,.9)'; for (let px = x + 16; px < x + w - 20; px += 10) c.fillRect(px, b - wh - 6, 6, 1.6);
+    for (const tx of [x, x + w - 28]) magicTower(c, A, tx, b, 28, h * (tier >= 3 ? 0.66 : 0.56), A.roof.tower, fx);
+    c.fillStyle = A.door; c.beginPath(); c.moveTo(cx - 10, b); c.lineTo(cx - 10, b - 16); c.quadraticCurveTo(cx, b - 27, cx + 10, b - 16); c.lineTo(cx + 10, b); c.closePath(); c.fill();
+    c.strokeStyle = '#5a6070'; c.lineWidth = 1; for (let i = -6; i <= 6; i += 4) { c.beginPath(); c.moveTo(cx + i, b); c.lineTo(cx + i, b - 19); c.stroke(); }
+  },
+  guild(c, A, s, tier, col, fx) { // wieża wiedzy: piętro na każdy poziom gildii, na szczycie obserwatorium z lunetą
+    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.5, th = h * (0.36 + Math.min(tier, 5) * 0.1);
+    wallRect(c, A, cx - tw / 2, b - th, tw, th);
+    for (let i = 1; i < tier; i++) { c.fillStyle = '#e0c060'; c.fillRect(cx - tw / 2 - 2, b - th + i * th / tier, tw + 4, 2); }
+    for (let i = 0; i < tier; i++) archWin(c, cx - 3.5, b - th + 6 + i * th / tier, 7, Math.max(5, Math.min(10, th / tier - 9)), '#a8e0ff', fx);
+    c.fillStyle = A.roof.tower; c.beginPath(); c.ellipse(cx, b - th, tw / 2 + 3, tw * 0.42, 0, Math.PI, 0); c.fill();
+    c.fillStyle = 'rgba(244,248,255,.85)'; c.beginPath(); c.ellipse(cx - tw * 0.1, b - th - tw * 0.3, tw * 0.28, tw * 0.1, 0, 0, TAU); c.fill();
+    c.strokeStyle = '#c8a040'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(cx + 2, b - th - tw * 0.3); c.lineTo(cx + tw * 0.6, b - th - tw * 0.72); c.stroke();
+    if (tier >= 3) crystal(c, cx - tw * 0.95, b - th * 0.7, 5, '#c0a0ff', fx);
+    drawEmblem(c, 'book', x + w - 9, b - 7, 14, '#3a4a8a');
+  },
+  tavern: HAVEN_ART.tavern, market: HAVEN_ART.market, smith: HAVEN_ART.smith, silo: HAVEN_ART.silo,
+  dw1(c, A, s, tier, col, fx) { // warsztat gremlinów: komin, koła zębate
+    const { x, b, w, h } = s, bw = w * 0.6, top = b - h * 0.5; wallRect(c, A, x + 4, top, bw, h * 0.5);
+    roofArt(c, A, A.roof.dw, x + 4, top, bw, h * 0.32); snowCap(c, x + 4, top, bw, h * 0.32);
+    doorArt(c, A, x + 4 + bw / 2 - 7, b, 14, 18); c.fillStyle = '#3a3e48'; c.fillRect(x + 4 + bw * 0.75, top - h * 0.3, 7, h * 0.3); fx.smokes.push([x + 7.5 + bw * 0.75, top - h * 0.31]);
+    gear(c, x + w * 0.8, b - h * 0.36, tier >= 2 ? 9 : 7, '#a0a4b0'); if (tier >= 2) gear(c, x + w * 0.93, b - h * 0.5, 5, '#c8a040');
+    drawCreature(c, tier >= 2 ? 'masterGremlin' : 'gremlin', x + w * 0.86, b, 1, -1, 0);
+  },
+  dw2(c, A, s, tier, col, fx) { // parapet na kolumnach z gargulcami
+    const { x, b, w, h } = s, top = b - h * (tier >= 2 ? 0.55 : 0.42);
+    for (let i = 0; i < 4; i++) wallRect(c, A, x + 6 + i * (w - 20) / 3, top, 8, b - top);
+    c.fillStyle = A.wall[0]; c.fillRect(x + 2, top - 6, w - 4, 6); c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(x + 2, top - 1, w - 4, 1.5);
+    c.fillStyle = 'rgba(244,248,255,.92)'; c.fillRect(x + 2, top - 7.5, w - 4, 2);
+    drawCreature(c, tier >= 2 ? 'obsidianGargoyle' : 'stoneGargoyle', x + w * 0.3, top - 6, 0.9, 1, 0);
+    drawCreature(c, 'stoneGargoyle', x + w * 0.72, top - 6, 0.9, -1, 0.5);
+  },
+  dw3(c, A, s, tier, col, fx) { // kuźnia golemów z błękitnym żarem
+    const { x, b, w, h } = s, bw = w * 0.72, top = b - h * 0.55; wallRect(c, A, x + 2, top, bw, h * 0.55);
+    roofArt(c, A, A.roof.dw, x + 2, top, bw, h * 0.3); snowCap(c, x + 2, top, bw, h * 0.3);
+    c.fillStyle = '#10141c'; c.fillRect(x + 10, b - h * 0.4, bw * 0.6, h * 0.4); const gx = x + 10 + bw * 0.3; circ(c, gx, b - 6, 4, '#a0e0ff'); fx.glows.push([gx, b - 10, 22, '#80c8ff']);
+    c.fillStyle = '#3a3e48'; c.fillRect(x + 2 + bw * 0.75, top - h * 0.3, 8, h * 0.3); fx.smokes.push([x + 6 + bw * 0.75, top - h * 0.31]);
+    drawCreature(c, tier >= 2 ? 'ironGolem' : 'stoneGolem', x + w * 0.86, b, 0.9, -1, 0);
+  },
+  dw4(c, A, s, tier, col, fx) { // smukła wieża magów z kulą światła nad dachem
+    const { x, b, w, h } = s, cx = x + w * 0.4, tw = w * 0.34, th = h * (tier >= 2 ? 0.78 : 0.66), glow = tier >= 2 ? '#e0a0ff' : '#80c0ff';
+    magicTower(c, A, cx - tw / 2, b, tw, th, tier >= 2 ? '#5a2a8a' : A.roof.tower, fx, tier >= 2 ? '#e0a0ff' : null);
+    const oy = b - th - tw * 1.3 - 12; circ(c, cx, oy, 4, glow); circ(c, cx - 1, oy - 1, 1.6, '#ffffff'); fx.glows.push([cx, oy, 18, glow]);
+    drawCreature(c, tier >= 2 ? 'archMage' : 'mage', x + w * 0.82, b, 0.95, -1, 0);
+  },
+  dw5(c, A, s, tier, col, fx) { // ołtarz życzeń: stopnie, złota lampa, nad nią dżin
+    const { x, b, w, h } = s, cx = x + w / 2;
+    c.fillStyle = A.wall[1]; c.fillRect(cx - w * 0.36, b - 6, w * 0.72, 6); c.fillStyle = A.wall[0]; c.fillRect(cx - w * 0.28, b - 12, w * 0.56, 6); c.fillRect(cx - w * 0.14, b - 26, w * 0.28, 14);
+    c.fillStyle = 'rgba(244,248,255,.9)'; c.fillRect(cx - w * 0.14, b - 27, w * 0.28, 1.6); if (tier >= 2) { c.fillStyle = '#e0c060'; c.fillRect(cx - w * 0.28, b - 12, w * 0.56, 1.5); }
+    c.fillStyle = '#e0b040'; c.beginPath(); c.ellipse(cx, b - 29, 7, 2.6, 0, 0, TAU); c.fill(); fillPoly(c, [[cx + 5, b - 30], [cx + 12, b - 33], [cx + 11, b - 31], [cx + 6, b - 28]], '#c89a30');
+    fx.glows.push([cx, b - 36, 26, '#80c0ff']); fx.smokes.push([cx + 11, b - 34, 0.5]);
+    drawCreature(c, tier >= 2 ? 'masterGenie' : 'genie', cx + 2, b - 34, 0.8, -1, 0.3);
+  },
+  dw6(c, A, s, tier, col, fx) { // złoty pawilon na kolumnach, przed nim naga
+    const { x, b, w, h } = s, cx = x + w * 0.42, pw = w * 0.6, top = b - h * 0.42;
+    c.fillStyle = '#c8ccd4'; c.fillRect(cx - pw / 2 - 4, b - 5, pw + 8, 5);
+    for (let i = 0; i < 4; i++) { const px = cx - pw / 2 + i * (pw - 6) / 3; c.fillStyle = '#ece8dc'; c.fillRect(px, top, 6, b - 5 - top); c.fillStyle = 'rgba(0,0,0,.15)'; c.fillRect(px + 4, top, 2, b - 5 - top); }
+    c.fillStyle = '#c89a30'; c.fillRect(cx - pw / 2 - 3, top - 5, pw + 6, 5);
+    goldDome(c, cx, top - 5, pw * 0.42, fx); if (tier >= 2) for (const dx of [-pw * 0.5, pw * 0.5]) goldDome(c, cx + dx, top - 5, pw * 0.13, null);
+    drawCreature(c, tier >= 2 ? 'nagaQueen' : 'naga', x + w * 0.84, b, 0.9, -1, 0);
+  },
+  dw7(c, A, s, tier, col, fx) { // chmurna świątynia na ośnieżonej skale
+    const { x, b, w, h } = s, cx = x + w * 0.45; snowRock(c, x, b, w * 0.9, h * 0.34, 61);
+    const tb = b - h * 0.28, tw = w * 0.5, th = h * 0.34;
+    c.fillStyle = A.wall[1]; c.fillRect(cx - tw / 2 - 4, tb - 4, tw + 8, 4);
+    for (let i = 0; i < 5; i++) { const px = cx - tw / 2 + i * (tw - 5) / 4; c.fillStyle = '#eef0f4'; c.fillRect(px, tb - th, 5, th - 4); c.fillStyle = 'rgba(0,0,0,.14)'; c.fillRect(px + 3.5, tb - th, 1.5, th - 4); }
+    c.fillStyle = A.wall[0]; c.fillRect(cx - tw / 2 - 4, tb - th - 4, tw + 8, 4); fillPoly(c, [[cx - tw / 2 - 6, tb - th - 4], [cx, tb - th - 18], [cx + tw / 2 + 6, tb - th - 4]], '#d8dce6');
+    fillPoly(c, [[cx - tw / 2 - 6, tb - th - 4], [cx, tb - th - 18], [cx - tw * 0.1, tb - th - 12]], 'rgba(244,248,255,.95)');
+    for (const [dx, r] of [[-0.5, 9], [-0.15, 11], [0.25, 10], [0.55, 8]]) circ(c, cx + dx * tw * 1.3, tb + 2, r, 'rgba(240,244,252,.8)');
+    if (tier >= 2) { fx.glows.push([cx, tb - th - 10, 40, '#c0e0ff']); limb(c, cx + tw * 0.7, tb - th - 30, cx + tw * 0.6, tb - th - 18, 1.4, '#e0f0ff'); limb(c, cx + tw * 0.6, tb - th - 18, cx + tw * 0.72, tb - th - 12, 1.4, '#e0f0ff'); }
+    drawCreature(c, tier >= 2 ? 'titan' : 'giant', x + w * 0.86, b, 0.78, -1, 0);
+  },
+};
+BUILD_ART.academy = ACADEMY_ART;
+// --- scena: zamarznięta rzeka, ośnieżone wzgórza, świerki w śniegu, sypiący śnieg ---
+TOWN_LAYOUTS.academy = {
+  sky: { top: '#1e2a44', mid: '#5a7098', hor: '#e0dcea', sun: [430, 120], cloudDark: 'rgba(90,100,130,.7)', cloudLit: 'rgba(240,236,250,.6)' },
+  mountains: ['#a4b0c6', '#8894ac'], forest: ['#2c3c40', '#26363a', '#324448'],
+  ground: ['#dfe6ee', '#c6d0dc', '#9eaabc'], haze: '#c8d4e4', desat: 0.12, tuft: ['rgba(80,100,130,.22)', 'rgba(255,255,255,.4)'],
+  hills: [{ X: -260, Z: 2.1, rx: 360, h: 54, cols: ['#d4dce8', '#a8b4c6'] }, { X: 520, Z: 2.62, rx: 330, h: 90, cols: ['#b4bccc', '#7e889c'], rock: true }],
+  river: { w: 70, cols: ['#c8dcec', '#7a98b8'], edge: 'rgba(250,252,255,.7)', pts: [[-820, 2.05], [-500, 1.82], [-250, 1.7], [-80, 1.63], [100, 1.6], [300, 1.64], [600, 1.75], [900, 1.9]] },
+  roads: TOWN_LAYOUTS.haven.roads,
+  plaza: { X: -40, Z: 1.27, r: 110 },
+  bridge: { X: -200, Z: 1.665, w: 64 },
+  slots: TOWN_LAYOUTS.haven.slots,
+  props: [
+    ['snowPine', -540, 1.78, 0, 1.3], ['snowPine', -470, 1.95, 0, 1.3], ['snowPine', -620, 2.25, 0, 1.4], ['snowPine', 380, 2.2, 0, 1.4], ['snowPine', 720, 2.1, 0, 1.4],
+    ['snowPine', 660, 1.85, 0, 1.3], ['snowPine', -560, 1.3, 0, 1.2], ['snowPine', -470, 1.05, 0, 1.3], ['snowPine', 440, 1.06, 0, 1.2], ['snowPine', 400, 1.55, 0, 1.2], ['snowPine', 80, 2.45, 0, 1.3],
+    ['iceCrystal', -150, 0.9], ['iceCrystal', 520, 1.4], ['iceCrystal', -330, 1.62], ['rock', 250, 1.62], ['lamp', -25, 0.82], ['lamp', -18, 0.9], ['lamp', 42, 1.06], ['lamp', -38, 1.1],
+    ['fence', 330, 1.02], ['fence', -350, 1.0],
+  ],
+  walksW: [[[26, 0.82], [15, 0.9], [2, 1.02], [-12, 1.15], [-20, 1.26]], [[-100, 1.27], [-40, 1.28], [30, 1.27]]], walkCols: ['#3a4a9a', '#5a2a8a', '#6a6a74', '#2a5a7a'],
+  guardsW: [[-262, 1.985, 42], [-218, 1.985, 42]], guardCol: '#3a4a8a',
+  birds: true, birdCol: 'rgba(30,36,50,.8)', snow: true,
 };
 // ==================== EKRANY: MENU, NOWA GRA, LISTY =====================================
 // Scena tytułowa i ekrany poza rozgrywką.
@@ -7604,7 +7823,7 @@ G.screens.battle = {
     } else if (p.kind === 'hit') {
       if (!p.landed && f >= (p.a ? 0.5 : 0)) { p.landed = true; this.impact(p.tg, p.dmg, p.killed); }
     } else if (p.kind === 'shot') {
-      const orb = CREATURES[p.a.cid].look.weapon === 'staff', col = CREATURES[p.a.cid].look.orb || '#c8e0ff';
+      const LK = CREATURES[p.a.cid].look, orb = LK.weapon === 'staff' || !!LK.orb, col = LK.orb || '#c8e0ff'; // kula: laska albo własny pocisk (kamień gremlina, piorun tytana)
       if (!p.launched && f >= 0.42) {
         p.launched = true; const dist = Math.hypot(p.tg.px - p.a.px, p.tg.py - p.a.py);
         p.pr = BattleFX.proj(orb ? 'orb' : 'arrow', p.a.px + (p.tg.px > p.a.px ? 14 : -14), p.a.py - 18, p.tg.px, p.tg.py - 16, (0.12 + dist / 900) * p.sp, col, orb ? 8 : 26 + dist * 0.04);

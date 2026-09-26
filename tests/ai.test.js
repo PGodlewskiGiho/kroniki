@@ -184,3 +184,15 @@ test('olbrzymia mapa z trzema rywalami: 40 dni w rozsądnym czasie, stan spójny
   assert.ok(ms < 20000, `40 dni trwało ${ms} ms`);
   assert.deepEqual(await invariants(), []);
 });
+
+test('SI nie krąży po garnizony, których nie zmieści: liczy tylko jednostki, które naprawdę zabierze', async () => {
+  await newGame(page, { mapSize: 'S', opponents: 1 }, 9);
+  const r = await page.evaluate(() => {
+    const full = emptyArmy(); ['pikeman', 'archer', 'griffin', 'swordsman', 'monk', 'cavalier', 'dawnbringer'].forEach((cid, i) => { full[i] = { cid, n: 5 }; });
+    const gar = emptyArmy(); gar[0] = { cid: 'archer', n: 4 }; gar[1] = { cid: 'imp', n: 9 };
+    const part = emptyArmy(); part[0] = { cid: 'pikeman', n: 3 };
+    return { full: takeableArmy(gar, full).map(x => x && x.cid), part: takeableArmy(gar, part).map(x => x && x.cid) };
+  });
+  assert.deepEqual(r.full.filter(Boolean), ['archer'], 'pełna armia: tylko ten sam rodzaj');
+  assert.deepEqual(r.part.filter(Boolean), ['archer', 'imp'], 'wolne miejsca: wszystko');
+});

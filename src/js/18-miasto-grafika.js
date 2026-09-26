@@ -705,6 +705,18 @@ const PROP_BOX = { giant: [-110, -300, 220, 310] };
 function extraProp(c, fac, kind, x, b, r, fx) {
   if (kind === 'giant') { trunk(c, x, b, 44, 190, '#5a4028'); c.strokeStyle = '#4a3220'; c.lineWidth = 6; c.beginPath(); c.moveTo(x - 30, b); c.quadraticCurveTo(x - 50, b - 4, x - 64, b + 2); c.moveTo(x + 30, b); c.quadraticCurveTo(x + 48, b - 3, x + 60, b + 3); c.stroke(); canopy(c, x, b - 200, 70, '#2e5a2a', 77); canopy(c, x - 40, b - 170, 40, '#346430', 78); canopy(c, x + 44, b - 176, 42, '#2a5226', 79); return true; }
   if (kind === 'rock') { rockMound(c, x - 14, b, 28, 16, '#6a6660', 2); return true; }
+  if (kind === 'snowPine') { // świerk w śniegu (Akademia): trzy piętra gałęzi z białymi czapami
+    c.fillStyle = '#3a2a1c'; c.fillRect(x - 2, b - 8, 4, 8);
+    for (const [y0, hw, hh] of [[b - 6, 15, 18], [b - 18, 12, 16], [b - 29, 8, 14]]) {
+      fillPoly(c, [[x - hw, y0], [x, y0 - hh], [x + hw, y0]], '#27403a'); fillPoly(c, [[x, y0 - hh], [x + hw, y0], [x + 1, y0]], '#1e322e');
+      fillPoly(c, [[x - hw * 0.7, y0 - hh * 0.35], [x, y0 - hh], [x + hw * 0.55, y0 - hh * 0.4], [x, y0 - hh * 0.55]], 'rgba(244,248,255,.95)');
+    }
+    return true;
+  }
+  if (kind === 'iceCrystal') { // lodowe kryształy wystające ze śniegu
+    for (const [dx, hh, a] of [[-5, 14, -0.3], [0, 22, 0], [6, 12, 0.35]]) { c.save(); c.translate(x + dx, b); c.rotate(a); fillPoly(c, [[-3, 0], [-3, -hh + 4], [0, -hh], [3, -hh + 4], [3, 0]], '#bfe4f8'); fillPoly(c, [[0, 0], [0, -hh], [3, -hh + 4], [3, 0]], '#8cc4e4'); c.restore(); }
+    if (fx) fx.glows.push([x, b - 10, 16, '#a8e0ff']); return true;
+  }
   if (kind === 'fern') { c.strokeStyle = '#4a8a3a'; c.lineWidth = 1.6; for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(x, b); c.quadraticCurveTo(x + i * 4, b - 12, x + i * 7, b - 8 + Math.abs(i)); c.stroke(); } return true; }
   if (kind === 'bones') { c.fillStyle = '#e0d8c4'; for (let i = 0; i < 4; i++) { c.save(); c.translate(x - 6 + i * 4, b - 2); c.rotate(i * 0.8); c.fillRect(-5, -1, 10, 2); c.restore(); } skullAt(c, x + 6, b - 5, 0.6); return true; }
   return false;
@@ -1069,6 +1081,10 @@ function drawTownFX(ctx, t, fx) {
   if (LL.embers) { // żar unoszący się nad całym miastem i drżące powietrze nad lawą
     for (let i = 0; i < 30; i++) { const u = (tm * 0.12 + i * 0.137) % 1, x = 20 + ((i * 83) % 560) + Math.sin(tm + i) * 8, y = 430 - u * 360; circ(ctx, x, y, 1.2, `rgba(255,${130 + (i % 5) * 20},50,${(0.8 * (1 - u)).toFixed(2)})`); }
     const g = ctx.createLinearGradient(0, 300, 0, 440); g.addColorStop(0, 'rgba(255,90,20,0)'); g.addColorStop(1, `rgba(255,90,20,${(0.1 + 0.04 * Math.sin(tm * 2)).toFixed(3)})`); ctx.fillStyle = g; ctx.fillRect(8, 300, 576, 140);
+  }
+  if (LL.snow) for (let i = 0; i < 60; i++) { // sypiący śnieg (Akademia): płatki opadają z lekkim kołysaniem
+    const u = (tm * (0.05 + (i % 5) * 0.012) + i * 0.173) % 1, x = 10 + ((i * 97) % 572) + Math.sin(tm * 0.8 + i) * 9, y = 10 + u * 420;
+    circ(ctx, x, y, i % 3 ? 1 : 1.5, `rgba(255,255,255,${(0.55 + 0.35 * Math.sin(i)).toFixed(2)})`);
   }
   if (fac === 'barrow') {
     for (let i = 0; i < 3; i++) { const x = ((i * 260 + tm * 12) % 900) - 150, y = 300 + i * 45; const g = ctx.createRadialGradient(x, y, 0, x, y, 140); g.addColorStop(0, 'rgba(190,180,220,.16)'); g.addColorStop(1, 'rgba(190,180,220,0)'); ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.3); ctx.translate(-x, -y); ctx.fillStyle = g; ctx.fillRect(x - 140, y - 140, 280, 280); ctx.restore(); }
