@@ -2129,24 +2129,47 @@ function showSplit(fromA, i, toA, j, heroArmies, done) {
       bs.forEach(b => b.draw(ctx));
     } };
 }
+// Przegląd stworów miasta (jak Fort w Heroes 3): wszystkie siedem poziomów frakcji, także z niezbudowanych siedlisk.
+// Karta: siedlisko, stwór (ulepszony, gdy jest ulepszone siedlisko), statystyki, przyrost, dostępni, koszt; zbudowane
+// siedlisko ma przycisk werbunku, niezbudowane pokazuje wyszarzonego stwora i czego jeszcze brakuje.
 function showRecruitList(st, t, onDone) {
-  const levels = dwellingLevels(t), F = factionOf(t.faction), w = 500, hh = 120 + levels.length * 52 + 60, x = (W - w) / 2, y = Math.max(20, (H - hh) / 2);
-  const open = L => showRecruit(st, t, L, onDone, () => showRecruitList(st, t, onDone));
-  const rowBtns = levels.map((L, i) => new Button(x + w - 118, y + 84 + i * 52 + 8, 92, 32, 'Werbuj', () => open(L), { size: 15, key: String(L) }));
-  const close = new Button(W / 2 - 70, y + hh - 56, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
+  const F = factionOf(t.faction), x0 = 16, y0 = 64, cw = 186, ch = 260, gap = 6, back = () => showRecruitList(st, t, onDone);
+  const card = L => ({ x: x0 + ((L - 1) % 4) * (cw + gap), y: y0 + Math.floor((L - 1) / 4) * (ch + gap) });
+  const resNm = { gold: 'zł', wood: 'drewna', ore: 'rudy', mercury: 'rtęci', sulfur: 'siarki', crystal: 'kryształu', gems: 'klejnotów' };
+  const costTxt = c => Object.entries(c).filter(([, v]) => v).map(([k, v]) => `${v} ${resNm[k] || k}`).join(', ');
+  const btns = [];
+  for (const L of DW_LEVELS) if (hasB(t, 'dw' + L)) { const { x, y } = card(L); { const cid = F.dw['dw' + L + (hasB(t, 'dw' + L + 'u') ? 'u' : '')][1]; btns.push(new Button(x + 36, y + ch - 32, cw - 72, 26, 'Werbuj', () => showRecruit(st, t, L, onDone, back), { size: 14, key: String(L), tip: `Werbunek z siedliska poziomu ${L} (klawisz ${L}). Koszt: ${costTxt(unitCost(cid))} za stwora.` })); } }
+  const close = new Button(x0 + 3 * (cw + gap) + 30, y0 + ch + gap + ch - 50, cw - 60, 38, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
+  const growMul = hasB(t, 'castle') ? 'Zamek: przyrost ×2' : hasB(t, 'citadel') ? 'Cytadela: przyrost ×1,5' : hasB(t, 'fort') ? 'Fort: przyrost zwykły' : 'Bez fortu: przyrost zwykły';
   G.modal = {
-    buttons: [...rowBtns, close],
+    buttons: [...btns, close], overview: true,
     draw(ctx) {
-      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
-      text(ctx, `Rekrutacja: ${t.name}`, W / 2, y + 40, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' }); divider(ctx, x + 30, x + w - 30, y + 64);
-      levels.forEach((L, i) => {
-        const ry = y + 84 + i * 52, units = dwellingUnits(t, L), best = units[units.length - 1];
-        ctx.fillStyle = 'rgba(90,55,20,.12)'; rr(ctx, x + 24, ry, w - 48, 48, 4); ctx.fill();
-        ctx.save(); rr(ctx, x + 26, ry + 1, 50, 46, 3); ctx.clip(); drawSprite(ctx, creatureSprite(best, 1), x + 51, ry + 42, 1); ctx.restore();
-        text(ctx, units.map(u => CREATURES[u].name).join(' / '), x + 86, ry + 17, { size: 15, color: '#2a1606', fam: 'title' });
-        text(ctx, `${F.dw['dw' + L + (units.length > 1 ? 'u' : '')][0]} · dostępne ${t.avail[L] || 0}, przyrost ${weeklyGrowth(t, L, st)}/tydz.`, x + 86, ry + 36, { size: 13, weight: 500, color: '#5a3814' });
-      });
-      rowBtns.forEach(b => { b.disabled = false; b.draw(ctx); }); close.draw(ctx);
+      dimScreen(ctx, 0.6); drawParchment(ctx, 6, 8, W - 12, H - 16);
+      text(ctx, `Stwory miasta ${t.name} (${F.name})`, W / 2, 42, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
+      for (const L of DW_LEVELS) {
+        const { x, y } = card(L), built = hasB(t, 'dw' + L), up = hasB(t, 'dw' + L + 'u'), cid = F.dw['dw' + L + (up ? 'u' : '')][1], C = CREATURES[cid];
+        ctx.fillStyle = built ? 'rgba(90,55,20,.14)' : 'rgba(40,30,20,.10)'; rr(ctx, x, y, cw, ch, 5); ctx.fill();
+        ctx.strokeStyle = built ? 'rgba(120,80,30,.55)' : 'rgba(80,60,40,.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+        text(ctx, `${L}. ${F.dw['dw' + L + (up ? 'u' : '')][0]}`, x + cw / 2, y + 18, { size: 13, align: 'center', color: built ? '#3a1e08' : '#6a5a48', fam: 'title' });
+        ctx.save(); rr(ctx, x + 6, y + 26, cw - 12, 96, 4); ctx.clip(); ctx.fillStyle = built ? 'rgba(255,240,200,.35)' : 'rgba(0,0,0,.08)'; ctx.fillRect(x + 6, y + 26, cw - 12, 96);
+        if (!built) ctx.globalAlpha = 0.35; drawSprite(ctx, creatureSprite(cid, 1), x + cw / 2, y + 114, C.level >= 6 ? 1.6 : 2); ctx.restore();
+        text(ctx, up ? C.name : C.name + (built ? '' : ''), x + cw / 2, y + 138, { size: 15, align: 'center', color: '#2a1606', fam: 'title' });
+        const ab = (C.abil || []).map(a => ABILITIES[a].name).join(', '); if (ab) text(ctx, ab, x + cw / 2, y + 152, { size: 10, weight: 600, align: 'center', color: '#6a3a8a' });
+        const stats = [['Atak', C.att], ['Obrona', C.def], ['Obraż.', C.dmin === C.dmax ? C.dmin : `${C.dmin}–${C.dmax}`], ['Zdrowie', C.hp], ['Szybkość', C.spd], [C.shots ? 'Strzały' : 'Przyrost', C.shots ? C.shots : `+${weeklyGrowth(t, L, st)}`]];
+        stats.forEach(([k, v], i) => { const sx = x + 10 + (i % 2) * (cw / 2), sy = y + 170 + Math.floor(i / 2) * 16; text(ctx, `${k}:`, sx, sy, { size: 12, weight: 500, color: '#5a3814' }); text(ctx, String(v), sx + cw / 2 - 16, sy, { size: 12, weight: 700, color: '#2a1606', align: 'right' }); });
+        if (built) text(ctx, `Dostępne: ${t.avail[L] || 0}${C.shots ? ` · przyrost ${weeklyGrowth(t, L, st)}` : ''}`, x + cw / 2, y + 222, { size: 12, weight: 700, align: 'center', color: '#2a4a14' });
+        else {
+          const need = BUILD_BY_ID['dw' + L].req.filter(r => !hasB(t, r)).map(r => bInfo(BUILD_BY_ID[r], t.faction).name);
+          text(ctx, 'Nie zbudowano', x + cw / 2, y + 222, { size: 13, weight: 700, align: 'center', color: '#8a2a1a' });
+          wrapText(ctx, need.length ? `Wymaga: ${need.join(', ')}` : `Można zbudować (${costTxt(BUILD_BY_ID['dw' + L].cost)})`, cw - 14).slice(0, 2)
+            .forEach((l, i) => text(ctx, l, x + cw / 2, y + 237 + i * 13, { size: 11, weight: 500, align: 'center', color: '#6a4a2a' }));
+        }
+      }
+      const sx = x0 + 3 * (cw + gap), sy = y0 + ch + gap;
+      ctx.fillStyle = 'rgba(90,55,20,.1)'; rr(ctx, sx, sy, cw, ch, 5); ctx.fill();
+      text(ctx, 'Przyrost co tydzień', sx + cw / 2, sy + 24, { size: 14, align: 'center', color: '#3a1e08', fam: 'title' });
+      wrapText(ctx, `${growMul}. Siedlisk: ${dwellingLevels(t).length} z 7. Koszt stwora pokazuje dymek przycisku Werbuj.`, cw - 16).forEach((l, i) => text(ctx, l, sx + cw / 2, sy + 50 + i * 16, { size: 12, weight: 500, align: 'center', color: '#5a3814' }));
+      btns.forEach(b => { b.disabled = false; b.draw(ctx); }); close.draw(ctx);
     },
   };
 }

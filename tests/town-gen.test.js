@@ -58,3 +58,20 @@ test('ekran miasta rysuje się dla każdego krajobrazu; budowle mają pola do ws
     assert.deepEqual(r, { arche: arches[k], rects: 14, screen: 'town' }, `${fac}/${arches[k]}`);
   }
 });
+
+test('przegląd stworów (jak Fort w Heroes 3): siedem poziomów, werbunek tylko ze zbudowanych siedlisk', async () => {
+  await newGame(page, { mapSize: 'M', faction: 'academy' }, 8);
+  const r = await page.evaluate(() => {
+    const t = G.state.towns[0]; t.built = ['hall1', 'fort', 'dw1', 'dw3', 'dw3u']; t.avail[3] = 4;
+    setScreen('town', { townId: t.id }); G.modal = null; G.screens.town.baseButtons[0].action();
+    const M = G.modal, labels = M.buttons.map(b => b.label), keys = M.buttons.filter(b => b.label === 'Werbuj').map(b => b.key);
+    M.draw(G.ctx); M.buttons.find(b => b.key === '3').action(); const opened = G.modal !== M;
+    return { overview: !!M.overview, labels, keys, opened };
+  });
+  assert.ok(r.overview);
+  assert.deepEqual(r.keys, ['1', '3']);
+  assert.equal(r.labels.at(-1), 'Zamknij');
+  assert.ok(r.opened, 'Werbuj otwiera okno werbunku');
+  await page.evaluate(() => { G.modal = null; });
+  await frames(page, 3);
+});
