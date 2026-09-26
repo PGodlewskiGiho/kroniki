@@ -13,11 +13,13 @@ const renders = (ms) => page.evaluate(ms => new Promise(res => {
   let n = 0; const orig = window.render; window.render = () => { n++; orig(); };
   setTimeout(() => { window.render = orig; res(n); }, ms);
 }), ms);
+// Kursor poza oknem gry: nowszy Chromium bez okna zgłasza mysz w rogu (0,0), a to na mapie przewija ją krawędzią (i słusznie rysuje 60 klatek)
+const noMouse = () => page.evaluate(() => { const m = G.mouse; m.x = m.y = m.vx = m.vy = -1; });
 
 test('nieruchomy ekran bohatera rysuje się rzadko, ruch myszy wymusza klatkę', async () => {
   await newGame(page);
   await page.evaluate(() => setScreen('hero', {}));
-  await frames(page, 5);
+  await noMouse(); await frames(page, 5);
   const idle = await renders(1000);
   assert.ok(idle <= 8, `bez ruchu: ${idle} klatek na sekundę`);
   const moved = await page.evaluate(() => new Promise(res => {
@@ -30,7 +32,7 @@ test('nieruchomy ekran bohatera rysuje się rzadko, ruch myszy wymusza klatkę',
 test('mapa: w spoczynku ~20 klatek, gdy kamera jedzie – płynnie', async () => {
   await newGame(page, { mapSize: 'M' });
   await page.evaluate(() => { setScreen('adventure', {}); G.modal = null; });
-  await frames(page, 5);
+  await noMouse(); await frames(page, 5);
   const idle = await renders(1000);
   assert.ok(idle >= 12 && idle <= 26, `spoczynek: ${idle}`);
   await page.evaluate(() => { window.__iv = setInterval(() => { G.state.cam.x += 3; }, 8); });
