@@ -24,8 +24,10 @@
      BITWA: ZASADY                   pole heksów, obrażenia, kolejka, SI, simulateBattle, resolveBattle
      ZAPIS I ODCZYT GRY              serializeGame/deserializeGame, SaveStore (konto Claude albo przeglądarka)
      MAPA PRZYGODY: RENDEROWANIE     teren piksel po pikselu, minimapa, mgła, kamera
-     MIASTO: GRAFIKA                 style frakcji, budowle, sceny w perspektywie, efekty
-     MIASTO: TWIERDZA I INFERNO      style, budowle i sceny dwóch nowych frakcji
+     MIASTO: GRAFIKA                 style frakcji, siedliska Przystani, Kniei i Kurhanu, sceny w perspektywie, efekty
+     MIASTO: TWIERDZA I INFERNO … LOCH I CYTADELA   palety, siedliska i barwy scen pozostałych frakcji
+     MIASTO: GENERATOR PLANSZ        krajobraz, rozmieszczenie budowli, drogi, pogoda (townLayout)
+     MIASTO: BUDOWLE GŁÓWNE FRAKCJI  ratusz, fort, gildia, karczma, rynek, kuźnia, magazyn: własna architektura każdej frakcji
      EKRANY / MAPA / BOHATER / BITWA / MIASTO  menu, listy, mapa, ekran bohatera, bitwa, widok miasta
      SILNIK                          pętla, wejście (mysz, dotyk, klawiatura, kółko), przejścia
 
@@ -53,7 +55,8 @@
    JAK DODAĆ…
    • Stworzenie: wpis w CREATURES z look.kind ('hum', 'wolf', 'griffin', 'rider', 'centaur',
      'unicorn', 'phoenix', 'ghost', 'dragon', 'eye', 'bird' i in.); nowy rodzaj ciała = nowy case w drawCreature().
-   • Frakcję: wpis w FACTIONS, TOWN_ART (paleta), BUILD_ART (rysunki budowli), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi)
+   • Frakcję: wpis w FACTIONS, TOWN_ART (paleta), BUILD_ART (siedliska w pliku frakcji, budowle główne w MIASTO: BUDOWLE
+     GŁÓWNE FRAKCJI — z nich powstaje też ikona miasta na mapie), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi)
      i TOWN_STYLE (ulubione krajobrazy, woda, rekwizyty, niebo, pogoda, dachy, mury); plansze miast układa generator (18c).
    • Budowlę wspólną: wpis w BUILDINGS (slot = miejsce w scenie) i funkcja w BUILD_ART każdej frakcji.
    • Ekran: G.screens.nazwa = { enter(p), draw(ctx), update(dt), onClick(x, y), onBack(),
@@ -144,6 +147,13 @@
    Pory roku (SEASONS, seasonIdx: miesiąc 1 wiosna, 2 lato, 3 jesień, 4 zima, potem od nowa): lato +10% ruchu, jesień +1 drewna
    i rudy z miasta, zima −20% ruchu. Wygląd: seasonLand (barwy terenu), lód przy brzegach, drzewa i ozdoby wg SEASON_DRAW
    (obstacleSprite/decorSprite z porą w kluczu), MapRender.setSeason czyści kawałki, drawSeasonFx (śnieg, liście).
+   Budowle główne każdej frakcji od nowa (18e): Przystań — ratusz z muru pruskiego z dzwonnicą, magistrat i kapitol, zamek z fosą,
+   zwodzonym mostem i bramą między basztami, gotycka gildia, sukiennice, wiatrak; Knieja — drzewo z pomostami, żywopłoty
+   z bramą z drzew, krąg druidów; Kurhan — kopiec z dolmenem i czaszką, brama-czaszka, obeliski; Twierdza — dom na palach z dachem
+   siodłowym, piramidy schodkowe, chata na kurzych łapach, pływający targ; Inferno — fasada-twarz demona, rogi, wulkan, zigurat
+   ognia; Akademia — cebulaste kopuły i minarety, kryształowe pylony, latająca cytadela i biblioteka; Loch — fasady wykute
+   w skale, twarz władcy, geoda, wózki kopalniane; Cytadela — jurta z czaszką bestii, cyklopowe mury, kamienny łeb, namiot
+   szamana. Ikona miasta na mapie to pomniejszony fort frakcji (drawTownMap), flagi na masztach z rysunku (townFlagPoints).
    Cechy frakcji (FACTION_TRAITS, heroFaction z klasy bohatera): morale Przystani, szczęście Kniei, nekromancja Kurhanu,
    bagna Twierdzy, siarka Inferna, zima i śnieg Akademii, wzrok Lochu, przyrost Cytadeli; opisy w dymkach (nowa gra, miasto, bohater).
    Słaby laptop: menu i miasto bez pixelQuantize co klatkę (paleta wypalona w nieruchomym tle), płótno bez przezroczystości

@@ -677,27 +677,25 @@ function drawFlag(ctx, px, py, len, hgt, t, col) {
 // Umocnienia w szacunku siły miasta dla SI (townPower): brak, Fort, Cytadela, Zamek; w bitwie mury są na polu (setupSiege)
 const TOWN_WALL_DEF = [0, 2, 4, 6];
 const townLevel = t => hasB(t, 'castle') ? 3 : hasB(t, 'citadel') ? 2 : hasB(t, 'fort') ? 1 : 0;
-// szczyty dachów, na których powiewają flagi właściciela [x, y] względem (x0, y0)
-const TOWN_FLAG_POINTS = [[[48, -16]], [[13, -2], [83, -2]], [[13, -10], [83, -10]], [[13, -10], [83, -10], [48, -26]]];
+// Miasto na mapie: pomniejszony fort frakcji w stopniu umocnień (1–3), a osada bez murów to sam ratusz. Każda frakcja
+// ma więc na mapie własną sylwetkę. Flagi właściciela: bannerArt zapisuje maszty do TOWN_FLAGS (względem (x0, y0)),
+// a mapa rysuje na nich flagi w kolorze gracza; rysunek bez masztu dostaje flagę na najwyższym punkcie.
+const TOWN_FLAGS = {};
 function drawTownMap(ctx, x0, y0, fac = 'haven', lvl = 1) {
-  const A = TOWN_ART[fac] || TOWN_ART.haven;
-  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x0 + 48, y0 + 60, 44, 8, 0, 0, TAU); ctx.fill();
-  if (lvl === 0) {
-    for (const hx of [x0 + 6, x0 + 66]) { wallRect(ctx, A, hx, y0 + 34, 24, 24); roofArt(ctx, A, A.roof.util, hx, y0 + 34, 24, 14); winArt(ctx, A, hx + 9, y0 + 42, 6, 7, null); }
-    ctx.fillStyle = shadeHex(A.wall[1], -0.4); for (let i = 0; i < 10; i++) ctx.fillRect(x0 + 3 + i * 10, y0 + 51, 2.5, 9); ctx.fillRect(x0 + 3, y0 + 54, 94, 2);
-  } else {
-    const tt = lvl >= 2 ? y0 + 8 : y0 + 16;
-    wallRect(ctx, A, x0 + 8, y0 + 28, 80, 30); ctx.fillStyle = A.wall[0];
-    for (let i = 0; i < 6; i++) ctx.fillRect(x0 + 10 + i * 14, y0 + 22, 8, 6);
-    for (const tx of [x0 + 2, x0 + 72]) {
-      wallRect(ctx, A, tx, tt, 22, y0 + 58 - tt); roofArt(ctx, A, A.roof.wall, tx, tt, 22, 18);
-      winArt(ctx, A, tx + 8, tt + 14, 6, 8, null); if (lvl >= 2) winArt(ctx, A, tx + 8, tt + 30, 6, 8, null);
-    }
-  }
-  const big = lvl >= 3, hx = big ? x0 + 30 : x0 + 34, hw = big ? 36 : 28, ht = big ? y0 + 2 : y0 + 8;
-  wallRect(ctx, A, hx, ht, hw, (lvl === 0 ? y0 + 58 : y0 + 48) - ht); roofArt(ctx, A, A.roof.hall, hx, ht, hw, big ? 28 : 24);
-  winArt(ctx, A, hx + hw / 2 - 4, ht + 10, 8, 10, null); if (big) for (const wx of [hx + 5, hx + hw - 11]) winArt(ctx, A, wx, ht + 22, 6, 9, null);
-  doorArt(ctx, A, x0 + 40, y0 + 58, 16, 18);
+  const arts = BUILD_ART[fac] || BUILD_ART.haven, A = TOWN_ART[fac] || TOWN_ART.haven, flags = [], prev = CUR_FX;
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x0 + 48, y0 + 60, 46, 8, 0, 0, TAU); ctx.fill();
+  const [grp, tier, w, h, k] = lvl ? ['fort', lvl, 194, 124, 0.52] : ['hall', 1, 150, 112, 0.62], cx = x0 + 48, base = y0 + 62;
+  CUR_FX = { flags }; ctx.save(); ctx.translate(cx, base); ctx.scale(k, k);
+  arts[grp](ctx, A, { x: -w / 2, b: 0, w, h }, tier, '#c83a2a', { wins: [], smokes: [], glows: [], flags: [] });
+  ctx.restore(); CUR_FX = prev;
+  TOWN_FLAGS[fac + lvl] = flags.slice(0, 3).map(([fx, fy]) => [Math.round(cx + fx * k - x0), Math.round(base + (fy - 6) * k + 20 - y0)]);
+}
+// Punkty, na których stoją drzewca flag właściciela (względem lewego górnego rogu miasta)
+function townFlagPoints(fac, lvl) {
+  const s = townSprite(fac, lvl), key = fac + lvl; if (TOWN_FLAGS[key] && TOWN_FLAGS[key].length) return TOWN_FLAGS[key];
+  const d = s.c._ctx.getImageData(0, 0, s.c.width, s.c.height).data, W = s.c.width; let top = null; // bez masztu: najwyższy punkt środka rysunku
+  for (let y = 0; y < s.c.height && !top; y++) for (let x = Math.floor(W * 0.3); x < W * 0.7; x++) if (d[(y * W + x) * 4 + 3] > 0) { top = [(x - s.ax) * 2, (y - s.ay) * 2 + 20]; break; }
+  return (TOWN_FLAGS[key] = [top || [48, -16]]);
 }
 
 // --- sprite'y (cache): mapa rysuje je w buforze pikselowym, interfejs przez drawSprite() -------
@@ -759,11 +757,11 @@ function markSprite(col, dx, dy) {
     else { p.rotate(Math.atan2(dy, dx)); p.beginPath(); [[-8, -3], [1, -3], [1, -7], [9, 0], [1, 7], [1, 3], [-8, 3]].forEach(([a, c], i) => i ? p.lineTo(a, c) : p.moveTo(a, c)); p.closePath(); p.fill(); }
   });
 }
-const townSprite = (fac, lvl) => sprite(`town_${fac}_${lvl}`, 56, 56, 4, 20, p => drawTownMap(p, 0, 0, fac, lvl));
+const townSprite = (fac, lvl) => sprite(`town_${fac}_${lvl}`, 62, 68, 7, 32, p => drawTownMap(p, 0, 0, fac, lvl)); // miejsce na wysokie wieże i latające skały
 // Miniatura miasta do list: ten sam rysunek w mniejszej skali (1 piksel = 5 jednostek), z flagami właściciela
 const townIconSprite = (fac, lvl, col) => sprite(`townico_${fac}_${lvl}_${col}`, 20, 20, 1, 7, p => {
   drawTownMap(p, 0, 0, fac, lvl);
-  for (const [fx, fy] of TOWN_FLAG_POINTS[lvl]) { p.fillStyle = '#2a1a0e'; p.fillRect(fx - 2, fy - 22, 5, 22); p.fillStyle = col; p.fillRect(fx + 3, fy - 22, 18, 11); }
+  for (const [fx, fy] of townFlagPoints(fac, lvl)) { p.fillStyle = '#2a1a0e'; p.fillRect(fx - 2, fy - 22, 5, 22); p.fillStyle = col; p.fillRect(fx + 3, fy - 22, 18, 11); }
 }, OUTLINE, 0.19);
 
 // --- armie w interfejsie ---------------------------------------------------------------------

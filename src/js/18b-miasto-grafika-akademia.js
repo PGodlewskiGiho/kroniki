@@ -39,62 +39,6 @@ function goldDome(c, cx, y, r, fx) { // złota kopuła z iglicą (podstawa y)
   if (fx) fx.glows.push([cx, y - r * 0.7, r * 1.6, '#ffdc78']);
 }
 const ACADEMY_ART = {
-  hall(c, A, s, tier, col, fx) { // pałac z wysoką wieżą, na wyższych poziomach wieże boczne i kryształ nad dachem
-    const { x, b, w, h } = s, cx = x + w / 2;
-    if (tier === 4) for (const tx of [x - 2, x + w - 16]) magicTower(c, A, tx, b, 18, h * 0.38, A.roof.tower, fx);
-    if (tier >= 2) for (const tx of [x + 10, x + w - 32]) magicTower(c, A, tx, b, 22, h * 0.52, A.roof.dw, fx);
-    const bw = w * 0.46, bh = h * (0.3 + tier * 0.04), bx = cx - bw / 2; wallRect(c, A, bx, b - bh, bw, bh);
-    for (let i = 0; i < 2; i++) archWin(c, bx + bw * (0.22 + i * 0.44) - 4, b - bh + 10, 8, 13, A.glow, fx);
-    doorArt(c, A, cx - 8, b, 16, 22);
-    c.fillStyle = 'rgba(244,248,255,.9)'; c.fillRect(bx - 2, b - bh - 1.5, bw + 4, 2.4);
-    const tw = bw * 0.46, th = h * (0.6 + tier * 0.07); magicTower(c, A, cx - tw / 2, b - bh + 1, tw, th - bh, A.roof.hall, fx);
-    bannerArt(c, cx, b - th - tw * 1.3 - 12, col);
-    if (tier >= 3) crystal(c, cx + tw * 1.3, b - th - 6, 6, '#a0e8ff', fx);
-  },
-  fort(c, A, s, tier, col, fx) { // białe mury z blankami, dwie wieże, na wyższych poziomach cytadela
-    const { x, b, w, h } = s, cx = x + w / 2;
-    if (tier >= 2) { const kw = tier >= 3 ? 56 : 44, kh = h * (tier >= 3 ? 0.95 : 0.78); magicTower(c, A, cx - kw / 2, b - 12, kw, kh - 12, A.roof.wall, fx); bannerArt(c, cx, b - kh - kw * 1.3 - 16, col); }
-    const wh = h * 0.34; wallRect(c, A, x + 14, b - wh, w - 28, wh);
-    c.fillStyle = A.wall[0]; for (let px = x + 16; px < x + w - 20; px += 10) c.fillRect(px, b - wh - 5, 6, 5);
-    c.fillStyle = 'rgba(244,248,255,.9)'; for (let px = x + 16; px < x + w - 20; px += 10) c.fillRect(px, b - wh - 6, 6, 1.6);
-    for (const tx of [x, x + w - 28]) magicTower(c, A, tx, b, 28, h * (tier >= 3 ? 0.66 : 0.56), A.roof.tower, fx);
-    c.fillStyle = A.door; c.beginPath(); c.moveTo(cx - 10, b); c.lineTo(cx - 10, b - 16); c.quadraticCurveTo(cx, b - 27, cx + 10, b - 16); c.lineTo(cx + 10, b); c.closePath(); c.fill();
-    c.strokeStyle = '#5a6070'; c.lineWidth = 1; for (let i = -6; i <= 6; i += 4) { c.beginPath(); c.moveTo(cx + i, b); c.lineTo(cx + i, b - 19); c.stroke(); }
-  },
-  guild(c, A, s, tier, col, fx) { // wieża wiedzy: piętro na każdy poziom gildii, na szczycie obserwatorium z lunetą
-    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.5, th = h * (0.36 + Math.min(tier, 5) * 0.1);
-    wallRect(c, A, cx - tw / 2, b - th, tw, th);
-    for (let i = 1; i < tier; i++) { c.fillStyle = '#e0c060'; c.fillRect(cx - tw / 2 - 2, b - th + i * th / tier, tw + 4, 2); }
-    for (let i = 0; i < tier; i++) archWin(c, cx - 3.5, b - th + 6 + i * th / tier, 7, Math.max(5, Math.min(10, th / tier - 9)), '#a8e0ff', fx);
-    c.fillStyle = A.roof.tower; c.beginPath(); c.ellipse(cx, b - th, tw / 2 + 3, tw * 0.42, 0, Math.PI, 0); c.fill();
-    c.fillStyle = 'rgba(244,248,255,.85)'; c.beginPath(); c.ellipse(cx - tw * 0.1, b - th - tw * 0.3, tw * 0.28, tw * 0.1, 0, 0, TAU); c.fill();
-    c.strokeStyle = '#c8a040'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(cx + 2, b - th - tw * 0.3); c.lineTo(cx + tw * 0.6, b - th - tw * 0.72); c.stroke();
-    if (tier >= 3) crystal(c, cx - tw * 0.95, b - th * 0.7, 5, '#c0a0ff', fx);
-    drawEmblem(c, 'book', x + w - 9, b - 7, 14, '#3a4a8a');
-  },
-  tavern(c, A, s, tier, col, fx) { // zajazd z kamienia, dwuspadowy dach w śniegu, szyld z kuflem
-    const { x, b, w, h } = s, bw = w * 0.66, top = b - h * 0.5;
-    wallRect(c, A, x + 4, top, bw, h * 0.5); doorArt(c, A, x + 4 + bw / 2 - 8, b, 16, 20); winArt(c, A, x + 12, top + 10, 8, 8, fx); winArt(c, A, x + bw - 12, top + 10, 8, 8, fx);
-    roofArt(c, GABLE, A.roof.util, x + 4, top, bw, h * 0.34); gableSnow(c, x + 4, top, bw, h * 0.34);
-    c.fillStyle = '#4a4e58'; c.fillRect(x + 4 + bw * 0.74, top - h * 0.3, 7, h * 0.3); fx.smokes.push([x + 7.5 + bw * 0.74, top - h * 0.31]);
-    signArt(c, A, 'mug', x + w - 12, top + 2, h * 0.5 - 2, false); barrel(c, x + w - 24, b);
-  },
-  market(c, A, s, tier, col, fx) { // kramy pod niebieskimi daszkami: kryształy, zwoje, eliksiry
-    c.fillStyle = '#b8c0cc'; c.beginPath(); c.ellipse(s.x + s.w / 2, s.b - 5, s.w / 2, 9, 0, 0, TAU); c.fill();
-    stalls(c, s, [['#3a5aa8', '#e8ecf4'], ['#6a3a8a', '#e8ecf4'], ['#2a7a8a', '#e8ecf4']], ['#a8e0ff', '#e0a0ff', '#f0e0a0', '#80c0ff', '#ffffff'], '#4a4e58');
-    crystal(c, s.x + 8, s.b - 14, 4, '#a8e0ff', fx);
-  },
-  smith(c, A, s, tier, col, fx) { // kuźnia z kamienia, palenisko, kowadło
-    const { x, b, w, h } = s, bw = w * 0.7, top = b - h * 0.55; wallRect(c, A, x + 2, top, bw, h * 0.55);
-    c.fillStyle = '#12161e'; c.fillRect(x + 10, b - h * 0.38, bw * 0.55, h * 0.38); const gx = x + 10 + bw * 0.27; circ(c, gx, b - 7, 5, '#ffb040'); fx.glows.push([gx, b - 10, 22, '#ff9a3a']);
-    roofArt(c, GABLE, A.roof.util, x + 2, top, bw, h * 0.3); gableSnow(c, x + 2, top, bw, h * 0.3);
-    c.fillStyle = '#4a4e58'; c.fillRect(x + 2 + bw * 0.72, top - h * 0.32, 8, h * 0.32); fx.smokes.push([x + 6 + bw * 0.72, top - h * 0.33]);
-    drawEmblem(c, 'anvil', x + w - 10, b - 7, 16, '#4a4e58');
-  },
-  silo(c, A, s, tier, col, fx) { // magazyn: wieżyczka ze stożkowym dachem, skrzynie i beczki
-    const { x, b, w, h } = s, tw = w * 0.42, top = b - h * 0.62; wallRect(c, A, x + 6, top, tw, h * 0.62); roofArt(c, A, A.roof.util, x + 6, top, tw, tw * 1.2); snowCap(c, x + 6, top, tw, tw * 1.2);
-    doorArt(c, A, x + 6 + tw / 2 - 6, b, 12, 16); crate(c, x + w * 0.66, b, 11); crate(c, x + w * 0.86, b, 9); barrel(c, x + w * 0.76, b);
-  },
   dw1(c, A, s, tier, col, fx) { // warsztat gremlinów: komin, koła zębate
     const { x, b, w, h } = s, bw = w * 0.6, top = b - h * 0.5; wallRect(c, A, x + 4, top, bw, h * 0.5);
     roofArt(c, A, A.roof.dw, x + 4, top, bw, h * 0.32); snowCap(c, x + 4, top, bw, h * 0.32);

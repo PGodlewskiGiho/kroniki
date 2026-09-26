@@ -37,49 +37,6 @@ function palisade(c, x0, x1, b, h, col = '#5a4428') {
   c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(x0, b - h * 0.55, x1 - x0, 2); c.fillRect(x0, b - h * 0.2, x1 - x0, 2);
 }
 const FORTRESS_ART = {
-  hall(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, cx = x + w / 2;
-    if (tier >= 2) for (const side of [0, 1]) stiltHut(c, A, side ? x + w - w * 0.26 : x, b, w * 0.26, h * 0.26, h * 0.14, A.roof.dw, fx);
-    const bw = w * 0.52, ph = h * 0.16, bh = h * (0.34 + tier * 0.04); stiltHut(c, A, cx - bw / 2, b, bw, bh, ph, A.roof.hall, fx);
-    for (let i = 0; i < 2; i++) winArt(c, A, cx - bw / 2 + 10 + i * (bw - 26), b - ph - bh + 10, 7, 8, fx);
-    if (tier >= 3) { totem(c, cx - bw / 2 - 8, b, h * 0.62); totem(c, cx + bw / 2 + 8, b, h * 0.62); }
-    if (tier === 4) { const tw = 22, th = h * 0.9; for (const tx of [x + 4, x + w - tw - 4]) { stilts(c, tx, b, tw, th * 0.5); wallRect(c, A, tx, b - th, tw, th * 0.5); roofArt(c, A, A.roof.tower, tx, b - th, tw, 18); } }
-    bannerArt(c, cx, b - ph - bh - Math.max(14, bh * 0.7) - 20, col);
-  },
-  fort(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, cx = x + w / 2;
-    if (tier >= 2) { const kw = tier >= 3 ? 64 : 50, kh = h * (tier >= 3 ? 0.98 : 0.78), kx = cx - kw / 2; wallRect(c, { ...A, tex: 'blocks', wall: ['#8a8a6a', '#50503e'] }, kx, b - kh, kw, kh - 14); for (let r = 0; r < tier; r++) archWin(c, kx + kw / 2 - 4, b - kh + 10 + r * 18, 8, 12, A.glow, fx); roofArt(c, A, A.roof.wall, kx, b - kh, kw, tier >= 3 ? 36 : 26); bannerArt(c, cx, b - kh - (tier >= 3 ? 56 : 44), col); }
-    palisade(c, x + 14, x + w - 14, b, h * 0.34);
-    for (const tx of [x, x + w - 28]) { const th = h * (tier >= 3 ? 0.66 : 0.56); stilts(c, tx, b, 28, th * 0.45); wallRect(c, A, tx, b - th, 28, th * 0.55); winArt(c, A, tx + 11, b - th + 8, 6, 7, fx); roofArt(c, A, A.roof.tower, tx, b - th, 28, 22); }
-    c.fillStyle = '#1a1208'; c.fillRect(cx - 10, b - 22, 20, 22); c.fillStyle = '#5a4428'; for (let i = 0; i < 4; i++) c.fillRect(cx - 9 + i * 5, b - 21, 3.5, 21); totem(c, cx, b - 22, 20);
-  },
-  guild(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.62, th = h * (0.3 + Math.min(tier, 5) * 0.08);
-    stilts(c, cx - tw / 2, b, tw, h * 0.16); const top = b - h * 0.16 - th; wallRect(c, A, cx - tw / 2, top, tw, th);
-    for (let i = 1; i < tier; i++) { c.fillStyle = '#4a3a22'; c.fillRect(cx - tw / 2 - 3, top + i * th / tier, tw + 6, 2.5); }
-    for (let i = 0; i < tier; i++) archWin(c, cx - 4, top + 6 + i * th / tier, 7, 9, '#b8f070', fx);
-    roofArt(c, A, A.roof.tower, cx - tw / 2, top, tw, 26 + tier * 3);
-    for (const dx of [-tw / 2 - 5, tw / 2 + 5]) { c.fillStyle = '#4a3a22'; c.fillRect(cx + dx - 1, b - h * 0.5, 2, h * 0.5); skullAt(c, cx + dx, b - h * 0.5 - 3, 0.55); }
-    c.fillStyle = '#1a1a14'; c.beginPath(); c.ellipse(cx + tw / 2 + 12, b - 5, 8, 5, 0, 0, TAU); c.fill(); circ(c, cx + tw / 2 + 12, b - 9, 5, '#8ad040'); fx.glows.push([cx + tw / 2 + 12, b - 12, 18, '#a0f060']); fx.smokes.push([cx + tw / 2 + 12, b - 14, 0.6]);
-  },
-  tavern(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s; stiltHut(c, A, x + 4, b, w * 0.64, h * 0.4, h * 0.14, A.roof.util, fx);
-    c.fillStyle = '#3a2a18'; c.fillRect(x + w * 0.5, b - h * 0.8, 6, h * 0.3); fx.smokes.push([x + w * 0.5 + 3, b - h * 0.8]);
-    signArt(c, A, 'mug', x + w * 0.8, b - h * 0.62, h * 0.62, false); barrel(c, x + w - 12, b); barrel(c, x + w - 24, b);
-  },
-  market(c, A, s, tier, col, fx) {
-    c.fillStyle = '#5a5a3a'; c.beginPath(); c.ellipse(s.x + s.w / 2, s.b - 5, s.w / 2, 9, 0, 0, TAU); c.fill();
-    stalls(c, s, [['#6a7a3a', '#3a4a22'], ['#8a5a2a', '#4a3018'], ['#3a6a5a', '#223e34']], ['#c8a040', '#5a8a3a', '#e0d8c4', '#8a3a2a', '#a060c0'], '#3a2a18');
-  },
-  smith(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, bw = w * 0.7, top = b - h * 0.55; wallRect(c, A, x + 2, top, bw, h * 0.55);
-    c.fillStyle = '#140c06'; c.fillRect(x + 10, b - h * 0.36, bw * 0.5, h * 0.36); const gx = x + 10 + bw * 0.25; circ(c, gx, b - 8, 5, '#ffb040'); fx.glows.push([gx, b - 10, 22, '#ff9a3a']);
-    roofArt(c, A, A.roof.util, x + 2, top, bw, h * 0.3); c.fillStyle = '#3a3026'; c.fillRect(x + bw * 0.7, top - h * 0.3, 7, h * 0.3); fx.smokes.push([x + bw * 0.7 + 3.5, top - h * 0.31]);
-    drawEmblem(c, 'anvil', x + w - 10, b - 7, 16, '#5a5a50');
-  },
-  silo(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s; stiltHut(c, A, x + 2, b, w * 0.6, h * 0.36, h * 0.16, A.roof.util, fx); barrel(c, x + w - 10, b); crate(c, x + w - 24, b, 10);
-  },
   dw1(c, A, s, tier, col, fx) { // nora gnolli: kopiec z wejściem, kości, włócznie
     const { x, b, w, h } = s; rockMound(c, x + 4, b, w * 0.62, h * 0.52, '#6a5a3a', 21);
     c.fillStyle = '#140c06'; c.beginPath(); c.ellipse(x + 4 + w * 0.31, b - 2, 10, 12, 0, Math.PI, 0); c.fill();
@@ -132,10 +89,6 @@ function lavaPool(c, cx, b, rx, ry, fx) {
   const g = c.createRadialGradient(cx, b, 1, cx, b, rx); g.addColorStop(0, '#ffe070'); g.addColorStop(0.5, '#ff7a1a'); g.addColorStop(1, '#7a1a06'); c.fillStyle = g; c.beginPath(); c.ellipse(cx, b, rx, ry, 0, 0, TAU); c.fill();
   if (fx) fx.glows.push([cx, b - 4, rx * 1.4, '#ff7a1a']);
 }
-function spireTower(c, A, x, b, w, h, roof, fx) {
-  wallRect(c, A, x, b - h, w, h); archWin(c, x + w / 2 - 3, b - h + 8, 6, 10, A.glow, fx); roofArt(c, A, roof, x, b - h, w, w * 1.2);
-  for (const sx of [x - 2, x + w - 1]) { c.fillStyle = '#1a0e0c'; c.beginPath(); c.moveTo(sx, b - h + 4); c.lineTo(sx + 1.5, b - h - 8); c.lineTo(sx + 3, b - h + 4); c.closePath(); c.fill(); }
-}
 function hornArch(c, x, b, w, h, col = '#2a1a18') {
   c.fillStyle = col; c.beginPath(); c.moveTo(x, b); c.quadraticCurveTo(x - w * 0.1, b - h * 0.7, x + w * 0.2, b - h); c.lineTo(x + w * 0.3, b - h * 0.9); c.quadraticCurveTo(x + w * 0.12, b - h * 0.55, x + w * 0.16, b); c.closePath(); c.fill();
   c.beginPath(); c.moveTo(x + w, b); c.quadraticCurveTo(x + w * 1.1, b - h * 0.7, x + w * 0.8, b - h); c.lineTo(x + w * 0.7, b - h * 0.9); c.quadraticCurveTo(x + w * 0.88, b - h * 0.55, x + w * 0.84, b); c.closePath(); c.fill();
@@ -147,51 +100,6 @@ function portal(c, cx, cy, rx, ry, col, fx) {
   if (fx) fx.glows.push([cx, cy, Math.max(rx, ry) * 1.6, col]);
 }
 const INFERNO_ART = {
-  hall(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, cx = x + w / 2;
-    if (tier >= 2) for (const tx of [x + 4, x + w - 26]) spireTower(c, A, tx, b, 22, h * 0.5, A.roof.dw, fx);
-    const bw = w * 0.5, bh = h * (0.44 + tier * 0.05), bx = cx - bw / 2; wallRect(c, A, bx, b - bh, bw, bh);
-    for (let i = 0; i < 3; i++) archWin(c, bx + bw * (0.2 + i * 0.3) - 4, b - bh + 12, 8, 15, A.glow, fx);
-    doorArt(c, A, cx - 9, b, 18, 24); lavaPool(c, cx, b + 2, 12, 2.5, fx);
-    roofArt(c, A, A.roof.hall, bx, b - bh, bw, bh * 0.75);
-    if (tier >= 3) hornArch(c, bx - 6, b - bh + 2, bw + 12, bh * 0.7, '#e8d8c0');
-    for (const px of [bx - 10, bx + bw + 10]) propArt(c, 'inferno', 'brazier', px, b, null, fx);
-    bannerArt(c, cx, b - bh - bh * 0.75 - 22, col);
-  },
-  fort(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, cx = x + w / 2;
-    if (tier >= 2) { const kw = tier >= 3 ? 60 : 48, kh = h * (tier >= 3 ? 1.0 : 0.8); spireTower(c, A, cx - kw / 2, b - 14, kw, kh - 14, A.roof.wall, fx); bannerArt(c, cx, b - kh - kw * 1.2 - 14, col); }
-    const wh = h * 0.36; wallRect(c, A, x + 14, b - wh, w - 28, wh); c.fillStyle = '#1a0e0c'; for (let px = x + 16; px < x + w - 16; px += 9) { c.beginPath(); c.moveTo(px, b - wh); c.lineTo(px + 2, b - wh - 10); c.lineTo(px + 4, b - wh); c.closePath(); c.fill(); }
-    for (const tx of [x, x + w - 28]) spireTower(c, A, tx, b, 28, h * (tier >= 3 ? 0.66 : 0.56), A.roof.tower, fx);
-    c.fillStyle = '#140604'; c.beginPath(); c.moveTo(cx - 11, b); c.lineTo(cx - 11, b - 18); c.lineTo(cx, b - 28); c.lineTo(cx + 11, b - 18); c.lineTo(cx + 11, b); c.closePath(); c.fill(); portal(c, cx, b - 12, 7, 10, '#ff6a1a', fx);
-    lavaPool(c, cx, b + 4, w * 0.4, 3, fx);
-  },
-  guild(c, A, s, tier, col, fx) { // zigurat z ogniem na szczycie
-    const { x, b, w, h } = s, cx = x + w / 2, steps = Math.min(tier, 5) + 1, sh = h * 0.8 / (steps + 1);
-    for (let i = 0; i < steps; i++) { const sw = w * (0.86 - i * 0.12), y = b - (i + 1) * sh; wallRect(c, A, cx - sw / 2, y, sw, sh); c.fillStyle = '#1a0c0a'; c.fillRect(cx - sw / 2, y, sw, 2); if (i < steps - 1) archWin(c, cx - 3, y + sh * 0.3, 6, sh * 0.5, A.glow, fx); }
-    const ty = b - (steps + 0.2) * sh; c.fillStyle = '#ffb040'; c.beginPath(); c.moveTo(cx - 7, ty); c.quadraticCurveTo(cx - 4, ty - 16, cx, ty - 24); c.quadraticCurveTo(cx + 4, ty - 16, cx + 7, ty); c.fill(); fx.glows.push([cx, ty - 10, 30, '#ff9a3a']);
-  },
-  tavern(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, bw = w * 0.66, top = b - h * 0.5; wallRect(c, A, x + 4, top, bw, h * 0.5); roofArt(c, A, A.roof.util, x + 4, top, bw, h * 0.34);
-    doorArt(c, A, x + 4 + bw / 2 - 8, b, 16, 20); winArt(c, A, x + 12, top + 10, 8, 8, fx); winArt(c, A, x + bw - 12, top + 10, 8, 8, fx);
-    c.fillStyle = '#2a1a16'; c.fillRect(x + bw * 0.8, top - h * 0.3, 7, h * 0.3); fx.smokes.push([x + bw * 0.8 + 3.5, top - h * 0.31]);
-    signArt(c, A, 'mug', x + w - 12, top + 2, h * 0.5 - 2, false);
-  },
-  market(c, A, s, tier, col, fx) {
-    c.fillStyle = '#3a2422'; c.beginPath(); c.ellipse(s.x + s.w / 2, s.b - 5, s.w / 2, 9, 0, 0, TAU); c.fill();
-    stalls(c, s, [['#8a1a14', '#4a0e0a'], ['#5a2a2a', '#2e1614'], ['#8a5a1a', '#4a2e0e']], ['#ffd040', '#ff6a1a', '#e0d8c4', '#8a3a8a', '#d0c040'], '#1e1210');
-    for (const dx of [10, s.w - 10]) propArt(c, 'inferno', 'brazier', s.x + dx, s.b, null, fx);
-  },
-  smith(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, bw = w * 0.7, top = b - h * 0.6; wallRect(c, A, x + 2, top, bw, h * 0.6);
-    c.fillStyle = '#0a0404'; c.fillRect(x + 10, b - h * 0.42, bw * 0.56, h * 0.42); lavaPool(c, x + 10 + bw * 0.28, b - 5, 9, 3, fx);
-    roofArt(c, A, A.roof.util, x + 2, top, bw, h * 0.4); c.fillStyle = '#2a1a16'; c.fillRect(x + bw * 0.72, top - h * 0.3, 8, h * 0.3); fx.smokes.push([x + bw * 0.72 + 4, top - h * 0.31]);
-    drawEmblem(c, 'anvil', x + w - 10, b - 7, 16, '#4a3a3a');
-  },
-  silo(c, A, s, tier, col, fx) {
-    const { x, b, w, h } = s, bw = w * 0.56, top = b - h * 0.5; wallRect(c, A, x + 2, top, bw, h * 0.5); roofArt(c, A, A.roof.util, x + 2, top, bw, h * 0.4); doorArt(c, A, x + 2 + bw / 2 - 7, b, 14, 18);
-    c.fillStyle = '#d8c030'; c.beginPath(); c.moveTo(x + w * 0.62, b); c.lineTo(x + w * 0.78, b - 14); c.lineTo(x + w * 0.96, b); c.closePath(); c.fill(); c.fillStyle = '#a89020'; c.beginPath(); c.moveTo(x + w * 0.78, b - 14); c.lineTo(x + w * 0.96, b); c.lineTo(x + w * 0.8, b); c.closePath(); c.fill();
-  },
   dw1(c, A, s, tier, col, fx) { // tygiel chochlików
     const { x, b, w, h } = s, cx = x + w * 0.42; c.fillStyle = '#1a1212'; c.beginPath(); c.moveTo(cx - 20, b - 24); c.quadraticCurveTo(cx - 22, b, cx, b); c.quadraticCurveTo(cx + 22, b, cx + 20, b - 24); c.closePath(); c.fill();
     c.fillStyle = '#3a2626'; c.fillRect(cx - 22, b - 26, 44, 4); lavaPool(c, cx, b - 26, 18, 3, fx); fx.smokes.push([cx, b - 30, 0.8]);

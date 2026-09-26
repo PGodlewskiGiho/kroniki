@@ -25,11 +25,6 @@ function glowShroom(c, x, b, s, cap, fx) { // wielki grzyb ze świecącymi kropk
   for (const [dx, dy] of [[-5, -19], [2, -21], [6, -18], [-1, -17.5]]) circ(c, x + dx * s, b + dy * s, 1.2 * s, '#e8f8ff');
   if (fx) fx.glows.push([x, b - 18 * s, 22 * s, shadeHex(cap, 0.3)]);
 }
-function darkSpire(c, A, x, b, w, h, roof, fx, glow) { // ciemna wieża ze szczelinami okien i ostrym dachem
-  wallRect(c, A, x, b - h, w, h);
-  for (let y = b - h + 8; y < b - 14; y += 16) { c.fillStyle = '#0a0610'; c.fillRect(x + w / 2 - 2, y, 4, 10); c.fillStyle = glow || A.glow; c.fillRect(x + w / 2 - 1, y + 1, 2, 8); if (fx) fx.wins.push([x + w / 2 - 1, y + 1, 2, 8, glow || A.glow]); }
-  roofArt(c, A, roof, x, b - h, w, w * 1.5);
-}
 function caveMouth(c, x, b, w, h, rock, inner, fx) { // skała z wejściem do pieczary (świeci od środka)
   rockMound(c, x, b, w, h, rock, Math.round(w + h));
   const cx = x + w * 0.45, mw = w * 0.34, mh = h * 0.55;
@@ -39,57 +34,6 @@ function caveMouth(c, x, b, w, h, rock, inner, fx) { // skała z wejściem do pi
   return cx;
 }
 const DUNGEON_ART = {
-  hall(c, A, s, tier, col, fx) { // mroczna warownia: wieże ze szczelinami, na wyższych poziomach kula mocy nad dachem
-    const { x, b, w, h } = s, cx = x + w / 2;
-    if (tier >= 4) for (const tx of [x - 4, x + w - 14]) stalag(c, tx + 9, b, 22, h * 0.7, '#3a3444');
-    if (tier >= 2) for (const tx of [x + 8, x + w - 30]) darkSpire(c, A, tx, b, 22, h * 0.5, A.roof.dw, fx);
-    const bw = w * 0.5, bh = h * (0.3 + tier * 0.04), bx = cx - bw / 2; wallRect(c, A, bx, b - bh, bw, bh); crenel(c, A, bx, b - bh, bw);
-    for (let i = 0; i < 2; i++) archWin(c, bx + bw * (0.2 + i * 0.46) - 4, b - bh + 10, 8, 12, A.glow, fx);
-    doorArt(c, A, cx - 8, b, 16, 22);
-    const tw = bw * 0.44, th = h * (0.62 + tier * 0.07); darkSpire(c, A, cx - tw / 2, b - bh + 1, tw, th - bh, A.roof.hall, fx);
-    bannerArt(c, cx, b - th - tw * 1.5 - 14, col);
-    if (tier >= 3) { const oy = b - th - tw * 0.6; circ(c, cx + tw * 1.4, oy, 5, '#e0a0ff'); circ(c, cx + tw * 1.4 - 1.5, oy - 1.5, 1.8, '#ffffff'); fx.glows.push([cx + tw * 1.4, oy, 28, '#c080ff']); }
-  },
-  fort(c, A, s, tier, col, fx) { // mur z postrzępionymi blankami i stalagmitami, na wyższych poziomach czarna cytadela
-    const { x, b, w, h } = s, cx = x + w / 2;
-    if (tier >= 2) { const kw = tier >= 3 ? 58 : 46, kh = h * (tier >= 3 ? 0.96 : 0.78); darkSpire(c, A, cx - kw / 2, b - 12, kw, kh - 12 - kw * 0.6, A.roof.wall, fx); bannerArt(c, cx, b - kh - kw * 0.9 - 18, col); }
-    const wh = h * 0.34; wallRect(c, A, x + 14, b - wh, w - 28, wh);
-    for (let px = x + 16; px < x + w - 20; px += 9) fillPoly(c, [[px, b - wh], [px + 3, b - wh - 7 - (px % 3) * 2], [px + 6, b - wh]], A.wall[1]);
-    for (const tx of [x, x + w - 28]) darkSpire(c, A, tx, b, 28, h * (tier >= 3 ? 0.62 : 0.52), A.roof.tower, fx);
-    for (const sx of [x + 36, x + w - 36]) stalag(c, sx, b, 12, 26, '#3a3444');
-    c.fillStyle = A.door; c.beginPath(); c.moveTo(cx - 10, b); c.lineTo(cx - 10, b - 14); c.lineTo(cx, b - 26); c.lineTo(cx + 10, b - 14); c.lineTo(cx + 10, b); c.closePath(); c.fill();
-    c.strokeStyle = '#5a4a6a'; c.lineWidth = 1; for (let i = -6; i <= 6; i += 4) { c.beginPath(); c.moveTo(cx + i, b); c.lineTo(cx + i, b - 20 + Math.abs(i)); c.stroke(); }
-  },
-  guild(c, A, s, tier, col, fx) { // kręta wieża czarnoksiężników: piętro na każdy poziom, nad nią krążące runy
-    const { x, b, w, h } = s, cx = x + w / 2, tw = w * 0.5, th = h * (0.36 + Math.min(tier, 5) * 0.1);
-    wallRect(c, A, cx - tw / 2, b - th, tw, th);
-    for (let i = 1; i < tier; i++) { c.fillStyle = A.trim; c.fillRect(cx - tw / 2 - 2, b - th + i * th / tier, tw + 4, 2); }
-    for (let i = 0; i < tier; i++) archWin(c, cx - 3.5, b - th + 6 + i * th / tier, 7, Math.max(5, Math.min(10, th / tier - 9)), '#c080ff', fx);
-    roofArt(c, A, A.roof.tower, cx - tw / 2, b - th, tw, tw * 1.4);
-    for (let i = 0; i < Math.min(tier + 1, 4); i++) { const a = i * 1.7, rx = cx + Math.cos(a) * tw * 0.9, ry = b - th - tw * 0.4 + Math.sin(a) * 6; circ(c, rx, ry, 1.8, '#e0b0ff'); fx.glows.push([rx, ry, 8, '#c080ff']); }
-    drawEmblem(c, 'book', x + w - 9, b - 7, 14, '#4a2a6a');
-  },
-  tavern(c, A, s, tier, col, fx) { // karczma w skale: kamienny dom wsparty o głaz, obok świecące grzyby
-    const { x, b, w, h } = s, bw = w * 0.62, top = b - h * 0.5;
-    rockMound(c, x + bw * 0.5, b, w * 0.5, h * 0.7, '#4a4454', 12);
-    wallRect(c, A, x + 4, top, bw, h * 0.5); doorArt(c, A, x + 4 + bw / 2 - 8, b, 16, 20); winArt(c, A, x + 12, top + 10, 8, 8, fx); winArt(c, A, x + bw - 12, top + 10, 8, 8, fx);
-    roofArt(c, GABLE, A.roof.util, x + 4, top, bw, h * 0.32);
-    signArt(c, A, 'mug', x + w - 14, top + 4, h * 0.5 - 4, false); glowShroom(c, x + w - 4, b, 0.8, '#6a3a9a', fx);
-  },
-  market(c, A, s, tier, col, fx) { // targ pod fioletowymi daszkami: kryształy, grzyby, zwoje
-    c.fillStyle = '#4a4452'; c.beginPath(); c.ellipse(s.x + s.w / 2, s.b - 5, s.w / 2, 9, 0, 0, TAU); c.fill();
-    stalls(c, s, [['#4a2a6a', '#8a7aa0'], ['#6a2a3a', '#8a7aa0'], ['#2a4a5a', '#8a7aa0']], ['#c080ff', '#80e0c0', '#ff8aa0', '#e0e0a0', '#a0c0ff'], '#2a2430');
-    crystals(c, s.x + 6, s.b, 0.5, '#a070e0'); fx.glows.push([s.x + 6, s.b - 8, 16, '#a070e0']);
-  },
-  smith(c, A, s, tier, col, fx) { // kuźnia w grocie: palenisko w skale
-    const { x, b, w, h } = s, cx = caveMouth(c, x, b, w * 0.78, h * 0.72, '#4a4454', '#ff8a3a', fx);
-    circ(c, cx, b - 6, 5, '#ffb040'); fx.smokes.push([cx + 6, b - h * 0.62]);
-    drawEmblem(c, 'anvil', x + w - 12, b - 8, 16, '#8a8494');
-  },
-  silo(c, A, s, tier, col, fx) { // skład: kamienna krypta ze skrzyniami i kryształami
-    const { x, b, w, h } = s, tw = w * 0.46, top = b - h * 0.5; wallRect(c, A, x + 4, top, tw, h * 0.5); roofArt(c, A, A.roof.util, x + 4, top, tw, tw * 0.9);
-    doorArt(c, A, x + 4 + tw / 2 - 6, b, 12, 16); crate(c, x + w * 0.68, b, 11); crystals(c, x + w * 0.88, b, 0.45, '#80e0c0');
-  },
   dw1(c, A, s, tier, col, fx) { // nory troglodytów w skalnym kopcu
     const { x, b, w, h } = s; rockMound(c, x, b, w * 0.86, h * 0.62, '#5a5262', 21);
     for (const [fx0, fy, r] of [[0.2, 0.18, 6], [0.46, 0.32, 7], [0.64, 0.12, 5]]) { c.fillStyle = '#0a080e'; c.beginPath(); c.ellipse(x + w * fx0, b - h * fy, r, r * 0.8, 0, 0, TAU); c.fill(); }
@@ -163,53 +107,6 @@ function mesa(c, x, b, w, h, col = '#b87a4a') { // płaska skała stepu z warstw
   c.fillStyle = shadeHex(col, 0.18); c.fillRect(x + w * 0.2, b - h, w * 0.62, 2.5);
 }
 const STRONGHOLD_ART = {
-  hall(c, A, s, tier, col, fx) { // wielka chata wodza z kopułą, kły przed wejściem, totemy, na wyższych poziomach wieże z kamienia
-    const { x, b, w, h } = s, cx = x + w / 2;
-    if (tier >= 3) for (const tx of [x + 2, x + w - 24]) { wallRect(c, A, tx, b - h * 0.62, 22, h * 0.62); cone(c, A.roof.tower, tx + 11, b - h * 0.62, 22, 22); }
-    if (tier >= 2) { totem(c, cx - w * 0.3, b, h * 0.6, '#7a4a24', '#ffb050'); totem(c, cx + w * 0.3, b, h * 0.6, '#7a4a24', '#ffb050'); }
-    const bw = w * (0.46 + tier * 0.03), bh = h * (0.34 + tier * 0.04); mudDrum(c, A, cx - bw / 2, b, bw, bh, A.roof.hall, fx);
-    for (let i = 0; i < 3; i++) { c.fillStyle = shadeHex(A.wall[1], -0.2); c.fillRect(cx - bw / 2 + 6 + i * (bw - 16) / 2, b - bh + 6, 4, 4); }
-    winArt(c, A, cx - bw * 0.3, b - bh * 0.62, 7, 7, fx); winArt(c, A, cx + bw * 0.3 - 7, b - bh * 0.62, 7, 7, fx);
-    doorArt(c, A, cx - 8, b, 16, 22); tusks(c, cx, b, 34, 36);
-    if (tier >= 4) { c.fillStyle = '#e0b050'; c.beginPath(); c.arc(cx, b - bh - bh * 0.6 - 4, 5, 0, TAU); c.fill(); }
-    bannerArt(c, cx, b - bh - bh * 0.6 - 26, col);
-  },
-  fort(c, A, s, tier, col, fx) { // palisada z kamiennymi basztami, brama z kłów; wyżej kamienna twierdza
-    const { x, b, w, h } = s, cx = x + w / 2;
-    if (tier >= 2) { const kw = tier >= 3 ? 60 : 48, kh = h * (tier >= 3 ? 0.92 : 0.74); wallRect(c, A, cx - kw / 2, b - kh, kw, kh - 12); crenel(c, A, cx - kw / 2, b - kh, kw); for (let r = 0; r < tier; r++) winArt(c, A, cx - 4, b - kh + 8 + r * 14, 8, 8, fx); bannerArt(c, cx, b - kh - 26, col); }
-    palisade(c, x + 14, x + w - 14, b, h * 0.32, '#7a5030');
-    for (const tx of [x, x + w - 28]) { const th = h * (tier >= 3 ? 0.62 : 0.52); wallRect(c, A, tx, b - th, 28, th); crenel(c, A, tx, b - th, 28); winArt(c, A, tx + 11, b - th + 10, 6, 7, fx); skullAt(c, tx + 14, b - th * 0.45, 0.55); }
-    c.fillStyle = '#1a0e06'; c.fillRect(cx - 10, b - 20, 20, 20); tusks(c, cx, b, 30, 32);
-  },
-  guild(c, A, s, tier, col, fx) { // namiot szamana: coraz wyższe namioty jeden nad drugim, dym i runy
-    const { x, b, w, h } = s, cx = x + w / 2, n = Math.min(tier, 5), th = h * (0.3 + n * 0.1);
-    wallRect(c, A, cx - w * 0.3, b - th * 0.4, w * 0.6, th * 0.4);
-    hideTent(c, cx - w * 0.36, b - th * 0.4, w * 0.72, th * 0.6, A.roof.util, fx);
-    for (let i = 0; i < n; i++) { const rx = cx - w * 0.2 + (i % 3) * w * 0.2, ry = b - th * 0.2 - Math.floor(i / 3) * 8; circ(c, rx, ry, 2, '#ffd070'); fx.glows.push([rx, ry, 9, '#ffb050']); }
-    drawEmblem(c, 'book', x + w - 9, b - 7, 14, '#6a3a1a');
-  },
-  tavern(c, A, s, tier, col, fx) { // długi dom z gliny, strzecha, kufel na tyczce i beczki
-    const { x, b, w, h } = s, bw = w * 0.66, top = b - h * 0.46;
-    wallRect(c, A, x + 4, top, bw, h * 0.46); doorArt(c, A, x + 4 + bw / 2 - 8, b, 16, 20); winArt(c, A, x + 12, top + 10, 8, 8, fx); winArt(c, A, x + bw - 12, top + 10, 8, 8, fx);
-    roofArt(c, GABLE, '#b89050', x + 4, top, bw, h * 0.34); fx.smokes.push([x + 4 + bw * 0.7, top - h * 0.28]);
-    signArt(c, A, 'mug', x + w - 12, top + 2, h * 0.46 - 2, false); barrel(c, x + w - 24, b);
-  },
-  market(c, A, s, tier, col, fx) { // bazar: kramy z pasiastymi daszkami, dywany, dzbany
-    c.fillStyle = '#c8a070'; c.beginPath(); c.ellipse(s.x + s.w / 2, s.b - 5, s.w / 2, 9, 0, 0, TAU); c.fill();
-    stalls(c, s, [['#c83a1a', '#f0d890'], ['#3a6a8a', '#f0d890'], ['#8a3a6a', '#f0d890']], ['#e0b050', '#c86a2a', '#6aa0c0', '#f0e0c0', '#a03a2a'], '#5a3a1a');
-    c.fillStyle = '#8a2a1a'; c.fillRect(s.x + 4, s.b - 3, 18, 3); c.fillStyle = '#e0b050'; c.fillRect(s.x + 6, s.b - 2.5, 14, 1);
-  },
-  smith(c, A, s, tier, col, fx) { // kuźnia pod daszkiem ze skór: palenisko, kowadło
-    const { x, b, w, h } = s, top = b - h * 0.62;
-    for (const px of [x + 4, x + w * 0.64]) { c.fillStyle = '#5a3a1a'; c.fillRect(px, top, 3, b - top); }
-    fillPoly(c, [[x - 2, top + 2], [x + w * 0.34, top - 10], [x + w * 0.72, top + 2]], A.roof.util); fillPoly(c, [[x + w * 0.34, top - 10], [x + w * 0.72, top + 2], [x + w * 0.42, top + 2]], shadeHex(A.roof.util, -0.3));
-    wallRect(c, A, x + 10, b - 16, 24, 16); circ(c, x + 22, b - 16, 5, '#ffb040'); fx.glows.push([x + 22, b - 18, 22, '#ff9a3a']); fx.smokes.push([x + 22, top - 4]);
-    drawEmblem(c, 'anvil', x + w - 12, b - 8, 16, '#4a3a2a');
-  },
-  silo(c, A, s, tier, col, fx) { // spichlerze: dwie okrągłe chaty i worki
-    const { x, b, w, h } = s; mudDrum(c, A, x + 4, b, w * 0.42, h * 0.42, '#b89050', fx); mudDrum(c, A, x + w * 0.46, b, w * 0.3, h * 0.3, '#a88040', fx);
-    for (const dx of [0.84, 0.94]) { c.fillStyle = '#d8c090'; c.beginPath(); c.ellipse(x + w * dx, b - 5, 5, 6, 0, 0, TAU); c.fill(); }
-  },
   dw1(c, A, s, tier, col, fx) { // obóz hobgoblinów: namioty i ognisko
     const { x, b, w, h } = s; hideTent(c, x + 2, b, w * 0.42, h * 0.62, '#a0784a', fx); hideTent(c, x + w * 0.38, b, w * 0.34, h * 0.48, tier >= 2 ? '#8a2a1a' : '#8a6a3a', null);
     circ(c, x + w * 0.8, b - 3, 3.5, '#ffb040'); fx.glows.push([x + w * 0.8, b - 6, 16, '#ff9a3a']);

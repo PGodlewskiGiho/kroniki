@@ -446,7 +446,7 @@ function drawWorldPixel(b, st) {
     else if (ob.type === 'town') {
       const t = st.towns[ob.townId], lvl = townLevel(t), mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, fc = ownerColor(st, ob.owner);
       blitG(b, townSprite(t.faction, lvl), mx, my);
-      for (const [fx, fy] of TOWN_FLAG_POINTS[lvl]) blitG(b, flagSprite(fc, 10, 6), mx + fx, my + fy - 20); // drzewce stoi na szczycie dachu
+      for (const [fx, fy] of townFlagPoints(t.faction, lvl)) blitG(b, flagSprite(fc, 10, 6), mx + fx, my + fy - 20); // drzewce stoi na szczycie dachu
     }
   }
   drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
