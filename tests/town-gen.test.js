@@ -75,3 +75,24 @@ test('przegląd stworów (jak Fort w Heroes 3): siedem poziomów, werbunek tylko
   await page.evaluate(() => { G.modal = null; });
   await frames(page, 3);
 });
+
+test('gildia magów: podgląd czarów z widokiem na miasto, zwoje zbudowanych poziomów, opis po kliknięciu', async () => {
+  await newGame(page, { mapSize: 'M' }, 8);
+  await page.evaluate(() => { const st = G.state, t = st.towns[0]; t.built = ['hall1', 'tavern', 'guild1', 'guild2']; rollGuildLevel(st, t, 1); rollGuildLevel(st, t, 2); setScreen('town', { townId: t.id }); });
+  await frames(page, 8);
+  const opened = await page.evaluate(() => { const r = TownFXCache[lastTownKey].rects[2]; G.screens.town.onClick(r.x + r.w / 2, r.y + r.h * 0.7); return !!(G.modal && G.modal.guild); });
+  assert.ok(opened, 'klik w gildię otwiera podgląd czarów');
+  await frames(page, 6);
+  const r = await page.evaluate(() => {
+    const M = G.modal, r0 = M.rects[0]; M.onClick(r0.x + 5, r0.y + 5);
+    return { n: M.rects.length, want: GUILD_OFFER[1] + GUILD_OFFER[2], sel: M.sel === r0.id, info: M.rightInfo(r0.x + 5, r0.y + 5), win: M.rightInfo(GV.win.x + 30, GV.win.y + 60), view: !!G.screens.town.fb };
+  });
+  assert.equal(r.n, r.want, 'zwoje tylko z poziomów 1 i 2');
+  assert.ok(r.sel); assert.match(r.info, /poziom [12], \d+ many/); assert.match(r.win, /Widok z okna gildii/); assert.ok(r.view);
+  await frames(page, 4);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.evaluate(() => G.modal), null);
+  await page.keyboard.press('g');
+  assert.ok(await page.evaluate(() => !!(G.modal && G.modal.guild)), 'klawisz G otwiera gildię');
+  await page.keyboard.press('Escape');
+});
