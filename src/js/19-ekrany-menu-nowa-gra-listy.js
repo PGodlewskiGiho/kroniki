@@ -149,7 +149,6 @@ G.screens.menu = {
       B('Nowa gra', () => G.go('setup'), { key: 'n' }),
       B('Wczytaj grę', () => G.go('load', { mode: 'load' }), { key: 'l' }),
       B('Najlepsze wyniki', () => G.go('scores'), { key: 'h' }),
-      B('Dźwięk', () => showSoundSettings(), { key: 'd' }),
       B('Twórcy', () => G.go('credits'), { key: 'c' }),
       B('Wyjście', () => askQuit(), { key: 'q' }),
     ];
@@ -158,7 +157,7 @@ G.screens.menu = {
   onBack() { askQuit(); },
   draw(ctx) {
     drawMenuScene(ctx);
-    drawStone(ctx, 520, 172, 260, 354);
+    drawStone(ctx, 520, 172, 260, 298);
     this.buttons.forEach(b => b.draw(ctx));
     goldText(ctx, 'KRONIKI KRÓLESTW', W / 2, 62, 44);
     text(ctx, 'Czas bohaterów', W / 2, 104, { size: 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });

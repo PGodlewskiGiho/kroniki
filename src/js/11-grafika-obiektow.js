@@ -782,7 +782,7 @@ function showRecruit(st, t, L, onDone, backToList) {
   const bPlus = new Button(x + 284, qy, 36, 30, 'Więcej', () => set(n + 1), { icon: iconPlus, key: '+' });
   const bMax = new Button(x + 330, qy, 80, 30, 'Maks', () => set(maxN()), { size: 14, key: 'm' });
   const bBuy = new Button(x + (backToList ? 30 : 90), y + hh - 56, 130, 40, 'Rekrutuj', () => {
-    const err = recruit(st, t, L, cid, n); if (err) { Sound.play('error'); onDone(err); return; } Sound.play('recruit');
+    const err = recruit(st, t, L, cid, n); if (err) { onDone(err); return; }
     G.modal = null; onDone(`Zwerbowano: ${CREATURES[cid].name} × ${n}`);
   }, { key: 'enter', size: 17 });
   const bClose = new Button(x + (backToList ? 300 : 240), y + hh - 56, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });

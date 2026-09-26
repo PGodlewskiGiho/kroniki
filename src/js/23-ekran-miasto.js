@@ -21,7 +21,7 @@ G.screens.town = {
   showShipyard() {
     const st = G.state, t = this.town();
     showDialog(`Stocznia. Łódź kosztuje ${BOAT_COST.gold} złota i ${BOAT_COST.wood} drewna i czeka na wodzie przy mieście. Bohater wsiada, wchodząc na nią z brzegu.`, [
-      { label: 'Kup łódź', key: 'enter', action: () => { const e = buyBoat(st, t); Sound.play(e ? 'error' : 'boat'); this.say(e || 'Łódź czeka na wodzie przy mieście'); } },
+      { label: 'Kup łódź', key: 'enter', action: () => { const e = buyBoat(st, t); this.say(e || 'Łódź czeka na wodzie przy mieście'); } },
       { label: 'Wyjdź', key: 'escape' }]);
   },
   onWheel(d) { const n = availableBuildings(this.town()).length; this.scroll = clamp(this.scroll + d, 0, Math.max(0, n - this.LIST_ROWS)); },
@@ -66,7 +66,7 @@ G.screens.town = {
     if (t.builtToday) return this.say('W tym mieście zbudowano już dziś budowlę');
     if (!canAfford(st, B.cost)) return this.say('Brakuje zasobów na tę budowlę');
     showDialog(`Zbudować: ${info.name}? ${info.desc}`, [
-      { label: 'Zbuduj', key: 'enter', action: () => { buildIn(st, t, B); Sound.play('build'); this.say(`Zbudowano: ${info.name}`); if (/^guild/.test(B.id)) this.guildVisit(); } },
+      { label: 'Zbuduj', key: 'enter', action: () => { buildIn(st, t, B); this.say(`Zbudowano: ${info.name}`); if (/^guild/.test(B.id)) this.guildVisit(); } },
       { label: 'Nie', key: 'escape' },
     ], { iconH: 40, icon: (ctx, cx, cy) => { ctx.font = font(14, 700, 'body'); const w = RESOURCES.reduce((a, r) => a + (B.cost[r.id] ? 29 + ctx.measureText(String(B.cost[r.id])).width : 0), 0); drawCost(ctx, B.cost, cx - w / 2, cy, { size: 24 }); } });
   },

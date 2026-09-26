@@ -6,7 +6,7 @@ const G = {
   mouse: { x: -1, y: -1, down: false },
   hover: null, downTarget: null, modal: null, keys: new Set(), popup: null, pressTimer: 0, longPress: false,
   fade: { a: 1, target: 0, next: null },
-  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, sfx: 0.7, mus: 0.7 }, rs: 1,
+  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null }, rs: 1,
   state: null,
 };
 function loadSettings() {
@@ -18,7 +18,7 @@ function loadSettings() {
   if (!PLAYER_COLORS.some(c => c.id === S.color)) S.color = 'red';
   if (!BONUSES.some(b => b.id === S.bonus)) S.bonus = 'gold';
   if (!FACTIONS.some(f => f.id === S.faction)) S.faction = 'haven';
-  for (const [k, d] of [['sfx', 0.7], ['mus', 0.7]]) if (!SOUND_LEVELS.includes(S[k])) S[k] = d;
+  delete S.sfx; delete S.mus; // głośności z czasów, gdy gra miała dźwięk
   S.slots = validSlots(S.slots) || legacySlots(S);
 }
 // Miejsca graczy na ekranie nowej gry: 8 miejsc { type: 'human' | 'ai' | 'off', color, faction ('random' = losowa) }.
