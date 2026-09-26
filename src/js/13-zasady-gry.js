@@ -100,15 +100,15 @@ function heroStep(st, h) {
   if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } return false; }
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
-  h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h)); if (h.owner === ME) Sound.play('step');
+  h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
   if (!h.path.length) { h.path = null; h.dest = null; }
-  if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); if (h.owner === ME) Sound.play('boat'); return true; }
-  if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; if (h.owner === ME) Sound.play('boat'); } // wysiadka: łódź zostaje przy brzegu
+  if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); return true; }
+  if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; } // wysiadka: łódź zostaje przy brzegu
   if (st.guard[ni]) { const m = st.objects[st.guard[ni] - 1]; halt(); h.pending = () => startEncounter(st, h, m); }
   else if (ob) { halt(); h.pending = () => visitObject(st, h, ob); }
   return true;
 }
-function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); Sound.play(res === 'gold' ? 'coin' : 'pickup'); }
+function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); }
 function visitObject(st, h, ob) {
   const R = playerOf(st, h.owner).resources;
   if (ob.type === 'res') { R[ob.res] += ob.amount; advFloat(`+${ob.amount}`, h.x, h.y, ob.res); removeObject(st, ob); }
@@ -119,7 +119,7 @@ function visitObject(st, h, ob) {
       { label: `${ob.exp} dośw.`, action: () => { advFloat(`+${ob.exp} dośw.`, h.x, h.y); gainExp(st, h, ob.exp); } },
     ], { locked: true, iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, chestSprite(), cx, cy + 4, 2) });
   } else if (ob.type === 'art') {
-    removeObject(st, ob); Sound.play('treasure'); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
+    removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
     showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}`, [{ label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art), cx, cy, 2) });
   } else if (ob.type === 'site') {
@@ -254,7 +254,7 @@ function gainExp(st, h, amount, then) {
   const next = i => {
     if (i >= ups.length) { if (then) then(); return; }
     const u = ups[i], offer = skillOffer(st, h, u.level), icon = { iconH: 76, locked: offer.length > 0, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) };
-    const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`; Sound.play('levelup');
+    const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`;
     if (!offer.length) { showDialog(msg, [{ label: 'Wspaniale', key: 'enter', action: () => next(i + 1) }], icon); return; }
     showDialog(`${msg} Wybierz umiejętność:`, offer.map((id, k) => {
       const L = heroSkill(h, id) + 1;
@@ -414,6 +414,22 @@ function armyMove(fromA, i, toA, j, heroArmies = []) {
   const leaves = !d || d.cid === s.cid; // miejsce źródłowe się opróżni
   if (leaves && fromA !== toA && heroArmies.includes(fromA) && armyStacks(fromA).length === 1) return 'Bohater musi mieć co najmniej jeden oddział';
   if (!d) { toA[j] = s; fromA[i] = null; } else if (d.cid === s.cid) { d.n += s.n; fromA[i] = null; } else { toA[j] = s; fromA[i] = d; }
+  return null;
+}
+// Podział oddziału: n jednostek z fromA[i] na wolne miejsce albo do takiego samego oddziału toA[j].
+// Wszystkie jednostki = zwykłe przeniesienie (armyMove). Zwraca błąd albo null.
+function splitLimit(fromA, i, toA, j, heroArmies = []) {
+  const s = fromA[i], d = toA[j]; if (!s) return { err: 'Wybierz oddział' };
+  if (fromA === toA && i === j) return { err: 'Wskaż inne miejsce, do którego trafi część oddziału' };
+  if (d && d.cid !== s.cid) return { err: 'Część oddziału można przenieść tylko na wolne miejsce albo do takiego samego oddziału' };
+  const keep = (fromA === toA || (heroArmies.includes(fromA) && armyStacks(fromA).length === 1)) ? 1 : 0; // bohater zatrzymuje choć jedną jednostkę
+  const max = s.n - keep; return max < 1 ? { err: 'Oddziału z jednej jednostki nie da się podzielić' } : { max };
+}
+function armySplit(fromA, i, toA, j, n, heroArmies = []) {
+  const L = splitLimit(fromA, i, toA, j, heroArmies); if (L.err) return L.err;
+  n = clamp(Math.floor(n), 1, L.max); const s = fromA[i];
+  if (n >= s.n) return armyMove(fromA, i, toA, j, heroArmies);
+  s.n -= n; if (toA[j]) toA[j].n += n; else toA[j] = { cid: s.cid, n };
   return null;
 }
 // Dzienny dochód gracza { wood, ..., gold }: kopalnie + miasta. Jedno źródło dla końca dnia, panelu i okna królestwa.

@@ -36,7 +36,6 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
      STAN GRY I USTAWIENIA           G (program), miejsca graczy (slots), ME = człowiek przy ekranie, skróty: human, hero...
      NARZĘDZIA                       losowość, szum, A*, kolory
      RYSOWANIE: PODSTAWY I PIXEL ART tekst, cache warstw, sprite(), drawSprite(), blit()
-     DŹWIĘK                          Web Audio bez plików: Sound.play(efekt), Sound.music(motyw), SFX, MUSIC
      INTERFEJS                       kamień, pergamin, Button, showDialog, drawCost, pasek surowców
      GRAFIKA OBIEKTÓW                jeden rysunek na obiekt: surowce, kopalnie, stwory, bohater, miasto
      GRAFIKA: PORTRETY BOHATERÓW     pixel art 36×36, wygląd z HERO_LOOKS albo losowany z imienia
@@ -136,7 +135,7 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    przyspieszenie armii), gildie IV i V (GUILD_MAX), cele 'livingAlly', 'all' i 'allies' (spellArea z B),
    księga czarów w trzech kolumnach, gdy czarów jest wiele.
    Grafika mapy: ruda jako ciemne bryłki, góry/drzewa/skały ze ściankami (8 wariantów gór), ozdoby na pustych polach.
-   Dźwięk: efekty i muzyka syntezowane w Web Audio (DŹWIĘK), motyw zależny od ekranu i frakcji, głośność w menu.
+   Dźwięk: efekty i muzyka syntezowane w Web Audio; później usunięte w całości (słabe brzmienie, koszt na słabym PC).
    Statki: obiekt 'boat' na wodzie, h.boat (passableTile/legOk: w łodzi tylko woda, brzeg jako cel; wysiadka kończy ruch),
    stocznia (buyBoat, shipyardSpot, tylko w mieście nad wodą), darmowe łodzie przy brzegach.
    Nowe frakcje: Twierdza (bagna: gnolle, jaszczuroludzie, ważki, bazyliszki, gorgony, wywerny, hydry) i Inferno (lawa:
@@ -147,6 +146,11 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    (tell/takeInbox), obrona innego człowieka przed atakiem komputera, bitwa człowiek na człowieka (obie strony ręcznie),
    zwycięzca = ostatni gracz na placu. Miejsc na miasta: 4/6/8/10 zależnie od mapy (SITE_COUNT).
    Imiona graczy: pole tekstowe askText (prawdziwy <input> nad oknem), slot.name → player.name, playerName.
+   Podział oddziału: splitLimit/armySplit, okno showSplit (przycisk „Dziel” albo Shift+klik) w spotkaniu, mieście i u bohatera.
+   Wydajność: klatka rysowana tylko w razie potrzeby (screen.fps, G.dirty), kamienne tło i pergamin z pamięci (Layers, drawLayer
+   w całych pikselach), mapa bez przeliczania całego obrazu co klatkę (gradeCanvas w kawałkach terenu i kopiach sprite'ów, mgła
+   w kawałkach fogChunk, nakładka mapLight), scena menu i efekty miasta ~12–15 klatek/s, jakość grafiki (auto/wysoka/niska, Perf).
+   Kawałki terenu: budżet ~10 ms na klatkę (MapRender.get allow, zastępczy placeholder), generowanie wokół widoku z wyprzedzeniem.
    Porządki i trudniejsza mapa: potwory neutralne to też jednostki frakcji (poziomy 1–7, fillNeutrals), siła rośnie
    wykładniczo z odległością od najbliższego startu (MONSTER_POWER, d01) i z trudnością, potwory rosną co tydzień
    (MONSTER_GROW do MONSTER_GROW_MAX). Skarbce BANKS (Krypta, Orcza warownia, Gniazdo gryfów, Leże hydr, Smocza Utopia):
@@ -681,7 +685,7 @@ const G = {
   mouse: { x: -1, y: -1, down: false },
   hover: null, downTarget: null, modal: null, keys: new Set(), popup: null, pressTimer: 0, longPress: false,
   fade: { a: 1, target: 0, next: null },
-  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, sfx: 0.7, mus: 0.7 }, rs: 1,
+  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, quality: 'auto' }, rs: 1,
   state: null,
 };
 function loadSettings() {
@@ -693,7 +697,9 @@ function loadSettings() {
   if (!PLAYER_COLORS.some(c => c.id === S.color)) S.color = 'red';
   if (!BONUSES.some(b => b.id === S.bonus)) S.bonus = 'gold';
   if (!FACTIONS.some(f => f.id === S.faction)) S.faction = 'haven';
-  for (const [k, d] of [['sfx', 0.7], ['mus', 0.7]]) if (!SOUND_LEVELS.includes(S[k])) S[k] = d;
+  delete S.sfx; delete S.mus; // głośności z czasów, gdy gra miała dźwięk
+  if (!['auto', 'high', 'low'].includes(S.quality)) S.quality = 'auto';
+  if (!(S.autoDpr >= 0.75 && S.autoDpr <= 2)) delete S.autoDpr;
   S.slots = validSlots(S.slots) || legacySlots(S);
 }
 // Miejsca graczy na ekranie nowej gry: 8 miejsc { type: 'human' | 'ai' | 'off', color, faction ('random' = losowa) }.
@@ -837,6 +843,12 @@ const Layers = {
     return c;
   },
 };
+// Warstwa w naturalnym rozmiarze: piksel warstwy = piksel płótna (bez skalowania i filtrowania, które na słabym komputerze kosztuje najwięcej)
+function drawLayer(ctx, c, x, y) {
+  const m = ctx.getTransform();
+  if (m.b || m.c || Math.abs(m.a - c._s) > 1e-6 || Math.abs(m.d - c._s) > 1e-6) { ctx.drawImage(c, x, y, c.width / c._s, c.height / c._s); return; }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(c, Math.round(m.a * x + m.e), Math.round(m.d * y + m.f)); ctx.restore(); // w całych pikselach
+}
 let _noiseCanvas = null;
  
 const _patterns = new WeakMap();
@@ -926,188 +938,6 @@ function pixelQuantize(cv, step = 18) {
   g.putImageData(img, 0, 0);
 }
 
-// ==================== DŹWIĘK ============================================================
-// Wszystko syntezowane w Web Audio, bez plików: efekty Sound.play(id) i muzyka Sound.music(motyw).
-// Kontekst audio powstaje przy pierwszym kliknięciu albo klawiszu (wymóg przeglądarek); do tego czasu
-// i bez Web Audio wszystko jest ciche. Głośność: G.settings.sfx i G.settings.mus (0–1, kroki SOUND_LEVELS).
-const SOUND_LEVELS = [0, 0.35, 0.7, 1];
-const NOTE = m => 440 * Math.pow(2, (m - 69) / 12); // numer MIDI → Hz
-const Sound = {
-  ctx: null, master: null, sfxBus: null, musBus: null, noiseBuf: null, last: {}, theme: null, song: null, timer: null, steps: 0,
-  unlock() {
-    if (!this.ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-      try { this.ctx = new AC(); } catch (e) { return; }
-      const c = this.ctx, comp = c.createDynamicsCompressor();
-      this.master = c.createGain(); this.master.gain.value = 0.8; this.master.connect(comp); comp.connect(c.destination);
-      this.sfxBus = c.createGain(); this.sfxBus.connect(this.master); this.musBus = c.createGain(); this.musBus.connect(this.master);
-      const n = c.sampleRate, b = c.createBuffer(1, n, n), d = b.getChannelData(0), r = mulberry32(7); for (let i = 0; i < n; i++) d[i] = r() * 2 - 1; this.noiseBuf = b;
-      this.applyVolume();
-    }
-    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
-    if (this.theme && !this.song) this.startSong(this.theme);
-  },
-  applyVolume() { if (!this.ctx) return; const t = this.ctx.currentTime; this.sfxBus.gain.setTargetAtTime(G.settings.sfx ?? 0.7, t, 0.05); this.musBus.gain.setTargetAtTime((G.settings.mus ?? 0.7) * 0.55, t, 0.2); },
-  ready() { return !!(this.ctx && this.ctx.state === 'running'); },
-  // --- klocki: ton i szum z obwiednią (a = narastanie, d = zanikanie) ---
-  tone(f, t, dur, o = {}) {
-    const c = this.ctx, osc = c.createOscillator(), g = c.createGain(); let out = osc;
-    osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(f, t); if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + (o.slide || dur));
-    if (o.vib) { const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = o.vib; lg.gain.value = f * 0.012; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + dur + 0.1); }
-    if (o.lp) { const fl = c.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = o.lp; osc.connect(fl); out = fl; }
-    const v = o.vol ?? 0.3, a = o.a ?? 0.005;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + a); g.gain.setValueAtTime(v, t + Math.max(a, dur - (o.d ?? dur * 0.8)));
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    out.connect(g); g.connect(o.bus || this.sfxBus); osc.start(t); osc.stop(t + dur + 0.05);
-  },
-  noise(t, dur, o = {}) {
-    const c = this.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-    s.buffer = this.noiseBuf; s.loop = true; f.type = o.filter || 'bandpass'; f.frequency.setValueAtTime(o.f || 1000, t); f.Q.value = o.q ?? 1;
-    if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t + dur);
-    const v = o.vol ?? 0.3, a = o.a ?? 0.003;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f); f.connect(g); g.connect(o.bus || this.sfxBus); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
-  },
-  // Efekt dźwiękowy; ten sam nie częściej niż co 40 ms (szybka walka automatyczna)
-  play(id) {
-    if (!this.ready() || !(G.settings.sfx ?? 0.7) || !SFX[id]) return;
-    const t = this.ctx.currentTime; if (this.last[id] && t - this.last[id] < 0.04) return; this.last[id] = t;
-    try { SFX[id].call(this, t + 0.01); } catch (e) {}
-  },
-  // --- muzyka: motyw ekranu, pętla 8 taktów planowana z wyprzedzeniem ---
-  music(theme) {
-    if (theme === this.theme) return; this.theme = theme;
-    if (this.song) { const s = this.song, t = this.ctx.currentTime; s.gain.gain.setTargetAtTime(0.0001, t, 0.4); setTimeout(() => s.gain.disconnect(), 3000); this.song = null; }
-    if (this.ctx) this.startSong(theme);
-  },
-  startSong(theme) {
-    const T = MUSIC[theme]; if (!T || !this.ctx) return;
-    const g = this.ctx.createGain(); g.gain.value = 0.0001; g.gain.setTargetAtTime(1, this.ctx.currentTime, 0.8); g.connect(this.musBus);
-    this.song = { T, gain: g, notes: composeSong(T), step: 0, next: this.ctx.currentTime + 0.1 };
-    if (!this.timer) this.timer = setInterval(() => this.schedule(), 60);
-  },
-  schedule() {
-    const s = this.song; if (!s || !this.ready()) return;
-    const sp = 60 / s.T.bpm / 2; // ósemka
-    if (s.next < this.ctx.currentTime - 0.1) s.next = this.ctx.currentTime + 0.05; // karta była w tle: nie nadrabiamy zaległych nut
-    while (s.next < this.ctx.currentTime + 0.25) {
-      for (const n of s.notes[s.step]) this.voice(n, s.next, sp, s.gain);
-      s.step = (s.step + 1) % s.notes.length; s.next += sp;
-    }
-  },
-  voice(n, t, sp, bus) {
-    const I = INSTR[n.i], d = n.len * sp;
-    if (I.drum) return I.drum.call(this, t, bus, n.v);
-    this.tone(NOTE(n.m), t, d * (I.hold || 1), { type: I.type, vol: I.vol * (n.v || 1), a: I.a, d: I.d != null ? d * I.d : undefined, lp: I.lp, vib: I.vib, bus });
-    if (I.oct) this.tone(NOTE(n.m + 12), t, d * (I.hold || 1), { type: I.type, vol: I.vol * I.oct, a: I.a, lp: I.lp, bus });
-  },
-  // Motyw dla ekranu (wywoływane po zmianie ekranu); ekrany bez własnego motywu zostawiają obecny
-  screen(name) {
-    const st = G.state, fac = st && st.players ? human(st).faction : 'haven';
-    if (['menu', 'setup', 'load', 'scores', 'credits'].includes(name)) this.music('menu');
-    else if (name === 'adventure') this.music('map_' + fac);
-    else if (name === 'town') { const t = G.screens.town.town && G.screens.town.town(); this.music('town_' + (t ? t.faction : fac)); }
-    else if (name === 'battle') this.music('battle');
-  },
-};
-// --- efekty: każdy to krótka funkcja z tonów i szumu (this = Sound, t = czas startu) ---
-const SFX = {
-  click(t) { this.tone(620, t, 0.05, { type: 'triangle', vol: 0.18 }); this.noise(t, 0.025, { f: 2600, q: 2, vol: 0.12 }); },
-  step(t) { const k = (Sound.steps++ & 1) ? 1.15 : 1; this.noise(t, 0.06, { f: 900 * k, q: 3, vol: 0.2 }); this.tone(170 * k, t, 0.06, { type: 'triangle', vol: 0.12 }); },
-  coin(t) { this.tone(1320, t, 0.07, { type: 'square', vol: 0.11, lp: 4000 }); this.tone(1760, t + 0.07, 0.22, { type: 'square', vol: 0.11, lp: 4000 }); },
-  pickup(t) { [660, 880, 1175].forEach((f, i) => this.tone(f, t + i * 0.06, 0.14, { type: 'triangle', vol: 0.16 })); },
-  treasure(t) { [72, 76, 79, 84, 88].forEach((m, i) => { this.tone(NOTE(m), t + i * 0.07, 0.6, { vol: 0.13 }); this.tone(NOTE(m + 12), t + i * 0.07 + 0.2, 0.4, { vol: 0.04 }); }); },
-  magic(t) { this.tone(400, t, 0.35, { to: 1600, type: 'sine', vol: 0.15 }); [1568, 2093, 2637].forEach((f, i) => this.tone(f, t + 0.1 + i * 0.05, 0.25, { vol: 0.05 })); },
-  build(t) { for (let i = 0; i < 3; i++) { this.noise(t + i * 0.2, 0.08, { f: 1400, q: 1.5, vol: 0.3 }); this.tone(210, t + i * 0.2, 0.09, { type: 'triangle', vol: 0.25 }); } this.noise(t + 0.62, 0.5, { f: 300, filter: 'lowpass', vol: 0.12 }); },
-  recruit(t) { this.noise(t, 0.12, { f: 150, filter: 'lowpass', vol: 0.4 }); [[55, 0.08], [60, 0.2], [64, 0.2], [67, 0.45]].forEach(([m, d], i) => this.tone(NOTE(m + 12), t + 0.1 + i * 0.1, d, { type: 'square', vol: 0.1, lp: 2200 })); },
-  day(t) { this.tone(880, t, 1.4, { vol: 0.12, d: 1.3 }); this.tone(1320, t, 1.0, { vol: 0.04 }); this.tone(1760, t + 0.01, 0.7, { vol: 0.03 }); },
-  week(t) { [[55, 0], [59, 0.25], [62, 0.5]].forEach(([m, dt]) => this.tone(NOTE(m), t + dt, 1.3 - dt, { type: 'sawtooth', vol: 0.07, lp: 1400, a: 0.06 })); },
-  levelup(t) { [60, 64, 67, 72, 76, 79].forEach((m, i) => this.tone(NOTE(m + 12), t + i * 0.08, i === 5 ? 0.7 : 0.16, { type: 'square', vol: 0.1, lp: 3500 })); },
-  boat(t) { this.noise(t, 0.6, { f: 500, to: 1400, q: 0.8, vol: 0.18, a: 0.15 }); this.noise(t + 0.3, 0.7, { f: 1200, to: 400, q: 0.8, vol: 0.12, a: 0.1 }); this.tone(180, t + 0.05, 0.25, { to: 140, type: 'triangle', vol: 0.12 }); },
-  error(t) { this.tone(160, t, 0.1, { type: 'square', vol: 0.08, lp: 1200 }); this.tone(130, t + 0.12, 0.14, { type: 'square', vol: 0.08, lp: 1200 }); },
-  swing(t) { this.noise(t, 0.18, { f: 3200, to: 700, q: 1.2, vol: 0.28 }); },
-  hit(t) { this.noise(t, 0.12, { f: 700, filter: 'lowpass', vol: 0.5 }); this.tone(120, t, 0.16, { to: 55, vol: 0.4 }); },
-  death(t) { this.tone(260, t, 0.55, { to: 70, type: 'sawtooth', vol: 0.14, lp: 900 }); this.noise(t + 0.15, 0.4, { f: 250, filter: 'lowpass', vol: 0.25 }); },
-  bow(t) { this.tone(330, t, 0.07, { to: 180, type: 'triangle', vol: 0.2 }); this.noise(t + 0.03, 0.3, { f: 2500, to: 5000, filter: 'highpass', vol: 0.1 }); },
-  catapult(t) { this.noise(t, 0.25, { f: 400, q: 6, vol: 0.2 }); this.tone(90, t + 0.1, 0.3, { to: 45, vol: 0.4 }); },
-  boom(t) { this.noise(t, 1.1, { f: 900, to: 120, filter: 'lowpass', vol: 0.6 }); this.tone(70, t, 0.7, { to: 30, vol: 0.5 }); },
-  thunder(t) { this.noise(t, 0.09, { f: 1800, q: 0.7, vol: 0.6 }); this.noise(t + 0.05, 1.3, { f: 260, to: 80, filter: 'lowpass', vol: 0.45 }); },
-  buff(t) { [72, 79, 84].forEach((m, i) => this.tone(NOTE(m), t + i * 0.1, 0.7 - i * 0.1, { vol: 0.12, a: 0.03 })); },
-  curse(t) { [69, 68, 63].forEach((m, i) => this.tone(NOTE(m), t + i * 0.13, 0.35, { type: 'triangle', vol: 0.14, vib: 7 })); },
-  heal(t) { this.tone(660, t, 0.6, { to: 990, slide: 0.4, vol: 0.14, a: 0.05 }); [1320, 1760].forEach((f, i) => this.tone(f, t + 0.2 + i * 0.1, 0.4, { vol: 0.04 })); },
-  victory(t) { [[60, 0, 0.18], [64, 0.18, 0.18], [67, 0.36, 0.18], [72, 0.54, 1.2]].forEach(([m, dt, d]) => { this.tone(NOTE(m + 12), t + dt, d, { type: 'square', vol: 0.07, lp: 3000 }); this.tone(NOTE(m), t + dt, d, { type: 'triangle', vol: 0.12 }); }); this.tone(NOTE(48), t + 0.54, 1.2, { type: 'triangle', vol: 0.15 }); },
-  defeat(t) { [[69, 0], [67, 0.35], [65, 0.7], [64, 1.05]].forEach(([m, dt]) => this.tone(NOTE(m - 12), t + dt, 0.6, { type: 'sawtooth', vol: 0.07, lp: 900, a: 0.04 })); this.tone(NOTE(40), t + 1.05, 1.4, { type: 'triangle', vol: 0.15 }); },
-};
-// Dźwięk czaru w bitwie
-const spellSfx = id => ({ lightningBolt: 'thunder', fireball: 'boom', meteorShower: 'boom', armageddon: 'boom', slow: 'curse', weakness: 'curse', cure: 'heal', animateDead: 'heal', resurrection: 'heal' })[id]
-  || (SPELLS[id].dmg ? 'magic' : 'buff');
-
-// --- muzyka: instrumenty i motywy ---
-// i = instrument, m = nuta MIDI, len = długość w ósemkach, v = głośność względna
-const INSTR = {
-  pad: { type: 'triangle', vol: 0.05, a: 0.4, d: 0.5, lp: 900, hold: 1.1 },
-  bass: { type: 'triangle', vol: 0.14, a: 0.01, d: 0.7 },
-  harp: { type: 'triangle', vol: 0.06, a: 0.003, d: 0.95, hold: 2 },
-  flute: { type: 'triangle', vol: 0.08, a: 0.04, d: 0.4, vib: 5 },
-  bell: { type: 'sine', vol: 0.07, a: 0.002, d: 0.98, hold: 3, oct: 0.3 },
-  horn: { type: 'sawtooth', vol: 0.035, a: 0.03, d: 0.5, lp: 1300 },
-  kick: { drum(t, bus, v = 1) { this.tone(110, t, 0.18, { to: 40, vol: 0.35 * v, bus }); } },
-  snare: { drum(t, bus, v = 1) { this.noise(t, 0.14, { f: 1800, q: 0.8, vol: 0.16 * v, bus }); } },
-  tom: { drum(t, bus, v = 1) { this.tone(180, t, 0.2, { to: 90, vol: 0.2 * v, bus }); } },
-};
-// scale = stopnie skali (półtony), prog = akordy (stopnie skali) na 8 taktów, lead = instrument melodii
-const MUSIC = {
-  menu: { bpm: 76, root: 50, scale: [0, 2, 3, 5, 7, 9, 10], prog: [0, 6, 5, 4, 0, 3, 5, 4], lead: 'flute', arp: 'harp', seed: 11 },
-  map_haven: { bpm: 96, root: 53, scale: [0, 2, 4, 5, 7, 9, 11], prog: [0, 3, 4, 0, 5, 3, 1, 4], lead: 'flute', arp: 'harp', seed: 21 },
-  map_sylvan: { bpm: 88, root: 57, scale: [0, 2, 3, 5, 7, 9, 10], prog: [0, 6, 3, 0, 0, 6, 4, 4], lead: 'flute', arp: 'harp', seed: 31 },
-  map_barrow: { bpm: 70, root: 50, scale: [0, 1, 3, 5, 7, 8, 10], prog: [0, 5, 1, 0, 0, 5, 6, 4], lead: 'bell', arp: null, seed: 41 },
-  town_haven: { bpm: 84, root: 55, scale: [0, 2, 4, 5, 7, 9, 11], prog: [0, 4, 5, 3, 0, 4, 3, 4], lead: 'horn', arp: 'harp', seed: 51 },
-  town_sylvan: { bpm: 80, root: 52, scale: [0, 2, 3, 5, 7, 9, 10], prog: [0, 3, 6, 0, 5, 3, 4, 0], lead: 'harp', arp: 'harp', seed: 61 },
-  town_barrow: { bpm: 64, root: 45, scale: [0, 1, 3, 5, 7, 8, 10], prog: [0, 1, 0, 5, 0, 1, 6, 4], lead: 'bell', arp: null, seed: 71 },
-  map_fortress: { bpm: 80, root: 48, scale: [0, 2, 3, 5, 7, 8, 10], prog: [0, 3, 0, 6, 5, 3, 4, 4], lead: 'flute', arp: 'harp', seed: 91 },
-  town_fortress: { bpm: 90, root: 50, scale: [0, 2, 3, 5, 7, 9, 10], prog: [0, 0, 6, 3, 0, 5, 6, 4], lead: 'horn', arp: null, drums: true, seed: 95 },
-  map_inferno: { bpm: 76, root: 47, scale: [0, 1, 4, 5, 7, 8, 10], prog: [0, 1, 0, 6, 0, 1, 5, 4], lead: 'horn', arp: null, seed: 101 },
-  town_inferno: { bpm: 68, root: 45, scale: [0, 1, 4, 5, 7, 8, 10], prog: [0, 5, 1, 0, 6, 5, 1, 4], lead: 'bell', arp: null, drums: true, seed: 105 },
-  battle: { bpm: 132, root: 52, scale: [0, 2, 3, 5, 7, 8, 10], prog: [0, 0, 5, 6, 0, 0, 3, 4], lead: 'horn', arp: null, drums: true, seed: 81 },
-};
-// Układa 8 taktów po 8 ósemek: akord (pad), bas, arpeggio, melodia z prostym motywem (A A' powtórzone) i bębny w bitwie
-function composeSong(T) {
-  const r = mulberry32(T.seed), steps = Array.from({ length: 64 }, () => []), S = T.scale;
-  const deg = (d, oct = 0) => T.root + S[((d % 7) + 7) % 7] + 12 * (oct + Math.floor(d / 7));
-  const rhythms = [[2, 2, 2, 2], [3, 1, 2, 2], [2, 1, 1, 4], [4, 2, 2], [1, 1, 2, 2, 2], [6, 2]];
-  const motif = [0, 1].map(() => rhythms[Math.floor(r() * rhythms.length)]);
-  let mel = 4; // stopień skali melodii względem toniki (oktawa wyżej)
-  T.prog.forEach((c, bar) => {
-    const b = bar * 8, chord = [c, c + 2, c + 4];
-    chord.forEach(d => steps[b].push({ i: 'pad', m: deg(d), len: 8 }));
-    steps[b].push({ i: 'bass', m: deg(c, -1), len: 3 }); steps[b + 4].push({ i: 'bass', m: deg(c + (T.drums ? 0 : 4), -1), len: 3 });
-    if (T.drums) { for (let k = 0; k < 8; k += 2) steps[b + k + 1].push({ i: 'bass', m: deg(c, -1), len: 1, v: 0.7 }); }
-    if (T.arp) for (let k = 0; k < 8; k++) steps[b + k].push({ i: T.arp, m: deg(chord[[0, 1, 2, 1][k % 4]] + (k >= 4 ? 7 : 0), 0), len: 1, v: 0.8 });
-    const rh = motif[bar % 2 === 0 ? 0 : 1]; let k = 0;
-    rh.forEach((len, j) => {
-      if (j === 0) { const tones = chord.map(d => d + 7); mel = tones.reduce((a, x) => Math.abs(x - mel) < Math.abs(a - mel) ? x : a, tones[0]); } // mocna część: najbliższy dźwięk akordu
-      else mel += [-2, -1, -1, 1, 1, 2][Math.floor(r() * 6)];
-      mel = clamp(mel, 3, 12);
-      if (bar === 7 && j === rh.length - 1) mel = 7; // koniec frazy na tonice
-      if (!(bar % 4 === 3 && j === 0 && r() < 0.3)) steps[b + k].push({ i: T.lead, m: deg(mel, 0), len });
-      k += len;
-    });
-    if (T.drums) for (let k2 = 0; k2 < 8; k2++) {
-      if (k2 % 4 === 0) steps[b + k2].push({ i: 'kick', len: 1 });
-      if (k2 % 4 === 2) steps[b + k2].push({ i: 'snare', len: 1 });
-      if (bar % 4 === 3 && k2 >= 5) steps[b + k2].push({ i: 'tom', len: 1, v: 0.6 + k2 * 0.05 });
-    }
-  });
-  return steps;
-}
-// Okno ustawień dźwięku (z menu gry i menu głównego); after = co zrobić po zamknięciu
-function showSoundSettings(after) {
-  const pct = v => `${Math.round((v ?? 0) * 100)}%`, cycle = k => { const i = SOUND_LEVELS.indexOf(G.settings[k]); G.settings[k] = SOUND_LEVELS[(i + 1) % SOUND_LEVELS.length]; saveSettings(); Sound.applyVolume(); showSoundSettings(after); };
-  showDialog('Dźwięk. Kliknij, aby zmienić głośność (wyłączone, cicho, średnio, głośno).', [
-    { label: `Efekty ${pct(G.settings.sfx)}`, key: 'e', action: () => cycle('sfx') },
-    { label: `Muzyka ${pct(G.settings.mus)}`, key: 'u', action: () => cycle('mus') },
-    { label: 'Gotowe', key: 'enter', action: () => { if (after) after(); } }]);
-}
 // ==================== INTERFEJS: RAMKI, PRZYCISKI, OKNA =================================
 // Kamień, pergamin, przyciski, okna dialogowe, dymki, ikony przycisków.
 function drawCorners(ctx, x, y, w, h) {
@@ -1133,7 +963,9 @@ function drawStone(ctx, x, y, w, h) {
   drawCorners(ctx, x, y, w, h);
   ctx.restore();
 }
-function drawParchment(ctx, x, y, w, h) {
+// Pergamin (tło okien i paneli): gotowy obraz danego rozmiaru z pamięci (Layers), bo gradient, szum i przycinanie co klatkę kosztują
+function drawParchment(ctx, x, y, w, h) { drawLayer(ctx, Layers.get(`parch_${w}x${h}`, w + 16, h + 16, c => paintParchment(c, 4, 4, w, h)), x - 4, y - 4); }
+function paintParchment(ctx, x, y, w, h) {
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,.6)'; rr(ctx, x + 5, y + 7, w, h, 8); ctx.fill();
   rr(ctx, x, y, w, h, 8); ctx.fillStyle = '#d8bf88'; ctx.fill();
@@ -1152,14 +984,18 @@ function divider(ctx, x1, x2, y) {
   const cx = (x1 + x2) / 2; ctx.fillStyle = '#8a5a1e';
   ctx.beginPath(); ctx.moveTo(cx, y - 4); ctx.lineTo(cx + 6, y); ctx.lineTo(cx, y + 4); ctx.lineTo(cx - 6, y); ctx.closePath(); ctx.fill();
 }
-function stoneFill(c, x, y, w, h) {
-  const g = c.createLinearGradient(x, y, x, y + h); g.addColorStop(0, '#554d44'); g.addColorStop(1, '#2b2621');
-  c.fillStyle = g; c.fillRect(x, y, w, h); c.fillStyle = noise(c); c.fillRect(x, y, w, h);
-  c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 1;
-  for (let yy = y + 20, row = 0; yy < y + h; yy += 20, row++) {
-    c.beginPath(); c.moveTo(x, yy); c.lineTo(x + w, yy); c.stroke();
-    for (let xx = x + (row % 2 ? 22 : 0); xx < x + w; xx += 44) { c.beginPath(); c.moveTo(xx, yy - 20); c.lineTo(xx, yy); c.stroke(); }
+// Kamienne tło z fugami. Rysowanie setek kresek co klatkę było najdroższą częścią kilku ekranów,
+// dlatego gotowy obraz danego rozmiaru trzymamy w pamięci (Layers) i tylko go wklejamy.
+function stoneFill(c, x, y, w, h) { drawLayer(c, Layers.get(`stone_${w}x${h}`, w, h, paintStone), x, y); }
+function paintStone(c, w, h) {
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#554d44'); g.addColorStop(1, '#2b2621');
+  c.fillStyle = g; c.fillRect(0, 0, w, h); c.fillStyle = noise(c); c.fillRect(0, 0, w, h);
+  c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 1; c.beginPath();
+  for (let yy = 20, row = 0; yy < h; yy += 20, row++) {
+    c.moveTo(0, yy); c.lineTo(w, yy);
+    for (let xx = row % 2 ? 22 : 0; xx < w; xx += 44) { c.moveTo(xx, yy - 20); c.lineTo(xx, yy); }
   }
+  c.stroke();
 }
 function goldFrame(c, x, y, w, h) { c.fillStyle = '#000'; c.fillRect(x - 3, y - 3, w + 6, h + 6); c.strokeStyle = '#b8913f'; c.lineWidth = 1.5; c.strokeRect(x - 4.5, y - 4.5, w + 9, h + 9); }
 class Button {
@@ -1204,7 +1040,7 @@ class Button {
 }
 function clickButtons(list, x, y) {
   const b = list.find(b => !b.disabled && b.hit(x, y));
-  if (b && b === G.downTarget) { Sound.play('click'); if (b.action) b.action(); return true; }
+  if (b && b === G.downTarget) { if (b.action) b.action(); return true; }
   return false;
 }
 // opts: [{label, key, action, sub, tip}]; extra: icon, iconH, locked (Esc nie zamyka), bw (szerokość przycisków)
@@ -2100,7 +1936,7 @@ function showRecruit(st, t, L, onDone, backToList) {
   const bPlus = new Button(x + 284, qy, 36, 30, 'Więcej', () => set(n + 1), { icon: iconPlus, key: '+' });
   const bMax = new Button(x + 330, qy, 80, 30, 'Maks', () => set(maxN()), { size: 14, key: 'm' });
   const bBuy = new Button(x + (backToList ? 30 : 90), y + hh - 56, 130, 40, 'Rekrutuj', () => {
-    const err = recruit(st, t, L, cid, n); if (err) { Sound.play('error'); onDone(err); return; } Sound.play('recruit');
+    const err = recruit(st, t, L, cid, n); if (err) { onDone(err); return; }
     G.modal = null; onDone(`Zwerbowano: ${CREATURES[cid].name} × ${n}`);
   }, { key: 'enter', size: 17 });
   const bClose = new Button(x + (backToList ? 300 : 240), y + hh - 56, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
@@ -2179,16 +2015,20 @@ function showMeeting(st, a, b, onMsg) {
   const x = 60, y = 70, w = 680, hh = 460, heroes = [a, b], rows = [y + 96, y + 290], armies = [a.army, b.army];
   let sel = null, msg = ''; const say = m => { msg = m; if (onMsg) onMsg(m); };
   let armyRects = [[], []], bagRects = [[], []];
-  const bClose = new Button(x + w / 2 - 65, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
+  let splitMode = false; // „Dziel”: następne wskazanie miejsca otwiera okno podziału (to samo daje Shift+klik)
+  const bClose = new Button(x + w / 2 + 5, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
+  const bSplit = new Button(x + w / 2 - 135, y + hh - 54, 130, 40, 'Dziel', () => { splitMode = !splitMode; say(splitMode ? 'Wybierz oddział, a potem miejsce: przeniesiesz tylko część jednostek.' : ''); }, { key: 'd', size: 17, selected: () => splitMode, tip: 'Podział oddziału: przenieś tylko część jednostek (albo Shift+klik na miejscu docelowym).' });
   const armyAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(armyRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   const bagAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(bagRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   G.modal = {
-    buttons: [bClose], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
+    buttons: [bSplit, bClose], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
     onClick(px, py) {
       const s = armyAt(px, py), g = bagAt(px, py);
       if (s) {
         if (!sel) { if (armies[s.k][s.i]) { sel = s; msg = ''; } return; }
-        const err = armyMove(armies[sel.k], sel.i, armies[s.k], s.i, armies); sel = null; if (err) say(err); return;
+        const from = sel; sel = null;
+        if (splitMode || G.keys.has('shift')) { splitMode = false; showSplit(armies[from.k], from.i, armies[s.k], s.i, armies, err => { if (err) say(err); }); return; }
+        const err = armyMove(armies[from.k], from.i, armies[s.k], s.i, armies); if (err) say(err); return;
       }
       if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
       sel = null;
@@ -2201,7 +2041,7 @@ function showMeeting(st, a, b, onMsg) {
     draw(ctx) {
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, 'Spotkanie bohaterów', W / 2, y + 30, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' });
-      text(ctx, msg || 'Kliknij oddział, a potem miejsce, aby go przenieść. Kliknij artefakt, aby go oddać.', W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: msg ? '#8a3a1a' : '#6a4418' });
+      text(ctx, msg || 'Kliknij oddział, a potem miejsce, aby go przenieść (Shift albo „Dziel”: część). Kliknij artefakt, aby go oddać.', W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: msg ? '#8a3a1a' : '#6a4418' });
       heroes.forEach((h, k) => {
         const ry = rows[k]; drawHeroPortrait(ctx, x + 24, ry - 26, h, ownerColor(st, h.owner));
         text(ctx, heroTitle(h), x + 68, ry - 12, { size: 16, color: '#3a1e08', fam: 'title' });
@@ -2210,9 +2050,32 @@ function showMeeting(st, a, b, onMsg) {
         text(ctx, h.bag.length ? 'Plecak:' : 'Plecak pusty', x + 24, ry + 92, { size: 13, weight: 500, color: '#5a3814' });
         bagRects[k] = h.bag.slice(0, 12).map((id, i) => { const bx = x + 90 + i * 46; drawSprite(ctx, artSprite(id), bx + 20, ry + 92, 1); return { x: bx, y: ry + 72, w: 40, h: 40, i }; });
       });
-      bClose.draw(ctx);
+      bSplit.draw(ctx); bClose.draw(ctx);
     },
   };
+}
+// Okno podziału oddziału: ile jednostek przenieść (−10, −1, +1, +10, połowa). Po zamknięciu wraca poprzednie okno
+// (np. spotkanie bohaterów), potem done(błąd albo null). Shift+klik albo przycisk „Dziel” otwiera je w armiach.
+function showSplit(fromA, i, toA, j, heroArmies, done) {
+  const L = splitLimit(fromA, i, toA, j, heroArmies); if (L.err) { done(L.err); return; }
+  const prev = G.modal, s = fromA[i], c = CREATURES[s.cid], have = toA[j] ? toA[j].n : 0;
+  let n = Math.max(1, Math.min(L.max, Math.floor(s.n / 2)));
+  const w = 460, hh = 270, x = (W - w) / 2, y = (H - hh) / 2, finish = err => { G.modal = prev; done(err); };
+  const step = d => () => { n = clamp(n + d, 1, L.max); };
+  const bs = [['−10', -10], ['−1', -1, 'arrowleft'], ['+1', 1, 'arrowright'], ['+10', 10]].map(([lb, d, key], k) => new Button(x + 30 + k * 74, y + 150, 66, 36, lb, step(d), { size: 16, key }));
+  bs.push(new Button(x + 330, y + 150, 100, 36, 'Połowa', () => { n = Math.max(1, Math.min(L.max, Math.round(s.n / 2))); }, { size: 15 }));
+  bs.push(new Button(x + 90, y + hh - 58, 130, 40, 'Przenieś', () => finish(armySplit(fromA, i, toA, j, n, heroArmies)), { key: 'enter', size: 17 }));
+  bs.push(new Button(x + 240, y + hh - 58, 130, 40, 'Anuluj', () => finish(null), { key: 'escape', size: 17 }));
+  G.modal = { buttons: bs, split: { get n() { return n; }, max: L.max }, // podgląd w testach
+    draw(ctx) {
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
+      text(ctx, `Podział oddziału: ${c.plural.toLowerCase()}`, W / 2, y + 36, { size: 20, align: 'center', color: '#3a1e08', fam: 'title' });
+      drawSprite(ctx, creatureSprite(s.cid, 1), W / 2, y + 128, 2);
+      text(ctx, `Zostaje: ${s.n - n}`, x + 90, y + 90, { size: 20, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, `Przenosisz: ${n}`, x + w - 90, y + 90, { size: 20, align: 'center', color: '#8a3a1a', fam: 'title' });
+      if (have) text(ctx, `(tam już ${have})`, x + w - 90, y + 114, { size: 13, align: 'center', italic: true, weight: 500, color: '#5a3814' });
+      bs.forEach(b => b.draw(ctx));
+    } };
 }
 function showRecruitList(st, t, onDone) {
   const levels = dwellingLevels(t), F = factionOf(t.faction), w = 500, hh = 120 + levels.length * 52 + 60, x = (W - w) / 2, y = Math.max(20, (H - hh) / 2);
@@ -3381,15 +3244,15 @@ function heroStep(st, h) {
   if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } return false; }
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
-  h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h)); if (h.owner === ME) Sound.play('step');
+  h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
   if (!h.path.length) { h.path = null; h.dest = null; }
-  if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); if (h.owner === ME) Sound.play('boat'); return true; }
-  if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; if (h.owner === ME) Sound.play('boat'); } // wysiadka: łódź zostaje przy brzegu
+  if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); return true; }
+  if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; } // wysiadka: łódź zostaje przy brzegu
   if (st.guard[ni]) { const m = st.objects[st.guard[ni] - 1]; halt(); h.pending = () => startEncounter(st, h, m); }
   else if (ob) { halt(); h.pending = () => visitObject(st, h, ob); }
   return true;
 }
-function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); Sound.play(res === 'gold' ? 'coin' : 'pickup'); }
+function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); }
 function visitObject(st, h, ob) {
   const R = playerOf(st, h.owner).resources;
   if (ob.type === 'res') { R[ob.res] += ob.amount; advFloat(`+${ob.amount}`, h.x, h.y, ob.res); removeObject(st, ob); }
@@ -3400,7 +3263,7 @@ function visitObject(st, h, ob) {
       { label: `${ob.exp} dośw.`, action: () => { advFloat(`+${ob.exp} dośw.`, h.x, h.y); gainExp(st, h, ob.exp); } },
     ], { locked: true, iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, chestSprite(), cx, cy + 4, 2) });
   } else if (ob.type === 'art') {
-    removeObject(st, ob); Sound.play('treasure'); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
+    removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
     showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}`, [{ label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art), cx, cy, 2) });
   } else if (ob.type === 'site') {
@@ -3535,7 +3398,7 @@ function gainExp(st, h, amount, then) {
   const next = i => {
     if (i >= ups.length) { if (then) then(); return; }
     const u = ups[i], offer = skillOffer(st, h, u.level), icon = { iconH: 76, locked: offer.length > 0, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) };
-    const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`; Sound.play('levelup');
+    const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`;
     if (!offer.length) { showDialog(msg, [{ label: 'Wspaniale', key: 'enter', action: () => next(i + 1) }], icon); return; }
     showDialog(`${msg} Wybierz umiejętność:`, offer.map((id, k) => {
       const L = heroSkill(h, id) + 1;
@@ -3695,6 +3558,22 @@ function armyMove(fromA, i, toA, j, heroArmies = []) {
   const leaves = !d || d.cid === s.cid; // miejsce źródłowe się opróżni
   if (leaves && fromA !== toA && heroArmies.includes(fromA) && armyStacks(fromA).length === 1) return 'Bohater musi mieć co najmniej jeden oddział';
   if (!d) { toA[j] = s; fromA[i] = null; } else if (d.cid === s.cid) { d.n += s.n; fromA[i] = null; } else { toA[j] = s; fromA[i] = d; }
+  return null;
+}
+// Podział oddziału: n jednostek z fromA[i] na wolne miejsce albo do takiego samego oddziału toA[j].
+// Wszystkie jednostki = zwykłe przeniesienie (armyMove). Zwraca błąd albo null.
+function splitLimit(fromA, i, toA, j, heroArmies = []) {
+  const s = fromA[i], d = toA[j]; if (!s) return { err: 'Wybierz oddział' };
+  if (fromA === toA && i === j) return { err: 'Wskaż inne miejsce, do którego trafi część oddziału' };
+  if (d && d.cid !== s.cid) return { err: 'Część oddziału można przenieść tylko na wolne miejsce albo do takiego samego oddziału' };
+  const keep = (fromA === toA || (heroArmies.includes(fromA) && armyStacks(fromA).length === 1)) ? 1 : 0; // bohater zatrzymuje choć jedną jednostkę
+  const max = s.n - keep; return max < 1 ? { err: 'Oddziału z jednej jednostki nie da się podzielić' } : { max };
+}
+function armySplit(fromA, i, toA, j, n, heroArmies = []) {
+  const L = splitLimit(fromA, i, toA, j, heroArmies); if (L.err) return L.err;
+  n = clamp(Math.floor(n), 1, L.max); const s = fromA[i];
+  if (n >= s.n) return armyMove(fromA, i, toA, j, heroArmies);
+  s.n -= n; if (toA[j]) toA[j].n += n; else toA[j] = { cid: s.cid, n };
   return null;
 }
 // Dzienny dochód gracza { wood, ..., gold }: kopalnie + miasta. Jedno źródło dla końca dnia, panelu i okna królestwa.
@@ -4906,6 +4785,7 @@ function renderChunkPixel(map, cx, cy) {
     const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     g.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
   }
+  gradeCanvas(c, bx, by);
   if (wet) { // maski do animacji wody (WaterFx); przeszkody stojące nad wodą (drzewa, góry przy brzegu) ją zasłaniają
     const mk = v => { const m = document.createElement('canvas'); m.width = m.height = S; const mg = m.getContext('2d'), mi = mg.createImageData(S, S);
       for (let i = 0; i < S * S; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out';
@@ -4927,7 +4807,7 @@ const WaterFx = {
       const x = Math.floor(r() * P), y = Math.floor(r() * P), w = 3 + Math.floor(r() * 4);
       for (let i = 0; i < w; i++) { const yy = y - (i > 0 && i < w - 1 ? 1 : 0); g.fillStyle = k % 4 ? '#8cb6da' : '#d4eaf6'; g.fillRect((x + i) % P, (yy + P) % P, 1, 1); g.fillStyle = '#1e3e66'; g.fillRect((x + i) % P, (yy + 1 + P) % P, 1, 1); }
     }
-    return this.pat = c;
+    return this.pat = gradeCanvas(c); // kolory fal po tej samej korekcji co teren
   },
   draw(b, ch, dx, dy, size, wx, wy) {
     if (!ch._deep) return; const S = ch.width, t = G.time;
@@ -4939,7 +4819,7 @@ const WaterFx = {
     layer(-Math.floor(t * 3) - wx + 21, Math.floor(t * 2) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
     g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0);
     b.drawImage(tmp, dx, dy, size, size);
-    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = '#eef8fc'; g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = this.foam || (this.foam = `rgb(${gradeRgb(hexRgb('#eef8fc')).map(Math.round).join(',')})`); g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
     g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0); g.globalCompositeOperation = 'source-over';
     b.drawImage(tmp, dx, dy, size, size);
   },
@@ -4957,14 +4837,24 @@ function buildMinimap(map, ex) {
 }
 // Pamięć podręczna wyrenderowanych fragmentów mapy (8×8 pól)
 const MapRender = {
-  map: null, explored: null, cache: new Map(), mini: null, miniDirty: false,
-  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.mini = null; },
-  get(cx, cy) {
+  map: null, explored: null, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
+  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; },
+  // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
+  get(cx, cy, allow = true) {
     const key = cx + ',' + cy; let c = this.cache.get(key);
     if (c) { this.cache.delete(key); this.cache.set(key, c); return c; }
+    if (!allow) return null;
     c = renderChunkPixel(this.map, cx, cy); this.cache.set(key, c);
-    if (this.cache.size > 40) this.cache.delete(this.cache.keys().next().value);
+    if (this.cache.size > 160) this.cache.delete(this.cache.keys().next().value);
     return c;
+  },
+  has(cx, cy) { return this.cache.has(cx + ',' + cy); },
+  // Zastępczy kawałek: pola w kolorach minimapy (jeden prostokąt na pole), rysowany, gdy prawdziwy jeszcze nie powstał
+  placeholder(b, cx, cy, x, y) {
+    const map = this.map, n = map.n, pal = this._pal || (this._pal = TPAL.map(p => `rgb(${gradeRgb(p[1]).map(Math.round).join(',')})`));
+    for (let ty = cy * CHUNK; ty < Math.min(n, cy * CHUNK + CHUNK); ty++) for (let tx = cx * CHUNK; tx < Math.min(n, cx * CHUNK + CHUNK); tx++) {
+      b.fillStyle = pal[map.terrain[ty * n + tx]]; b.fillRect(x + (tx - cx * CHUNK) * T, y + (ty - cy * CHUNK) * T, T, T);
+    }
   },
   miniCanvas() { if (!this.mini || this.miniDirty) { this.mini = buildMinimap(this.map, this.explored); this.miniDirty = false; } return this.mini; },
 };
@@ -5019,16 +4909,37 @@ function drawPathPixel(b, st, h, ox, oy) {
   if (!h.path || !h.path.length) return; let mp = h.mp, px = h.x, py = h.y;
   h.path.forEach(([x, y], k) => {
     mp -= stepCost(st.map, px, py, x, y, h); const col = mp >= 0 ? '#3ad14c' : '#e03a3a', last = k === h.path.length - 1;
-    blit(b, last ? markSprite(col, 'x', 0) : markSprite(col, h.path[k + 1][0] - x, h.path[k + 1][1] - y), ox + x * T + 16, oy + y * T + 16); px = x; py = y;
+    blitG(b, last ? markSprite(col, 'x', 0) : markSprite(col, h.path[k + 1][0] - x, h.path[k + 1][1] - y), ox + x * T + 16, oy + y * T + 16); px = x; py = y;
   });
 }
-function drawFogPixel(b, st, ox, oy, camX, camY) {
-  const fw = VIEW.w / 2, fh = VIEW.h / 2, fb = pixBuf('fog', fw, fh, true), f = fb._ctx, par = (camX / 2 + camY / 2) & 1;
-  f.setTransform(1, 0, 0, 1, 0, 0); f.clearRect(0, 0, fw, fh); f.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5);
-  drawFog(f, st, ox, oy, camX, camY);
-  const img = f.getImageData(0, 0, fw, fh), d = img.data;
-  for (let y = 0, k = 0; y < fh; y++) for (let x = 0; x < fw; x++, k += 4) { const a = d[k + 3]; d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = (a >= 225 || (a >= 70 && ((x + y + par) & 1))) ? 255 : 0; }
-  f.putImageData(img, 0, 0); b.drawImage(fb, VIEW.x, VIEW.y, VIEW.w, VIEW.h);
+// Mgła wojny w kawałkach 8×8 pól (jak teren): kółka nad nieodkrytymi polami, progowanie alfy na twardą krawędź
+// z ditheringiem w szachownicę. Kawałek przelicza się tylko wtedy, gdy zmieni się odkrycie pól w nim i wokół niego.
+function fogChunk(ex, n, cx, cy) {
+  const S = CHUNK * AP, x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1, x1 = x0 + CHUNK + 1, y1 = y0 + CHUNK + 1; let sig = 0, any = false;
+  for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (!ex[y * n + x]) { sig = (sig * 31 + y * n + x) | 0; any = true; }
+  const key = cx + ',' + cy, old = MapRender.fog.get(key); if (old && old._sig === sig) return old.c;
+  let c = null;
+  if (any) {
+    c = document.createElement('canvas'); c.width = c.height = S; const f = c.getContext('2d', { willReadFrequently: true }), ox = -cx * CHUNK * T, oy = -cy * CHUNK * T;
+    f.setTransform(0.5, 0, 0, 0.5, 0, 0);
+    for (const [alpha, extra] of [[0.45, 7], [1, 0]]) {
+      f.fillStyle = `rgba(0,0,0,${alpha})`; f.beginPath();
+      for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) {
+        if (ex[y * n + x]) continue; const r0 = T * 0.72 + (thash(x, y, 3) % 4) + extra, px = ox + x * T + 16, py = oy + y * T + 16;
+        f.moveTo(px + r0, py); f.arc(px, py, r0, 0, TAU);
+      }
+      f.fill();
+    }
+    const img = f.getImageData(0, 0, S, S), d = img.data, bx = cx * S, by = cy * S;
+    for (let y = 0, k = 0; y < S; y++) for (let x = 0; x < S; x++, k += 4) { const a = d[k + 3]; d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = (a >= 225 || (a >= 70 && ((bx + x + by + y) & 1))) ? 255 : 0; }
+    f.putImageData(img, 0, 0);
+  }
+  MapRender.fog.set(key, { c, _sig: sig }); if (MapRender.fog.size > 80) MapRender.fog.delete(MapRender.fog.keys().next().value);
+  return c;
+}
+function drawFogPixel(b, st, ox, oy, c0, c1, r0, r1) {
+  const ex = human(st).explored, n = st.map.n, CP = CHUNK * T;
+  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) { const f = fogChunk(ex, n, cx, cy); if (f) b.drawImage(f, ox + cx * CP, oy + cy * CP, CP, CP); }
 }
 function drawWorldPixel(b, st) {
   const map = st.map, n = map.n, CP = CHUNK * T, camX = Math.round(st.cam.x / 2) * 2, camY = Math.round(st.cam.y / 2) * 2, nC = Math.ceil(n / CHUNK);
@@ -5036,47 +4947,80 @@ function drawWorldPixel(b, st) {
   const c0 = Math.max(0, Math.floor(camX / CP)), c1 = Math.min(nC - 1, Math.floor((camX + VIEW.w - 1) / CP));
   const r0 = Math.max(0, Math.floor(camY / CP)), r1 = Math.min(nC - 1, Math.floor((camY + VIEW.h - 1) / CP));
   const ox = VIEW.x - camX, oy = VIEW.y - camY;
-  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) { const ch = MapRender.get(cx, cy); b.drawImage(ch, ox + cx * CP, oy + cy * CP, CP, CP); WaterFx.draw(b, ch, ox + cx * CP, oy + cy * CP, CP, cx * ch.width, cy * ch.width); }
+  // nowe kawałki terenu: najwyżej ~10 ms na klatkę (na słabym komputerze przewijanie nie szarpie), reszta zastępczo w następnych klatkach;
+  // gdy zostaje czasu, kawałki wokół widoku powstają z wyprzedzeniem
+  const until = performance.now() + 10;
+  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
+    const ch = MapRender.get(cx, cy, performance.now() < until), x = ox + cx * CP, y = oy + cy * CP;
+    if (!ch) { MapRender.placeholder(b, cx, cy, x, y); G.dirty = true; continue; }
+    b.drawImage(ch, x, y, CP, CP); WaterFx.draw(b, ch, x, y, CP, cx * ch.width, cy * ch.width);
+  }
+  const ahead = performance.now() + 4;
+  for (let cy = Math.max(0, r0 - 1); cy <= Math.min(nC - 1, r1 + 1) && performance.now() < ahead; cy++) for (let cx = Math.max(0, c0 - 1); cx <= Math.min(nC - 1, c1 + 1) && performance.now() < ahead; cx++) if (!MapRender.has(cx, cy)) MapRender.get(cx, cy);
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
   for (const h of st.heroes) { const [hx, hy] = heroDrawPos(h); list.push({ y: hy + 0.5, hero: h, hx, hy }); }
   list.sort((a, c) => a.y - c.y);
-  const shadow = (w, x, y) => { b.globalAlpha = 0.3; blit(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
+  const shadow = (w, x, y) => { b.globalAlpha = 0.3; blitG(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
   for (const it of list) {
-    if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16; shadow(14, x, y + 13); blit(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
+    if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16; shadow(14, x, y + 13); blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
     const ob = it.ob, px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
-    if (ob.type === 'monster') { shadow(10, px, py + 10); blit(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
-    else if (ob.type === 'res') { shadow(10, px, py + 9); blit(b, resSprite(ob.res), px, py + 2); }
-    else if (ob.type === 'chest') { shadow(10, px, py + 9); blit(b, chestSprite(), px, py + 2); }
-    else if (ob.type === 'boat') blit(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py);
-    else if (ob.type === 'site') { shadow(14, px, py + 12); blit(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
-    else if (ob.type === 'art') { shadow(9, px, py + 10); blit(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
-    else if (ob.type === 'bank') blit(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
-    else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blit(b, mineSprite(ob.kind), mx, my); blit(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
+    if (ob.type === 'monster') { shadow(10, px, py + 10); blitG(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
+    else if (ob.type === 'res') { shadow(10, px, py + 9); blitG(b, resSprite(ob.res), px, py + 2); }
+    else if (ob.type === 'chest') { shadow(10, px, py + 9); blitG(b, chestSprite(), px, py + 2); }
+    else if (ob.type === 'boat') blitG(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py);
+    else if (ob.type === 'site') { shadow(14, px, py + 12); blitG(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
+    else if (ob.type === 'art') { shadow(9, px, py + 10); blitG(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
+    else if (ob.type === 'bank') blitG(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
+    else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blitG(b, mineSprite(ob.kind), mx, my); blitG(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
     else if (ob.type === 'town') {
       const t = st.towns[ob.townId], lvl = townLevel(t), mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, fc = ownerColor(st, ob.owner);
-      blit(b, townSprite(t.faction, lvl), mx, my);
-      for (const [fx, fy] of TOWN_FLAG_POINTS[lvl]) blit(b, flagSprite(fc, 10, 6), mx + fx, my + fy - 20); // drzewce stoi na szczycie dachu
+      blitG(b, townSprite(t.faction, lvl), mx, my);
+      for (const [fx, fy] of TOWN_FLAG_POINTS[lvl]) blitG(b, flagSprite(fc, 10, 6), mx + fx, my + fy - 20); // drzewce stoi na szczycie dachu
     }
   }
-  drawFogPixel(b, st, ox, oy, camX, camY);
+  drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, VIEW)) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
     b.fillStyle = 'rgba(255,240,190,.55)'; b.fillRect(x, y, T, 2); b.fillRect(x, y + T - 2, T, 2); b.fillRect(x, y + 2, 2, T - 4); b.fillRect(x + T - 2, y + 2, 2, T - 4);
   }
 }
-function mapGrade(b) {
-  const x = VIEW.x, y = VIEW.y, w = VIEW.w, h = VIEW.h;
-  b.save(); b.globalCompositeOperation = 'multiply'; b.fillStyle = GRADE.mul; b.fillRect(x, y, w, h);
-  b.globalCompositeOperation = 'saturation'; b.globalAlpha = GRADE.desat; b.fillStyle = '#808080'; b.fillRect(x, y, w, h); b.restore();
-  const lg = b.createLinearGradient(x, y, x + w, y + h); lg.addColorStop(0, 'rgba(255,200,130,.13)'); lg.addColorStop(0.5, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(18,22,60,.24)'); b.fillStyle = lg; b.fillRect(x, y, w, h);
-  const vg = b.createRadialGradient(x + w / 2, y + h / 2, h * 0.35, x + w / 2, y + h / 2, h * 0.85); vg.addColorStop(0, 'rgba(6,6,14,0)'); vg.addColorStop(1, 'rgba(6,6,14,.5)'); b.fillStyle = vg; b.fillRect(x, y, w, h);
+// Korekcja barw mapy (przyciemnienie i odbarwienie jak gradeRgb) oraz paleta z ditheringiem są wypalone raz: w kawałkach
+// terenu (renderChunkPixel) i w kopiach sprite'ów (blitG). Co klatkę dochodzi tylko gotowa nakładka światła i winiety.
+function gradeCanvas(c, ox = 0, oy = 0, step = 18) {
+  const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data;
+  const [mr, mg, mb] = hexRgb(GRADE.mul).map(v => v / 255), ds = GRADE.desat;
+  for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k += 4) {
+    if (!d[k + 3]) continue;
+    const r = d[k] * mr, gg = d[k + 1] * mg, b = d[k + 2] * mb, l = 0.3 * r + 0.59 * gg + 0.11 * b, o = (BAYER4[((y + oy) & 3) * 4 + ((x + ox) & 3)] / 16 - 0.5) * step;
+    d[k] = clamp(Math.round((r + (l - r) * ds + o) / step) * step, 0, 255); d[k + 1] = clamp(Math.round((gg + (l - gg) * ds + o) / step) * step, 0, 255); d[k + 2] = clamp(Math.round((b + (l - b) * ds + o) / step) * step, 0, 255);
+  }
+  g.putImageData(img, 0, 0); return c;
+}
+function gradedSprite(s) {
+  if (!s._g) { const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; c.getContext('2d').drawImage(s.c, 0, 0); s._g = { c: gradeCanvas(c), ax: s.ax, ay: s.ay }; }
+  return s._g;
+}
+const blitG = (b, s, x, y) => blit(b, gradedSprite(s), x, y);
+// Nakładka: ciepłe światło z lewej u góry, chłodny cień z prawej u dołu i winieta; alfa w 8 stopniach z ditheringiem
+function mapLight(w, h) {
+  return Layers.get(`mapLight_${w}x${h}`, w, h, c => {
+    const img = c.createImageData(w, h), d = img.data, cx = w / 2, cy = h / 2;
+    for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k += 4) {
+      const t = (x / w + y / h) / 2, warm = Math.max(0, 0.13 * (1 - t * 2)), cool = Math.max(0, 0.24 * (t * 2 - 1));
+      const rr = Math.hypot(x - cx, y - cy), v = clamp((rr - h * 0.35) / (h * 0.5), 0, 1) * 0.5;
+      let a = warm + cool + v, r = (255 * warm + 18 * cool + 6 * v) / (a || 1), g = (200 * warm + 22 * cool + 6 * v) / (a || 1), b = (130 * warm + 60 * cool + 14 * v) / (a || 1);
+      const q = Math.floor(a * 8 + BAYER4[(y & 3) * 4 + (x & 3)] / 16) / 8;
+      d[k] = r; d[k + 1] = g; d[k + 2] = b; d[k + 3] = clamp(q, 0, 1) * 255;
+    }
+    c.putImageData(img, 0, 0);
+  }, 1);
 }
 function drawMapView(ctx, st, scr) {
   {
     const wb = pixBuf('world', VIEW.w / 2, VIEW.h / 2, true), b = wb._ctx;
-    b.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); mapGrade(b); pixelQuantize(wb);
+    b.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / 2, VIEW.h / 2), 0, 0); b.restore();
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(wb, VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.restore();
   }
   const ox = VIEW.x - Math.round(st.cam.x / 2) * 2, oy = VIEW.y - Math.round(st.cam.y / 2) * 2; // to samo zaokrąglenie co w drawWorldPixel
@@ -6594,8 +6538,14 @@ function menuRider(b, t) {
 }
 // Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize)
 // i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
+// Scena menu zmienia się powoli (chmury, ognie w oknach), więc przeliczamy ją najwyżej 12 razy na sekundę, a pomiędzy wklejamy gotową
 function drawMenuScene(ctx) {
-  const t = G.time, pb = pixBuf('menuScene', VW / 2, VH / 2, true), b = pb._ctx, span = VW + 300;
+  const pb = pixBuf('menuScene', VW / 2, VH / 2, true);
+  if (!(pb._t != null && G.time >= pb._t && G.time - pb._t < 1 / 12)) { paintMenuScene(pb); pb._t = G.time; }
+  viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
+}
+function paintMenuScene(pb) {
+  const t = G.time, b = pb._ctx, span = VW + 300;
   const layer = paint => c => { c.translate(OX, OY); paint(c); };
   b.setTransform(0.5, 0, 0, 0.5, OX / 2, OY / 2); b.imageSmoothingEnabled = false;
   b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 0.5), -OX, -OY, VW, VH);
@@ -6619,7 +6569,6 @@ function drawMenuScene(ctx) {
     b.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; b.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
   }
   pixelQuantize(pb, 14);
-  viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
 }
 function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); dimScreen(ctx, a); }
 function askQuit() {
@@ -6630,6 +6579,7 @@ function askToMenu() {
     { label: 'Tak', key: 'enter', action: () => G.go('menu') }, { label: 'Nie', key: 'escape' }]);
 }
 G.screens.menu = {
+  fps: 12, // animowana scena menu w tle
   backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'main',
   enter(p) { G.state = null; this.setMode(p.mode || 'main'); },
@@ -6640,7 +6590,7 @@ G.screens.menu = {
       B('Nowa gra', () => G.go('setup'), { key: 'n' }),
       B('Wczytaj grę', () => G.go('load', { mode: 'load' }), { key: 'l' }),
       B('Najlepsze wyniki', () => G.go('scores'), { key: 'h' }),
-      B('Dźwięk', () => showSoundSettings(), { key: 'd' }),
+      B('Grafika', () => showGfxSettings(), { key: 'g' }),
       B('Twórcy', () => G.go('credits'), { key: 'c' }),
       B('Wyjście', () => askQuit(), { key: 'q' }),
     ];
@@ -6661,6 +6611,7 @@ G.screens.menu = {
 const setupCap = S => (SITE_COUNT[(MAP_SIZES.find(m => m.id === S.mapSize) || MAP_SIZES[0]).n] || 4);
 const SLOT_LABEL = { human: 'Człowiek', ai: 'Komputer', off: '—' };
 G.screens.setup = {
+  fps: 12, // animowana scena menu w tle
   backdrop() {}, // scena menu maluje całe okno
   buttons: [],
   enter() {
@@ -6721,6 +6672,7 @@ G.screens.setup = {
 };
 function makeListScreen(title, drawBody) {
   return {
+    fps: 12,
     backdrop() {}, // scena menu maluje całe okno
     buttons: [],
     enter() { this.buttons = [new Button(300, 478, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 })]; },
@@ -6733,6 +6685,7 @@ function makeListScreen(title, drawBody) {
 }
 // Lista slotów zapisu. mode 'load' (z menu albo z gry) lub 'save' (z gry).
 G.screens.load = {
+  fps: 12, // animowana scena menu w tle
   backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'load', slots: null, err: null, busy: false, token: 0, hover: -1,
   ROW: { x: 180, y: 132, w: 440, h: 44, gap: 50 },
@@ -6811,6 +6764,7 @@ G.screens.scores = makeListScreen('Najlepsze wyniki', ctx => {
   });
 });
 G.screens.credits = {
+  fps: 30,
   backdrop() {}, // scena menu maluje całe okno
   lines: ['#KRONIKI KRÓLESTW', 'Turowa strategia w klimacie klasycznych gier fantasy', '', '#Pomysł i testy', 'Ty', '',
     '#Kod, grafika i interfejs', 'Claude', '', '#Technologia', 'HTML5 Canvas i czysty JavaScript', '',
@@ -6829,6 +6783,7 @@ G.screens.credits = {
   },
 };
 G.screens.bye = {
+  fps: 30,
   backdrop() {}, // scena menu maluje całe okno
   enter() { this.t0 = G.time; },
   onClick() { G.go('menu'); }, onBack() { G.go('menu'); },
@@ -6942,6 +6897,14 @@ function drawPanel(ctx, st, scr) {
   wrapText(ctx, info.text, INFOBOX.w - 24).slice(0, 4).forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18, { size: 14, weight: 500, align: 'center', color: info.col }));
 }
 G.screens.adventure = {
+  // Płynnie (60 klatek) tylko, gdy coś się rusza: bohater, kamera, tura komputera, napisy; w spoczynku woda i stwory w 20 klatkach
+  fps() {
+    const st = G.state; if (!st || !st.map || !st.cam) return 4;
+    const cam = st.cam.x + ',' + st.cam.y, moved = cam !== this._cam; this._cam = cam;
+    const busy = moved || this.aiRun || this.drag || G.keys.size || (this.floats && this.floats.length) || (this.mapFx && this.mapFx.length)
+      || (this.banner && G.time - this.banner.t < 3) || (this.flashMsg && G.time - this.flashMsg.t < 3) || st.heroes.some(h => h.anim || h.moving);
+    return busy ? 60 : 20;
+  },
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
   fill: true, // rysuje w całym oknie, układ z layoutAdventure()
@@ -6996,7 +6959,7 @@ G.screens.adventure = {
       { label: 'Wróć do gry', key: 'escape' },
       { label: 'Zapisz', key: 'z', action: () => this.openSaves('save') },
       { label: 'Wczytaj', key: 'w', action: () => this.openSaves('load') },
-      { label: 'Dźwięk', key: 'd', action: () => showSoundSettings(() => this.systemMenu()) },
+      { label: 'Grafika', key: 'g', action: () => showGfxSettings(() => this.systemMenu()) },
       { label: 'Menu główne', action: () => askToMenu() }]);
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
@@ -7044,7 +7007,7 @@ G.screens.adventure = {
   spellbook() {
     const st = G.state, h = hero(st); if (!h || h.moving || h.anim) return;
     showSpellbook(h, 'adv', id => {
-      const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); Sound.play(err ? 'error' : 'magic'); if (err) return;
+      const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); if (err) return;
       this.mapFx = this.mapFx || []; const col = SPELLS[id].col;
       if (id === 'eagleEye') this.mapFx.push({ kind: 'ring', x: h.x, y: h.y, r: 5 + heroStat(h, 'sp'), col, t: G.time });
       else { this.mapFx.push({ kind: 'column', x: from[0], y: from[1], col, t: G.time }, { kind: 'column', x: h.x, y: h.y, col, t: G.time + 0.2 }); }
@@ -7110,7 +7073,7 @@ G.screens.adventure = {
       if (r.done) { this.aiRun = null; this.lockButtons(false); this.nextHuman(st, r.value, true); return; }
       const a = r.value;
       if (a.kind === 'player') { R.who = a.p; continue; }
-      if (a.kind === 'day') { this.banner = { text: `Dzień ${st.day}`, t: G.time }; Sound.play(a.newWeek ? 'week' : 'day'); continue; }
+      if (a.kind === 'day') { this.banner = { text: `Dzień ${st.day}`, t: G.time }; continue; }
       if (a.kind === 'step') { // w hot-seat ruchów komputera nie pokazujemy (mgła każdego gracza jest tajna)
         if (sharedScreen(st) || !st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
         if (!R.seen.has(a.h)) { R.seen.add(a.h); centerCam(st, a.fx, a.fy); }
@@ -7146,12 +7109,12 @@ G.screens.adventure = {
   checkGameEnd(st) {
     if (st.over || G.modal) return; const r = gameResult(st);
     if (!r && hotseat(st)) { // hot-seat: człowiek odpada, reszta gra dalej
-      const p = st.players.find(q => q.human && q.out && !q.told); if (!p) return; p.told = true; Sound.play('defeat');
+      const p = st.players.find(q => q.human && q.out && !q.told); if (!p) return; p.told = true;
       showDialog(`${cap1(playerName(st, p.id))} odpada z gry: nie ma już miast ani bohaterów.`, [{ label: 'OK', key: 'enter', action: () => { if (p.id === ME && !this.aiRun) this.doEndTurn({ live: true }); } }], { locked: true });
       return;
     }
     if (!r) return;
-    st.over = r; if (r === 'win' && !hotseat(st)) recordScore(st); Sound.play(r === 'win' ? 'victory' : 'defeat');
+    st.over = r; if (r === 'win' && !hotseat(st)) recordScore(st);
     const days = `${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}`;
     const msg = hotseat(st) ? (r === 'win' ? `Zwycięstwo! ${cap1(playerName(st, st.winner))} (${factionOf(st.players[st.winner].faction).name}) pokonuje wszystkich rywali w ${days}.` : 'Koniec gry: wszyscy ludzie przegrali, królestwa należą do komputera.')
       : r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${days}. Twoja kronika trafia do księgi najlepszych wyników.`
@@ -7217,7 +7180,7 @@ G.screens.adventure = {
   draw(ctx) {
     const st = G.state; if (!st || !st.map) return;
     this.layout();
-    ctx.drawImage(Layers.get(`advChrome_${VW}x${VH}`, VW, VH, paintAdvChrome), 0, 0, VW, VH);
+    drawLayer(ctx, Layers.get(`advChrome_${VW}x${VH}`, VW, VH, paintAdvChrome), 0, 0);
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
     this.buttons.forEach(b => b.draw(ctx));
     drawResourceBar(ctx, st, VH - H, VW);
@@ -7262,7 +7225,9 @@ G.screens.hero = {
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y);
     if (ar) {
       if (!this.sel) { if (h.army[ar.i]) this.sel = ar.i; return; }
-      armyMove(h.army, this.sel, h.army, ar.i); this.sel = null; return;
+      const from = this.sel; this.sel = null;
+      if (G.keys.has('shift')) { showSplit(h.army, from, h.army, ar.i, [], err => { if (err) this.say(err); }); return; } // Shift+klik: część oddziału na wolne miejsce
+      armyMove(h.army, from, h.army, ar.i); return;
     }
     this.sel = null;
     if (e && h.equip[e.id]) { unequip(h, e.id); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(`Zdjęto: ${ARTIFACTS[h.bag[h.bag.length - 1]].name}`); }
@@ -7521,15 +7486,19 @@ function estimateStrike(B, a, t, ranged, moved = 0) {
   return { min: out[0], max: out[1], kmin: kills(out[0]), kmax: kills(out[1]) };
 }
 G.screens.battle = {
+  fps() { return this.phase === 'input' && !this.play && !this.floats.length ? 24 : 60; }, // czekając na rozkaz wystarczy spokojna animacja
   // Szersze okno: pole walki ciągnie się na boki (lustrzane odbicie brzegów tła, lekko przyciemnione)
-  backdrop(ctx) {
-    const bg = this.bg(), k = bg.width / W, sw = Math.min(OX, W);
-    stoneFill(ctx, 0, 0, VW, VH);
-    if (sw > 0) {
-      ctx.save(); ctx.translate(OX, OY); ctx.scale(-1, 1); ctx.drawImage(bg, 0, 0, sw * k, bg.height, 0, 0, sw, H); ctx.restore();
-      ctx.save(); ctx.translate(OX + W, OY); ctx.scale(-1, 1); ctx.drawImage(bg, (W - sw) * k, 0, sw * k, bg.height, -sw, 0, sw, H); ctx.restore();
-    }
-    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(0, 0, VW, VH);
+  backdrop(ctx) { // gotowy obraz na dany rozmiar okna i teren (kamień, odbite brzegi pola, przyciemnienie): jedna warstwa zamiast pięciu
+    const f = this.B && this.B.walls ? this.B.sides[1].town.faction : '';
+    drawLayer(ctx, Layers.get(`battleBack_${VW}x${VH}_${this.terr}_${f}`, VW, VH, c => {
+      const bg = this.bg(), k = bg.width / W, sw = Math.min(OX, W);
+      stoneFill(c, 0, 0, VW, VH);
+      if (sw > 0) {
+        c.save(); c.translate(OX, OY); c.scale(-1, 1); c.drawImage(bg, 0, 0, sw * k, bg.height, 0, 0, sw, H); c.restore();
+        c.save(); c.translate(OX + W, OY); c.scale(-1, 1); c.drawImage(bg, (W - sw) * k, 0, sw * k, bg.height, -sw, 0, sw, H); c.restore();
+      }
+      c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(0, 0, VW, VH);
+    }), 0, 0);
   },
   bg() { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}`, W, H, c => paintBattleBg(c, this.terr, f)); },
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
@@ -7608,14 +7577,13 @@ G.screens.battle = {
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
     const now = G.time;
     if (fx.kind === 'move') fx.u.anim = { pose: 'walk', t0: now, dur: this.play.dur };
-    if (fx.kind === 'hit' && fx.a) { fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur }; Sound.play('swing'); }
-    Sound.play(fx.kind === 'shot' ? 'bow' : fx.kind === 'siege' ? 'catapult' : fx.kind === 'spell' ? spellSfx(fx.id) : fx.kind === 'heal' && !fx.label ? 'heal' : '');
+    if (fx.kind === 'hit' && fx.a) { fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur }; }
     if (fx.kind === 'shot' || fx.kind === 'siege') fx.a.anim = { pose: 'attack', t0: now, dur: 0.55 * sp };
   },
   // Trafienie: błysk, odrzut, iskry, liczba obrażeń; zabity oddział przewraca się
   impact(tg, dmg, killed, col = '#ffe8a0') {
     const now = G.time, [tx, ty] = [tg.px, tg.py];
-    tg.flashT = now; tg.anim = { pose: 'hurt', t0: now, dur: 0.28 }; Sound.play(tg.dead ? 'death' : 'hit'); BattleFX.glow(tx, ty - 10, 26, col, 0.25);
+    tg.flashT = now; tg.anim = { pose: 'hurt', t0: now, dur: 0.28 }; BattleFX.glow(tx, ty - 10, 26, col, 0.25);
     BattleFX.emit(tx, ty - 8, { n: 10 + Math.min(20, Math.round(dmg / 8)), col: [col, '#ffffff', hasAb(tg, 'undead') ? '#e8e2cc' : '#b8302a'], spd: 110, up: -40, g: 260, life: 0.55, size: 3 });
     this.floats.push({ x: tx, y: ty - 44, text: `-${dmg}`, t: now, big: dmg >= 50 });
     if (killed) { this.floats.push({ x: tx, y: ty - 26, text: `†${killed}`, t: now + 0.05, col: '#e8e0cc', small: true }); BattleFX.shake = Math.max(BattleFX.shake, 2 + Math.min(4, killed)); }
@@ -7721,7 +7689,7 @@ G.screens.battle = {
   },
   draw(ctx) {
     const B = this.B, st = B.st, u0 = B.active, col = ownerColor(st, B.h.owner);
-    ctx.drawImage(this.bg(), 0, 0, W, H);
+    drawLayer(ctx, this.bg(), 0, 0);
     const sh = BattleFX.shake; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, 490); ctx.clip(); if (sh > 0) ctx.translate((Math.random() - 0.5) * sh * 2, (Math.random() - 0.5) * sh * 2);
     if (this.phase === 'input' && this.casting) {
       const p = this.preview;
@@ -7791,7 +7759,6 @@ G.screens.battle = {
 // Okno po bitwie (pokazywane już na mapie przygody)
 function showBattleResult(st, h, res) {
   const lost = res.lost.length ? `Straty: ${res.lost.join(', ')}.` : 'Bez strat.';
-  Sound.play(res.outcome === 'win' ? 'victory' : 'defeat');
   if (res.outcome === 'win') {
     const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
     showDialog(`Zwycięstwo!${extra} ${lost}${raisedText(res.raised)} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
@@ -7806,15 +7773,17 @@ function showBattleResult(st, h, res) {
 // ==================== EKRAN: MIASTO =====================================================
 // Widok miasta, lista budowli, garnizon.
 G.screens.town = {
+  fps: 15, // dym i światła w oknach
   buttons: [], townId: 0, rows: [], hoverSlot: null, scroll: 0, sel: null, garRects: [], heroRects: [],
   LIST_ROWS: 6, // tyle budowli mieści się na liście; resztę przewija się strzałkami albo kółkiem myszy
   town() { return G.state.towns[this.townId]; },
   enter(p) {
-    this.townId = p.townId || 0; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.garRects = []; this.heroRects = [];
+    this.townId = p.townId || 0; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.split = false; this.garRects = []; this.heroRects = [];
     this.guildVisit();
     this.baseButtons = [
       new Button(596, 448, 192, 40, 'Rekrutacja', () => showRecruitList(G.state, this.town(), m => this.say(m)), { key: 'r', size: 16, tip: 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).' }),
-      new Button(596, 496, 192, 40, 'Powrót na mapę', () => G.go('adventure'), { key: 'escape', size: 16, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
+      new Button(694, 496, 94, 40, 'Na mapę', () => G.go('adventure'), { key: 'escape', size: 14, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
+      new Button(596, 496, 94, 40, 'Dziel', () => { this.split = !this.split; this.say(this.split ? 'Wybierz oddział i miejsce' : 'Przenoszenie całych oddziałów'); }, { key: 'd', size: 14, selected: () => this.split, tip: 'Podział oddziału: przenieś tylko część jednostek (klawisz D albo Shift+klik na miejscu docelowym).' }),
     ];
     this.bRecruitHalf = new Button(596, 448, 94, 40, 'Rekrutacja', this.baseButtons[0].action, { key: 'r', size: 14, tip: this.baseButtons[0].tip });
     this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
@@ -7825,7 +7794,7 @@ G.screens.town = {
   showShipyard() {
     const st = G.state, t = this.town();
     showDialog(`Stocznia. Łódź kosztuje ${BOAT_COST.gold} złota i ${BOAT_COST.wood} drewna i czeka na wodzie przy mieście. Bohater wsiada, wchodząc na nią z brzegu.`, [
-      { label: 'Kup łódź', key: 'enter', action: () => { const e = buyBoat(st, t); Sound.play(e ? 'error' : 'boat'); this.say(e || 'Łódź czeka na wodzie przy mieście'); } },
+      { label: 'Kup łódź', key: 'enter', action: () => { const e = buyBoat(st, t); this.say(e || 'Łódź czeka na wodzie przy mieście'); } },
       { label: 'Wyjdź', key: 'escape' }]);
   },
   onWheel(d) { const n = availableBuildings(this.town()).length; this.scroll = clamp(this.scroll + d, 0, Math.max(0, n - this.LIST_ROWS)); },
@@ -7870,7 +7839,7 @@ G.screens.town = {
     if (t.builtToday) return this.say('W tym mieście zbudowano już dziś budowlę');
     if (!canAfford(st, B.cost)) return this.say('Brakuje zasobów na tę budowlę');
     showDialog(`Zbudować: ${info.name}? ${info.desc}`, [
-      { label: 'Zbuduj', key: 'enter', action: () => { buildIn(st, t, B); Sound.play('build'); this.say(`Zbudowano: ${info.name}`); if (/^guild/.test(B.id)) this.guildVisit(); } },
+      { label: 'Zbuduj', key: 'enter', action: () => { buildIn(st, t, B); this.say(`Zbudowano: ${info.name}`); if (/^guild/.test(B.id)) this.guildVisit(); } },
       { label: 'Nie', key: 'escape' },
     ], { iconH: 40, icon: (ctx, cx, cy) => { ctx.font = font(14, 700, 'body'); const w = RESOURCES.reduce((a, r) => a + (B.cost[r.id] ? 29 + ctx.measureText(String(B.cost[r.id])).width : 0), 0); drawCost(ctx, B.cost, cx - w / 2, cy, { size: 24 }); } });
   },
@@ -7893,8 +7862,9 @@ G.screens.town = {
     const slot = this.armySlotAt(x, y);
     if (slot) { // zaznacz oddział, potem wskaż miejsce: przeniesienie, połączenie albo zamiana
       if (!this.sel) { if (slot.a[slot.i]) this.sel = slot; return; }
-      const hh = heroInTown(st, t), err = armyMove(this.sel.a, this.sel.i, slot.a, slot.i, hh ? [hh.army] : []);
-      this.sel = null; if (err) this.say(err); return;
+      const hh = heroInTown(st, t), from = this.sel, heroes = hh ? [hh.army] : []; this.sel = null;
+      if (this.split || G.keys.has('shift')) { this.split = false; showSplit(from.a, from.i, slot.a, slot.i, heroes, err => { if (err) this.say(err); }); return; }
+      const err = armyMove(from.a, from.i, slot.a, slot.i, heroes); if (err) this.say(err); return;
     }
     this.sel = null;
     if (row) return this.tryBuild(row.B);
@@ -7921,14 +7891,16 @@ G.screens.town = {
   },
   draw(ctx) {
     const st = G.state, t = this.town(), fac = t.faction, col = ownerColor(st, t.owner);
-    ctx.drawImage(Layers.get('townChrome', W, H, paintTownChrome), 0, 0, W, H);
+    drawLayer(ctx, Layers.get('townChrome', W, H, paintTownChrome), 0, 0);
     const key = `tw_${fac}_${[...t.built].sort().join('.')}_${col}`;
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
     const scene = Layers.get(key, 592, 438, c => { c.imageSmoothingEnabled = false; TownFXCache[key] = paintTownScene(c, t, col); }, TOWN_ART_SCALE);
     const fb = pixBuf('townFx', scene.width, scene.height, true), fbx = fb._ctx;
-    fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
-    fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, TownFXCache[key] || { wins: [], smokes: [] }); pixelQuantize(fb);
+    if (fb._key !== key || !(G.time >= fb._t && G.time - fb._t < 1 / 15)) { // dym i światła w oknach: najwyżej 15 klatek na sekundę
+      fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
+      fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, TownFXCache[key] || { wins: [], smokes: [] }); pixelQuantize(fb); fb._key = key; fb._t = G.time;
+    }
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(fb, 0, 0, fb.width / TOWN_ART_SCALE, fb.height / TOWN_ART_SCALE); ctx.restore();
     if (this.hoverSlot !== null && !G.modal) {
       const hb = ((TownFXCache[key] || {}).rects || {})[this.hoverSlot] || { x: 0, y: 0, w: 0, h: 0 };
@@ -7964,7 +7936,7 @@ G.screens.town = {
     });
     if (!list.length) text(ctx, 'Brak dostępnych budowli', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
-    const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, this.baseButtons[1]] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
+    const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, ...this.baseButtons.slice(1)] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
     this.buttons = paged ? [...base, this.btnUp, this.btnDown] : base;
     if (paged) {
       this.btnUp.disabled = this.scroll === 0; this.btnDown.disabled = this.scroll >= list.length - N;
@@ -7985,7 +7957,7 @@ function paintTownChrome(c) {
 
 // ==================== SILNIK: pętla, wejście, przejścia =================================
 // Nie zawiera logiki gry. Ekran to obiekt z metodami enter/draw/update/onClick/... (patrz nagłówek).
-function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; if (G.screen.enter) G.screen.enter(params || {}); Sound.screen(name); }
+function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; G.dirty = true; if (G.screen.enter) G.screen.enter(params || {}); }
 G.go = function (name, params) { if (G.fade.next) return; G.fade.next = { name, params }; G.fade.target = 1; };
 function activeButtons() { return G.modal ? G.modal.buttons : (G.screen.buttons || []); }
 function updateHover() {
@@ -7998,12 +7970,12 @@ function handleClick(x, y) {
   if (G.screen.onClick) G.screen.onClick(x, y); else clickButtons(G.screen.buttons || [], x, y);
 }
 function onKey(e) {
+  G.dirty = true;
   if (e.target && e.target.tagName === 'INPUT') return; // pisanie w polu tekstowym (askText) nie uruchamia skrótów
-  Sound.unlock();
   const k = e.key.toLowerCase(); G.keys.add(k);
   if (G.fade.next) return;
   const b = activeButtons().find(b => !b.disabled && b.key === k);
-  if (b) { e.preventDefault(); Sound.play('click'); if (b.action) b.action(); return; }
+  if (b) { e.preventDefault(); if (b.action) b.action(); return; }
   if (k === 'escape') { if (G.modal) { if (!G.modal.locked) G.modal = null; } else if (G.screen.onBack) G.screen.onBack(); }
   else if (!G.modal && G.screen.onKey) G.screen.onKey(k, e);
 }
@@ -8018,11 +7990,12 @@ function syncMouse() { const m = G.mouse; if (m.vx == null || m.vx < 0) return; 
 function bindInput() {
   const c = G.canvas;
   window.addEventListener('pointermove', e => {
+    G.dirty = true;
     const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; G.mouse.type = e.pointerType;
     if (!G.modal && G.screen && G.screen.onPointerMove) G.screen.onPointerMove(p.x, p.y, e);
   });
   c.addEventListener('pointerdown', e => {
-    Sound.unlock();
+    G.dirty = true;
     if (e.button === 2) {
       e.preventDefault(); const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; updateHover();
       const txt = rightInfoAt(p.x, p.y); if (txt) G.popup = { text: txt, x: p.vx, y: p.vy };
@@ -8031,13 +8004,14 @@ function bindInput() {
     if (e.button !== 0) return; e.preventDefault(); G.popup = null;
     if (e.pointerType !== 'mouse') {
       const p0 = toLogical(e); clearTimeout(G.pressTimer);
-      G.pressTimer = setTimeout(() => { const txt = rightInfoAt(p0.x, p0.y); if (txt) { G.popup = { text: txt, x: p0.vx, y: p0.vy }; G.longPress = true; } }, 420);
+      G.pressTimer = setTimeout(() => { G.dirty = true; const txt = rightInfoAt(p0.x, p0.y); if (txt) { G.popup = { text: txt, x: p0.vx, y: p0.vy }; G.longPress = true; } }, 420);
     }
     const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; G.mouse.type = e.pointerType; G.mouse.down = true;
     updateHover(); G.downTarget = G.hover;
     if (!G.hover && !G.modal && !G.fade.next && G.screen.onPointerDown) G.screen.onPointerDown(p.x, p.y, e);
   });
   window.addEventListener('pointerup', e => {
+    G.dirty = true;
     if (e.button === 2) { G.popup = null; return; }
     clearTimeout(G.pressTimer);
     if (!G.mouse.down) return; G.mouse.down = false; const p = toLogical(e);
@@ -8048,10 +8022,10 @@ function bindInput() {
   });
   c.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !G.mouse.down) { G.mouse.x = G.mouse.y = G.mouse.vx = G.mouse.vy = -1; } });
   c.addEventListener('contextmenu', e => e.preventDefault());
-  c.addEventListener('wheel', e => { if (!G.modal && !G.fade.next && G.screen.onWheel) { e.preventDefault(); G.screen.onWheel(Math.sign(e.deltaY)); } }, { passive: false });
+  c.addEventListener('wheel', e => { G.dirty = true; if (!G.modal && !G.fade.next && G.screen.onWheel) { e.preventDefault(); G.screen.onWheel(Math.sign(e.deltaY)); } }, { passive: false });
   window.addEventListener('keydown', onKey);
-  window.addEventListener('keyup', e => G.keys.delete(e.key.toLowerCase()));
-  window.addEventListener('blur', () => G.keys.clear());
+  window.addEventListener('keyup', e => { G.keys.delete(e.key.toLowerCase()); G.dirty = true; });
+  window.addEventListener('blur', () => { G.keys.clear(); G.dirty = true; });
 }
 // Okno gry wypełnia ekran: skala tak, by zmieścił się obszar W×H, a reszta szerokości albo wysokości
 // (do VW_MAX×VH_MAX) poszerza okno logiczne. Wymiary parzyste, bo bufory pikselowe mają połowę rozdzielczości.
@@ -8062,7 +8036,7 @@ function resize() {
   OX = (VW - W) / 2; OY = (VH - H) / 2;
   for (const k in Layers.cache) if (/_\d+x\d+$/.test(k)) delete Layers.cache[k]; // warstwy zależne od rozmiaru okna
   const cw = Math.max(1, Math.floor(VW * s)), ch = Math.max(1, Math.floor(VH * s));
-  G.dpr = Math.min(window.devicePixelRatio || 1, 2); G.scale = cw / VW; G.rs = G.scale * G.dpr;
+  G.dpr = renderDpr(); G.scale = cw / VW; G.rs = G.scale * G.dpr; G.dirty = true;
   G.canvas.style.width = cw + 'px'; G.canvas.style.height = ch + 'px';
   G.canvas.width = Math.round(cw * G.dpr); G.canvas.height = Math.round(ch * G.dpr);
 }
@@ -8073,7 +8047,8 @@ function update(dt) {
   syncMouse(); updateHover(); if (G.screen.update) G.screen.update(dt);
 }
 function render() {
-  const ctx = G.ctx, s = G.rs, center = () => ctx.setTransform(s, 0, 0, s, OX * s, OY * s);
+  // przesunięcie wyśrodkowanego ekranu w całych pikselach: przy ułamkowym każdy obraz byłby filtrowany (wolno i nieostro)
+  const ctx = G.ctx, s = G.rs, center = () => ctx.setTransform(s, 0, 0, s, Math.round(OX * s), Math.round(OY * s));
   ctx.setTransform(s, 0, 0, s, 0, 0); ctx.clearRect(0, 0, VW, VH);
   if (G.screen.fill) G.screen.draw(ctx);
   else { if (OX || OY) drawBackdrop(ctx); center(); G.screen.draw(ctx); }
@@ -8086,15 +8061,50 @@ function render() {
 // Ekran może podać własne (screen.backdrop), np. bitwa przedłuża pole walki.
 function drawBackdrop(ctx) {
   if (G.screen.backdrop) { G.screen.backdrop(ctx); return; }
-  ctx.drawImage(Layers.get(`backdrop_${VW}x${VH}`, VW, VH, c => {
+  drawLayer(ctx, Layers.get(`backdrop_${VW}x${VH}`, VW, VH, c => {
     stoneFill(c, 0, 0, VW, VH); c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, 0, VW, VH);
     goldFrame(c, OX, OY, W, H);
-  }), 0, 0, VW, VH);
+  }), 0, 0);
 }
+// Klatkę rysujemy tylko wtedy, gdy trzeba: ekran podaje, ilu klatek na sekundę potrzebuje (screen.fps: liczba albo funkcja,
+// domyślnie 4 dla ekranów bez animacji), a wejście (mysz, klawisze) i każda zmiana okna, dymka czy podświetlenia wymusza klatkę od razu.
+// Na słabym komputerze to połowa sukcesu: nieruchomy ekran prawie nie zużywa procesora.
+function screenFps() { const f = G.screen && G.screen.fps; return typeof f === 'function' ? f.call(G.screen) : (f || 4); }
 function frame(ts) {
-  const t = ts / 1000, dt = G.last ? Math.min(0.05, Math.max(0, t - G.last)) : 0; G.last = t;
-  try { update(dt); render(); } catch (err) { console.error(err); }
+  const t = ts / 1000, raw = G.last ? t - G.last : 0, dt = Math.min(0.05, Math.max(0, raw)); G.last = t;
+  try {
+    update(dt);
+    const ui = [G.screen, G.modal, G.popup, G.hover, G.fade.next]; if (!G._ui || ui.some((v, i) => v !== G._ui[i])) { G._ui = ui; G.dirty = true; }
+    const fps = screenFps();
+    if (G.dirty || G.fade.a > 0 || t - (G.drawnAt || 0) >= 1 / fps - 0.004) { const w0 = performance.now(); G.dirty = false; render(); Perf.sample(t - (G.drawnAt || t), (performance.now() - w0) / 1000, fps); G.drawnAt = t; } // rysowanie może poprosić o kolejną klatkę (G.dirty)
+  } catch (err) { console.error(err); }
   requestAnimationFrame(frame);
+}
+// Jakość grafiki = gęstość pikseli płótna. Wysoka: jak ekran (do 2), niska: 0,75 piksela płótna na piksel ekranu (lekko miękki obraz,
+// ale kilka razy mniej pracy). Automatyczna zaczyna jak wysoka i schodzi o stopień (2 → 1 → 0,75), gdy płynne ekrany mają za mało klatek.
+const QUALITIES = [{ id: 'auto', name: 'Automatyczna' }, { id: 'high', name: 'Wysoka' }, { id: 'low', name: 'Niska' }];
+function renderDpr() {
+  const dev = Math.min(window.devicePixelRatio || 1, 2), q = G.settings.quality;
+  if (q === 'high') return dev;
+  if (q === 'low') return Math.min(dev, 1) * 0.75;
+  return Math.min(dev, G.settings.autoDpr || dev);
+}
+// Jakość schodzi tylko wtedy, gdy klatek jest za mało (mediana odstępu > 1/32 s) i gra naprawdę długo rysuje każdą klatkę
+// (mediana czasu rysowania > 12 ms): same przestoje z zewnątrz (karta w tle, zrzut ekranu, generowanie grafiki) nie obniżają jakości.
+const Perf = {
+  gaps: [], work: [],
+  sample(gap, work, fps) {
+    if (G.settings.quality !== 'auto' || fps < 50 || gap <= 0 || gap > 0.25 || (G.screens.adventure && G.screens.adventure.aiRun)) return;
+    this.gaps.push(gap); this.work.push(work); if (this.gaps.length < 90) return;
+    const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], slow = med(this.gaps) > 1 / 32 && med(this.work) > 0.012; this.gaps = []; this.work = [];
+    if (slow && G.dpr > 0.75) { G.settings.autoDpr = G.dpr > 1 ? 1 : 0.75; saveSettings(); resize(); }
+  },
+};
+function showGfxSettings(back) {
+  const S = G.settings, cur = (QUALITIES.find(q => q.id === S.quality) || QUALITIES[0]).name;
+  const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); resize(); showGfxSettings(back); };
+  showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało.`,
+    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 130 });
 }
 function init() {
   loadSettings();

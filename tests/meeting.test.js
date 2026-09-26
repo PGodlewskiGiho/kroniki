@@ -59,6 +59,6 @@ test('wymiana artefaktów z plecaka i okno rysuje się bez błędów', async () 
   assert.ok(r.a.includes('wandererBoots'));
   assert.deepEqual(r.b, []);
   await frames(page, 3);
-  await page.evaluate(() => G.modal.buttons[0].action());
+  await page.evaluate(() => G.modal.buttons.find(b => b.label === 'Zamknij').action());
   assert.equal(await page.evaluate(() => G.modal), null);
 });

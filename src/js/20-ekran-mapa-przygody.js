@@ -100,6 +100,14 @@ function drawPanel(ctx, st, scr) {
   wrapText(ctx, info.text, INFOBOX.w - 24).slice(0, 4).forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18, { size: 14, weight: 500, align: 'center', color: info.col }));
 }
 G.screens.adventure = {
+  // Płynnie (60 klatek) tylko, gdy coś się rusza: bohater, kamera, tura komputera, napisy; w spoczynku woda i stwory w 20 klatkach
+  fps() {
+    const st = G.state; if (!st || !st.map || !st.cam) return 4;
+    const cam = st.cam.x + ',' + st.cam.y, moved = cam !== this._cam; this._cam = cam;
+    const busy = moved || this.aiRun || this.drag || G.keys.size || (this.floats && this.floats.length) || (this.mapFx && this.mapFx.length)
+      || (this.banner && G.time - this.banner.t < 3) || (this.flashMsg && G.time - this.flashMsg.t < 3) || st.heroes.some(h => h.anim || h.moving);
+    return busy ? 60 : 20;
+  },
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
   fill: true, // rysuje w całym oknie, układ z layoutAdventure()
@@ -154,7 +162,7 @@ G.screens.adventure = {
       { label: 'Wróć do gry', key: 'escape' },
       { label: 'Zapisz', key: 'z', action: () => this.openSaves('save') },
       { label: 'Wczytaj', key: 'w', action: () => this.openSaves('load') },
-      { label: 'Dźwięk', key: 'd', action: () => showSoundSettings(() => this.systemMenu()) },
+      { label: 'Grafika', key: 'g', action: () => showGfxSettings(() => this.systemMenu()) },
       { label: 'Menu główne', action: () => askToMenu() }]);
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
@@ -202,7 +210,7 @@ G.screens.adventure = {
   spellbook() {
     const st = G.state, h = hero(st); if (!h || h.moving || h.anim) return;
     showSpellbook(h, 'adv', id => {
-      const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); Sound.play(err ? 'error' : 'magic'); if (err) return;
+      const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); if (err) return;
       this.mapFx = this.mapFx || []; const col = SPELLS[id].col;
       if (id === 'eagleEye') this.mapFx.push({ kind: 'ring', x: h.x, y: h.y, r: 5 + heroStat(h, 'sp'), col, t: G.time });
       else { this.mapFx.push({ kind: 'column', x: from[0], y: from[1], col, t: G.time }, { kind: 'column', x: h.x, y: h.y, col, t: G.time + 0.2 }); }
@@ -268,7 +276,7 @@ G.screens.adventure = {
       if (r.done) { this.aiRun = null; this.lockButtons(false); this.nextHuman(st, r.value, true); return; }
       const a = r.value;
       if (a.kind === 'player') { R.who = a.p; continue; }
-      if (a.kind === 'day') { this.banner = { text: `Dzień ${st.day}`, t: G.time }; Sound.play(a.newWeek ? 'week' : 'day'); continue; }
+      if (a.kind === 'day') { this.banner = { text: `Dzień ${st.day}`, t: G.time }; continue; }
       if (a.kind === 'step') { // w hot-seat ruchów komputera nie pokazujemy (mgła każdego gracza jest tajna)
         if (sharedScreen(st) || !st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
         if (!R.seen.has(a.h)) { R.seen.add(a.h); centerCam(st, a.fx, a.fy); }
@@ -304,12 +312,12 @@ G.screens.adventure = {
   checkGameEnd(st) {
     if (st.over || G.modal) return; const r = gameResult(st);
     if (!r && hotseat(st)) { // hot-seat: człowiek odpada, reszta gra dalej
-      const p = st.players.find(q => q.human && q.out && !q.told); if (!p) return; p.told = true; Sound.play('defeat');
+      const p = st.players.find(q => q.human && q.out && !q.told); if (!p) return; p.told = true;
       showDialog(`${cap1(playerName(st, p.id))} odpada z gry: nie ma już miast ani bohaterów.`, [{ label: 'OK', key: 'enter', action: () => { if (p.id === ME && !this.aiRun) this.doEndTurn({ live: true }); } }], { locked: true });
       return;
     }
     if (!r) return;
-    st.over = r; if (r === 'win' && !hotseat(st)) recordScore(st); Sound.play(r === 'win' ? 'victory' : 'defeat');
+    st.over = r; if (r === 'win' && !hotseat(st)) recordScore(st);
     const days = `${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}`;
     const msg = hotseat(st) ? (r === 'win' ? `Zwycięstwo! ${cap1(playerName(st, st.winner))} (${factionOf(st.players[st.winner].faction).name}) pokonuje wszystkich rywali w ${days}.` : 'Koniec gry: wszyscy ludzie przegrali, królestwa należą do komputera.')
       : r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${days}. Twoja kronika trafia do księgi najlepszych wyników.`
@@ -375,7 +383,7 @@ G.screens.adventure = {
   draw(ctx) {
     const st = G.state; if (!st || !st.map) return;
     this.layout();
-    ctx.drawImage(Layers.get(`advChrome_${VW}x${VH}`, VW, VH, paintAdvChrome), 0, 0, VW, VH);
+    drawLayer(ctx, Layers.get(`advChrome_${VW}x${VH}`, VW, VH, paintAdvChrome), 0, 0);
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
     this.buttons.forEach(b => b.draw(ctx));
     drawResourceBar(ctx, st, VH - H, VW);

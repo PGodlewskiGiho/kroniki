@@ -8,7 +8,7 @@ test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
 
-test('każda frakcja ma komplet danych: siedliska, stwory, bohaterów, grafikę miasta, mury i muzykę', async () => {
+test('każda frakcja ma komplet danych: siedliska, stwory, bohaterów, grafikę miasta i mury', async () => {
   const bad = await page.evaluate(() => {
     const out = [], groups = ['hall', 'fort', 'guild', 'tavern', 'market', 'smith', 'silo', 'dw1', 'dw2', 'dw3', 'dw4', 'dw5', 'dw6', 'dw7'];
     for (const F of FACTIONS) {
@@ -24,7 +24,6 @@ test('każda frakcja ma komplet danych: siedliska, stwory, bohaterów, grafikę 
       if (!TOWN_ART[F.id] || !TOWN_LAYOUTS[F.id] || TOWN_LAYOUTS[F.id].slots.length !== 14) out.push(`${F.id}: scena miasta`);
       for (const g of groups) if (!(BUILD_ART[F.id] || {})[g]) out.push(`${F.id}: brak rysunku ${g}`);
       if (!SIEGE_STONE[F.id] || !SIEGE_PAVE[F.id]) out.push(`${F.id}: mury oblężenia`);
-      if (!MUSIC['map_' + F.id] || !MUSIC['town_' + F.id]) out.push(`${F.id}: muzyka`);
       if (F.emb.some(e => !e)) out.push(`${F.id}: symbole siedlisk`);
     }
     return out;

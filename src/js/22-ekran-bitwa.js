@@ -74,15 +74,19 @@ function estimateStrike(B, a, t, ranged, moved = 0) {
   return { min: out[0], max: out[1], kmin: kills(out[0]), kmax: kills(out[1]) };
 }
 G.screens.battle = {
+  fps() { return this.phase === 'input' && !this.play && !this.floats.length ? 24 : 60; }, // czekając na rozkaz wystarczy spokojna animacja
   // Szersze okno: pole walki ciągnie się na boki (lustrzane odbicie brzegów tła, lekko przyciemnione)
-  backdrop(ctx) {
-    const bg = this.bg(), k = bg.width / W, sw = Math.min(OX, W);
-    stoneFill(ctx, 0, 0, VW, VH);
-    if (sw > 0) {
-      ctx.save(); ctx.translate(OX, OY); ctx.scale(-1, 1); ctx.drawImage(bg, 0, 0, sw * k, bg.height, 0, 0, sw, H); ctx.restore();
-      ctx.save(); ctx.translate(OX + W, OY); ctx.scale(-1, 1); ctx.drawImage(bg, (W - sw) * k, 0, sw * k, bg.height, -sw, 0, sw, H); ctx.restore();
-    }
-    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(0, 0, VW, VH);
+  backdrop(ctx) { // gotowy obraz na dany rozmiar okna i teren (kamień, odbite brzegi pola, przyciemnienie): jedna warstwa zamiast pięciu
+    const f = this.B && this.B.walls ? this.B.sides[1].town.faction : '';
+    drawLayer(ctx, Layers.get(`battleBack_${VW}x${VH}_${this.terr}_${f}`, VW, VH, c => {
+      const bg = this.bg(), k = bg.width / W, sw = Math.min(OX, W);
+      stoneFill(c, 0, 0, VW, VH);
+      if (sw > 0) {
+        c.save(); c.translate(OX, OY); c.scale(-1, 1); c.drawImage(bg, 0, 0, sw * k, bg.height, 0, 0, sw, H); c.restore();
+        c.save(); c.translate(OX + W, OY); c.scale(-1, 1); c.drawImage(bg, (W - sw) * k, 0, sw * k, bg.height, -sw, 0, sw, H); c.restore();
+      }
+      c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(0, 0, VW, VH);
+    }), 0, 0);
   },
   bg() { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}`, W, H, c => paintBattleBg(c, this.terr, f)); },
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
@@ -161,14 +165,13 @@ G.screens.battle = {
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
     const now = G.time;
     if (fx.kind === 'move') fx.u.anim = { pose: 'walk', t0: now, dur: this.play.dur };
-    if (fx.kind === 'hit' && fx.a) { fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur }; Sound.play('swing'); }
-    Sound.play(fx.kind === 'shot' ? 'bow' : fx.kind === 'siege' ? 'catapult' : fx.kind === 'spell' ? spellSfx(fx.id) : fx.kind === 'heal' && !fx.label ? 'heal' : '');
+    if (fx.kind === 'hit' && fx.a) { fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur }; }
     if (fx.kind === 'shot' || fx.kind === 'siege') fx.a.anim = { pose: 'attack', t0: now, dur: 0.55 * sp };
   },
   // Trafienie: błysk, odrzut, iskry, liczba obrażeń; zabity oddział przewraca się
   impact(tg, dmg, killed, col = '#ffe8a0') {
     const now = G.time, [tx, ty] = [tg.px, tg.py];
-    tg.flashT = now; tg.anim = { pose: 'hurt', t0: now, dur: 0.28 }; Sound.play(tg.dead ? 'death' : 'hit'); BattleFX.glow(tx, ty - 10, 26, col, 0.25);
+    tg.flashT = now; tg.anim = { pose: 'hurt', t0: now, dur: 0.28 }; BattleFX.glow(tx, ty - 10, 26, col, 0.25);
     BattleFX.emit(tx, ty - 8, { n: 10 + Math.min(20, Math.round(dmg / 8)), col: [col, '#ffffff', hasAb(tg, 'undead') ? '#e8e2cc' : '#b8302a'], spd: 110, up: -40, g: 260, life: 0.55, size: 3 });
     this.floats.push({ x: tx, y: ty - 44, text: `-${dmg}`, t: now, big: dmg >= 50 });
     if (killed) { this.floats.push({ x: tx, y: ty - 26, text: `†${killed}`, t: now + 0.05, col: '#e8e0cc', small: true }); BattleFX.shake = Math.max(BattleFX.shake, 2 + Math.min(4, killed)); }
@@ -274,7 +277,7 @@ G.screens.battle = {
   },
   draw(ctx) {
     const B = this.B, st = B.st, u0 = B.active, col = ownerColor(st, B.h.owner);
-    ctx.drawImage(this.bg(), 0, 0, W, H);
+    drawLayer(ctx, this.bg(), 0, 0);
     const sh = BattleFX.shake; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, 490); ctx.clip(); if (sh > 0) ctx.translate((Math.random() - 0.5) * sh * 2, (Math.random() - 0.5) * sh * 2);
     if (this.phase === 'input' && this.casting) {
       const p = this.preview;
@@ -344,7 +347,6 @@ G.screens.battle = {
 // Okno po bitwie (pokazywane już na mapie przygody)
 function showBattleResult(st, h, res) {
   const lost = res.lost.length ? `Straty: ${res.lost.join(', ')}.` : 'Bez strat.';
-  Sound.play(res.outcome === 'win' ? 'victory' : 'defeat');
   if (res.outcome === 'win') {
     const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
     showDialog(`Zwycięstwo!${extra} ${lost}${raisedText(res.raised)} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {

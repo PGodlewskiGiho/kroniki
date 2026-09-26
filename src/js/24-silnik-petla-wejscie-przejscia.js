@@ -1,6 +1,6 @@
 // ==================== SILNIK: pętla, wejście, przejścia =================================
 // Nie zawiera logiki gry. Ekran to obiekt z metodami enter/draw/update/onClick/... (patrz nagłówek).
-function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; if (G.screen.enter) G.screen.enter(params || {}); Sound.screen(name); }
+function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; G.dirty = true; if (G.screen.enter) G.screen.enter(params || {}); }
 G.go = function (name, params) { if (G.fade.next) return; G.fade.next = { name, params }; G.fade.target = 1; };
 function activeButtons() { return G.modal ? G.modal.buttons : (G.screen.buttons || []); }
 function updateHover() {
@@ -13,12 +13,12 @@ function handleClick(x, y) {
   if (G.screen.onClick) G.screen.onClick(x, y); else clickButtons(G.screen.buttons || [], x, y);
 }
 function onKey(e) {
+  G.dirty = true;
   if (e.target && e.target.tagName === 'INPUT') return; // pisanie w polu tekstowym (askText) nie uruchamia skrótów
-  Sound.unlock();
   const k = e.key.toLowerCase(); G.keys.add(k);
   if (G.fade.next) return;
   const b = activeButtons().find(b => !b.disabled && b.key === k);
-  if (b) { e.preventDefault(); Sound.play('click'); if (b.action) b.action(); return; }
+  if (b) { e.preventDefault(); if (b.action) b.action(); return; }
   if (k === 'escape') { if (G.modal) { if (!G.modal.locked) G.modal = null; } else if (G.screen.onBack) G.screen.onBack(); }
   else if (!G.modal && G.screen.onKey) G.screen.onKey(k, e);
 }
@@ -33,11 +33,12 @@ function syncMouse() { const m = G.mouse; if (m.vx == null || m.vx < 0) return; 
 function bindInput() {
   const c = G.canvas;
   window.addEventListener('pointermove', e => {
+    G.dirty = true;
     const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; G.mouse.type = e.pointerType;
     if (!G.modal && G.screen && G.screen.onPointerMove) G.screen.onPointerMove(p.x, p.y, e);
   });
   c.addEventListener('pointerdown', e => {
-    Sound.unlock();
+    G.dirty = true;
     if (e.button === 2) {
       e.preventDefault(); const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; updateHover();
       const txt = rightInfoAt(p.x, p.y); if (txt) G.popup = { text: txt, x: p.vx, y: p.vy };
@@ -46,13 +47,14 @@ function bindInput() {
     if (e.button !== 0) return; e.preventDefault(); G.popup = null;
     if (e.pointerType !== 'mouse') {
       const p0 = toLogical(e); clearTimeout(G.pressTimer);
-      G.pressTimer = setTimeout(() => { const txt = rightInfoAt(p0.x, p0.y); if (txt) { G.popup = { text: txt, x: p0.vx, y: p0.vy }; G.longPress = true; } }, 420);
+      G.pressTimer = setTimeout(() => { G.dirty = true; const txt = rightInfoAt(p0.x, p0.y); if (txt) { G.popup = { text: txt, x: p0.vx, y: p0.vy }; G.longPress = true; } }, 420);
     }
     const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; G.mouse.type = e.pointerType; G.mouse.down = true;
     updateHover(); G.downTarget = G.hover;
     if (!G.hover && !G.modal && !G.fade.next && G.screen.onPointerDown) G.screen.onPointerDown(p.x, p.y, e);
   });
   window.addEventListener('pointerup', e => {
+    G.dirty = true;
     if (e.button === 2) { G.popup = null; return; }
     clearTimeout(G.pressTimer);
     if (!G.mouse.down) return; G.mouse.down = false; const p = toLogical(e);
@@ -63,10 +65,10 @@ function bindInput() {
   });
   c.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !G.mouse.down) { G.mouse.x = G.mouse.y = G.mouse.vx = G.mouse.vy = -1; } });
   c.addEventListener('contextmenu', e => e.preventDefault());
-  c.addEventListener('wheel', e => { if (!G.modal && !G.fade.next && G.screen.onWheel) { e.preventDefault(); G.screen.onWheel(Math.sign(e.deltaY)); } }, { passive: false });
+  c.addEventListener('wheel', e => { G.dirty = true; if (!G.modal && !G.fade.next && G.screen.onWheel) { e.preventDefault(); G.screen.onWheel(Math.sign(e.deltaY)); } }, { passive: false });
   window.addEventListener('keydown', onKey);
-  window.addEventListener('keyup', e => G.keys.delete(e.key.toLowerCase()));
-  window.addEventListener('blur', () => G.keys.clear());
+  window.addEventListener('keyup', e => { G.keys.delete(e.key.toLowerCase()); G.dirty = true; });
+  window.addEventListener('blur', () => { G.keys.clear(); G.dirty = true; });
 }
 // Okno gry wypełnia ekran: skala tak, by zmieścił się obszar W×H, a reszta szerokości albo wysokości
 // (do VW_MAX×VH_MAX) poszerza okno logiczne. Wymiary parzyste, bo bufory pikselowe mają połowę rozdzielczości.
@@ -77,7 +79,7 @@ function resize() {
   OX = (VW - W) / 2; OY = (VH - H) / 2;
   for (const k in Layers.cache) if (/_\d+x\d+$/.test(k)) delete Layers.cache[k]; // warstwy zależne od rozmiaru okna
   const cw = Math.max(1, Math.floor(VW * s)), ch = Math.max(1, Math.floor(VH * s));
-  G.dpr = Math.min(window.devicePixelRatio || 1, 2); G.scale = cw / VW; G.rs = G.scale * G.dpr;
+  G.dpr = renderDpr(); G.scale = cw / VW; G.rs = G.scale * G.dpr; G.dirty = true;
   G.canvas.style.width = cw + 'px'; G.canvas.style.height = ch + 'px';
   G.canvas.width = Math.round(cw * G.dpr); G.canvas.height = Math.round(ch * G.dpr);
 }
@@ -88,7 +90,8 @@ function update(dt) {
   syncMouse(); updateHover(); if (G.screen.update) G.screen.update(dt);
 }
 function render() {
-  const ctx = G.ctx, s = G.rs, center = () => ctx.setTransform(s, 0, 0, s, OX * s, OY * s);
+  // przesunięcie wyśrodkowanego ekranu w całych pikselach: przy ułamkowym każdy obraz byłby filtrowany (wolno i nieostro)
+  const ctx = G.ctx, s = G.rs, center = () => ctx.setTransform(s, 0, 0, s, Math.round(OX * s), Math.round(OY * s));
   ctx.setTransform(s, 0, 0, s, 0, 0); ctx.clearRect(0, 0, VW, VH);
   if (G.screen.fill) G.screen.draw(ctx);
   else { if (OX || OY) drawBackdrop(ctx); center(); G.screen.draw(ctx); }
@@ -101,15 +104,50 @@ function render() {
 // Ekran może podać własne (screen.backdrop), np. bitwa przedłuża pole walki.
 function drawBackdrop(ctx) {
   if (G.screen.backdrop) { G.screen.backdrop(ctx); return; }
-  ctx.drawImage(Layers.get(`backdrop_${VW}x${VH}`, VW, VH, c => {
+  drawLayer(ctx, Layers.get(`backdrop_${VW}x${VH}`, VW, VH, c => {
     stoneFill(c, 0, 0, VW, VH); c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, 0, VW, VH);
     goldFrame(c, OX, OY, W, H);
-  }), 0, 0, VW, VH);
+  }), 0, 0);
 }
+// Klatkę rysujemy tylko wtedy, gdy trzeba: ekran podaje, ilu klatek na sekundę potrzebuje (screen.fps: liczba albo funkcja,
+// domyślnie 4 dla ekranów bez animacji), a wejście (mysz, klawisze) i każda zmiana okna, dymka czy podświetlenia wymusza klatkę od razu.
+// Na słabym komputerze to połowa sukcesu: nieruchomy ekran prawie nie zużywa procesora.
+function screenFps() { const f = G.screen && G.screen.fps; return typeof f === 'function' ? f.call(G.screen) : (f || 4); }
 function frame(ts) {
-  const t = ts / 1000, dt = G.last ? Math.min(0.05, Math.max(0, t - G.last)) : 0; G.last = t;
-  try { update(dt); render(); } catch (err) { console.error(err); }
+  const t = ts / 1000, raw = G.last ? t - G.last : 0, dt = Math.min(0.05, Math.max(0, raw)); G.last = t;
+  try {
+    update(dt);
+    const ui = [G.screen, G.modal, G.popup, G.hover, G.fade.next]; if (!G._ui || ui.some((v, i) => v !== G._ui[i])) { G._ui = ui; G.dirty = true; }
+    const fps = screenFps();
+    if (G.dirty || G.fade.a > 0 || t - (G.drawnAt || 0) >= 1 / fps - 0.004) { const w0 = performance.now(); G.dirty = false; render(); Perf.sample(t - (G.drawnAt || t), (performance.now() - w0) / 1000, fps); G.drawnAt = t; } // rysowanie może poprosić o kolejną klatkę (G.dirty)
+  } catch (err) { console.error(err); }
   requestAnimationFrame(frame);
+}
+// Jakość grafiki = gęstość pikseli płótna. Wysoka: jak ekran (do 2), niska: 0,75 piksela płótna na piksel ekranu (lekko miękki obraz,
+// ale kilka razy mniej pracy). Automatyczna zaczyna jak wysoka i schodzi o stopień (2 → 1 → 0,75), gdy płynne ekrany mają za mało klatek.
+const QUALITIES = [{ id: 'auto', name: 'Automatyczna' }, { id: 'high', name: 'Wysoka' }, { id: 'low', name: 'Niska' }];
+function renderDpr() {
+  const dev = Math.min(window.devicePixelRatio || 1, 2), q = G.settings.quality;
+  if (q === 'high') return dev;
+  if (q === 'low') return Math.min(dev, 1) * 0.75;
+  return Math.min(dev, G.settings.autoDpr || dev);
+}
+// Jakość schodzi tylko wtedy, gdy klatek jest za mało (mediana odstępu > 1/32 s) i gra naprawdę długo rysuje każdą klatkę
+// (mediana czasu rysowania > 12 ms): same przestoje z zewnątrz (karta w tle, zrzut ekranu, generowanie grafiki) nie obniżają jakości.
+const Perf = {
+  gaps: [], work: [],
+  sample(gap, work, fps) {
+    if (G.settings.quality !== 'auto' || fps < 50 || gap <= 0 || gap > 0.25 || (G.screens.adventure && G.screens.adventure.aiRun)) return;
+    this.gaps.push(gap); this.work.push(work); if (this.gaps.length < 90) return;
+    const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], slow = med(this.gaps) > 1 / 32 && med(this.work) > 0.012; this.gaps = []; this.work = [];
+    if (slow && G.dpr > 0.75) { G.settings.autoDpr = G.dpr > 1 ? 1 : 0.75; saveSettings(); resize(); }
+  },
+};
+function showGfxSettings(back) {
+  const S = G.settings, cur = (QUALITIES.find(q => q.id === S.quality) || QUALITIES[0]).name;
+  const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); resize(); showGfxSettings(back); };
+  showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało.`,
+    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 130 });
 }
 function init() {
   loadSettings();

@@ -33,7 +33,9 @@ G.screens.hero = {
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y);
     if (ar) {
       if (!this.sel) { if (h.army[ar.i]) this.sel = ar.i; return; }
-      armyMove(h.army, this.sel, h.army, ar.i); this.sel = null; return;
+      const from = this.sel; this.sel = null;
+      if (G.keys.has('shift')) { showSplit(h.army, from, h.army, ar.i, [], err => { if (err) this.say(err); }); return; } // Shift+klik: część oddziału na wolne miejsce
+      armyMove(h.army, from, h.army, ar.i); return;
     }
     this.sel = null;
     if (e && h.equip[e.id]) { unequip(h, e.id); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(`Zdjęto: ${ARTIFACTS[h.bag[h.bag.length - 1]].name}`); }

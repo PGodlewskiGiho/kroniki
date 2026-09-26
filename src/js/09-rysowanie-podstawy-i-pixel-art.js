@@ -39,6 +39,12 @@ const Layers = {
     return c;
   },
 };
+// Warstwa w naturalnym rozmiarze: piksel warstwy = piksel płótna (bez skalowania i filtrowania, które na słabym komputerze kosztuje najwięcej)
+function drawLayer(ctx, c, x, y) {
+  const m = ctx.getTransform();
+  if (m.b || m.c || Math.abs(m.a - c._s) > 1e-6 || Math.abs(m.d - c._s) > 1e-6) { ctx.drawImage(c, x, y, c.width / c._s, c.height / c._s); return; }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(c, Math.round(m.a * x + m.e), Math.round(m.d * y + m.f)); ctx.restore(); // w całych pikselach
+}
 let _noiseCanvas = null;
  
 const _patterns = new WeakMap();

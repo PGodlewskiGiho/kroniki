@@ -120,6 +120,7 @@ test('imiona graczy: wpisane na ekranie nowej gry zastępują „gracz <kolor>�
   assert.ok(typed, 'pole tekstowe ma fokus');
   await page.keyboard.type('Ania');
   await page.keyboard.press('Enter');
+  await frames(page, 2); // podpis przycisku odświeża się przy rysowaniu
   const r = await page.evaluate(() => {
     const st = createNewGame(Object.assign({}, G.settings), 5);
     return { name: G.settings.slots[1].name, input: !!document.querySelector('input'), modal: !!G.modal, p1: playerName(st, 1), p0: playerName(st, 0), label: G.screens.setup.slotBtns[1].nm.label };

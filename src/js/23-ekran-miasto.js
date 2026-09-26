@@ -1,15 +1,17 @@
 // ==================== EKRAN: MIASTO =====================================================
 // Widok miasta, lista budowli, garnizon.
 G.screens.town = {
+  fps: 15, // dym i światła w oknach
   buttons: [], townId: 0, rows: [], hoverSlot: null, scroll: 0, sel: null, garRects: [], heroRects: [],
   LIST_ROWS: 6, // tyle budowli mieści się na liście; resztę przewija się strzałkami albo kółkiem myszy
   town() { return G.state.towns[this.townId]; },
   enter(p) {
-    this.townId = p.townId || 0; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.garRects = []; this.heroRects = [];
+    this.townId = p.townId || 0; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.split = false; this.garRects = []; this.heroRects = [];
     this.guildVisit();
     this.baseButtons = [
       new Button(596, 448, 192, 40, 'Rekrutacja', () => showRecruitList(G.state, this.town(), m => this.say(m)), { key: 'r', size: 16, tip: 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).' }),
-      new Button(596, 496, 192, 40, 'Powrót na mapę', () => G.go('adventure'), { key: 'escape', size: 16, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
+      new Button(694, 496, 94, 40, 'Na mapę', () => G.go('adventure'), { key: 'escape', size: 14, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
+      new Button(596, 496, 94, 40, 'Dziel', () => { this.split = !this.split; this.say(this.split ? 'Wybierz oddział i miejsce' : 'Przenoszenie całych oddziałów'); }, { key: 'd', size: 14, selected: () => this.split, tip: 'Podział oddziału: przenieś tylko część jednostek (klawisz D albo Shift+klik na miejscu docelowym).' }),
     ];
     this.bRecruitHalf = new Button(596, 448, 94, 40, 'Rekrutacja', this.baseButtons[0].action, { key: 'r', size: 14, tip: this.baseButtons[0].tip });
     this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
@@ -20,7 +22,7 @@ G.screens.town = {
   showShipyard() {
     const st = G.state, t = this.town();
     showDialog(`Stocznia. Łódź kosztuje ${BOAT_COST.gold} złota i ${BOAT_COST.wood} drewna i czeka na wodzie przy mieście. Bohater wsiada, wchodząc na nią z brzegu.`, [
-      { label: 'Kup łódź', key: 'enter', action: () => { const e = buyBoat(st, t); Sound.play(e ? 'error' : 'boat'); this.say(e || 'Łódź czeka na wodzie przy mieście'); } },
+      { label: 'Kup łódź', key: 'enter', action: () => { const e = buyBoat(st, t); this.say(e || 'Łódź czeka na wodzie przy mieście'); } },
       { label: 'Wyjdź', key: 'escape' }]);
   },
   onWheel(d) { const n = availableBuildings(this.town()).length; this.scroll = clamp(this.scroll + d, 0, Math.max(0, n - this.LIST_ROWS)); },
@@ -65,7 +67,7 @@ G.screens.town = {
     if (t.builtToday) return this.say('W tym mieście zbudowano już dziś budowlę');
     if (!canAfford(st, B.cost)) return this.say('Brakuje zasobów na tę budowlę');
     showDialog(`Zbudować: ${info.name}? ${info.desc}`, [
-      { label: 'Zbuduj', key: 'enter', action: () => { buildIn(st, t, B); Sound.play('build'); this.say(`Zbudowano: ${info.name}`); if (/^guild/.test(B.id)) this.guildVisit(); } },
+      { label: 'Zbuduj', key: 'enter', action: () => { buildIn(st, t, B); this.say(`Zbudowano: ${info.name}`); if (/^guild/.test(B.id)) this.guildVisit(); } },
       { label: 'Nie', key: 'escape' },
     ], { iconH: 40, icon: (ctx, cx, cy) => { ctx.font = font(14, 700, 'body'); const w = RESOURCES.reduce((a, r) => a + (B.cost[r.id] ? 29 + ctx.measureText(String(B.cost[r.id])).width : 0), 0); drawCost(ctx, B.cost, cx - w / 2, cy, { size: 24 }); } });
   },
@@ -88,8 +90,9 @@ G.screens.town = {
     const slot = this.armySlotAt(x, y);
     if (slot) { // zaznacz oddział, potem wskaż miejsce: przeniesienie, połączenie albo zamiana
       if (!this.sel) { if (slot.a[slot.i]) this.sel = slot; return; }
-      const hh = heroInTown(st, t), err = armyMove(this.sel.a, this.sel.i, slot.a, slot.i, hh ? [hh.army] : []);
-      this.sel = null; if (err) this.say(err); return;
+      const hh = heroInTown(st, t), from = this.sel, heroes = hh ? [hh.army] : []; this.sel = null;
+      if (this.split || G.keys.has('shift')) { this.split = false; showSplit(from.a, from.i, slot.a, slot.i, heroes, err => { if (err) this.say(err); }); return; }
+      const err = armyMove(from.a, from.i, slot.a, slot.i, heroes); if (err) this.say(err); return;
     }
     this.sel = null;
     if (row) return this.tryBuild(row.B);
@@ -116,14 +119,16 @@ G.screens.town = {
   },
   draw(ctx) {
     const st = G.state, t = this.town(), fac = t.faction, col = ownerColor(st, t.owner);
-    ctx.drawImage(Layers.get('townChrome', W, H, paintTownChrome), 0, 0, W, H);
+    drawLayer(ctx, Layers.get('townChrome', W, H, paintTownChrome), 0, 0);
     const key = `tw_${fac}_${[...t.built].sort().join('.')}_${col}`;
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
     const scene = Layers.get(key, 592, 438, c => { c.imageSmoothingEnabled = false; TownFXCache[key] = paintTownScene(c, t, col); }, TOWN_ART_SCALE);
     const fb = pixBuf('townFx', scene.width, scene.height, true), fbx = fb._ctx;
-    fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
-    fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, TownFXCache[key] || { wins: [], smokes: [] }); pixelQuantize(fb);
+    if (fb._key !== key || !(G.time >= fb._t && G.time - fb._t < 1 / 15)) { // dym i światła w oknach: najwyżej 15 klatek na sekundę
+      fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
+      fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, TownFXCache[key] || { wins: [], smokes: [] }); pixelQuantize(fb); fb._key = key; fb._t = G.time;
+    }
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(fb, 0, 0, fb.width / TOWN_ART_SCALE, fb.height / TOWN_ART_SCALE); ctx.restore();
     if (this.hoverSlot !== null && !G.modal) {
       const hb = ((TownFXCache[key] || {}).rects || {})[this.hoverSlot] || { x: 0, y: 0, w: 0, h: 0 };
@@ -159,7 +164,7 @@ G.screens.town = {
     });
     if (!list.length) text(ctx, 'Brak dostępnych budowli', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
-    const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, this.baseButtons[1]] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
+    const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, ...this.baseButtons.slice(1)] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
     this.buttons = paged ? [...base, this.btnUp, this.btnDown] : base;
     if (paged) {
       this.btnUp.disabled = this.scroll === 0; this.btnDown.disabled = this.scroll >= list.length - N;
