@@ -101,17 +101,17 @@ function menuRider(b, t) {
   b.save(); b.globalAlpha = clamp(u * 8, 0, 1) * clamp((1 - u) * 6, 0, 1);
   b.drawImage(s.c, x - s.ax * 2 * k, y - s.ay * 2 * k, s.c.width * 2 * k, s.c.height * 2 * k); b.restore();
 }
-// Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize)
+// Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize, wypalona raz w nieruchomym niebie i lądzie)
 // i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
 // Scena menu zmienia się powoli (chmury, ognie w oknach), więc przeliczamy ją najwyżej 12 razy na sekundę, a pomiędzy wklejamy gotową
 function drawMenuScene(ctx) {
-  const pb = pixBuf('menuScene', VW / 2, VH / 2, true);
+  const pb = pixBuf('menuScene', VW / 2, VH / 2);
   if (!(pb._t != null && G.time >= pb._t && G.time - pb._t < 1 / 12)) { paintMenuScene(pb); pb._t = G.time; }
   viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
 }
 function paintMenuScene(pb) {
   const t = G.time, b = pb._ctx, span = VW + 300;
-  const layer = paint => c => { c.translate(OX, OY); paint(c); };
+  const layer = paint => c => { c.translate(OX, OY); paint(c); pixelQuantize(c.canvas, 14); };
   b.setTransform(0.5, 0, 0, 0.5, OX / 2, OY / 2); b.imageSmoothingEnabled = false;
   b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 0.5), -OX, -OY, VW, VH);
   for (const c of CLOUDS) drawCloud(b, ((c.x * span / 1100 + t * c.v) % span) - 150 - OX, c.y, c.s, c.a);
@@ -133,7 +133,6 @@ function paintMenuScene(pb) {
     const y = 430 + (((e.y - 430 - t * e.v) % 170) + 170) % 170, x = e.x + Math.sin(t * 0.9 + e.p) * 10, a = 0.45 + 0.35 * Math.sin(t * 3 + e.p);
     b.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; b.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
   }
-  pixelQuantize(pb, 14);
 }
 function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); dimScreen(ctx, a); }
 function askQuit() {

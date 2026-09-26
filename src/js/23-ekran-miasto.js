@@ -124,10 +124,10 @@ G.screens.town = {
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
     const scene = Layers.get(key, 592, 438, c => { c.imageSmoothingEnabled = false; TownFXCache[key] = paintTownScene(c, t, col); }, TOWN_ART_SCALE);
-    const fb = pixBuf('townFx', scene.width, scene.height, true), fbx = fb._ctx;
+    const fb = pixBuf('townFx', scene.width, scene.height), fbx = fb._ctx;
     if (fb._key !== key || !(G.time >= fb._t && G.time - fb._t < 1 / 15)) { // dym i światła w oknach: najwyżej 15 klatek na sekundę
       fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
-      fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, TownFXCache[key] || { wins: [], smokes: [] }); pixelQuantize(fb); fb._key = key; fb._t = G.time;
+      fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, TownFXCache[key] || { wins: [], smokes: [] }); fb._key = key; fb._t = G.time;
     }
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(fb, 0, 0, fb.width / TOWN_ART_SCALE, fb.height / TOWN_ART_SCALE); ctx.restore();
     if (this.hoverSlot !== null && !G.modal) {

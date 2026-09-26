@@ -16,6 +16,7 @@ function onKey(e) {
   G.dirty = true;
   if (e.target && e.target.tagName === 'INPUT') return; // pisanie w polu tekstowym (askText) nie uruchamia skrótów
   const k = e.key.toLowerCase(); G.keys.add(k);
+  if (k === 'f' && !e.ctrlKey && !e.metaKey) { G.showPerf = !G.showPerf; return; }
   if (G.fade.next) return;
   const b = activeButtons().find(b => !b.disabled && b.key === k);
   if (b) { e.preventDefault(); if (b.action) b.action(); return; }
@@ -99,6 +100,7 @@ function render() {
   ctx.setTransform(s, 0, 0, s, 0, 0);
   if (G.popup) drawPopup(ctx, G.popup);
   if (G.fade.a > 0) { ctx.fillStyle = `rgba(0,0,0,${G.fade.a.toFixed(3)})`; ctx.fillRect(0, 0, VW, VH); }
+  if (G.showPerf) drawPerfInfo(ctx);
 }
 // Tło wokół wyśrodkowanego ekranu: kamień jak w ramkach gry, przyciemniony, ze złotą obwódką.
 // Ekran może podać własne (screen.backdrop), np. bitwa przedłuża pole walki.
@@ -123,35 +125,53 @@ function frame(ts) {
   } catch (err) { console.error(err); }
   requestAnimationFrame(frame);
 }
-// Jakość grafiki = gęstość pikseli płótna. Wysoka: jak ekran (do 2), niska: 0,75 piksela płótna na piksel ekranu (lekko miękki obraz,
-// ale kilka razy mniej pracy). Automatyczna zaczyna jak wysoka i schodzi o stopień (2 → 1 → 0,75), gdy płynne ekrany mają za mało klatek.
+// Jakość grafiki = gęstość pikseli płótna. Wysoka: jak ekran (do 2), niska: pół piksela płótna na piksel ekranu (miękki obraz,
+// ale 4 razy mniej pikseli do skopiowania w każdej klatce: na słabym laptopie bez karty graficznej to główny koszt).
+// Automatyczna zaczyna jak wysoka i schodzi o stopień (2 → 1 → 0,75 → 0,5), gdy klatki przychodzą za późno.
 const QUALITIES = [{ id: 'auto', name: 'Automatyczna' }, { id: 'high', name: 'Wysoka' }, { id: 'low', name: 'Niska' }];
 function renderDpr() {
   const dev = Math.min(window.devicePixelRatio || 1, 2), q = G.settings.quality;
   if (q === 'high') return dev;
-  if (q === 'low') return Math.min(dev, 1) * 0.75;
+  if (q === 'low') return Math.min(dev, 1) * 0.5;
   return Math.min(dev, G.settings.autoDpr || dev);
 }
-// Jakość schodzi tylko wtedy, gdy klatek jest za mało (mediana odstępu > 1/32 s) i gra naprawdę długo rysuje każdą klatkę
-// (mediana czasu rysowania > 12 ms): same przestoje z zewnątrz (karta w tle, zrzut ekranu, generowanie grafiki) nie obniżają jakości.
+// Jakość schodzi, gdy klatki przychodzą wyraźnie później, niż ekran chce (mediana spóźnienia > 12 ms), i to albo przy długim
+// rysowaniu w skrypcie (> 12 ms), albo dwa razy z rzędu: kopiowanie pikseli na płótno (bez karty graficznej) nie wlicza się w czas
+// skryptu, a pojedyncze przestoje z zewnątrz (karta w tle, zrzut ekranu, generowanie grafiki) nie obniżają jakości.
 const Perf = {
-  gaps: [], work: [],
+  late: [], work: [], strikes: 0, fps: 0, ms: 0,
   sample(gap, work, fps) {
-    if (G.settings.quality !== 'auto' || fps < 50 || gap <= 0 || gap > 0.25 || (G.screens.adventure && G.screens.adventure.aiRun)) return;
-    this.gaps.push(gap); this.work.push(work); if (this.gaps.length < 90) return;
-    const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], slow = med(this.gaps) > 1 / 32 && med(this.work) > 0.012; this.gaps = []; this.work = [];
-    if (slow && G.dpr > 0.75) { G.settings.autoDpr = G.dpr > 1 ? 1 : 0.75; saveSettings(); resize(); }
+    if (gap > 0 && gap < 1) { this.fps = this.fps ? this.fps * 0.9 + 0.1 / gap : 1 / gap; this.ms = this.ms ? this.ms * 0.9 + work * 100 : work * 1000; }
+    if (G.settings.quality !== 'auto' || fps < 12 || gap <= 0 || gap > 0.25 || (G.screens.adventure && G.screens.adventure.aiRun)) return;
+    this.late.push(gap - 1 / fps); this.work.push(work); if (this.late.length < 60) return;
+    const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], late = med(this.late) > 0.012, busy = med(this.work) > 0.012; this.late = []; this.work = [];
+    this.strikes = late ? this.strikes + 1 : 0;
+    if (late && (busy || this.strikes >= 2) && G.dpr > 0.5) { G.settings.autoDpr = G.dpr > 1 ? 1 : G.dpr > 0.75 ? 0.75 : 0.5; this.strikes = 0; saveSettings(); resize(); }
   },
 };
+// Licznik wydajności (klawisz F): klatki na sekundę, czas rysowania w skrypcie, rozmiar płótna i karta graficzna według przeglądarki
+function gpuName() {
+  if (G._gpu == null) {
+    try { const gl = document.createElement('canvas').getContext('webgl'), ext = gl && gl.getExtension('WEBGL_debug_renderer_info'); G._gpu = gl ? String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER)) : 'brak WebGL'; }
+    catch (e) { G._gpu = '?'; }
+  }
+  return G._gpu;
+}
+function drawPerfInfo(ctx) {
+  const lines = [`${Perf.fps.toFixed(0)} kl/s (ekran chce ${screenFps()}), skrypt ${Perf.ms.toFixed(1)} ms`,
+    `płótno ${G.canvas.width}×${G.canvas.height}, gęstość ${G.dpr}, jakość: ${(QUALITIES.find(q => q.id === G.settings.quality) || QUALITIES[0]).name}`, `grafika: ${gpuName().slice(0, 60)}`];
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.72)'; ctx.fillRect(4, 4, 390, 58);
+  lines.forEach((l, i) => text(ctx, l, 10, 20 + i * 17, { size: 12, weight: 600, color: '#ffe9a0' })); ctx.restore();
+}
 function showGfxSettings(back) {
   const S = G.settings, cur = (QUALITIES.find(q => q.id === S.quality) || QUALITIES[0]).name;
   const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); resize(); showGfxSettings(back); };
-  showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało.`,
+  showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało. Klawisz F pokazuje licznik klatek.`,
     [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 130 });
 }
 function init() {
   loadSettings();
-  G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d');
+  G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: false }); // nieprzezroczyste płótno: przeglądarka nie miesza go z tłem strony
   resize(); window.addEventListener('resize', resize); bindInput();
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)
   setScreen('menu'); G.fade.a = 1; G.fade.target = 0;

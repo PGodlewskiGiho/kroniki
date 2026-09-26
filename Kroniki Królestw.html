@@ -151,6 +151,9 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    w całych pikselach), mapa bez przeliczania całego obrazu co klatkę (gradeCanvas w kawałkach terenu i kopiach sprite'ów, mgła
    w kawałkach fogChunk, nakładka mapLight), scena menu i efekty miasta ~12–15 klatek/s, jakość grafiki (auto/wysoka/niska, Perf).
    Kawałki terenu: budżet ~10 ms na klatkę (MapRender.get allow, zastępczy placeholder), generowanie wokół widoku z wyprzedzeniem.
+   Słaby laptop: menu i miasto bez pixelQuantize co klatkę (paleta wypalona w nieruchomym tle), płótno bez przezroczystości
+   (alpha: false), bufory mapy, mgły i sprite'ów bez willReadFrequently (przy karcie graficznej zostają na niej), niska jakość
+   = pół piksela płótna na piksel ekranu i bez fal na wodzie, Perf schodzi do 0,5 także przy spóźnionych klatkach, licznik pod F.
    Porządki i trudniejsza mapa: potwory neutralne to też jednostki frakcji (poziomy 1–7, fillNeutrals), siła rośnie
    wykładniczo z odległością od najbliższego startu (MONSTER_POWER, d01) i z trudnością, potwory rosną co tydzień
    (MONSTER_GROW do MONSTER_GROW_MAX). Skarbce BANKS (Krypta, Orcza warownia, Gniazdo gryfów, Leże hydr, Smocza Utopia):
@@ -699,7 +702,7 @@ function loadSettings() {
   if (!FACTIONS.some(f => f.id === S.faction)) S.faction = 'haven';
   delete S.sfx; delete S.mus; // głośności z czasów, gdy gra miała dźwięk
   if (!['auto', 'high', 'low'].includes(S.quality)) S.quality = 'auto';
-  if (!(S.autoDpr >= 0.75 && S.autoDpr <= 2)) delete S.autoDpr;
+  if (!(S.autoDpr >= 0.5 && S.autoDpr <= 2)) delete S.autoDpr;
   S.slots = validSlots(S.slots) || legacySlots(S);
 }
 // Miejsca graczy na ekranie nowej gry: 8 miejsc { type: 'human' | 'ai' | 'off', color, faction ('random' = losowa) }.
@@ -914,7 +917,9 @@ function sprite(key, w, h, ax, ay, draw, outline = OUTLINE, sc = 0.5) {
   let s = SPR.get(key); if (s) return s;
   const c = document.createElement('canvas'); c.width = w; c.height = h; c._ctx = c.getContext('2d', { willReadFrequently: true });
   c._ctx.setTransform(sc, 0, 0, sc, ax, ay); const colors = []; draw(recordingCtx(c._ctx, colors)); crispify(c, colors, outline);
-  s = { c, ax, ay }; SPR.set(key, s); return s;
+  // gotowy sprite w zwykłym płótnie: robocze (willReadFrequently) Chrome trzyma w pamięci procesora, a takie kopiuje się wolniej
+  const p = document.createElement('canvas'); p.width = w; p.height = h; p._ctx = p.getContext('2d'); p._ctx.drawImage(c, 0, 0);
+  s = { c: p, ax, ay }; SPR.set(key, s); return s;
 }
 // Sprite w interfejsie: (x, y) = punkt zaczepienia w px logicznych; k = 1 to rozmiar jak na mapie
 // (1 piksel grafiki = 2 px logiczne), k = 2 dwa razy większy itd.
@@ -4810,7 +4815,7 @@ const WaterFx = {
     return this.pat = gradeCanvas(c); // kolory fal po tej samej korekcji co teren
   },
   draw(b, ch, dx, dy, size, wx, wy) {
-    if (!ch._deep) return; const S = ch.width, t = G.time;
+    if (!ch._deep || G.settings.quality === 'low') return; const S = ch.width, t = G.time; // fale na wodzie: nie przy niskiej jakości
     const tmp = this.tmp || (this.tmp = document.createElement('canvas')); if (tmp.width !== S) { tmp.width = tmp.height = S; }
     const g = tmp.getContext('2d'), pat = g.createPattern(this.pattern(), 'repeat');
     const layer = (ox, oy, a) => { g.save(); g.globalAlpha = a; g.translate(ox, oy); g.fillStyle = pat; g.fillRect(-ox, -oy, S, S); g.restore(); };
@@ -4920,7 +4925,7 @@ function fogChunk(ex, n, cx, cy) {
   const key = cx + ',' + cy, old = MapRender.fog.get(key); if (old && old._sig === sig) return old.c;
   let c = null;
   if (any) {
-    c = document.createElement('canvas'); c.width = c.height = S; const f = c.getContext('2d', { willReadFrequently: true }), ox = -cx * CHUNK * T, oy = -cy * CHUNK * T;
+    const w = pixBuf('fogWork', S, S, true), f = w._ctx, ox = -cx * CHUNK * T, oy = -cy * CHUNK * T; f.setTransform(1, 0, 0, 1, 0, 0); f.clearRect(0, 0, S, S);
     f.setTransform(0.5, 0, 0, 0.5, 0, 0);
     for (const [alpha, extra] of [[0.45, 7], [1, 0]]) {
       f.fillStyle = `rgba(0,0,0,${alpha})`; f.beginPath();
@@ -4932,7 +4937,8 @@ function fogChunk(ex, n, cx, cy) {
     }
     const img = f.getImageData(0, 0, S, S), d = img.data, bx = cx * S, by = cy * S;
     for (let y = 0, k = 0; y < S; y++) for (let x = 0; x < S; x++, k += 4) { const a = d[k + 3]; d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = (a >= 225 || (a >= 70 && ((bx + x + by + y) & 1))) ? 255 : 0; }
-    f.putImageData(img, 0, 0);
+    // gotowy kawałek w zwykłym płótnie (roboczy, czytany procesorem, służy tylko do liczenia)
+    c = document.createElement('canvas'); c.width = c.height = S; c.getContext('2d').putImageData(img, 0, 0);
   }
   MapRender.fog.set(key, { c, _sig: sig }); if (MapRender.fog.size > 80) MapRender.fog.delete(MapRender.fog.keys().next().value);
   return c;
@@ -5019,7 +5025,7 @@ function mapLight(w, h) {
 }
 function drawMapView(ctx, st, scr) {
   {
-    const wb = pixBuf('world', VIEW.w / 2, VIEW.h / 2, true), b = wb._ctx;
+    const wb = pixBuf('world', VIEW.w / 2, VIEW.h / 2), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
     b.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / 2, VIEW.h / 2), 0, 0); b.restore();
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(wb, VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.restore();
   }
@@ -6536,17 +6542,17 @@ function menuRider(b, t) {
   b.save(); b.globalAlpha = clamp(u * 8, 0, 1) * clamp((1 - u) * 6, 0, 1);
   b.drawImage(s.c, x - s.ax * 2 * k, y - s.ay * 2 * k, s.c.width * 2 * k, s.c.height * 2 * k); b.restore();
 }
-// Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize)
+// Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize, wypalona raz w nieruchomym niebie i lądzie)
 // i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
 // Scena menu zmienia się powoli (chmury, ognie w oknach), więc przeliczamy ją najwyżej 12 razy na sekundę, a pomiędzy wklejamy gotową
 function drawMenuScene(ctx) {
-  const pb = pixBuf('menuScene', VW / 2, VH / 2, true);
+  const pb = pixBuf('menuScene', VW / 2, VH / 2);
   if (!(pb._t != null && G.time >= pb._t && G.time - pb._t < 1 / 12)) { paintMenuScene(pb); pb._t = G.time; }
   viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
 }
 function paintMenuScene(pb) {
   const t = G.time, b = pb._ctx, span = VW + 300;
-  const layer = paint => c => { c.translate(OX, OY); paint(c); };
+  const layer = paint => c => { c.translate(OX, OY); paint(c); pixelQuantize(c.canvas, 14); };
   b.setTransform(0.5, 0, 0, 0.5, OX / 2, OY / 2); b.imageSmoothingEnabled = false;
   b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 0.5), -OX, -OY, VW, VH);
   for (const c of CLOUDS) drawCloud(b, ((c.x * span / 1100 + t * c.v) % span) - 150 - OX, c.y, c.s, c.a);
@@ -6568,7 +6574,6 @@ function paintMenuScene(pb) {
     const y = 430 + (((e.y - 430 - t * e.v) % 170) + 170) % 170, x = e.x + Math.sin(t * 0.9 + e.p) * 10, a = 0.45 + 0.35 * Math.sin(t * 3 + e.p);
     b.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; b.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
   }
-  pixelQuantize(pb, 14);
 }
 function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); dimScreen(ctx, a); }
 function askQuit() {
@@ -6903,7 +6908,7 @@ G.screens.adventure = {
     const cam = st.cam.x + ',' + st.cam.y, moved = cam !== this._cam; this._cam = cam;
     const busy = moved || this.aiRun || this.drag || G.keys.size || (this.floats && this.floats.length) || (this.mapFx && this.mapFx.length)
       || (this.banner && G.time - this.banner.t < 3) || (this.flashMsg && G.time - this.flashMsg.t < 3) || st.heroes.some(h => h.anim || h.moving);
-    return busy ? 60 : 20;
+    return busy ? 60 : G.settings.quality === 'low' ? 10 : 20; // w spoczynku przy niskiej jakości (bez fal) wystarczy 10
   },
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
@@ -7896,10 +7901,10 @@ G.screens.town = {
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
     const scene = Layers.get(key, 592, 438, c => { c.imageSmoothingEnabled = false; TownFXCache[key] = paintTownScene(c, t, col); }, TOWN_ART_SCALE);
-    const fb = pixBuf('townFx', scene.width, scene.height, true), fbx = fb._ctx;
+    const fb = pixBuf('townFx', scene.width, scene.height), fbx = fb._ctx;
     if (fb._key !== key || !(G.time >= fb._t && G.time - fb._t < 1 / 15)) { // dym i światła w oknach: najwyżej 15 klatek na sekundę
       fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
-      fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, TownFXCache[key] || { wins: [], smokes: [] }); pixelQuantize(fb); fb._key = key; fb._t = G.time;
+      fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, TownFXCache[key] || { wins: [], smokes: [] }); fb._key = key; fb._t = G.time;
     }
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(fb, 0, 0, fb.width / TOWN_ART_SCALE, fb.height / TOWN_ART_SCALE); ctx.restore();
     if (this.hoverSlot !== null && !G.modal) {
@@ -7973,6 +7978,7 @@ function onKey(e) {
   G.dirty = true;
   if (e.target && e.target.tagName === 'INPUT') return; // pisanie w polu tekstowym (askText) nie uruchamia skrótów
   const k = e.key.toLowerCase(); G.keys.add(k);
+  if (k === 'f' && !e.ctrlKey && !e.metaKey) { G.showPerf = !G.showPerf; return; }
   if (G.fade.next) return;
   const b = activeButtons().find(b => !b.disabled && b.key === k);
   if (b) { e.preventDefault(); if (b.action) b.action(); return; }
@@ -8056,6 +8062,7 @@ function render() {
   ctx.setTransform(s, 0, 0, s, 0, 0);
   if (G.popup) drawPopup(ctx, G.popup);
   if (G.fade.a > 0) { ctx.fillStyle = `rgba(0,0,0,${G.fade.a.toFixed(3)})`; ctx.fillRect(0, 0, VW, VH); }
+  if (G.showPerf) drawPerfInfo(ctx);
 }
 // Tło wokół wyśrodkowanego ekranu: kamień jak w ramkach gry, przyciemniony, ze złotą obwódką.
 // Ekran może podać własne (screen.backdrop), np. bitwa przedłuża pole walki.
@@ -8080,35 +8087,53 @@ function frame(ts) {
   } catch (err) { console.error(err); }
   requestAnimationFrame(frame);
 }
-// Jakość grafiki = gęstość pikseli płótna. Wysoka: jak ekran (do 2), niska: 0,75 piksela płótna na piksel ekranu (lekko miękki obraz,
-// ale kilka razy mniej pracy). Automatyczna zaczyna jak wysoka i schodzi o stopień (2 → 1 → 0,75), gdy płynne ekrany mają za mało klatek.
+// Jakość grafiki = gęstość pikseli płótna. Wysoka: jak ekran (do 2), niska: pół piksela płótna na piksel ekranu (miękki obraz,
+// ale 4 razy mniej pikseli do skopiowania w każdej klatce: na słabym laptopie bez karty graficznej to główny koszt).
+// Automatyczna zaczyna jak wysoka i schodzi o stopień (2 → 1 → 0,75 → 0,5), gdy klatki przychodzą za późno.
 const QUALITIES = [{ id: 'auto', name: 'Automatyczna' }, { id: 'high', name: 'Wysoka' }, { id: 'low', name: 'Niska' }];
 function renderDpr() {
   const dev = Math.min(window.devicePixelRatio || 1, 2), q = G.settings.quality;
   if (q === 'high') return dev;
-  if (q === 'low') return Math.min(dev, 1) * 0.75;
+  if (q === 'low') return Math.min(dev, 1) * 0.5;
   return Math.min(dev, G.settings.autoDpr || dev);
 }
-// Jakość schodzi tylko wtedy, gdy klatek jest za mało (mediana odstępu > 1/32 s) i gra naprawdę długo rysuje każdą klatkę
-// (mediana czasu rysowania > 12 ms): same przestoje z zewnątrz (karta w tle, zrzut ekranu, generowanie grafiki) nie obniżają jakości.
+// Jakość schodzi, gdy klatki przychodzą wyraźnie później, niż ekran chce (mediana spóźnienia > 12 ms), i to albo przy długim
+// rysowaniu w skrypcie (> 12 ms), albo dwa razy z rzędu: kopiowanie pikseli na płótno (bez karty graficznej) nie wlicza się w czas
+// skryptu, a pojedyncze przestoje z zewnątrz (karta w tle, zrzut ekranu, generowanie grafiki) nie obniżają jakości.
 const Perf = {
-  gaps: [], work: [],
+  late: [], work: [], strikes: 0, fps: 0, ms: 0,
   sample(gap, work, fps) {
-    if (G.settings.quality !== 'auto' || fps < 50 || gap <= 0 || gap > 0.25 || (G.screens.adventure && G.screens.adventure.aiRun)) return;
-    this.gaps.push(gap); this.work.push(work); if (this.gaps.length < 90) return;
-    const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], slow = med(this.gaps) > 1 / 32 && med(this.work) > 0.012; this.gaps = []; this.work = [];
-    if (slow && G.dpr > 0.75) { G.settings.autoDpr = G.dpr > 1 ? 1 : 0.75; saveSettings(); resize(); }
+    if (gap > 0 && gap < 1) { this.fps = this.fps ? this.fps * 0.9 + 0.1 / gap : 1 / gap; this.ms = this.ms ? this.ms * 0.9 + work * 100 : work * 1000; }
+    if (G.settings.quality !== 'auto' || fps < 12 || gap <= 0 || gap > 0.25 || (G.screens.adventure && G.screens.adventure.aiRun)) return;
+    this.late.push(gap - 1 / fps); this.work.push(work); if (this.late.length < 60) return;
+    const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], late = med(this.late) > 0.012, busy = med(this.work) > 0.012; this.late = []; this.work = [];
+    this.strikes = late ? this.strikes + 1 : 0;
+    if (late && (busy || this.strikes >= 2) && G.dpr > 0.5) { G.settings.autoDpr = G.dpr > 1 ? 1 : G.dpr > 0.75 ? 0.75 : 0.5; this.strikes = 0; saveSettings(); resize(); }
   },
 };
+// Licznik wydajności (klawisz F): klatki na sekundę, czas rysowania w skrypcie, rozmiar płótna i karta graficzna według przeglądarki
+function gpuName() {
+  if (G._gpu == null) {
+    try { const gl = document.createElement('canvas').getContext('webgl'), ext = gl && gl.getExtension('WEBGL_debug_renderer_info'); G._gpu = gl ? String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER)) : 'brak WebGL'; }
+    catch (e) { G._gpu = '?'; }
+  }
+  return G._gpu;
+}
+function drawPerfInfo(ctx) {
+  const lines = [`${Perf.fps.toFixed(0)} kl/s (ekran chce ${screenFps()}), skrypt ${Perf.ms.toFixed(1)} ms`,
+    `płótno ${G.canvas.width}×${G.canvas.height}, gęstość ${G.dpr}, jakość: ${(QUALITIES.find(q => q.id === G.settings.quality) || QUALITIES[0]).name}`, `grafika: ${gpuName().slice(0, 60)}`];
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.72)'; ctx.fillRect(4, 4, 390, 58);
+  lines.forEach((l, i) => text(ctx, l, 10, 20 + i * 17, { size: 12, weight: 600, color: '#ffe9a0' })); ctx.restore();
+}
 function showGfxSettings(back) {
   const S = G.settings, cur = (QUALITIES.find(q => q.id === S.quality) || QUALITIES[0]).name;
   const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); resize(); showGfxSettings(back); };
-  showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało.`,
+  showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało. Klawisz F pokazuje licznik klatek.`,
     [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 130 });
 }
 function init() {
   loadSettings();
-  G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d');
+  G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: false }); // nieprzezroczyste płótno: przeglądarka nie miesza go z tłem strony
   resize(); window.addEventListener('resize', resize); bindInput();
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)
   setScreen('menu'); G.fade.a = 1; G.fade.target = 0;

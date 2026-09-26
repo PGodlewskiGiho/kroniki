@@ -253,7 +253,7 @@ const WaterFx = {
     return this.pat = gradeCanvas(c); // kolory fal po tej samej korekcji co teren
   },
   draw(b, ch, dx, dy, size, wx, wy) {
-    if (!ch._deep) return; const S = ch.width, t = G.time;
+    if (!ch._deep || G.settings.quality === 'low') return; const S = ch.width, t = G.time; // fale na wodzie: nie przy niskiej jakości
     const tmp = this.tmp || (this.tmp = document.createElement('canvas')); if (tmp.width !== S) { tmp.width = tmp.height = S; }
     const g = tmp.getContext('2d'), pat = g.createPattern(this.pattern(), 'repeat');
     const layer = (ox, oy, a) => { g.save(); g.globalAlpha = a; g.translate(ox, oy); g.fillStyle = pat; g.fillRect(-ox, -oy, S, S); g.restore(); };
@@ -363,7 +363,7 @@ function fogChunk(ex, n, cx, cy) {
   const key = cx + ',' + cy, old = MapRender.fog.get(key); if (old && old._sig === sig) return old.c;
   let c = null;
   if (any) {
-    c = document.createElement('canvas'); c.width = c.height = S; const f = c.getContext('2d', { willReadFrequently: true }), ox = -cx * CHUNK * T, oy = -cy * CHUNK * T;
+    const w = pixBuf('fogWork', S, S, true), f = w._ctx, ox = -cx * CHUNK * T, oy = -cy * CHUNK * T; f.setTransform(1, 0, 0, 1, 0, 0); f.clearRect(0, 0, S, S);
     f.setTransform(0.5, 0, 0, 0.5, 0, 0);
     for (const [alpha, extra] of [[0.45, 7], [1, 0]]) {
       f.fillStyle = `rgba(0,0,0,${alpha})`; f.beginPath();
@@ -375,7 +375,8 @@ function fogChunk(ex, n, cx, cy) {
     }
     const img = f.getImageData(0, 0, S, S), d = img.data, bx = cx * S, by = cy * S;
     for (let y = 0, k = 0; y < S; y++) for (let x = 0; x < S; x++, k += 4) { const a = d[k + 3]; d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = (a >= 225 || (a >= 70 && ((bx + x + by + y) & 1))) ? 255 : 0; }
-    f.putImageData(img, 0, 0);
+    // gotowy kawałek w zwykłym płótnie (roboczy, czytany procesorem, służy tylko do liczenia)
+    c = document.createElement('canvas'); c.width = c.height = S; c.getContext('2d').putImageData(img, 0, 0);
   }
   MapRender.fog.set(key, { c, _sig: sig }); if (MapRender.fog.size > 80) MapRender.fog.delete(MapRender.fog.keys().next().value);
   return c;
@@ -462,7 +463,7 @@ function mapLight(w, h) {
 }
 function drawMapView(ctx, st, scr) {
   {
-    const wb = pixBuf('world', VIEW.w / 2, VIEW.h / 2, true), b = wb._ctx;
+    const wb = pixBuf('world', VIEW.w / 2, VIEW.h / 2), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
     b.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / 2, VIEW.h / 2), 0, 0); b.restore();
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(wb, VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.restore();
   }
