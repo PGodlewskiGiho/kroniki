@@ -43,7 +43,8 @@ function drawBull(ctx, L, P = {}) {
   quadLegs(ctx, [[-9, 0, true], [8, Math.PI, true]], -10, 10, f, P, 3);
   const sw = Math.sin(t * 2) * 1.2; limb(ctx, -12, -17, -16, -9 + sw, 1.2, dk); fillPoly(ctx, [[-16.5, -10 + sw], [-14.5, -10 + sw], [-15.5, -6 + sw]], '#2a2420');
   oval(ctx, 0, -16, 13, 7.5, f); oval(ctx, 0.5, -12, 11, 2.8, dk); oval(ctx, -1, -21.5, 9, 1.8, lt);
-  for (let i = 0; i < 5; i++) for (let j = 0; j < 2; j++) { ctx.strokeStyle = dk; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.arc(-9 + i * 4.5 + j * 2, -18 + j * 4, 2.2, 0.2, Math.PI - 0.2); ctx.stroke(); } // łuski
+  if (L.barding) { oval(ctx, -1, -16.5, 11, 6.2, L.barding); ctx.fillStyle = L.trim || '#e0b050'; ctx.fillRect(-11, -12.5, 21, 1.4); }
+  if (!L.plain) for (let i = 0; i < 5; i++) for (let j = 0; j < 2; j++) { ctx.strokeStyle = dk; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.arc(-9 + i * 4.5 + j * 2, -18 + j * 4, 2.2, 0.2, Math.PI - 0.2); ctx.stroke(); } // łuski
   oval(ctx, 9, -18, 5.5, 7, f); // kark
   const hy = -15 + lunge * 3; // głowa pochylona do ataku
   fillPoly(ctx, [[10, hy - 6], [17, hy - 4], [21, hy + 2], [19, hy + 5], [13, hy + 4], [10, hy]], f); fillPoly(ctx, [[13, hy + 4], [19, hy + 5], [21, hy + 2], [18, hy + 2.5]], dk);
@@ -75,5 +76,36 @@ function drawHydra(ctx, L, P = {}) {
   heads.filter(h => h.far).forEach(h => { neck(h); headAt(h); });
   heads.filter(h => !h.far).forEach(h => { neck(h); headAt(h); });
   quadLegs(ctx, [[-7, Math.PI, false], [9, 0, false]], -6, 6, f, P, 3.2);
+  ctx.restore();
+}
+// Oko Lochu (obserwator, złe oko): unosząca się kula z wielkim okiem i mackami z oczkami; przy ataku źrenica się zwęża i oko błyska
+function drawEyeBeast(ctx, L, P = {}) {
+  const f = L.fur, t = P.t || 0, lunge = lungeOf(P), dk = DK(f, 0.35), lt = LT(f, 0.25), y = -17 + (P.hover || 0) * 1.5;
+  ctx.save(); ctx.translate(lunge * 4, 0); ctx.lineCap = 'round';
+  for (let i = 0; i < 5; i++) { // macki u góry z małymi oczkami
+    const a = -2.4 + i * 0.4, w = Math.sin(t * 3 + i * 1.3) * 1.5, ex = Math.cos(a) * 14 + w, ey = y + Math.sin(a) * 13;
+    limb(ctx, Math.cos(a) * 6, y + Math.sin(a) * 6, ex, ey, 1.4, dk); circ(ctx, ex, ey, 1.6, '#f0ead8'); circ(ctx, ex + 0.5, ey, 0.7, '#1a1a1a');
+  }
+  for (let i = 0; i < 3; i++) { const w = Math.sin(t * 2.5 + i) * 2; limb(ctx, -4 + i * 4, y + 8, -5 + i * 4 + w, y + 16, 1.6, dk); } // macki pod spodem
+  circ(ctx, 0, y, 9.5, f); circ(ctx, -2, y - 2, 6, lt); fillPoly(ctx, [[-9, y + 2], [9, y + 2], [6, y + 7.5], [-6, y + 7.5]], dk);
+  const sq = lunge > 0.3 ? 0.4 : 1; oval(ctx, 3, y - 0.5, 5.5, 4.4 * (lunge > 0.3 ? 0.8 : 1), '#f4f0e0');
+  oval(ctx, 4, y - 0.5, 2.8, 2.8, L.eyes || '#f0e060'); oval(ctx, 4.4, y - 0.5, 0.9 * sq, 2.2, '#140a10');
+  fillPoly(ctx, [[-2, y + 4], [7, y + 4], [5.5, y + 6.5], [-0.5, y + 6.5]], '#2a0a14'); for (let i = 0; i < 4; i++) fillPoly(ctx, [[-1 + i * 2, y + 4], [0 + i * 2, y + 5.6], [1 + i * 2, y + 4]], '#f0ead8');
+  if (lunge > 0.3) { ctx.globalAlpha = lunge * 0.6; circ(ctx, 4, y - 0.5, 7, L.orb || '#e0a0ff'); ctx.globalAlpha = 1; }
+  ctx.restore();
+}
+// Wielki ptak Cytadeli (rok, ptak gromu): szerokie skrzydła, biała głowa, zakrzywiony dziób; ptak gromu rzuca iskry
+function drawBigBird(ctx, L, P = {}) {
+  const f = L.fur, t = P.t || 0, lunge = lungeOf(P), wa = flapAngle(P, -0.25, 0.4, 4), y = -22 + Math.sin(t * 2.5) * 1.2;
+  ctx.save(); ctx.translate(lunge * 6, lunge * 3); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.save(); ctx.translate(-1, y - 2); wing(ctx, wa + 0.2, 24, DK(L.wing, 0.2), DK(L.wing, 0.45)); ctx.restore();
+  for (let i = 0; i < 3; i++) fillPoly(ctx, [[-7, y + 2], [-16 - i * 1.5, y + 3 + i * 2.5], [-8, y + 5]], i % 2 ? L.wing : DK(f, 0.2)); // ogon
+  limb(ctx, 0, y + 5, -1 - lunge * 2, y + 11, 1.8, '#c8a040'); limb(ctx, 3, y + 5, 4 + lunge * 3, y + 11, 1.8, '#c8a040'); // szpony
+  for (const x of [-1 - lunge * 2, 4 + lunge * 3]) fillPoly(ctx, [[x - 2, y + 11], [x + 3, y + 11], [x + 3.5, y + 13]], '#2a2010');
+  oval(ctx, 0, y, 9, 6, f); oval(ctx, 1, y + 2.5, 6.5, 2.4, LT(f, 0.2));
+  oval(ctx, 8, y - 5, 3.2, 4.5, f); circ(ctx, 10, y - 9, 3.8, L.head || '#e8e0d0');
+  fillPoly(ctx, [[13, y - 10], [17.5, y - 8.5], [16.5, y - 5.5], [13.5, y - 7]], L.beak || '#e0a030'); circ(ctx, 11.3, y - 9.8, 0.9, '#1a1a1a');
+  ctx.save(); ctx.translate(0, y - 3); wing(ctx, wa, 22, L.wing, LT(L.wing, 0.3)); ctx.restore();
+  if (L.glow && (lunge > 0.2 || Math.sin(t * 5) > 0.7)) { const k = Math.max(lunge, 0.5); limb(ctx, -6, y - 16, -2, y - 10, 1.2 * k, L.glow); limb(ctx, -2, y - 10, -5, y - 5, 1.2 * k, L.glow); limb(ctx, 12, y - 14, 16, y - 18, 1 * k, L.glow); }
   ctx.restore();
 }

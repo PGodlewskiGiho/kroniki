@@ -52,7 +52,7 @@
 
    JAK DODAĆ…
    • Stworzenie: wpis w CREATURES z look.kind ('hum', 'wolf', 'griffin', 'rider', 'centaur',
-     'unicorn', 'phoenix', 'ghost', 'dragon'); nowy rodzaj ciała = nowy case w drawCreature().
+     'unicorn', 'phoenix', 'ghost', 'dragon', 'eye', 'bird' i in.); nowy rodzaj ciała = nowy case w drawCreature().
    • Frakcję: wpis w FACTIONS, TOWN_ART (paleta), BUILD_ART (rysunki budowli), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi)
      i TOWN_STYLE (ulubione krajobrazy, woda, rekwizyty, niebo, pogoda, dachy, mury); plansze miast układa generator (18c).
    • Budowlę wspólną: wpis w BUILDINGS (slot = miejsce w scenie) i funkcja w BUILD_ART każdej frakcji.
@@ -136,6 +136,11 @@
    Akademia (śnieg, TER.SNOW): gremliny, gargulce, golemy, magowie, dżiny, nagi (nowy wężowy ogon L.serpent), olbrzymi i tytani;
    klasy Alchemik i Czarodziej, miasto białych wież ze złotymi kopułami i padającym śniegiem (18b), mury i portrety. Pocisk z look.orb
    bez laski to kula (gremlin, tytan). SI bierze z garnizonu tylko to, co zmieści (takeableArmy), więc nie krąży między miastami.
+   Loch (skały, TER.ROUGH) i Cytadela (step, TER.SAND), 18d: nowe ciała 'eye' (obserwator) i 'bird' (rok, ptak gromu),
+   czworonóg z wings/stinger/mane/horns/stripes/rider (mantykora, behemot, jeździec wargów), cyklop (L.cyclops), tur bez łusek
+   (L.plain, barding). Woda 'glow' i 'oasis', rekwizyty glowShroom/stalagmite/acacia/cactus/totem, pogoda 'spores' i 'dust'.
+   Koniec bitwy (22, startEnding/endingStep/drawEnding): zwycięstwo = złote promienie, fajerwerki, konfetti, sztandar ze sprężystym
+   wejściem i podskakujący zwycięzcy; porażka = szarość, czerwona winieta, popiół i dym, opadający postrzępiony sztandar z pęknięciem.
    Słaby laptop: menu i miasto bez pixelQuantize co klatkę (paleta wypalona w nieruchomym tle), płótno bez przezroczystości
    (alpha: false), bufory mapy, mgły i sprite'ów bez willReadFrequently (przy karcie graficznej zostają na niej), niska jakość
    = pół piksela płótna na piksel ekranu i bez fal na wodzie, Perf schodzi do 0,5 także przy spóźnionych klatkach, licznik pod F.

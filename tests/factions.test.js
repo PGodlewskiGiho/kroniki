@@ -1,4 +1,4 @@
-// Frakcje: kompletność danych, rysunki stworów i miast, bitwa i tura SI z Twierdzą, Infernem i Akademią. Uruchom: npm test
+// Frakcje: kompletność danych, rysunki stworów i miast, bitwy i tura SI z Twierdzą, Infernem, Akademią, Lochem i Cytadelą. Uruchom: npm test
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openGame, newGame, frames } = require('./harness');
@@ -31,9 +31,9 @@ test('każda frakcja ma komplet danych: siedliska, stwory, bohaterów, grafikę 
   assert.deepEqual(bad, []);
 });
 
-test('stwory Twierdzy, Inferna i Akademii rysują się w każdej pozie, na mapie i jako zwłoki', async () => {
+test('stwory Twierdzy, Inferna, Akademii, Lochu i Cytadeli rysują się w każdej pozie, na mapie i jako zwłoki', async () => {
   const r = await page.evaluate(() => {
-    const ids = Object.keys(CREATURES).filter(k => ['fortress', 'inferno', 'academy'].includes(CREATURES[k].faction)), empty = [];
+    const ids = Object.keys(CREATURES).filter(k => ['fortress', 'inferno', 'academy', 'dungeon', 'stronghold'].includes(CREATURES[k].faction)), empty = [];
     for (const id of ids) {
       for (const pose of Object.keys(BATTLE_FRAMES)) for (let i = 0; i < BATTLE_FRAMES[pose]; i++) battleSprite(id, i % 2 ? 1 : -1, pose, i);
       corpseSprite(id, 1); const s = creatureSprite(id, 1, 0), d = s.c.getContext('2d').getImageData(0, 0, s.c.width, s.c.height).data;
@@ -41,12 +41,12 @@ test('stwory Twierdzy, Inferna i Akademii rysują się w każdej pozie, na mapie
     }
     return { n: ids.length, empty };
   });
-  assert.equal(r.n, 42);
+  assert.equal(r.n, 70);
   assert.deepEqual(r.empty, [], 'każdy stwór jest widoczny na mapie');
 });
 
-test('miasta Twierdzy, Inferna i Akademii: pusty i w pełni rozbudowany, ekran rysuje się bez błędów', async () => {
-  for (const fac of ['fortress', 'inferno', 'academy']) for (const full of [false, true]) {
+test('miasta Twierdzy, Inferna, Akademii, Lochu i Cytadeli: pusty i w pełni rozbudowany, ekran rysuje się bez błędów', async () => {
+  for (const fac of ['fortress', 'inferno', 'academy', 'dungeon', 'stronghold']) for (const full of [false, true]) {
     await newGame(page, { mapSize: 'M', faction: fac }, 8);
     await page.evaluate(([full]) => { const t = G.state.towns[0]; if (full) t.built = BUILDINGS.map(b => b.id); setScreen('town', { townId: t.id }); }, [full]);
     await frames(page, 12);
@@ -80,4 +80,18 @@ test('Akademia kontra Przystań: bitwa się kończy, tytani i starsze gremliny s
   assert.ok(r.over === 'win' || r.over === 'lose', JSON.stringify(r));
   assert.ok(r.rounds < 60);
   assert.deepEqual(r.shooters, [true, true, true]); assert.ok(r.naga); assert.ok(r.town);
+});
+
+test('Loch kontra Cytadela: bitwa się kończy, strzelcy i latacze mają swoje zdolności, frakcje mają własny teren', async () => {
+  await newGame(page, { mapSize: 'M', faction: 'dungeon', opponents: 1 }, 8);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), t = st.towns[1], army = (fac, lv) => { const F = factionOf(fac), a = emptyArmy(); lv.forEach((d, i) => { a[i] = { cid: F.dw[d][1], n: 12 - i * 2 }; }); return a; };
+    h.army = army('dungeon', ['dw1u', 'dw2u', 'dw3u', 'dw4u', 'dw5u', 'dw6u', 'dw7u']); t.faction = 'stronghold'; t.built = ['hall1', 'fort']; t.garrison = army('stronghold', ['dw1u', 'dw2u', 'dw3u', 'dw4u', 'dw5u', 'dw6u', 'dw7u']);
+    const B = simulateBattle(createBattle(st, h, t));
+    return { over: B.over, rounds: B.round, shooters: ['evilEye', 'medusaQueen', 'orcChief', 'cyclopsKing'].map(id => CREATURES[id].shots > 0), fly: ['harpy', 'manticore', 'roc', 'blackDragon'].every(id => CREATURES[id].fly),
+      terrain: [factionOf('dungeon').terrain === TER.ROUGH, factionOf('stronghold').terrain === TER.SAND] };
+  });
+  assert.ok(r.over === 'win' || r.over === 'lose', JSON.stringify(r));
+  assert.ok(r.rounds < 60);
+  assert.deepEqual(r.shooters, [true, true, true, true]); assert.ok(r.fly); assert.deepEqual(r.terrain, [true, true]);
 });

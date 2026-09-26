@@ -15,6 +15,10 @@ const HERO_CLASSES = {
   heretic: { name: 'Heretyk', nameF: 'Heretyczka', look: { horse: '#3a2020', mane: '#c83a1a', armor: '#5a1e1e', hood: '#2a0e10', skin: '#d8b090' } },
   alchemist: { name: 'Alchemik', nameF: 'Alchemiczka', look: { horse: '#c8c8d0', mane: '#6a6a7a', armor: '#7a8aa0', hood: '#4a6a9a', skin: '#e8c8a0' } },
   wizard: { name: 'Czarodziej', nameF: 'Czarodziejka', look: { horse: '#e8e8f0', mane: '#a8b0c8', armor: '#3a4a8a', hood: '#2a3a7a', skin: '#e8c8a0' } },
+  overlord: { name: 'Władca lochów', nameF: 'Władczyni lochów', look: { horse: '#2a2430', mane: '#8a2a3a', armor: '#4a3a5a', helm: '#3a2e46', skin: '#c8b0a0' } },
+  warlock: { name: 'Czarnoksiężnik', nameF: 'Czarnoksiężniczka', look: { horse: '#1e1a26', mane: '#6a4a9a', armor: '#3a2a4a', hood: '#2a1a3a', skin: '#d8c0b0' } },
+  barbarian: { name: 'Barbarzyńca', nameF: 'Barbarzynka', look: { horse: '#8a5a2a', mane: '#3a2010', armor: '#8a5a34', helm: '#7a6a5a', skin: '#c8905a' } },
+  battleMage: { name: 'Mag bojowy', nameF: 'Magini bojowa', look: { horse: '#a07a4a', mane: '#4a2a14', armor: '#7a3a2a', hood: '#8a3a1a', skin: '#c8905a' } },
 };
 // Wszystko, co wyróżnia frakcję. dw: siedliska [nazwa, jednostka], emb: symbole siedlisk poziomów 1–7.
 const FACTIONS = [
@@ -94,6 +98,32 @@ const FACTIONS = [
       dw3: ['Kuźnia golemów', 'stoneGolem'], dw3u: ['Wielka kuźnia', 'ironGolem'], dw4: ['Wieża magów', 'mage'], dw4u: ['Wieża arcymagów', 'archMage'],
       dw5: ['Ołtarz życzeń', 'genie'], dw5u: ['Złoty ołtarz', 'masterGenie'], dw6: ['Złoty pawilon', 'naga'], dw6u: ['Pałac nag', 'nagaQueen'],
       dw7: ['Chmurna świątynia', 'giant'], dw7u: ['Niebiańska świątynia', 'titan'],
+    },
+  },
+  {
+    id: 'dungeon', name: 'Loch', terrain: TER.ROUGH,
+    desc: 'Mroczne pieczary: troglodyci, harpie, obserwatorzy, meduzy, minotaury, mantykory i czarne smoki.',
+    heroes: [['Czarnobór', 'overlord'], ['Morana', 'warlock', 1], ['Zmorzysław', 'warlock'], ['Dziwa', 'overlord', 1]],
+    towns: ['Głęboka Grota', 'Czarna Czeluść', 'Kamienny Labirynt', 'Mroczne Szyby', 'Ślepa Pieczara', 'Echo Skał', 'Zapadlisko'],
+    guild: 'Krąg czarnoksiężników', emb: ['spear', 'wing', 'eye', 'bow', 'horn', 'bat', 'dragon'],
+    dw: {
+      dw1: ['Nory troglodytów', 'troglodyte'], dw1u: ['Głębokie nory', 'infernalTroglodyte'], dw2: ['Gniazdo harpii', 'harpy'], dw2u: ['Turnia harpii', 'harpyHag'],
+      dw3: ['Kolumna oczu', 'beholder'], dw3u: ['Głębia oczu', 'evilEye'], dw4: ['Kaplica ciszy', 'medusa'], dw4u: ['Świątynia meduz', 'medusaQueen'],
+      dw5: ['Labirynt', 'minotaur'], dw5u: ['Wielki labirynt', 'minotaurKing'], dw6: ['Jaskinia mantykor', 'manticore'], dw6u: ['Leże skorpikor', 'scorpicore'],
+      dw7: ['Smocza pieczara', 'redDragon'], dw7u: ['Czarna pieczara', 'blackDragon'],
+    },
+  },
+  {
+    id: 'stronghold', name: 'Cytadela', terrain: TER.SAND,
+    desc: 'Stepowa warownia barbarzyńców: hobgobliny, wargi, orkowie, tury, roki, cyklopi i behemoty.',
+    heroes: [['Gromisław', 'barbarian'], ['Wojsława', 'barbarian', 1], ['Ognisław', 'battleMage'], ['Jarogniewa', 'battleMage', 1]],
+    towns: ['Kamienny Kieł', 'Suchy Jar', 'Czerwona Wydma', 'Wilcza Skała', 'Sępia Grań', 'Gorące Piaski', 'Obóz Gromu'],
+    guild: 'Namiot szamana', emb: ['spear', 'moon', 'axe', 'horn', 'wing', 'eye', 'paw'],
+    dw: {
+      dw1: ['Chaty hobgoblinów', 'hobgoblin'], dw1u: ['Obóz łupieżców', 'hobgoblinRaider'], dw2: ['Wilcze doły', 'warg'], dw2u: ['Zagroda jeźdźców', 'wargRider'],
+      dw3: ['Orcza wieża', 'orcAxe'], dw3u: ['Twierdza wodzów', 'orcChief'], dw4: ['Zagroda turów', 'aurochs'], dw4u: ['Bojowe pastwisko', 'warAurochs'],
+      dw5: ['Turnia roków', 'roc'], dw5u: ['Gromowa turnia', 'thunderbird'], dw6: ['Jaskinia cyklopów', 'cyclops'], dw6u: ['Królewska pieczara', 'cyclopsKing'],
+      dw7: ['Legowisko behemota', 'behemoth'], dw7u: ['Pradawne legowisko', 'ancientBehemoth'],
     },
   },
 ];
