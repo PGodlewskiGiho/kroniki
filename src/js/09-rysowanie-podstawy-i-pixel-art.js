@@ -110,7 +110,9 @@ function sprite(key, w, h, ax, ay, draw, outline = OUTLINE, sc = 0.5) {
   let s = SPR.get(key); if (s) return s;
   const c = document.createElement('canvas'); c.width = w; c.height = h; c._ctx = c.getContext('2d', { willReadFrequently: true });
   c._ctx.setTransform(sc, 0, 0, sc, ax, ay); const colors = []; draw(recordingCtx(c._ctx, colors)); crispify(c, colors, outline);
-  s = { c, ax, ay }; SPR.set(key, s); return s;
+  // gotowy sprite w zwykłym płótnie: robocze (willReadFrequently) Chrome trzyma w pamięci procesora, a takie kopiuje się wolniej
+  const p = document.createElement('canvas'); p.width = w; p.height = h; p._ctx = p.getContext('2d'); p._ctx.drawImage(c, 0, 0);
+  s = { c: p, ax, ay }; SPR.set(key, s); return s;
 }
 // Sprite w interfejsie: (x, y) = punkt zaczepienia w px logicznych; k = 1 to rozmiar jak na mapie
 // (1 piksel grafiki = 2 px logiczne), k = 2 dwa razy większy itd.

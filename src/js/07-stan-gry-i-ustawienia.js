@@ -20,7 +20,7 @@ function loadSettings() {
   if (!FACTIONS.some(f => f.id === S.faction)) S.faction = 'haven';
   delete S.sfx; delete S.mus; // głośności z czasów, gdy gra miała dźwięk
   if (!['auto', 'high', 'low'].includes(S.quality)) S.quality = 'auto';
-  if (!(S.autoDpr >= 0.75 && S.autoDpr <= 2)) delete S.autoDpr;
+  if (!(S.autoDpr >= 0.5 && S.autoDpr <= 2)) delete S.autoDpr;
   S.slots = validSlots(S.slots) || legacySlots(S);
 }
 // Miejsca graczy na ekranie nowej gry: 8 miejsc { type: 'human' | 'ai' | 'off', color, faction ('random' = losowa) }.

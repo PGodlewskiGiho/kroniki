@@ -41,7 +41,7 @@ test('mapa: w spoczynku ~20 klatek, gdy kamera jedzie – płynnie', async () =>
   assert.ok(busy >= 40, `ruch kamery: ${busy}`);
 });
 
-test('jakość grafiki: niska 0,75, wysoka jak ekran; ustawienie w menu', async () => {
+test('jakość grafiki: niska 0,5, wysoka jak ekran; ustawienie w menu', async () => {
   const r = await page.evaluate(() => {
     const S = G.settings, q0 = S.quality, out = {};
     S.quality = 'low'; resize(); out.low = G.dpr;
@@ -50,7 +50,7 @@ test('jakość grafiki: niska 0,75, wysoka jak ekran; ustawienie w menu', async 
     showGfxSettings(); out.labels = G.modal.buttons.map(b => b.label); G.modal = null;
     return out;
   });
-  assert.equal(r.low, 0.75); assert.ok(r.high);
+  assert.equal(r.low, 0.5); assert.ok(r.high);
   assert.deepEqual(r.labels, ['Automatyczna', 'Wysoka', 'Niska', 'OK']);
 });
 
