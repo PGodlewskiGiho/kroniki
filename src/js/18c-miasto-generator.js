@@ -243,7 +243,7 @@ function generateTownLayout(fac, seed, force) {
   const arche = force || pickW(r, St.arche), wx = pickW(r, St.weather), sky = { ...pickW(r, St.skies) };
   const L = { arche, seed, pj: null, frame: St.frame && r() < St.frame ? 'forest' : null, mountains: B.mountains, forest: B.forest, ground: B.ground, haze: B.haze, desat: B.desat, tuft: B.tuft,
     hills: [], rivers: [], lakes: [], islands: [], slabs: [], seas: [], roads: [], bridges: [], props: [], slots: [], bone: fac === 'barrow',
-    walkCols: B.walkCols, guardCol: B.guardCol, birds: B.birds, birdCol: B.birdCol, mist: wx === 'mist', rain: wx === 'rain', snow: wx === 'snow', embers: wx === 'embers' };
+    walkCols: B.walkCols, guardCol: B.guardCol, birds: B.birds, birdCol: B.birdCol, mist: wx === 'mist', rain: wx === 'rain', snow: wx === 'snow', embers: wx === 'embers', spores: wx === 'spores', dust: wx === 'dust' };
   const T = { feats: [], ells: [], islands: [], focus: { X: 0, Z: 1.25 }, entryX: 0 };
   L.pj = { hor: Math.round(between(r, 62, 112)), d: Math.round(between(r, 262, 326)) }; // kamera: wyżej albo niżej, bliżej albo dalej
   ARCHETYPES[arche](r, St, W, L, T);
@@ -269,7 +269,8 @@ function generateTownLayout(fac, seed, force) {
   else L.guardsW = [[fort.X - 24, fort.Z - 0.02, fort.e], [fort.X + 24, fort.Z - 0.02, fort.e]];
   L.floaters = fac === 'sylvan' || fac === 'fortress' ? [{ kind: 'wisp', X: F.X, Z: F.Z + 0.2, e: 18, n: 5, spread: 200, spreadZ: 0.2 }]
     : fac === 'barrow' ? [{ kind: 'ghost', X: F.X, Z: F.Z + 0.1, e: 40, n: 3, spread: 120, spreadZ: 0.25 }]
-    : fac === 'inferno' ? [{ kind: 'ember', X: F.X, Z: F.Z + 0.2, e: 10, n: 10, spread: 160, spreadZ: 0.4 }] : [];
+    : fac === 'inferno' ? [{ kind: 'ember', X: F.X, Z: F.Z + 0.2, e: 10, n: 10, spread: 160, spreadZ: 0.4 }]
+    : fac === 'dungeon' ? [{ kind: 'spore', X: F.X, Z: F.Z + 0.25, e: 20, n: 8, spread: 220, spreadZ: 0.3 }] : [];
   usePJ(null); return L;
 }
 // Mur: odcinki w wodzie, za wzgórzem albo na tarasie znikają, na drodze jest brama z dwiema basztami, co kilka odcinków baszta

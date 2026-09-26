@@ -41,6 +41,8 @@ function drawEmblem(ctx, kind, cx, cy, s, col) {
     case 'moon': ctx.beginPath(); ctx.arc(0, 0, 9, 0.9, TAU - 0.9); ctx.arc(5, 0, 7.5, TAU - 1.25, 1.25, true); ctx.closePath(); ctx.fill(); break;
     case 'anchor': ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(0, 8); ctx.moveTo(-5, -3); ctx.lineTo(5, -3); ctx.moveTo(-8, 2); ctx.quadraticCurveTo(-7, 9, 0, 8); ctx.quadraticCurveTo(7, 9, 8, 2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, -9, 2.2, 0, TAU); ctx.stroke(); break;
     case 'eye': ctx.beginPath(); ctx.ellipse(0, 0, 10, 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(0, 0, 2, 5, 0, 0, TAU); ctx.fill(); break;
+    case 'axe': ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-6, 9); ctx.lineTo(4, -7); ctx.stroke(); ctx.beginPath(); ctx.moveTo(1, -9); ctx.quadraticCurveTo(10, -9, 9, 1); ctx.lineTo(3, -3); ctx.closePath(); ctx.fill(); break;
+    case 'paw': ctx.beginPath(); ctx.ellipse(0, 3, 6, 5, 0, 0, TAU); ctx.fill(); for (const [a, b] of [[-7, -3], [-2.5, -7], [2.5, -7], [7, -3]]) { ctx.beginPath(); ctx.arc(a, b, 2.4, 0, TAU); ctx.fill(); } break;
     case 'fork': ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(0, -4); ctx.moveTo(-6, -9); ctx.lineTo(-6, -3); ctx.quadraticCurveTo(0, 2, 6, -3); ctx.lineTo(6, -9); ctx.moveTo(0, -4); ctx.lineTo(0, -10); ctx.stroke(); break;
   }
   ctx.restore();
@@ -722,6 +724,17 @@ function extraProp(c, fac, kind, x, b, r, fx) {
     for (const [dx, hh, a] of [[-5, 14, -0.3], [0, 22, 0], [6, 12, 0.35]]) { c.save(); c.translate(x + dx, b); c.rotate(a); fillPoly(c, [[-3, 0], [-3, -hh + 4], [0, -hh], [3, -hh + 4], [3, 0]], '#bfe4f8'); fillPoly(c, [[0, 0], [0, -hh], [3, -hh + 4], [3, 0]], '#8cc4e4'); c.restore(); }
     if (fx) fx.glows.push([x, b - 10, 16, '#a8e0ff']); return true;
   }
+  if (kind === 'glowShroom') { glowShroom(c, x, b, 1.5, r() < 0.5 ? '#6a3a9a' : '#2a7a7a', fx); if (r() < 0.6) glowShroom(c, x + 16, b + 2, 0.8, '#8a3a6a', fx); return true; }
+  if (kind === 'stalagmite') { stalag(c, x, b, 14, 30 + r() * 16, '#4a4454'); stalag(c, x + 9, b, 9, 16, '#3a3444'); return true; }
+  if (kind === 'acacia') { // akacja stepowa: krzywy pień i płaska korona
+    c.strokeStyle = '#4a3020'; c.lineCap = 'round'; c.lineWidth = 4; c.beginPath(); c.moveTo(x, b); c.quadraticCurveTo(x + 3, b - 18, x - 2, b - 34); c.stroke(); c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x + 1, b - 20); c.lineTo(x + 12, b - 34); c.moveTo(x - 1, b - 26); c.lineTo(x - 12, b - 36); c.stroke();
+    for (const [dx, dy, rx] of [[-10, -38, 13], [8, -37, 14], [0, -41, 15]]) { c.fillStyle = '#5a6a2a'; c.beginPath(); c.ellipse(x + dx, b + dy, rx, 4.5, 0, 0, TAU); c.fill(); }
+    c.fillStyle = '#76863a'; c.beginPath(); c.ellipse(x - 2, b - 43, 12, 2.5, 0, 0, TAU); c.fill(); return true;
+  }
+  if (kind === 'cactus') { const col = '#5a8a3a'; c.fillStyle = col; rr(c, x - 3, b - 24, 6, 24, 3); c.fill(); rr(c, x - 10, b - 17, 4, 10, 2); c.fill(); rr(c, x + 6, b - 20, 4, 9, 2); c.fill();
+    c.fillRect(x - 8, b - 10, 6, 3); c.fillRect(x + 2, b - 13, 6, 3); c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(x + 1, b - 24, 2, 24); circ(c, x, b - 25, 1.8, '#f070a0'); return true; }
+  if (kind === 'totem') { totem(c, x, b, 36, '#7a4a24', '#ffb050'); return true; }
   if (kind === 'fern') { c.strokeStyle = '#4a8a3a'; c.lineWidth = 1.6; for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(x, b); c.quadraticCurveTo(x + i * 4, b - 12, x + i * 7, b - 8 + Math.abs(i)); c.stroke(); } return true; }
   if (kind === 'bones') { c.fillStyle = '#e0d8c4'; for (let i = 0; i < 4; i++) { c.save(); c.translate(x - 6 + i * 4, b - 2); c.rotate(i * 0.8); c.fillRect(-5, -1, 10, 2); c.restore(); } skullAt(c, x + 6, b - 5, 0.6); return true; }
   return false;
@@ -960,6 +973,7 @@ function drawCreaturesFX(ctx, LL, tm) {
     const ph = i * 2.3 + (F.seed || 0), X = F.X + Math.sin(tm * 0.3 + ph) * F.spread, Z = F.Z + Math.cos(tm * 0.23 + ph * 1.7) * F.spreadZ, e = F.e + Math.sin(tm * 1.1 + ph) * 8;
     const [x, y, sc] = proj(X, Z, e);
     if (F.kind === 'ember') { const u = ((tm * 0.25 + ph * 0.37) % 1), [ex, ey] = proj(X, Z, F.e + u * 120); circ(ctx, ex, ey, (1.8 - u) * sc + 0.6, `rgba(255,${150 + Math.round(90 * (1 - u))},60,${(1 - u).toFixed(2)})`); }
+    else if (F.kind === 'spore') { const a = 0.5 + 0.4 * Math.sin(tm * 2.2 + ph); ctx.fillStyle = `rgba(190,130,255,${(a * 0.28).toFixed(2)})`; ctx.beginPath(); ctx.arc(x, y, 6 * sc, 0, TAU); ctx.fill(); circ(ctx, x, y, 1.5 * sc + 0.6, `rgba(235,210,255,${a.toFixed(2)})`); }
     else if (F.kind === 'wisp') { const a = 0.55 + 0.35 * Math.sin(tm * 3 + ph); ctx.fillStyle = `rgba(170,255,200,${(a * 0.3).toFixed(2)})`; ctx.beginPath(); ctx.arc(x, y, 7 * sc, 0, TAU); ctx.fill(); circ(ctx, x, y, 1.8 * sc + 0.8, `rgba(230,255,220,${a.toFixed(2)})`); }
     else { ctx.globalAlpha = 0.5 + 0.25 * Math.sin(tm * 2 + ph); ghost(ctx, x, y, sc * 1.2); ctx.globalAlpha = 1; }
   }
@@ -1159,6 +1173,15 @@ function drawTownFX(ctx, t, fx) {
   if (LL.snow) for (let i = 0; i < 60; i++) { // sypiący śnieg (Akademia): płatki opadają z lekkim kołysaniem
     const u = (tm * (0.05 + (i % 5) * 0.012) + i * 0.173) % 1, x = 10 + ((i * 97) % 572) + Math.sin(tm * 0.8 + i) * 9, y = 10 + u * 420;
     circ(ctx, x, y, i % 3 ? 1 : 1.5, `rgba(255,255,255,${(0.55 + 0.35 * Math.sin(i)).toFixed(2)})`);
+  }
+  if (LL.spores) for (let i = 0; i < 36; i++) { // zarodniki (Loch): świecące drobiny unoszące się powoli w górę
+    const u = (tm * (0.03 + (i % 4) * 0.01) + i * 0.211) % 1, x = 14 + ((i * 89) % 566) + Math.sin(tm * 0.7 + i * 1.3) * 12, y = 430 - u * 400;
+    circ(ctx, x, y, i % 3 ? 1 : 1.6, `rgba(${i % 2 ? '200,150,255' : '150,240,210'},${(0.7 * Math.sin(u * Math.PI)).toFixed(2)})`);
+  }
+  if (LL.dust) { // pył stepu (Cytadela): żółtawa mgiełka i smugi piasku niesione wiatrem
+    const g = ctx.createLinearGradient(0, 200, 0, 440); g.addColorStop(0, 'rgba(230,190,130,0)'); g.addColorStop(1, `rgba(230,190,130,${(0.16 + 0.05 * Math.sin(tm * 0.7)).toFixed(3)})`); ctx.fillStyle = g; ctx.fillRect(8, 200, 576, 240);
+    ctx.strokeStyle = 'rgba(240,210,160,.35)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < 40; i++) { const u = (tm * (0.5 + (i % 5) * 0.08) + i * 0.173) % 1, x = -20 + u * 640, y = 150 + ((i * 67) % 280) + Math.sin(tm + i) * 4; ctx.moveTo(x, y); ctx.lineTo(x + 14 + (i % 3) * 6, y + 1); } ctx.stroke();
   }
   if (fac === 'barrow') {
     for (let i = 0; i < 3; i++) { const x = ((i * 260 + tm * 12) % 900) - 150, y = 300 + i * 45; const g = ctx.createRadialGradient(x, y, 0, x, y, 140); g.addColorStop(0, 'rgba(190,180,220,.16)'); g.addColorStop(1, 'rgba(190,180,220,0)'); ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.3); ctx.translate(-x, -y); ctx.fillStyle = g; ctx.fillRect(x - 140, y - 140, 280, 280); ctx.restore(); }

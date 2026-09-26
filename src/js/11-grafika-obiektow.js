@@ -305,7 +305,8 @@ function drawHumanoid(ctx, L, P = {}) {
   } else {
     circ(ctx, hx, hy, 3.9, sk); fillPoly(ctx, [[hx - 3.9, hy], [hx - 1, hy - 3.8], [hx - 1, hy + 3.9], [hx - 3, hy + 2.5]], DK(sk, 0.2));
     if (L.ears) fillPoly(ctx, [[hx - 1.5, hy - 1], [hx - 6.5, hy - 4.5], [hx - 2.5, hy + 1.5]], sk);
-    ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1, 1.3, 1.3);
+    if (L.cyclops) { circ(ctx, hx + 2, hy - 1, 1.5, '#f0ead8'); circ(ctx, hx + 2.5, hy - 1, 0.8, L.eyes || '#3a2a1a'); limb(ctx, hx + 0.2, hy - 3, hx + 3.6, hy - 2.8, 0.7, DK(sk, 0.4)); }
+    else { ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1, 1.3, 1.3); }
     if (L.beard) fillPoly(ctx, [[hx - 1, hy + 1.5], [hx + 4, hy + 1.2], [hx + 2.5, hy + 6], [hx - 0.5, hy + 4.5]], L.beard);
     if (L.hair && !L.helm) fillPoly(ctx, [[hx - 4.1, hy + 1], [hx - 3.4, hy - 3.2], [hx + 0.5, hy - 4.6], [hx + 3.6, hy - 2.6], [hx + 1, hy - 2.2], [hx - 1.2, hy + 1.8]], L.hair);
     if (L.snout) { fillPoly(ctx, [[hx + 2, hy - 1], [hx + 7.5, hy + 0.2], [hx + 7.2, hy + 2.8], [hx + 2.2, hy + 3.4]], sk); fillPoly(ctx, [[hx + 2.2, hy + 2.2], [hx + 7.2, hy + 2], [hx + 7, hy + 2.8], [hx + 2.2, hy + 3.4]], DK(sk, 0.25)); ctx.fillStyle = '#1a1210'; ctx.fillRect(hx + 6.4, hy + 0.2, 1, 1); ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1.6, 1.3, 1.3); }
@@ -391,8 +392,15 @@ function drawWolfBody(ctx, L, P = {}) {
   const f = L.fur, t = P.t || 0, atk = P.atk, lunge = atk != null ? Math.sin(clamp(atk, 0, 1) * Math.PI) : 0, dk = DK(f), lt = LT(f);
   ctx.save(); ctx.translate(lunge * 4, 0); ctx.rotate(lunge * 0.12); ctx.lineCap = 'round';
   quadLegs(ctx, [[-7, 0, true], [6, Math.PI, true]], -6, 6, f, P, 1.9);
-  const wag = Math.sin(t * 4) * 1.5; fillPoly(ctx, [[-9, -9], [-16, -12 + wag], [-17, -8 + wag], [-10, -6.5]], f); fillPoly(ctx, [[-15, -11 + wag], [-17.5, -10 + wag], [-17, -8 + wag]], lt);
+  if (L.wings) { ctx.save(); ctx.translate(-1, -11); wing(ctx, flapAngle(P, -0.3, 0.2), 17, DK(L.wings, 0.15), DK(L.wings, 0.4)); ctx.restore(); }
+  const wag = Math.sin(t * 4) * 1.5;
+  if (L.stinger) { // ogon skorpiona: segmenty łukiem nad grzbietem, żądło wysunięte przy ataku
+    const st = lunge * 4, pts = [[-9, -9], [-14, -13], [-15, -19], [-12, -24], [-7 + st, -26 - st * 0.5]];
+    for (let i = 0; i < pts.length - 1; i++) limb(ctx, ...pts[i], ...pts[i + 1], 2.6 - i * 0.3, i % 2 ? L.stinger : LT(L.stinger, 0.2));
+    fillPoly(ctx, [[-7 + st, -27 - st * 0.5], [-3 + st * 1.5, -24 - st * 0.3], [-6 + st, -24.5 - st * 0.5]], '#e8e0cc');
+  } else { fillPoly(ctx, [[-9, -9], [-16, -12 + wag], [-17, -8 + wag], [-10, -6.5]], f); fillPoly(ctx, [[-15, -11 + wag], [-17.5, -10 + wag], [-17, -8 + wag]], lt); }
   oval(ctx, 0, -8.5, 10, 4.4, f); oval(ctx, 0.5, -6.3, 8, 1.8, dk); oval(ctx, -1, -11.5, 7, 1.3, lt);
+  if (L.stripes) for (let i = 0; i < 4; i++) limb(ctx, -6 + i * 3.4, -12.4, -7 + i * 3.4, -7.5, 1, L.stripes);
   if (L.flame) for (let i = 0; i < 5; i++) { const fl = Math.sin(t * 8 + i * 1.7) * 1.4; fillPoly(ctx, [[-7 + i * 3.2, -12], [-4 + i * 3.2, -12.4], [-6.5 + i * 3.2 + fl, -16.5 - (i % 2) * 2]], i % 2 ? L.flame : LT(L.flame, 0.4)); }
   const head = (ox, oy, col) => {
     const hy = -11 - lunge * -2 + oy, d = col === f ? dk : DK(col, 0.2);
@@ -404,7 +412,10 @@ function drawWolfBody(ctx, L, P = {}) {
     ctx.restore();
   };
   if (L.heads > 1) { head(-2.5, -5, DK(f, 0.15)); head(1.5, 3.5, DK(f, 0.08)); }
+  if (L.mane) { oval(ctx, 8, -11, 5.5, 6, L.mane); oval(ctx, 6.5, -13, 3.5, 4, LT(L.mane, 0.15)); }
   head(0, 0, f);
+  if (L.horns) { const hy = -11 + lunge * 2; fillPoly(ctx, [[10.5, hy - 3], [11, hy - 8], [14, hy - 12], [13.4, hy - 8], [13.5, hy - 3.5]], DK(L.horns, 0.15)); fillPoly(ctx, [[13, hy - 2.5], [14.5, hy - 7], [18, hy - 10], [16.8, hy - 6], [15.5, hy - 2.5]], L.horns); }
+  if (L.rider) { ctx.save(); ctx.translate(-1, -11); drawHumanoid(ctx, { ...L.rider, size: 0.72, mounted: true }, { ...P, walk: null }); ctx.restore(); }
   quadLegs(ctx, [[-5, Math.PI, false], [8, 0, false]], -6, 6, f, P, 2);
   ctx.restore();
 }
@@ -572,6 +583,8 @@ function drawCreature(ctx, cid, x, y, s, dir, t, P) {
     case 'lizard': drawLizard(ctx, L, P); break;
     case 'bull': drawBull(ctx, L, P); break;
     case 'hydra': drawHydra(ctx, L, P); break;
+    case 'eye': drawEyeBeast(ctx, L, { ...P, hover }); break;
+    case 'bird': drawBigBird(ctx, L, P); break;
     case 'ballista': drawBallista(ctx, L, P); break;
     case 'tent': drawTent(ctx, L, P); break;
     case 'cart': drawCart(ctx, L, P); break;

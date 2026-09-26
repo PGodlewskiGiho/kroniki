@@ -20,9 +20,9 @@ test('każda frakcja i każdy krajobraz: 14 budowli w kadrze, bez wzajemnego zas
       for (let i = 0; i < 14; i++) for (let j = i + 1; j < 14; j++) if (rectOverlap(R[i], R[j]) > 0.6) bad.push(`${fac}/${arche}/${k}: ${i} zasłania ${j}`);
       usePJ(null);
     }
-    return { n, bad };
+    return { n, bad, want: FACTIONS.length * Object.keys(ARCHETYPES).length * 4 };
   });
-  assert.equal(r.n, 6 * 8 * 4);
+  assert.equal(r.n, r.want);
   assert.deepEqual(r.bad, []);
 });
 
