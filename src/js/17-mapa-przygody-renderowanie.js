@@ -282,12 +282,22 @@ function buildMinimap(map, ex) {
 const MapRender = {
   map: null, explored: null, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
   reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; },
-  get(cx, cy) {
+  // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
+  get(cx, cy, allow = true) {
     const key = cx + ',' + cy; let c = this.cache.get(key);
     if (c) { this.cache.delete(key); this.cache.set(key, c); return c; }
+    if (!allow) return null;
     c = renderChunkPixel(this.map, cx, cy); this.cache.set(key, c);
-    if (this.cache.size > 40) this.cache.delete(this.cache.keys().next().value);
+    if (this.cache.size > 160) this.cache.delete(this.cache.keys().next().value);
     return c;
+  },
+  has(cx, cy) { return this.cache.has(cx + ',' + cy); },
+  // Zastępczy kawałek: pola w kolorach minimapy (jeden prostokąt na pole), rysowany, gdy prawdziwy jeszcze nie powstał
+  placeholder(b, cx, cy, x, y) {
+    const map = this.map, n = map.n, pal = this._pal || (this._pal = TPAL.map(p => `rgb(${gradeRgb(p[1]).map(Math.round).join(',')})`));
+    for (let ty = cy * CHUNK; ty < Math.min(n, cy * CHUNK + CHUNK); ty++) for (let tx = cx * CHUNK; tx < Math.min(n, cx * CHUNK + CHUNK); tx++) {
+      b.fillStyle = pal[map.terrain[ty * n + tx]]; b.fillRect(x + (tx - cx * CHUNK) * T, y + (ty - cy * CHUNK) * T, T, T);
+    }
   },
   miniCanvas() { if (!this.mini || this.miniDirty) { this.mini = buildMinimap(this.map, this.explored); this.miniDirty = false; } return this.mini; },
 };
@@ -380,7 +390,16 @@ function drawWorldPixel(b, st) {
   const c0 = Math.max(0, Math.floor(camX / CP)), c1 = Math.min(nC - 1, Math.floor((camX + VIEW.w - 1) / CP));
   const r0 = Math.max(0, Math.floor(camY / CP)), r1 = Math.min(nC - 1, Math.floor((camY + VIEW.h - 1) / CP));
   const ox = VIEW.x - camX, oy = VIEW.y - camY;
-  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) { const ch = MapRender.get(cx, cy); b.drawImage(ch, ox + cx * CP, oy + cy * CP, CP, CP); WaterFx.draw(b, ch, ox + cx * CP, oy + cy * CP, CP, cx * ch.width, cy * ch.width); }
+  // nowe kawałki terenu: najwyżej ~10 ms na klatkę (na słabym komputerze przewijanie nie szarpie), reszta zastępczo w następnych klatkach;
+  // gdy zostaje czasu, kawałki wokół widoku powstają z wyprzedzeniem
+  const until = performance.now() + 10;
+  for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
+    const ch = MapRender.get(cx, cy, performance.now() < until), x = ox + cx * CP, y = oy + cy * CP;
+    if (!ch) { MapRender.placeholder(b, cx, cy, x, y); G.dirty = true; continue; }
+    b.drawImage(ch, x, y, CP, CP); WaterFx.draw(b, ch, x, y, CP, cx * ch.width, cy * ch.width);
+  }
+  const ahead = performance.now() + 4;
+  for (let cy = Math.max(0, r0 - 1); cy <= Math.min(nC - 1, r1 + 1) && performance.now() < ahead; cy++) for (let cx = Math.max(0, c0 - 1); cx <= Math.min(nC - 1, c1 + 1) && performance.now() < ahead; cx++) if (!MapRender.has(cx, cy)) MapRender.get(cx, cy);
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
