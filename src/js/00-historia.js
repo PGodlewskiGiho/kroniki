@@ -154,6 +154,8 @@
    ognia; Akademia — cebulaste kopuły i minarety, kryształowe pylony, latająca cytadela i biblioteka; Loch — fasady wykute
    w skale, twarz władcy, geoda, wózki kopalniane; Cytadela — jurta z czaszką bestii, cyklopowe mury, kamienny łeb, namiot
    szamana. Ikona miasta na mapie to pomniejszony fort frakcji (drawTownMap), flagi na masztach z rysunku (townFlagPoints).
+   Gildia magów (showGuildView, 23): wnętrze w stylu frakcji (GUILD_LOOK: kształt okna, półki, drobiazgi), w oknie żywy widok
+   na miasto (bufor sceny ekranu miasta), półki poziomów V–I ze zwojami czarów, opis czaru po kliknięciu, klawisz G.
    Cechy frakcji (FACTION_TRAITS, heroFaction z klasy bohatera): morale Przystani, szczęście Kniei, nekromancja Kurhanu,
    bagna Twierdzy, siarka Inferna, zima i śnieg Akademii, wzrok Lochu, przyrost Cytadeli; opisy w dymkach (nowa gra, miasto, bohater).
    Słaby laptop: menu i miasto bez pixelQuantize co klatkę (paleta wypalona w nieruchomym tle), płótno bez przezroczystości
