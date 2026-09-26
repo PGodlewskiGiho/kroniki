@@ -53,7 +53,8 @@
    JAK DODAĆ…
    • Stworzenie: wpis w CREATURES z look.kind ('hum', 'wolf', 'griffin', 'rider', 'centaur',
      'unicorn', 'phoenix', 'ghost', 'dragon'); nowy rodzaj ciała = nowy case w drawCreature().
-   • Frakcję: wpis w FACTIONS, TOWN_ART, BUILD_ART (rysunki budowli) i TOWN_LAYOUTS (scena miasta).
+   • Frakcję: wpis w FACTIONS, TOWN_ART (paleta), BUILD_ART (rysunki budowli), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi)
+     i TOWN_STYLE (ulubione krajobrazy, woda, rekwizyty, niebo, pogoda, dachy, mury); plansze miast układa generator (18c).
    • Budowlę wspólną: wpis w BUILDINGS (slot = miejsce w scenie) i funkcja w BUILD_ART każdej frakcji.
    • Ekran: G.screens.nazwa = { enter(p), draw(ctx), update(dt), onClick(x, y), onBack(),
      onKey(k), onWheel(d), onPointerDown/Move/Up, rightInfo(x, y) → tekst dymka, buttons: [] };
@@ -128,6 +129,13 @@
    w całych pikselach), mapa bez przeliczania całego obrazu co klatkę (gradeCanvas w kawałkach terenu i kopiach sprite'ów, mgła
    w kawałkach fogChunk, nakładka mapLight), scena menu i efekty miasta ~12–15 klatek/s, jakość grafiki (auto/wysoka/niska, Perf).
    Kawałki terenu: budżet ~10 ms na klatkę (MapRender.get allow, zastępczy placeholder), generowanie wokół widoku z wyprzedzeniem.
+   Generator plansz miast (18c): każde miasto ma własną planszę z nazwy (townLayout): krajobraz (dolina, jezioro, przepaść,
+   tarasy, wyspy, płaskowyż, krater, wybrzeże), kamera, 14 budowli rozmieszczonych według ról (bez zasłaniania, nie w wodzie
+   ani na drodze), droga z mostami i schodami, plac, mur z bramą, drzewa i drobiazgi, pora dnia, pogoda (deszcz, mgła, śnieg),
+   dachy i odbicia budowli. Nowe elementy sceny: tarasy z murem oporowym, wyspy, morze z plażą i łodziami, mury i baszty.
+   Akademia (śnieg, TER.SNOW): gremliny, gargulce, golemy, magowie, dżiny, nagi (nowy wężowy ogon L.serpent), olbrzymi i tytani;
+   klasy Alchemik i Czarodziej, miasto białych wież ze złotymi kopułami i padającym śniegiem (18b), mury i portrety. Pocisk z look.orb
+   bez laski to kula (gremlin, tytan). SI bierze z garnizonu tylko to, co zmieści (takeableArmy), więc nie krąży między miastami.
    Słaby laptop: menu i miasto bez pixelQuantize co klatkę (paleta wypalona w nieruchomym tle), płótno bez przezroczystości
    (alpha: false), bufory mapy, mgły i sprite'ów bez willReadFrequently (przy karcie graficznej zostają na niej), niska jakość
    = pół piksela płótna na piksel ekranu i bez fal na wodzie, Perf schodzi do 0,5 także przy spóźnionych klatkach, licznik pod F.

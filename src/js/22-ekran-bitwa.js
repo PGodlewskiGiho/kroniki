@@ -187,7 +187,7 @@ G.screens.battle = {
     } else if (p.kind === 'hit') {
       if (!p.landed && f >= (p.a ? 0.5 : 0)) { p.landed = true; this.impact(p.tg, p.dmg, p.killed); }
     } else if (p.kind === 'shot') {
-      const orb = CREATURES[p.a.cid].look.weapon === 'staff', col = CREATURES[p.a.cid].look.orb || '#c8e0ff';
+      const LK = CREATURES[p.a.cid].look, orb = LK.weapon === 'staff' || !!LK.orb, col = LK.orb || '#c8e0ff'; // kula: laska albo własny pocisk (kamień gremlina, piorun tytana)
       if (!p.launched && f >= 0.42) {
         p.launched = true; const dist = Math.hypot(p.tg.px - p.a.px, p.tg.py - p.a.py);
         p.pr = BattleFX.proj(orb ? 'orb' : 'arrow', p.a.px + (p.tg.px > p.a.px ? 14 : -14), p.a.py - 18, p.tg.px, p.tg.py - 16, (0.12 + dist / 900) * p.sp, col, orb ? 8 : 26 + dist * 0.04);

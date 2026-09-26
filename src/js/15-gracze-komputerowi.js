@@ -28,6 +28,12 @@ function armyTransfer(from, to) {
     if (k < 0) continue; if (to[k]) to[k].n += s.n; else to[k] = { cid: s.cid, n: s.n }; from[i] = null;
   }
 }
+// Część garnizonu, którą bohater naprawdę zabierze (armyTransfer): ten sam rodzaj albo wolne miejsce w armii.
+// Bez tego SI z pełną armią krążyła między własnymi miastami po jednostki, których nie mogła wziąć.
+function takeableArmy(from, to) {
+  let free = to.filter(x => !x).length; const have = new Set(to.filter(Boolean).map(x => x.cid));
+  return from.map(s => { if (!s) return null; if (have.has(s.cid)) return s; if (free > 0) { free--; have.add(s.cid); return s; } return null; });
+}
 function aiManageTown(st, p, t) {
   // pierwsza osiągalna z trzech kolejnych budowli z listy (żeby brak rudy na Fort nie wstrzymał wszystkiego)
   if (!t.builtToday) {
@@ -85,7 +91,7 @@ function aiPickTarget(st, h, R) {
   const hasArmy = armySize(h.army) > 0, power = armyStrength(h);
   for (const t of st.towns) {
     const i = t.y * n + t.x, occupant = heroAt(st, t.x, t.y);
-    if (t.owner === h.owner) { if (!occupant && armyPower(t.garrison) > 0) add(i, armyPower(t.garrison) * (hasArmy ? 3 : 20), 'reinforce'); continue; }
+    if (t.owner === h.owner) { const take = armyPower(takeableArmy(t.garrison, h.army)); if (!occupant && take > 0) add(i, take * (hasArmy ? 3 : 20), 'reinforce'); continue; }
     if (!hasArmy || aiPeace(st, t.owner)) continue;
     const tp = townPower(st, t); if (power > tp * 0.8) add(i, (t.owner >= 0 && playerOf(st, t.owner).human ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
   }

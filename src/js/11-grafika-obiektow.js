@@ -244,7 +244,12 @@ function drawHumanoid(ctx, L, P = {}) {
     if (!bony) { ctx.fillStyle = back ? DK(boot, 0.25) : boot; rr(ctx, fx - 1.7, fy - 2.6, 4.4, 2.6, 0.8); ctx.fill(); }
   };
   if (L.mounted) { limb(ctx, 1, hipY, 3.5, hipY + 5, 2.6, legCol); ctx.fillStyle = boot; rr(ctx, 2, hipY + 4, 4, 2.4, 0.8); ctx.fill(); }
-  else if (!L.robe) leg(-1.8, -sw * 3.6, true);
+  else if (!L.robe && !L.serpent) leg(-1.8, -sw * 3.6, true);
+  if (L.serpent) { // wężowy ogon zamiast nóg (nagi): od bioder w dół i zwinięty za plecami, jaśniejszy brzuch z przodu
+    const sv = Math.sin(t * 2.5 + (walking ? ph : 0)) * 1.2, pts = [[0.6, hipY + 1], [1.6, -3.2], [-1, -1], [-6, -0.8 + sv * 0.3], [-11, -2.2 + sv], [-13.5, -5.5 + sv]];
+    for (let i = 0; i < pts.length - 1; i++) limb(ctx, ...pts[i], ...pts[i + 1], 3.6 - i * 0.55, i % 2 ? L.serpent : DK(L.serpent, 0.12));
+    limb(ctx, 1.9, hipY + 2.5, 2.3, -3, 1.2, LT(L.serpent, 0.35));
+  }
   if (L.tail) { // ogon: od bioder do tyłu, lekko falujący; diabły mają grot na końcu
     const tw = Math.sin(t * 3 + (walking ? ph : 0)) * 1.6, e1 = [-7, hipY + 4 + tw * 0.5], e2 = [-12, hipY - 1 + tw];
     limb(ctx, -2, hipY, ...e1, 2.2, DK(L.tail, 0.1)); limb(ctx, ...e1, ...e2, 1.4, L.tail);
@@ -337,7 +342,7 @@ function drawHumanoid(ctx, L, P = {}) {
   if (W === 'bow') drawWeapon(ctx, L, 'bow', hd[0], hd[1], 0, arm.pull);
   if (style === 'cast' && P.atk != null && P.atk > 0.3 && P.atk < 0.7) circ(ctx, hd[0] + Math.sin(wAng) * 18.5, hd[1] - Math.cos(wAng) * 18.5, 4, L.orb || '#f0d890');
   ctx.restore();
-  if (!L.robe && !L.mounted) leg(1.8, sw * 3.6, false);
+  if (!L.robe && !L.mounted && !L.serpent) leg(1.8, sw * 3.6, false);
   if (L.robe && !L.mounted && !L.flame) { ctx.fillStyle = boot; ctx.fillRect(1 + sw * 1.5, -2.4, 3.6, 2.4); }
   ctx.restore();
 }

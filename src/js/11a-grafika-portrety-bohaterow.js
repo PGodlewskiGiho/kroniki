@@ -8,9 +8,9 @@
 const PORTRAIT_N = 36;
 const PORTRAITS = new Map();
 const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058',
-  beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e' };
+  beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e', alchemist: '#5a5e70', wizard: '#2e3a6a' };
 // Nowe klasy korzystają z ubioru klasy o podobnym stroju (zbroja, skóry, szaty)
-const PORTRAIT_DRESS = { beastmaster: 'ranger', witch: 'druid', demoniac: 'knight', heretic: 'necro' };
+const PORTRAIT_DRESS = { beastmaster: 'ranger', witch: 'druid', demoniac: 'knight', heretic: 'necro', alchemist: 'ranger', wizard: 'cleric' };
 const INFERNAL = ['demoniac', 'heretic'];
 const PORTRAIT_HAIR = ['#241a14', '#3e2a1a', '#5e3e22', '#7c4c26', '#a0602c', '#c89450', '#e2c47e', '#8e8a86', '#d8d4cc'];
 const PORTRAIT_SKIN = ['#f0c8a0', '#e2b28a', '#d09c74', '#b07c56', '#8e603e'];
@@ -38,6 +38,10 @@ const HERO_LOOKS = {
   'Azgar': { hair: '#241a14', style: 'crop', beard: 'goatee', head: 'horned', eyes: 'glow', brow: 'angry', mouth: 'smirk', marks: ['scar'], armor: '#6a2a24', bg: 'fire', flip: false },
   'Kalida': { hair: '#e2c47e', style: 'long', head: 'spikecrown', eyes: 'glow', brow: 'arched', mouth: 'smirk', armor: '#7a3a2a', bg: 'fire', flip: true },
   'Moloch': { age: 'old', style: 'bald', beard: 'mustache', hair: '#d8d4cc', head: 'horned', eyes: 'glow', nose: 'long', mouth: 'frown', marks: ['tattoo'], robe: '#4a1414', bg: 'night', flip: true },
+  'Ostromir': { age: 'old', hair: '#d8d4cc', style: 'long', beard: 'long', head: 'cowl', brow: 'bushy', nose: 'long', mouth: 'neutral', robe: '#2a3a7a', bg: 'night', flip: false },
+  'Jagna Mróz': { hair: '#e2c47e', style: 'long', head: 'circlet', brow: 'thin', eyes: 'wide', mouth: 'smile', robe: '#4a3a8a', bg: 'sky', flip: true },
+  'Zbylut': { age: 'adult', hair: '#5e3e22', style: 'short', beard: 'goatee', head: 'headband', brow: 'straight', nose: 'hooked', mouth: 'smirk', marks: ['scar'], robe: '#6a6a74', bg: 'window', flip: true },
+  'Mirosława': { hair: '#241a14', style: 'bun', head: 'none', brow: 'arched', mouth: 'neutral', marks: ['mole'], robe: '#5a4a6a', bg: 'window', flip: false },
   'Wiera Popiół': { hair: '#8e8a86', style: 'bun', head: 'circlet', eyes: 'glow', brow: 'thin', mouth: 'neutral', marks: ['mole'], robe: '#2a1418', bg: 'fire', flip: false },
 };
 function heroLookSeed(h) { let s = 2166136261; for (const ch of String(h.name || '')) s = Math.imul(s ^ ch.charCodeAt(0), 16777619); return s >>> 0; }
@@ -54,12 +58,14 @@ function heroFace(h) {
   F.beard = f ? 'none' : pick(['none', 'none', 'stubble', 'goatee', 'full', 'mustache', ...(age === 'old' ? ['full', 'long'] : [])]);
   F.head = { knight: ['helm', 'crest', 'none', 'circlet'], cleric: ['diadem', 'veil', 'mitre', 'none'], ranger: ['hood', 'feather', 'headband', 'none'],
     druid: ['wreath', 'antlers', 'flowers'], necro: ['cowl', 'skullcrown', 'none'], deathKnight: ['horned', 'skullhelm', 'spikecrown'],
-    beastmaster: ['horned', 'feather', 'headband', 'none'], witch: ['hood', 'flowers', 'antlers'], demoniac: ['horned', 'spikecrown', 'helm'], heretic: ['cowl', 'horned', 'circlet'] }[cls][Math.floor(r() * 4) % (['druid', 'necro', 'deathKnight', 'witch', 'demoniac', 'heretic'].includes(cls) ? 3 : 4)];
+    beastmaster: ['horned', 'feather', 'headband', 'none'], witch: ['hood', 'flowers', 'antlers'], demoniac: ['horned', 'spikecrown', 'helm'], heretic: ['cowl', 'horned', 'circlet'],
+    alchemist: ['headband', 'hood', 'circlet', 'none'], wizard: ['cowl', 'circlet', 'hood'] }[cls][Math.floor(r() * 4) % (['druid', 'necro', 'deathKnight', 'witch', 'demoniac', 'heretic', 'wizard'].includes(cls) ? 3 : 4)];
   F.brow = pick(['straight', 'arched', 'angry', 'bushy', 'thin']); F.eyes = undead ? 'glow' : pick(['normal', 'normal', 'narrow', 'wide']);
   F.nose = pick(['small', 'long', 'hooked', 'broad']); F.mouth = pick(['neutral', 'smile', 'frown', 'smirk']); F.face = pick(['oval', 'oval', 'round', 'long']);
   F.armor = pick(['#a8b2c4', '#c8b070', '#8a9ab8', '#b8c0cc']); F.robe = pick({ cleric: ['#e6dcc2', '#f0ead8', '#d8e0f0'], ranger: ['#7a5a34', '#5e4a2a'], druid: ['#6e5a34', '#6e7a34'], necro: ['#3a2c52', '#2a2236', '#3e2438'] }[cls] || ['#6e5a34']);
   if (INFERNAL.includes(cls)) { F.eyes = r() < 0.6 ? 'glow' : F.eyes; F.armor = pick(['#6a2a24', '#5a1e1e', '#7a3a2a']); F.robe = pick(['#4a1414', '#2a1418', '#5a1e1e']); }
   if (cls === 'beastmaster') F.robe = pick(['#6a5030', '#7a5a34', '#5a4a2a']); if (cls === 'witch') F.robe = pick(['#3e5a3a', '#4a5a34', '#34503e']);
+  if (cls === 'wizard') F.robe = pick(['#2a3a7a', '#4a3a8a', '#3a5a8a']); if (cls === 'alchemist') F.robe = pick(['#6a6a74', '#5a4a6a', '#7a6a5a']);
   F.bg = pick(['plain', 'sky', 'window', 'night', 'fire', 'forest']); F.flip = r() < 0.5;
   Object.assign(F, HERO_LOOKS[h.name] || {});
   if (F.undead && !HERO_LOOKS[h.name]) F.skin = pick(['#cac6b6', '#b8beb0', '#d2c8c0']);

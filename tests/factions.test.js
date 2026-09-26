@@ -1,4 +1,4 @@
-// Frakcje: kompletność danych, rysunki stworów i miast, bitwa i tura SI z Twierdzą i Infernem. Uruchom: npm test
+// Frakcje: kompletność danych, rysunki stworów i miast, bitwa i tura SI z Twierdzą, Infernem i Akademią. Uruchom: npm test
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openGame, newGame, frames } = require('./harness');
@@ -31,9 +31,9 @@ test('każda frakcja ma komplet danych: siedliska, stwory, bohaterów, grafikę 
   assert.deepEqual(bad, []);
 });
 
-test('stwory Twierdzy i Inferna rysują się w każdej pozie, na mapie i jako zwłoki', async () => {
+test('stwory Twierdzy, Inferna i Akademii rysują się w każdej pozie, na mapie i jako zwłoki', async () => {
   const r = await page.evaluate(() => {
-    const ids = Object.keys(CREATURES).filter(k => ['fortress', 'inferno'].includes(CREATURES[k].faction)), empty = [];
+    const ids = Object.keys(CREATURES).filter(k => ['fortress', 'inferno', 'academy'].includes(CREATURES[k].faction)), empty = [];
     for (const id of ids) {
       for (const pose of Object.keys(BATTLE_FRAMES)) for (let i = 0; i < BATTLE_FRAMES[pose]; i++) battleSprite(id, i % 2 ? 1 : -1, pose, i);
       corpseSprite(id, 1); const s = creatureSprite(id, 1, 0), d = s.c.getContext('2d').getImageData(0, 0, s.c.width, s.c.height).data;
@@ -41,12 +41,12 @@ test('stwory Twierdzy i Inferna rysują się w każdej pozie, na mapie i jako zw
     }
     return { n: ids.length, empty };
   });
-  assert.equal(r.n, 28);
+  assert.equal(r.n, 42);
   assert.deepEqual(r.empty, [], 'każdy stwór jest widoczny na mapie');
 });
 
-test('miasta Twierdzy i Inferna: pusty i w pełni rozbudowany, ekran rysuje się bez błędów', async () => {
-  for (const fac of ['fortress', 'inferno']) for (const full of [false, true]) {
+test('miasta Twierdzy, Inferna i Akademii: pusty i w pełni rozbudowany, ekran rysuje się bez błędów', async () => {
+  for (const fac of ['fortress', 'inferno', 'academy']) for (const full of [false, true]) {
     await newGame(page, { mapSize: 'M', faction: fac }, 8);
     await page.evaluate(([full]) => { const t = G.state.towns[0]; if (full) t.built = BUILDINGS.map(b => b.id); setScreen('town', { townId: t.id }); }, [full]);
     await frames(page, 12);
@@ -67,4 +67,17 @@ test('bitwa Twierdza kontra Inferno kończy się, a SI Inferna rozgrywa turę', 
   assert.ok(r.over === 'win' || r.over === 'lose', JSON.stringify(r));
   assert.ok(r.rounds < 60);
   assert.equal(r.day, 4);
+});
+
+test('Akademia kontra Przystań: bitwa się kończy, tytani i starsze gremliny strzelają, nagi walczą bez odwetu', async () => {
+  await newGame(page, { mapSize: 'M', faction: 'academy', opponents: 1 }, 8);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), t = st.towns[1], army = (fac, lv) => { const F = factionOf(fac), a = emptyArmy(); lv.forEach((d, i) => { a[i] = { cid: F.dw[d][1], n: 12 - i * 2 }; }); return a; };
+    h.army = army('academy', ['dw1u', 'dw2u', 'dw3u', 'dw4u', 'dw5u', 'dw6u', 'dw7u']); t.faction = 'haven'; t.built = ['hall1', 'fort']; t.garrison = army('haven', ['dw1u', 'dw2u', 'dw3u', 'dw4u', 'dw5u', 'dw6u', 'dw7u']);
+    const B = simulateBattle(createBattle(st, h, t));
+    return { over: B.over, rounds: B.round, shooters: ['masterGremlin', 'titan', 'mage'].map(id => CREATURES[id].shots > 0), naga: CREATURES.naga.abil.includes('noRetal'), town: factionOf('academy').terrain === TER.SNOW };
+  });
+  assert.ok(r.over === 'win' || r.over === 'lose', JSON.stringify(r));
+  assert.ok(r.rounds < 60);
+  assert.deepEqual(r.shooters, [true, true, true]); assert.ok(r.naga); assert.ok(r.town);
 });
