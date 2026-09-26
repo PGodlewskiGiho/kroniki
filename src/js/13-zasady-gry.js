@@ -416,6 +416,22 @@ function armyMove(fromA, i, toA, j, heroArmies = []) {
   if (!d) { toA[j] = s; fromA[i] = null; } else if (d.cid === s.cid) { d.n += s.n; fromA[i] = null; } else { toA[j] = s; fromA[i] = d; }
   return null;
 }
+// Podział oddziału: n jednostek z fromA[i] na wolne miejsce albo do takiego samego oddziału toA[j].
+// Wszystkie jednostki = zwykłe przeniesienie (armyMove). Zwraca błąd albo null.
+function splitLimit(fromA, i, toA, j, heroArmies = []) {
+  const s = fromA[i], d = toA[j]; if (!s) return { err: 'Wybierz oddział' };
+  if (fromA === toA && i === j) return { err: 'Wskaż inne miejsce, do którego trafi część oddziału' };
+  if (d && d.cid !== s.cid) return { err: 'Część oddziału można przenieść tylko na wolne miejsce albo do takiego samego oddziału' };
+  const keep = (fromA === toA || (heroArmies.includes(fromA) && armyStacks(fromA).length === 1)) ? 1 : 0; // bohater zatrzymuje choć jedną jednostkę
+  const max = s.n - keep; return max < 1 ? { err: 'Oddziału z jednej jednostki nie da się podzielić' } : { max };
+}
+function armySplit(fromA, i, toA, j, n, heroArmies = []) {
+  const L = splitLimit(fromA, i, toA, j, heroArmies); if (L.err) return L.err;
+  n = clamp(Math.floor(n), 1, L.max); const s = fromA[i];
+  if (n >= s.n) return armyMove(fromA, i, toA, j, heroArmies);
+  s.n -= n; if (toA[j]) toA[j].n += n; else toA[j] = { cid: s.cid, n };
+  return null;
+}
 // Dzienny dochód gracza { wood, ..., gold }: kopalnie + miasta. Jedno źródło dla końca dnia, panelu i okna królestwa.
 function dailyIncomeAll(st, owner = ME) {
   const inc = Object.fromEntries(RESOURCES.map(r => [r.id, 0]));

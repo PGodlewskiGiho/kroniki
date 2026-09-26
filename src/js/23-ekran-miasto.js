@@ -5,11 +5,12 @@ G.screens.town = {
   LIST_ROWS: 6, // tyle budowli mieści się na liście; resztę przewija się strzałkami albo kółkiem myszy
   town() { return G.state.towns[this.townId]; },
   enter(p) {
-    this.townId = p.townId || 0; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.garRects = []; this.heroRects = [];
+    this.townId = p.townId || 0; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.split = false; this.garRects = []; this.heroRects = [];
     this.guildVisit();
     this.baseButtons = [
       new Button(596, 448, 192, 40, 'Rekrutacja', () => showRecruitList(G.state, this.town(), m => this.say(m)), { key: 'r', size: 16, tip: 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).' }),
-      new Button(596, 496, 192, 40, 'Powrót na mapę', () => G.go('adventure'), { key: 'escape', size: 16, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
+      new Button(694, 496, 94, 40, 'Na mapę', () => G.go('adventure'), { key: 'escape', size: 14, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
+      new Button(596, 496, 94, 40, 'Dziel', () => { this.split = !this.split; this.say(this.split ? 'Wybierz oddział i miejsce' : 'Przenoszenie całych oddziałów'); }, { key: 'd', size: 14, selected: () => this.split, tip: 'Podział oddziału: przenieś tylko część jednostek (klawisz D albo Shift+klik na miejscu docelowym).' }),
     ];
     this.bRecruitHalf = new Button(596, 448, 94, 40, 'Rekrutacja', this.baseButtons[0].action, { key: 'r', size: 14, tip: this.baseButtons[0].tip });
     this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
@@ -88,8 +89,9 @@ G.screens.town = {
     const slot = this.armySlotAt(x, y);
     if (slot) { // zaznacz oddział, potem wskaż miejsce: przeniesienie, połączenie albo zamiana
       if (!this.sel) { if (slot.a[slot.i]) this.sel = slot; return; }
-      const hh = heroInTown(st, t), err = armyMove(this.sel.a, this.sel.i, slot.a, slot.i, hh ? [hh.army] : []);
-      this.sel = null; if (err) this.say(err); return;
+      const hh = heroInTown(st, t), from = this.sel, heroes = hh ? [hh.army] : []; this.sel = null;
+      if (this.split || G.keys.has('shift')) { this.split = false; showSplit(from.a, from.i, slot.a, slot.i, heroes, err => { if (err) this.say(err); }); return; }
+      const err = armyMove(from.a, from.i, slot.a, slot.i, heroes); if (err) this.say(err); return;
     }
     this.sel = null;
     if (row) return this.tryBuild(row.B);
@@ -159,7 +161,7 @@ G.screens.town = {
     });
     if (!list.length) text(ctx, 'Brak dostępnych budowli', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
-    const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, this.baseButtons[1]] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
+    const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, ...this.baseButtons.slice(1)] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
     this.buttons = paged ? [...base, this.btnUp, this.btnDown] : base;
     if (paged) {
       this.btnUp.disabled = this.scroll === 0; this.btnDown.disabled = this.scroll >= list.length - N;

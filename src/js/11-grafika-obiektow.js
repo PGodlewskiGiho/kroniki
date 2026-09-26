@@ -861,16 +861,20 @@ function showMeeting(st, a, b, onMsg) {
   const x = 60, y = 70, w = 680, hh = 460, heroes = [a, b], rows = [y + 96, y + 290], armies = [a.army, b.army];
   let sel = null, msg = ''; const say = m => { msg = m; if (onMsg) onMsg(m); };
   let armyRects = [[], []], bagRects = [[], []];
-  const bClose = new Button(x + w / 2 - 65, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
+  let splitMode = false; // „Dziel”: następne wskazanie miejsca otwiera okno podziału (to samo daje Shift+klik)
+  const bClose = new Button(x + w / 2 + 5, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
+  const bSplit = new Button(x + w / 2 - 135, y + hh - 54, 130, 40, 'Dziel', () => { splitMode = !splitMode; say(splitMode ? 'Wybierz oddział, a potem miejsce: przeniesiesz tylko część jednostek.' : ''); }, { key: 'd', size: 17, selected: () => splitMode, tip: 'Podział oddziału: przenieś tylko część jednostek (albo Shift+klik na miejscu docelowym).' });
   const armyAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(armyRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   const bagAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(bagRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   G.modal = {
-    buttons: [bClose], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
+    buttons: [bSplit, bClose], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
     onClick(px, py) {
       const s = armyAt(px, py), g = bagAt(px, py);
       if (s) {
         if (!sel) { if (armies[s.k][s.i]) { sel = s; msg = ''; } return; }
-        const err = armyMove(armies[sel.k], sel.i, armies[s.k], s.i, armies); sel = null; if (err) say(err); return;
+        const from = sel; sel = null;
+        if (splitMode || G.keys.has('shift')) { splitMode = false; showSplit(armies[from.k], from.i, armies[s.k], s.i, armies, err => { if (err) say(err); }); return; }
+        const err = armyMove(armies[from.k], from.i, armies[s.k], s.i, armies); if (err) say(err); return;
       }
       if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
       sel = null;
@@ -883,7 +887,7 @@ function showMeeting(st, a, b, onMsg) {
     draw(ctx) {
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, 'Spotkanie bohaterów', W / 2, y + 30, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' });
-      text(ctx, msg || 'Kliknij oddział, a potem miejsce, aby go przenieść. Kliknij artefakt, aby go oddać.', W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: msg ? '#8a3a1a' : '#6a4418' });
+      text(ctx, msg || 'Kliknij oddział, a potem miejsce, aby go przenieść (Shift albo „Dziel”: część). Kliknij artefakt, aby go oddać.', W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: msg ? '#8a3a1a' : '#6a4418' });
       heroes.forEach((h, k) => {
         const ry = rows[k]; drawHeroPortrait(ctx, x + 24, ry - 26, h, ownerColor(st, h.owner));
         text(ctx, heroTitle(h), x + 68, ry - 12, { size: 16, color: '#3a1e08', fam: 'title' });
@@ -892,9 +896,32 @@ function showMeeting(st, a, b, onMsg) {
         text(ctx, h.bag.length ? 'Plecak:' : 'Plecak pusty', x + 24, ry + 92, { size: 13, weight: 500, color: '#5a3814' });
         bagRects[k] = h.bag.slice(0, 12).map((id, i) => { const bx = x + 90 + i * 46; drawSprite(ctx, artSprite(id), bx + 20, ry + 92, 1); return { x: bx, y: ry + 72, w: 40, h: 40, i }; });
       });
-      bClose.draw(ctx);
+      bSplit.draw(ctx); bClose.draw(ctx);
     },
   };
+}
+// Okno podziału oddziału: ile jednostek przenieść (−10, −1, +1, +10, połowa). Po zamknięciu wraca poprzednie okno
+// (np. spotkanie bohaterów), potem done(błąd albo null). Shift+klik albo przycisk „Dziel” otwiera je w armiach.
+function showSplit(fromA, i, toA, j, heroArmies, done) {
+  const L = splitLimit(fromA, i, toA, j, heroArmies); if (L.err) { done(L.err); return; }
+  const prev = G.modal, s = fromA[i], c = CREATURES[s.cid], have = toA[j] ? toA[j].n : 0;
+  let n = Math.max(1, Math.min(L.max, Math.floor(s.n / 2)));
+  const w = 460, hh = 270, x = (W - w) / 2, y = (H - hh) / 2, finish = err => { G.modal = prev; done(err); };
+  const step = d => () => { n = clamp(n + d, 1, L.max); };
+  const bs = [['−10', -10], ['−1', -1, 'arrowleft'], ['+1', 1, 'arrowright'], ['+10', 10]].map(([lb, d, key], k) => new Button(x + 30 + k * 74, y + 150, 66, 36, lb, step(d), { size: 16, key }));
+  bs.push(new Button(x + 330, y + 150, 100, 36, 'Połowa', () => { n = Math.max(1, Math.min(L.max, Math.round(s.n / 2))); }, { size: 15 }));
+  bs.push(new Button(x + 90, y + hh - 58, 130, 40, 'Przenieś', () => finish(armySplit(fromA, i, toA, j, n, heroArmies)), { key: 'enter', size: 17 }));
+  bs.push(new Button(x + 240, y + hh - 58, 130, 40, 'Anuluj', () => finish(null), { key: 'escape', size: 17 }));
+  G.modal = { buttons: bs, split: { get n() { return n; }, max: L.max }, // podgląd w testach
+    draw(ctx) {
+      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
+      text(ctx, `Podział oddziału: ${c.plural.toLowerCase()}`, W / 2, y + 36, { size: 20, align: 'center', color: '#3a1e08', fam: 'title' });
+      drawSprite(ctx, creatureSprite(s.cid, 1), W / 2, y + 128, 2);
+      text(ctx, `Zostaje: ${s.n - n}`, x + 90, y + 90, { size: 20, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, `Przenosisz: ${n}`, x + w - 90, y + 90, { size: 20, align: 'center', color: '#8a3a1a', fam: 'title' });
+      if (have) text(ctx, `(tam już ${have})`, x + w - 90, y + 114, { size: 13, align: 'center', italic: true, weight: 500, color: '#5a3814' });
+      bs.forEach(b => b.draw(ctx));
+    } };
 }
 function showRecruitList(st, t, onDone) {
   const levels = dwellingLevels(t), F = factionOf(t.faction), w = 500, hh = 120 + levels.length * 52 + 60, x = (W - w) / 2, y = Math.max(20, (H - hh) / 2);
