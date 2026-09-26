@@ -17,6 +17,10 @@ function magicTower(c, A, x, b, w, h, roof, fx, glow) { // wieża maga: okna jed
   for (let y = b - h + 8; y < b - 16; y += 18) archWin(c, x + w / 2 - 3, y, 6, 9, glow || A.glow, fx);
   roofArt(c, A, roof, x, b - h, w, w * 1.3); snowCap(c, x, b - h, w, w * 1.3);
 }
+function gableSnow(c, x, y, w, rh) { // śnieg na dwuspadowym dachu (roofArt z GABLE)
+  const cx = x + w / 2; fillPoly(c, [[cx, y - rh - 1], [cx - w * 0.32, y - rh * 0.4], [cx - w * 0.12, y - rh * 0.52], [cx + w * 0.05, y - rh * 0.36], [cx + w * 0.3, y - rh * 0.44]], 'rgba(244,248,255,.92)');
+  c.fillRect(x - 5, y + 0.5, w + 10, 2);
+}
 function crystal(c, cx, cy, s, col, fx) { // unoszący się kryształ z poświatą
   fillPoly(c, [[cx, cy - s * 1.6], [cx + s * 0.7, cy], [cx, cy + s], [cx - s * 0.7, cy]], col);
   fillPoly(c, [[cx, cy - s * 1.6], [cx, cy + s], [cx - s * 0.7, cy]], shadeHex(col, -0.25));
@@ -68,7 +72,29 @@ const ACADEMY_ART = {
     if (tier >= 3) crystal(c, cx - tw * 0.95, b - th * 0.7, 5, '#c0a0ff', fx);
     drawEmblem(c, 'book', x + w - 9, b - 7, 14, '#3a4a8a');
   },
-  tavern: HAVEN_ART.tavern, market: HAVEN_ART.market, smith: HAVEN_ART.smith, silo: HAVEN_ART.silo,
+  tavern(c, A, s, tier, col, fx) { // zajazd z kamienia, dwuspadowy dach w śniegu, szyld z kuflem
+    const { x, b, w, h } = s, bw = w * 0.66, top = b - h * 0.5;
+    wallRect(c, A, x + 4, top, bw, h * 0.5); doorArt(c, A, x + 4 + bw / 2 - 8, b, 16, 20); winArt(c, A, x + 12, top + 10, 8, 8, fx); winArt(c, A, x + bw - 12, top + 10, 8, 8, fx);
+    roofArt(c, GABLE, A.roof.util, x + 4, top, bw, h * 0.34); gableSnow(c, x + 4, top, bw, h * 0.34);
+    c.fillStyle = '#4a4e58'; c.fillRect(x + 4 + bw * 0.74, top - h * 0.3, 7, h * 0.3); fx.smokes.push([x + 7.5 + bw * 0.74, top - h * 0.31]);
+    signArt(c, A, 'mug', x + w - 12, top + 2, h * 0.5 - 2, false); barrel(c, x + w - 24, b);
+  },
+  market(c, A, s, tier, col, fx) { // kramy pod niebieskimi daszkami: kryształy, zwoje, eliksiry
+    c.fillStyle = '#b8c0cc'; c.beginPath(); c.ellipse(s.x + s.w / 2, s.b - 5, s.w / 2, 9, 0, 0, TAU); c.fill();
+    stalls(c, s, [['#3a5aa8', '#e8ecf4'], ['#6a3a8a', '#e8ecf4'], ['#2a7a8a', '#e8ecf4']], ['#a8e0ff', '#e0a0ff', '#f0e0a0', '#80c0ff', '#ffffff'], '#4a4e58');
+    crystal(c, s.x + 8, s.b - 14, 4, '#a8e0ff', fx);
+  },
+  smith(c, A, s, tier, col, fx) { // kuźnia z kamienia, palenisko, kowadło
+    const { x, b, w, h } = s, bw = w * 0.7, top = b - h * 0.55; wallRect(c, A, x + 2, top, bw, h * 0.55);
+    c.fillStyle = '#12161e'; c.fillRect(x + 10, b - h * 0.38, bw * 0.55, h * 0.38); const gx = x + 10 + bw * 0.27; circ(c, gx, b - 7, 5, '#ffb040'); fx.glows.push([gx, b - 10, 22, '#ff9a3a']);
+    roofArt(c, GABLE, A.roof.util, x + 2, top, bw, h * 0.3); gableSnow(c, x + 2, top, bw, h * 0.3);
+    c.fillStyle = '#4a4e58'; c.fillRect(x + 2 + bw * 0.72, top - h * 0.32, 8, h * 0.32); fx.smokes.push([x + 6 + bw * 0.72, top - h * 0.33]);
+    drawEmblem(c, 'anvil', x + w - 10, b - 7, 16, '#4a4e58');
+  },
+  silo(c, A, s, tier, col, fx) { // magazyn: wieżyczka ze stożkowym dachem, skrzynie i beczki
+    const { x, b, w, h } = s, tw = w * 0.42, top = b - h * 0.62; wallRect(c, A, x + 6, top, tw, h * 0.62); roofArt(c, A, A.roof.util, x + 6, top, tw, tw * 1.2); snowCap(c, x + 6, top, tw, tw * 1.2);
+    doorArt(c, A, x + 6 + tw / 2 - 6, b, 12, 16); crate(c, x + w * 0.66, b, 11); crate(c, x + w * 0.86, b, 9); barrel(c, x + w * 0.76, b);
+  },
   dw1(c, A, s, tier, col, fx) { // warsztat gremlinów: komin, koła zębate
     const { x, b, w, h } = s, bw = w * 0.6, top = b - h * 0.5; wallRect(c, A, x + 4, top, bw, h * 0.5);
     roofArt(c, A, A.roof.dw, x + 4, top, bw, h * 0.32); snowCap(c, x + 4, top, bw, h * 0.32);

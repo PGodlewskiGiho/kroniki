@@ -120,7 +120,7 @@ G.screens.town = {
   draw(ctx) {
     const st = G.state, t = this.town(), fac = t.faction, col = ownerColor(st, t.owner);
     drawLayer(ctx, Layers.get('townChrome', W, H, paintTownChrome), 0, 0);
-    const key = `tw_${fac}_${[...t.built].sort().join('.')}_${col}`;
+    const key = `tw_${fac}_${townLayout(t).seed}_${[...t.built].sort().join('.')}_${col}`;
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
     const scene = Layers.get(key, 592, 438, c => { c.imageSmoothingEnabled = false; TownFXCache[key] = paintTownScene(c, t, col); }, TOWN_ART_SCALE);
