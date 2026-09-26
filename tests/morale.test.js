@@ -37,9 +37,9 @@ test('morale armii: jedna frakcja +1, mieszanka mniej, nieumarli −1, artefakty
 test('w bitwie: potwory i nieumarli bez morale, szczęście z artefaktów bohatera', async () => {
   await newGame(page);
   const b = await battle([['pikeman', 10], ['boneWarrior', 10]], { equip: { misc1: 'luckyHorseshoe' } });
-  assert.deepEqual(b, { morale: [-1, 0], luck: [1, 0] });
+  assert.deepEqual(b, { morale: [0, 0], luck: [1, 0] }); // dwie frakcje 0, nieumarli −1, cecha Przystani (rycerz) +1
   const r = await page.evaluate(() => BT.units.map(u => [u.cid, unitMorale(BT, u)]));
-  assert.deepEqual(r.filter(([c]) => c === 'pikeman').map(x => x[1]), [-1]);
+  assert.deepEqual(r.filter(([c]) => c === 'pikeman').map(x => x[1]), [0]);
   assert.deepEqual(r.filter(([c]) => c === 'boneWarrior').map(x => x[1]), [0]);
 });
 
@@ -86,4 +86,40 @@ test('ekran bitwy pokazuje morale i szczęście bez błędów', async () => {
   await frames(page, 240);
   const info = await page.evaluate(() => { const u = alive(BT, 0)[0] || BT.units[0], [x, y] = hexCenter(u.x, u.y); return G.screens.battle.rightInfo(x, y - 10); });
   assert.match(info || '', /Morale \+3, szczęście \+1/);
+});
+
+test('cechy frakcji: morale Przystani, szczęście Kniei, wzrok Lochu, bagna Twierdzy, siarka Inferna, horda Cytadeli', async () => {
+  await newGame(page, { mapSize: 'M' }, 8);
+  const r = await page.evaluate(() => {
+    const st = G.state, t = st.towns[0], mk = cls => ({ cls, equip: {}, skills: [], sight: 5, army: emptyArmy() });
+    const swamp = st.map.terrain.findIndex((x, i) => x === TER.SWAMP && !st.map.road[i]), snow = st.map.terrain.findIndex((x, i) => x === TER.SNOW && !st.map.road[i]);
+    const inc = f => { const f0 = t.faction; t.faction = f; const v = dailyIncomeAll(st, t.owner).sulfur; t.faction = f0; return v; };
+    const grow = f => { const f0 = t.faction; t.faction = f; const v = weeklyGrowth(t, 1, null); t.faction = f0; return [v, CREATURES[factionOf(f).dw.dw1[1]].growth]; };
+    return {
+      morale: [armyMorale(['pikeman'], mk('knight')), armyMorale(['pikeman'], mk('ranger'))], luck: [heroLuck(mk('druid')), heroLuck(mk('knight'))],
+      sight: heroSight(mk('warlock')) - heroSight(mk('knight')),
+      swamp: swamp < 0 ? null : [baseCost(st.map, swamp, swamp, mk('witch')), baseCost(st.map, swamp, swamp, mk('knight'))],
+      snow: snow < 0 ? null : [baseCost(st.map, snow, snow, mk('wizard')), baseCost(st.map, snow, snow, mk('knight'))],
+      sulfur: inc('inferno') - inc('haven'), horde: grow('stronghold'), traits: FACTIONS.every(F => FACTION_TRAITS[F.id] && F.heroes.every(([, c]) => heroFaction({ cls: c }) === F.id)),
+    };
+  });
+  assert.deepEqual(r.morale, [2, 1]); assert.deepEqual(r.luck, [1, 0]); assert.equal(r.sight, 2);
+  if (r.swamp) assert.deepEqual(r.swamp, [100, 175]); if (r.snow) assert.deepEqual(r.snow, [100, 150]);
+  assert.equal(r.sulfur, 1); assert.equal(r.horde[0], Math.floor(r.horde[1] * 1.25)); assert.ok(r.traits);
+});
+
+test('pory roku: miesiąc zmienia porę, lato i zima zmieniają ruch (Akademia bez kary), jesień daje drewno i rudę', async () => {
+  await newGame(page, { mapSize: 'M' }, 8);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), at = m => { st.month = m; return { s: seasonOf(st).id, mp: heroMaxMP(h), mpAcad: heroMaxMP({ ...h, cls: 'wizard' }), wood: dailyIncomeAll(st).wood }; };
+    const out = [1, 2, 3, 4, 5].map(at); st.month = 1; return out;
+  });
+  assert.deepEqual(r.map(x => x.s), ['spring', 'summer', 'autumn', 'winter', 'spring']);
+  assert.ok(r[1].mp > r[0].mp && r[3].mp < r[0].mp, JSON.stringify(r));
+  assert.equal(r[3].mpAcad, r[0].mpAcad, 'Akademia bez kary zimą');
+  assert.equal(r[2].wood, r[0].wood + 1);
+  await frames(page, 5); // mapa rysuje się zimą bez błędów
+  await page.evaluate(() => { G.state.month = 4; });
+  await frames(page, 15);
+  await page.evaluate(() => { G.state.month = 1; });
 });

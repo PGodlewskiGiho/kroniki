@@ -13,12 +13,19 @@ function leafCrown(g, clumps, pal, r) {
     g.fillStyle = pal[0]; g.fillRect(cx + R * (0.1 + r() * 0.4), cy + R * (0.15 + r() * 0.35), 2, 2);
   }
 }
+let SEASON_DRAW = 0; // pora roku dla rysowanych właśnie przeszkód i ozdób (ustawia obstacleSprite/decorSprite)
+const AUTUMN_OAK = [['#4a1a0a', '#8a2e14', '#c8501e', '#f09040'], ['#4a2a08', '#8a5210', '#c8841e', '#f0c040'], ['#3a2410', '#6a4418', '#9a6a28', '#c89a4a']];
 const OAK_PAL = [['#123414', '#24601e', '#4a9430', '#9ad056'], ['#1a3810', '#36601a', '#62922c', '#b8d04c'], ['#3a3010', '#645418', '#9a8028', '#e0bc4c']];
 function drawOak(g, x, y, s, r = mulberry32(1)) {
   shadowAt(g, x, y, 10 * s);
   mpoly(g, [[x - 4 * s, y + 1], [x - 1.8 * s, y - 2 * s], [x - 1.5 * s, y - 11 * s], [x + 1.5 * s, y - 11 * s], [x + 1.8 * s, y - 2 * s], [x + 4 * s, y + 1]], '#3a2412');
   mpoly(g, [[x - 3 * s, y + 0.5], [x - 1.5 * s, y - 2 * s], [x - 1.4 * s, y - 11 * s], [x, y - 11 * s], [x - 0.2 * s, y]], '#6e4826');
-  const pal = OAK_PAL[r() < 0.12 ? 2 : r() < 0.35 ? 1 : 0];
+  const k = r(), pal = SEASON_DRAW === 2 ? AUTUMN_OAK[(k * 3) | 0] : OAK_PAL[k < 0.12 ? 2 : r() < 0.35 ? 1 : 0];
+  if (SEASON_DRAW === 3) { // zima: gołe gałęzie przyprószone śniegiem
+    for (const [dx, dy, ex, ey] of [[0, -10, -7, -22], [0, -12, 7, -21], [0, -11, 0, -27], [-3, -16, -10, -18], [3, -16, 10, -15]]) mline(g, [[x + dx * s, y + dy * s], [x + ex * s, y + ey * s]], '#4a3422', 1.6 * s);
+    for (const [ex, ey] of [[-7, -22], [7, -21], [0, -27], [-10, -18], [10, -15]]) { g.fillStyle = '#f4f8fc'; g.fillRect(x + ex * s - 1.5, y + ey * s - 1, 3, 2); }
+    return;
+  }
   const cl = [[0, -24, 7.5], [-7, -19, 7], [7, -18, 7], [-3, -13, 7], [5, -12, 6.5]].map(([dx, dy, R]) => [x + (dx + (r() - 0.5) * 2) * s, y + dy * s, R * s * (0.9 + r() * 0.2)]);
   leafCrown(g, cl, pal, r);
 }
@@ -114,21 +121,24 @@ function drawRock(g, x, y, r, t = TER.GRASS) {
   if (r() < 0.6) boulder(g, x + 9 * k, y + 2, 0.4, pal);
 }
 function drawObstacle(g, o, t, px, py, r) {
+  if (SEASON_DRAW === 3 && (t === TER.GRASS || t === TER.DIRT || t === TER.ROUGH || t === TER.SWAMP) && o !== OBST.TREE) t = TER.SNOW; // zimą góry i skały w śniegu
   if (o === OBST.MOUNT) return drawMountain(g, px, py, t, r);
   if (o === OBST.ROCK) return drawRock(g, px + (r() - 0.5) * 8, py + 6, r, t);
   const spots = [[(r() - 0.5) * 8, -2], [-8 + (r() - 0.5) * 4, 9], [8 + (r() - 0.5) * 4, 10]], cnt = r() < 0.3 ? 2 : 3;
   for (let k = 0; k < cnt; k++) {
     const x = px + spots[k][0], y = py + spots[k][1], s = 0.8 + r() * 0.3;
-    if (t === TER.SNOW || t === TER.ROUGH) drawPine(g, x, y, s, t === TER.SNOW, r);
+    if (t === TER.SNOW || t === TER.ROUGH) drawPine(g, x, y, s, t === TER.SNOW || SEASON_DRAW === 3, r);
     else if (t === TER.SAND) drawPalm(g, x, y, s, r);
     else if (t === TER.LAVA) drawCharredTree(g, x, y, s, r);
     else if (t === TER.SWAMP) { if (r() < 0.5) drawDeadTree(g, x, y, s, '#2e2618', r); else drawWillow(g, x, y, s, r); }
-    else if (t === TER.DIRT && r() < 0.5) drawPine(g, x, y, s, false, r);
+    else if (t === TER.DIRT && r() < 0.5) drawPine(g, x, y, s, SEASON_DRAW === 3, r);
     else drawOak(g, x, y, s, r);
   }
 }
 // Drobne ozdoby na pustych polach (kępki trawy, kwiaty, kamyki, trzcina, grzyby, żar): tylko wygląd, nie blokują ruchu
 function drawDecor(g, t, v) {
+  if (SEASON_DRAW === 3 && t !== TER.LAVA && t !== TER.SAND) t = TER.SNOW; // zimą ozdoby w śniegu
+  if (SEASON_DRAW === 2 && t === TER.GRASS && v % 2) { for (const [x, y, c] of [[-4, 1, '#c8501e'], [2, -1, '#e0a030'], [5, 3, '#8a3a14'], [-1, 4, '#d87a2a']]) { g.fillStyle = c; g.fillRect(x, y, 3, 2); } return; } // jesienne liście
   const tuft = (x, y, a, b) => { mline(g, [[x - 3, y], [x - 5, y - 6]], a); mline(g, [[x, y], [x, y - 8]], b); mline(g, [[x + 3, y], [x + 5, y - 5]], a); };
   const pebbles = pal => { boulder(g, -3, 2, 0.35, pal); boulder(g, 4, 3, 0.25, pal); };
   const GR = ['#4a8a30', '#78b848'], DRY = ['#9a8a40', '#ccb45a'];
@@ -176,7 +186,19 @@ function landColor(t, ax, ay, hh) {
   }
   return col;
 }
+// Pory roku: lato przypala trawę, jesień barwi ją plamami rdzy i złota, zima przykrywa śniegiem (poza lawą i pustynią)
+const SNOWC = [[236, 242, 248], [214, 226, 238], [248, 250, 252]], AUTC = [[176, 104, 38], [150, 86, 36], [196, 146, 56], [128, 110, 44]];
+const mixRgb = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+function seasonLand(col, t, ax, ay, hh, S) {
+  if (!S || t === TER.LAVA || t === TER.SNOW) return col;
+  if (S === 1) return t === TER.GRASS ? mixRgb(col, [168, 158, 72], 0.2) : col;
+  if (S === 2) { if (t === TER.SAND) return col; const v = vnoise2(ax / 11, ay / 11, 91); return mixRgb(col, AUTC[clamp((v * 4) | 0, 0, 3)], t === TER.GRASS ? 0.55 : 0.28); }
+  const v = vnoise2(ax / 9, ay / 9, 97);
+  if (t === TER.SAND) return mixRgb(col, SNOWC[0], v > 0.45 ? 0.6 : 0.25); // piasek tylko przyprószony
+  return mixRgb(col, SNOWC[hh < 0.3 ? 1 : hh > 0.97 ? 2 : 0], v > 0.3 ? 0.9 : 0.55);
+}
 function renderChunkPixel(map, cx, cy) {
+  const SN = MapRender.season || 0;
   const n = map.n, S = CHUNK * AP, M = 5, R = S + 2 * M, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
   for (let y = 0; y < R; y++) for (let x = 0; x < R; x++) {
     const ax = bx + x - M, ay = by + y - M, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
@@ -199,17 +221,18 @@ function renderChunkPixel(map, cx, cy) {
       if (t === TER.WATER) {
         let near = 9; for (const r of RING) if (TT(px + r[0], py + r[1]) !== TER.WATER) { near = r[2]; break; }
         wm[py * S + px] = near <= 2 ? 2 : 1; wet = true;
-        if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
+        if (SN === 3 && near <= 4) { wm[py * S + px] = 0; col = near === 1 ? SNOWC[2] : (thash(ax >> 1, ay >> 2, 81) % 23 === 0) ? [150, 186, 214] : near <= 2 ? [206, 226, 240] : [184, 212, 232]; } // zimą lód przy brzegu
+        else if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
         else { const P = TPAL[0]; col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; }
       } else {
-        col = landColor(t, ax, ay, hh);
+        col = seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN);
         const below = TT(px, py + 1); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
       }
       if (segs.length) {
         let best = 99, bt = 0;
         for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5, py + 0.5, s); if (dd < best) { best = dd; bt = s[4]; } }
         if (best <= 4.3) wm[py * S + px] = 0;
-        if (best <= 3.3) col = roadColor(bt, ax, ay, hh); else if (best <= 4.3) col = PC.edge;
+        if (best <= 3.3) col = SN === 3 ? mixRgb(roadColor(bt, ax, ay, hh), SNOWC[0], 0.3) : roadColor(bt, ax, ay, hh); else if (best <= 4.3) col = PC.edge;
       }
     }
     d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2]; d[k + 3] = 255;
@@ -221,11 +244,11 @@ function renderChunkPixel(map, cx, cy) {
     const i = y * n + x, h = thash(x, y, map.seed + 5); if (map.obst[i] || rd[i] || (oa && oa[i]) || h % 100 >= 22) continue;
     const lx = x * AP + 8 - bx + ((h >>> 8) % 9) - 4, ly = y * AP + 8 - by + ((h >>> 12) % 7) - 3, t = map.terrain[i];
     if (t === TER.WATER || lx < -M || ly < -M || lx >= S + M || ly >= S + M || TT(lx, ly) !== t) continue;
-    const s = decorSprite(t, (h >>> 16) % 4); g.drawImage(s.c, lx - s.ax, ly - s.ay);
+    const s = decorSprite(t, (h >>> 16) % 4, SN); g.drawImage(s.c, lx - s.ax, ly - s.ay);
   }
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
     const o = map.obst[y * n + x]; if (!o) continue;
-    const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
+    const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     g.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
   }
   gradeCanvas(c, bx, by);
@@ -233,7 +256,7 @@ function renderChunkPixel(map, cx, cy) {
     const mk = v => { const m = document.createElement('canvas'); m.width = m.height = S; const mg = m.getContext('2d'), mi = mg.createImageData(S, S);
       for (let i = 0; i < S * S; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out';
       for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
-        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8)); mg.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
+        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); mg.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
       }
       return m; };
     c._deep = mk(1); c._shore = mk(2);
@@ -280,8 +303,10 @@ function buildMinimap(map, ex) {
 }
 // Pamięć podręczna wyrenderowanych fragmentów mapy (8×8 pól)
 const MapRender = {
-  map: null, explored: null, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
+  map: null, explored: null, season: 0, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
   reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; },
+  // Pora roku: po zmianie wszystkie kawałki terenu rysują się od nowa
+  setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); } },
   // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
   get(cx, cy, allow = true) {
     const key = cx + ',' + cy; let c = this.cache.get(key);
@@ -462,6 +487,7 @@ function mapLight(w, h) {
   }, 1);
 }
 function drawMapView(ctx, st, scr) {
+  MapRender.setSeason(seasonIdx(st));
   {
     const wb = pixBuf('world', VIEW.w / 2, VIEW.h / 2), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
     b.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / 2, VIEW.h / 2), 0, 0); b.restore();
@@ -485,6 +511,7 @@ function drawMapView(ctx, st, scr) {
     else { const g = ctx.createLinearGradient(0, y - 160, 0, y); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, e.col); ctx.fillStyle = g; ctx.fillRect(x - 18 * (1 - f * 0.5), y - 160, 36 * (1 - f * 0.5), 170); }
     ctx.restore();
   }
+  drawSeasonFx(ctx, seasonIdx(st));
   if (scr.banner) {
     const a = clamp(1.8 - (G.time - scr.banner.t), 0, 1);
     if (a > 0) { ctx.globalAlpha = a; drawParchment(ctx, VIEW.x + VIEW.w / 2 - 90, VIEW.y + 16, 180, 44); text(ctx, scr.banner.text, VIEW.x + VIEW.w / 2, VIEW.y + 39, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' }); ctx.globalAlpha = 1; }
@@ -516,3 +543,14 @@ function tileInfo(st, tx, ty) {
   return s;
 }
 
+// Opady pory roku nad mapą: płatki śniegu zimą, spadające liście jesienią (bez nich przy niskiej jakości)
+function drawSeasonFx(ctx, S) {
+  if ((S !== 2 && S !== 3) || G.settings.quality === 'low') return;
+  const t = G.time, n = S === 3 ? 70 : 22;
+  for (let i = 0; i < n; i++) {
+    const sp = S === 3 ? 0.05 + (i % 5) * 0.012 : 0.035 + (i % 4) * 0.008, u = (t * sp + i * 0.137) % 1, sway = Math.sin(t * (S === 3 ? 0.9 : 1.6) + i * 1.7);
+    const x = VIEW.x + ((i * 97 + (S === 2 ? t * 14 : 0)) % VIEW.w) + sway * (S === 3 ? 10 : 18), y = VIEW.y + u * VIEW.h;
+    if (S === 3) { ctx.fillStyle = `rgba(255,255,255,${(0.55 + 0.35 * Math.sin(i)).toFixed(2)})`; const r = i % 3 ? 1.5 : 2.5; ctx.fillRect(x - r / 2, y - r / 2, r, r); }
+    else { ctx.save(); ctx.translate(x, y); ctx.rotate(t * 2 + i); ctx.fillStyle = ['#c8501e', '#e0a030', '#8a3a14', '#d87a2a'][i % 4]; ctx.fillRect(-3, -1.5, 6, 3); ctx.restore(); }
+  }
+}

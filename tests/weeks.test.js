@@ -88,6 +88,6 @@ test('Miesiąc Zarazy zmniejsza pule o połowę, Miesiąc Potworów powiększa p
 test('dymek nad nazwą tygodnia opisuje efekt', async () => {
   await newGame(page);
   const t = await page.evaluate(() => G.screens.adventure.rightInfo(INFOBOX.x + 20, INFOBOX.y + 10));
-  assert.match(t, /^Tydzień \S+: spokojny tydzień/);
+  assert.match(t, /^Wiosna: .*Tydzień \S+: spokojny tydzień/);
   assert.equal(await dialog(page), null);
 });

@@ -59,7 +59,7 @@ test('machiny stoją za armią i nie decydują o wyniku bitwy', async () => {
   assert.equal(r.n, 3);
   assert.ok(r.cols.every(x => x <= 1), `kolumny: ${r.cols}`);
   assert.ok(r.unique, 'każdy oddział na innym polu');
-  assert.equal(r.morale, 1, 'machiny nie psują morale jednej frakcji');
+  assert.equal(r.morale, 2, 'machiny nie psują morale jednej frakcji (+1 za frakcję, +1 cecha Przystani)');
   assert.equal(r.cartInOrder, false);
   assert.equal(r.over, 'lose');
 });
