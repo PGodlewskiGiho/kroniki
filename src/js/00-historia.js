@@ -26,7 +26,8 @@
      MAPA PRZYGODY: RENDEROWANIE     teren piksel po pikselu, minimapa, mgła, kamera
      MIASTO: GRAFIKA                 style frakcji, siedliska Przystani, Kniei i Kurhanu, sceny w perspektywie, efekty
      MIASTO: TWIERDZA I INFERNO … LOCH I CYTADELA   palety, siedliska i barwy scen pozostałych frakcji
-     MIASTO: GENERATOR PLANSZ        krajobraz, rozmieszczenie budowli, drogi, pogoda (townLayout)
+     MIASTO: TEREN I DROGI SCEN      woda, tarasy, wzgórza, wysokość gruntu, główna droga z mostami, bramy w murze
+     MIASTO: SCENY FRAKCJI           jedna ręcznie ułożona scena na frakcję (TOWN_SCENES, townLayout)
      MIASTO: BUDOWLE GŁÓWNE FRAKCJI  ratusz, fort, gildia, karczma, rynek, kuźnia, magazyn: własna architektura każdej frakcji
      EKRANY / MAPA / BOHATER / BITWA / MIASTO  menu, listy, mapa, ekran bohatera, bitwa, widok miasta
      SILNIK                          pętla, wejście (mysz, dotyk, klawiatura, kółko), przejścia
@@ -57,7 +58,7 @@
      'unicorn', 'phoenix', 'ghost', 'dragon', 'eye', 'bird' i in.); nowy rodzaj ciała = nowy case w drawCreature().
    • Frakcję: wpis w FACTIONS, TOWN_ART (paleta), BUILD_ART (siedliska w pliku frakcji, budowle główne w MIASTO: BUDOWLE
      GŁÓWNE FRAKCJI — z nich powstaje też ikona miasta na mapie), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi)
-     i TOWN_STYLE (ulubione krajobrazy, woda, rekwizyty, niebo, pogoda, dachy, mury); plansze miast układa generator (18c).
+     TOWN_STYLE (woda, tarasy, wzgórza, mury) i scena w TOWN_SCENES (18h): niebo, teren, miejsca budowli, rekwizyty.
    • Budowlę wspólną: wpis w BUILDINGS (slot = miejsce w scenie) i funkcja w BUILD_ART każdej frakcji.
    • Ekran: G.screens.nazwa = { enter(p), draw(ctx), update(dt), onClick(x, y), onBack(),
      onKey(k), onWheel(d), onPointerDown/Move/Up, rightInfo(x, y) → tekst dymka, buttons: [] };
@@ -132,10 +133,13 @@
    w całych pikselach), mapa bez przeliczania całego obrazu co klatkę (gradeCanvas w kawałkach terenu i kopiach sprite'ów, mgła
    w kawałkach fogChunk, nakładka mapLight), scena menu i efekty miasta ~12–15 klatek/s, jakość grafiki (auto/wysoka/niska, Perf).
    Kawałki terenu: budżet ~10 ms na klatkę (MapRender.get allow, zastępczy placeholder), generowanie wokół widoku z wyprzedzeniem.
-   Generator plansz miast (18c): każde miasto ma własną planszę z nazwy (townLayout): krajobraz (dolina, jezioro, przepaść,
-   tarasy, wyspy, płaskowyż, krater, wybrzeże), kamera, 14 budowli rozmieszczonych według ról (bez zasłaniania, nie w wodzie
-   ani na drodze), droga z mostami i schodami, plac, mur z bramą, drzewa i drobiazgi, pora dnia, pogoda (deszcz, mgła, śnieg),
-   dachy i odbicia budowli. Nowe elementy sceny: tarasy z murem oporowym, wyspy, morze z plażą i łodziami, mury i baszty.
+   Sceny miast (18h, TOWN_SCENES): zamiast losowego generatora każda frakcja ma jedną, ręcznie ułożoną scenę — Przystań w dolinie
+   z rzeką i zamkiem na wzgórzu, Knieja na polanie nad leśnym jeziorem, Kurhan nad przepaścią z kościanym mostem, Twierdza na
+   wysepkach mokradła, Inferno w kraterze z jeziorem lawy, Akademia na ośnieżonych tarasach, Loch w grocie ze świecącym jeziorem,
+   Cytadela pod stołową górą z oazą i palisadą. Stałe są niebo, teren, miejsca 15 budowli i rekwizyty; ścieżki do drzwi
+   i mieszkańców wylicza MIASTO: TEREN. Drogi (roadStyled) w pixel-arcie: osobne kamienie w rzędach perspektywy, fugi,
+   krawężnik; ścieżki ziemne z kamykami i trawą; najpierw brzegi wszystkich ścieżek, potem nawierzchnie (jeden obrys sieci),
+   brukowany plac w pierścieniach (plazaArt).
    Akademia (śnieg, TER.SNOW): gremliny, gargulce, golemy, magowie, dżiny, nagi (nowy wężowy ogon L.serpent), olbrzymi i tytani;
    klasy Alchemik i Czarodziej, miasto białych wież ze złotymi kopułami i padającym śniegiem (18b), mury i portrety. Pocisk z look.orb
    bez laski to kula (gremlin, tytan). SI bierze z garnizonu tylko to, co zmieści (takeableArmy), więc nie krąży między miastami.

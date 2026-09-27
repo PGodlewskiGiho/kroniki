@@ -832,8 +832,9 @@ function paintTownWorld(c, t, col, Wd) {
   for (const Rv of [...(Wd.river ? [Wd.river] : []), ...(Wd.rivers || [])]) { riverArt(c, Rv, hzC); if (Rv.chasm) chasmGlow(c, Rv); }
   for (const I of Wd.islands || []) islandArt(c, I, Wd);
   [...Wd.hills.map(Hl => ({ Z: Hl.Z, Hl })), ...(Wd.slabs || []).map(Sb => ({ Z: Sb.Z0, Sb }))].sort((a, b) => b.Z - a.Z).forEach(o => o.Hl ? hillArt(c, o.Hl, hzC) : slabArt(c, o.Sb, hzC));
-  for (const Rd of Wd.roads) roadStyled(c, A, Rd, Wd, fx);
-  if (Wd.plaza) { const [px, py, s] = proj(Wd.plaza.X, Wd.plaza.Z); c.fillStyle = Wd.plazaCol || '#8e8470'; c.beginPath(); c.ellipse(px, py, Wd.plaza.r * s, 12 * s, 0, 0, TAU); c.fill(); c.strokeStyle = 'rgba(40,30,20,.3)'; c.lineWidth = 1; const r = mulberry32(3); for (let i = 0; i < 90; i++) { const a = r() * TAU, d = Math.sqrt(r()); c.strokeRect(px + Math.cos(a) * Wd.plaza.r * s * d - 2, py + Math.sin(a) * 12 * s * d - 1, 4 * s, 2.5 * s); } }
+  const lanes = Wd.roads.filter(Rd => !Rd.main), mains = Wd.roads.filter(Rd => Rd.main); // ścieżki pod drogą główną; brzegi przed nawierzchnią
+  for (const grp of [lanes, mains]) { for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'under'); for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'top'); }
+  if (Wd.plaza) plazaArt(c, Wd);
   const objs = [];
   Wd.slots.forEach((S, i) => objs.push({ Z: S.Z, slot: i, S }));
   Wd.props.forEach(([kind, X, Z, e = 0, k = 1]) => objs.push({ Z, prop: kind, X, e, k }));

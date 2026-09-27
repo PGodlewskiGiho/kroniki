@@ -165,15 +165,5 @@ TOWN_LAYOUTS.stronghold = {
 TOWN_WATER.glow = { river: ['#5a3a8a', '#0e0820'], lake: ['#5a4a9a', '#0e0a24'], rim: '#2a2434', edge: 'rgba(170,120,255,.45)',
   chasm: { cols: ['#7a4ab8', '#0a0418'], line: 'rgba(210,170,255,.5)', edge: 'rgba(10,4,20,.9)', glow: '150,90,255', glowA: 0.18 } };
 TOWN_WATER.oasis = { river: ['#6ab0a8', '#1e5a62'], lake: ['#7ac0b8', '#1e5a62'], rim: '#a89a5a', edge: 'rgba(240,240,210,.5)', reeds: true };
-TOWN_STYLE.dungeon = { walls: ['spiked', 0.45], masonry: true, arche: [['chasm', 3], ['crater', 2], ['plateau', 2], ['lake', 2], ['terraces', 1]], water: 'glow',
-  trees: ['glowShroom', 10, 16], deco: [['stalagmite', 4], ['rock', 2], ['bones', 1]], lamp: 'brazier', sand: '#3e3848',
-  skies: [[TOWN_LAYOUTS.dungeon.sky, 3], [{ top: '#0a0612', mid: '#2a1a3a', hor: '#7a3a5a', sun: [200, 80], moon: true, moonR: 40, cloudDark: 'rgba(30,14,34,.8)', cloudLit: 'rgba(220,100,160,.3)' }, 2],
-    [{ top: '#101018', mid: '#2a2a3a', hor: '#5a5a70', sun: [300, 90], cloudDark: 'rgba(30,30,44,.8)', cloudLit: 'rgba(150,150,190,.3)' }, 1]],
-  weather: [['spores', 3], ['mist', 2]], slab: { top: ['#4a4452', '#34303c'], face: ['#3a3444', '#1e1b24'] }, hill: ['#3a3444', '#1e1b24'],
-  roofs: [TOWN_ART.dungeon.roof, { hall: '#5a1a2a', dw: '#4a1a24', util: '#3a3040', tower: '#2a0e18', wall: '#3a1a24' }, { hall: '#1e3a4a', dw: '#2a3a4a', util: '#34383e', tower: '#14283a', wall: '#24303a' }] };
-TOWN_STYLE.stronghold = { walls: ['palisade', 0.5], arche: [['plateau', 3], ['valley', 2], ['crater', 2], ['lake', 1], ['coast', 1]], water: 'oasis',
-  trees: ['acacia', 6, 11], deco: [['cactus', 3], ['bones', 2], ['rock', 2], ['totem', 1]], lamp: 'brazier', sand: '#e0c090',
-  skies: [[TOWN_LAYOUTS.stronghold.sky, 3], [{ top: '#3a1a2a', mid: '#b04a2a', hor: '#f8b050', sun: [460, 120], cloudDark: 'rgba(90,40,40,.6)', cloudLit: 'rgba(255,180,100,.7)' }, 2],
-    [{ ...SKY_NIGHT, hor: '#6a4a3a' }, 1]],
-  weather: [['clear', 4], ['dust', 2]], slab: { top: ['#d0a878', '#b08858'], face: ['#b07a4a', '#6a4424'] }, hill: ['#c89a68', '#9a6a40'],
-  roofs: [TOWN_ART.stronghold.roof, { hall: '#b8903a', dw: '#8a5a2a', util: '#6a5a3a', tower: '#4a2a1a', wall: '#8a6a3a' }, { hall: '#3a5a7a', dw: '#8a3a1a', util: '#7a5a34', tower: '#2a4a5a', wall: '#6a3a2a' }] };
+TOWN_STYLE.dungeon = { walls: ['spiked', 0.45], masonry: true, water: 'glow', lamp: 'brazier', sand: '#3e3848', slab: { top: ['#4a4452', '#34303c'], face: ['#3a3444', '#1e1b24'] }, hill: ['#3a3444', '#1e1b24'] };
+TOWN_STYLE.stronghold = { walls: ['palisade', 0.5], water: 'oasis', lamp: 'brazier', sand: '#e0c090', slab: { top: ['#d0a878', '#b08858'], face: ['#b07a4a', '#6a4424'] }, hill: ['#c89a68', '#9a6a40'] };
