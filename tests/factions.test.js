@@ -21,7 +21,7 @@ test('każda frakcja ma komplet danych: siedliska, stwory, bohaterów, grafikę 
         if (U.value <= A.value) out.push(`${F.id}: ${b} nie jest lepszy od ${a}`);
       }
       for (const [name, cls] of F.heroes) { if (!HERO_CLASSES[cls] || !CLASS_GROWTH[cls] || !CLASS_SKILLS[cls] || !PORTRAIT_BG[cls]) out.push(`${F.id}: klasa ${cls}`); if (!HERO_LOOKS[name]) out.push(`${F.id}: wygląd ${name}`); }
-      if (!TOWN_ART[F.id] || !TOWN_LAYOUTS[F.id] || TOWN_LAYOUTS[F.id].slots.length !== 15 || !BUILD_ART[F.id].special || !FACTION_SPECIAL[F.id]) out.push(`${F.id}: scena miasta`);
+      if (!TOWN_ART[F.id] || !TOWN_LAYOUTS[F.id] || TOWN_LAYOUTS[F.id].slots.length !== 16 || !BUILD_ART[F.id].special || !FACTION_SPECIAL[F.id]) out.push(`${F.id}: scena miasta`);
       for (const g of groups) if (!(BUILD_ART[F.id] || {})[g]) out.push(`${F.id}: brak rysunku ${g}`);
       if (!SIEGE_STONE[F.id] || !SIEGE_PAVE[F.id]) out.push(`${F.id}: mury oblężenia`);
       if (F.emb.some(e => !e)) out.push(`${F.id}: symbole siedlisk`);

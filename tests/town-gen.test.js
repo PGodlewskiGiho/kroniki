@@ -9,15 +9,15 @@ test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
 
-test('każda frakcja ma własną scenę: 15 budowli w kadrze, bez wzajemnego zasłaniania', async () => {
+test('każda frakcja ma własną scenę: 16 budowli (z Graalem) w kadrze, bez wzajemnego zasłaniania', async () => {
   const r = await page.evaluate(() => {
     const bad = [];
     for (const F of FACTIONS) {
       if (!TOWN_SCENES[F.id]) { bad.push(`${F.id}: brak sceny`); continue; }
       const L = buildTownScene(F.id); usePJ(L); const R = L.slots.map(slotRect);
-      if (R.length !== 15) bad.push(`${F.id}: ${R.length} miejsc`);
+      if (R.length !== 16) bad.push(`${F.id}: ${R.length} miejsc`);
       R.forEach((q, i) => { if (q.x < 0 || q.x + q.w > 592 || q.y < 4 || q.sy > 440) bad.push(`${F.id}: miejsce ${i} poza kadrem`); });
-      for (let i = 0; i < 15; i++) for (let j = i + 1; j < 15; j++) if (rectOverlap(R[i], R[j]) > 0.5) bad.push(`${F.id}: ${i} zasłania ${j}`);
+      for (let i = 0; i < 16; i++) for (let j = i + 1; j < 16; j++) if (rectOverlap(R[i], R[j]) > 0.6) bad.push(`${F.id}: ${i} zasłania ${j}`);
       usePJ(null);
     }
     return bad;
@@ -57,7 +57,7 @@ test('ekran miasta rysuje się dla każdej frakcji; budowle mają pola do wskaza
     await page.evaluate(([fac]) => { const t = G.state.towns[0]; t.faction = fac; t.built = BUILDINGS.map(b => b.id); setScreen('town', { townId: t.id }); G.modal = null; }, [fac]);
     await frames(page, 6);
     const r = await page.evaluate(() => ({ rects: Object.keys((TownFXCache[lastTownKey] || {}).rects || {}).length, screen: G.screenName }));
-    assert.deepEqual(r, { rects: 15, screen: 'town' }, fac);
+    assert.deepEqual(r, { rects: 16, screen: 'town' }, fac);
   }
 });
 

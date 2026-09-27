@@ -21,7 +21,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0 },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [] },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -69,6 +69,8 @@ function migrateSave(st) {
     if (o.type === 'bank' && !Array.isArray(o.guards)) o.guards = o.cleared ? [] : bankGuards(o.kind, st.settings.difficulty);
     if (o.type === 'bank') o.guards = o.guards.filter(([cid, n]) => CREATURES[cid] && n > 0);
   }
+  // Graal i obeliski (zapisy sprzed Graala dostają je teraz)
+  placeGrail(st);
   // zapisy sprzed hot-seat: jeden człowiek (numer 0), powitanie już było
   if (!(st.cur >= 0 && st.players[st.cur] && st.players[st.cur].human)) st.cur = Math.max(0, st.players.findIndex(p => p.human));
   for (const p of st.players) if (p.human && p.welcomed === undefined) p.welcomed = true;

@@ -163,6 +163,11 @@ function drawSite(ctx, kind, f) {
       ctx.fillStyle = '#e0c060'; ctx.beginPath(); ctx.ellipse(-11, -2, 4, 2.5, 0, 0, TAU); ctx.fill();
       poly([[9, -12], [14, -14], [15, -9], [11, -8]], '#7a4a28'); circ(ctx, 13.5, -12, 0.6, '#1a0e06'); break;
     }
+    case 'obelisk': { // smukła iglica z runami, które świecą
+      poly([[-7, 0], [7, 0], [5, -4], [-5, -4]], '#6e6a62'); poly([[-4, -4], [4, -4], [2.5, -34], [-2.5, -34]], '#a49c8c'); poly([[1, -4], [4, -4], [2.5, -34], [0.5, -34]], '#7a7466');
+      poly([[-2.5, -34], [2.5, -34], [0, -40]], '#c8c0ae'); const a = 0.55 + 0.45 * Math.sin(t); ctx.fillStyle = `rgba(250,210,110,${a.toFixed(2)})`;
+      for (const [ry, rw] of [[-28, 2.4], [-22, 3], [-16, 2.4], [-10, 3.2]]) ctx.fillRect(-rw / 2 - 0.5, ry, rw, 1.4); break;
+    }
     case 'lookout': {
       poly([[-6, 0], [-4, -30], [4, -30], [6, 0]], '#9a948a'); poly([[1, -30], [4, -30], [6, 0], [2, 0]], '#7a746a');
       box(-8, -34, 16, 4, '#8a8478'); for (const bx of [-8, -3, 2, 6]) box(bx, -37, 2.4, 3, '#8a8478');
@@ -707,7 +712,7 @@ const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0
 const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
 // Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki
-const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1 };
+const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1, obelisk: 1 };
 const siteSprite = (k, i = 0) => sprite(`site_${k}_${i}`, 26, 26, 13, 24, p => drawSite(p, k, i / 4));
 const siteFrame = (ob) => (SITE_ANIM[ob.kind] ? Math.floor(G.time * 5 + ob.id) % 4 : 0);
 const mineSprite = k => sprite(`mine_${k}`, 36, 38, 2, 4, p => drawMine(p, { kind: k }, 0, 0, 0, null));
@@ -1034,6 +1039,10 @@ function drawArtifact(c, id) {
     case 'book':
       c.fillStyle = '#e8dcc0'; c.fillRect(-8, -9, 17, 19); c.fillStyle = col; c.fillRect(-9, -10, 16, 19); c.fillStyle = dk; c.fillRect(-9, -10, 3, 19);
       c.strokeStyle = gem; c.lineWidth = 1.5; c.beginPath(); c.moveTo(1, -6); c.lineTo(1, 5); c.moveTo(-2, -3); c.lineTo(4, 2); c.moveTo(4, -3); c.lineTo(-2, 2); c.stroke(); break;
+    case 'grail': // złoty kielich z blaskiem
+      circ(c, 0, -3, 10, 'rgba(255,240,160,.35)'); poly([[-6, 10], [6, 10], [3, 7], [-3, 7]], dk); c.fillStyle = col; c.fillRect(-1.5, -1, 3, 8);
+      poly([[-8, -9], [8, -9], [6, -3], [2, 0], [-2, 0], [-6, -3]], col); poly([[2, -9], [8, -9], [6, -3], [2, 0]], dk);
+      c.fillStyle = gem; c.fillRect(-8, -10, 16, 1.6); c.fillStyle = '#c83a3a'; c.fillRect(-4, -6, 2, 2); c.fillStyle = '#3a8ae0'; c.fillRect(1, -6, 2, 2); break;
   }
 }
 const artSprite = id => sprite(`art_${id}`, 16, 16, 8, 8, p => drawArtifact(p, id));

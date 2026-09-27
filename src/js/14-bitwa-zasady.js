@@ -448,9 +448,10 @@ function resolveBattle(B, fled) {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);
     if (D.bank) res.bankText = lootBank(st, h, D.bank);
-    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; removeHero(st, D.hero); }
+    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) { D.hero.bag.splice(D.hero.bag.indexOf('grail'), 1); h.bag.push('grail'); res.grail = true; } removeHero(st, D.hero); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
   } else {
+    if (D.hero && outcome === 'lose' && hasGrail(h)) { h.bag.splice(h.bag.indexOf('grail'), 1); D.hero.bag.push('grail'); res.grailLost = true; } // Graal przechodzi na zwycięzcę
     if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); res.foeRaised = raiseDead(B, 1); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie
     if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
     else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi

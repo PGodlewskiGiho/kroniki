@@ -30,7 +30,7 @@ test('nowa gra: miejsca na mapie w liczbie zależnej od rozmiaru, na dostępnych
   }));
   assert.ok(r[0].n >= 3 && r[0].n < 25, `S: ${r[0].n}`);
   assert.ok(r[1].n > r[0].n * 2, `M: ${r[1].n}`);
-  assert.equal(r[2].kinds, 13);
+  assert.equal(r[2].kinds, 14); // 13 rodzajów miejsc i obeliski
   for (const g of r) { assert.ok(g.ok, g.ms); assert.ok(g.shrines); assert.ok(g.mills); }
 });
 

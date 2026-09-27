@@ -133,6 +133,11 @@
    w całych pikselach), mapa bez przeliczania całego obrazu co klatkę (gradeCanvas w kawałkach terenu i kopiach sprite'ów, mgła
    w kawałkach fogChunk, nakładka mapLight), scena menu i efekty miasta ~12–15 klatek/s, jakość grafiki (auto/wysoka/niska, Perf).
    Kawałki terenu: budżet ~10 ms na klatkę (MapRender.get allow, zastępczy placeholder), generowanie wokół widoku z wyprzedzeniem.
+   Graal i obeliski (20a, placeGrail w 12): Graal zakopany na wolnym polu lądu (st.grail, found = kto go wykopał), obeliski
+   (SITES.obelisk, liczba wg OBELISKS) odsłaniają kawałki mapy zagadki (showPuzzle: wycinek mapy, kawałki z wypustkami,
+   od brzegów do krzyżyka). Kop (klawisz D) tylko z pełnym ruchem, dołki w st.holes. Artefakt 'grail' (relikwia, do plecaka)
+   wnosi się do własnego miasta: budowla Graala (slot 15, nazwa wg GRAIL_NAMES) daje +5000 złota i +50% przyrostu. Graal
+   przechodzi na zwycięzcę bitwy; SI, która zna całą mapę zagadki, kopie i buduje. Starsze zapisy dostają Graala w migrateSave.
    Sceny miast (18h, TOWN_SCENES): zamiast losowego generatora każda frakcja ma jedną, ręcznie ułożoną scenę — Przystań w dolinie
    z rzeką i zamkiem na wzgórzu, Knieja na polanie nad leśnym jeziorem, Kurhan nad przepaścią z kościanym mostem, Twierdza na
    wysepkach mokradła, Inferno w kraterze z jeziorem lawy, Akademia na ośnieżonych tarasach, Loch w grocie ze świecącym jeziorem,

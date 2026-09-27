@@ -174,7 +174,8 @@ const BUILDINGS = [
   { id: 'guild3', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 4, crystal: 4 }, req: ['guild2', 'hall2'], emblem: 'book', desc: 'Dodaje czary 3 poziomu.' },
   { id: 'guild4', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 6, sulfur: 6, crystal: 6, gems: 6 }, req: ['guild3'], emblem: 'book', desc: 'Dodaje czary 4 poziomu.' },
   { id: 'guild5', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 10, sulfur: 10, crystal: 10, gems: 10 }, req: ['guild4', 'hall3'], emblem: 'book', desc: 'Dodaje czary 5 poziomu.' },
-  { id: 'special', slot: 14, cost: { gold: 3000, wood: 5, ore: 5 }, req: ['fort'] }, // budowla specjalna frakcji: nazwa i działanie w FACTION_SPECIAL
+  { id: 'special', slot: 14, cost: { gold: 3000, wood: 5, ore: 5 }, req: ['fort'] },
+  { id: 'grail', slot: 15, cost: {}, req: [], grail: true }, // budowla Graala: nie da się jej kupić, wznosi ją bohater z Graalem (buildGrail) // budowla specjalna frakcji: nazwa i działanie w FACTION_SPECIAL
   { id: 'dw1', slot: 10, cost: { gold: 500 }, req: [] },
   { id: 'dw1u', slot: 10, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
   { id: 'dw2', slot: 11, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
@@ -203,9 +204,13 @@ const FACTION_SPECIAL = {
   stronghold: { name: 'Sala Walhalli', emblem: 'axe', desc: 'Każdy bohater, który odwiedzi miasto, raz na zawsze zyskuje +1 do ataku.' },
 };
 // Nazwa, jednostka, symbol i opis budowli dla danej frakcji
+// Budowla Graala ma w każdej frakcji własną nazwę
+const GRAIL_NAMES = { haven: 'Kolos Światłości', sylvan: 'Strażnik Kniei', barrow: 'Więzienie Dusz', fortress: 'Pradawne Źródło',
+  inferno: 'Ołtarz Ognia', academy: 'Podniebny Kielich', dungeon: 'Strażnik Głębin', stronghold: 'Pomnik Wodzów' };
 function bInfo(B, fac) {
   const F = factionOf(fac), m = /^dw(\d)(u?)$/.exec(B.id);
   if (B.id === 'special') { const S = FACTION_SPECIAL[F.id]; return { name: S.name, emblem: S.emblem, desc: S.desc }; }
+  if (B.id === 'grail') return { name: GRAIL_NAMES[F.id] || 'Budowla Graala', emblem: 'crown', desc: `Budowla Graala: +${GRAIL_GOLD} złota dziennie i +50% przyrostu stworów.` };
   if (m) {
     const [name, unit] = F.dw[B.id], c = CREATURES[unit];
     return { name, unit, emblem: F.emb[+m[1] - 1], desc: `${m[2] ? 'Ulepszone siedlisko' : 'Siedlisko'}: ${c.plural.toLowerCase()} (poziom ${m[1]}).` };

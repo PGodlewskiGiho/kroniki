@@ -60,7 +60,7 @@ const EQUIP_SLOTS = [
   { id: 'feet', kind: 'feet', name: 'Stopy', x: 574, y: 300 },
   { id: 'misc1', kind: 'misc', name: 'Różne', x: 432, y: 300 }, { id: 'misc2', kind: 'misc', name: 'Różne', x: 716, y: 300 },
 ];
-const RARITY = { treasure: 'skarb', minor: 'pomniejszy', major: 'potężny' };
+const RARITY = { treasure: 'skarb', minor: 'pomniejszy', major: 'potężny', relic: 'relikwia' };
 // bonus: att/def/sp/kn (cechy), mp (punkty ruchu), sight (zasięg widzenia), gold (złoto dziennie), morale, luck (szczęście)
 // icon: rodzaj rysunku w drawArtifact(); col/gem: kolory
 const ARTIFACTS = {
@@ -84,6 +84,9 @@ const ARTIFACTS = {
   sageDiadem: { name: 'Diadem mędrca', kind: 'head', rarity: 'major', bonus: { kn: 3, sp: 1, luck: 1 }, icon: 'crown', col: '#f0c040', gem: '#4aa0e0' },
   runeBook: { name: 'Księga run', kind: 'misc', rarity: 'major', bonus: { sp: 3, kn: 1 }, icon: 'book', col: '#6a2a2a', gem: '#f0c040' },
   hornOfPlenty: { name: 'Mieszek obfitości', kind: 'misc', rarity: 'major', bonus: { gold: 750 }, icon: 'bag', col: '#6a3a6a', gem: '#f0c040' },
+  // Graala nie da się założyć (nie ma pasującego miejsca): leży w plecaku, dopóki bohater nie zbuduje go w mieście
+  grail: { name: 'Graal', kind: 'grail', rarity: 'relic', bonus: {}, icon: 'grail', col: '#f0c040', gem: '#fff4c0',
+    desc: 'Święty kielich. Zanieś go do własnego miasta, aby wznieść tam budowlę Graala (+5000 złota dziennie, +50% przyrostu stworów).' },
 };
 const ARTS_BY_RARITY = rar => Object.keys(ARTIFACTS).filter(id => ARTIFACTS[id].rarity === rar);
 // Opis premii artefaktu: „+2 do ataku, +200 ruchu”
@@ -94,5 +97,5 @@ function artBonusText(b) {
   if (b.mp) out.push(`+${b.mp} punktów ruchu`); if (b.sight) out.push(`+${b.sight} do zasięgu widzenia`); if (b.gold) out.push(`+${b.gold} złota dziennie`);
   return out.join(', ');
 }
-const artInfo = id => { const A = ARTIFACTS[id]; return `${A.name} (${RARITY[A.rarity]}): ${artBonusText(A.bonus)}.`; };
+const artInfo = id => { const A = ARTIFACTS[id]; return `${A.name} (${RARITY[A.rarity]}): ${A.desc || artBonusText(A.bonus) + '.'}`; };
 
