@@ -87,7 +87,7 @@ function resize() {
 function update(dt) {
   G.time += dt; const f = G.fade, sp = 3.5;
   if (f.a < f.target) f.a = Math.min(f.target, f.a + dt * sp); else if (f.a > f.target) f.a = Math.max(f.target, f.a - dt * sp);
-  if (f.next && f.a >= 1) { const n = f.next; f.next = null; setScreen(n.name, n.params); f.target = 0; }
+  if (f.next && f.a >= 1) { const n = f.next; f.next = null; f.target = 0; setScreen(n.name, n.params); } // enter() może od razu zlecić kolejne przejście
   syncMouse(); updateHover(); if (G.screen.update) G.screen.update(dt);
 }
 function render() {

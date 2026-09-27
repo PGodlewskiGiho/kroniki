@@ -142,8 +142,11 @@
    Loch (skały, TER.ROUGH) i Cytadela (step, TER.SAND), 18d: nowe ciała 'eye' (obserwator) i 'bird' (rok, ptak gromu),
    czworonóg z wings/stinger/mane/horns/stripes/rider (mantykora, behemot, jeździec wargów), cyklop (L.cyclops), tur bez łusek
    (L.plain, barding). Woda 'glow' i 'oasis', rekwizyty glowShroom/stalagmite/acacia/cactus/totem, pogoda 'spores' i 'dust'.
-   Koniec bitwy (22, startEnding/endingStep/drawEnding): zwycięstwo = złote promienie, fajerwerki, konfetti, sztandar ze sprężystym
-   wejściem i podskakujący zwycięzcy; porażka = szarość, czerwona winieta, popiół i dym, opadający postrzępiony sztandar z pęknięciem.
+   Koniec bitwy jak w Heroes 3 (22a): zwycięzcy chwilę wiwatują, potem okno wyniku nad polem bitwy (showBattleReport): portrety
+   obu stron z podpisem zwycięzca/pokonany, ruchomy obraz (świt i bohater ze sztandarami, burza z krukami i złamanym sztandarem,
+   odjazd o zmierzchu), opis kroniki, straty obu stron z ikonami stworów (res.sides). To samo okno po walce automatycznej i obronie.
+   Koniec gry (showGameEnd): scena miasta gracza z fajerwerkami albo w dymie i szarości, wstęga z napisem, kronika królestwa
+   i ranga od Chłopa do Czarnego smoka.
    Pory roku (SEASONS, seasonIdx: miesiąc 1 wiosna, 2 lato, 3 jesień, 4 zima, potem od nowa): lato +10% ruchu, jesień +1 drewna
    i rudy z miasta, zima −20% ruchu. Wygląd: seasonLand (barwy terenu), lód przy brzegach, drzewa i ozdoby wg SEASON_DRAW
    (obstacleSprite/decorSprite z porą w kluczu), MapRender.setSeason czyści kawałki, drawSeasonFx (śnieg, liście).
