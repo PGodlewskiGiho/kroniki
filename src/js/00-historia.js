@@ -142,9 +142,9 @@
    z rzeką i zamkiem na wzgórzu, Knieja na polanie nad leśnym jeziorem, Kurhan nad przepaścią z kościanym mostem, Twierdza na
    wysepkach mokradła, Inferno w kraterze z jeziorem lawy, Akademia na ośnieżonych tarasach, Loch w grocie ze świecącym jeziorem,
    Cytadela pod stołową górą z oazą i palisadą. Stałe są niebo, teren, miejsca 15 budowli i rekwizyty; ścieżki do drzwi
-   i mieszkańców wylicza MIASTO: TEREN. Drogi (roadStyled) w pixel-arcie: osobne kamienie w rzędach perspektywy, fugi,
-   krawężnik; ścieżki ziemne z kamykami i trawą; najpierw brzegi wszystkich ścieżek, potem nawierzchnie (jeden obrys sieci),
-   brukowany plac w pierścieniach (plazaArt).
+   i mieszkańców wylicza MIASTO: TEREN. Drogi (roadStyled) „malowane”: falujące brzegi przechodzące w trawę,
+   wydeptany środek, bruk z nieregularnych otoczaków (cobbleAt), plac z otoczaków (plazaArt). Rysowana jest tylko droga główna
+   i ścieżki ułożone w scenie (walks); do drzwi mieszkańcy dochodzą po trawie (poza pomostami Twierdzy, Bm.drawLanes).
    Akademia (śnieg, TER.SNOW): gremliny, gargulce, golemy, magowie, dżiny, nagi (nowy wężowy ogon L.serpent), olbrzymi i tytani;
    klasy Alchemik i Czarodziej, miasto białych wież ze złotymi kopułami i padającym śniegiem (18b), mury i portrety. Pocisk z look.orb
    bez laski to kula (gremlin, tytan). SI bierze z garnizonu tylko to, co zmieści (takeableArmy), więc nie krąży między miastami.

@@ -11,11 +11,11 @@ const TOWN_BIOME = {
     folk: ['elf', 'elf', 'dwarf'], guard: 'archer', plaza: '#7a6a44' },
   barrow: { ground: 'dead', far: 'deadwood', road: 'flag', lane: 'flag', mainW: 0.8, laneW: 18, wiggle: 0.1, tufts: 0.35, tuft: ['rgba(20,16,24,.45)', 'rgba(150,140,130,.16)'],
     folk: ['skeleton', 'zombie', 'skeleton'], guard: 'skeleton', plaza: '#4e4856' },
-  fortress: { ground: 'bog', far: 'willows', road: 'planks', lane: 'planks', mainW: 0.62, laneW: 16, wiggle: 0.2, tufts: 1, wade: true,
+  fortress: { ground: 'bog', far: 'willows', road: 'planks', lane: 'planks', mainW: 0.62, laneW: 16, wiggle: 0.2, tufts: 1, wade: true, drawLanes: true,
     folk: ['lizard', 'gnoll', 'lizard'], guard: 'lizard', plaza: '#5e5438' },
   inferno: { ground: 'ash', far: 'spires', road: 'basalt', lane: 'basalt', mainW: 0.85, laneW: 18, wiggle: 0.12, tufts: 0,
     folk: ['imp', 'imp', 'demon'], guard: 'demon', plaza: '#2e2224' },
-  academy: { ground: 'snow', far: 'pines', road: 'ice', lane: 'snow', mainW: 0.85, laneW: 18, wiggle: 0.15, tufts: 0,
+  academy: { ground: 'snow', far: 'pines', road: 'marble', lane: 'snow', mainW: 0.85, laneW: 18, wiggle: 0.15, tufts: 0,
     folk: ['mage', 'mage', 'gremlin'], guard: 'golem', plaza: '#c4d2e2' },
   dungeon: { ground: 'cave', far: 'stalags', road: 'slab', lane: 'slab', mainW: 0.8, laneW: 18, wiggle: 0.12, tufts: 0,
     folk: ['trog', 'warlock', 'trog'], guard: 'minotaur', plaza: '#4a4454' },
@@ -147,16 +147,16 @@ function caveFrame(c, fx, seed) {
 
 // --- drogi i ścieżki w stylu frakcji: płyty, bruk, deski, bazalt z lawą, ubity śnieg, piach z koleinami ---
 const ROAD_LOOK = {
-  cobble: { stones: ['#b8ae96', '#a69c86', '#968d79', '#c4bba4', '#aca28a'], mortar: '#5a5244', tile: [9, 8], border: '#3a3226', curb: '#d6ceb6' },
-  dirt: { dirt: ['#6e5432', '#927448', '#b09264'], pebbles: ['#4e3c24', '#d8c49a'], border: '#5a4428', grass: '#4e6a30' },
-  trail: { dirt: ['#5e4a2e', '#76603e', '#8a7250'], pebbles: ['#3e2e18', '#a08a60'], border: '#3a2a16', grass: '#3a5a26' },
-  flag: { stones: ['#6e6878', '#625c6c', '#7a7484', '#57515f'], mortar: '#221e28', tile: [12, 10], jag: 1, border: '#0c0a10', curb: '#8a8494', bones: true },
-  planks: { plank: ['#8a6a40', '#7a5c36', '#96764a'], gapCol: '#2a1a0a', border: '#24160a', planks: 6, posts: true },
-  basalt: { stones: ['#4a3a3a', '#3e3030', '#544242', '#362a2a'], mortar: '#1a1010', tile: [12, 10], jag: 1, border: '#120a0a', lava: true },
-  ice: { stones: ['#e6eff8', '#d6e3f0', '#eef4fb', '#cddbeb'], mortar: '#b0c2d8', tile: [12, 10], border: '#8ea4c0', curb: '#fbfdff', banks: '#f4f8fc', shine: true },
-  snow: { dirt: ['#c8d4e2', '#dce5ef', '#eef3f8'], pebbles: ['#9aaac0', '#ffffff'], border: '#a4b4c8', banks: '#fbfdff', prints: true },
-  slab: { stones: ['#716880', '#655c74', '#7c7390', '#5c546a'], mortar: '#241c2e', tile: [14, 11], jag: 0.6, border: '#0a0610', curb: '#8a80a0', crystals: true },
-  track: { dirt: ['#b8966a', '#ceb084', '#dcc094'], pebbles: ['#8a6a44', '#f0e0c0'], border: '#8a6840', grass: '#9a8a4a', ruts: '#94744a' },
+  cobble: { base: '#6e6656', edge: '#4a5a30', stones: ['#b0a690', '#a0967e', '#bdb39b', '#948a74', '#c8bea6'], size: 6.5, dense: 1, center: null },
+  dirt: { base: '#8a6e48', edge: '#4a5a2c', center: '#a88c62', pebbles: ['#6a5438', '#c4ac80'], size: 2.4, dense: 0.18, grass: '#4e6a30' },
+  trail: { base: '#5e4a30', edge: '#2e4424', center: '#76603e', pebbles: ['#3e2e18', '#8e7650'], size: 2.2, dense: 0.15, grass: '#3a5a26' },
+  flag: { base: '#1e1a24', edge: '#2a2632', stones: ['#6a6474', '#5e586a', '#77717f', '#534d5c'], size: 9, dense: 0.95, bones: true },
+  planks: { plank: ['#8a6a40', '#7a5c36', '#96764a'], gapCol: '#2a1a0a', base: '#2a1a0a', planks: 6, posts: true },
+  basalt: { base: '#140c0c', edge: '#1e1414', stones: ['#4a3a3a', '#3e3030', '#544242', '#362a2a'], size: 8, dense: 0.95, lava: true },
+  marble: { base: '#8a98ac', edge: '#b4c2d4', stones: ['#e4eaf2', '#d4dce8', '#c6cedc', '#eef2f8'], size: 7.5, dense: 0.95, shine: true, banks: '#f4f8fc' },
+  snow: { base: '#b8c6d8', edge: '#dfe7f0', center: '#d4dfeb', pebbles: ['#9aaac0', '#ffffff'], size: 2, dense: 0.1, prints: true },
+  slab: { base: '#1a1422', edge: '#221c2a', stones: ['#716880', '#655c74', '#7c7390', '#5c546a'], size: 9, dense: 0.95, crystals: true },
+  track: { base: '#b8966a', edge: '#c8a878', center: '#d4b688', pebbles: ['#8a6a44', '#f0e0c0'], size: 2.4, dense: 0.15, ruts: '#9a7a50' },
 };
 // Punkty co `step` jednostek świata wzdłuż łamanej: [X, Z, e, szerokość, nx, nz] (n = kierunek w poprzek drogi)
 function pathFrames(pts, step, w0) {
@@ -184,64 +184,62 @@ function smoothPts(pts, it = 2) {
   }
   return P.map(p => [p[0], p[1], p[2], p[3] || undefined]);
 }
-// Bruk ułożony na ziemi, nie wzdłuż drogi: rzędy kamieni biegną w poprzek sceny (stałe Z), co drugi rząd przesunięty o pół
-// kamienia. Droga tylko wycina z tej siatki swój kształt, więc na zakrętach i skosach kamienie nie wykrzywiają się w romby.
-function roadStones(c, S, F, r, fx) {
-  const [len, wid] = S.tile, dz = len / 300, gap = 0.14, cells = new Map();
-  for (const f of F) { // komórki siatki pod drogą (z wysokością z najbliższego punktu drogi)
-    const hw = f[3] / 2 + wid, row0 = Math.floor((f[1] - hw / 300) / dz), row1 = Math.floor((f[1] + hw / 300) / dz);
-    for (let row = row0; row <= row1; row++) { const sh = row & 1 ? 0.5 : 0, c0 = Math.floor((f[0] - hw) / wid - sh), c1 = Math.floor((f[0] + hw) / wid - sh);
-      for (let col = c0; col <= c1; col++) { const k = row * 100000 + col; if (!cells.has(k)) cells.set(k, [row, col, f[2]]); } }
-  }
-  const list = [...cells.values()].sort((a, b) => b[0] - a[0]);
-  for (const [row, col, e] of list) {
-    const h = thash(row, col, 77), j = S.jag ? ((h % 100) / 100 - 0.5) * 0.3 * S.jag : 0, sh = row & 1 ? 0.5 : 0;
-    const x0 = (col + sh + gap / 2) * wid, x1 = (col + sh + 1 - gap / 2) * wid, z0 = (row + gap + j * 0.4) * dz, z1 = (row + 1 - gap + j * 0.4) * dz;
-    const q = [proj(x0, z0, e), proj(x1, z0, e), proj(x1, z1, e), proj(x0, z1, e)], s = q[0][2];
-    if (S.lava && h % 6 === 0) { c.strokeStyle = '#ff6a1a'; c.lineWidth = Math.max(1, s * 1.3); c.beginPath(); c.moveTo(q[0][0], q[0][1] + s); c.lineTo(q[1][0], q[1][1] + s); c.stroke(); if (fx && h % 24 === 0) fx.glows.push([q[0][0], q[0][1], 14 * s, '#ff5a10']); }
-    c.fillStyle = S.stones[(h >> 3) % S.stones.length]; c.beginPath(); q.forEach(([x, y], m) => m ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
-    c.lineWidth = Math.max(1, s * 1.1);
-    c.strokeStyle = 'rgba(255,250,235,.26)'; c.beginPath(); c.moveTo(q[3][0], q[3][1]); c.lineTo(q[2][0], q[2][1]); c.stroke(); // jasna krawędź od strony nieba
-    c.strokeStyle = 'rgba(0,0,0,.26)'; c.beginPath(); c.moveTo(q[0][0], q[0][1]); c.lineTo(q[1][0], q[1][1]); c.stroke(); // cień od dołu
-    if (S.shine && h % 7 === 0) { c.fillStyle = 'rgba(255,255,255,.8)'; c.fillRect((q[0][0] + q[1][0]) / 2 - 2 * s, (q[0][1] + q[3][1]) / 2, 3 * s, Math.max(1, s)); }
-  }
+// Wstęga drogi o nierównych brzegach: szerokość po każdej stronie faluje (suma sinusów wzdłuż drogi), jak wydeptany trakt
+function organicRibbon(pts, w, amp, seed) {
+  const L = [], R = []; let d = 0;
+  pts.forEach((p, i) => {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b[0] - a[0], dz = (b[1] - a[1]) * 300, len = Math.hypot(dx, dz) || 1;
+    if (i) d += Math.hypot(p[0] - pts[i - 1][0], (p[1] - pts[i - 1][1]) * 300);
+    const nx = -dz / len, nz = dx / len, hw = (p[3] || w) / 2, n1 = Math.sin(d / 23 + seed) * 0.6 + Math.sin(d / 9 + seed * 2.3) * 0.4, n2 = Math.sin(d / 19 + seed * 1.7) * 0.6 + Math.sin(d / 7 + seed) * 0.4;
+    const wl = hw * (1 + amp * n1), wr = hw * (1 + amp * n2);
+    L.push(proj(p[0] + nx * wl, p[1] + nz * wl / 300, p[2] || 0)); R.push(proj(p[0] - nx * wr, p[1] - nz * wr / 300, p[2] || 0));
+  });
+  return [L, R];
 }
+// Otoczak: spłaszczony w perspektywie, jasny od góry, ciemny od dołu
+function cobbleAt(c, x, y, r, col) {
+  c.fillStyle = shadeHex(col, -0.35); c.beginPath(); c.ellipse(x, y + r * 0.22, r, r * 0.58, 0, 0, TAU); c.fill();
+  c.fillStyle = col; c.beginPath(); c.ellipse(x, y, r * 0.94, r * 0.52, 0, 0, TAU); c.fill();
+  c.fillStyle = shadeHex(col, 0.22); c.beginPath(); c.ellipse(x - r * 0.2, y - r * 0.16, r * 0.5, r * 0.22, 0, 0, TAU); c.fill();
+}
+// Drogi „malowane” jak na planszach miast Heroes 3: miękki brzeg przechodzący w trawę, falujące krawędzie, wydeptany środek,
+// bruk z nieregularnych otoczaków (nie siatka płyt), kamyki i kępki trawy. Dwa przebiegi: 'under' = cień brzegu, 'top' = reszta.
 function roadStyled(c, A, Rd, Wd, fx, pass = 'both') {
   const S = ROAD_LOOK[Rd.style]; if (!S) return pass === 'under' ? undefined : roadArtW(c, A, Rd);
-  Rd = { ...Rd, pts: smoothPts(Rd.pts) }; // łuki zamiast załamań
-  const pts = subdiv(Rd.pts, 3), line = (E, col, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.lineJoin = 'round'; c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); };
-  const widen = k => pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) * k]), r = mulberry32(7 + Math.round(Rd.pts[0][0] + Rd.pts[0][1] * 100));
-  const sMid = proj(0, pts[pts.length >> 1][1])[2], bw = Math.max(1.5, 2 * sMid) / sMid * 2; // brzeg ok. 2 px z każdej strony
+  Rd = { ...Rd, pts: smoothPts(Rd.pts) };
+  const pts = subdiv(Rd.pts, 3), seed = (Math.abs(Math.round(Rd.pts[0][0] * 7 + Rd.pts[0][1] * 131)) % 97) / 10, r = mulberry32(7 + Math.round(seed * 100));
+  const widen = k => pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) * k]), amp = S.planks ? 0 : S.stones ? 0.07 : 0.16;
   if (pass !== 'top') {
-    if (S.banks) { const [L2, R2] = ribbon(widen(1.4), Rd.w * 1.4); ribbonPath(c, L2, R2); c.fillStyle = S.banks; c.fill(); }
-    const Wb = pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) + bw]), [L3, R3] = ribbon(Wb, Rd.w + bw); ribbonPath(c, L3, R3); c.fillStyle = S.border; c.fill();
+    if (S.banks) { const [L2, R2] = organicRibbon(widen(1.35), Rd.w * 1.35, 0.2, seed + 3); ribbonPath(c, L2, R2); c.fillStyle = S.banks; c.fill(); }
+    if (S.edge && !S.planks) { const [L3, R3] = organicRibbon(widen(1.18), Rd.w * 1.18, amp * 1.4, seed + 1); ribbonPath(c, L3, R3); c.globalAlpha = 0.45; c.fillStyle = S.edge; c.fill(); c.globalAlpha = 1; }
     if (pass === 'under') return;
   }
-  const [L, R] = ribbon(pts, Rd.w);
-  ribbonPath(c, L, R); c.fillStyle = S.mortar || S.gapCol || S.dirt[0]; c.fill();
+  const [L, R] = organicRibbon(pts, Rd.w, amp, seed);
+  ribbonPath(c, L, R); c.fillStyle = S.base; c.fill();
   c.save(); ribbonPath(c, L, R); c.clip();
-  if (S.stones) roadStones(c, S, pathFrames(Rd.pts, S.tile[0], Rd.w), r, fx);
-  if (S.dirt) { // wydeptany środek jaśniejszy, brzegi ciemniejsze; kamyki jako ostre piksele
-    const [L1, R1] = ribbon(widen(0.72), Rd.w * 0.72); ribbonPath(c, L1, R1); c.fillStyle = S.dirt[1]; c.fill();
-    const [L0, R0] = ribbon(widen(0.36), Rd.w * 0.36); ribbonPath(c, L0, R0); c.fillStyle = S.dirt[2]; c.fill();
-    if (S.ruts) { const F = pathFrames(Rd.pts, 6, Rd.w); for (const k of [-0.22, 0.22]) line(F.map(f => pathAt(f, f[3] * k)), S.ruts, Math.max(1.2, 2.2 * sMid)); }
-    const F = pathFrames(Rd.pts, 4, Rd.w);
-    for (const f of F) for (let m = 0; m < 2; m++) { if (r() < 0.45) continue; const [x, y, s] = pathAt(f, (r() - 0.5) * f[3] * 0.9), p = Math.max(2, Math.round(2 * s)); c.fillStyle = S.pebbles[r() < 0.6 ? 0 : 1]; c.fillRect(Math.round(x), Math.round(y), p + 1, p); }
+  if (S.center) { const [L1, R1] = organicRibbon(widen(0.6), Rd.w * 0.6, 0.25, seed + 5); ribbonPath(c, L1, R1); c.fillStyle = S.center; c.fill(); }
+  if (S.ruts) { const F = pathFrames(Rd.pts, 6, Rd.w); for (const k of [-0.2, 0.2]) { c.strokeStyle = S.ruts; c.lineWidth = Math.max(1, 1.6 * proj(0, F[0][1])[2]); c.beginPath(); F.forEach((f, i) => { const [x, y] = pathAt(f, f[3] * k + Math.sin(i * 0.7 + seed) * 1.2); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); } }
+  if (S.stones) { // bruk: otoczaki w luźnych rzędach, każdy przesunięty i innej wielkości; od najdalszych
+    const F = pathFrames(Rd.pts, S.size * 0.85, Rd.w), items = [];
+    F.forEach((f, k) => { const n = Math.max(2, Math.round(f[3] / (S.size * 0.95))); for (let i = 0; i < n; i++) { if (r() > S.dense) continue;
+      const o = -f[3] / 2 + (i + 0.5 + (k % 2 ? 0.45 : 0) + (r() - 0.5) * 0.5) * f[3] / n, jit = (r() - 0.5) * S.size * 0.4, g = [f[0] + f[4] * o + f[5] * 0, f[1] + f[5] * o / 300, f[2]];
+      const [x, y, s] = proj(g[0] + (-f[5]) * 0, g[1] + jit / 300, g[2]); items.push([y, x, s * S.size * (0.42 + r() * 0.2), S.stones[(r() * S.stones.length) | 0]]); } });
+    items.sort((a, b) => a[0] - b[0]);
+    for (const [y, x, rad, col] of items) { cobbleAt(c, x, y, Math.max(1.2, rad), col); if (S.lava && r() < 0.06) { c.fillStyle = '#ff7a2a'; c.fillRect(x + rad, y, Math.max(1, rad * 0.6), 1); if (fx && r() < 0.3) fx.glows.push([x, y, rad * 4, '#ff5a10']); } if (S.shine && r() < 0.08) { c.fillStyle = '#ffffff'; c.fillRect(x - rad * 0.3, y - rad * 0.3, Math.max(1, rad * 0.5), 1); } }
   }
+  if (S.pebbles) { const F = pathFrames(Rd.pts, 3, Rd.w); for (const f of F) { if (r() > S.dense * 3) continue; const [x, y, s] = pathAt(f, (r() - 0.5) * f[3] * 0.85); cobbleAt(c, x, y, Math.max(1, S.size * s * (0.5 + r() * 0.5)), S.pebbles[r() < 0.6 ? 0 : 1]); } }
+  if (S.prints) { const F = pathFrames(Rd.pts, 9, Rd.w); c.fillStyle = '#9aaac2'; F.forEach((f, k) => { const [x, y, s] = pathAt(f, (k % 2 ? 1 : -1) * 3 + Math.sin(k * 1.3) * f[3] * 0.15); c.beginPath(); c.ellipse(x, y, 1.6 * s + 0.5, 0.8 * s + 0.4, 0, 0, TAU); c.fill(); }); }
   if (S.planks) { const F = pathFrames(Rd.pts, S.planks, Rd.w);
     for (let k = F.length - 2; k >= 0; k--) { const a = F[k], b = F[k + 1], q = [pathAt(a, -a[3] / 2), pathAt(a, a[3] / 2), pathAt(b, b[3] / 2), pathAt(b, -b[3] / 2)], s = q[0][2];
-      c.fillStyle = S.plank[k % 3]; c.beginPath(); q.forEach(([x, y], m) => m ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
-      c.strokeStyle = S.gapCol; c.lineWidth = Math.max(1, s * 1.1); c.beginPath(); c.moveTo(q[0][0], q[0][1]); c.lineTo(q[1][0], q[1][1]); c.stroke();
-      if (k % 4 === 1) { c.fillStyle = '#2a1a0a'; for (const u of [-0.38, 0.38]) { const [x, y] = pathAt(mixFrame(a, b, 0.5), a[3] * u); c.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(s)), Math.max(1, Math.round(s))); } } } }
-  if (S.prints) { const F = pathFrames(Rd.pts, 9, Rd.w); c.fillStyle = '#8a9cb6'; F.forEach((f, k) => { const [x, y, s] = pathAt(f, (k % 2 ? 1 : -1) * 3 + Math.sin(k * 1.3) * f[3] * 0.18); c.fillRect(Math.round(x - s), Math.round(y), Math.max(2, Math.round(2.4 * s)), Math.max(1, Math.round(1.2 * s))); }); }
-  const F = pathFrames(Rd.pts, 5, Rd.w); // schody tam, gdzie droga wspina się na taras albo wzgórze: stopień = jasne czoło i ciemna krawędź
+      c.fillStyle = S.plank[thash(k, 3, 9) % 3]; c.beginPath(); q.forEach(([x, y], m) => m ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+      c.strokeStyle = S.gapCol; c.lineWidth = Math.max(1, s); c.beginPath(); c.moveTo(q[0][0], q[0][1]); c.lineTo(q[1][0], q[1][1]); c.stroke(); } }
+  const F = pathFrames(Rd.pts, 5, Rd.w); // schody tam, gdzie droga wspina się na taras albo wzgórze
   for (let k = 1; k < F.length; k++) if (Math.abs(F[k][2] - F[k - 1][2]) > 1.5) { const [x1, y1, s] = pathAt(F[k], -F[k][3] / 2), [x2, y2] = pathAt(F[k], F[k][3] / 2);
-    c.strokeStyle = S.curb || S.dirt?.[2] || '#b8b0a0'; c.lineWidth = Math.max(1.5, s * 2.2); c.beginPath(); c.moveTo(x1, y1 + s); c.lineTo(x2, y2 + s); c.stroke();
-    c.strokeStyle = S.border; c.lineWidth = Math.max(1, s); c.beginPath(); c.moveTo(x1, y1 - s); c.lineTo(x2, y2 - s); c.stroke(); }
+    c.strokeStyle = (S.stones || S.pebbles || ['#b8b0a0'])[0]; c.lineWidth = Math.max(1.5, s * 2.4); c.beginPath(); c.moveTo(x1, y1 + s); c.lineTo(x2, y2 + s); c.stroke();
+    c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = Math.max(1, s); c.beginPath(); c.moveTo(x1, y1 - s * 0.6); c.lineTo(x2, y2 - s * 0.6); c.stroke(); }
   c.restore();
-  if (S.curb) { const [Lc, Rc] = ribbon(widen(0.94), Rd.w * 0.94); line(Lc, S.curb, 1); line(Rc, S.curb, 1); }
-  if (S.grass) { const F2 = pathFrames(Rd.pts, 7, Rd.w); c.fillStyle = S.grass; F2.forEach((f, k) => { if (r() < 0.5) return; const sd = r() < 0.5 ? -1 : 1, [x, y, s] = pathAt(f, sd * f[3] / 2), p = Math.max(1, Math.round(s));
-    c.fillRect(Math.round(x - p), Math.round(y - 3 * p), p, 3 * p); c.fillRect(Math.round(x + p), Math.round(y - 2 * p), p, 2 * p); c.fillRect(Math.round(x), Math.round(y - 4 * p), p, 4 * p); }); }
+  if (S.grass) { const F2 = pathFrames(Rd.pts, 6, Rd.w); c.fillStyle = S.grass; F2.forEach(f => { if (r() < 0.45) return; const sd = r() < 0.5 ? -1 : 1, [x, y, s] = pathAt(f, sd * f[3] * (0.42 + r() * 0.12)), p = Math.max(1, Math.round(s));
+    c.fillRect(Math.round(x - p), Math.round(y - 2 * p), p, 2 * p); c.fillRect(Math.round(x + p), Math.round(y - 2 * p), p, 2 * p); c.fillRect(Math.round(x), Math.round(y - 3 * p), p, 3 * p); }); }
   if (S.posts || S.bones || S.crystals) { const F2 = pathFrames(Rd.pts, S.posts ? 34 : 70, Rd.w); F2.forEach((f, k) => { if (k === 0) return; for (const sd of [-1, 1]) {
     const [x, y, s] = pathAt(f, sd * (f[3] / 2 + 1));
     if (S.posts) { c.fillStyle = '#3a2812'; c.fillRect(x - 1.2 * s, y - 5 * s, 2.4 * s, 9 * s); c.fillStyle = 'rgba(255,230,180,.2)'; c.fillRect(x - 1.2 * s, y - 5 * s, 2.4 * s, 1.2 * s); }
@@ -304,7 +302,7 @@ function townPaths(r, T, L, Bm, walks = []) {
     const cands = net.map(p => ({ p, d: Math.hypot(p.X - door.X, (p.Z - door.Z) * 300) })).sort((a, b) => a.d - b.d).slice(0, 16);
     for (const { p } of cands) for (const wig of [between(r, -1, 1) * Bm.wiggle, between(r, -1, 1) * Bm.wiggle * 0.3]) { const b = build(i, door, p, wig); if (b && (!best || b.len < best.len)) best = { ...b, tgt: p }; }
     if (!best) continue;
-    const lane = { w: Bm.laneW, style: Bm.lane, pts: best.pts.map(q => [...q]) }; L.roads.splice(L.roads.indexOf(M), 0, lane);
+    if (Bm.drawLanes) L.roads.splice(L.roads.indexOf(M), 0, { w: Bm.laneW, style: Bm.lane, pts: best.pts.map(q => [...q]) }); // pomosty Twierdzy; gdzie indziej mieszkańcy dochodzą do drzwi po trawie
     T.feats.push({ pts: best.pts.map(q => [q[0], q[1]]), w: Bm.laneW + 8 });
     const back = best.pts.slice().reverse(), route = [...best.tgt.route, ...back.slice(1)]; L.doorRoutes[i] = route;
     for (let k = 3; k < back.length - 2; k++) net.push({ X: back[k][0], Z: back[k][1], e: back[k][2], route: [...best.tgt.route, ...back.slice(1, k + 1)] });
@@ -402,22 +400,13 @@ function drawDweller(ctx, kind, x, y, sc, t, dir, still, v = 0) {
   }
   ctx.restore();
 }
-// Plac przed ratuszem: brukowany jak droga główna, kamienie w pierścieniach wokół środka, ciemny brzeg i jasny krawężnik
+// Plac przed ratuszem: z tych samych otoczaków co droga główna, miękki brzeg przechodzący w trawę
 function plazaArt(c, Wd) {
   const P = Wd.plaza, S = ROAD_LOOK[(TOWN_BIOME[Wd.fac] || TOWN_BIOME.haven).road] || ROAD_LOOK.cobble, [px, py, s] = proj(P.X, P.Z), RX = P.r * s, RY = RX * 0.3, r = mulberry32(31);
-  const stones = S.stones || S.plank || S.dirt, ell = (k, fill) => { c.beginPath(); c.ellipse(px, py, RX * k, RY * k, 0, 0, TAU); if (fill) { c.fillStyle = fill; c.fill(); } };
-  ell(1, S.mortar || S.gapCol || S.border);
-  const rings = Math.max(3, Math.round(RY / 5));
-  for (let q = rings - 1; q >= 0; q--) {
-    const k0 = q / rings, k1 = (q + 1) / rings, n = Math.max(5, Math.round(TAU * RX * (q + 0.5) / rings / 9)), off = r() * TAU;
-    for (let i = 0; i < n; i++) {
-      const a0 = off + (i + 0.08) / n * TAU, a1 = off + (i + 0.92) / n * TAU, m0 = k0 + 0.06 / rings, m1 = k1 - 0.06 / rings;
-      const pt = (a, k) => [px + Math.cos(a) * RX * k, py + Math.sin(a) * RY * k];
-      c.fillStyle = stones[(r() * stones.length) | 0]; c.beginPath();
-      const Q = q === 0 ? [[px, py], pt(a0, m1), pt((a0 + a1) / 2, m1), pt(a1, m1)] : [pt(a0, m0), pt(a0, m1), pt(a1, m1), pt(a1, m0)];
-      Q.forEach(([x, y], j) => j ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
-    }
-  }
-  c.strokeStyle = S.border; c.lineWidth = Math.max(1.5, 2 * s); ell(1); c.stroke();
-  if (S.curb) { c.strokeStyle = S.curb; c.lineWidth = 1; ell(0.95); c.stroke(); }
+  const blob = (k, col, a = 1) => { c.globalAlpha = a; c.fillStyle = col; c.beginPath(); for (let i = 0; i <= 40; i++) { const t = i / 40 * TAU, w = k * (1 + 0.05 * Math.sin(t * 5 + 1) + 0.03 * Math.sin(t * 11)); c.lineTo(px + Math.cos(t) * RX * w, py + Math.sin(t) * RY * w); } c.closePath(); c.fill(); c.globalAlpha = 1; };
+  if (S.edge) blob(1.12, S.edge, 0.45); blob(1, S.base || S.gapCol);
+  const stones = S.stones || S.pebbles || S.plank, items = [], size = (S.size || 6) * s;
+  for (let yy = -RY; yy <= RY; yy += size * 0.5) { const half = RX * Math.sqrt(Math.max(0, 1 - (yy / RY) ** 2)) - size * 0.4; for (let xx = -half + ((yy / size) & 1 ? size * 0.45 : 0); xx <= half; xx += size * 0.9) {
+    if (!S.stones && r() > 0.25) continue; items.push([py + yy + (r() - 0.5) * size * 0.2, px + xx + (r() - 0.5) * size * 0.3, size * (S.stones ? 0.42 + r() * 0.2 : 0.2 + r() * 0.15), stones[(r() * stones.length) | 0]]); } }
+  items.sort((a, b) => a[0] - b[0]); for (const [y, x, rad, col] of items) cobbleAt(c, x, y, Math.max(1.2, rad), col);
 }
