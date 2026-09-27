@@ -40,13 +40,14 @@ function buildTownScene(fac) {
     const R = { w: Sc.road.w || 44, steps: Sc.road.pts.some(p => p[2] > 2), planks: !!Sc.planks, pts: Sc.road.pts.map(p => p.slice()), main: true };
     L.roads.push(R); T.main = R.pts.map(p => [p[0], p[1]]); T.feats.push({ pts: T.main, w: R.w });
   } else townMainRoad(r, T, L);
-  if (Sc.plaza !== undefined) L.plaza = Sc.plaza; // null = bez placu
+  L.plaza = Sc.plaza || null; // plac tylko tam, gdzie scena go podaje (bez placów: spokojniejszy teren)
   for (const Rd of Sc.roads || []) { L.roads.push({ ...Rd, pts: Rd.pts.map(p => p.slice()) }); T.feats.push({ pts: Rd.pts.map(p => [p[0], p[1]]), w: Rd.w }); }
   if (Sc.wall) { L.walls = [{ style: Sc.wall.style || St.walls[0], h: Sc.wall.h || 30, pts: Sc.wall.pts }]; T.feats.push({ pts: Sc.wall.pts, w: 30 }); }
   townPaths(r, T, L, Bm, Sc.walks || []);
   for (const [kind, X, Z, k = 1, e] of Sc.props || []) L.props.push([kind, X, Z, e ?? townElev(T, L, X, Z), k]);
   if (L.walls) townWallGates(r, T, L);
-  townFolk(r, T, L, Bm);
+  if (!Sc.road && !Sc.planks) { L.roads = []; L.bridges = L.bridges.slice(0, (Sc.bridges || []).length); } // drogi tylko tam, gdzie są częścią budowy (schody, most, kładki); reszta to czysty teren
+  townFolk(r, T, L, Bm); L.folk = []; // bez chodzących mieszkańców: została tylko straż przed zamkiem
   L.floaters = Sc.floaters || [];
   usePJ(null); return L;
 }

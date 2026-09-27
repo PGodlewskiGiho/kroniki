@@ -36,18 +36,18 @@ test('wszystkie miasta frakcji mają tę samą scenę, a sceny frakcji różnią
   assert.equal(r.distinct, r.n, 'każda frakcja ma inną scenę');
 });
 
-test('kraj frakcji: ścieżki od drzwi budowli, mieszkańcy i straż z własnej frakcji, Loch w grocie', async () => {
+test('kraj frakcji: spokojny teren bez ścieżek i przechodniów (drogi tylko jako schody, most, kładki), straż z własnej frakcji, Loch w grocie', async () => {
   const r = await page.evaluate(() => {
     const out = {};
     for (const F of FACTIONS) {
       const L = buildTownScene(F.id), Bm = TOWN_BIOME[F.id];
-      const folk = [...new Set(L.folk.map(w => w.kind))].filter(k => !Bm.folk.includes(k));
-      out[F.id] = { lanes: Object.keys(L.doorRoutes).length >= 7, folk, guards: L.guards.length === 2 && L.guards.every(g => g.kind === Bm.guard),
-        styles: L.roads.find(R => R.main).style === Bm.road, cave: (L.frame === 'cave') === (F.id === 'dungeon') };
+      const S = TOWN_SCENES[F.id], M = L.roads.find(R => R.main);
+      out[F.id] = { folk: L.folk.length, guards: L.guards.length === 2 && L.guards.every(g => g.kind === Bm.guard),
+        roads: !!M === !!(S.road || S.planks) && (!M || M.style === Bm.road), cave: (L.frame === 'cave') === (F.id === 'dungeon') };
     }
     return out;
   });
-  for (const [fac, x] of Object.entries(r)) assert.deepEqual(x, { lanes: true, folk: [], guards: true, styles: true, cave: true }, fac);
+  for (const [fac, x] of Object.entries(r)) assert.deepEqual(x, { folk: 0, guards: true, roads: true, cave: true }, fac);
 });
 
 test('ekran miasta rysuje się dla każdej frakcji; budowle mają pola do wskazania myszą', async () => {

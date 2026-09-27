@@ -11,7 +11,7 @@ const TOWN_BIOME = {
     folk: ['elf', 'elf', 'dwarf'], guard: 'archer', plaza: '#7a6a44' },
   barrow: { ground: 'dead', far: 'deadwood', road: 'flag', lane: 'flag', mainW: 0.8, laneW: 18, wiggle: 0.1, tufts: 0.35, tuft: ['rgba(20,16,24,.45)', 'rgba(150,140,130,.16)'],
     folk: ['skeleton', 'zombie', 'skeleton'], guard: 'skeleton', plaza: '#4e4856' },
-  fortress: { ground: 'bog', far: 'willows', road: 'planks', lane: 'planks', mainW: 0.62, laneW: 16, wiggle: 0.2, tufts: 1, wade: true, drawLanes: true,
+  fortress: { ground: 'bog', far: 'willows', road: 'planks', lane: 'planks', mainW: 0.62, laneW: 16, wiggle: 0.2, tufts: 1, wade: true,
     folk: ['lizard', 'gnoll', 'lizard'], guard: 'lizard', plaza: '#5e5438' },
   inferno: { ground: 'ash', far: 'spires', road: 'basalt', lane: 'basalt', mainW: 0.85, laneW: 18, wiggle: 0.12, tufts: 0,
     folk: ['imp', 'imp', 'demon'], guard: 'demon', plaza: '#2e2224' },
@@ -40,48 +40,51 @@ function groundDetail(c, Wd, fx) {
       c.strokeStyle = 'rgba(40,64,28,.7)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(P[0][0], P[0][1]); c.lineTo(P[1][0], P[1][1]); c.stroke();
       const hz = hazeAt(Z); if (hz > 0) { c.globalAlpha = hz; fillPoly(c, P, Wd.haze); c.globalAlpha = 1; } X += w;
     }
-    for (let i = 0; i < 220; i++) { const [X, Z] = pt(0.82, 2), [x, y, s] = proj(X, Z); c.fillStyle = ['#f4f0e0', '#f0d040', '#d84a3a', '#a878d8'][r() * 4 | 0]; c.fillRect(x, y, Math.max(1, 1.6 * s), Math.max(1, 1.6 * s)); }
+    for (let i = 0; i < 70; i++) { const [X, Z] = pt(0.82, 1.6), [x, y, s] = proj(X, Z); c.fillStyle = ['#f4f0e0', '#f0d040', '#d84a3a', '#a878d8'][r() * 4 | 0]; c.fillRect(x, y, Math.max(1, 1.6 * s), Math.max(1, 1.6 * s)); }
   } else if (g === 'moss') { // mech, plamy słońca między koronami, opadłe liście, korzenie przy brzegach kadru
-    for (let i = 0; i < 34; i++) { const [X, Z] = pt(0.9, 3); blob(X, Z, 40 + r() * 90, 8 + r() * 14, 'rgba(14,40,16,.28)'); }
-    for (let i = 0; i < 14; i++) { const [X, Z] = pt(0.9, 2.4); blob(X, Z, 30 + r() * 60, 6 + r() * 10, 'rgba(240,236,150,.10)'); }
-    for (let i = 0; i < 320; i++) { const [X, Z] = pt(0.82, 2.4), [x, y, s] = proj(X, Z); c.fillStyle = ['#c8862a', '#d8a83a', '#8a4a1a', '#a8a040'][r() * 4 | 0]; c.fillRect(x, y, Math.max(1, 2.2 * s), Math.max(1, 1.2 * s)); }
+    for (let i = 0; i < 8; i++) { const [X, Z] = pt(0.9, 3); blob(X, Z, 60 + r() * 90, 12 + r() * 14, 'rgba(14,40,16,.18)'); }
+    for (let i = 0; i < 5; i++) { const [X, Z] = pt(0.9, 2.4); blob(X, Z, 30 + r() * 60, 6 + r() * 10, 'rgba(240,236,150,.10)'); }
+    for (let i = 0; i < 90; i++) { const [X, Z] = pt(0.82, 2), [x, y, s] = proj(X, Z); c.fillStyle = ['#c8862a', '#d8a83a', '#8a4a1a', '#a8a040'][r() * 4 | 0]; c.fillRect(x, y, Math.max(1, 2.2 * s), Math.max(1, 1.2 * s)); }
     c.lineCap = 'round'; for (const side of [-1, 1]) for (let i = 0; i < 5; i++) { const Z = 0.9 + r() * 0.8, X = side * (250 + r() * 50) * Z; c.strokeStyle = 'rgba(58,40,22,.8)'; crack(X, Z, 4, 30, 'rgba(58,40,22,.75)', 3.2); }
   } else if (g === 'dead') { // spękana szara ziemia, rozsypane kości, suche badyle
-    for (let i = 0; i < 26; i++) { const [X, Z] = pt(0.9, 3); blob(X, Z, 50 + r() * 100, 10 + r() * 16, 'rgba(10,6,14,.18)'); }
-    for (let i = 0; i < 46; i++) { const [X, Z] = pt(0.84, 2.6), E = crack(X, Z, 3 + (r() * 4 | 0), 14 + r() * 16, 'rgba(8,4,12,.5)', 1.2); if (r() < 0.5) crack(E[0], E[1], 2, 10, 'rgba(8,4,12,.4)', 0.9); }
-    for (let i = 0; i < 70; i++) { const [X, Z] = pt(0.84, 2.2), [x, y, s] = proj(X, Z); c.fillStyle = 'rgba(224,216,196,.7)'; c.save(); c.translate(x, y); c.rotate(r() * 3); c.fillRect(-2.5 * s, -0.6 * s, 5 * s, 1.2 * s); c.restore(); }
-    c.strokeStyle = 'rgba(120,104,90,.55)'; c.lineWidth = 1; for (let i = 0; i < 60; i++) { const [X, Z] = pt(0.84, 2.2), [x, y, s] = proj(X, Z); c.beginPath(); c.moveTo(x, y); c.lineTo(x - 3 * s, y - 7 * s); c.moveTo(x, y); c.lineTo(x + 2 * s, y - 9 * s); c.stroke(); }
+    for (let i = 0; i < 6; i++) { const [X, Z] = pt(0.9, 3); blob(X, Z, 70 + r() * 100, 14 + r() * 16, 'rgba(10,6,14,.12)'); }
+    for (let i = 0; i < 10; i++) { const [X, Z] = pt(0.84, 2.2), E = crack(X, Z, 3 + (r() * 4 | 0), 14 + r() * 16, 'rgba(8,4,12,.5)', 1.2); if (r() < 0.5) crack(E[0], E[1], 2, 10, 'rgba(8,4,12,.4)', 0.9); }
+    for (let i = 0; i < 16; i++) { const [X, Z] = pt(0.84, 2.2), [x, y, s] = proj(X, Z); c.fillStyle = 'rgba(224,216,196,.7)'; c.save(); c.translate(x, y); c.rotate(r() * 3); c.fillRect(-2.5 * s, -0.6 * s, 5 * s, 1.2 * s); c.restore(); }
+    c.strokeStyle = 'rgba(120,104,90,.55)'; c.lineWidth = 1; for (let i = 0; i < 14; i++) { const [X, Z] = pt(0.84, 2.2), [x, y, s] = proj(X, Z); c.beginPath(); c.moveTo(x, y); c.lineTo(x - 3 * s, y - 7 * s); c.moveTo(x, y); c.lineTo(x + 2 * s, y - 9 * s); c.stroke(); }
   } else if (g === 'bog') { // kałuże z rzęsą i liśćmi grzybieni, błoto, pałki
-    for (let i = 0; i < 28; i++) { const [X, Z] = pt(0.9, 3); blob(X, Z, 50 + r() * 90, 8 + r() * 14, 'rgba(30,22,10,.22)'); }
-    for (let i = 0; i < 30; i++) { const [X, Z] = pt(0.86, 2.6), rx = 16 + r() * 34, rz = 4 + r() * 5, [x, y, s] = blob(X, Z, rx + 3, rz + 2, 'rgba(40,34,18,.55)');
+    for (let i = 0; i < 6; i++) { const [X, Z] = pt(0.9, 3); blob(X, Z, 70 + r() * 90, 12 + r() * 14, 'rgba(30,22,10,.14)'); }
+    for (let i = 0; i < 8; i++) { const [X, Z] = pt(0.86, 2.2), rx = 16 + r() * 34, rz = 4 + r() * 5, [x, y, s] = blob(X, Z, rx + 3, rz + 2, 'rgba(40,34,18,.55)');
       const gg = c.createLinearGradient(0, y - rz * s, 0, y + rz * s); gg.addColorStop(0, '#6a8a78'); gg.addColorStop(1, '#16281e'); c.fillStyle = gg; c.beginPath(); c.ellipse(x, y, rx * s, rz * s, 0, 0, TAU); c.fill();
       c.strokeStyle = 'rgba(200,220,180,.35)'; c.lineWidth = 1; c.beginPath(); c.ellipse(x, y, rx * s * 0.8, rz * s * 0.6, 0, Math.PI * 1.1, Math.PI * 1.7); c.stroke();
       for (let k = 0; k < 3; k++) if (r() < 0.6) circ(c, x + (r() - 0.5) * rx * s, y + (r() - 0.5) * rz * s, 1.6 * s + 0.4, '#4a7a34'); }
-    for (let i = 0; i < 50; i++) { const [X, Z] = pt(0.84, 2.2), [x, y, s] = proj(X, Z); c.strokeStyle = '#4a6a2a'; c.lineWidth = Math.max(0.8, s); c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - 12 * s); c.stroke(); c.fillStyle = '#5a3a1a'; c.fillRect(x - 1.2 * s, y - 12 * s, 2.4 * s, 4 * s); }
-  } else if (g === 'ash') { // czarny bazalt, szczeliny z lawą (świecą), popiół, dymiące kominy
-    for (let i = 0; i < 30; i++) { const [X, Z] = pt(0.9, 3); blob(X, Z, 50 + r() * 100, 8 + r() * 16, r() < 0.5 ? 'rgba(0,0,0,.25)' : 'rgba(120,110,110,.08)'); }
-    for (let i = 0; i < 22; i++) { const [X, Z] = pt(0.86, 2.6), n = 3 + (r() * 4 | 0), len = 16 + r() * 20, q = r;
-      const st = r(); c.lineCap = 'round'; const seg = []; let XX = X, ZZ = Z, a = r() * TAU; for (let k = 0; k <= n; k++) { seg.push(proj(XX, ZZ)); a += (q() - 0.5) * 1.4; XX += Math.cos(a) * len; ZZ += Math.sin(a) * len / 300; }
-      for (const [col, lw] of [['#5a1206', 3.6], ['#ff6a1a', 2], ['#ffd070', 0.8]]) { c.strokeStyle = col; c.lineWidth = Math.max(0.6, lw * seg[0][2]); c.beginPath(); seg.forEach(([x, y], k) => k ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); }
-      if (fx && st < 0.5) { const [x, y, s] = seg[seg.length >> 1]; fx.glows.push([x, y, 26 * s, '#ff5a10']); } }
-    for (let i = 0; i < 160; i++) { const [X, Z] = pt(0.84, 2.4), [x, y, s] = proj(X, Z); c.fillStyle = r() < 0.6 ? 'rgba(160,150,150,.35)' : 'rgba(0,0,0,.4)'; c.fillRect(x, y, Math.max(1, 2 * s), Math.max(1, 1.2 * s)); }
-    if (fx) for (let i = 0; i < 3; i++) { const [X, Z] = pt(1.1, 2.2), [x, y, s] = proj(X, Z); circ(c, x, y, 4 * s, '#1a0a06'); circ(c, x, y - 0.5, 2 * s, '#ff7a1a'); fx.smokes.push([x, y - 2, s]); }
+    for (let i = 0; i < 14; i++) { const [X, Z] = pt(0.84, 2.2), [x, y, s] = proj(X, Z); c.strokeStyle = '#4a6a2a'; c.lineWidth = Math.max(0.8, s); c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - 12 * s); c.stroke(); c.fillStyle = '#5a3a1a'; c.fillRect(x - 1.2 * s, y - 12 * s, 2.4 * s, 4 * s); }
+  } else if (g === 'ash') { // czarny bazalt; lawa tylko w kilku długich żyłach spływających do jeziora lawy, popiół
+    for (let i = 0; i < 6; i++) { const [X, Z] = pt(0.9, 3); blob(X, Z, 70 + r() * 100, 14 + r() * 16, 'rgba(0,0,0,.16)'); }
+    const pit = (Wd.lakes || []).find(Lk => Lk.pit || Lk.hot), veins = pit ? [[-1, 0.96, -300], [1, 1.02, 330]] : [];
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    for (const [side, Z0, X0] of veins) { // od brzegu kadru łagodnym łukiem do brzegu jeziora
+      const P = [], X1 = pit.X + side * pit.rx * 0.9, Z1 = pit.Z - pit.rz * 0.2;
+      for (let k = 0; k <= 16; k++) { const f = k / 16, X = X0 + (X1 - X0) * Math.pow(f, 1.3) + Math.sin(f * 9 + X0) * 34 * (1 - f), Z = Z0 + (Z1 - Z0) * Math.pow(f, 0.6); P.push(proj(X, Z)); }
+      for (const [col, lw] of [['rgba(40,6,2,.8)', 7], ['#a8300a', 4], ['#ff7a1a', 2.2], ['#ffd27a', 0.8]]) { c.strokeStyle = col; c.beginPath(); P.forEach(([x, y, s], k) => { c.lineWidth = Math.max(0.6, lw * s); k ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); }
+      if (fx) for (const k of [3, 9]) { const [x, y, s] = P[k]; fx.glows.push([x, y, 22 * s, '#ff5a10']); } }
+    for (let i = 0; i < 60; i++) { const [X, Z] = pt(0.84, 2.4), [x, y, s] = proj(X, Z); c.fillStyle = r() < 0.6 ? 'rgba(160,150,150,.25)' : 'rgba(0,0,0,.3)'; c.fillRect(x, y, Math.max(1, 2 * s), Math.max(1, 1.2 * s)); }
+    if (fx) for (let i = 0; i < 2; i++) { const [X, Z] = pt(1.1, 2.2), [x, y, s] = proj(X, Z); circ(c, x, y, 4 * s, '#1a0a06'); circ(c, x, y - 0.5, 2 * s, '#ff7a1a'); fx.smokes.push([x, y - 2, s]); }
   } else if (g === 'snow') { // zaspy z niebieskim cieniem, zamarznięte kałuże, iskrzący się śnieg
-    for (let i = 0; i < 34; i++) { const [X, Z] = pt(0.86, 3), rx = 40 + r() * 90, rz = 6 + r() * 10; blob(X, Z + 0.02, rx, rz, 'rgba(120,140,180,.22)'); blob(X, Z, rx * 0.9, rz * 0.8, 'rgba(252,253,255,.55)'); }
-    for (let i = 0; i < 9; i++) { const [X, Z] = pt(0.9, 2.2), rx = 24 + r() * 40, rz = 5 + r() * 5, [x, y, s] = blob(X, Z, rx, rz, 'rgba(170,205,235,.75)');
+    for (let i = 0; i < 8; i++) { const [X, Z] = pt(0.86, 3), rx = 60 + r() * 90, rz = 6 + r() * 10; blob(X, Z + 0.02, rx, rz, 'rgba(120,140,180,.22)'); blob(X, Z, rx * 0.9, rz * 0.8, 'rgba(252,253,255,.55)'); }
+    for (let i = 0; i < 2; i++) { const [X, Z] = pt(0.9, 2.2), rx = 24 + r() * 40, rz = 5 + r() * 5, [x, y, s] = blob(X, Z, rx, rz, 'rgba(170,205,235,.75)');
       c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x - rx * s * 0.5, y - 1); c.lineTo(x + rx * s * 0.2, y - rz * s * 0.4); c.stroke(); }
-    for (let i = 0; i < 180; i++) { const [X, Z] = pt(0.82, 2.8), [x, y] = proj(X, Z); c.fillStyle = r() < 0.5 ? 'rgba(255,255,255,.9)' : 'rgba(170,220,255,.8)'; c.fillRect(x, y, 1, 1); }
+    for (let i = 0; i < 60; i++) { const [X, Z] = pt(0.82, 2.8), [x, y] = proj(X, Z); c.fillStyle = r() < 0.5 ? 'rgba(255,255,255,.9)' : 'rgba(170,220,255,.8)'; c.fillRect(x, y, 1, 1); }
   } else if (g === 'cave') { // skalne dno groty: płyty ze szczelinami, żyły kryształów, świecący mech, kamyki
-    for (let i = 0; i < 30; i++) { const [X, Z] = pt(0.9, 3); blob(X, Z, 50 + r() * 100, 8 + r() * 16, r() < 0.5 ? 'rgba(0,0,0,.22)' : 'rgba(170,150,200,.07)'); }
-    for (let i = 0; i < 40; i++) { const [X, Z] = pt(0.84, 2.8); crack(X, Z, 3 + (r() * 3 | 0), 22 + r() * 20, 'rgba(6,4,10,.55)', 1.3); }
-    for (let i = 0; i < 12; i++) { const [X, Z] = pt(0.86, 2.4), [x0, y0, s0] = proj(X, Z), E = crack(X, Z, 3, 16, 'rgba(190,120,255,.75)', 1.4); if (fx && i % 3 === 0) fx.glows.push([x0, y0, 18 * s0, '#a060ff']); }
-    for (let i = 0; i < 16; i++) { const [X, Z] = pt(0.86, 2.4), [x, y, s] = blob(X, Z, 12 + r() * 18, 3 + r() * 3, 'rgba(80,220,190,.28)'); if (fx && i % 4 === 0) fx.glows.push([x, y, 16 * s, '#40d8b0']); }
-    for (let i = 0; i < 160; i++) { const [X, Z] = pt(0.82, 2.6), [x, y, s] = proj(X, Z); c.fillStyle = r() < 0.6 ? 'rgba(10,6,16,.6)' : 'rgba(150,140,170,.4)'; c.fillRect(x, y, Math.max(1, 2.4 * s), Math.max(1, 1.4 * s)); }
+    for (let i = 0; i < 6; i++) { const [X, Z] = pt(0.9, 3); blob(X, Z, 70 + r() * 100, 14 + r() * 16, 'rgba(0,0,0,.14)'); }
+    for (let i = 0; i < 9; i++) { const [X, Z] = pt(0.84, 2.4); crack(X, Z, 3 + (r() * 3 | 0), 22 + r() * 20, 'rgba(6,4,10,.55)', 1.3); }
+    for (let i = 0; i < 3; i++) { const [X, Z] = pt(0.86, 2.2), [x0, y0, s0] = proj(X, Z), E = crack(X, Z, 3, 16, 'rgba(190,120,255,.75)', 1.4); if (fx) fx.glows.push([x0, y0, 18 * s0, '#a060ff']); }
+    for (let i = 0; i < 5; i++) { const [X, Z] = pt(0.86, 2.2), [x, y, s] = blob(X, Z, 12 + r() * 18, 3 + r() * 3, 'rgba(80,220,190,.28)'); if (fx && i % 4 === 0) fx.glows.push([x, y, 16 * s, '#40d8b0']); }
+    for (let i = 0; i < 50; i++) { const [X, Z] = pt(0.82, 2.6), [x, y, s] = proj(X, Z); c.fillStyle = r() < 0.6 ? 'rgba(10,6,16,.6)' : 'rgba(150,140,170,.4)'; c.fillRect(x, y, Math.max(1, 2.4 * s), Math.max(1, 1.4 * s)); }
   } else if (g === 'sand') { // zmarszczki wydm, spękana glina, kamyki
-    for (let i = 0; i < 70; i++) { const [X, Z] = pt(0.86, 3.2), [x, y, s] = proj(X, Z), w = (40 + r() * 80) * s, ph = r() * 6;
+    for (let i = 0; i < 20; i++) { const [X, Z] = pt(0.86, 3.2), [x, y, s] = proj(X, Z), w = (40 + r() * 80) * s, ph = r() * 6;
       for (const [col, dy] of [['rgba(255,240,200,.35)', 0], ['rgba(120,80,30,.22)', 1.2]]) { c.strokeStyle = col; c.lineWidth = 1; c.beginPath(); for (let k = 0; k <= 10; k++) { const xx = x - w / 2 + w * k / 10, yy = y + dy + Math.sin(k * 0.9 + ph) * 1.4 * s; k ? c.lineTo(xx, yy) : c.moveTo(xx, yy); } c.stroke(); } }
-    for (let i = 0; i < 6; i++) { const [X, Z] = pt(0.9, 2.2), rx = 50 + r() * 60; blob(X, Z, rx, 8 + r() * 6, 'rgba(150,90,50,.25)'); for (let k = 0; k < 6; k++) crack(X + (r() - 0.5) * rx, Z + (r() - 0.5) * 0.03, 3, 10, 'rgba(90,50,20,.45)', 0.9); }
-    for (let i = 0; i < 120; i++) { const [X, Z] = pt(0.82, 2.4), [x, y, s] = proj(X, Z); c.fillStyle = r() < 0.5 ? 'rgba(110,80,50,.5)' : 'rgba(255,245,220,.4)'; c.fillRect(x, y, Math.max(1, 2 * s), Math.max(1, 1.2 * s)); }
+    for (let i = 0; i < 2; i++) { const [X, Z] = pt(0.9, 2.2), rx = 50 + r() * 60; blob(X, Z, rx, 8 + r() * 6, 'rgba(150,90,50,.2)'); for (let k = 0; k < 6; k++) crack(X + (r() - 0.5) * rx, Z + (r() - 0.5) * 0.03, 3, 10, 'rgba(90,50,20,.45)', 0.9); }
+    for (let i = 0; i < 40; i++) { const [X, Z] = pt(0.82, 2.4), [x, y, s] = proj(X, Z); c.fillStyle = r() < 0.5 ? 'rgba(110,80,50,.5)' : 'rgba(255,245,220,.4)'; c.fillRect(x, y, Math.max(1, 2 * s), Math.max(1, 1.2 * s)); }
   }
 }
 

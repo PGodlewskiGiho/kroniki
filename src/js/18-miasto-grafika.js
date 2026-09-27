@@ -107,12 +107,6 @@ function bannerArt(c, x, y, col) {
   if (CUR_FX) { CUR_FX.flags.push([x, y, col]); return; }
   c.fillStyle = col; c.beginPath(); c.moveTo(x, y - 5); c.lineTo(x + 14, y - 1); c.lineTo(x, y + 6); c.closePath(); c.fill();
 }
-function plotArt(c, A, s, emblem) {
-  const cx = s.x + s.w / 2, b = s.b;
-  c.strokeStyle = 'rgba(255,245,210,.4)'; c.setLineDash([4, 4]); c.lineWidth = 1.5; c.beginPath(); c.ellipse(cx, b - 4, s.w * 0.4, 7, 0, 0, TAU); c.stroke(); c.setLineDash([]);
-  for (const dx of [-s.w * 0.38, s.w * 0.38]) { c.fillStyle = '#6a4a2a'; c.fillRect(cx + dx - 1.5, b - 14, 3, 12); }
-  signArt(c, A, emblem, cx, b - 26, 24, true);
-}
 function propArt(c, fac, kind, x, b, r, fx) {
   if (kind === 'tree' && fac === 'fortress') { // bagienna wierzba: krzywy pień, zwisający mech
     c.strokeStyle = '#3a2e1c'; c.lineCap = 'round'; c.lineWidth = 5; c.beginPath(); c.moveTo(x - 4, b); c.quadraticCurveTo(x + 4, b - 14, x - 1, b - 28); c.stroke();
@@ -567,8 +561,8 @@ function groundPlane(c, Wd) {
   const yF = proj(0, 4.4)[1], g = c.createLinearGradient(0, yF, 0, 432);
   g.addColorStop(0, Wd.ground[0]); g.addColorStop(0.35, Wd.ground[1]); g.addColorStop(1, Wd.ground[2]); c.fillStyle = g; c.fillRect(8, yF, 576, 440 - yF);
   const r = mulberry32(17 + (Wd.seed || 0));
-  for (let i = 0; i < 30; i++) { const X = (r() - 0.5) * 2000, Z = 1.1 + r() * 2.8, [sx, sy, s] = proj(X, Z); c.fillStyle = r() < 0.55 ? 'rgba(0,0,0,.09)' : 'rgba(255,230,170,.06)'; c.beginPath(); c.ellipse(sx, sy, (70 + r() * 140) * s, (16 + r() * 22) * s, 0, 0, TAU); c.fill(); }
-  for (let i = 0, n = Math.round(900 * (Wd.tufts ?? 1)); i < n; i++) {
+  for (let i = 0; i < 8; i++) { const X = (r() - 0.5) * 2000, Z = 1.1 + r() * 2.8, [sx, sy, s] = proj(X, Z); c.fillStyle = r() < 0.55 ? 'rgba(0,0,0,.09)' : 'rgba(255,230,170,.06)'; c.beginPath(); c.ellipse(sx, sy, (70 + r() * 140) * s, (16 + r() * 22) * s, 0, 0, TAU); c.fill(); }
+  for (let i = 0, n = Math.round(420 * (Wd.tufts ?? 1)); i < n; i++) {
     const X = (r() - 0.5) * 1700, Z = 0.8 + Math.pow(r(), 0.8) * 3.3, [sx, sy, s] = proj(X, Z), k = r(); if (sx < 0 || sx > 592 || sy > 440) continue;
     c.strokeStyle = k < 0.55 ? (Wd.tuft ? Wd.tuft[0] : 'rgba(14,26,8,.4)') : (Wd.tuft ? Wd.tuft[1] : 'rgba(190,200,130,.22)'); c.lineWidth = Math.max(0.6, 1.3 * s);
     c.beginPath(); c.moveTo(sx - 3 * s, sy); c.lineTo(sx, sy - 6 * s); c.lineTo(sx + 3 * s, sy); c.stroke();
@@ -854,7 +848,7 @@ function paintTownWorld(c, t, col, Wd) {
         castShadow(c, { x: sx - w / 2, b: sy, w, h }, 1);
         const [grp, tier] = groupOf(B), fn = arts[grp];
         if (fn) drawObj(c, (g, tf) => fn(g, A, can, tier, col, tf), box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip);
-      } else { const next = slotNext(t, o.slot); if (next) drawObj(c, g => plotArt(g, A, can, bInfo(next, fac).emblem), box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx); }
+      } // puste miejsce: sama ziemia jak w Heroes 3 (co tu stanie, widać po najechaniu myszą)
     } else if (o.tower) wallTowerArt(c, o.wall, A, o.tower, hzC, fx);
     else if (o.wall) wallSegArt(c, o.wall, A, o.a, o.b, hzC);
     else if (o.bridge) {
