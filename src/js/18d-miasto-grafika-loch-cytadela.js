@@ -154,13 +154,13 @@ TOWN_LAYOUTS.dungeon = {
   sky: { top: '#06040c', mid: '#1e1430', hor: '#5a3a6a', sun: [440, 90], moon: true, moonR: 26, stars: true, cloudDark: 'rgba(20,12,30,.75)', cloudLit: 'rgba(180,120,220,.3)' },
   mountains: ['#2a2434', '#1e1a28'], forest: ['#1e1a26', '#241e2e', '#1a1622'],
   ground: ['#4a4452', '#34303c', '#1e1a24'], haze: '#4a3a5a', desat: 0.12, tuft: ['rgba(0,0,0,.35)', 'rgba(170,120,220,.15)'],
-  slots: TOWN_LAYOUTS.haven.slots, walkCols: ['#4a2a6a', '#6a2a3a', '#3a3444', '#5a4a3a'], guardCol: '#3a2a4a', birds: false,
+  slots: TOWN_LAYOUTS.haven.slots, birds: false,
 };
 TOWN_LAYOUTS.stronghold = {
   sky: { top: '#3a6aa8', mid: '#9ac0d8', hor: '#f8e0a8', sun: [380, 70], cloudDark: 'rgba(200,170,130,.5)', cloudLit: 'rgba(255,250,230,.8)' },
   mountains: ['#b88a60', '#9a6a44'], forest: ['#6a6a3a', '#5a5a30', '#7a6a3a'],
   ground: ['#d8b484', '#b89060', '#8a6a40'], haze: '#e8c89a', desat: 0.1, tuft: ['rgba(90,60,20,.3)', 'rgba(255,240,200,.3)'],
-  slots: TOWN_LAYOUTS.haven.slots, walkCols: ['#8a2a1a', '#6a8a3a', '#7a5a2a', '#c86a2a'], guardCol: '#8a2a1a', birds: true, birdCol: 'rgba(60,30,10,.8)',
+  slots: TOWN_LAYOUTS.haven.slots, birds: true, birdCol: 'rgba(60,30,10,.8)',
 };
 TOWN_WATER.glow = { river: ['#5a3a8a', '#0e0820'], lake: ['#5a4a9a', '#0e0a24'], rim: '#2a2434', edge: 'rgba(170,120,255,.45)',
   chasm: { cols: ['#7a4ab8', '#0a0418'], line: 'rgba(210,170,255,.5)', edge: 'rgba(10,4,20,.9)', glow: '150,90,255', glowA: 0.18 } };

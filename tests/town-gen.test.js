@@ -44,6 +44,23 @@ test('ta sama nazwa daje tę samą planszę, różne miasta frakcji różnią si
   }
 });
 
+test('kraj frakcji: ścieżki od drzwi budowli, mieszkańcy i straż z własnej frakcji, Loch w grocie', async () => {
+  const r = await page.evaluate(() => {
+    const out = {};
+    for (const F of FACTIONS) {
+      const Ls = F.towns.map(name => generateTownLayout(F.id, strHash(F.id + ':' + name))), Bm = TOWN_BIOME[F.id];
+      const lanes = Ls.reduce((a, L) => a + Object.keys(L.doorRoutes).length, 0) / Ls.length;
+      const folk = [...new Set(Ls.flatMap(L => L.folk.map(w => w.kind)))].filter(k => !Bm.folk.includes(k));
+      const guards = Ls.every(L => L.guards.length === 2 && L.guards.every(g => g.kind === Bm.guard));
+      const styles = Ls.every(L => L.roads.find(R => R.main).style === Bm.road), cave = Ls.every(L => (L.frame === 'cave') === (F.id === 'dungeon'));
+      const arches = Ls.every(L => TOWN_STYLE[F.id].arche.some(([a]) => a === L.arche));
+      out[F.id] = { lanes: lanes >= 8, folk, guards, styles, cave, arches };
+    }
+    return out;
+  });
+  for (const [fac, x] of Object.entries(r)) assert.deepEqual(x, { lanes: true, folk: [], guards: true, styles: true, cave: true, arches: true }, fac);
+});
+
 test('ekran miasta rysuje się dla każdego krajobrazu; budowle mają pola do wskazania myszą', async () => {
   const facs = await page.evaluate(() => FACTIONS.map(f => f.id)), arches = await page.evaluate(() => Object.keys(ARCHETYPES));
   for (let k = 0; k < arches.length; k++) {
