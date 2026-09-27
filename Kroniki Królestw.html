@@ -49,7 +49,8 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
      MAPA PRZYGODY: RENDEROWANIE     teren piksel po pikselu, minimapa, mgła, kamera
      MIASTO: GRAFIKA                 style frakcji, siedliska Przystani, Kniei i Kurhanu, sceny w perspektywie, efekty
      MIASTO: TWIERDZA I INFERNO … LOCH I CYTADELA   palety, siedliska i barwy scen pozostałych frakcji
-     MIASTO: GENERATOR PLANSZ        krajobraz, rozmieszczenie budowli, drogi, pogoda (townLayout)
+     MIASTO: TEREN I DROGI SCEN      woda, tarasy, wzgórza, wysokość gruntu, główna droga z mostami, bramy w murze
+     MIASTO: SCENY FRAKCJI           jedna ręcznie ułożona scena na frakcję (TOWN_SCENES, townLayout)
      MIASTO: BUDOWLE GŁÓWNE FRAKCJI  ratusz, fort, gildia, karczma, rynek, kuźnia, magazyn: własna architektura każdej frakcji
      EKRANY / MAPA / BOHATER / BITWA / MIASTO  menu, listy, mapa, ekran bohatera, bitwa, widok miasta
      SILNIK                          pętla, wejście (mysz, dotyk, klawiatura, kółko), przejścia
@@ -80,7 +81,7 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
      'unicorn', 'phoenix', 'ghost', 'dragon', 'eye', 'bird' i in.); nowy rodzaj ciała = nowy case w drawCreature().
    • Frakcję: wpis w FACTIONS, TOWN_ART (paleta), BUILD_ART (siedliska w pliku frakcji, budowle główne w MIASTO: BUDOWLE
      GŁÓWNE FRAKCJI — z nich powstaje też ikona miasta na mapie), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi)
-     i TOWN_STYLE (ulubione krajobrazy, woda, rekwizyty, niebo, pogoda, dachy, mury); plansze miast układa generator (18c).
+     TOWN_STYLE (woda, tarasy, wzgórza, mury) i scena w TOWN_SCENES (18h): niebo, teren, miejsca budowli, rekwizyty.
    • Budowlę wspólną: wpis w BUILDINGS (slot = miejsce w scenie) i funkcja w BUILD_ART każdej frakcji.
    • Ekran: G.screens.nazwa = { enter(p), draw(ctx), update(dt), onClick(x, y), onBack(),
      onKey(k), onWheel(d), onPointerDown/Move/Up, rightInfo(x, y) → tekst dymka, buttons: [] };
@@ -155,10 +156,18 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    w całych pikselach), mapa bez przeliczania całego obrazu co klatkę (gradeCanvas w kawałkach terenu i kopiach sprite'ów, mgła
    w kawałkach fogChunk, nakładka mapLight), scena menu i efekty miasta ~12–15 klatek/s, jakość grafiki (auto/wysoka/niska, Perf).
    Kawałki terenu: budżet ~10 ms na klatkę (MapRender.get allow, zastępczy placeholder), generowanie wokół widoku z wyprzedzeniem.
-   Generator plansz miast (18c): każde miasto ma własną planszę z nazwy (townLayout): krajobraz (dolina, jezioro, przepaść,
-   tarasy, wyspy, płaskowyż, krater, wybrzeże), kamera, 14 budowli rozmieszczonych według ról (bez zasłaniania, nie w wodzie
-   ani na drodze), droga z mostami i schodami, plac, mur z bramą, drzewa i drobiazgi, pora dnia, pogoda (deszcz, mgła, śnieg),
-   dachy i odbicia budowli. Nowe elementy sceny: tarasy z murem oporowym, wyspy, morze z plażą i łodziami, mury i baszty.
+   Graal i obeliski (20a, placeGrail w 12): Graal zakopany na wolnym polu lądu (st.grail, found = kto go wykopał), obeliski
+   (SITES.obelisk, liczba wg OBELISKS) odsłaniają kawałki mapy zagadki (showPuzzle: wycinek mapy, kawałki z wypustkami,
+   od brzegów do krzyżyka). Kop (klawisz D) tylko z pełnym ruchem, dołki w st.holes. Artefakt 'grail' (relikwia, do plecaka)
+   wnosi się do własnego miasta: budowla Graala (slot 15, nazwa wg GRAIL_NAMES) daje +5000 złota i +50% przyrostu. Graal
+   przechodzi na zwycięzcę bitwy; SI, która zna całą mapę zagadki, kopie i buduje. Starsze zapisy dostają Graala w migrateSave.
+   Sceny miast (18h, TOWN_SCENES): zamiast losowego generatora każda frakcja ma jedną, ręcznie ułożoną scenę — Przystań w dolinie
+   z rzeką i zamkiem na wzgórzu, Knieja na polanie nad leśnym jeziorem, Kurhan nad przepaścią z kościanym mostem, Twierdza na
+   wysepkach mokradła, Inferno w kraterze z jeziorem lawy, Akademia na ośnieżonych tarasach, Loch w grocie ze świecącym jeziorem,
+   Cytadela pod stołową górą z oazą i palisadą. Stałe są niebo, teren, miejsca 15 budowli i rekwizyty; ścieżki do drzwi
+   i mieszkańców wylicza MIASTO: TEREN. Drogi (roadStyled) w pixel-arcie: osobne kamienie w rzędach perspektywy, fugi,
+   krawężnik; ścieżki ziemne z kamykami i trawą; najpierw brzegi wszystkich ścieżek, potem nawierzchnie (jeden obrys sieci),
+   brukowany plac w pierścieniach (plazaArt).
    Akademia (śnieg, TER.SNOW): gremliny, gargulce, golemy, magowie, dżiny, nagi (nowy wężowy ogon L.serpent), olbrzymi i tytani;
    klasy Alchemik i Czarodziej, miasto białych wież ze złotymi kopułami i padającym śniegiem (18b), mury i portrety. Pocisk z look.orb
    bez laski to kula (gremlin, tytan). SI bierze z garnizonu tylko to, co zmieści (takeableArmy), więc nie krąży między miastami.
@@ -649,7 +658,8 @@ const BUILDINGS = [
   { id: 'guild3', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 4, crystal: 4 }, req: ['guild2', 'hall2'], emblem: 'book', desc: 'Dodaje czary 3 poziomu.' },
   { id: 'guild4', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 6, sulfur: 6, crystal: 6, gems: 6 }, req: ['guild3'], emblem: 'book', desc: 'Dodaje czary 4 poziomu.' },
   { id: 'guild5', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 10, sulfur: 10, crystal: 10, gems: 10 }, req: ['guild4', 'hall3'], emblem: 'book', desc: 'Dodaje czary 5 poziomu.' },
-  { id: 'special', slot: 14, cost: { gold: 3000, wood: 5, ore: 5 }, req: ['fort'] }, // budowla specjalna frakcji: nazwa i działanie w FACTION_SPECIAL
+  { id: 'special', slot: 14, cost: { gold: 3000, wood: 5, ore: 5 }, req: ['fort'] },
+  { id: 'grail', slot: 15, cost: {}, req: [], grail: true }, // budowla Graala: nie da się jej kupić, wznosi ją bohater z Graalem (buildGrail) // budowla specjalna frakcji: nazwa i działanie w FACTION_SPECIAL
   { id: 'dw1', slot: 10, cost: { gold: 500 }, req: [] },
   { id: 'dw1u', slot: 10, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
   { id: 'dw2', slot: 11, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
@@ -678,9 +688,13 @@ const FACTION_SPECIAL = {
   stronghold: { name: 'Sala Walhalli', emblem: 'axe', desc: 'Każdy bohater, który odwiedzi miasto, raz na zawsze zyskuje +1 do ataku.' },
 };
 // Nazwa, jednostka, symbol i opis budowli dla danej frakcji
+// Budowla Graala ma w każdej frakcji własną nazwę
+const GRAIL_NAMES = { haven: 'Kolos Światłości', sylvan: 'Strażnik Kniei', barrow: 'Więzienie Dusz', fortress: 'Pradawne Źródło',
+  inferno: 'Ołtarz Ognia', academy: 'Podniebny Kielich', dungeon: 'Strażnik Głębin', stronghold: 'Pomnik Wodzów' };
 function bInfo(B, fac) {
   const F = factionOf(fac), m = /^dw(\d)(u?)$/.exec(B.id);
   if (B.id === 'special') { const S = FACTION_SPECIAL[F.id]; return { name: S.name, emblem: S.emblem, desc: S.desc }; }
+  if (B.id === 'grail') return { name: GRAIL_NAMES[F.id] || 'Budowla Graala', emblem: 'crown', desc: `Budowla Graala: +${GRAIL_GOLD} złota dziennie i +50% przyrostu stworów.` };
   if (m) {
     const [name, unit] = F.dw[B.id], c = CREATURES[unit];
     return { name, unit, emblem: F.emb[+m[1] - 1], desc: `${m[2] ? 'Ulepszone siedlisko' : 'Siedlisko'}: ${c.plural.toLowerCase()} (poziom ${m[1]}).` };
@@ -757,7 +771,7 @@ const EQUIP_SLOTS = [
   { id: 'feet', kind: 'feet', name: 'Stopy', x: 574, y: 300 },
   { id: 'misc1', kind: 'misc', name: 'Różne', x: 432, y: 300 }, { id: 'misc2', kind: 'misc', name: 'Różne', x: 716, y: 300 },
 ];
-const RARITY = { treasure: 'skarb', minor: 'pomniejszy', major: 'potężny' };
+const RARITY = { treasure: 'skarb', minor: 'pomniejszy', major: 'potężny', relic: 'relikwia' };
 // bonus: att/def/sp/kn (cechy), mp (punkty ruchu), sight (zasięg widzenia), gold (złoto dziennie), morale, luck (szczęście)
 // icon: rodzaj rysunku w drawArtifact(); col/gem: kolory
 const ARTIFACTS = {
@@ -781,6 +795,9 @@ const ARTIFACTS = {
   sageDiadem: { name: 'Diadem mędrca', kind: 'head', rarity: 'major', bonus: { kn: 3, sp: 1, luck: 1 }, icon: 'crown', col: '#f0c040', gem: '#4aa0e0' },
   runeBook: { name: 'Księga run', kind: 'misc', rarity: 'major', bonus: { sp: 3, kn: 1 }, icon: 'book', col: '#6a2a2a', gem: '#f0c040' },
   hornOfPlenty: { name: 'Mieszek obfitości', kind: 'misc', rarity: 'major', bonus: { gold: 750 }, icon: 'bag', col: '#6a3a6a', gem: '#f0c040' },
+  // Graala nie da się założyć (nie ma pasującego miejsca): leży w plecaku, dopóki bohater nie zbuduje go w mieście
+  grail: { name: 'Graal', kind: 'grail', rarity: 'relic', bonus: {}, icon: 'grail', col: '#f0c040', gem: '#fff4c0',
+    desc: 'Święty kielich. Zanieś go do własnego miasta, aby wznieść tam budowlę Graala (+5000 złota dziennie, +50% przyrostu stworów).' },
 };
 const ARTS_BY_RARITY = rar => Object.keys(ARTIFACTS).filter(id => ARTIFACTS[id].rarity === rar);
 // Opis premii artefaktu: „+2 do ataku, +200 ruchu”
@@ -791,7 +808,7 @@ function artBonusText(b) {
   if (b.mp) out.push(`+${b.mp} punktów ruchu`); if (b.sight) out.push(`+${b.sight} do zasięgu widzenia`); if (b.gold) out.push(`+${b.gold} złota dziennie`);
   return out.join(', ');
 }
-const artInfo = id => { const A = ARTIFACTS[id]; return `${A.name} (${RARITY[A.rarity]}): ${artBonusText(A.bonus)}.`; };
+const artInfo = id => { const A = ARTIFACTS[id]; return `${A.name} (${RARITY[A.rarity]}): ${A.desc || artBonusText(A.bonus) + '.'}`; };
 
 // ==================== DANE: CZARY =======================================================
 // kind: 'battle' (w bitwie, raz na rundę) albo 'adv' (na mapie). target: 'enemy', 'ally', 'undeadAlly', 'livingAlly' (także poległy),
@@ -847,7 +864,13 @@ const SITES = {
   fountain: { name: 'Fontanna szczęścia', use: 'day', per: 1400, ai: 300, desc: '+1 do szczęścia do końca następnej bitwy' },
   stables: { name: 'Stajnie', use: 'heroWeek', per: 1400, ai: 700, desc: '+400 punktów ruchu na dziś (raz w tygodniu)' },
   lookout: { name: 'Wieża obserwacyjna', use: 'player', per: 1600, ai: 500, desc: 'odsłania okolicę w promieniu 12 pól' },
+  obelisk: { name: 'Obelisk', use: 'player', per: 0, ai: 1800, desc: 'odsłania fragment mapy zagadki, która prowadzi do Graala' },
 };
+// Graal (jak w Heroes 3): zakopany na mapie; obeliski odsłaniają kolejne kawałki mapy zagadki (PUZZLE_COLS × PUZZLE_ROWS
+// kawałków, wycinek PUZZLE_W × PUZZLE_H pól wokół Graala). Kopać można z pełnymi punktami ruchu (zużywa wszystkie).
+// Bohater z Graalem wchodzi do własnego miasta i buduje tam budowlę Graala: +GRAIL_GOLD złota dziennie i +50% przyrostu.
+const OBELISKS = { S: 3, M: 5, L: 7, XL: 9 }, GRAIL_GOLD = 5000, GRAIL_GROWTH = 0.5;
+const PUZZLE_COLS = 8, PUZZLE_ROWS = 6, PUZZLE_W = 16, PUZZLE_H = 12;
 const SITE_EXP = 1000, SITE_MP = 400, LOOKOUT_R = 12;
 // Skarbce (obiekt type: 'bank', kind): silna załoga z kilku oddziałów, po zwycięstwie jednorazowy łup, potem obiekt stoi pusty.
 // guards: [stwór, liczba] (liczby rosną z poziomem trudności), loot: surowce, arts: artefakty [rzadkość, ile], units: stwory dołączają do armii.
@@ -1523,6 +1546,11 @@ function drawSite(ctx, kind, f) {
       ctx.fillStyle = '#e0c060'; ctx.beginPath(); ctx.ellipse(-11, -2, 4, 2.5, 0, 0, TAU); ctx.fill();
       poly([[9, -12], [14, -14], [15, -9], [11, -8]], '#7a4a28'); circ(ctx, 13.5, -12, 0.6, '#1a0e06'); break;
     }
+    case 'obelisk': { // smukła iglica z runami, które świecą
+      poly([[-7, 0], [7, 0], [5, -4], [-5, -4]], '#6e6a62'); poly([[-4, -4], [4, -4], [2.5, -34], [-2.5, -34]], '#a49c8c'); poly([[1, -4], [4, -4], [2.5, -34], [0.5, -34]], '#7a7466');
+      poly([[-2.5, -34], [2.5, -34], [0, -40]], '#c8c0ae'); const a = 0.55 + 0.45 * Math.sin(t); ctx.fillStyle = `rgba(250,210,110,${a.toFixed(2)})`;
+      for (const [ry, rw] of [[-28, 2.4], [-22, 3], [-16, 2.4], [-10, 3.2]]) ctx.fillRect(-rw / 2 - 0.5, ry, rw, 1.4); break;
+    }
     case 'lookout': {
       poly([[-6, 0], [-4, -30], [4, -30], [6, 0]], '#9a948a'); poly([[1, -30], [4, -30], [6, 0], [2, 0]], '#7a746a');
       box(-8, -34, 16, 4, '#8a8478'); for (const bx of [-8, -3, 2, 6]) box(bx, -37, 2.4, 3, '#8a8478');
@@ -2067,7 +2095,7 @@ const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0
 const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
 // Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki
-const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1 };
+const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1, obelisk: 1 };
 const siteSprite = (k, i = 0) => sprite(`site_${k}_${i}`, 26, 26, 13, 24, p => drawSite(p, k, i / 4));
 const siteFrame = (ob) => (SITE_ANIM[ob.kind] ? Math.floor(G.time * 5 + ob.id) % 4 : 0);
 const mineSprite = k => sprite(`mine_${k}`, 36, 38, 2, 4, p => drawMine(p, { kind: k }, 0, 0, 0, null));
@@ -2394,6 +2422,10 @@ function drawArtifact(c, id) {
     case 'book':
       c.fillStyle = '#e8dcc0'; c.fillRect(-8, -9, 17, 19); c.fillStyle = col; c.fillRect(-9, -10, 16, 19); c.fillStyle = dk; c.fillRect(-9, -10, 3, 19);
       c.strokeStyle = gem; c.lineWidth = 1.5; c.beginPath(); c.moveTo(1, -6); c.lineTo(1, 5); c.moveTo(-2, -3); c.lineTo(4, 2); c.moveTo(4, -3); c.lineTo(-2, 2); c.stroke(); break;
+    case 'grail': // złoty kielich z blaskiem
+      circ(c, 0, -3, 10, 'rgba(255,240,160,.35)'); poly([[-6, 10], [6, 10], [3, 7], [-3, 7]], dk); c.fillStyle = col; c.fillRect(-1.5, -1, 3, 8);
+      poly([[-8, -9], [8, -9], [6, -3], [2, 0], [-2, 0], [-6, -3]], col); poly([[2, -9], [8, -9], [6, -3], [2, 0]], dk);
+      c.fillStyle = gem; c.fillRect(-8, -10, 16, 1.6); c.fillStyle = '#c83a3a'; c.fillRect(-4, -6, 2, 2); c.fillStyle = '#3a8ae0'; c.fillRect(1, -6, 2, 2); break;
   }
 }
 const artSprite = id => sprite(`art_${id}`, 16, 16, 8, 8, p => drawArtifact(p, id));
@@ -3358,6 +3390,7 @@ function placeObjects(st) {
   if (!coastBoat(n * 0.3)) coastBoat(0); for (let k = Math.round(N / 3000); k > 0; k--) coastBoat(0);
   // miejsca (SITES): liczba wg gęstości, na małej mapie rzadsze z losowaniem; część pilnują potwory
   for (const [kind, S] of Object.entries(SITES)) {
+    if (!S.per) continue; // obeliski rozmieszcza placeGrail
     const want = N / S.per, cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);
     for (let k = 0; k < cnt; k++) {
       const p = pick((x, y) => dStart(x, y) >= (S.guard ? 7 : 4)); if (!p) continue;
@@ -3368,6 +3401,26 @@ function placeObjects(st) {
     }
   }
   return objs;
+}
+// Graal i obeliski: Graal zakopany na wolnym polu lądu (osiągalnym ze startu, z dala od graczy), obeliski rozsiane po mapie.
+// Osobno od placeObjects, bo dokłada je też naprawa starszych zapisów (migrateSave).
+function placeGrail(st) {
+  const map = st.map, n = map.n, rng = mulberry32(st.seed ^ 0x6a41), reach = new Uint8Array(n * n), q = [map.start.y * n + map.start.x]; reach[q[0]] = 1;
+  while (q.length) { const i = q.pop(), x = i % n, y = (i / n) | 0;
+    for (let d = 0; d < 8; d++) { const nx = x + DX8[d], ny = y + DY8[d]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (!reach[j] && map.terrain[j] !== TER.WATER && !map.obst[j]) { reach[j] = 1; q.push(j); } } }
+  const taken = i => !reach[i] || map.obst[i] || map.sites.some(S => Math.abs(S.x - i % n) <= 3 && Math.abs(S.y - ((i / n) | 0)) <= 3) || st.objects.some(o => !o.dead && (o.y * n + o.x === i || (o.blocks || []).includes(i)));
+  const starts = map.sites.slice(0, Math.max(1, st.players.length || playerSlots(st.settings).length)), dStart = (x, y) => Math.min(...starts.map(s => Math.hypot(x - s.x, y - s.y)));
+  const pick = (minD, near) => { for (let k = 0; k < 3000; k++) { const x = 2 + Math.floor(rng() * (n - 4)), y = 2 + Math.floor(rng() * (n - 4)), i = y * n + x;
+    if (taken(i) || dStart(x, y) < minD || (near && near(x, y))) continue; return [x, y]; } return null; };
+  if (!st.grail) { const p = pick(n * 0.25) || pick(6) || pick(0); if (p) st.grail = { x: p[0], y: p[1], found: -1 }; }
+  st.holes = st.holes || [];
+  if (!st.objects.some(o => o.type === 'site' && o.kind === 'obelisk')) {
+    const want = OBELISKS[(MAP_SIZES.find(m => m.n === n) || MAP_SIZES[1]).id] || 4, placed = [];
+    for (let k = 0; k < want; k++) { // obeliski daleko od siebie (każdy w innej części mapy)
+      const p = pick(4, (x, y) => placed.some(([a, b]) => Math.hypot(a - x, b - y) < n / (Math.sqrt(want) + 1))) || pick(4); if (!p) continue;
+      placed.push(p); st.objects.push({ id: st.objects.length, type: 'site', kind: 'obelisk', x: p[0], y: p[1], seen: {} });
+    }
+  }
 }
 function createTown(st, x, y, owner, fac = 'haven') {
   const F = factionOf(fac), names = F.towns, nat = F.terrain, n0 = st.map.n;
@@ -3411,6 +3464,7 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S }, bonusText: '', selHero: 0, cam: null, players: [], heroes: [], towns: [], objects: [] };
   const map = st.map = generateMap(MAP_SIZES.find(m => m.id === S.mapSize).n, seed);
   st.objects = placeObjects(st);
+  placeGrail(st);
   // gracze (ludzie i komputer) w kolejnych miejscach startowych (pierwsze = map.start, drugie = najdalej od niego), reszta miast jest niezależna
   const trng = mulberry32(seed ^ 0x70a7), slots = playerSlots(S).slice(0, map.sites.length), others = map.sites.filter(s => s !== map.start), sites = [map.start, ...others];
   slots.forEach((o, id) => {
@@ -3566,10 +3620,18 @@ function visitObject(st, h, ob) {
   } else if (ob.type === 'site') {
     const r = useSite(st, h, ob), S = SITES[ob.kind];
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
-    showDialog(`${S.name}. ${r.text}`, [{ label: 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); } }],
+    showDialog(`${S.name}. ${r.text}`, [{ label: r.puzzle ? 'Mapa zagadki' : 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); if (r.puzzle) showPuzzle(st); } }],
       { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5) });
   } else if (ob.type === 'town') {
-    if (ob.owner === h.owner) G.go('town', { townId: ob.townId }); else startTownAssault(st, h, st.towns[ob.townId]);
+    const t = st.towns[ob.townId];
+    if (ob.owner !== h.owner) startTownAssault(st, h, t);
+    else if (hasGrail(h) && !hasB(t, 'grail')) { // Graal w plecaku: jak w Heroes 3 miasto pyta, czy go tu wbudować
+      const name = bInfo(BUILD_BY_ID.grail, t.faction).name;
+      showDialog(`${h.name} przynosi Graala do miasta ${t.name}. Wznieść tu ${name}? (+${GRAIL_GOLD} złota dziennie, +50% przyrostu stworów; Graal zostaje w mieście na zawsze.)`, [
+        { label: 'Zbuduj', key: 'enter', action: () => { buildGrail(st, t, h); G.go('town', { townId: t.id }); } },
+        { label: 'Nie teraz', key: 'escape', action: () => G.go('town', { townId: t.id }) },
+      ], { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite('grail'), cx, cy, 3) });
+    } else G.go('town', { townId: ob.townId });
   } else if (ob.type === 'bank') {
     if (ob.cleared) { G.screens.adventure.flash(`${BANKS[ob.kind].name}: splądrowane, nic tu już nie ma`); return; }
     startBankAssault(st, h, ob);
@@ -3707,6 +3769,7 @@ function gainExp(st, h, amount, then) {
 // Zakłada artefakt z plecaka (indeks) na pasujące miejsce: najpierw wolne, inaczej zamiana z pierwszym pasującym
 function equipFromBag(h, bi) {
   const id = h.bag[bi]; if (!id) return 'Brak artefaktu';
+  if (!EQUIP_SLOTS.some(s => s.kind === ARTIFACTS[id].kind)) return `${ARTIFACTS[id].name} nie da się założyć`;
   const slots = EQUIP_SLOTS.filter(s => s.kind === ARTIFACTS[id].kind), free = slots.find(s => !h.equip[s.id]) || slots[0];
   const old = h.equip[free.id]; h.equip[free.id] = id; h.bag.splice(bi, 1); if (old) h.bag.splice(bi, 0, old);
   return null;
@@ -3785,7 +3848,7 @@ function dwellingUnits(t, L) {
 // Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
 function weeklyGrowth(t, L, st) {
   const cid = factionOf(t.faction).dw['dw' + L][1], base = CREATURES[cid].growth, W = st && weekInfo(st);
-  return Math.floor(base * (hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) * (t.faction === 'stronghold' ? 1.25 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
+  return Math.floor(base * ((hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) + (hasB(t, 'grail') ? GRAIL_GROWTH : 0)) * (t.faction === 'stronghold' ? 1.25 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
 }
 // Nowy tydzień: przyrost w siedliskach; w Miesiącu Zarazy zamiast przyrostu pula topnieje o połowę
 function townGrowthWeek(t, st) {
@@ -3894,8 +3957,10 @@ function collectIncome(st) {
 const hasB = (t, id) => t.built.includes(id);
 const canAfford = (st, cost, owner = ME) => RESOURCES.every(r => (playerOf(st, owner).resources[r.id] || 0) >= (cost[r.id] || 0));
 const reqMet = (t, B) => B.req.every(r => hasB(t, r));
-function townGold(t) { let g = 0; for (const id of ['hall1', 'hall2', 'hall3', 'hall4']) if (hasB(t, id)) g = BUILD_BY_ID[id].gold; return g; }
-function availableBuildings(t, st = G.state) { return BUILDINGS.filter(B => !hasB(t, B.id) && reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t)))); }
+function townGold(t) { let g = 0; for (const id of ['hall1', 'hall2', 'hall3', 'hall4']) if (hasB(t, id)) g = BUILD_BY_ID[id].gold; return g + (hasB(t, 'grail') ? GRAIL_GOLD : 0); }
+function availableBuildings(t, st = G.state) { return BUILDINGS.filter(B => !B.grail && !hasB(t, B.id) && reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t)))); }
+// Następna budowla do postawienia na miejscu (działka w scenie); budowli Graala nie da się kupić, więc nie ma działki
+const slotNext = (t, slot) => BUILDINGS.find(B => B.slot === slot && !B.grail && !hasB(t, B.id));
 function slotBuilding(t, slot) { let best = null; for (const B of BUILDINGS) if (B.slot === slot && hasB(t, B.id)) best = B; return best; }
 function buildIn(st, t, B) {
   const R = playerOf(st, t.owner).resources;
@@ -3997,6 +4062,28 @@ function siteStamp(st, ob, h) {
   const u = SITES[ob.kind].use, wk = weekIndex(st);
   return u === 'hero' ? [h.id, 1] : u === 'day' ? [h.id, st.dayTotal] : u === 'heroWeek' ? [h.id, wk] : u === 'week' ? ['all', wk] : ['p' + h.owner, 1];
 }
+// --- Graal i obeliski ---
+const obelisksTotal = st => st.objects.filter(o => o.type === 'site' && o.kind === 'obelisk' && !o.dead).length;
+const obelisksSeen = (st, pid) => st.objects.filter(o => o.type === 'site' && o.kind === 'obelisk' && !o.dead && (o.seen || {})['p' + pid] === 1).length;
+const hasGrail = h => !!h && (h.bag || []).includes('grail');
+// Ile kawałków mapy zagadki widzi gracz (wszystkie, gdy odwiedził każdy obelisk)
+function puzzlePieces(st, pid) { const N = obelisksTotal(st), k = obelisksSeen(st, pid), all = PUZZLE_COLS * PUZZLE_ROWS; return N ? (k >= N ? all : Math.floor(all * k / N)) : 0; }
+// Kopanie na polu bohatera (jak w Heroes 3: tylko z pełnymi punktami ruchu, zużywa wszystkie). Zwraca { error } albo { found }.
+function digGrail(st, h) {
+  const n = st.map.n, i = h.y * n + h.x, t = st.map.terrain[i];
+  if (h.boat || t === TER.WATER) return { error: 'Nie da się kopać na wodzie' };
+  if (h.mp < heroMaxMP(h)) return { error: 'Kopać można tylko na początku dnia, z pełnymi punktami ruchu' };
+  if (objectAt(st, i)) return { error: 'Tu nie da się kopać: pole zajmuje obiekt' };
+  if ((st.holes || []).includes(i)) return { error: 'Tu już ktoś kopał' };
+  h.mp = 0; (st.holes = st.holes || []).push(i); MapRender.miniDirty = true;
+  const G2 = st.grail; if (G2 && G2.found < 0 && G2.x === h.x && G2.y === h.y) { G2.found = h.owner; giveArtifact(h, 'grail'); return { found: true }; }
+  return { found: false };
+}
+// Bohater z Graalem w swoim mieście: Graal zostaje wbudowany (jedna budowla Graala na miasto). Zwraca true, gdy powstała.
+function buildGrail(st, t, h) {
+  if (!hasGrail(h) || t.owner !== h.owner || hasB(t, 'grail')) return false;
+  h.bag.splice(h.bag.indexOf('grail'), 1); t.built.push('grail'); return true;
+}
 const siteUsed = (st, ob, h) => { const [k, v] = siteStamp(st, ob, h); return (ob.seen || {})[k] === v; };
 // Skutek odwiedzin (człowiek i SI). Zwraca { text, float?, res?, exp? }; doświadczenie dolicza wołający (okno awansu).
 function useSite(st, h, ob) {
@@ -4021,6 +4108,8 @@ function useSite(st, h, ob) {
     }
     case 'stables': mark(); h.mp += SITE_MP; return { text: `Świeże konie: +${SITE_MP} punktów ruchu na dziś.` };
     case 'lookout': mark(); reveal(st, ob.x, ob.y, LOOKOUT_R, h.owner); MapRender.miniDirty = true; return { text: `Z wieży widać okolicę w promieniu ${LOOKOUT_R} pól.` };
+    case 'obelisk': { mark(); const k = obelisksSeen(st, h.owner), N = obelisksTotal(st);
+      return { puzzle: true, text: k >= N ? 'Ostatni obelisk! Mapa zagadki jest kompletna: krzyżyk wskazuje, gdzie zakopano Graala.' : `Runy na obelisku odsłaniają kolejny fragment mapy zagadki (${k} z ${N}).` }; }
   }
   if (S.stat) { mark(); h.stats[S.stat]++; const P = PRIMARY.find(p => p.id === S.stat); if (S.stat === 'kn') h.mana = Math.min(heroMaxMana(h), h.mana + 10); return { text: `${h.name}: ${P.name.toLowerCase()} +1 (teraz ${h.stats[S.stat]}).`, float: `${P.name} +1` }; }
   return { text: '' };
@@ -4482,9 +4571,10 @@ function resolveBattle(B, fled) {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);
     if (D.bank) res.bankText = lootBank(st, h, D.bank);
-    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; removeHero(st, D.hero); }
+    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) { D.hero.bag.splice(D.hero.bag.indexOf('grail'), 1); h.bag.push('grail'); res.grail = true; } removeHero(st, D.hero); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
   } else {
+    if (D.hero && outcome === 'lose' && hasGrail(h)) { h.bag.splice(h.bag.indexOf('grail'), 1); D.hero.bag.push('grail'); res.grailLost = true; } // Graal przechodzi na zwycięzcę
     if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); res.foeRaised = raiseDead(B, 1); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie
     if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
     else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
@@ -4625,6 +4715,10 @@ function aiPickTarget(st, h, R) {
     }
     if (best >= 0) cands.push({ i: best, score: bestScore, what: 'explore' });
   }
+  // Graal: gdy SI zna całą mapę zagadki, idzie kopać; z Graalem w plecaku wraca do najbliższego własnego miasta
+  const G2 = st.grail;
+  if (G2 && G2.found < 0 && !hasGrail(h) && aiKnowsGrail(st, h.owner) && !st.heroes.some(o => o !== h && o.x === G2.x && o.y === G2.y)) add(G2.y * n + G2.x, 12000, 'dig');
+  if (hasGrail(h)) for (const t of st.towns) if (t.owner === h.owner && !hasB(t, 'grail') && !heroAt(st, t.x, t.y)) add(t.y * n + t.x, 40000, 'grail');
   cands.sort((a, b) => b.score - a.score);
   let sims = 0;
   for (const c of cands) {
@@ -4664,7 +4758,7 @@ function* aiVisit(st, h, i, news) {
   const other = st.heroes.find(o => o !== h && o.x === x && o.y === y), ob = objectAt(st, i);
   if (ob && ob.type === 'town') {
     const t = st.towns[ob.townId];
-    if (t.owner === h.owner) { armyTransfer(t.garrison, h.army); return; }
+    if (t.owner === h.owner) { if (buildGrail(st, t, h)) tell(st, -1, `${ownerName(st, h.owner)} wznosi budowlę Graala w mieście ${t.name}.`); armyTransfer(t.garrison, h.army); return; }
     if (!armySize(t.garrison) && !heroInTown(st, t)) { tell(st, t.owner, `${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
     else yield* aiBattle(st, h, t, news);
     return;
@@ -4678,7 +4772,10 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
   else if (ob.type === 'mine') { tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
+const aiKnowsGrail = (st, pid) => obelisksTotal(st) > 0 && obelisksSeen(st, pid) >= obelisksTotal(st);
 function* aiMoveHero(st, h, news) {
+  const G2 = st.grail; // stoi na miejscu Graala od wczoraj: kopie z pełnymi punktami ruchu
+  if (G2 && G2.found < 0 && h.x === G2.x && h.y === G2.y && aiKnowsGrail(st, h.owner) && digGrail(st, h).found) tell(st, -1, `${h.name} (${ownerName(st, h.owner)}) wykopuje Graala!`);
   for (let plan = 0; plan < 12 && st.heroes.includes(h); plan++) {
     const R = aiReach(st, h), target = aiPickTarget(st, h, R); if (!target) return;
     const path = R.path(target.i); if (!path.length) return;
@@ -4689,6 +4786,7 @@ function* aiMoveHero(st, h, news) {
       yield { kind: 'step', h, fx, fy };
     }
     yield* aiVisit(st, h, target.i, news); h.prev = null;
+    if (target.what === 'dig') return; // kopać można dopiero jutro, z pełnymi punktami ruchu
     if (!st.heroes.includes(h) || !armySize(h.army) && target.what !== 'reinforce') return;
   }
 }
@@ -4790,7 +4888,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0 },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [] },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -4838,6 +4936,8 @@ function migrateSave(st) {
     if (o.type === 'bank' && !Array.isArray(o.guards)) o.guards = o.cleared ? [] : bankGuards(o.kind, st.settings.difficulty);
     if (o.type === 'bank') o.guards = o.guards.filter(([cid, n]) => CREATURES[cid] && n > 0);
   }
+  // Graal i obeliski (zapisy sprzed Graala dostają je teraz)
+  placeGrail(st);
   // zapisy sprzed hot-seat: jeden człowiek (numer 0), powitanie już było
   if (!(st.cur >= 0 && st.players[st.cur] && st.players[st.cur].human)) st.cur = Math.max(0, st.players.findIndex(p => p.human));
   for (const p of st.players) if (p.human && p.welcomed === undefined) p.welcomed = true;
@@ -5322,8 +5422,9 @@ function drawWorldPixel(b, st) {
   }
   const ahead = performance.now() + 4;
   for (let cy = Math.max(0, r0 - 1); cy <= Math.min(nC - 1, r1 + 1) && performance.now() < ahead; cy++) for (let cx = Math.max(0, c0 - 1); cx <= Math.min(nC - 1, c1 + 1) && performance.now() < ahead; cx++) if (!MapRender.has(cx, cy)) MapRender.get(cx, cy);
-  if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
+  drawHoles(b, st, ox, oy, tx0, ty0, tx1, ty1);
+  if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
   for (const h of st.heroes) { const [hx, hy] = heroDrawPos(h); list.push({ y: hy + 0.5, hero: h, hx, hy }); }
   list.sort((a, c) => a.y - c.y);
@@ -5419,6 +5520,7 @@ function tileInfo(st, tx, ty) {
   const map = st.map, n = map.n; if (tx < 0 || ty < 0 || tx >= n || ty >= n) return 'Poza mapą';
   const i = ty * n + tx; if (!human(st).explored[i]) return 'Nieodkryty teren';
   const h = heroAt(st, tx, ty); if (h) return heroTitle(h);
+  if ((st.holes || []).includes(i)) return 'Wykopany dół: tu już ktoś szukał Graala';
   const ob = objectAt(st, i);
   if (ob) {
     if (ob.type === 'monster') return `${qtyName(ob.count)} ${CREATURES[ob.cid].gen}`;
@@ -6207,6 +6309,7 @@ TOWN_LAYOUTS.haven = {
     { X: -250, Z: 1.52, k: 1, w: 76, h: 76 }, { X: -205, Z: 0.97, k: 1, w: 90, h: 80 }, { X: 190, Z: 1.45, k: 1, w: 110, h: 66 },
     { X: 90, Z: 0.98, k: 1, w: 100, h: 92 }, { X: 205, Z: 0.92, k: 1, w: 128, h: 70 },
     { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
+    { X: 0, Z: 1.5, k: 1.1, w: 80, h: 130 }, // budowla Graala
   ],
   props: [
     ['tree', -540, 1.78, 0, 1.3], ['tree', -470, 1.95, 0, 1.3], ['tree', -620, 2.25, 0, 1.4], ['tree', -470, 2.35, 20, 1.4], ['tree', 380, 2.2, 0, 1.4],
@@ -6231,6 +6334,7 @@ TOWN_LAYOUTS.sylvan = {
     { X: 524, Z: 2.57, k: 1, w: 76, h: 76 }, { X: 62, Z: 1, k: 1, w: 100, h: 100 }, { X: 335, Z: 1.98, k: 1, w: 70, h: 120 },
     { X: -146, Z: 0.86, k: 1, w: 100, h: 96 }, { X: 150, Z: 0.93, k: 1, w: 128, h: 72 },
     { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
+    { X: 0, Z: 1.5, k: 1.1, w: 80, h: 130 }, // budowla Graala
   ],
   props: [
     ['tree', -420, 2.2, 0, 1.4], ['tree', -380, 1.6, 0, 1.3], ['tree', 330, 1.55, 0, 1.2], ['tree', 200, 2.9, 0, 1.4], ['tree', -120, 2.9, 0, 1.4],
@@ -6260,6 +6364,7 @@ TOWN_LAYOUTS.barrow = {
     { X: -120, Z: 1.36, k: 1, w: 76, h: 76 }, { X: -170, Z: 1.1, k: 1, w: 90, h: 80 }, { X: 250, Z: 1.25, k: 1, w: 110, h: 60 },
     { X: 170, Z: 0.9, k: 1, w: 100, h: 92 }, { X: 130, Z: 1.3, k: 0.9, w: 128, h: 70 },
     { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
+    { X: 0, Z: 1.5, k: 1.1, w: 80, h: 130 }, // budowla Graala
   ],
   props: [
     ['tree', -420, 2.3, 0, 1.3], ['tree', 380, 2.35, 0, 1.3], ['tree', -360, 1.5, 0, 1.2], ['tree', 360, 1.2, 0, 1.2], ['tree', -260, 0.95, 0, 1.1],
@@ -6284,8 +6389,9 @@ function paintTownWorld(c, t, col, Wd) {
   for (const Rv of [...(Wd.river ? [Wd.river] : []), ...(Wd.rivers || [])]) { riverArt(c, Rv, hzC); if (Rv.chasm) chasmGlow(c, Rv); }
   for (const I of Wd.islands || []) islandArt(c, I, Wd);
   [...Wd.hills.map(Hl => ({ Z: Hl.Z, Hl })), ...(Wd.slabs || []).map(Sb => ({ Z: Sb.Z0, Sb }))].sort((a, b) => b.Z - a.Z).forEach(o => o.Hl ? hillArt(c, o.Hl, hzC) : slabArt(c, o.Sb, hzC));
-  for (const Rd of Wd.roads) roadStyled(c, A, Rd, Wd, fx);
-  if (Wd.plaza) { const [px, py, s] = proj(Wd.plaza.X, Wd.plaza.Z); c.fillStyle = Wd.plazaCol || '#8e8470'; c.beginPath(); c.ellipse(px, py, Wd.plaza.r * s, 12 * s, 0, 0, TAU); c.fill(); c.strokeStyle = 'rgba(40,30,20,.3)'; c.lineWidth = 1; const r = mulberry32(3); for (let i = 0; i < 90; i++) { const a = r() * TAU, d = Math.sqrt(r()); c.strokeRect(px + Math.cos(a) * Wd.plaza.r * s * d - 2, py + Math.sin(a) * 12 * s * d - 1, 4 * s, 2.5 * s); } }
+  const lanes = Wd.roads.filter(Rd => !Rd.main), mains = Wd.roads.filter(Rd => Rd.main); // ścieżki pod drogą główną; brzegi przed nawierzchnią
+  for (const grp of [lanes, mains]) { for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'under'); for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'top'); }
+  if (Wd.plaza) plazaArt(c, Wd);
   const objs = [];
   Wd.slots.forEach((S, i) => objs.push({ Z: S.Z, slot: i, S }));
   Wd.props.forEach(([kind, X, Z, e = 0, k = 1]) => objs.push({ Z, prop: kind, X, e, k }));
@@ -6295,13 +6401,14 @@ function paintTownWorld(c, t, col, Wd) {
   for (const o of objs) {
     if (o.slot !== undefined) {
       const S = o.S, [sx, sy, s] = proj(S.X, S.Z, S.e || 0), sc = s * S.k, w = S.w * sc, h = S.h * sc, B = slotBuilding(t, o.slot);
+      if (!B && o.slot === 15) continue; // miejsce na budowlę Graala: puste, dopóki jej nie ma (bez działki)
       fx.rects[o.slot] = { x: sx - w / 2, y: sy - h, w, h, z: S.Z };
       const box = [-44, -S.h * 0.8 - 50, S.w + 88, S.h * 1.8 + 62], anc = [S.w / 2, S.h], can = { x: 0, b: S.h, w: S.w, h: S.h };
       if (B) {
         castShadow(c, { x: sx - w / 2, b: sy, w, h }, 1);
         const [grp, tier] = groupOf(B), fn = arts[grp];
         if (fn) drawObj(c, (g, tf) => fn(g, A, can, tier, col, tf), box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip);
-      } else { const next = BUILDINGS.find(b2 => b2.slot === o.slot && !hasB(t, b2.id)); if (next) drawObj(c, g => plotArt(g, A, can, bInfo(next, fac).emblem), box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx); }
+      } else { const next = slotNext(t, o.slot); if (next) drawObj(c, g => plotArt(g, A, can, bInfo(next, fac).emblem), box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx); }
     } else if (o.tower) wallTowerArt(c, o.wall, A, o.tower, hzC, fx);
     else if (o.wall) wallSegArt(c, o.wall, A, o.a, o.b, hzC);
     else if (o.bridge) {
@@ -6687,18 +6794,15 @@ TOWN_LAYOUTS.academy = {
   ],
   birds: true, birdCol: 'rgba(30,36,50,.8)', snow: true,
 };
-// ==================== MIASTO: GENERATOR PLANSZ ============================================
-// Każde miasto ma własną planszę wyliczoną z frakcji i nazwy (to samo miasto zawsze wygląda tak samo, zapis gry nic
-// nie przechowuje): typ krajobrazu (dolina z rzeką, jezioro, przepaść, tarasy, wyspy, płaskowyż, krater, wybrzeże),
-// rozmieszczenie 15 budowli, drogi z mostami i schodami, place, drzewa i drobiazgi, pora dnia, pogoda i kolory dachów.
-// Frakcja podaje tylko styl (TOWN_STYLE): wodę, ulubione krajobrazy z wagami, rekwizyty, niebo, pogodę i dachy.
-// Nowa frakcja = TOWN_ART (paleta), BUILD_ART (rysunki budowli), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi) i TOWN_STYLE.
+// ==================== MIASTO: TEREN I DROGI SCEN ==========================================
+// Narzędzia do scen miast (MIASTO: SCENY FRAKCJI): rodzaje wody i nieba, styl frakcji (TOWN_STYLE: woda, tarasy,
+// wzgórza, mury), wysokość gruntu, zasłanianie, główna droga z mostami i schodami oraz bramy w murze.
+// Nowa frakcja = TOWN_ART (paleta), BUILD_ART (rysunki budowli), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi), TOWN_STYLE i TOWN_SCENES.
 //
 // Świat jak w MIASTO: GRAFIKA: X w poziomie (piksele przy Z = 1), Z = odległość (0,8 tuż przy kadrze, 3 daleko), e = wysokość.
 
 // skrót tekstu (FNV) z wymieszaniem bitów: podobne nazwy dają zupełnie różne ziarna (bez tego pierwsze losowania były podobne)
 const strHash = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; };
-const pickW = (r, list) => { let s = 0; for (const [, w] of list) s += w; let x = r() * s; for (const [v, w] of list) if ((x -= w) < 0) return v; return list[0][0]; };
 const between = (r, a, b) => a + r() * (b - a);
 
 // Rodzaje wody (rzeka, jezioro, morze) i przepaści
@@ -6711,120 +6815,16 @@ const TOWN_WATER = {
     chasm: { cols: ['#ff9a3a', '#6a0e04'], line: 'rgba(255,240,160,.6)', edge: 'rgba(40,10,6,.9)', glow: '255,120,30', glowA: 0.2 } },
   ice: { river: ['#d4e4f0', '#7e9cbc'], lake: ['#e0ecf6', '#8aa6c4'], rim: '#b8c4d4', edge: 'rgba(250,252,255,.75)' },
 };
-// Warianty nieba: pora dnia i nastrój (sun: położenie słońca albo księżyca; y przycinane do horyzontu)
-const SKY_DAY = { top: '#2c5a9c', mid: '#6e9ccc', hor: '#e6dcc4', sun: [150, 60], cloudDark: 'rgba(150,165,190,.55)', cloudLit: 'rgba(255,255,250,.75)' };
-const SKY_DAWN = { top: '#1e2238', mid: '#6a5a7a', hor: '#f0a878', sun: [440, 130], cloudDark: 'rgba(70,60,90,.7)', cloudLit: 'rgba(255,170,130,.6)' };
-const SKY_NIGHT = { top: '#06080f', mid: '#141c30', hor: '#3a4260', sun: [420, 70], moon: true, moonR: 22, stars: true, cloudDark: 'rgba(20,24,40,.7)', cloudLit: 'rgba(150,160,200,.25)' };
 const TOWN_STYLE = {
-  haven: { walls: ['stone', 0.5], masonry: true, arche: [['valley', 3], ['coast', 2], ['terraces', 2], ['plateau', 2], ['lake', 1]], water: 'blue',
-    trees: ['tree', 10, 16], deco: [['bush', 3], ['fence', 1], ['rock', 1], ['mushroom', 0.5]], lamp: 'lamp', sand: '#cdb88c',
-    skies: [[TOWN_LAYOUTS.haven.sky, 3], [SKY_DAY, 3], [SKY_DAWN, 2], [SKY_NIGHT, 1]], weather: [['clear', 6], ['rain', 2], ['mist', 1]],
-    slab: { top: ['#6a8a44', '#4e6a34'], face: ['#8a8272', '#4a463e'] }, hill: ['#566c3a', '#344628'],
-    roofs: [TOWN_ART.haven.roof, { hall: '#c9a23a', dw: '#3a5f9e', util: '#5a6070', tower: '#b0432e', wall: '#4a5a7a' }, { hall: '#d8cfb8', dw: '#6a7a3a', util: '#8e5a32', tower: '#7a3a5a', wall: '#6a6a5a' }] },
-  sylvan: { walls: ['palisade', 0.3], arche: [['lake', 3], ['valley', 2], ['islands', 1], ['plateau', 1]], water: 'teal', frame: 0.5,
-    trees: ['tree', 14, 20], deco: [['fern', 3], ['mushroom', 2], ['bush', 2], ['rock', 1]], lamp: 'lamp', sand: '#a89a6a',
-    skies: [[TOWN_LAYOUTS.sylvan.sky, 3], [{ top: '#24402e', mid: '#6a9a6a', hor: '#ece4a8', sun: [200, 70], cloudDark: 'rgba(90,120,90,.5)', cloudLit: 'rgba(255,250,210,.6)' }, 2], [{ ...SKY_NIGHT, hor: '#2a4a3a' }, 1]],
-    weather: [['clear', 5], ['mist', 2], ['rain', 1]], slab: { top: ['#4c7a3a', '#34582a'], face: ['#6a6a50', '#3a3a2a'] }, hill: ['#3a5a2e', '#26401e'],
-    roofs: [TOWN_ART.sylvan.roof, { hall: '#c8a040', dw: '#8a6a30', util: '#6a5a30', tower: '#3e6a8a', wall: '#5a7a3a' }, { hall: '#a8c85a', dw: '#c87a3a', util: '#7a6a40', tower: '#6a8a3e', wall: '#8a6a3a' }] },
-  barrow: { walls: ['iron', 0.45], arche: [['chasm', 3], ['plateau', 2], ['crater', 2], ['valley', 1]], water: 'dark',
-    trees: ['tree', 8, 14], deco: [['grave', 4], ['bones', 2], ['rock', 2], ['fence', 1]], lamp: 'lamp', sand: '#4a4454',
-    skies: [[TOWN_LAYOUTS.barrow.sky, 3], [{ top: '#0a0406', mid: '#2a0a14', hor: '#6a1a2a', sun: [180, 70], moon: true, moonR: 40, stars: true, cloudDark: 'rgba(20,6,10,.7)', cloudLit: 'rgba(200,80,90,.25)' }, 2],
-      [{ top: '#1a1a22', mid: '#3a3a48', hor: '#6a6a78', sun: [420, 80], moon: true, moonR: 18, cloudDark: 'rgba(40,40,50,.7)', cloudLit: 'rgba(160,160,180,.3)' }, 1]],
-    weather: [['mist', 3], ['clear', 2]], slab: { top: ['#4a4454', '#34303e'], face: ['#3a3444', '#1e1b24'] }, hill: ['#34303c', '#1e1b24'],
-    roofs: [TOWN_ART.barrow.roof, { hall: '#6a2a3a', dw: '#4a2030', util: '#3a3440', tower: '#2a1a2a', wall: '#4a3040' }, { hall: '#3a4a50', dw: '#2e3a40', util: '#40444a', tower: '#1e2a30', wall: '#343c44' }] },
-  fortress: { walls: ['palisade', 0.55], arche: [['islands', 4], ['valley', 2], ['lake', 2], ['coast', 1]], water: 'murky',
-    trees: ['tree', 10, 16], deco: [['reeds', 4], ['bush', 1], ['mushroom', 1], ['fence', 1]], lamp: 'lamp', sand: '#6a6a44',
-    skies: [[TOWN_LAYOUTS.fortress.sky, 3], [{ top: '#3a4a44', mid: '#6a7a6a', hor: '#a8b090', sun: [300, 90], cloudDark: 'rgba(70,80,70,.75)', cloudLit: 'rgba(190,200,170,.45)' }, 2], [{ ...SKY_NIGHT, hor: '#3a4a30' }, 1]],
-    weather: [['mist', 4], ['rain', 2], ['clear', 1]], slab: { top: ['#5a6040', '#3e4a2c'], face: ['#5a5a44', '#34342a'] }, hill: ['#4a5a36', '#34422a'],
-    roofs: [TOWN_ART.fortress.roof, { hall: '#6a5a2a', dw: '#5a6a30', util: '#4a4a2a', tower: '#3a5a3a', wall: '#5a4a2a' }, { hall: '#9a8a4a', dw: '#8a5a2a', util: '#6a4a2a', tower: '#4a6a5a', wall: '#7a6a3a' }] },
-  inferno: { walls: ['spiked', 0.5], masonry: true, arche: [['chasm', 3], ['crater', 3], ['plateau', 2], ['valley', 1]], water: 'lava',
-    trees: ['tree', 6, 10], deco: [['spike', 4], ['rock', 2], ['fence', 1]], lamp: 'brazier', sand: '#3a2420',
-    skies: [[TOWN_LAYOUTS.inferno.sky, 3], [{ top: '#2a1a18', mid: '#6a3a2a', hor: '#d8804a', sun: [360, 80], cloudDark: 'rgba(50,30,26,.8)', cloudLit: 'rgba(255,150,80,.35)' }, 2],
-      [{ top: '#000000', mid: '#2a0404', hor: '#8a1a0a', sun: [300, 60], moon: true, moonR: 34, stars: true, cloudDark: 'rgba(20,4,2,.8)', cloudLit: 'rgba(255,90,40,.3)' }, 1]],
-    weather: [['embers', 1]], slab: { top: ['#4a2a24', '#2e1a16'], face: ['#3a1e1a', '#1e0e0c'] }, hill: ['#3a1e1a', '#1e0e0c'],
-    roofs: [TOWN_ART.inferno.roof, { hall: '#3a1a1a', dw: '#5a2a1a', util: '#3a2a26', tower: '#8a3a10', wall: '#4a2a1a' }, { hall: '#a8401a', dw: '#7a3a1a', util: '#4a2a26', tower: '#2a0a0a', wall: '#6a1a16' }] },
-  academy: { walls: ['stone', 0.45], masonry: true, arche: [['terraces', 4], ['plateau', 2], ['lake', 2], ['valley', 1], ['coast', 1]], water: 'ice',
-    trees: ['snowPine', 12, 18], deco: [['iceCrystal', 3], ['rock', 2], ['fence', 1]], lamp: 'lamp', sand: '#c8d0dc',
-    skies: [[TOWN_LAYOUTS.academy.sky, 3], [{ top: '#2a4a8a', mid: '#7aa0d8', hor: '#f0f0f8', sun: [180, 60], cloudDark: 'rgba(170,185,215,.55)', cloudLit: 'rgba(255,255,255,.8)' }, 3],
-      [{ ...SKY_NIGHT, hor: '#2a6a6a', moonR: 18 }, 1]],
-    weather: [['snow', 5], ['clear', 2]], slab: { top: ['#cfd8e4', '#aebacc'], face: ['#8a94a6', '#525a6c'] }, hill: ['#d4dce8', '#a8b4c6'],
-    roofs: [TOWN_ART.academy.roof, { hall: '#7a3a8a', dw: '#5a4a9a', util: '#5a6a8e', tower: '#4a2a7a', wall: '#5a4a8a' }, { hall: '#2a7a8a', dw: '#3a6a9a', util: '#5a6a7a', tower: '#1e5a6a', wall: '#3a5a70' }] },
+  haven: { walls: ['stone', 0.5], masonry: true, water: 'blue', lamp: 'lamp', sand: '#cdb88c',
+    slab: { top: ['#6a8a44', '#4e6a34'], face: ['#8a8272', '#4a463e'] }, hill: ['#566c3a', '#344628'] },
+  sylvan: { walls: ['palisade', 0.3], water: 'teal', lamp: 'lamp', sand: '#a89a6a', slab: { top: ['#4c7a3a', '#34582a'], face: ['#6a6a50', '#3a3a2a'] }, hill: ['#3a5a2e', '#26401e'] },
+  barrow: { walls: ['iron', 0.45], water: 'dark', lamp: 'lamp', sand: '#4a4454', slab: { top: ['#4a4454', '#34303e'], face: ['#3a3444', '#1e1b24'] }, hill: ['#34303c', '#1e1b24'] },
+  fortress: { walls: ['palisade', 0.55], water: 'murky', lamp: 'lamp', sand: '#6a6a44', slab: { top: ['#5a6040', '#3e4a2c'], face: ['#5a5a44', '#34342a'] }, hill: ['#4a5a36', '#34422a'] },
+  inferno: { walls: ['spiked', 0.5], masonry: true, water: 'lava', lamp: 'brazier', sand: '#3a2420', slab: { top: ['#4a2a24', '#2e1a16'], face: ['#3a1e1a', '#1e0e0c'] }, hill: ['#3a1e1a', '#1e0e0c'] },
+  academy: { walls: ['stone', 0.45], masonry: true, water: 'ice', lamp: 'lamp', sand: '#c8d0dc', slab: { top: ['#cfd8e4', '#aebacc'], face: ['#8a94a6', '#525a6c'] }, hill: ['#d4dce8', '#a8b4c6'] },
 };
-// Rola każdego z 15 miejsc: [najbliżej, najdalej] (Z), czy woli wzniesienia, czy to mała budowla przy drodze
-const SLOT_ROLE = [
-  [1.1, 1.7, 0, 0], [1.9, 2.9, 1, 0], [1.4, 2.4, 1, 0], [1.9, 2.9, 1, 0], [1.2, 2.2, 0, 0], [1.4, 2.4, 0, 0], [1.1, 1.9, 0, 0],
-  [1.3, 2.3, 0, 0], [0.86, 1.2, 0, 1], [0.86, 1.25, 0, 1], [0.9, 1.4, 0, 1], [0.9, 1.5, 0, 1], [0.86, 1.3, 0, 1], [0.88, 1.35, 0, 1],
-  [1.2, 2.2, 0, 0], // budowla specjalna frakcji
-];
-const SLOT_ORDER = [1, 0, 3, 2, 5, 7, 4, 6, 14, 13, 12, 11, 10, 8, 9]; // najpierw duże i ważne
 const hillTop = (Hl, X) => Hl.h * Math.pow(Math.max(0, 1 - ((X - Hl.X) / Hl.rx) ** 2), Hl.flat || 0.65);
-
-// --- typy krajobrazu: każdy dopisuje teren do planszy L i strefy pod budowę do T ---
-const ARCHETYPES = {
-  valley(r, St, W, L, T) { // rzeka w poprzek, za nią wzgórza (czasem z płaskim szczytem pod zamek)
-    const Zr = between(r, 1.5, 1.85), tilt = between(r, -0.18, 0.18), wR = between(r, 56, 84), ph = r() * 6, pts = [];
-    for (let i = 0; i <= 8; i++) { const X = -1000 + i * 250; pts.push([X, Zr + tilt * X / 1000 + Math.sin(i * 0.9 + ph) * 0.08]); }
-    L.rivers.push({ w: wR, pts, cols: W.river, edge: W.edge, noReeds: !W.reeds });
-    T.feats.push({ pts, w: wR + 24 }); T.river = { pts, w: wR };
-    for (let k = 0, n = 1 + (r() < 0.6 ? 1 : 0); k < n; k++) { const Hl = { X: between(r, -520, 520), Z: Math.min(2.85, Zr + between(r, 0.5, 0.95)), rx: between(r, 220, 360), h: between(r, 40, 80), cols: St.hill, rock: r() < 0.5, flat: r() < 0.6 ? 0.18 : 0.65 }; L.hills.push(Hl); }
-    T.focus = { X: between(r, -120, 120), Z: between(r, 1.15, 1.3) }; T.entryX = between(r, -70, 70);
-  },
-  lake(r, St, W, L, T) { // jezioro pośrodku, czasem wysepka z pomostem
-    const Lk = { X: between(r, -100, 100), Z: between(r, 1.4, 1.65), rx: between(r, 130, 200), rz: between(r, 0.18, 0.26), cols: W.lake, rim: W.rim, reeds: W.reeds, hot: W.hot };
-    L.lakes.push(Lk); T.ells.push(Lk);
-    if (r() < 0.5) { const I = { X: Lk.X + between(r, -0.2, 0.2) * Lk.rx, Z: Lk.Z + between(r, -0.05, 0.1), rx: Lk.rx * 0.36, rz: Lk.rz * 0.4 }; L.islands.push(I); T.islands.push(I); T.focus = { X: I.X, Z: I.Z }; T.planks = true; }
-    else T.focus = { X: Lk.X + (r() < 0.5 ? -1 : 1) * (Lk.rx + 80), Z: Lk.Z - Lk.rz * 0.4 };
-    if (r() < 0.6) { const Hl = { X: between(r, -500, 500), Z: between(r, 2.45, 2.85), rx: between(r, 240, 360), h: between(r, 40, 80), cols: St.hill, rock: r() < 0.5, flat: 0.2 }; L.hills.push(Hl); }
-    T.entryX = between(r, -60, 60);
-  },
-  chasm(r, St, W, L, T) { // przepaść biegnąca w głąb, most w poprzek, cytadela na skale na końcu
-    L.pj = { hor: Math.round(between(r, 40, 70)), d: 330 };
-    const Xc = between(r, -90, 90), bend = between(r, -140, 140), ph = r() * 6, pts = [];
-    for (let i = 0; i <= 6; i++) pts.push([Xc + Math.sin(i * 1.1 + ph) * 26 + bend * i / 6, 0.78 + i * 0.26, 0, 170 - i * 20]);
-    const C = W.chasm || TOWN_WATER.dark.chasm; L.rivers.push({ w: 150, chasm: true, pts, cols: C.cols, line: C.line, edge: C.edge, glow: C.glow, glowA: C.glowA, noReeds: true });
-    T.feats.push({ pts, w: 190 }); T.chasm = { pts };
-    const Sb = { x0: Xc + bend - between(r, 240, 380), x1: Xc + bend + between(r, 240, 380), Z0: 2.36, Z1: between(r, 2.8, 3.1), e: between(r, 50, 80), ...St.slab, jag: r() * 9 };
-    L.slabs.push(Sb);
-    const side = r() < 0.5 ? -1 : 1; T.focus = { X: Xc + side * between(r, 180, 240), Z: between(r, 1.2, 1.45) }; T.entryX = Xc - side * between(r, 150, 220);
-  },
-  terraces(r, St, W, L, T) { // stok z tarasami jeden nad drugim, schody zygzakiem
-    const n = r() < 0.6 ? 3 : 2; let Z = between(r, 1.3, 1.45), e = 0;
-    for (let k = 0; k < n; k++) { const Z0 = Z, Z1 = k === n - 1 ? 3.3 : Z0 + between(r, 0.38, 0.5); e += between(r, 34, 52) + k * 10; L.slabs.push({ x0: -1600, x1: 1600, Z0, Z1, e, ...St.slab, masonry: St.masonry, jag: St.masonry ? 0 : r() * 9 }); Z = Z1; }
-    T.focus = { X: between(r, -140, 140), Z: between(r, 1.02, 1.15) }; T.entryX = between(r, -80, 80);
-  },
-  islands(r, St, W, L, T) { // mokradło od brzegu do brzegu, budowle na wysepkach połączonych kładkami
-    const Lk = { X: 0, Z: 1.72, rx: 1500, rz: 0.62, cols: W.lake, rim: W.rim, reeds: W.reeds, hot: W.hot }; L.lakes.push(Lk); T.ells.push(Lk);
-    const want = 8 + (r() * 3 | 0);
-    for (let t = 0; t < 200 && T.islands.length < want; t++) {
-      const Z = between(r, 1.15, 2.3), I = { X: between(r, -250, 250) * Z, Z, rx: between(r, 110, 200), rz: between(r, 0.08, 0.13) };
-      if (T.islands.some(o => Math.abs(o.X - I.X) < (o.rx + I.rx) * 0.9 && Math.abs(o.Z - I.Z) < (o.rz + I.rz) * 1.3)) continue;
-      T.islands.push(I); L.islands.push(I);
-    }
-    T.islands.sort((a, b) => a.Z - b.Z); const big = T.islands.reduce((a, b) => (b.rx * b.rz > a.rx * a.rz && b.Z < 1.8 ? b : a), T.islands[0]);
-    T.focus = { X: big.X, Z: big.Z }; T.entryX = between(r, -60, 60); T.planks = true;
-  },
-  plateau(r, St, W, L, T) { // skalny płaskowyż z tyłu, na nim zamek; z przodu miasto na równinie
-    const cx = between(r, -260, 260), hw = between(r, 230, 360);
-    L.slabs.push({ x0: cx - hw, x1: cx + hw, Z0: between(r, 1.9, 2.15), Z1: between(r, 2.6, 2.9), e: between(r, 55, 90), ...St.slab, masonry: St.masonry && r() < 0.5, jag: r() * 9 });
-    if (r() < 0.5) { const Lk = { X: cx + (r() < 0.5 ? -1 : 1) * between(r, 260, 360), Z: between(r, 1.35, 1.6), rx: between(r, 80, 120), rz: between(r, 0.1, 0.15), cols: W.lake, rim: W.rim, reeds: W.reeds, hot: W.hot }; L.lakes.push(Lk); T.ells.push(Lk); }
-    T.focus = { X: cx + between(r, -120, 120), Z: between(r, 1.15, 1.35) }; T.entryX = between(r, -70, 70);
-  },
-  crater(r, St, W, L, T) { // pierścień skał dookoła, pośrodku jama (lawa, ciemna woda albo lód)
-    L.pj = { hor: Math.round(between(r, 60, 80)), d: 310 };
-    for (const X of [-560, 0, 560]) L.hills.push({ X: X + between(r, -80, 80), Z: between(r, 2.55, 2.9), rx: between(r, 260, 380), h: between(r, 60, 100), cols: St.hill, rock: true, flat: 0.5 });
-    const Lk = { X: between(r, -90, 90), Z: between(r, 1.5, 1.75), rx: between(r, 110, 160), rz: between(r, 0.15, 0.22), cols: W.lake, rim: W.rim, hot: W.hot, pit: true }; L.lakes.push(Lk); T.ells.push(Lk);
-    T.focus = { X: Lk.X + (r() < 0.5 ? -1 : 1) * (Lk.rx + between(r, 90, 140)), Z: Lk.Z - Lk.rz * 0.3 }; T.entryX = between(r, -70, 70);
-  },
-  coast(r, St, W, L, T) { // morze z jednej strony, plaża, pomost i łodzie
-    const s = r() < 0.5 ? -1 : 1, a = between(r, 110, 170), b = between(r, 130, 180), ph = r() * 6, xAt = Z => s * (a + b * (Z - 0.8) + Math.sin(Z * 4 + ph) * 18);
-    const pts = [0.72, 0.9, 1.1, 1.35, 1.65, 2, 2.5, 3.1, 3.8, 4.6].map(Z => [xAt(Z), Z]);
-    L.seas.push({ side: s, pts, cols: W.lake, sand: St.sand }); T.sea = { s, xAt };
-    const Zp = between(r, 1.15, 1.45), x0 = xAt(Zp); L.roads.push({ w: 26, planks: true, style: 'planks', pts: [[x0 - s * 40, Zp], [x0 + s * 170, Zp + 0.04]] }); T.feats.push({ pts: [[x0 - s * 40, Zp], [x0 + s * 170, Zp + 0.04]], w: 30 });
-    for (let k = 0; k < 2 + (r() * 2 | 0); k++) { const Z = between(r, 1.2, 2.6); L.props.push(['boat', xAt(Z) + s * between(r, 90, 200) * Z, Z]); }
-    if (r() < 0.6) { const Hl = { X: -s * between(r, 250, 520), Z: between(r, 2.4, 2.85), rx: between(r, 240, 360), h: between(r, 40, 80), cols: St.hill, rock: r() < 0.5, flat: 0.2 }; L.hills.push(Hl); }
-    T.focus = { X: -s * between(r, 30, 140), Z: between(r, 1.15, 1.35) }; T.entryX = -s * between(r, 20, 90);
-  },
-};
 
 // --- sprawdzanie miejsca: teren, woda, drogi, zasłanianie ---
 function townElev(T, L, X, Z) { // wysokość gruntu: taras albo płaskowyż pod punktem (wzgórza tylko przez strefy na grzbiecie)
@@ -6851,42 +6851,6 @@ function townBlocked(T, L, X, Z, e, halfW, onIsland) {
 function slotRect(S) { const [sx, sy, s] = proj(S.X, S.Z, S.e), sc = s * S.k, w = S.w * sc, h = S.h * sc; return { x: sx - w / 2, y: sy - h, w, h, sx, sy }; }
 const rectOverlap = (a, b) => { const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y); return w > 0 && h > 0 ? (w * h) / Math.min(a.w * a.h, b.w * b.h) : 0; };
 
-// Strefy pod budowę: ziemia, tarasy i płaskowyże, grzbiety wzgórz, wyspy (pozycje losowane w strefach)
-function townZones(T, L) {
-  const Z = [{ x0: -3000, x1: 3000, z0: 0.86, z1: 2.95, e: null, tag: 'ground' }];
-  for (const Sb of L.slabs) Z.push({ x0: Sb.x0, x1: Sb.x1, z0: Sb.Z0 + 0.02, z1: Math.min(Sb.Z1 - 0.04, 2.95), e: Sb.e, tag: 'high' });
-  for (const Hl of L.hills) if (hillTop(Hl, Hl.X) > 20 && Hl.Z < 2.95) Z.push({ x0: Hl.X - Hl.rx * 0.5, x1: Hl.X + Hl.rx * 0.5, z0: Hl.Z - 0.004, z1: Hl.Z - 0.004, e: X => hillTop(Hl, X), tag: 'high', hill: Hl });
-  for (const I of T.islands) Z.push({ x0: I.X - I.rx * 0.75, x1: I.X + I.rx * 0.75, z0: I.Z - I.rz * 0.5, z1: I.Z + I.rz * 0.35, e: 0, tag: 'island' });
-  return Z;
-}
-function placeTownSlots(r, T, L, dims) {
-  const zones = townZones(T, L), placed = [], margin = L.frame ? 56 : 14;
-  for (const i of SLOT_ORDER) {
-    const [z0, z1, high, small] = T.roles[i], D = dims[i]; let best = null;
-    // coraz luźniejsze wymagania: zasłonięcie, a potem też głębokość (cała plansza), zanim dopuścimy nakładanie się budowli
-    for (const [thr, tries, anyZ] of [[0.12, 140, 0], [0.3, 140, 0], [0.5, 200, 1], [0.6, 400, 1], [2, 200, 1]]) {
-      for (let t = 0; t < tries; t++) {
-        const cand = anyZ ? zones : zones.filter(zn => zn.z1 >= z0 - 0.3 && zn.z0 <= z1 + 0.3), zn = pickW(r, (cand.length ? cand : zones).map(zn => [zn, zn.tag === 'high' ? (high ? 5 : 0.6) : zn.tag === 'island' ? 2 : 1]));
-        const Z = zn.z0 === zn.z1 ? zn.z0 : anyZ ? between(r, zn.z0, zn.z1) : between(r, Math.max(zn.z0, z0 - 0.15), Math.min(zn.z1, z1 + 0.15)); if (!(Z >= zn.z0 - 1e-6 && Z <= zn.z1 + 1e-6)) continue;
-        const wS = D.w * D.k / Z, lo = (margin + wS / 2 - 296) * Z, hi = (592 - margin - wS / 2 - 296) * Z, X = between(r, Math.max(lo, zn.x0), Math.min(hi, zn.x1)); if (!(X >= lo && X <= hi && X >= zn.x0 && X <= zn.x1)) continue;
-        if (zn.hill && Math.abs(X - zn.hill.X) + D.w * D.k / 2 > zn.hill.rx * (zn.hill.flat < 0.3 ? 0.8 : 0.5)) continue; // budowla mieści się na grzbiecie
-        const e = zn.e === null ? townElev(T, L, X, Z) : typeof zn.e === 'function' ? zn.e(X) : zn.e, S = { X, Z, e, k: D.k, w: D.w, h: D.h }, R = slotRect(S);
-        if (R.y < (L.frame === 'cave' ? 30 : 12) || R.sy > 432 || townBlocked(T, L, X, Z, e, D.w * D.k / 2, zn.tag === 'island')) continue;
-        let ov = 0, near = 999; for (const P of placed) { ov = Math.max(ov, rectOverlap(R, P.R)); near = Math.min(near, Math.hypot(R.sx - P.R.sx, (R.sy - R.h / 2) - (P.R.sy - P.R.h / 2))); }
-        if (ov > thr) continue;
-        let score = r() * 0.35 - Math.abs(Z - (z0 + z1) / 2) * 1.2 + Math.min(near, 160) / 320 - ov * 3 + (high && e > 0 ? 0.8 : 0);
-        if (i === 0) score -= Math.abs(X - T.focus.X) / 220 + (T.hallHigh ? (e > 0 ? -1 : 1) : Math.abs(Z - T.focus.Z) * 2.5);
-        if (i === 1 && T.flank) score += T.flank * (R.sx - 296) / 200;
-        if (small && T.main) score -= segDist(X, Z, T.main) / 500;
-        if (!best || score > best.score) best = { S, R, score };
-      }
-      if (best) break;
-    }
-    if (!best) { const S = { ...TOWN_LAYOUTS.haven.slots[i], e: 0, k: D.k, w: D.w, h: D.h }; best = { S, R: slotRect(S) }; } // awaryjnie: miejsce z klasycznej planszy
-    best.S.flip = r() < 0.5; L.slots[i] = best.S; placed.push({ i, R: best.R });
-    if (i === 0) townMainRoad(r, T, L); // po ratuszu i zamku: główna droga, której reszta budowli nie zastawia
-  }
-}
 // Główna droga: od brzegu kadru przez plac przed ratuszem do zamku; mosty nad rzeką i przepaścią, schody na tarasy
 function townMainRoad(r, T, L) {
   const hall = L.slots[0], fort = L.slots[1], way = [[T.entryX, 0.78, 0, 58]], bridges = [];
@@ -6912,57 +6876,7 @@ function townMainRoad(r, T, L) {
   const steps = way.some(p => p[2] > 2);
   L.roads.push({ w: 44, steps, planks: !!T.planks, pts: way, main: true }); T.main = way.map(p => [p[0], p[1]]);
   T.feats.push({ pts: T.main, w: 44 }); L.bridges.push(...bridges);
-  if (!hall.e && !T.planks) { L.plaza = { X: hall.X, Z: hall.Z - 0.09, r: between(r, 85, 120) }; T.ells.push({ X: L.plaza.X, Z: L.plaza.Z, rx: L.plaza.r, rz: 0.05 }); }
-}
-// Drzewa, drobiazgi i latarnie w wolnych miejscach (nie na drogach, w wodzie ani przed budowlami)
-function townProps(r, T, L, St) {
-  const rects = L.slots.map(slotRect), free = (X, Z, e, w, h) => {
-    if (townBlocked(T, L, X, Z, e, 12, inIsland(T, X, Z, 0.9))) return false;
-    const [sx, sy, s] = proj(X, Z, e), R = { x: sx - w * s / 2, y: sy - h * s, w: w * s, h: h * s }; if (sx < 4 || sx > 588 || sy > 436) return false;
-    return !rects.some(Q => rectOverlap(R, Q) > 0.08);
-  };
-  const [tree, n0, n1] = St.trees, n = Math.round(between(r, n0, n1));
-  for (let k = 0, t = 0; k < n && t < 400; t++) { const Z = between(r, 0.9, 3), X = between(r, -300, 300) * Z, e = townElev(T, L, X, Z), edge = Math.abs(X / Z) / 300; if (r() > 0.25 + edge && Z < 2.2) continue; if (free(X, Z, e, 36, 50)) { L.props.push([tree, X, Z, e, between(r, 1.1, 1.45)]); k++; } }
-  for (let k = 0, t = 0, m = 6 + (r() * 6 | 0); k < m && t < 300; t++) { const Z = between(r, 0.86, 2.2), X = between(r, -290, 290) * Z, e = townElev(T, L, X, Z); if (free(X, Z, e, 30, 22)) { L.props.push([pickW(r, St.deco), X, Z, e]); k++; } }
-  for (let i = 1; i < T.main.length; i++) { const p = L.roads[L.roads.length - 1].pts[i]; if (p[2] || i % 2 || T.planks) continue; const X = p[0] + (r() < 0.5 ? -1 : 1) * 30, e = townElev(T, L, X, p[1]); if (free(X, p[1], e, 12, 40)) L.props.push([St.lamp, X, p[1], e]); }
-}
-// Cała plansza miasta: typ krajobrazu, budowle, drogi i ścieżki do drzwi, rekwizyty, niebo, pogoda, dachy, mieszkańcy i ozdobne istoty
-function generateTownLayout(fac, seed, force) {
-  const St = TOWN_STYLE[fac] || TOWN_STYLE.haven, B = TOWN_LAYOUTS[fac] || TOWN_LAYOUTS.haven, Bm = TOWN_BIOME[fac] || TOWN_BIOME.haven, r = mulberry32(seed), W = TOWN_WATER[St.water] || TOWN_WATER.blue;
-  const arche = force || pickW(r, St.arche), wx = pickW(r, St.weather), sky = { ...pickW(r, St.skies) };
-  const L = { arche, seed, pj: null, frame: St.frame && r() < St.frame ? St.frameKind || 'forest' : null, fac, mountains: B.mountains, forest: B.forest, ground: B.ground, haze: B.haze, desat: B.desat,
-    tuft: B.tuft || Bm.tuft, tufts: Bm.tufts, plazaCol: Bm.plaza,
-    hills: [], rivers: [], lakes: [], islands: [], slabs: [], seas: [], roads: [], bridges: [], props: [], slots: [], bone: fac === 'barrow',
-    birds: B.birds, birdCol: B.birdCol, mist: wx === 'mist', rain: wx === 'rain', snow: wx === 'snow', embers: wx === 'embers', spores: wx === 'spores', dust: wx === 'dust' };
-  const T = { feats: [], ells: [], islands: [], focus: { X: 0, Z: 1.25 }, entryX: 0, frozen: St.water === 'ice' };
-  L.pj = { hor: Math.round(between(r, 62, 112)), d: Math.round(between(r, 262, 326)) }; // kamera: wyżej albo niżej, bliżej albo dalej
-  ARCHETYPES[arche](r, St, W, L, T);
-  for (const Hl of L.hills) Hl.tufts = Bm.tufts > 0.3; // trawa na zboczach tylko tam, gdzie rośnie też na ziemi
-  T.roles = SLOT_ROLE.map(x => x.slice()); T.flank = r() < 0.45 ? (r() < 0.5 ? -1 : 1) : 0; // zamek z tyłu albo z boku planszy
-  if (T.flank) T.roles[1] = [1.35, 2.1, 1, 0];
-  if (L.slabs.length && r() < 0.4) { T.roles[0] = [1.3, 2.5, 1, 0]; T.hallHigh = true; } // ratusz na tarasie albo płaskowyżu
-  T.focus.X += between(r, -90, 90);
-  if (St.walls && r() < St.walls[1] && arche !== 'terraces') { // mur miejski w poprzek planszy (brama tam, gdzie przejdzie droga)
-    const Zw = between(r, 1.72, 2.15), ph = r() * 6;
-    if (!T.river || T.river.pts.every(p => Math.abs(p[1] - Zw) > 0.28)) {
-      const pts = []; for (let X = -1500; X <= 1500; X += 50) pts.push([X, Zw + Math.sin(X / 260 + ph) * 0.06]);
-      L.walls = [{ style: St.walls[0], h: St.walls[0] === 'iron' ? 16 : between(r, 24, 36), pts }]; T.feats.push({ pts, w: 30 });
-    }
-  }
-  usePJ(L); const hor = proj(0, 4.4)[1];
-  sky.sun = [between(r, 90, 500), Math.min(sky.sun[1], hor - 28)]; sky.seed = seed; L.sky = sky; L.ridge = [1 + (seed % 997), 3 + (seed % 991), hor + 12];
-  L.art = { ...(TOWN_ART[fac] || TOWN_ART.haven), roof: pickW(r, St.roofs.map(x => [x, 1])) };
-  placeTownSlots(r, T, L, B.slots);
-  townPaths(r, T, L, Bm);
-  townProps(r, T, L, St);
-  if (L.walls) townWallGates(r, T, L);
-  townFolk(r, T, L, Bm);
-  const F = T.focus;
-  L.floaters = fac === 'sylvan' || fac === 'fortress' ? [{ kind: 'wisp', X: F.X, Z: F.Z + 0.2, e: 18, n: 5, spread: 200, spreadZ: 0.2 }]
-    : fac === 'barrow' ? [{ kind: 'ghost', X: F.X, Z: F.Z + 0.1, e: 40, n: 3, spread: 120, spreadZ: 0.25 }]
-    : fac === 'inferno' ? [{ kind: 'ember', X: F.X, Z: F.Z + 0.2, e: 10, n: 10, spread: 160, spreadZ: 0.4 }]
-    : fac === 'dungeon' ? [{ kind: 'spore', X: F.X, Z: F.Z + 0.25, e: 20, n: 8, spread: 220, spreadZ: 0.3 }] : [];
-  usePJ(null); return L;
+  if (!hall.e && !T.planks) { L.plaza = { X: hall.X, Z: hall.Z - 0.09, r: between(r, 85, 120) }; T.ells.push({ X: L.plaza.X, Z: L.plaza.Z, rx: L.plaza.r, rz: L.plaza.r * 0.3 * hall.Z / (PJ.d || 280) }); }
 }
 // Mur: odcinki w wodzie, za wzgórzem albo na tarasie znikają, na drodze jest brama z dwiema basztami, co kilka odcinków baszta
 function townWallGates(r, T, L) {
@@ -6978,13 +6892,6 @@ function townWallGates(r, T, L) {
     else if (i % 6 === 3 && Wl.style !== 'palisade' && Wl.style !== 'iron') towers.push(s[1]);
   }
   Wl.segs = segs.filter(Array.isArray); Wl.towers = towers;
-}
-const TownGenCache = new Map();
-// Plansza miasta t (z pamięci): ziarno z frakcji i nazwy, więc zdobyte miasto innej frakcji dostaje planszę swojej frakcji
-function townLayout(t) {
-  const seed = strHash(t.faction + ':' + (t.name || t.id)); let L = TownGenCache.get(seed);
-  if (!L) { L = generateTownLayout(t.faction, seed); TownGenCache.set(seed, L); if (TownGenCache.size > 40) TownGenCache.delete(TownGenCache.keys().next().value); }
-  return L;
 }
 // ==================== MIASTO: LOCH I CYTADELA ==============================================
 // Loch: ciemne skały, stalagmity, świecące grzyby i fioletowe światła w szczelinach okien.
@@ -7153,18 +7060,8 @@ TOWN_LAYOUTS.stronghold = {
 TOWN_WATER.glow = { river: ['#5a3a8a', '#0e0820'], lake: ['#5a4a9a', '#0e0a24'], rim: '#2a2434', edge: 'rgba(170,120,255,.45)',
   chasm: { cols: ['#7a4ab8', '#0a0418'], line: 'rgba(210,170,255,.5)', edge: 'rgba(10,4,20,.9)', glow: '150,90,255', glowA: 0.18 } };
 TOWN_WATER.oasis = { river: ['#6ab0a8', '#1e5a62'], lake: ['#7ac0b8', '#1e5a62'], rim: '#a89a5a', edge: 'rgba(240,240,210,.5)', reeds: true };
-TOWN_STYLE.dungeon = { walls: ['spiked', 0.45], masonry: true, arche: [['chasm', 3], ['crater', 2], ['plateau', 2], ['lake', 2], ['terraces', 1]], water: 'glow',
-  trees: ['glowShroom', 10, 16], deco: [['stalagmite', 4], ['rock', 2], ['bones', 1]], lamp: 'brazier', sand: '#3e3848',
-  skies: [[TOWN_LAYOUTS.dungeon.sky, 3], [{ top: '#0a0612', mid: '#2a1a3a', hor: '#7a3a5a', sun: [200, 80], moon: true, moonR: 40, cloudDark: 'rgba(30,14,34,.8)', cloudLit: 'rgba(220,100,160,.3)' }, 2],
-    [{ top: '#101018', mid: '#2a2a3a', hor: '#5a5a70', sun: [300, 90], cloudDark: 'rgba(30,30,44,.8)', cloudLit: 'rgba(150,150,190,.3)' }, 1]],
-  weather: [['spores', 3], ['mist', 2]], slab: { top: ['#4a4452', '#34303c'], face: ['#3a3444', '#1e1b24'] }, hill: ['#3a3444', '#1e1b24'],
-  roofs: [TOWN_ART.dungeon.roof, { hall: '#5a1a2a', dw: '#4a1a24', util: '#3a3040', tower: '#2a0e18', wall: '#3a1a24' }, { hall: '#1e3a4a', dw: '#2a3a4a', util: '#34383e', tower: '#14283a', wall: '#24303a' }] };
-TOWN_STYLE.stronghold = { walls: ['palisade', 0.5], arche: [['plateau', 3], ['valley', 2], ['crater', 2], ['lake', 1], ['coast', 1]], water: 'oasis',
-  trees: ['acacia', 6, 11], deco: [['cactus', 3], ['bones', 2], ['rock', 2], ['totem', 1]], lamp: 'brazier', sand: '#e0c090',
-  skies: [[TOWN_LAYOUTS.stronghold.sky, 3], [{ top: '#3a1a2a', mid: '#b04a2a', hor: '#f8b050', sun: [460, 120], cloudDark: 'rgba(90,40,40,.6)', cloudLit: 'rgba(255,180,100,.7)' }, 2],
-    [{ ...SKY_NIGHT, hor: '#6a4a3a' }, 1]],
-  weather: [['clear', 4], ['dust', 2]], slab: { top: ['#d0a878', '#b08858'], face: ['#b07a4a', '#6a4424'] }, hill: ['#c89a68', '#9a6a40'],
-  roofs: [TOWN_ART.stronghold.roof, { hall: '#b8903a', dw: '#8a5a2a', util: '#6a5a3a', tower: '#4a2a1a', wall: '#8a6a3a' }, { hall: '#3a5a7a', dw: '#8a3a1a', util: '#7a5a34', tower: '#2a4a5a', wall: '#6a3a2a' }] };
+TOWN_STYLE.dungeon = { walls: ['spiked', 0.45], masonry: true, water: 'glow', lamp: 'brazier', sand: '#3e3848', slab: { top: ['#4a4452', '#34303c'], face: ['#3a3444', '#1e1b24'] }, hill: ['#3a3444', '#1e1b24'] };
+TOWN_STYLE.stronghold = { walls: ['palisade', 0.5], water: 'oasis', lamp: 'brazier', sand: '#e0c090', slab: { top: ['#d0a878', '#b08858'], face: ['#b07a4a', '#6a4424'] }, hill: ['#c89a68', '#9a6a40'] };
 // ==================== MIASTO: BUDOWLE GŁÓWNE FRAKCJI ======================================
 // Ratusz (4 poziomy), fort (3), gildia (5), karczma, rynek, kuźnia i magazyn. Każda frakcja ma własną architekturę
 // i sylwetkę: Przystań to zamek z fosą, Knieja żyjące drzewa, Kurhan kopce i obeliski, Twierdza pale i schodkowe
@@ -8011,7 +7908,7 @@ Object.assign(BUILD_ART.stronghold, {
 // ==================== MIASTO: TEREN, ŚCIEŻKI I MIESZKAŃCY FRAKCJI ===========================
 // Każda frakcja ma własny kraj (TOWN_BIOME): ziemię (łąka z polami, mech, martwa ziemia, bagno, popiół z lawą, śnieg,
 // skalne dno groty, step), las albo skały na horyzoncie, wygląd drogi i ścieżek, mieszkańców i straż przed zamkiem.
-// Generator łączy drzwi każdej budowli ścieżką z główną drogą (bez brodzenia przez rzekę i chodzenia za budowlami),
+// Sceny łączą drzwi każdej budowli ścieżką z główną drogą (bez brodzenia przez rzekę i chodzenia za budowlami),
 // a mieszkańcy chodzą tymi ścieżkami od bramy miasta do budowli i znikają w drzwiach.
 
 const TOWN_BIOME = {
@@ -8032,19 +7929,6 @@ const TOWN_BIOME = {
   stronghold: { ground: 'sand', far: 'mesas', road: 'track', lane: 'track', mainW: 0.85, laneW: 18, wiggle: 0.3, tufts: 0.2, tuft: ['rgba(110,80,30,.35)', 'rgba(200,190,120,.25)'],
     folk: ['goblin', 'orc', 'goblin', 'wolf'], guard: 'orc', plaza: '#c49c6c' },
 };
-// Krajobrazy pasujące do kraju frakcji (zamiast dowolnych): dolina rzeki i pola, polana nad jeziorem w puszczy, cmentarna
-// przepaść, bagno z wysepkami, lawa, ośnieżone tarasy, podziemna grota, stołowe góry i oaza
-TOWN_STYLE.haven.arche = [['valley', 4], ['coast', 2], ['terraces', 1], ['plateau', 1]];
-Object.assign(TOWN_STYLE.sylvan, { arche: [['lake', 4], ['valley', 2], ['islands', 1]], frame: 0.7 });
-TOWN_STYLE.barrow.arche = [['chasm', 3], ['crater', 2], ['plateau', 2]];
-TOWN_STYLE.fortress.arche = [['islands', 5], ['lake', 3]];
-TOWN_STYLE.inferno.arche = [['chasm', 3], ['crater', 3], ['plateau', 1]];
-TOWN_STYLE.academy.arche = [['terraces', 4], ['plateau', 2], ['lake', 1]];
-TOWN_STYLE.stronghold.arche = [['plateau', 3], ['crater', 2], ['lake', 2]];
-// Loch leży pod ziemią: nad miastem sklepienie groty zamiast nieba
-Object.assign(TOWN_STYLE.dungeon, { arche: [['chasm', 3], ['crater', 2], ['lake', 2], ['plateau', 2]], frame: 1, frameKind: 'cave',
-  skies: [[{ cave: true, top: '#07050c', mid: '#1a1226', hor: '#3a2a4a', sun: [300, 200] }, 3], [{ cave: true, top: '#05080c', mid: '#121e26', hor: '#26404a', sun: [300, 200] }, 2],
-    [{ cave: true, top: '#0c0508', mid: '#26121c', hor: '#4a2a36', sun: [300, 200] }, 1]] });
 
 // --- ziemia frakcji: szczegóły malowane na płaszczyźnie gruntu ---
 function groundDetail(c, Wd, fx) {
@@ -8132,7 +8016,7 @@ function farBand(c, Wd, hazeCol) {
       c.fillStyle = shadeHex(col, 0.18); c.fillRect(sx - w / 2, sy - h, w, Math.max(1, 3 * s)); c.strokeStyle = 'rgba(80,40,20,.3)'; c.lineWidth = 1; for (let k = 1; k < 4; k++) { const y = sy - h + k * h / 4; c.beginPath(); c.moveTo(sx - w / 2 - h * 0.12 * k, y); c.lineTo(sx + w / 2 + h * 0.15 * k, y); c.stroke(); }
       fillPoly(c, [[sx + w * 0.2, sy - h], [sx + w / 2, sy - h], [sx + w / 2 + h * 0.6, sy], [sx + w * 0.35, sy]], 'rgba(60,20,10,.22)'); }
   }
-  const y0 = proj(0, 4.6)[1], hz = c.createLinearGradient(0, y0 - 30, 0, y0 + 26); hz.addColorStop(0, 'rgba(0,0,0,0)'); hz.addColorStop(1, hazeCol); c.globalAlpha = 0.45; c.fillStyle = hz; c.fillRect(8, y0 - 30, 576, 56); c.globalAlpha = 1;
+  const y0 = proj(0, 4.6)[1], hz = c.createLinearGradient(0, y0 - 30, 0, y0 + 26); const [hr, hg, hb] = hexRgb(hazeCol); hz.addColorStop(0, `rgba(${hr},${hg},${hb},0)`); hz.addColorStop(0.55, hazeCol); hz.addColorStop(1, `rgba(${hr},${hg},${hb},0)`); c.globalAlpha = 0.45; c.fillStyle = hz; c.fillRect(8, y0 - 30, 576, 56); c.globalAlpha = 1;
 }
 
 // --- Loch: grota zamiast nieba (skalna ściana w głębi, smugi światła z otworów) i sklepienie ze stalaktytami ---
@@ -8170,16 +8054,16 @@ function caveFrame(c, fx, seed) {
 
 // --- drogi i ścieżki w stylu frakcji: płyty, bruk, deski, bazalt z lawą, ubity śnieg, piach z koleinami ---
 const ROAD_LOOK = {
-  cobble: { base: ['#aaa08a', '#7e7664'], edge: 'rgba(50,42,30,.5)', tile: [11, 7, 'rgba(50,40,28,.4)'], curb: 'rgba(230,222,200,.45)' },
-  dirt: { base: ['#a88a5e', '#7e6644'], soft: 'rgba(120,96,60,.35)', specks: ['rgba(60,40,20,.35)', 'rgba(255,240,200,.15)'] },
-  trail: { base: ['#7e6644', '#5e4a2e'], soft: 'rgba(90,70,40,.35)', specks: ['rgba(40,26,12,.4)', 'rgba(210,150,60,.4)'] },
-  flag: { base: ['#5e5866', '#403c48'], edge: 'rgba(8,6,12,.6)', tile: [20, 12, 'rgba(10,8,14,.6)'], jag: 1, bones: true },
-  planks: { base: ['#8a6a40', '#5e4424'], edge: 'rgba(30,18,6,.7)', planks: 6, posts: true },
-  basalt: { base: ['#2e2426', '#1a1214'], edge: 'rgba(0,0,0,.6)', tile: [16, 12, 'rgba(255,110,30,.6)'], jag: 1, lava: true },
-  ice: { base: ['#dce8f4', '#a8bcd2'], banks: '#f8fbff', tile: [18, 12, 'rgba(110,140,180,.5)'], shine: true },
-  snow: { base: ['#dfe7f0', '#b0c0d4'], banks: '#fbfdff', prints: true },
-  slab: { base: ['#716880', '#4c4458'], edge: 'rgba(190,150,255,.4)', tile: [22, 16, 'rgba(8,4,14,.65)'], jag: 0.6, crystals: true },
-  track: { base: ['#dcc090', '#b8966a'], soft: 'rgba(150,110,60,.4)', ruts: 'rgba(100,66,30,.55)', specks: ['rgba(110,80,50,.4)', 'rgba(255,245,220,.3)'] },
+  cobble: { stones: ['#b8ae96', '#a69c86', '#968d79', '#c4bba4', '#aca28a'], mortar: '#5a5244', tile: [9, 8], border: '#3a3226', curb: '#d6ceb6' },
+  dirt: { dirt: ['#6e5432', '#927448', '#b09264'], pebbles: ['#4e3c24', '#d8c49a'], border: '#5a4428', grass: '#4e6a30' },
+  trail: { dirt: ['#5e4a2e', '#76603e', '#8a7250'], pebbles: ['#3e2e18', '#a08a60'], border: '#3a2a16', grass: '#3a5a26' },
+  flag: { stones: ['#6e6878', '#625c6c', '#7a7484', '#57515f'], mortar: '#221e28', tile: [12, 10], jag: 1, border: '#0c0a10', curb: '#8a8494', bones: true },
+  planks: { plank: ['#8a6a40', '#7a5c36', '#96764a'], gapCol: '#2a1a0a', border: '#24160a', planks: 6, posts: true },
+  basalt: { stones: ['#4a3a3a', '#3e3030', '#544242', '#362a2a'], mortar: '#1a1010', tile: [12, 10], jag: 1, border: '#120a0a', lava: true },
+  ice: { stones: ['#e6eff8', '#d6e3f0', '#eef4fb', '#cddbeb'], mortar: '#b0c2d8', tile: [12, 10], border: '#8ea4c0', curb: '#fbfdff', banks: '#f4f8fc', shine: true },
+  snow: { dirt: ['#c8d4e2', '#dce5ef', '#eef3f8'], pebbles: ['#9aaac0', '#ffffff'], border: '#a4b4c8', banks: '#fbfdff', prints: true },
+  slab: { stones: ['#716880', '#655c74', '#7c7390', '#5c546a'], mortar: '#241c2e', tile: [14, 11], jag: 0.6, border: '#0a0610', curb: '#8a80a0', crystals: true },
+  track: { dirt: ['#b8966a', '#ceb084', '#dcc094'], pebbles: ['#8a6a44', '#f0e0c0'], border: '#8a6840', grass: '#9a8a4a', ruts: '#94744a' },
 };
 // Punkty co `step` jednostek świata wzdłuż łamanej: [X, Z, e, szerokość, nx, nz] (n = kierunek w poprzek drogi)
 function pathFrames(pts, step, w0) {
@@ -8194,39 +8078,77 @@ function pathFrames(pts, step, w0) {
   return out;
 }
 const pathAt = (F, o) => proj(F[0] + F[4] * o, F[1] + F[5] * o / 300, F[2]);
-function roadStyled(c, A, Rd, Wd, fx) {
-  const S = ROAD_LOOK[Rd.style]; if (!S) return roadArtW(c, A, Rd);
-  const pts = subdiv(Rd.pts, 5), line = (E, col, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); };
-  if (S.banks) { const [L2, R2] = ribbon(pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) * 1.45]), Rd.w * 1.45); ribbonPath(c, L2, R2); c.fillStyle = S.banks; c.fill(); }
-  if (S.soft) { const [L2, R2] = ribbon(pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) * 1.3]), Rd.w * 1.3); ribbonPath(c, L2, R2); c.fillStyle = S.soft; c.fill(); }
-  const [L, R] = ribbon(pts, Rd.w), ys = [...L, ...R].map(p => p[1]), g = c.createLinearGradient(0, Math.min(...ys), 0, Math.max(...ys));
-  g.addColorStop(0, S.base[1]); g.addColorStop(1, S.base[0]); ribbonPath(c, L, R); c.fillStyle = g; c.fill();
-  c.save(); ribbonPath(c, L, R); c.clip();
-  const r = mulberry32(7 + Math.round(Rd.pts[0][0] + Rd.pts[0][1] * 100));
-  if (S.tile) { // płyty w perspektywie: rzędy w poprzek drogi, spoiny wzdłuż co drugi rząd przesunięte
-    const [len, wid, col] = S.tile, F = pathFrames(Rd.pts, len, Rd.w), sMid = proj(0, F[F.length >> 1][1])[2]; c.strokeStyle = col; c.lineWidth = Math.max(0.7, sMid * (S.lava ? 1.6 : 1.2)); c.beginPath();
-    F.forEach((f, k) => { const w = f[3] / 2, j = S.jag ? (r() - 0.5) * len * 0.5 * S.jag : 0, [x1, y1] = pathAt([f[0], f[1] + j / 300, ...f.slice(2)], -w), [x2, y2] = pathAt([f[0], f[1] + j / 300, ...f.slice(2)], w);
-      c.moveTo(x1, y1); c.lineTo(x2, y2);
-      const nx = F[k + 1]; if (!nx) return; const n = Math.max(1, Math.round(f[3] / wid));
-      for (let i = 1; i < n; i++) { const o = -w + (i + (k % 2 ? 0.5 : 0)) * f[3] / n; if (o >= w) continue; const [ax, ay] = pathAt(f, o), [bx, by] = pathAt(nx, o * nx[3] / f[3]); c.moveTo(ax, ay); c.lineTo(bx, by); }
-    });
-    c.stroke();
-    F.forEach((f, k) => {
-      if (S.shine && k % 3 === 0) { const [sx, sy, ss] = pathAt(f, (r() - 0.5) * f[3] / 2); c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(sx, sy - ss, 4 * ss, Math.max(1, ss)); }
-      if (S.lava && fx && k % 9 === 4) { const [sx, sy, ss] = pathAt(f, 0); fx.glows.push([sx, sy, 16 * ss, '#ff5a10']); }
-    });
+const mixFrame = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+// Wygładzenie łamanej (Chaikin): załamania dróg i ścieżek stają się łukami; końce zostają na miejscu
+function smoothPts(pts, it = 2) {
+  let P = pts.map(p => [p[0], p[1], p[2] || 0, p[3] || 0]);
+  for (let n = 0; n < it && P.length > 2; n++) {
+    const out = [P[0]];
+    for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1];
+      if (Math.abs(a[2] - b[2]) > 1.5) { out.push(a, b); continue; } // schody zostają proste
+      out.push(a.map((v, k) => v * 0.75 + b[k] * 0.25), a.map((v, k) => v * 0.25 + b[k] * 0.75)); }
+    out.push(P[P.length - 1]); P = out.filter((p, i) => i === 0 || Math.hypot(p[0] - out[i - 1][0], (p[1] - out[i - 1][1]) * 300) > 0.5);
   }
-  if (S.planks) { const F = pathFrames(Rd.pts, S.planks, Rd.w); F.forEach((f, k) => { const [x1, y1, s] = pathAt(f, -f[3] / 2), [x2, y2] = pathAt(f, f[3] / 2); c.strokeStyle = k % 5 === 2 ? 'rgba(20,12,4,.55)' : 'rgba(30,18,8,.4)'; c.lineWidth = Math.max(0.7, s * 1.1); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
-    if (k % 7 === 3) { c.fillStyle = 'rgba(255,230,180,.14)'; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineTo(x2, y2 + 2 * s); c.lineTo(x1, y1 + 2 * s); c.closePath(); c.fill(); } }); }
-  if (S.ruts) { const F = pathFrames(Rd.pts, 6, Rd.w); c.strokeStyle = S.ruts; for (const k of [-0.24, 0.24]) { c.lineWidth = Math.max(0.8, 2 * proj(0, F[0][1])[2]); c.beginPath(); F.forEach((f, i) => { const [x, y] = pathAt(f, f[3] * k); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); } }
-  if (S.prints) { const F = pathFrames(Rd.pts, 9, Rd.w); c.fillStyle = 'rgba(100,130,170,.45)'; F.forEach((f, k) => { const [x, y, s] = pathAt(f, (k % 2 ? 1 : -1) * 3 + Math.sin(k * 1.3) * f[3] * 0.18); c.fillRect(x - s, y - s * 0.6, 2.4 * s, 1.4 * s); }); }
-  if (S.specks) for (let i = 0; i < 170; i++) { const k = r() * (pts.length - 1), i0 = Math.floor(k), p = pts[i0], q = pts[i0 + 1], f = k - i0, wd = p[3] || Rd.w, off = (r() - 0.5) * wd * 0.9;
-    const [x, y, s] = proj(p[0] + (q[0] - p[0]) * f + off, p[1] + (q[1] - p[1]) * f, (p[2] || 0) + ((q[2] || 0) - (p[2] || 0)) * f); c.fillStyle = S.specks[r() < 0.5 ? 0 : 1]; c.fillRect(x - 2 * s, y - s, 4 * s, 1.8 * s); }
-  const F = pathFrames(Rd.pts, 5, Rd.w); c.strokeStyle = 'rgba(20,14,8,.5)'; // schody tam, gdzie droga wspina się na taras albo wzgórze
-  for (let k = 1; k < F.length; k++) if (Math.abs(F[k][2] - F[k - 1][2]) > 1.5) { const [x1, y1, s] = pathAt(F[k], -F[k][3] / 2), [x2, y2] = pathAt(F[k], F[k][3] / 2); c.lineWidth = Math.max(0.8, s * 1.2); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
+  return P.map(p => [p[0], p[1], p[2], p[3] || undefined]);
+}
+// Bruk ułożony na ziemi, nie wzdłuż drogi: rzędy kamieni biegną w poprzek sceny (stałe Z), co drugi rząd przesunięty o pół
+// kamienia. Droga tylko wycina z tej siatki swój kształt, więc na zakrętach i skosach kamienie nie wykrzywiają się w romby.
+function roadStones(c, S, F, r, fx) {
+  const [len, wid] = S.tile, dz = len / 300, gap = 0.14, cells = new Map();
+  for (const f of F) { // komórki siatki pod drogą (z wysokością z najbliższego punktu drogi)
+    const hw = f[3] / 2 + wid, row0 = Math.floor((f[1] - hw / 300) / dz), row1 = Math.floor((f[1] + hw / 300) / dz);
+    for (let row = row0; row <= row1; row++) { const sh = row & 1 ? 0.5 : 0, c0 = Math.floor((f[0] - hw) / wid - sh), c1 = Math.floor((f[0] + hw) / wid - sh);
+      for (let col = c0; col <= c1; col++) { const k = row * 100000 + col; if (!cells.has(k)) cells.set(k, [row, col, f[2]]); } }
+  }
+  const list = [...cells.values()].sort((a, b) => b[0] - a[0]);
+  for (const [row, col, e] of list) {
+    const h = thash(row, col, 77), j = S.jag ? ((h % 100) / 100 - 0.5) * 0.3 * S.jag : 0, sh = row & 1 ? 0.5 : 0;
+    const x0 = (col + sh + gap / 2) * wid, x1 = (col + sh + 1 - gap / 2) * wid, z0 = (row + gap + j * 0.4) * dz, z1 = (row + 1 - gap + j * 0.4) * dz;
+    const q = [proj(x0, z0, e), proj(x1, z0, e), proj(x1, z1, e), proj(x0, z1, e)], s = q[0][2];
+    if (S.lava && h % 6 === 0) { c.strokeStyle = '#ff6a1a'; c.lineWidth = Math.max(1, s * 1.3); c.beginPath(); c.moveTo(q[0][0], q[0][1] + s); c.lineTo(q[1][0], q[1][1] + s); c.stroke(); if (fx && h % 24 === 0) fx.glows.push([q[0][0], q[0][1], 14 * s, '#ff5a10']); }
+    c.fillStyle = S.stones[(h >> 3) % S.stones.length]; c.beginPath(); q.forEach(([x, y], m) => m ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+    c.lineWidth = Math.max(1, s * 1.1);
+    c.strokeStyle = 'rgba(255,250,235,.26)'; c.beginPath(); c.moveTo(q[3][0], q[3][1]); c.lineTo(q[2][0], q[2][1]); c.stroke(); // jasna krawędź od strony nieba
+    c.strokeStyle = 'rgba(0,0,0,.26)'; c.beginPath(); c.moveTo(q[0][0], q[0][1]); c.lineTo(q[1][0], q[1][1]); c.stroke(); // cień od dołu
+    if (S.shine && h % 7 === 0) { c.fillStyle = 'rgba(255,255,255,.8)'; c.fillRect((q[0][0] + q[1][0]) / 2 - 2 * s, (q[0][1] + q[3][1]) / 2, 3 * s, Math.max(1, s)); }
+  }
+}
+function roadStyled(c, A, Rd, Wd, fx, pass = 'both') {
+  const S = ROAD_LOOK[Rd.style]; if (!S) return pass === 'under' ? undefined : roadArtW(c, A, Rd);
+  Rd = { ...Rd, pts: smoothPts(Rd.pts) }; // łuki zamiast załamań
+  const pts = subdiv(Rd.pts, 3), line = (E, col, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.lineJoin = 'round'; c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); };
+  const widen = k => pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) * k]), r = mulberry32(7 + Math.round(Rd.pts[0][0] + Rd.pts[0][1] * 100));
+  const sMid = proj(0, pts[pts.length >> 1][1])[2], bw = Math.max(1.5, 2 * sMid) / sMid * 2; // brzeg ok. 2 px z każdej strony
+  if (pass !== 'top') {
+    if (S.banks) { const [L2, R2] = ribbon(widen(1.4), Rd.w * 1.4); ribbonPath(c, L2, R2); c.fillStyle = S.banks; c.fill(); }
+    const Wb = pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) + bw]), [L3, R3] = ribbon(Wb, Rd.w + bw); ribbonPath(c, L3, R3); c.fillStyle = S.border; c.fill();
+    if (pass === 'under') return;
+  }
+  const [L, R] = ribbon(pts, Rd.w);
+  ribbonPath(c, L, R); c.fillStyle = S.mortar || S.gapCol || S.dirt[0]; c.fill();
+  c.save(); ribbonPath(c, L, R); c.clip();
+  if (S.stones) roadStones(c, S, pathFrames(Rd.pts, S.tile[0], Rd.w), r, fx);
+  if (S.dirt) { // wydeptany środek jaśniejszy, brzegi ciemniejsze; kamyki jako ostre piksele
+    const [L1, R1] = ribbon(widen(0.72), Rd.w * 0.72); ribbonPath(c, L1, R1); c.fillStyle = S.dirt[1]; c.fill();
+    const [L0, R0] = ribbon(widen(0.36), Rd.w * 0.36); ribbonPath(c, L0, R0); c.fillStyle = S.dirt[2]; c.fill();
+    if (S.ruts) { const F = pathFrames(Rd.pts, 6, Rd.w); for (const k of [-0.22, 0.22]) line(F.map(f => pathAt(f, f[3] * k)), S.ruts, Math.max(1.2, 2.2 * sMid)); }
+    const F = pathFrames(Rd.pts, 4, Rd.w);
+    for (const f of F) for (let m = 0; m < 2; m++) { if (r() < 0.45) continue; const [x, y, s] = pathAt(f, (r() - 0.5) * f[3] * 0.9), p = Math.max(2, Math.round(2 * s)); c.fillStyle = S.pebbles[r() < 0.6 ? 0 : 1]; c.fillRect(Math.round(x), Math.round(y), p + 1, p); }
+  }
+  if (S.planks) { const F = pathFrames(Rd.pts, S.planks, Rd.w);
+    for (let k = F.length - 2; k >= 0; k--) { const a = F[k], b = F[k + 1], q = [pathAt(a, -a[3] / 2), pathAt(a, a[3] / 2), pathAt(b, b[3] / 2), pathAt(b, -b[3] / 2)], s = q[0][2];
+      c.fillStyle = S.plank[k % 3]; c.beginPath(); q.forEach(([x, y], m) => m ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+      c.strokeStyle = S.gapCol; c.lineWidth = Math.max(1, s * 1.1); c.beginPath(); c.moveTo(q[0][0], q[0][1]); c.lineTo(q[1][0], q[1][1]); c.stroke();
+      if (k % 4 === 1) { c.fillStyle = '#2a1a0a'; for (const u of [-0.38, 0.38]) { const [x, y] = pathAt(mixFrame(a, b, 0.5), a[3] * u); c.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(s)), Math.max(1, Math.round(s))); } } } }
+  if (S.prints) { const F = pathFrames(Rd.pts, 9, Rd.w); c.fillStyle = '#8a9cb6'; F.forEach((f, k) => { const [x, y, s] = pathAt(f, (k % 2 ? 1 : -1) * 3 + Math.sin(k * 1.3) * f[3] * 0.18); c.fillRect(Math.round(x - s), Math.round(y), Math.max(2, Math.round(2.4 * s)), Math.max(1, Math.round(1.2 * s))); }); }
+  const F = pathFrames(Rd.pts, 5, Rd.w); // schody tam, gdzie droga wspina się na taras albo wzgórze: stopień = jasne czoło i ciemna krawędź
+  for (let k = 1; k < F.length; k++) if (Math.abs(F[k][2] - F[k - 1][2]) > 1.5) { const [x1, y1, s] = pathAt(F[k], -F[k][3] / 2), [x2, y2] = pathAt(F[k], F[k][3] / 2);
+    c.strokeStyle = S.curb || S.dirt?.[2] || '#b8b0a0'; c.lineWidth = Math.max(1.5, s * 2.2); c.beginPath(); c.moveTo(x1, y1 + s); c.lineTo(x2, y2 + s); c.stroke();
+    c.strokeStyle = S.border; c.lineWidth = Math.max(1, s); c.beginPath(); c.moveTo(x1, y1 - s); c.lineTo(x2, y2 - s); c.stroke(); }
   c.restore();
-  if (S.edge) { line(L, S.edge, 1.3); line(R, S.edge, 1.3); }
-  if (S.curb) { line(L, S.curb, 1); line(R, S.curb, 1); }
+  if (S.curb) { const [Lc, Rc] = ribbon(widen(0.94), Rd.w * 0.94); line(Lc, S.curb, 1); line(Rc, S.curb, 1); }
+  if (S.grass) { const F2 = pathFrames(Rd.pts, 7, Rd.w); c.fillStyle = S.grass; F2.forEach((f, k) => { if (r() < 0.5) return; const sd = r() < 0.5 ? -1 : 1, [x, y, s] = pathAt(f, sd * f[3] / 2), p = Math.max(1, Math.round(s));
+    c.fillRect(Math.round(x - p), Math.round(y - 3 * p), p, 3 * p); c.fillRect(Math.round(x + p), Math.round(y - 2 * p), p, 2 * p); c.fillRect(Math.round(x), Math.round(y - 4 * p), p, 4 * p); }); }
   if (S.posts || S.bones || S.crystals) { const F2 = pathFrames(Rd.pts, S.posts ? 34 : 70, Rd.w); F2.forEach((f, k) => { if (k === 0) return; for (const sd of [-1, 1]) {
     const [x, y, s] = pathAt(f, sd * (f[3] / 2 + 1));
     if (S.posts) { c.fillStyle = '#3a2812'; c.fillRect(x - 1.2 * s, y - 5 * s, 2.4 * s, 9 * s); c.fillStyle = 'rgba(255,230,180,.2)'; c.fillRect(x - 1.2 * s, y - 5 * s, 2.4 * s, 1.2 * s); }
@@ -8236,7 +8158,7 @@ function roadStyled(c, A, Rd, Wd, fx) {
 }
 
 // --- sieć ścieżek: od drzwi każdej budowli do najbliższego miejsca na drodze albo na innej ścieżce ---
-function townPaths(r, T, L, Bm) {
+function townPaths(r, T, L, Bm, walks = []) {
   const M = L.roads.find(R => R.main); if (!M) return;
   const wade = !!(Bm.wade || T.planks);
   M.w *= Bm.mainW; for (const p of M.pts) if (p[3]) p[3] *= Bm.mainW; M.style = Bm.road;
@@ -8244,6 +8166,11 @@ function townPaths(r, T, L, Bm) {
   const main = subdiv(M.pts, 3).map(W), net = [];
   main.forEach((p, i) => { if (Math.abs(p[2] - townElev(T, L, p[0], p[1])) < 1 && p[1] > 0.84) net.push({ X: p[0], Z: p[1], e: p[2], route: main.slice(0, i + 1) }); });
   L.mainRoute = main; L.doorRoutes = {};
+  for (const wk of walks) { // pomosty i ścieżki ułożone w scenie: dołączają do sieci, reszta ścieżek podłącza się do nich
+    const P = subdiv(wk.map(q => [q[0], q[1], q[2] || 0]), 4).map(W), base = net.reduce((b, p) => (!b || Math.hypot(p.X - P[0][0], (p.Z - P[0][1]) * 300) < Math.hypot(b.X - P[0][0], (b.Z - P[0][1]) * 300) ? p : b), null);
+    L.roads.splice(L.roads.indexOf(M), 0, { w: Bm.laneW * 1.2, style: Bm.lane, pts: P.map(q => [...q]) }); T.feats.push({ pts: P.map(q => [q[0], q[1]]), w: Bm.laneW + 8 });
+    P.forEach((q, i) => net.push({ X: q[0], Z: q[1], e: q[2], route: [...base.route, ...P.slice(0, i + 1)] }));
+  }
   const wet = (X, Z) => {
     if (T.river && segDist(X, Z, T.river.pts) < T.river.w / 2 + 6) return 2;
     if (T.chasm && segDist(X, Z, T.chasm.pts) < 95) return 2;
@@ -8276,7 +8203,7 @@ function townPaths(r, T, L, Bm) {
       }
       pts.push([X, Z, e]); lastE = e;
     }
-    return { pts, len: len * (1 + Math.abs(wig)) + water * 30 + cover * 40, water };
+    return { pts, len: len * (1 + Math.abs(wig)) + water * 60 + cover * 40, water };
   };
   const order = L.slots.map((S, i) => ({ i, d: Math.min(...net.map(p => Math.hypot(p.X - S.X, (p.Z - S.Z) * 300))) })).filter(o => o.i > 1).sort((a, b) => a.d - b.d);
   for (const { i } of order) {
@@ -8381,6 +8308,25 @@ function drawDweller(ctx, kind, x, y, sc, t, dir, still, v = 0) {
     default: drawWalker(P, 0, 0, 1, '#7a5a3a', t, 1);
   }
   ctx.restore();
+}
+// Plac przed ratuszem: brukowany jak droga główna, kamienie w pierścieniach wokół środka, ciemny brzeg i jasny krawężnik
+function plazaArt(c, Wd) {
+  const P = Wd.plaza, S = ROAD_LOOK[(TOWN_BIOME[Wd.fac] || TOWN_BIOME.haven).road] || ROAD_LOOK.cobble, [px, py, s] = proj(P.X, P.Z), RX = P.r * s, RY = RX * 0.3, r = mulberry32(31);
+  const stones = S.stones || S.plank || S.dirt, ell = (k, fill) => { c.beginPath(); c.ellipse(px, py, RX * k, RY * k, 0, 0, TAU); if (fill) { c.fillStyle = fill; c.fill(); } };
+  ell(1, S.mortar || S.gapCol || S.border);
+  const rings = Math.max(3, Math.round(RY / 5));
+  for (let q = rings - 1; q >= 0; q--) {
+    const k0 = q / rings, k1 = (q + 1) / rings, n = Math.max(5, Math.round(TAU * RX * (q + 0.5) / rings / 9)), off = r() * TAU;
+    for (let i = 0; i < n; i++) {
+      const a0 = off + (i + 0.08) / n * TAU, a1 = off + (i + 0.92) / n * TAU, m0 = k0 + 0.06 / rings, m1 = k1 - 0.06 / rings;
+      const pt = (a, k) => [px + Math.cos(a) * RX * k, py + Math.sin(a) * RY * k];
+      c.fillStyle = stones[(r() * stones.length) | 0]; c.beginPath();
+      const Q = q === 0 ? [[px, py], pt(a0, m1), pt((a0 + a1) / 2, m1), pt(a1, m1)] : [pt(a0, m0), pt(a0, m1), pt(a1, m1), pt(a1, m0)];
+      Q.forEach(([x, y], j) => j ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+    }
+  }
+  c.strokeStyle = S.border; c.lineWidth = Math.max(1.5, 2 * s); ell(1); c.stroke();
+  if (S.curb) { c.strokeStyle = S.curb; c.lineWidth = 1; ell(0.95); c.stroke(); }
 }
 // ==================== MIASTO: BUDOWLE SPECJALNE FRAKCJI =====================================
 // Jedna budowla na frakcję (FACTION_SPECIAL): Stajnie Przystani, Skarbiec krasnoludów Kniei, Wzmacniacz nekromancji Kurhanu,
@@ -8505,6 +8451,226 @@ Object.assign(BUILD_ART.stronghold, {
     fx.smokes.push([bx + bw * 0.3, top - rh * 0.4]);
   },
 });
+
+// --- Budowla Graala: schodkowy cokół z kamienia frakcji, złoty kielich na szczycie, słup światła w barwie okien frakcji ---
+function grailArt(c, A, s, tier, col, fx) {
+  const { x, b, w, h } = s, cx = x + w / 2, [lo, dk] = A.wall, glow = A.glow || '#ffe890';
+  const [gr, gg, gb] = hexRgb(glow), beam = c.createLinearGradient(0, b - h, 0, b - h * 0.45);
+  beam.addColorStop(0, `rgba(${gr},${gg},${gb},0)`); beam.addColorStop(1, `rgba(${gr},${gg},${gb},.55)`);
+  c.fillStyle = beam; fillPoly(c, [[cx - 5, b - h], [cx + 5, b - h], [cx + 12, b - h * 0.45], [cx - 12, b - h * 0.45]], beam);
+  const step = (k, sw, sh2) => { const y = b - k * 11 - sh2, xx = cx - sw / 2; c.fillStyle = lo; c.fillRect(xx, y, sw, sh2); c.fillStyle = dk; c.fillRect(xx + sw * 0.62, y, sw * 0.38, sh2);
+    c.fillStyle = A.trim; c.fillRect(xx - 1, y, sw + 2, 2); c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(xx, y + sh2 - 1, sw, 1); };
+  step(0, w, 11); step(1, w * 0.74, 11); step(2, w * 0.5, 11); // trzy stopnie
+  const py = b - 33, colH = h * 0.3; c.fillStyle = lo; c.fillRect(cx - 7, py - colH, 14, colH); c.fillStyle = dk; c.fillRect(cx + 2, py - colH, 5, colH); // kolumna
+  c.fillStyle = A.trim; c.fillRect(cx - 10, py - colH - 3, 20, 4); c.fillRect(cx - 9, py - 3, 18, 3);
+  const cy = py - colH - 3; // kielich: stopa, nóżka z węzłem, czasza z brzegiem, klejnoty
+  fillPoly(c, [[cx - 9, cy], [cx + 9, cy], [cx + 4, cy - 4], [cx - 4, cy - 4]], '#c8962a'); c.fillStyle = '#e0b840'; c.fillRect(cx - 2, cy - 14, 4, 10);
+  c.fillStyle = '#f0cc50'; c.beginPath(); c.ellipse(cx, cy - 9, 4, 2.4, 0, 0, TAU); c.fill();
+  fillPoly(c, [[cx - 12, cy - 30], [cx + 12, cy - 30], [cx + 9, cy - 20], [cx + 3, cy - 14], [cx - 3, cy - 14], [cx - 9, cy - 20]], '#e0b840');
+  fillPoly(c, [[cx + 3, cy - 30], [cx + 12, cy - 30], [cx + 9, cy - 20], [cx + 3, cy - 14]], '#b88a28');
+  c.fillStyle = '#fff0a0'; c.fillRect(cx - 12, cy - 31, 24, 2); c.fillStyle = '#5a3810'; c.beginPath(); c.ellipse(cx, cy - 30, 11, 2, 0, 0, TAU); c.fill();
+  for (const [gx, gc] of [[-5, '#c83a3a'], [0, '#3a8ae0'], [5, '#3ab860']]) { c.fillStyle = gc; c.fillRect(cx + gx - 1.5, cy - 25, 3, 3); }
+  c.fillStyle = '#fffbe0'; c.fillRect(cx - 8, cy - 28, 2, 6);
+  if (fx) { fx.glows.push([cx, cy - 24, 46, glow]); fx.glows.push([cx, cy - 26, 20, '#fff4c0']); }
+  for (const dx of [-w * 0.42, w * 0.42]) { const bx = cx + dx; c.fillStyle = dk; c.fillRect(bx - 2, b - 30, 4, 30); c.fillStyle = '#ff9a2a'; c.fillRect(bx - 3, b - 35, 6, 5); if (fx) fx.glows.push([bx, b - 34, 14, '#ffa040']); } // znicze
+}
+for (const fac of Object.keys(BUILD_ART)) BUILD_ART[fac].grail = grailArt;
+// ==================== MIASTO: SCENY FRAKCJI =============================================
+// Każda frakcja ma jedną, ręcznie ułożoną scenę miasta (jak w Heroes 3): stałe niebo, teren, wodę, miejsca wszystkich
+// 15 budowli, drogi, mosty i rekwizyty. Wszystkie miasta tej samej frakcji wyglądają tak samo; w zależności od stanu
+// miasta zmieniają się tylko budowle (puste działki, kolejne poziomy). Ścieżki do drzwi i mieszkańców wylicza MIASTO: TEREN.
+//
+// Świat jak w MIASTO: GRAFIKA: X w poziomie (piksele przy Z = 1), Z = odległość (0,86 tuż przy kadrze, 3 daleko), e = wysokość.
+// Miejsca (slots, kolejność jak BUILDINGS.slot): 0 ratusz, 1 zamek, 2 gildia, 3–7 siedliska 7–3, 8 kuźnia, 9 skarbiec zasobów,
+// 10–11 siedliska 1–2, 12 tawerna, 13 rynek, 14 budowla specjalna, 15 budowla Graala. Wpis: [X, Z, { flip, hill: nr wzgórza, e: wysokość }].
+// Rekwizyty: [rodzaj, X, Z, skala = 1, wysokość = teren]. walks: pomosty i ścieżki ułożone ręcznie ([[X, Z, e], ...],
+// pierwszy punkt przy drodze głównej); ścieżki do pozostałych drzwi dołączają do nich same.
+
+const TOWN_SCENES = {};
+
+// Zbudowanie planszy L (jak dawniej z generatora) z opisu sceny
+function buildTownScene(fac) {
+  const Sc = TOWN_SCENES[fac] || TOWN_SCENES.haven, St = TOWN_STYLE[fac] || TOWN_STYLE.haven, B = TOWN_LAYOUTS[fac] || TOWN_LAYOUTS.haven, Bm = TOWN_BIOME[fac] || TOWN_BIOME.haven;
+  const W = TOWN_WATER[Sc.water || St.water] || TOWN_WATER.blue, seed = strHash('scena:' + fac), r = mulberry32(seed), wx = Sc.weather || {};
+  const L = { fac, seed, pj: Sc.pj || null, frame: Sc.frame || null, mountains: Sc.mountains || B.mountains, forest: Sc.forest || B.forest, ground: Sc.ground || B.ground,
+    haze: Sc.haze || B.haze, desat: Sc.desat ?? B.desat, tuft: B.tuft || Bm.tuft, tufts: Bm.tufts, plazaCol: Bm.plaza,
+    hills: (Sc.hills || []).map(Hl => ({ cols: St.hill, ...Hl, tufts: Bm.tufts > 0.3 })),
+    rivers: (Sc.rivers || []).map(Rv => { const C = W.chasm || TOWN_WATER.dark.chasm; return Rv.chasm ? { cols: C.cols, line: C.line, edge: C.edge, glow: C.glow, glowA: C.glowA, noReeds: true, ...Rv } : { cols: W.river, edge: W.edge, noReeds: !W.reeds, ...Rv }; }),
+    lakes: (Sc.lakes || []).map(Lk => ({ cols: W.lake, rim: W.rim, reeds: W.reeds, hot: W.hot, ...Lk })), islands: (Sc.islands || []).map(I => ({ ...I })),
+    slabs: (Sc.slabs || []).map(Sb => ({ ...St.slab, masonry: St.masonry, jag: 0, ...Sb })), seas: (Sc.seas || []).map(Sa => ({ cols: W.lake, sand: St.sand, ...Sa })),
+    roads: [], bridges: (Sc.bridges || []).map(Br => ({ bone: fac === 'barrow', ...Br })), props: [], slots: [], bone: fac === 'barrow',
+    birds: Sc.birds ?? B.birds, birdCol: Sc.birdCol || B.birdCol, mist: !!wx.mist, rain: !!wx.rain, snow: !!wx.snow, embers: !!wx.embers, spores: !!wx.spores, dust: !!wx.dust };
+  const T = { feats: [], ells: [], islands: L.islands, focus: { X: 0, Z: 1.25 }, entryX: Sc.entryX || 0, frozen: (Sc.water || St.water) === 'ice', planks: !!Sc.planks };
+  for (const Rv of L.rivers) { if (Rv.chasm) { T.feats.push({ pts: Rv.pts, w: 190 }); T.chasm = { pts: Rv.pts }; } else { T.feats.push({ pts: Rv.pts, w: Rv.w + 24 }); T.river = { pts: Rv.pts, w: Rv.w }; } }
+  for (const Lk of L.lakes) T.ells.push(Lk);
+  for (const Sa of L.seas) { const p = Sa.pts; T.sea = { s: Sa.side, xAt: Z => { for (let k = 0; k < p.length - 1; k++) if (Z <= p[k + 1][1]) return p[k][0] + (p[k + 1][0] - p[k][0]) * clamp((Z - p[k][1]) / (p[k + 1][1] - p[k][1]), 0, 1); return p[p.length - 1][0]; } }; }
+  usePJ(L); const hor = proj(0, 4.4)[1];
+  L.sky = { ...Sc.sky, seed }; L.sky.sun = [Sc.sky.sun[0], Math.min(Sc.sky.sun[1], hor - 28)];
+  L.ridge = Sc.ridge ? [Sc.ridge[0], Sc.ridge[1], hor + 12] : [1 + (seed % 997), 3 + (seed % 991), hor + 12];
+  L.art = { ...(TOWN_ART[fac] || TOWN_ART.haven), ...(Sc.roof ? { roof: { ...TOWN_ART[fac].roof, ...Sc.roof } } : {}) };
+  const onHill = (X, k) => { const Hl = L.hills[k]; return [Hl.Z - 0.004, hillTop(Hl, X)]; };
+  L.slots = Sc.slots.map(([X, Z, o = {}], i) => {
+    const D = B.slots[i]; let e = o.e; if (o.hill !== undefined) [Z, e] = onHill(X, o.hill); if (e === undefined) e = townElev(T, L, X, Z);
+    return { X, Z, e, k: D.k * (o.k || 1), w: D.w, h: D.h, flip: !!o.flip };
+  });
+  if (Sc.road) { // droga główna podana wprost: [X, Z, e, szerokość]
+    const R = { w: Sc.road.w || 44, steps: Sc.road.pts.some(p => p[2] > 2), planks: !!Sc.planks, pts: Sc.road.pts.map(p => p.slice()), main: true };
+    L.roads.push(R); T.main = R.pts.map(p => [p[0], p[1]]); T.feats.push({ pts: T.main, w: R.w });
+  } else townMainRoad(r, T, L);
+  if (Sc.plaza !== undefined) L.plaza = Sc.plaza; // null = bez placu
+  for (const Rd of Sc.roads || []) { L.roads.push({ ...Rd, pts: Rd.pts.map(p => p.slice()) }); T.feats.push({ pts: Rd.pts.map(p => [p[0], p[1]]), w: Rd.w }); }
+  if (Sc.wall) { L.walls = [{ style: Sc.wall.style || St.walls[0], h: Sc.wall.h || 30, pts: Sc.wall.pts }]; T.feats.push({ pts: Sc.wall.pts, w: 30 }); }
+  townPaths(r, T, L, Bm, Sc.walks || []);
+  for (const [kind, X, Z, k = 1, e] of Sc.props || []) L.props.push([kind, X, Z, e ?? townElev(T, L, X, Z), k]);
+  if (L.walls) townWallGates(r, T, L);
+  townFolk(r, T, L, Bm);
+  L.floaters = Sc.floaters || [];
+  usePJ(null); return L;
+}
+const TownGenCache = new Map();
+// Plansza miasta t: jedna na frakcję (zdobyte miasto innej frakcji ma scenę swojej frakcji)
+function townLayout(t) {
+  let L = TownGenCache.get(t.faction);
+  if (!L) { L = buildTownScene(t.faction); TownGenCache.set(t.faction, L); }
+  return L;
+}
+
+// --- Przystań: zielona dolina z rzeką, zamek na wzgórzu, katedra i warsztaty wokół rynku ---
+TOWN_SCENES.haven = {
+  pj: { hor: 92, d: 280 },
+  sky: { top: '#2a4a82', mid: '#7a9cc4', hor: '#f0d8a8', sun: [470, 70], cloudDark: 'rgba(120,130,160,.55)', cloudLit: 'rgba(255,240,215,.8)' },
+  hills: [
+    { X: -250, Z: 2.3, rx: 330, h: 64, flat: 0.2 },
+    { X: 470, Z: 2.72, rx: 300, h: 86, rock: true, flat: 0.3, cols: ['#6a665c', '#43423a'] },
+  ],
+  rivers: [{ w: 66, pts: [[-1100, 1.86], [-700, 1.8], [-420, 1.72], [-200, 1.66], [0, 1.68], [220, 1.74], [480, 1.72], [800, 1.64], [1100, 1.6]] }],
+  entryX: 10,
+  slots: [
+    [10, 1.24], [-250, 0, { hill: 0 }], [150, 2.1], [470, 0, { hill: 1 }], [-300, 1.5], [270, 1.98], [300, 1.5], [60, 2.45, { flip: true }],
+    [-230, 0.97], [-150, 1.5], [225, 0.97, { flip: true }], [150, 1.46], [-120, 1.0], [120, 1.0, { flip: true }], [-420, 1.95], [-80, 0, { hill: 0 }],
+  ],
+  props: [
+    ['tree', -520, 1.2, 1.3], ['tree', -560, 1.55, 1.3], ['tree', 520, 1.25, 1.3], ['tree', 560, 1.5, 1.2], ['tree', -620, 2.3, 1.4], ['tree', 700, 2.2, 1.4],
+    ['tree', 60, 2.6, 1.4], ['tree', -40, 2.7, 1.4], ['bush', -380, 1.02], ['bush', 400, 1.05], ['fence', -470, 0.98], ['fence', 470, 1.0], ['mushroom', -30, 0.9],
+  ],
+  weather: {}, birds: true,
+};
+
+// --- Knieja: polana w puszczy nad leśnym jeziorem, Drzewo Rady na drugim brzegu, smocze urwisko w głębi ---
+TOWN_SCENES.sylvan = {
+  pj: { hor: 150, d: 250 }, frame: 'forest',
+  sky: { top: '#0e1614', mid: '#2a3a30', hor: '#a88450', sun: [420, 170], cloudDark: 'rgba(24,32,28,.6)', cloudLit: 'rgba(200,150,90,.4)' },
+  hills: [{ X: -270, Z: 2.5, rx: 300, h: 30, flat: 0.3 }, { X: 470, Z: 2.85, rx: 280, h: 86, rock: true, cols: ['#4a5448', '#2e362c'] }],
+  lakes: [{ X: -70, Z: 1.45, rx: 160, rz: 0.22 }],
+  entryX: 60,
+  slots: [
+    [0, 2.05], [-250, 0, { hill: 0 }], [-300, 1.4], [470, 0, { hill: 1 }], [150, 1.85], [280, 1.55], [300, 2.65], [-200, 1.75],
+    [-190, 0.95], [-470, 2.6], [230, 1.0, { flip: true }], [190, 1.6], [-80, 0.95], [110, 0.98, { flip: true }], [400, 2.05], [-130, 1.95],
+  ],
+  props: [['fern', 60, 0.92], ['fern', -40, 1.25], ['mushroom', 150, 1.2], ['mushroom', 20, 1.75], ['rock', -30, 1.8], ['bush', 300, 1.25], ['bush', -300, 1.35], ['tree', -470, 1.3, 1.3], ['tree', 480, 1.2, 1.3]],
+  floaters: [{ kind: 'wisp', X: -70, Z: 1.45, e: 18, n: 6, spread: 110, spreadZ: 0.18 }, { kind: 'wisp', X: -250, Z: 1.9, e: 30, n: 3, spread: 90, spreadZ: 0.2, seed: 5 }],
+  weather: {}, birds: true, birdCol: 'rgba(20,30,20,.8)',
+};
+
+// --- Kurhan: przepaść biegnąca w głąb, kościany most, cytadela na iglicy pod olbrzymim księżycem ---
+TOWN_SCENES.barrow = {
+  pj: { hor: 40, d: 330 },
+  sky: TOWN_LAYOUTS.barrow.sky,
+  hills: TOWN_LAYOUTS.barrow.hills,
+  rivers: [{ w: 150, chasm: true, pts: TOWN_LAYOUTS.barrow.river.pts }],
+  road: { w: 34, pts: [[-60, 0.8, 0, 46], [-80, 1.0], [-100, 1.2], [-90, 1.46], [90, 1.46], [110, 1.92], [80, 2.1, 20], [50, 2.3, 50], [24, 2.46, 76, 20]] },
+  plaza: null,
+  bridges: [{ X: 0, Z: 1.46, w: 170 }],
+  slots: [...TOWN_LAYOUTS.barrow.slots.slice(0, 15).map((S, i) => [i === 6 ? -280 : S.X, S.Z, S.e !== undefined ? { e: S.e } : {}]), [-90, 1.95]],
+  props: TOWN_LAYOUTS.barrow.props.map(([k, X, Z, e, s]) => [k, X, Z, s || 1, e]),
+  floaters: TOWN_LAYOUTS.barrow.floaters,
+  weather: { mist: true }, birds: true, birdCol: 'rgba(10,8,14,.9)',
+};
+
+// --- Twierdza: mokradło z wysepkami, kładki między chatami na palach, wierzby i mgła ---
+TOWN_SCENES.fortress = {
+  sky: TOWN_LAYOUTS.fortress.sky, planks: true,
+  hills: [{ X: 500, Z: 2.7, rx: 320, h: 70, rock: true, cols: ['#5a5e4a', '#3e4234'] }],
+  lakes: [{ X: 0, Z: 1.72, rx: 1500, rz: 0.6 }],
+  islands: [
+    { X: 0, Z: 1.34, rx: 190, rz: 0.1 }, { X: -240, Z: 2.02, rx: 230, rz: 0.1 }, { X: 270, Z: 1.7, rx: 210, rz: 0.1 },
+    { X: -340, Z: 1.45, rx: 150, rz: 0.09 }, { X: 90, Z: 2.27, rx: 120, rz: 0.06 }, { X: 420, Z: 2.1, rx: 140, rz: 0.08 }, { X: -130, Z: 1.61, rx: 80, rz: 0.05 },
+  ],
+  entryX: 0,
+  walks: [[[40, 1.3], [150, 1.46], [240, 1.66]], [[-40, 1.3], [-190, 1.4], [-320, 1.44]], [[250, 1.7], [350, 1.92], [410, 2.07]], [[20, 1.42], [60, 1.85], [90, 2.24]]],
+  slots: [
+    [0, 1.36], [-240, 2.03], [90, 2.28], [500, 0, { hill: 0 }], [-340, 1.46], [230, 1.72], [280, 1.28], [-80, 2.45],
+    [-220, 0.95], [-470, 2.45], [230, 0.97, { flip: true }], [420, 2.1], [-110, 1.0], [120, 1.0, { flip: true }], [200, 2.45], [-130, 1.6],
+  ],
+  props: [['reeds', -150, 1.2], ['reeds', 150, 1.25], ['reeds', -60, 1.62], ['reeds', 420, 1.55], ['reeds', -470, 1.8], ['tree', -520, 1.2, 1.3], ['tree', 520, 1.15, 1.3], ['tree', -560, 2.5, 1.4], ['tree', 380, 2.55, 1.4], ['mushroom', -40, 0.9]],
+  floaters: TOWN_LAYOUTS.fortress.floaters,
+  weather: { mist: true }, birds: true, birdCol: 'rgba(20,28,16,.85)',
+};
+
+// --- Inferno: krater z jeziorem lawy, cytadela na bazaltowym płaskowyżu, iglice skał dookoła ---
+TOWN_SCENES.inferno = {
+  pj: { hor: 60, d: 310 },
+  sky: TOWN_LAYOUTS.inferno.sky,
+  hills: [{ X: -540, Z: 2.6, rx: 300, h: 90, rock: true, flat: 0.5 }, { X: 540, Z: 2.6, rx: 300, h: 100, rock: true, flat: 0.5 }],
+  lakes: [{ X: 0, Z: 1.58, rx: 150, rz: 0.2, pit: true }],
+  slabs: [{ x0: -270, x1: 270, Z0: 2.2, Z1: 2.9, e: 70, jag: 5 }],
+  entryX: 0,
+  slots: [
+    [-150, 1.3], [0, 2.5], [230, 1.95], [-500, 0, { hill: 0 }], [280, 1.3], [-190, 2.05], [-370, 1.75], [210, 2.45],
+    [-220, 0.95], [-330, 2.2], [230, 0.97, { flip: true }], [340, 1.75], [-110, 1.0], [120, 1.02, { flip: true }], [500, 0, { hill: 1 }], [90, 1.25],
+  ],
+  props: [['spike', -110, 1.25], ['spike', 120, 1.3], ['spike', -60, 1.9, 1.3], ['spike', 60, 1.95, 1.3], ['brazier', -40, 0.95], ['brazier', 50, 0.95], ['rock', -400, 1.1], ['rock', 420, 1.2]],
+  floaters: [{ kind: 'ember', X: 0, Z: 1.5, e: 10, n: 12, spread: 120, spreadZ: 0.3 }],
+  weather: { embers: true }, birds: true, birdCol: 'rgba(20,4,2,.9)',
+};
+
+// --- Akademia: ośnieżone tarasy nad zamarzniętym stawem, schody zygzakiem aż do zamku magów ---
+TOWN_SCENES.academy = {
+  pj: { hor: 80, d: 290 },
+  sky: TOWN_LAYOUTS.academy.sky,
+  slabs: [{ x0: -1600, x1: 1600, Z0: 1.45, Z1: 1.95, e: 40 }, { x0: -1600, x1: 1600, Z0: 1.95, Z1: 2.4, e: 86 }, { x0: -1600, x1: 1600, Z0: 2.4, Z1: 3.4, e: 136 }],
+  lakes: [{ X: -330, Z: 1.18, rx: 120, rz: 0.12 }],
+  entryX: 20,
+  slots: [
+    [0, 1.62], [0, 2.62], [-300, 2.15], [430, 2.8], [-330, 1.7], [230, 2.2], [320, 1.62], [-470, 2.8],
+    [-220, 0.95], [-240, 1.3], [230, 0.97, { flip: true }], [220, 1.28], [-110, 1.0], [120, 1.02, { flip: true }], [-130, 2.15], [-180, 1.62],
+  ],
+  props: [['snowPine', -540, 1.3, 1.3], ['snowPine', 560, 1.25, 1.3], ['snowPine', -600, 2.2, 1.3], ['snowPine', 600, 2.3, 1.3], ['iceCrystal', -250, 1.15], ['iceCrystal', 380, 1.1], ['rock', 300, 1.95]],
+  weather: { snow: true }, birds: true, birdCol: 'rgba(30,36,50,.8)',
+};
+
+// --- Loch: podziemna grota z jeziorem świecącej wody, cytadela na skalnym progu, stalagmity i grzyby ---
+TOWN_SCENES.dungeon = {
+  frame: 'cave', water: 'glow',
+  sky: { cave: true, top: '#07050c', mid: '#1a1226', hor: '#3a2a4a', sun: [300, 200] },
+  slabs: [{ x0: -330, x1: 330, Z0: 2.2, Z1: 2.9, e: 60, jag: 6 }],
+  lakes: [{ X: 250, Z: 1.5, rx: 170, rz: 0.2 }],
+  entryX: -20,
+  slots: [
+    [-60, 1.4], [0, 2.5], [-260, 1.95], [-240, 2.55], [-300, 1.4], [240, 2.0], [280, 1.25], [230, 2.55],
+    [-220, 0.95], [-420, 2.0], [230, 0.97, { flip: true }], [100, 1.62], [-110, 1.0], [120, 1.02, { flip: true }], [420, 2.1], [100, 2.1],
+  ],
+  props: [['stalagmite', -460, 1.2, 1.4], ['stalagmite', 470, 1.4, 1.3], ['stalagmite', -30, 1.9, 1.2], ['glowShroom', 60, 1.2], ['glowShroom', -420, 1.6], ['glowShroom', 150, 1.25], ['bones', -40, 0.95]],
+  floaters: [{ kind: 'spore', X: 200, Z: 1.5, e: 20, n: 10, spread: 220, spreadZ: 0.3 }],
+  weather: { spores: true }, birds: false,
+};
+
+// --- Cytadela: step o zachodzie słońca, twierdza na stołowej górze, oaza z palmami, palisada z bramą ---
+TOWN_SCENES.stronghold = {
+  pj: { hor: 86, d: 290 },
+  sky: TOWN_LAYOUTS.stronghold.sky,
+  slabs: [{ x0: -380, x1: 120, Z0: 2.15, Z1: 2.9, e: 100, jag: 7, top: ['#c4895a', '#a06a40'], face: ['#a45e36', '#5e3218'] }],
+  hills: [{ X: 480, Z: 2.75, rx: 280, h: 70, flat: 0.25 }],
+  lakes: [{ X: 300, Z: 1.35, rx: 120, rz: 0.12 }],
+  wall: { style: 'palisade', h: 30, pts: Array.from({ length: 61 }, (_, i) => [-1500 + i * 50, 1.88 + Math.sin(i * 0.4) * 0.03]) },
+  entryX: -30,
+  slots: [
+    [-60, 1.35], [-150, 2.5], [180, 2.2], [480, 0, { hill: 0 }], [-200, 1.4], [300, 2.2], [-360, 1.6], [30, 2.3],
+    [-220, 0.95], [220, 1.85], [230, 0.97, { flip: true }], [330, 1.7], [-110, 1.0], [120, 1.02, { flip: true }], [-420, 2.3], [90, 1.22],
+  ],
+  props: [['acacia', 380, 1.2, 1.2], ['acacia', 200, 1.3, 1.1], ['acacia', -520, 1.3, 1.3], ['cactus', -40, 0.92], ['cactus', 60, 1.15], ['bones', 0, 1.6], ['totem', -30, 1.2], ['rock', 450, 1.6]],
+  weather: {}, birds: true, birdCol: 'rgba(60,30,10,.8)',
+};
 // ==================== EKRANY: MENU, NOWA GRA, LISTY =====================================
 // Scena tytułowa i ekrany poza rozgrywką.
 const CASTLE_WINDOWS = [
@@ -8900,6 +9066,7 @@ function showKingdom(st) {
       });
       divider(ctx, x + 40, x + w - 40, y + 330);
       text(ctx, `Bohaterowie: ${myHeroes(st).length}    Kopalnie: ${total}    Miasta: ${myTowns(st).length}`, W / 2, y + 348, { size: 17, align: 'center', weight: 500, color: '#3a1e08' });
+      text(ctx, `Obeliski: ${obelisksSeen(st, ME)} z ${obelisksTotal(st)}${st.grail && st.grail.found === ME ? ', Graal odnaleziony' : ''}`, W / 2, y + 396, { size: 15, align: 'center', weight: 500, color: '#5a3814' });
       text(ctx, `${dateText(st)} (Tydzień ${weekName(st)})`, W / 2, y + 372, { size: 16, align: 'center', italic: true, weight: 500, color: '#5a3814' });
       btn.draw(ctx);
     },
@@ -8923,7 +9090,9 @@ function buildPanelButtons(scr, st) {
     scr.btnMove, scr.btnSleep,
     mk(4, iconSpell, 'Czary', () => scr.spellbook(), { key: 'c', tip: 'Księga czarów: czary rzucane na mapie (klawisz C).' }),
     mk(5, iconGear, 'Menu', () => scr.systemMenu(), { key: 'escape', tip: 'Menu systemowe: powrót do menu głównego (klawisz Esc).' }),
-    new Button(LIST.x + 2, 212, 190, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
+    new Button(LIST.x + 2, 212, 30, 40, 'Mapa zagadki', () => showPuzzle(G.state), { icon: iconPuzzle, key: 'p', tip: 'Mapa zagadki: obeliski odsłaniają miejsce, gdzie zakopano Graala (klawisz P).' }),
+    new Button(LIST.x + 34, 212, 30, 40, 'Kop', () => digHere(scr, G.state), { icon: iconShovel, key: 'd', tip: 'Kop w poszukiwaniu Graala na polu bohatera. Tylko z pełnymi punktami ruchu; zużywa cały dzień (klawisz D).' }),
+    new Button(LIST.x + 66, 212, 126, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
   ];
 }
 function panelInfoText(st, scr) {
@@ -9260,6 +9429,106 @@ G.screens.adventure = {
   },
 };
 
+// ==================== EKRAN: MAPA ZAGADKI I KOPANIE ======================================
+// Mapa zagadki jak w Heroes 3: wycinek mapy wokół Graala (PUZZLE_W × PUZZLE_H pól, Graal nie leży dokładnie pośrodku)
+// pocięty na PUZZLE_COLS × PUZZLE_ROWS kawałków z wypustkami. Każdy odwiedzony obelisk zdejmuje część kawałków, od brzegów
+// do środka; ostatnie odsłaniają krzyżyk nad Graalem. Kopie się przyciskiem „Kop” (klawisz D) z pełnymi punktami ruchu.
+
+// Lewy górny róg wycinka: Graal przesunięty od środka o kilka pól (stale dla danej gry)
+function puzzleOrigin(st) {
+  const n = st.map.n, g = st.grail, jx = thash(st.seed, 11, 3) % 7 - 3, jy = thash(st.seed, 13, 5) % 5 - 2;
+  return [clamp(g.x - (PUZZLE_W >> 1) + jx, 0, Math.max(0, n - PUZZLE_W)), clamp(g.y - (PUZZLE_H >> 1) + jy, 0, Math.max(0, n - PUZZLE_H))];
+}
+// Kolejność zdejmowania kawałków: najdalsze od Graala najpierw (z odrobiną losu), kawałek z krzyżykiem na końcu
+function puzzleOrder(st) {
+  const [x0, y0] = puzzleOrigin(st), gx = (st.grail.x - x0 + 0.5) / PUZZLE_W * PUZZLE_COLS, gy = (st.grail.y - y0 + 0.5) / PUZZLE_H * PUZZLE_ROWS, out = [];
+  for (let j = 0; j < PUZZLE_ROWS; j++) for (let i = 0; i < PUZZLE_COLS; i++) out.push({ i, j, d: Math.hypot(i + 0.5 - gx, j + 0.5 - gy) + (thash(i, j, st.seed) % 100) / 90 });
+  return out.sort((a, b) => b.d - a.d);
+}
+// Obraz wycinka mapy (teren i stałe obiekty, bez bohaterów i potworów, bez mgły) w połowie rozdzielczości, z krzyżykiem
+function puzzleImage(st) {
+  const [x0, y0] = puzzleOrigin(st), c = document.createElement('canvas'); c.width = PUZZLE_W * T / 2; c.height = PUZZLE_H * T / 2;
+  const b = c.getContext('2d'), CP = CHUNK * T; b.imageSmoothingEnabled = false; b.setTransform(0.5, 0, 0, 0.5, 0, 0);
+  for (let cy = Math.floor(y0 / CHUNK); cy <= Math.floor((y0 + PUZZLE_H - 1) / CHUNK); cy++) for (let cx = Math.floor(x0 / CHUNK); cx <= Math.floor((x0 + PUZZLE_W - 1) / CHUNK); cx++)
+    b.drawImage(MapRender.get(cx, cy), (cx * CHUNK - x0) * T, (cy * CHUNK - y0) * T, CP, CP);
+  const ox = -x0 * T, oy = -y0 * T;
+  for (const ob of st.objects.filter(o => !o.dead && o.x >= x0 - 1 && o.x <= x0 + PUZZLE_W && o.y >= y0 - 1 && o.y <= y0 + PUZZLE_H + 1).sort((a, c2) => a.y - c2.y)) {
+    const px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
+    if (ob.type === 'site') blitG(b, siteSprite(ob.kind), px, py + 14);
+    else if (ob.type === 'bank') blitG(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
+    else if (ob.type === 'mine') blitG(b, mineSprite(ob.kind), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
+    else if (ob.type === 'town') { const t = st.towns[ob.townId]; blitG(b, townSprite(t.faction, townLevel(t)), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T); }
+  }
+  const gx = ox + st.grail.x * T + 16, gy = oy + st.grail.y * T + 16; // krzyżyk: czerwony z ciemnym obrysem
+  b.lineCap = 'round'; for (const [col, w] of [['#2a0a04', 11], ['#d8261a', 6]]) { b.strokeStyle = col; b.lineWidth = w; b.beginPath(); b.moveTo(gx - 12, gy - 12); b.lineTo(gx + 12, gy + 12); b.moveTo(gx + 12, gy - 12); b.lineTo(gx - 12, gy + 12); b.stroke(); }
+  return c;
+}
+// Kontur kawałka z wypustkami: wspólna krawędź dwóch sąsiadów ma ten sam kształt (kierunek wypustki z hash)
+function piecePath(ctx, i, j, x, y, pw, ph, seed) {
+  const tabH = (ii, jj) => (thash(ii, jj, seed + 1) & 1 ? 1 : -1), tabV = (ii, jj) => (thash(ii, jj, seed + 2) & 1 ? 1 : -1); // krawędź pozioma nad wierszem jj / pionowa przed kolumną ii
+  const edge = (sx, sy, ex, ey, nx, ny, on) => {
+    if (!on) { ctx.lineTo(ex, ey); return; }
+    const L = Math.min(pw, ph), P = (t, u) => [sx + (ex - sx) * t + nx * u * L, sy + (ey - sy) * t + ny * u * L];
+    ctx.lineTo(...P(0.38, 0)); ctx.bezierCurveTo(...P(0.3, 0.2), ...P(0.4, 0.3), ...P(0.5, 0.3)); ctx.bezierCurveTo(...P(0.6, 0.3), ...P(0.7, 0.2), ...P(0.62, 0)); ctx.lineTo(ex, ey);
+  };
+  ctx.beginPath(); ctx.moveTo(x, y);
+  edge(x, y, x + pw, y, 0, j > 0 ? tabH(i, j) : 0, j > 0);
+  edge(x + pw, y, x + pw, y + ph, i < PUZZLE_COLS - 1 ? tabV(i + 1, j) : 0, 0, i < PUZZLE_COLS - 1);
+  edge(x + pw, y + ph, x, y + ph, 0, j < PUZZLE_ROWS - 1 ? tabH(i, j + 1) : 0, j < PUZZLE_ROWS - 1);
+  edge(x, y + ph, x, y, i > 0 ? tabV(i, j) : 0, 0, i > 0);
+  ctx.closePath();
+}
+function showPuzzle(st) {
+  if (!st.grail) return;
+  const W0 = 544, H0 = 530, x = (W - W0) / 2, y = (H - H0) / 2, mw = PUZZLE_W * T, mh = PUZZLE_H * T, k = 512 / mw, mx = x + 16, my = y + 50, pw = mw * k / PUZZLE_COLS, ph = mh * k / PUZZLE_ROWS;
+  const img = puzzleImage(st), shown = puzzlePieces(st, ME), order = puzzleOrder(st), open = new Set(order.slice(0, shown).map(p => p.i + ',' + p.j));
+  const N = obelisksTotal(st), seen = obelisksSeen(st, ME), btn = new Button(W / 2 - 70, y + H0 - 46, 140, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
+  const found = st.grail.found >= 0, note = found ? (st.grail.found === ME ? 'Graal jest już twój.' : 'Ktoś inny już wykopał Graala.')
+    : shown >= PUZZLE_COLS * PUZZLE_ROWS ? 'Mapa kompletna! Krzyżyk wskazuje miejsce Graala.' : `Odwiedzone obeliski: ${seen} z ${N}. Szukaj kolejnych, aby odsłonić mapę.`;
+  G.modal = {
+    msg: `Mapa zagadki. ${note}`, buttons: [btn], puzzle: { shown, open },
+    draw(ctx) {
+      dimScreen(ctx, 0.55); drawParchment(ctx, x, y, W0, H0);
+      text(ctx, 'Mapa zagadki', W / 2, y + 30, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
+      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(img, mx, my, mw * k, mh * k);
+      ctx.beginPath(); ctx.rect(mx - 12, my - 12, mw * k + 24, mh * k + 24); ctx.clip();
+      for (let j = 0; j < PUZZLE_ROWS; j++) for (let i = 0; i < PUZZLE_COLS; i++) {
+        const px = mx + i * pw, py = my + j * ph; piecePath(ctx, i, j, px, py, pw, ph, st.seed);
+        if (open.has(i + ',' + j)) { ctx.strokeStyle = 'rgba(40,24,8,.28)'; ctx.lineWidth = 1; ctx.stroke(); continue; }
+        const g = ctx.createLinearGradient(px, py, px + pw, py + ph); g.addColorStop(0, '#e2cfa0'); g.addColorStop(1, '#c4a872');
+        ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = '#6a4a22'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = 'rgba(120,80,30,.18)'; for (let q = 0; q < 5; q++) ctx.fillRect(px + (thash(i, j, q) % 100) / 100 * pw * 0.8 + 4, py + (thash(j, i, q) % 100) / 100 * ph * 0.8 + 4, 3, 2);
+      }
+      ctx.restore(); ctx.strokeStyle = '#5a3a14'; ctx.lineWidth = 2; ctx.strokeRect(mx - 1, my - 1, mw * k + 2, mh * k + 2);
+      ctx.font = font(15, 500, 'body'); wrapText(ctx, note, W0 - 60).slice(0, 2).forEach((l, i) => text(ctx, l, W / 2, my + mh * k + 18 + i * 17, { size: 15, weight: 500, italic: true, align: 'center', color: '#3a2410' }));
+      btn.draw(ctx);
+    },
+  };
+}
+// Kopanie wybranym bohaterem (przycisk „Kop”, klawisz D)
+function digHere(scr, st) {
+  const h = hero(st); if (!h || scr.aiRun) return;
+  const r = digGrail(st, h); if (r.error) { scr.flash(r.error); return; }
+  scr.mapFx = scr.mapFx || []; scr.mapFx.push({ kind: 'ring', x: h.x, y: h.y, r: 1.2, col: 'rgba(150,110,60,.8)', t: G.time });
+  if (r.found) showDialog(`${h.name} wykopuje Graala! Święty kielich trafia do plecaka. Zanieś go do jednego ze swoich miast, aby wznieść tam budowlę Graala: +${GRAIL_GOLD} złota dziennie i +50% przyrostu stworów.`,
+    [{ label: 'Wspaniale', key: 'enter' }], { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite('grail'), cx, cy, 3) });
+  else showDialog(`${h.name} kopie przez cały dzień, ale nic tu nie ma. ${st.grail && st.grail.found < 0 ? 'Mapa zagadki podpowie, gdzie szukać.' : ''}`, [{ label: 'OK', key: 'enter' }]);
+}
+// Dołki po kopaniu na mapie: ciemna jama z wałem ziemi
+function drawHoles(b, st, ox, oy, tx0, ty0, tx1, ty1) {
+  const n = st.map.n;
+  for (const i of st.holes || []) { const x = i % n, y = (i / n) | 0; if (x < tx0 || x > tx1 || y < ty0 || y > ty1) continue;
+    const px = ox + x * T + 16, py = oy + y * T + 20;
+    b.fillStyle = '#6a4a2a'; b.beginPath(); b.ellipse(px, py, 11, 6, 0, 0, TAU); b.fill(); b.fillStyle = '#1e140a'; b.beginPath(); b.ellipse(px, py + 1, 7, 3.5, 0, 0, TAU); b.fill();
+    b.fillStyle = '#8a6a44'; b.fillRect(px + 8, py - 6, 6, 4); b.fillRect(px - 14, py - 3, 5, 3); }
+}
+function iconPuzzle(ctx, cx, cy, col) { // kawałek układanki
+  ctx.fillStyle = col; ctx.fillRect(cx - 8, cy - 6, 14, 14); ctx.beginPath(); ctx.arc(cx - 1, cy - 7, 3.2, 0, TAU); ctx.arc(cx + 7, cy + 1, 3.2, 0, TAU); ctx.fill();
+}
+function iconShovel(ctx, cx, cy, col) { // łopata
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.6); ctx.fillStyle = col; ctx.fillRect(-1.2, -11, 2.4, 13); ctx.fillRect(-4, -12, 8, 2.4);
+  ctx.beginPath(); ctx.moveTo(-5, 2); ctx.lineTo(5, 2); ctx.lineTo(4, 8); ctx.lineTo(0, 11); ctx.lineTo(-4, 8); ctx.closePath(); ctx.fill(); ctx.restore();
+}
 // ==================== EKRAN: BOHATER ====================================================
 // Cechy, doświadczenie, armia i ekwipunek. Parametry: { heroId, back: { name, params } } – dokąd wrócić.
 function iconStat(ctx, id, cx, cy, col) {
@@ -10126,7 +10395,7 @@ G.screens.town = {
     this.sel = null;
     if (row) return this.tryBuild(row.B);
     const i = this.slotAt(x, y); if (i === null) return;
-    const B = slotBuilding(t, i), next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id));
+    const B = slotBuilding(t, i), next = slotNext(t, i);
     const dw = B && /^dw(\d)u?$/.exec(B.id); if (dw) return showRecruit(st, t, +dw[1], m => this.say(m)); // siedlisko: werbunek
     if (B && /^guild/.test(B.id)) return this.showGuild(); // gildia: podgląd czarów (rozbudowa z listy albo przyciskiem w gildii)
     if (B && B.id === 'tavern') return this.showTavern();
@@ -10145,7 +10414,7 @@ G.screens.town = {
     if (x >= 600 && x <= 784 && y >= 40 && y <= 60) { const F = factionOf(fac); return `${F.name}: ${F.desc} Cecha frakcji — ${traitText(fac)}.`; }
     const i = this.slotAt(x, y); if (i === null) return resourceBarInfo(G.state, x, y);
     const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'smith' ? ' Kliknij, aby kupić machiny wojenne.' : B.id === 'market' ? ' Kliknij, aby handlować.' : B.id === 'special' && t.faction === 'inferno' ? ' Kliknij, aby przejść przez bramę.' : /^guild/.test(B.id) ? ' Kliknij, aby obejrzeć czary (klawisz G).' : ''); }
-    const next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id)); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }
+    const next = slotNext(t, i); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }
     return null;
   },
   draw(ctx) {
@@ -10164,7 +10433,7 @@ G.screens.town = {
     this.fb = fb; // widok z okna gildii
     if (this.hoverSlot !== null && !G.modal) {
       const hb = ((TownFXCache[key] || {}).rects || {})[this.hoverSlot] || { x: 0, y: 0, w: 0, h: 0 };
-      const s = { x: hb.x, b: hb.y + hb.h, w: hb.w, h: hb.h }, B = slotBuilding(t, this.hoverSlot), next = BUILDINGS.find(b => b.slot === this.hoverSlot && !hasB(t, b.id));
+      const s = { x: hb.x, b: hb.y + hb.h, w: hb.w, h: hb.h }, B = slotBuilding(t, this.hoverSlot), next = slotNext(t, this.hoverSlot);
       ctx.strokeStyle = 'rgba(255,232,154,.85)'; ctx.lineWidth = 2; rr(ctx, s.x - 2, s.b - s.h - 4, s.w + 4, s.h + 8, 5); ctx.stroke();
       const label = B ? bInfo(B, fac).name : (next ? `${bInfo(next, fac).name} (do zbudowania)` : '');
       if (label) { ctx.font = font(15, 700, 'title'); const w = ctx.measureText(label).width + 20, x = clamp(s.x + s.w / 2 - w / 2, 12, 580 - w), y = Math.max(14, s.b - s.h - 30);

@@ -426,8 +426,9 @@ function drawWorldPixel(b, st) {
   }
   const ahead = performance.now() + 4;
   for (let cy = Math.max(0, r0 - 1); cy <= Math.min(nC - 1, r1 + 1) && performance.now() < ahead; cy++) for (let cx = Math.max(0, c0 - 1); cx <= Math.min(nC - 1, c1 + 1) && performance.now() < ahead; cx++) if (!MapRender.has(cx, cy)) MapRender.get(cx, cy);
-  if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
+  drawHoles(b, st, ox, oy, tx0, ty0, tx1, ty1);
+  if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
   for (const h of st.heroes) { const [hx, hy] = heroDrawPos(h); list.push({ y: hy + 0.5, hero: h, hx, hy }); }
   list.sort((a, c) => a.y - c.y);
@@ -523,6 +524,7 @@ function tileInfo(st, tx, ty) {
   const map = st.map, n = map.n; if (tx < 0 || ty < 0 || tx >= n || ty >= n) return 'Poza mapą';
   const i = ty * n + tx; if (!human(st).explored[i]) return 'Nieodkryty teren';
   const h = heroAt(st, tx, ty); if (h) return heroTitle(h);
+  if ((st.holes || []).includes(i)) return 'Wykopany dół: tu już ktoś szukał Graala';
   const ob = objectAt(st, i);
   if (ob) {
     if (ob.type === 'monster') return `${qtyName(ob.count)} ${CREATURES[ob.cid].gen}`;

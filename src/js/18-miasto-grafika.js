@@ -755,6 +755,7 @@ TOWN_LAYOUTS.haven = {
     { X: -250, Z: 1.52, k: 1, w: 76, h: 76 }, { X: -205, Z: 0.97, k: 1, w: 90, h: 80 }, { X: 190, Z: 1.45, k: 1, w: 110, h: 66 },
     { X: 90, Z: 0.98, k: 1, w: 100, h: 92 }, { X: 205, Z: 0.92, k: 1, w: 128, h: 70 },
     { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
+    { X: 0, Z: 1.5, k: 1.1, w: 80, h: 130 }, // budowla Graala
   ],
   props: [
     ['tree', -540, 1.78, 0, 1.3], ['tree', -470, 1.95, 0, 1.3], ['tree', -620, 2.25, 0, 1.4], ['tree', -470, 2.35, 20, 1.4], ['tree', 380, 2.2, 0, 1.4],
@@ -779,6 +780,7 @@ TOWN_LAYOUTS.sylvan = {
     { X: 524, Z: 2.57, k: 1, w: 76, h: 76 }, { X: 62, Z: 1, k: 1, w: 100, h: 100 }, { X: 335, Z: 1.98, k: 1, w: 70, h: 120 },
     { X: -146, Z: 0.86, k: 1, w: 100, h: 96 }, { X: 150, Z: 0.93, k: 1, w: 128, h: 72 },
     { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
+    { X: 0, Z: 1.5, k: 1.1, w: 80, h: 130 }, // budowla Graala
   ],
   props: [
     ['tree', -420, 2.2, 0, 1.4], ['tree', -380, 1.6, 0, 1.3], ['tree', 330, 1.55, 0, 1.2], ['tree', 200, 2.9, 0, 1.4], ['tree', -120, 2.9, 0, 1.4],
@@ -808,6 +810,7 @@ TOWN_LAYOUTS.barrow = {
     { X: -120, Z: 1.36, k: 1, w: 76, h: 76 }, { X: -170, Z: 1.1, k: 1, w: 90, h: 80 }, { X: 250, Z: 1.25, k: 1, w: 110, h: 60 },
     { X: 170, Z: 0.9, k: 1, w: 100, h: 92 }, { X: 130, Z: 1.3, k: 0.9, w: 128, h: 70 },
     { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
+    { X: 0, Z: 1.5, k: 1.1, w: 80, h: 130 }, // budowla Graala
   ],
   props: [
     ['tree', -420, 2.3, 0, 1.3], ['tree', 380, 2.35, 0, 1.3], ['tree', -360, 1.5, 0, 1.2], ['tree', 360, 1.2, 0, 1.2], ['tree', -260, 0.95, 0, 1.1],
@@ -832,8 +835,9 @@ function paintTownWorld(c, t, col, Wd) {
   for (const Rv of [...(Wd.river ? [Wd.river] : []), ...(Wd.rivers || [])]) { riverArt(c, Rv, hzC); if (Rv.chasm) chasmGlow(c, Rv); }
   for (const I of Wd.islands || []) islandArt(c, I, Wd);
   [...Wd.hills.map(Hl => ({ Z: Hl.Z, Hl })), ...(Wd.slabs || []).map(Sb => ({ Z: Sb.Z0, Sb }))].sort((a, b) => b.Z - a.Z).forEach(o => o.Hl ? hillArt(c, o.Hl, hzC) : slabArt(c, o.Sb, hzC));
-  for (const Rd of Wd.roads) roadStyled(c, A, Rd, Wd, fx);
-  if (Wd.plaza) { const [px, py, s] = proj(Wd.plaza.X, Wd.plaza.Z); c.fillStyle = Wd.plazaCol || '#8e8470'; c.beginPath(); c.ellipse(px, py, Wd.plaza.r * s, 12 * s, 0, 0, TAU); c.fill(); c.strokeStyle = 'rgba(40,30,20,.3)'; c.lineWidth = 1; const r = mulberry32(3); for (let i = 0; i < 90; i++) { const a = r() * TAU, d = Math.sqrt(r()); c.strokeRect(px + Math.cos(a) * Wd.plaza.r * s * d - 2, py + Math.sin(a) * 12 * s * d - 1, 4 * s, 2.5 * s); } }
+  const lanes = Wd.roads.filter(Rd => !Rd.main), mains = Wd.roads.filter(Rd => Rd.main); // ścieżki pod drogą główną; brzegi przed nawierzchnią
+  for (const grp of [lanes, mains]) { for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'under'); for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'top'); }
+  if (Wd.plaza) plazaArt(c, Wd);
   const objs = [];
   Wd.slots.forEach((S, i) => objs.push({ Z: S.Z, slot: i, S }));
   Wd.props.forEach(([kind, X, Z, e = 0, k = 1]) => objs.push({ Z, prop: kind, X, e, k }));
@@ -843,13 +847,14 @@ function paintTownWorld(c, t, col, Wd) {
   for (const o of objs) {
     if (o.slot !== undefined) {
       const S = o.S, [sx, sy, s] = proj(S.X, S.Z, S.e || 0), sc = s * S.k, w = S.w * sc, h = S.h * sc, B = slotBuilding(t, o.slot);
+      if (!B && o.slot === 15) continue; // miejsce na budowlę Graala: puste, dopóki jej nie ma (bez działki)
       fx.rects[o.slot] = { x: sx - w / 2, y: sy - h, w, h, z: S.Z };
       const box = [-44, -S.h * 0.8 - 50, S.w + 88, S.h * 1.8 + 62], anc = [S.w / 2, S.h], can = { x: 0, b: S.h, w: S.w, h: S.h };
       if (B) {
         castShadow(c, { x: sx - w / 2, b: sy, w, h }, 1);
         const [grp, tier] = groupOf(B), fn = arts[grp];
         if (fn) drawObj(c, (g, tf) => fn(g, A, can, tier, col, tf), box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip);
-      } else { const next = BUILDINGS.find(b2 => b2.slot === o.slot && !hasB(t, b2.id)); if (next) drawObj(c, g => plotArt(g, A, can, bInfo(next, fac).emblem), box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx); }
+      } else { const next = slotNext(t, o.slot); if (next) drawObj(c, g => plotArt(g, A, can, bInfo(next, fac).emblem), box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx); }
     } else if (o.tower) wallTowerArt(c, o.wall, A, o.tower, hzC, fx);
     else if (o.wall) wallSegArt(c, o.wall, A, o.a, o.b, hzC);
     else if (o.bridge) {

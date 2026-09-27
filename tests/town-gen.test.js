@@ -1,5 +1,5 @@
-// Generator plansz miast: każde miasto ma własny krajobraz i układ, budowle mieszczą się w kadrze i nie zasłaniają się nawzajem,
-// ta sama nazwa daje tę samą planszę, a ekran miasta rysuje się dla każdego typu krajobrazu. Uruchom: npm test
+// Sceny miast: każda frakcja ma jedną, ręcznie ułożoną scenę, budowle mieszczą się w kadrze i nie zasłaniają się nawzajem,
+// wszystkie miasta frakcji wyglądają tak samo, a ekran miasta rysuje się dla każdej frakcji. Uruchom: npm test
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openGame, newGame, frames } = require('./harness');
@@ -9,70 +9,55 @@ test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
 
-test('każda frakcja i każdy krajobraz: 15 budowli w kadrze, bez wzajemnego zasłaniania', async () => {
+test('każda frakcja ma własną scenę: 16 budowli (z Graalem) w kadrze, bez wzajemnego zasłaniania', async () => {
   const r = await page.evaluate(() => {
-    const bad = []; let n = 0;
-    for (const fac of FACTIONS.map(f => f.id)) for (const arche of Object.keys(ARCHETYPES)) for (let k = 0; k < 4; k++) {
-      const L = generateTownLayout(fac, strHash(`${fac}/${arche}/${k}`), arche); usePJ(L); n++;
-      const R = L.slots.map(slotRect);
-      if (R.length !== 15) bad.push(`${fac}/${arche}/${k}: ${R.length} miejsc`);
-      R.forEach((q, i) => { if (q.x < 0 || q.x + q.w > 592 || q.y < 4 || q.sy > 440) bad.push(`${fac}/${arche}/${k}: miejsce ${i} poza kadrem`); });
-      for (let i = 0; i < 15; i++) for (let j = i + 1; j < 15; j++) if (rectOverlap(R[i], R[j]) > 0.6) bad.push(`${fac}/${arche}/${k}: ${i} zasłania ${j}`);
+    const bad = [];
+    for (const F of FACTIONS) {
+      if (!TOWN_SCENES[F.id]) { bad.push(`${F.id}: brak sceny`); continue; }
+      const L = buildTownScene(F.id); usePJ(L); const R = L.slots.map(slotRect);
+      if (R.length !== 16) bad.push(`${F.id}: ${R.length} miejsc`);
+      R.forEach((q, i) => { if (q.x < 0 || q.x + q.w > 592 || q.y < 4 || q.sy > 440) bad.push(`${F.id}: miejsce ${i} poza kadrem`); });
+      for (let i = 0; i < 16; i++) for (let j = i + 1; j < 16; j++) if (rectOverlap(R[i], R[j]) > 0.6) bad.push(`${F.id}: ${i} zasłania ${j}`);
       usePJ(null);
     }
-    return { n, bad, want: FACTIONS.length * Object.keys(ARCHETYPES).length * 4 };
+    return bad;
   });
-  assert.equal(r.n, r.want);
-  assert.deepEqual(r.bad, []);
+  assert.deepEqual(r, []);
 });
 
-test('ta sama nazwa daje tę samą planszę, różne miasta frakcji różnią się krajobrazem, niebem albo układem', async () => {
+test('wszystkie miasta frakcji mają tę samą scenę, a sceny frakcji różnią się od siebie', async () => {
   const r = await page.evaluate(() => {
-    const out = {};
-    for (const F of FACTIONS) {
-      const Ls = F.towns.map(name => generateTownLayout(F.id, strHash(F.id + ':' + name)));
-      const again = JSON.stringify(generateTownLayout(F.id, strHash(F.id + ':' + F.towns[0]))) === JSON.stringify(Ls[0]);
-      const sig = Ls.map(L => `${L.arche}|${L.sky.top}|${Math.round(L.slots[0].X / 40)},${Math.round(L.slots[1].X / 40)}`);
-      out[F.id] = { again, distinct: new Set(sig).size, arches: new Set(Ls.map(L => L.arche)).size, n: Ls.length };
-    }
-    return out;
+    const sig = F => { const L = buildTownScene(F.id); return JSON.stringify([L.sky.top, L.slots.map(S => [Math.round(S.X), S.Z])]); };
+    const same = FACTIONS.every(F => { const [a, b] = F.towns; return townLayout({ faction: F.id, name: a }) === townLayout({ faction: F.id, name: b }); });
+    const again = FACTIONS.every(F => sig(F) === sig(F));
+    return { same, again, distinct: new Set(FACTIONS.map(sig)).size, n: FACTIONS.length };
   });
-  for (const [fac, x] of Object.entries(r)) {
-    assert.ok(x.again, `${fac}: plansza powtarzalna`);
-    assert.equal(x.distinct, x.n, `${fac}: każde miasto inne`);
-    assert.ok(x.arches >= 2, `${fac}: co najmniej dwa rodzaje krajobrazu (${x.arches})`);
-  }
+  assert.ok(r.same, 'jedna scena na frakcję'); assert.ok(r.again, 'scena powtarzalna');
+  assert.equal(r.distinct, r.n, 'każda frakcja ma inną scenę');
 });
 
 test('kraj frakcji: ścieżki od drzwi budowli, mieszkańcy i straż z własnej frakcji, Loch w grocie', async () => {
   const r = await page.evaluate(() => {
     const out = {};
     for (const F of FACTIONS) {
-      const Ls = F.towns.map(name => generateTownLayout(F.id, strHash(F.id + ':' + name))), Bm = TOWN_BIOME[F.id];
-      const lanes = Ls.reduce((a, L) => a + Object.keys(L.doorRoutes).length, 0) / Ls.length;
-      const folk = [...new Set(Ls.flatMap(L => L.folk.map(w => w.kind)))].filter(k => !Bm.folk.includes(k));
-      const guards = Ls.every(L => L.guards.length === 2 && L.guards.every(g => g.kind === Bm.guard));
-      const styles = Ls.every(L => L.roads.find(R => R.main).style === Bm.road), cave = Ls.every(L => (L.frame === 'cave') === (F.id === 'dungeon'));
-      const arches = Ls.every(L => TOWN_STYLE[F.id].arche.some(([a]) => a === L.arche));
-      out[F.id] = { lanes: lanes >= 8, folk, guards, styles, cave, arches };
+      const L = buildTownScene(F.id), Bm = TOWN_BIOME[F.id];
+      const folk = [...new Set(L.folk.map(w => w.kind))].filter(k => !Bm.folk.includes(k));
+      out[F.id] = { lanes: Object.keys(L.doorRoutes).length >= 7, folk, guards: L.guards.length === 2 && L.guards.every(g => g.kind === Bm.guard),
+        styles: L.roads.find(R => R.main).style === Bm.road, cave: (L.frame === 'cave') === (F.id === 'dungeon') };
     }
     return out;
   });
-  for (const [fac, x] of Object.entries(r)) assert.deepEqual(x, { lanes: true, folk: [], guards: true, styles: true, cave: true, arches: true }, fac);
+  for (const [fac, x] of Object.entries(r)) assert.deepEqual(x, { lanes: true, folk: [], guards: true, styles: true, cave: true }, fac);
 });
 
-test('ekran miasta rysuje się dla każdego krajobrazu; budowle mają pola do wskazania myszą', async () => {
-  const facs = await page.evaluate(() => FACTIONS.map(f => f.id)), arches = await page.evaluate(() => Object.keys(ARCHETYPES));
-  for (let k = 0; k < arches.length; k++) {
-    const fac = facs[k % facs.length];
-    await newGame(page, { mapSize: 'M', faction: fac }, 8);
-    await page.evaluate(([arche]) => {
-      const t = G.state.towns[0], seed = strHash(t.faction + ':' + t.name); TownGenCache.set(seed, generateTownLayout(t.faction, seed, arche));
-      t.built = BUILDINGS.map(b => b.id); setScreen('town', { townId: t.id }); G.modal = null;
-    }, [arches[k]]);
+test('ekran miasta rysuje się dla każdej frakcji; budowle mają pola do wskazania myszą', async () => {
+  const facs = await page.evaluate(() => FACTIONS.map(f => f.id));
+  await newGame(page, { mapSize: 'M' }, 8);
+  for (const fac of facs) {
+    await page.evaluate(([fac]) => { const t = G.state.towns[0]; t.faction = fac; t.built = BUILDINGS.map(b => b.id); setScreen('town', { townId: t.id }); G.modal = null; }, [fac]);
     await frames(page, 6);
-    const r = await page.evaluate(() => { const t = G.state.towns[0]; return { arche: townLayout(t).arche, rects: Object.keys((TownFXCache[lastTownKey] || {}).rects || {}).length, screen: G.screenName }; });
-    assert.deepEqual(r, { arche: arches[k], rects: 15, screen: 'town' }, `${fac}/${arches[k]}`);
+    const r = await page.evaluate(() => ({ rects: Object.keys((TownFXCache[lastTownKey] || {}).rects || {}).length, screen: G.screenName }));
+    assert.deepEqual(r, { rects: 16, screen: 'town' }, fac);
   }
 });
 

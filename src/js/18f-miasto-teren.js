@@ -1,7 +1,7 @@
 // ==================== MIASTO: TEREN, ŚCIEŻKI I MIESZKAŃCY FRAKCJI ===========================
 // Każda frakcja ma własny kraj (TOWN_BIOME): ziemię (łąka z polami, mech, martwa ziemia, bagno, popiół z lawą, śnieg,
 // skalne dno groty, step), las albo skały na horyzoncie, wygląd drogi i ścieżek, mieszkańców i straż przed zamkiem.
-// Generator łączy drzwi każdej budowli ścieżką z główną drogą (bez brodzenia przez rzekę i chodzenia za budowlami),
+// Sceny łączą drzwi każdej budowli ścieżką z główną drogą (bez brodzenia przez rzekę i chodzenia za budowlami),
 // a mieszkańcy chodzą tymi ścieżkami od bramy miasta do budowli i znikają w drzwiach.
 
 const TOWN_BIOME = {
@@ -22,19 +22,6 @@ const TOWN_BIOME = {
   stronghold: { ground: 'sand', far: 'mesas', road: 'track', lane: 'track', mainW: 0.85, laneW: 18, wiggle: 0.3, tufts: 0.2, tuft: ['rgba(110,80,30,.35)', 'rgba(200,190,120,.25)'],
     folk: ['goblin', 'orc', 'goblin', 'wolf'], guard: 'orc', plaza: '#c49c6c' },
 };
-// Krajobrazy pasujące do kraju frakcji (zamiast dowolnych): dolina rzeki i pola, polana nad jeziorem w puszczy, cmentarna
-// przepaść, bagno z wysepkami, lawa, ośnieżone tarasy, podziemna grota, stołowe góry i oaza
-TOWN_STYLE.haven.arche = [['valley', 4], ['coast', 2], ['terraces', 1], ['plateau', 1]];
-Object.assign(TOWN_STYLE.sylvan, { arche: [['lake', 4], ['valley', 2], ['islands', 1]], frame: 0.7 });
-TOWN_STYLE.barrow.arche = [['chasm', 3], ['crater', 2], ['plateau', 2]];
-TOWN_STYLE.fortress.arche = [['islands', 5], ['lake', 3]];
-TOWN_STYLE.inferno.arche = [['chasm', 3], ['crater', 3], ['plateau', 1]];
-TOWN_STYLE.academy.arche = [['terraces', 4], ['plateau', 2], ['lake', 1]];
-TOWN_STYLE.stronghold.arche = [['plateau', 3], ['crater', 2], ['lake', 2]];
-// Loch leży pod ziemią: nad miastem sklepienie groty zamiast nieba
-Object.assign(TOWN_STYLE.dungeon, { arche: [['chasm', 3], ['crater', 2], ['lake', 2], ['plateau', 2]], frame: 1, frameKind: 'cave',
-  skies: [[{ cave: true, top: '#07050c', mid: '#1a1226', hor: '#3a2a4a', sun: [300, 200] }, 3], [{ cave: true, top: '#05080c', mid: '#121e26', hor: '#26404a', sun: [300, 200] }, 2],
-    [{ cave: true, top: '#0c0508', mid: '#26121c', hor: '#4a2a36', sun: [300, 200] }, 1]] });
 
 // --- ziemia frakcji: szczegóły malowane na płaszczyźnie gruntu ---
 function groundDetail(c, Wd, fx) {
@@ -122,7 +109,7 @@ function farBand(c, Wd, hazeCol) {
       c.fillStyle = shadeHex(col, 0.18); c.fillRect(sx - w / 2, sy - h, w, Math.max(1, 3 * s)); c.strokeStyle = 'rgba(80,40,20,.3)'; c.lineWidth = 1; for (let k = 1; k < 4; k++) { const y = sy - h + k * h / 4; c.beginPath(); c.moveTo(sx - w / 2 - h * 0.12 * k, y); c.lineTo(sx + w / 2 + h * 0.15 * k, y); c.stroke(); }
       fillPoly(c, [[sx + w * 0.2, sy - h], [sx + w / 2, sy - h], [sx + w / 2 + h * 0.6, sy], [sx + w * 0.35, sy]], 'rgba(60,20,10,.22)'); }
   }
-  const y0 = proj(0, 4.6)[1], hz = c.createLinearGradient(0, y0 - 30, 0, y0 + 26); hz.addColorStop(0, 'rgba(0,0,0,0)'); hz.addColorStop(1, hazeCol); c.globalAlpha = 0.45; c.fillStyle = hz; c.fillRect(8, y0 - 30, 576, 56); c.globalAlpha = 1;
+  const y0 = proj(0, 4.6)[1], hz = c.createLinearGradient(0, y0 - 30, 0, y0 + 26); const [hr, hg, hb] = hexRgb(hazeCol); hz.addColorStop(0, `rgba(${hr},${hg},${hb},0)`); hz.addColorStop(0.55, hazeCol); hz.addColorStop(1, `rgba(${hr},${hg},${hb},0)`); c.globalAlpha = 0.45; c.fillStyle = hz; c.fillRect(8, y0 - 30, 576, 56); c.globalAlpha = 1;
 }
 
 // --- Loch: grota zamiast nieba (skalna ściana w głębi, smugi światła z otworów) i sklepienie ze stalaktytami ---
@@ -160,16 +147,16 @@ function caveFrame(c, fx, seed) {
 
 // --- drogi i ścieżki w stylu frakcji: płyty, bruk, deski, bazalt z lawą, ubity śnieg, piach z koleinami ---
 const ROAD_LOOK = {
-  cobble: { base: ['#aaa08a', '#7e7664'], edge: 'rgba(50,42,30,.5)', tile: [11, 7, 'rgba(50,40,28,.4)'], curb: 'rgba(230,222,200,.45)' },
-  dirt: { base: ['#a88a5e', '#7e6644'], soft: 'rgba(120,96,60,.35)', specks: ['rgba(60,40,20,.35)', 'rgba(255,240,200,.15)'] },
-  trail: { base: ['#7e6644', '#5e4a2e'], soft: 'rgba(90,70,40,.35)', specks: ['rgba(40,26,12,.4)', 'rgba(210,150,60,.4)'] },
-  flag: { base: ['#5e5866', '#403c48'], edge: 'rgba(8,6,12,.6)', tile: [20, 12, 'rgba(10,8,14,.6)'], jag: 1, bones: true },
-  planks: { base: ['#8a6a40', '#5e4424'], edge: 'rgba(30,18,6,.7)', planks: 6, posts: true },
-  basalt: { base: ['#2e2426', '#1a1214'], edge: 'rgba(0,0,0,.6)', tile: [16, 12, 'rgba(255,110,30,.6)'], jag: 1, lava: true },
-  ice: { base: ['#dce8f4', '#a8bcd2'], banks: '#f8fbff', tile: [18, 12, 'rgba(110,140,180,.5)'], shine: true },
-  snow: { base: ['#dfe7f0', '#b0c0d4'], banks: '#fbfdff', prints: true },
-  slab: { base: ['#716880', '#4c4458'], edge: 'rgba(190,150,255,.4)', tile: [22, 16, 'rgba(8,4,14,.65)'], jag: 0.6, crystals: true },
-  track: { base: ['#dcc090', '#b8966a'], soft: 'rgba(150,110,60,.4)', ruts: 'rgba(100,66,30,.55)', specks: ['rgba(110,80,50,.4)', 'rgba(255,245,220,.3)'] },
+  cobble: { stones: ['#b8ae96', '#a69c86', '#968d79', '#c4bba4', '#aca28a'], mortar: '#5a5244', tile: [9, 8], border: '#3a3226', curb: '#d6ceb6' },
+  dirt: { dirt: ['#6e5432', '#927448', '#b09264'], pebbles: ['#4e3c24', '#d8c49a'], border: '#5a4428', grass: '#4e6a30' },
+  trail: { dirt: ['#5e4a2e', '#76603e', '#8a7250'], pebbles: ['#3e2e18', '#a08a60'], border: '#3a2a16', grass: '#3a5a26' },
+  flag: { stones: ['#6e6878', '#625c6c', '#7a7484', '#57515f'], mortar: '#221e28', tile: [12, 10], jag: 1, border: '#0c0a10', curb: '#8a8494', bones: true },
+  planks: { plank: ['#8a6a40', '#7a5c36', '#96764a'], gapCol: '#2a1a0a', border: '#24160a', planks: 6, posts: true },
+  basalt: { stones: ['#4a3a3a', '#3e3030', '#544242', '#362a2a'], mortar: '#1a1010', tile: [12, 10], jag: 1, border: '#120a0a', lava: true },
+  ice: { stones: ['#e6eff8', '#d6e3f0', '#eef4fb', '#cddbeb'], mortar: '#b0c2d8', tile: [12, 10], border: '#8ea4c0', curb: '#fbfdff', banks: '#f4f8fc', shine: true },
+  snow: { dirt: ['#c8d4e2', '#dce5ef', '#eef3f8'], pebbles: ['#9aaac0', '#ffffff'], border: '#a4b4c8', banks: '#fbfdff', prints: true },
+  slab: { stones: ['#716880', '#655c74', '#7c7390', '#5c546a'], mortar: '#241c2e', tile: [14, 11], jag: 0.6, border: '#0a0610', curb: '#8a80a0', crystals: true },
+  track: { dirt: ['#b8966a', '#ceb084', '#dcc094'], pebbles: ['#8a6a44', '#f0e0c0'], border: '#8a6840', grass: '#9a8a4a', ruts: '#94744a' },
 };
 // Punkty co `step` jednostek świata wzdłuż łamanej: [X, Z, e, szerokość, nx, nz] (n = kierunek w poprzek drogi)
 function pathFrames(pts, step, w0) {
@@ -184,39 +171,77 @@ function pathFrames(pts, step, w0) {
   return out;
 }
 const pathAt = (F, o) => proj(F[0] + F[4] * o, F[1] + F[5] * o / 300, F[2]);
-function roadStyled(c, A, Rd, Wd, fx) {
-  const S = ROAD_LOOK[Rd.style]; if (!S) return roadArtW(c, A, Rd);
-  const pts = subdiv(Rd.pts, 5), line = (E, col, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); };
-  if (S.banks) { const [L2, R2] = ribbon(pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) * 1.45]), Rd.w * 1.45); ribbonPath(c, L2, R2); c.fillStyle = S.banks; c.fill(); }
-  if (S.soft) { const [L2, R2] = ribbon(pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) * 1.3]), Rd.w * 1.3); ribbonPath(c, L2, R2); c.fillStyle = S.soft; c.fill(); }
-  const [L, R] = ribbon(pts, Rd.w), ys = [...L, ...R].map(p => p[1]), g = c.createLinearGradient(0, Math.min(...ys), 0, Math.max(...ys));
-  g.addColorStop(0, S.base[1]); g.addColorStop(1, S.base[0]); ribbonPath(c, L, R); c.fillStyle = g; c.fill();
-  c.save(); ribbonPath(c, L, R); c.clip();
-  const r = mulberry32(7 + Math.round(Rd.pts[0][0] + Rd.pts[0][1] * 100));
-  if (S.tile) { // płyty w perspektywie: rzędy w poprzek drogi, spoiny wzdłuż co drugi rząd przesunięte
-    const [len, wid, col] = S.tile, F = pathFrames(Rd.pts, len, Rd.w), sMid = proj(0, F[F.length >> 1][1])[2]; c.strokeStyle = col; c.lineWidth = Math.max(0.7, sMid * (S.lava ? 1.6 : 1.2)); c.beginPath();
-    F.forEach((f, k) => { const w = f[3] / 2, j = S.jag ? (r() - 0.5) * len * 0.5 * S.jag : 0, [x1, y1] = pathAt([f[0], f[1] + j / 300, ...f.slice(2)], -w), [x2, y2] = pathAt([f[0], f[1] + j / 300, ...f.slice(2)], w);
-      c.moveTo(x1, y1); c.lineTo(x2, y2);
-      const nx = F[k + 1]; if (!nx) return; const n = Math.max(1, Math.round(f[3] / wid));
-      for (let i = 1; i < n; i++) { const o = -w + (i + (k % 2 ? 0.5 : 0)) * f[3] / n; if (o >= w) continue; const [ax, ay] = pathAt(f, o), [bx, by] = pathAt(nx, o * nx[3] / f[3]); c.moveTo(ax, ay); c.lineTo(bx, by); }
-    });
-    c.stroke();
-    F.forEach((f, k) => {
-      if (S.shine && k % 3 === 0) { const [sx, sy, ss] = pathAt(f, (r() - 0.5) * f[3] / 2); c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(sx, sy - ss, 4 * ss, Math.max(1, ss)); }
-      if (S.lava && fx && k % 9 === 4) { const [sx, sy, ss] = pathAt(f, 0); fx.glows.push([sx, sy, 16 * ss, '#ff5a10']); }
-    });
+const mixFrame = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+// Wygładzenie łamanej (Chaikin): załamania dróg i ścieżek stają się łukami; końce zostają na miejscu
+function smoothPts(pts, it = 2) {
+  let P = pts.map(p => [p[0], p[1], p[2] || 0, p[3] || 0]);
+  for (let n = 0; n < it && P.length > 2; n++) {
+    const out = [P[0]];
+    for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1];
+      if (Math.abs(a[2] - b[2]) > 1.5) { out.push(a, b); continue; } // schody zostają proste
+      out.push(a.map((v, k) => v * 0.75 + b[k] * 0.25), a.map((v, k) => v * 0.25 + b[k] * 0.75)); }
+    out.push(P[P.length - 1]); P = out.filter((p, i) => i === 0 || Math.hypot(p[0] - out[i - 1][0], (p[1] - out[i - 1][1]) * 300) > 0.5);
   }
-  if (S.planks) { const F = pathFrames(Rd.pts, S.planks, Rd.w); F.forEach((f, k) => { const [x1, y1, s] = pathAt(f, -f[3] / 2), [x2, y2] = pathAt(f, f[3] / 2); c.strokeStyle = k % 5 === 2 ? 'rgba(20,12,4,.55)' : 'rgba(30,18,8,.4)'; c.lineWidth = Math.max(0.7, s * 1.1); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
-    if (k % 7 === 3) { c.fillStyle = 'rgba(255,230,180,.14)'; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineTo(x2, y2 + 2 * s); c.lineTo(x1, y1 + 2 * s); c.closePath(); c.fill(); } }); }
-  if (S.ruts) { const F = pathFrames(Rd.pts, 6, Rd.w); c.strokeStyle = S.ruts; for (const k of [-0.24, 0.24]) { c.lineWidth = Math.max(0.8, 2 * proj(0, F[0][1])[2]); c.beginPath(); F.forEach((f, i) => { const [x, y] = pathAt(f, f[3] * k); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); } }
-  if (S.prints) { const F = pathFrames(Rd.pts, 9, Rd.w); c.fillStyle = 'rgba(100,130,170,.45)'; F.forEach((f, k) => { const [x, y, s] = pathAt(f, (k % 2 ? 1 : -1) * 3 + Math.sin(k * 1.3) * f[3] * 0.18); c.fillRect(x - s, y - s * 0.6, 2.4 * s, 1.4 * s); }); }
-  if (S.specks) for (let i = 0; i < 170; i++) { const k = r() * (pts.length - 1), i0 = Math.floor(k), p = pts[i0], q = pts[i0 + 1], f = k - i0, wd = p[3] || Rd.w, off = (r() - 0.5) * wd * 0.9;
-    const [x, y, s] = proj(p[0] + (q[0] - p[0]) * f + off, p[1] + (q[1] - p[1]) * f, (p[2] || 0) + ((q[2] || 0) - (p[2] || 0)) * f); c.fillStyle = S.specks[r() < 0.5 ? 0 : 1]; c.fillRect(x - 2 * s, y - s, 4 * s, 1.8 * s); }
-  const F = pathFrames(Rd.pts, 5, Rd.w); c.strokeStyle = 'rgba(20,14,8,.5)'; // schody tam, gdzie droga wspina się na taras albo wzgórze
-  for (let k = 1; k < F.length; k++) if (Math.abs(F[k][2] - F[k - 1][2]) > 1.5) { const [x1, y1, s] = pathAt(F[k], -F[k][3] / 2), [x2, y2] = pathAt(F[k], F[k][3] / 2); c.lineWidth = Math.max(0.8, s * 1.2); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
+  return P.map(p => [p[0], p[1], p[2], p[3] || undefined]);
+}
+// Bruk ułożony na ziemi, nie wzdłuż drogi: rzędy kamieni biegną w poprzek sceny (stałe Z), co drugi rząd przesunięty o pół
+// kamienia. Droga tylko wycina z tej siatki swój kształt, więc na zakrętach i skosach kamienie nie wykrzywiają się w romby.
+function roadStones(c, S, F, r, fx) {
+  const [len, wid] = S.tile, dz = len / 300, gap = 0.14, cells = new Map();
+  for (const f of F) { // komórki siatki pod drogą (z wysokością z najbliższego punktu drogi)
+    const hw = f[3] / 2 + wid, row0 = Math.floor((f[1] - hw / 300) / dz), row1 = Math.floor((f[1] + hw / 300) / dz);
+    for (let row = row0; row <= row1; row++) { const sh = row & 1 ? 0.5 : 0, c0 = Math.floor((f[0] - hw) / wid - sh), c1 = Math.floor((f[0] + hw) / wid - sh);
+      for (let col = c0; col <= c1; col++) { const k = row * 100000 + col; if (!cells.has(k)) cells.set(k, [row, col, f[2]]); } }
+  }
+  const list = [...cells.values()].sort((a, b) => b[0] - a[0]);
+  for (const [row, col, e] of list) {
+    const h = thash(row, col, 77), j = S.jag ? ((h % 100) / 100 - 0.5) * 0.3 * S.jag : 0, sh = row & 1 ? 0.5 : 0;
+    const x0 = (col + sh + gap / 2) * wid, x1 = (col + sh + 1 - gap / 2) * wid, z0 = (row + gap + j * 0.4) * dz, z1 = (row + 1 - gap + j * 0.4) * dz;
+    const q = [proj(x0, z0, e), proj(x1, z0, e), proj(x1, z1, e), proj(x0, z1, e)], s = q[0][2];
+    if (S.lava && h % 6 === 0) { c.strokeStyle = '#ff6a1a'; c.lineWidth = Math.max(1, s * 1.3); c.beginPath(); c.moveTo(q[0][0], q[0][1] + s); c.lineTo(q[1][0], q[1][1] + s); c.stroke(); if (fx && h % 24 === 0) fx.glows.push([q[0][0], q[0][1], 14 * s, '#ff5a10']); }
+    c.fillStyle = S.stones[(h >> 3) % S.stones.length]; c.beginPath(); q.forEach(([x, y], m) => m ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+    c.lineWidth = Math.max(1, s * 1.1);
+    c.strokeStyle = 'rgba(255,250,235,.26)'; c.beginPath(); c.moveTo(q[3][0], q[3][1]); c.lineTo(q[2][0], q[2][1]); c.stroke(); // jasna krawędź od strony nieba
+    c.strokeStyle = 'rgba(0,0,0,.26)'; c.beginPath(); c.moveTo(q[0][0], q[0][1]); c.lineTo(q[1][0], q[1][1]); c.stroke(); // cień od dołu
+    if (S.shine && h % 7 === 0) { c.fillStyle = 'rgba(255,255,255,.8)'; c.fillRect((q[0][0] + q[1][0]) / 2 - 2 * s, (q[0][1] + q[3][1]) / 2, 3 * s, Math.max(1, s)); }
+  }
+}
+function roadStyled(c, A, Rd, Wd, fx, pass = 'both') {
+  const S = ROAD_LOOK[Rd.style]; if (!S) return pass === 'under' ? undefined : roadArtW(c, A, Rd);
+  Rd = { ...Rd, pts: smoothPts(Rd.pts) }; // łuki zamiast załamań
+  const pts = subdiv(Rd.pts, 3), line = (E, col, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.lineJoin = 'round'; c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); };
+  const widen = k => pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) * k]), r = mulberry32(7 + Math.round(Rd.pts[0][0] + Rd.pts[0][1] * 100));
+  const sMid = proj(0, pts[pts.length >> 1][1])[2], bw = Math.max(1.5, 2 * sMid) / sMid * 2; // brzeg ok. 2 px z każdej strony
+  if (pass !== 'top') {
+    if (S.banks) { const [L2, R2] = ribbon(widen(1.4), Rd.w * 1.4); ribbonPath(c, L2, R2); c.fillStyle = S.banks; c.fill(); }
+    const Wb = pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) + bw]), [L3, R3] = ribbon(Wb, Rd.w + bw); ribbonPath(c, L3, R3); c.fillStyle = S.border; c.fill();
+    if (pass === 'under') return;
+  }
+  const [L, R] = ribbon(pts, Rd.w);
+  ribbonPath(c, L, R); c.fillStyle = S.mortar || S.gapCol || S.dirt[0]; c.fill();
+  c.save(); ribbonPath(c, L, R); c.clip();
+  if (S.stones) roadStones(c, S, pathFrames(Rd.pts, S.tile[0], Rd.w), r, fx);
+  if (S.dirt) { // wydeptany środek jaśniejszy, brzegi ciemniejsze; kamyki jako ostre piksele
+    const [L1, R1] = ribbon(widen(0.72), Rd.w * 0.72); ribbonPath(c, L1, R1); c.fillStyle = S.dirt[1]; c.fill();
+    const [L0, R0] = ribbon(widen(0.36), Rd.w * 0.36); ribbonPath(c, L0, R0); c.fillStyle = S.dirt[2]; c.fill();
+    if (S.ruts) { const F = pathFrames(Rd.pts, 6, Rd.w); for (const k of [-0.22, 0.22]) line(F.map(f => pathAt(f, f[3] * k)), S.ruts, Math.max(1.2, 2.2 * sMid)); }
+    const F = pathFrames(Rd.pts, 4, Rd.w);
+    for (const f of F) for (let m = 0; m < 2; m++) { if (r() < 0.45) continue; const [x, y, s] = pathAt(f, (r() - 0.5) * f[3] * 0.9), p = Math.max(2, Math.round(2 * s)); c.fillStyle = S.pebbles[r() < 0.6 ? 0 : 1]; c.fillRect(Math.round(x), Math.round(y), p + 1, p); }
+  }
+  if (S.planks) { const F = pathFrames(Rd.pts, S.planks, Rd.w);
+    for (let k = F.length - 2; k >= 0; k--) { const a = F[k], b = F[k + 1], q = [pathAt(a, -a[3] / 2), pathAt(a, a[3] / 2), pathAt(b, b[3] / 2), pathAt(b, -b[3] / 2)], s = q[0][2];
+      c.fillStyle = S.plank[k % 3]; c.beginPath(); q.forEach(([x, y], m) => m ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+      c.strokeStyle = S.gapCol; c.lineWidth = Math.max(1, s * 1.1); c.beginPath(); c.moveTo(q[0][0], q[0][1]); c.lineTo(q[1][0], q[1][1]); c.stroke();
+      if (k % 4 === 1) { c.fillStyle = '#2a1a0a'; for (const u of [-0.38, 0.38]) { const [x, y] = pathAt(mixFrame(a, b, 0.5), a[3] * u); c.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(s)), Math.max(1, Math.round(s))); } } } }
+  if (S.prints) { const F = pathFrames(Rd.pts, 9, Rd.w); c.fillStyle = '#8a9cb6'; F.forEach((f, k) => { const [x, y, s] = pathAt(f, (k % 2 ? 1 : -1) * 3 + Math.sin(k * 1.3) * f[3] * 0.18); c.fillRect(Math.round(x - s), Math.round(y), Math.max(2, Math.round(2.4 * s)), Math.max(1, Math.round(1.2 * s))); }); }
+  const F = pathFrames(Rd.pts, 5, Rd.w); // schody tam, gdzie droga wspina się na taras albo wzgórze: stopień = jasne czoło i ciemna krawędź
+  for (let k = 1; k < F.length; k++) if (Math.abs(F[k][2] - F[k - 1][2]) > 1.5) { const [x1, y1, s] = pathAt(F[k], -F[k][3] / 2), [x2, y2] = pathAt(F[k], F[k][3] / 2);
+    c.strokeStyle = S.curb || S.dirt?.[2] || '#b8b0a0'; c.lineWidth = Math.max(1.5, s * 2.2); c.beginPath(); c.moveTo(x1, y1 + s); c.lineTo(x2, y2 + s); c.stroke();
+    c.strokeStyle = S.border; c.lineWidth = Math.max(1, s); c.beginPath(); c.moveTo(x1, y1 - s); c.lineTo(x2, y2 - s); c.stroke(); }
   c.restore();
-  if (S.edge) { line(L, S.edge, 1.3); line(R, S.edge, 1.3); }
-  if (S.curb) { line(L, S.curb, 1); line(R, S.curb, 1); }
+  if (S.curb) { const [Lc, Rc] = ribbon(widen(0.94), Rd.w * 0.94); line(Lc, S.curb, 1); line(Rc, S.curb, 1); }
+  if (S.grass) { const F2 = pathFrames(Rd.pts, 7, Rd.w); c.fillStyle = S.grass; F2.forEach((f, k) => { if (r() < 0.5) return; const sd = r() < 0.5 ? -1 : 1, [x, y, s] = pathAt(f, sd * f[3] / 2), p = Math.max(1, Math.round(s));
+    c.fillRect(Math.round(x - p), Math.round(y - 3 * p), p, 3 * p); c.fillRect(Math.round(x + p), Math.round(y - 2 * p), p, 2 * p); c.fillRect(Math.round(x), Math.round(y - 4 * p), p, 4 * p); }); }
   if (S.posts || S.bones || S.crystals) { const F2 = pathFrames(Rd.pts, S.posts ? 34 : 70, Rd.w); F2.forEach((f, k) => { if (k === 0) return; for (const sd of [-1, 1]) {
     const [x, y, s] = pathAt(f, sd * (f[3] / 2 + 1));
     if (S.posts) { c.fillStyle = '#3a2812'; c.fillRect(x - 1.2 * s, y - 5 * s, 2.4 * s, 9 * s); c.fillStyle = 'rgba(255,230,180,.2)'; c.fillRect(x - 1.2 * s, y - 5 * s, 2.4 * s, 1.2 * s); }
@@ -226,7 +251,7 @@ function roadStyled(c, A, Rd, Wd, fx) {
 }
 
 // --- sieć ścieżek: od drzwi każdej budowli do najbliższego miejsca na drodze albo na innej ścieżce ---
-function townPaths(r, T, L, Bm) {
+function townPaths(r, T, L, Bm, walks = []) {
   const M = L.roads.find(R => R.main); if (!M) return;
   const wade = !!(Bm.wade || T.planks);
   M.w *= Bm.mainW; for (const p of M.pts) if (p[3]) p[3] *= Bm.mainW; M.style = Bm.road;
@@ -234,6 +259,11 @@ function townPaths(r, T, L, Bm) {
   const main = subdiv(M.pts, 3).map(W), net = [];
   main.forEach((p, i) => { if (Math.abs(p[2] - townElev(T, L, p[0], p[1])) < 1 && p[1] > 0.84) net.push({ X: p[0], Z: p[1], e: p[2], route: main.slice(0, i + 1) }); });
   L.mainRoute = main; L.doorRoutes = {};
+  for (const wk of walks) { // pomosty i ścieżki ułożone w scenie: dołączają do sieci, reszta ścieżek podłącza się do nich
+    const P = subdiv(wk.map(q => [q[0], q[1], q[2] || 0]), 4).map(W), base = net.reduce((b, p) => (!b || Math.hypot(p.X - P[0][0], (p.Z - P[0][1]) * 300) < Math.hypot(b.X - P[0][0], (b.Z - P[0][1]) * 300) ? p : b), null);
+    L.roads.splice(L.roads.indexOf(M), 0, { w: Bm.laneW * 1.2, style: Bm.lane, pts: P.map(q => [...q]) }); T.feats.push({ pts: P.map(q => [q[0], q[1]]), w: Bm.laneW + 8 });
+    P.forEach((q, i) => net.push({ X: q[0], Z: q[1], e: q[2], route: [...base.route, ...P.slice(0, i + 1)] }));
+  }
   const wet = (X, Z) => {
     if (T.river && segDist(X, Z, T.river.pts) < T.river.w / 2 + 6) return 2;
     if (T.chasm && segDist(X, Z, T.chasm.pts) < 95) return 2;
@@ -266,7 +296,7 @@ function townPaths(r, T, L, Bm) {
       }
       pts.push([X, Z, e]); lastE = e;
     }
-    return { pts, len: len * (1 + Math.abs(wig)) + water * 30 + cover * 40, water };
+    return { pts, len: len * (1 + Math.abs(wig)) + water * 60 + cover * 40, water };
   };
   const order = L.slots.map((S, i) => ({ i, d: Math.min(...net.map(p => Math.hypot(p.X - S.X, (p.Z - S.Z) * 300))) })).filter(o => o.i > 1).sort((a, b) => a.d - b.d);
   for (const { i } of order) {
@@ -371,4 +401,23 @@ function drawDweller(ctx, kind, x, y, sc, t, dir, still, v = 0) {
     default: drawWalker(P, 0, 0, 1, '#7a5a3a', t, 1);
   }
   ctx.restore();
+}
+// Plac przed ratuszem: brukowany jak droga główna, kamienie w pierścieniach wokół środka, ciemny brzeg i jasny krawężnik
+function plazaArt(c, Wd) {
+  const P = Wd.plaza, S = ROAD_LOOK[(TOWN_BIOME[Wd.fac] || TOWN_BIOME.haven).road] || ROAD_LOOK.cobble, [px, py, s] = proj(P.X, P.Z), RX = P.r * s, RY = RX * 0.3, r = mulberry32(31);
+  const stones = S.stones || S.plank || S.dirt, ell = (k, fill) => { c.beginPath(); c.ellipse(px, py, RX * k, RY * k, 0, 0, TAU); if (fill) { c.fillStyle = fill; c.fill(); } };
+  ell(1, S.mortar || S.gapCol || S.border);
+  const rings = Math.max(3, Math.round(RY / 5));
+  for (let q = rings - 1; q >= 0; q--) {
+    const k0 = q / rings, k1 = (q + 1) / rings, n = Math.max(5, Math.round(TAU * RX * (q + 0.5) / rings / 9)), off = r() * TAU;
+    for (let i = 0; i < n; i++) {
+      const a0 = off + (i + 0.08) / n * TAU, a1 = off + (i + 0.92) / n * TAU, m0 = k0 + 0.06 / rings, m1 = k1 - 0.06 / rings;
+      const pt = (a, k) => [px + Math.cos(a) * RX * k, py + Math.sin(a) * RY * k];
+      c.fillStyle = stones[(r() * stones.length) | 0]; c.beginPath();
+      const Q = q === 0 ? [[px, py], pt(a0, m1), pt((a0 + a1) / 2, m1), pt(a1, m1)] : [pt(a0, m0), pt(a0, m1), pt(a1, m1), pt(a1, m0)];
+      Q.forEach(([x, y], j) => j ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+    }
+  }
+  c.strokeStyle = S.border; c.lineWidth = Math.max(1.5, 2 * s); ell(1); c.stroke();
+  if (S.curb) { c.strokeStyle = S.curb; c.lineWidth = 1; ell(0.95); c.stroke(); }
 }

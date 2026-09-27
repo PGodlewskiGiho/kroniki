@@ -29,7 +29,7 @@ test('mapa przygody wypełnia szerokie okno: większy widok, panel przy prawej k
   await size(1280, 720); await newGame(page, { opponents: 0 }, 3); await frames(page, 3); // ziarno 3: cel daleko w prawo jest osiągalny
   const r = await page.evaluate(() => ({ view: { ...VIEW }, list: LIST.x, rows: LIST_ROWS, end: G.screens.adventure.buttons.at(-1).x }));
   assert.deepEqual(r.view, { x: 8, y: 8, w: 842, h: 552 });
-  assert.equal(r.list, 866); assert.equal(r.end, 868); assert.equal(r.rows, 3);
+  assert.equal(r.list, 866); assert.equal(r.end, 932); assert.equal(r.rows, 3);
   // kliknięcie w mapę daleko po prawej (poza dawnym obszarem 800×600) wyznacza ścieżkę
   const target = await page.evaluate(() => {
     const st = G.state, h = hero(st), n = st.map.n, r = G.canvas.getBoundingClientRect(), k = r.width / VW; human(st).explored.fill(1); centerCam(st, h.x, h.y);

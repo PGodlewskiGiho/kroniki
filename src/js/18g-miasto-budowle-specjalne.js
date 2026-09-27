@@ -121,3 +121,27 @@ Object.assign(BUILD_ART.stronghold, {
     fx.smokes.push([bx + bw * 0.3, top - rh * 0.4]);
   },
 });
+
+// --- Budowla Graala: schodkowy cokół z kamienia frakcji, złoty kielich na szczycie, słup światła w barwie okien frakcji ---
+function grailArt(c, A, s, tier, col, fx) {
+  const { x, b, w, h } = s, cx = x + w / 2, [lo, dk] = A.wall, glow = A.glow || '#ffe890';
+  const [gr, gg, gb] = hexRgb(glow), beam = c.createLinearGradient(0, b - h, 0, b - h * 0.45);
+  beam.addColorStop(0, `rgba(${gr},${gg},${gb},0)`); beam.addColorStop(1, `rgba(${gr},${gg},${gb},.55)`);
+  c.fillStyle = beam; fillPoly(c, [[cx - 5, b - h], [cx + 5, b - h], [cx + 12, b - h * 0.45], [cx - 12, b - h * 0.45]], beam);
+  const step = (k, sw, sh2) => { const y = b - k * 11 - sh2, xx = cx - sw / 2; c.fillStyle = lo; c.fillRect(xx, y, sw, sh2); c.fillStyle = dk; c.fillRect(xx + sw * 0.62, y, sw * 0.38, sh2);
+    c.fillStyle = A.trim; c.fillRect(xx - 1, y, sw + 2, 2); c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(xx, y + sh2 - 1, sw, 1); };
+  step(0, w, 11); step(1, w * 0.74, 11); step(2, w * 0.5, 11); // trzy stopnie
+  const py = b - 33, colH = h * 0.3; c.fillStyle = lo; c.fillRect(cx - 7, py - colH, 14, colH); c.fillStyle = dk; c.fillRect(cx + 2, py - colH, 5, colH); // kolumna
+  c.fillStyle = A.trim; c.fillRect(cx - 10, py - colH - 3, 20, 4); c.fillRect(cx - 9, py - 3, 18, 3);
+  const cy = py - colH - 3; // kielich: stopa, nóżka z węzłem, czasza z brzegiem, klejnoty
+  fillPoly(c, [[cx - 9, cy], [cx + 9, cy], [cx + 4, cy - 4], [cx - 4, cy - 4]], '#c8962a'); c.fillStyle = '#e0b840'; c.fillRect(cx - 2, cy - 14, 4, 10);
+  c.fillStyle = '#f0cc50'; c.beginPath(); c.ellipse(cx, cy - 9, 4, 2.4, 0, 0, TAU); c.fill();
+  fillPoly(c, [[cx - 12, cy - 30], [cx + 12, cy - 30], [cx + 9, cy - 20], [cx + 3, cy - 14], [cx - 3, cy - 14], [cx - 9, cy - 20]], '#e0b840');
+  fillPoly(c, [[cx + 3, cy - 30], [cx + 12, cy - 30], [cx + 9, cy - 20], [cx + 3, cy - 14]], '#b88a28');
+  c.fillStyle = '#fff0a0'; c.fillRect(cx - 12, cy - 31, 24, 2); c.fillStyle = '#5a3810'; c.beginPath(); c.ellipse(cx, cy - 30, 11, 2, 0, 0, TAU); c.fill();
+  for (const [gx, gc] of [[-5, '#c83a3a'], [0, '#3a8ae0'], [5, '#3ab860']]) { c.fillStyle = gc; c.fillRect(cx + gx - 1.5, cy - 25, 3, 3); }
+  c.fillStyle = '#fffbe0'; c.fillRect(cx - 8, cy - 28, 2, 6);
+  if (fx) { fx.glows.push([cx, cy - 24, 46, glow]); fx.glows.push([cx, cy - 26, 20, '#fff4c0']); }
+  for (const dx of [-w * 0.42, w * 0.42]) { const bx = cx + dx; c.fillStyle = dk; c.fillRect(bx - 2, b - 30, 4, 30); c.fillStyle = '#ff9a2a'; c.fillRect(bx - 3, b - 35, 6, 5); if (fx) fx.glows.push([bx, b - 34, 14, '#ffa040']); } // znicze
+}
+for (const fac of Object.keys(BUILD_ART)) BUILD_ART[fac].grail = grailArt;

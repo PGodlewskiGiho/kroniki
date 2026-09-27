@@ -31,6 +31,7 @@ function showKingdom(st) {
       });
       divider(ctx, x + 40, x + w - 40, y + 330);
       text(ctx, `Bohaterowie: ${myHeroes(st).length}    Kopalnie: ${total}    Miasta: ${myTowns(st).length}`, W / 2, y + 348, { size: 17, align: 'center', weight: 500, color: '#3a1e08' });
+      text(ctx, `Obeliski: ${obelisksSeen(st, ME)} z ${obelisksTotal(st)}${st.grail && st.grail.found === ME ? ', Graal odnaleziony' : ''}`, W / 2, y + 396, { size: 15, align: 'center', weight: 500, color: '#5a3814' });
       text(ctx, `${dateText(st)} (Tydzień ${weekName(st)})`, W / 2, y + 372, { size: 16, align: 'center', italic: true, weight: 500, color: '#5a3814' });
       btn.draw(ctx);
     },
@@ -54,7 +55,9 @@ function buildPanelButtons(scr, st) {
     scr.btnMove, scr.btnSleep,
     mk(4, iconSpell, 'Czary', () => scr.spellbook(), { key: 'c', tip: 'Księga czarów: czary rzucane na mapie (klawisz C).' }),
     mk(5, iconGear, 'Menu', () => scr.systemMenu(), { key: 'escape', tip: 'Menu systemowe: powrót do menu głównego (klawisz Esc).' }),
-    new Button(LIST.x + 2, 212, 190, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
+    new Button(LIST.x + 2, 212, 30, 40, 'Mapa zagadki', () => showPuzzle(G.state), { icon: iconPuzzle, key: 'p', tip: 'Mapa zagadki: obeliski odsłaniają miejsce, gdzie zakopano Graala (klawisz P).' }),
+    new Button(LIST.x + 34, 212, 30, 40, 'Kop', () => digHere(scr, G.state), { icon: iconShovel, key: 'd', tip: 'Kop w poszukiwaniu Graala na polu bohatera. Tylko z pełnymi punktami ruchu; zużywa cały dzień (klawisz D).' }),
+    new Button(LIST.x + 66, 212, 126, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
   ];
 }
 function panelInfoText(st, scr) {

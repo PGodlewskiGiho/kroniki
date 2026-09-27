@@ -125,6 +125,10 @@ function aiPickTarget(st, h, R) {
     }
     if (best >= 0) cands.push({ i: best, score: bestScore, what: 'explore' });
   }
+  // Graal: gdy SI zna całą mapę zagadki, idzie kopać; z Graalem w plecaku wraca do najbliższego własnego miasta
+  const G2 = st.grail;
+  if (G2 && G2.found < 0 && !hasGrail(h) && aiKnowsGrail(st, h.owner) && !st.heroes.some(o => o !== h && o.x === G2.x && o.y === G2.y)) add(G2.y * n + G2.x, 12000, 'dig');
+  if (hasGrail(h)) for (const t of st.towns) if (t.owner === h.owner && !hasB(t, 'grail') && !heroAt(st, t.x, t.y)) add(t.y * n + t.x, 40000, 'grail');
   cands.sort((a, b) => b.score - a.score);
   let sims = 0;
   for (const c of cands) {
@@ -164,7 +168,7 @@ function* aiVisit(st, h, i, news) {
   const other = st.heroes.find(o => o !== h && o.x === x && o.y === y), ob = objectAt(st, i);
   if (ob && ob.type === 'town') {
     const t = st.towns[ob.townId];
-    if (t.owner === h.owner) { armyTransfer(t.garrison, h.army); return; }
+    if (t.owner === h.owner) { if (buildGrail(st, t, h)) tell(st, -1, `${ownerName(st, h.owner)} wznosi budowlę Graala w mieście ${t.name}.`); armyTransfer(t.garrison, h.army); return; }
     if (!armySize(t.garrison) && !heroInTown(st, t)) { tell(st, t.owner, `${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
     else yield* aiBattle(st, h, t, news);
     return;
@@ -178,7 +182,10 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
   else if (ob.type === 'mine') { tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
+const aiKnowsGrail = (st, pid) => obelisksTotal(st) > 0 && obelisksSeen(st, pid) >= obelisksTotal(st);
 function* aiMoveHero(st, h, news) {
+  const G2 = st.grail; // stoi na miejscu Graala od wczoraj: kopie z pełnymi punktami ruchu
+  if (G2 && G2.found < 0 && h.x === G2.x && h.y === G2.y && aiKnowsGrail(st, h.owner) && digGrail(st, h).found) tell(st, -1, `${h.name} (${ownerName(st, h.owner)}) wykopuje Graala!`);
   for (let plan = 0; plan < 12 && st.heroes.includes(h); plan++) {
     const R = aiReach(st, h), target = aiPickTarget(st, h, R); if (!target) return;
     const path = R.path(target.i); if (!path.length) return;
@@ -189,6 +196,7 @@ function* aiMoveHero(st, h, news) {
       yield { kind: 'step', h, fx, fy };
     }
     yield* aiVisit(st, h, target.i, news); h.prev = null;
+    if (target.what === 'dig') return; // kopać można dopiero jutro, z pełnymi punktami ruchu
     if (!st.heroes.includes(h) || !armySize(h.army) && target.what !== 'reinforce') return;
   }
 }

@@ -126,10 +126,18 @@ function visitObject(st, h, ob) {
   } else if (ob.type === 'site') {
     const r = useSite(st, h, ob), S = SITES[ob.kind];
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
-    showDialog(`${S.name}. ${r.text}`, [{ label: 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); } }],
+    showDialog(`${S.name}. ${r.text}`, [{ label: r.puzzle ? 'Mapa zagadki' : 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); if (r.puzzle) showPuzzle(st); } }],
       { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5) });
   } else if (ob.type === 'town') {
-    if (ob.owner === h.owner) G.go('town', { townId: ob.townId }); else startTownAssault(st, h, st.towns[ob.townId]);
+    const t = st.towns[ob.townId];
+    if (ob.owner !== h.owner) startTownAssault(st, h, t);
+    else if (hasGrail(h) && !hasB(t, 'grail')) { // Graal w plecaku: jak w Heroes 3 miasto pyta, czy go tu wbudować
+      const name = bInfo(BUILD_BY_ID.grail, t.faction).name;
+      showDialog(`${h.name} przynosi Graala do miasta ${t.name}. Wznieść tu ${name}? (+${GRAIL_GOLD} złota dziennie, +50% przyrostu stworów; Graal zostaje w mieście na zawsze.)`, [
+        { label: 'Zbuduj', key: 'enter', action: () => { buildGrail(st, t, h); G.go('town', { townId: t.id }); } },
+        { label: 'Nie teraz', key: 'escape', action: () => G.go('town', { townId: t.id }) },
+      ], { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite('grail'), cx, cy, 3) });
+    } else G.go('town', { townId: ob.townId });
   } else if (ob.type === 'bank') {
     if (ob.cleared) { G.screens.adventure.flash(`${BANKS[ob.kind].name}: splądrowane, nic tu już nie ma`); return; }
     startBankAssault(st, h, ob);
@@ -267,6 +275,7 @@ function gainExp(st, h, amount, then) {
 // Zakłada artefakt z plecaka (indeks) na pasujące miejsce: najpierw wolne, inaczej zamiana z pierwszym pasującym
 function equipFromBag(h, bi) {
   const id = h.bag[bi]; if (!id) return 'Brak artefaktu';
+  if (!EQUIP_SLOTS.some(s => s.kind === ARTIFACTS[id].kind)) return `${ARTIFACTS[id].name} nie da się założyć`;
   const slots = EQUIP_SLOTS.filter(s => s.kind === ARTIFACTS[id].kind), free = slots.find(s => !h.equip[s.id]) || slots[0];
   const old = h.equip[free.id]; h.equip[free.id] = id; h.bag.splice(bi, 1); if (old) h.bag.splice(bi, 0, old);
   return null;
@@ -345,7 +354,7 @@ function dwellingUnits(t, L) {
 // Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
 function weeklyGrowth(t, L, st) {
   const cid = factionOf(t.faction).dw['dw' + L][1], base = CREATURES[cid].growth, W = st && weekInfo(st);
-  return Math.floor(base * (hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) * (t.faction === 'stronghold' ? 1.25 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
+  return Math.floor(base * ((hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) + (hasB(t, 'grail') ? GRAIL_GROWTH : 0)) * (t.faction === 'stronghold' ? 1.25 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
 }
 // Nowy tydzień: przyrost w siedliskach; w Miesiącu Zarazy zamiast przyrostu pula topnieje o połowę
 function townGrowthWeek(t, st) {
@@ -454,8 +463,10 @@ function collectIncome(st) {
 const hasB = (t, id) => t.built.includes(id);
 const canAfford = (st, cost, owner = ME) => RESOURCES.every(r => (playerOf(st, owner).resources[r.id] || 0) >= (cost[r.id] || 0));
 const reqMet = (t, B) => B.req.every(r => hasB(t, r));
-function townGold(t) { let g = 0; for (const id of ['hall1', 'hall2', 'hall3', 'hall4']) if (hasB(t, id)) g = BUILD_BY_ID[id].gold; return g; }
-function availableBuildings(t, st = G.state) { return BUILDINGS.filter(B => !hasB(t, B.id) && reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t)))); }
+function townGold(t) { let g = 0; for (const id of ['hall1', 'hall2', 'hall3', 'hall4']) if (hasB(t, id)) g = BUILD_BY_ID[id].gold; return g + (hasB(t, 'grail') ? GRAIL_GOLD : 0); }
+function availableBuildings(t, st = G.state) { return BUILDINGS.filter(B => !B.grail && !hasB(t, B.id) && reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t)))); }
+// Następna budowla do postawienia na miejscu (działka w scenie); budowli Graala nie da się kupić, więc nie ma działki
+const slotNext = (t, slot) => BUILDINGS.find(B => B.slot === slot && !B.grail && !hasB(t, B.id));
 function slotBuilding(t, slot) { let best = null; for (const B of BUILDINGS) if (B.slot === slot && hasB(t, B.id)) best = B; return best; }
 function buildIn(st, t, B) {
   const R = playerOf(st, t.owner).resources;
@@ -557,6 +568,28 @@ function siteStamp(st, ob, h) {
   const u = SITES[ob.kind].use, wk = weekIndex(st);
   return u === 'hero' ? [h.id, 1] : u === 'day' ? [h.id, st.dayTotal] : u === 'heroWeek' ? [h.id, wk] : u === 'week' ? ['all', wk] : ['p' + h.owner, 1];
 }
+// --- Graal i obeliski ---
+const obelisksTotal = st => st.objects.filter(o => o.type === 'site' && o.kind === 'obelisk' && !o.dead).length;
+const obelisksSeen = (st, pid) => st.objects.filter(o => o.type === 'site' && o.kind === 'obelisk' && !o.dead && (o.seen || {})['p' + pid] === 1).length;
+const hasGrail = h => !!h && (h.bag || []).includes('grail');
+// Ile kawałków mapy zagadki widzi gracz (wszystkie, gdy odwiedził każdy obelisk)
+function puzzlePieces(st, pid) { const N = obelisksTotal(st), k = obelisksSeen(st, pid), all = PUZZLE_COLS * PUZZLE_ROWS; return N ? (k >= N ? all : Math.floor(all * k / N)) : 0; }
+// Kopanie na polu bohatera (jak w Heroes 3: tylko z pełnymi punktami ruchu, zużywa wszystkie). Zwraca { error } albo { found }.
+function digGrail(st, h) {
+  const n = st.map.n, i = h.y * n + h.x, t = st.map.terrain[i];
+  if (h.boat || t === TER.WATER) return { error: 'Nie da się kopać na wodzie' };
+  if (h.mp < heroMaxMP(h)) return { error: 'Kopać można tylko na początku dnia, z pełnymi punktami ruchu' };
+  if (objectAt(st, i)) return { error: 'Tu nie da się kopać: pole zajmuje obiekt' };
+  if ((st.holes || []).includes(i)) return { error: 'Tu już ktoś kopał' };
+  h.mp = 0; (st.holes = st.holes || []).push(i); MapRender.miniDirty = true;
+  const G2 = st.grail; if (G2 && G2.found < 0 && G2.x === h.x && G2.y === h.y) { G2.found = h.owner; giveArtifact(h, 'grail'); return { found: true }; }
+  return { found: false };
+}
+// Bohater z Graalem w swoim mieście: Graal zostaje wbudowany (jedna budowla Graala na miasto). Zwraca true, gdy powstała.
+function buildGrail(st, t, h) {
+  if (!hasGrail(h) || t.owner !== h.owner || hasB(t, 'grail')) return false;
+  h.bag.splice(h.bag.indexOf('grail'), 1); t.built.push('grail'); return true;
+}
 const siteUsed = (st, ob, h) => { const [k, v] = siteStamp(st, ob, h); return (ob.seen || {})[k] === v; };
 // Skutek odwiedzin (człowiek i SI). Zwraca { text, float?, res?, exp? }; doświadczenie dolicza wołający (okno awansu).
 function useSite(st, h, ob) {
@@ -581,6 +614,8 @@ function useSite(st, h, ob) {
     }
     case 'stables': mark(); h.mp += SITE_MP; return { text: `Świeże konie: +${SITE_MP} punktów ruchu na dziś.` };
     case 'lookout': mark(); reveal(st, ob.x, ob.y, LOOKOUT_R, h.owner); MapRender.miniDirty = true; return { text: `Z wieży widać okolicę w promieniu ${LOOKOUT_R} pól.` };
+    case 'obelisk': { mark(); const k = obelisksSeen(st, h.owner), N = obelisksTotal(st);
+      return { puzzle: true, text: k >= N ? 'Ostatni obelisk! Mapa zagadki jest kompletna: krzyżyk wskazuje, gdzie zakopano Graala.' : `Runy na obelisku odsłaniają kolejny fragment mapy zagadki (${k} z ${N}).` }; }
   }
   if (S.stat) { mark(); h.stats[S.stat]++; const P = PRIMARY.find(p => p.id === S.stat); if (S.stat === 'kn') h.mana = Math.min(heroMaxMana(h), h.mana + 10); return { text: `${h.name}: ${P.name.toLowerCase()} +1 (teraz ${h.stats[S.stat]}).`, float: `${P.name} +1` }; }
   return { text: '' };

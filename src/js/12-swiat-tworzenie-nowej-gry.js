@@ -189,6 +189,7 @@ function placeObjects(st) {
   if (!coastBoat(n * 0.3)) coastBoat(0); for (let k = Math.round(N / 3000); k > 0; k--) coastBoat(0);
   // miejsca (SITES): liczba wg gęstości, na małej mapie rzadsze z losowaniem; część pilnują potwory
   for (const [kind, S] of Object.entries(SITES)) {
+    if (!S.per) continue; // obeliski rozmieszcza placeGrail
     const want = N / S.per, cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);
     for (let k = 0; k < cnt; k++) {
       const p = pick((x, y) => dStart(x, y) >= (S.guard ? 7 : 4)); if (!p) continue;
@@ -199,6 +200,26 @@ function placeObjects(st) {
     }
   }
   return objs;
+}
+// Graal i obeliski: Graal zakopany na wolnym polu lądu (osiągalnym ze startu, z dala od graczy), obeliski rozsiane po mapie.
+// Osobno od placeObjects, bo dokłada je też naprawa starszych zapisów (migrateSave).
+function placeGrail(st) {
+  const map = st.map, n = map.n, rng = mulberry32(st.seed ^ 0x6a41), reach = new Uint8Array(n * n), q = [map.start.y * n + map.start.x]; reach[q[0]] = 1;
+  while (q.length) { const i = q.pop(), x = i % n, y = (i / n) | 0;
+    for (let d = 0; d < 8; d++) { const nx = x + DX8[d], ny = y + DY8[d]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (!reach[j] && map.terrain[j] !== TER.WATER && !map.obst[j]) { reach[j] = 1; q.push(j); } } }
+  const taken = i => !reach[i] || map.obst[i] || map.sites.some(S => Math.abs(S.x - i % n) <= 3 && Math.abs(S.y - ((i / n) | 0)) <= 3) || st.objects.some(o => !o.dead && (o.y * n + o.x === i || (o.blocks || []).includes(i)));
+  const starts = map.sites.slice(0, Math.max(1, st.players.length || playerSlots(st.settings).length)), dStart = (x, y) => Math.min(...starts.map(s => Math.hypot(x - s.x, y - s.y)));
+  const pick = (minD, near) => { for (let k = 0; k < 3000; k++) { const x = 2 + Math.floor(rng() * (n - 4)), y = 2 + Math.floor(rng() * (n - 4)), i = y * n + x;
+    if (taken(i) || dStart(x, y) < minD || (near && near(x, y))) continue; return [x, y]; } return null; };
+  if (!st.grail) { const p = pick(n * 0.25) || pick(6) || pick(0); if (p) st.grail = { x: p[0], y: p[1], found: -1 }; }
+  st.holes = st.holes || [];
+  if (!st.objects.some(o => o.type === 'site' && o.kind === 'obelisk')) {
+    const want = OBELISKS[(MAP_SIZES.find(m => m.n === n) || MAP_SIZES[1]).id] || 4, placed = [];
+    for (let k = 0; k < want; k++) { // obeliski daleko od siebie (każdy w innej części mapy)
+      const p = pick(4, (x, y) => placed.some(([a, b]) => Math.hypot(a - x, b - y) < n / (Math.sqrt(want) + 1))) || pick(4); if (!p) continue;
+      placed.push(p); st.objects.push({ id: st.objects.length, type: 'site', kind: 'obelisk', x: p[0], y: p[1], seen: {} });
+    }
+  }
 }
 function createTown(st, x, y, owner, fac = 'haven') {
   const F = factionOf(fac), names = F.towns, nat = F.terrain, n0 = st.map.n;
@@ -242,6 +263,7 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S }, bonusText: '', selHero: 0, cam: null, players: [], heroes: [], towns: [], objects: [] };
   const map = st.map = generateMap(MAP_SIZES.find(m => m.id === S.mapSize).n, seed);
   st.objects = placeObjects(st);
+  placeGrail(st);
   // gracze (ludzie i komputer) w kolejnych miejscach startowych (pierwsze = map.start, drugie = najdalej od niego), reszta miast jest niezależna
   const trng = mulberry32(seed ^ 0x70a7), slots = playerSlots(S).slice(0, map.sites.length), others = map.sites.filter(s => s !== map.start), sites = [map.start, ...others];
   slots.forEach((o, id) => {
