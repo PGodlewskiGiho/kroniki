@@ -6,7 +6,8 @@
 // Świat jak w MIASTO: GRAFIKA: X w poziomie (piksele przy Z = 1), Z = odległość (0,86 tuż przy kadrze, 3 daleko), e = wysokość.
 // Miejsca (slots, kolejność jak BUILDINGS.slot): 0 ratusz, 1 zamek, 2 gildia, 3–7 siedliska 7–3, 8 kuźnia, 9 skarbiec zasobów,
 // 10–11 siedliska 1–2, 12 tawerna, 13 rynek, 14 budowla specjalna. Wpis: [X, Z, { flip, hill: nr wzgórza, e: wysokość }].
-// Rekwizyty: [rodzaj, X, Z, skala = 1, wysokość = teren].
+// Rekwizyty: [rodzaj, X, Z, skala = 1, wysokość = teren]. walks: pomosty i ścieżki ułożone ręcznie ([[X, Z, e], ...],
+// pierwszy punkt przy drodze głównej); ścieżki do pozostałych drzwi dołączają do nich same.
 
 const TOWN_SCENES = {};
 
@@ -42,7 +43,7 @@ function buildTownScene(fac) {
   if (Sc.plaza !== undefined) L.plaza = Sc.plaza; // null = bez placu
   for (const Rd of Sc.roads || []) { L.roads.push({ ...Rd, pts: Rd.pts.map(p => p.slice()) }); T.feats.push({ pts: Rd.pts.map(p => [p[0], p[1]]), w: Rd.w }); }
   if (Sc.wall) { L.walls = [{ style: Sc.wall.style || St.walls[0], h: Sc.wall.h || 30, pts: Sc.wall.pts }]; T.feats.push({ pts: Sc.wall.pts, w: 30 }); }
-  townPaths(r, T, L, Bm);
+  townPaths(r, T, L, Bm, Sc.walks || []);
   for (const [kind, X, Z, k = 1, e] of Sc.props || []) L.props.push([kind, X, Z, e ?? townElev(T, L, X, Z), k]);
   if (L.walls) townWallGates(r, T, L);
   townFolk(r, T, L, Bm);
@@ -86,7 +87,7 @@ TOWN_SCENES.sylvan = {
   lakes: [{ X: -70, Z: 1.45, rx: 160, rz: 0.22 }],
   entryX: 60,
   slots: [
-    [0, 2.05], [-250, 0, { hill: 0 }], [-300, 1.4], [470, 0, { hill: 1 }], [110, 1.8], [280, 1.55], [300, 2.65], [-200, 1.75],
+    [0, 2.05], [-250, 0, { hill: 0 }], [-300, 1.4], [470, 0, { hill: 1 }], [150, 1.85], [280, 1.55], [300, 2.65], [-200, 1.75],
     [-190, 0.95], [-470, 2.6], [230, 1.0, { flip: true }], [190, 1.6], [-80, 0.95], [110, 0.98, { flip: true }], [400, 2.05],
   ],
   props: [['fern', 60, 0.92], ['fern', -40, 1.25], ['mushroom', 150, 1.2], ['mushroom', 20, 1.75], ['rock', -30, 1.8], ['bush', 300, 1.25], ['bush', -300, 1.35], ['tree', -470, 1.3, 1.3], ['tree', 480, 1.2, 1.3]],
@@ -119,6 +120,7 @@ TOWN_SCENES.fortress = {
     { X: -340, Z: 1.45, rx: 150, rz: 0.09 }, { X: 90, Z: 2.27, rx: 120, rz: 0.06 }, { X: 420, Z: 2.1, rx: 140, rz: 0.08 },
   ],
   entryX: 0,
+  walks: [[[40, 1.3], [150, 1.46], [240, 1.66]], [[-40, 1.3], [-190, 1.4], [-320, 1.44]], [[250, 1.7], [350, 1.92], [410, 2.07]], [[20, 1.42], [60, 1.85], [90, 2.24]]],
   slots: [
     [0, 1.36], [-240, 2.03], [90, 2.28], [500, 0, { hill: 0 }], [-340, 1.46], [230, 1.72], [280, 1.28], [-80, 2.45],
     [-220, 0.95], [-470, 2.45], [230, 0.97, { flip: true }], [420, 2.1], [-110, 1.0], [120, 1.0, { flip: true }], [200, 2.45],

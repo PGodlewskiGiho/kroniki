@@ -109,7 +109,7 @@ function farBand(c, Wd, hazeCol) {
       c.fillStyle = shadeHex(col, 0.18); c.fillRect(sx - w / 2, sy - h, w, Math.max(1, 3 * s)); c.strokeStyle = 'rgba(80,40,20,.3)'; c.lineWidth = 1; for (let k = 1; k < 4; k++) { const y = sy - h + k * h / 4; c.beginPath(); c.moveTo(sx - w / 2 - h * 0.12 * k, y); c.lineTo(sx + w / 2 + h * 0.15 * k, y); c.stroke(); }
       fillPoly(c, [[sx + w * 0.2, sy - h], [sx + w / 2, sy - h], [sx + w / 2 + h * 0.6, sy], [sx + w * 0.35, sy]], 'rgba(60,20,10,.22)'); }
   }
-  const y0 = proj(0, 4.6)[1], hz = c.createLinearGradient(0, y0 - 30, 0, y0 + 26); hz.addColorStop(0, 'rgba(0,0,0,0)'); hz.addColorStop(1, hazeCol); c.globalAlpha = 0.45; c.fillStyle = hz; c.fillRect(8, y0 - 30, 576, 56); c.globalAlpha = 1;
+  const y0 = proj(0, 4.6)[1], hz = c.createLinearGradient(0, y0 - 30, 0, y0 + 26); const [hr, hg, hb] = hexRgb(hazeCol); hz.addColorStop(0, `rgba(${hr},${hg},${hb},0)`); hz.addColorStop(0.55, hazeCol); hz.addColorStop(1, `rgba(${hr},${hg},${hb},0)`); c.globalAlpha = 0.45; c.fillStyle = hz; c.fillRect(8, y0 - 30, 576, 56); c.globalAlpha = 1;
 }
 
 // --- Loch: grota zamiast nieba (skalna ściana w głębi, smugi światła z otworów) i sklepienie ze stalaktytami ---
@@ -172,32 +172,44 @@ function pathFrames(pts, step, w0) {
 }
 const pathAt = (F, o) => proj(F[0] + F[4] * o, F[1] + F[5] * o / 300, F[2]);
 const mixFrame = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
-// Kamienie jednej drogi: rząd między ramkami k i k+1 dzielony w poprzek na tyle kamieni, ile mieści szerokość
+// Wygładzenie łamanej (Chaikin): załamania dróg i ścieżek stają się łukami; końce zostają na miejscu
+function smoothPts(pts, it = 2) {
+  let P = pts.map(p => [p[0], p[1], p[2] || 0, p[3] || 0]);
+  for (let n = 0; n < it && P.length > 2; n++) {
+    const out = [P[0]];
+    for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1];
+      if (Math.abs(a[2] - b[2]) > 1.5) { out.push(a, b); continue; } // schody zostają proste
+      out.push(a.map((v, k) => v * 0.75 + b[k] * 0.25), a.map((v, k) => v * 0.25 + b[k] * 0.75)); }
+    out.push(P[P.length - 1]); P = out.filter((p, i) => i === 0 || Math.hypot(p[0] - out[i - 1][0], (p[1] - out[i - 1][1]) * 300) > 0.5);
+  }
+  return P.map(p => [p[0], p[1], p[2], p[3] || undefined]);
+}
+// Bruk ułożony na ziemi, nie wzdłuż drogi: rzędy kamieni biegną w poprzek sceny (stałe Z), co drugi rząd przesunięty o pół
+// kamienia. Droga tylko wycina z tej siatki swój kształt, więc na zakrętach i skosach kamienie nie wykrzywiają się w romby.
 function roadStones(c, S, F, r, fx) {
-  const [len, wid] = S.tile, gap = 0.12;
-  for (let k = F.length - 2; k >= 0; k--) { // od najdalszych: bliższe kamienie przykrywają krawędź dalszych
-    const a = F[k], b = F[k + 1], n = Math.max(1, Math.round(a[3] / wid)), sh = k % 2 ? 0.5 : 0, s = proj(0, a[1])[2];
-    if (Math.abs(b[2] - a[2]) > 1.5) continue; // stopnie schodów rysuje osobna pętla
-    for (let i = -1; i < n; i++) {
-      let u0 = (i + sh) / n, u1 = (i + 1 + sh) / n; u0 = Math.max(0, u0); u1 = Math.min(1, u1); if (u1 - u0 < 0.15 / n) continue;
-      const j = S.jag ? (r() - 0.5) * 0.25 * S.jag : 0, t0 = gap + j * 0.5, t1 = 1 - gap + j * 0.5;
-      const P = (u, t) => { const f = mixFrame(a, b, t), w = f[3]; return pathAt(f, -w / 2 + u * w); };
-      const du = gap * 0.6 / n, q = [P(u0 + du, t0), P(u1 - du, t0), P(u1 - du, t1), P(u0 + du, t1)];
-      if (S.lava && r() < 0.18) { c.strokeStyle = '#ff6a1a'; c.lineWidth = Math.max(1, s * 1.3); c.beginPath(); c.moveTo(q[0][0], q[0][1] + s); c.lineTo(q[1][0], q[1][1] + s); c.stroke(); }
-      c.fillStyle = S.stones[(r() * S.stones.length) | 0]; c.beginPath(); q.forEach(([x, y], m) => m ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
-      const lw = Math.max(1, s * 1.1); c.lineWidth = lw;
-      c.strokeStyle = 'rgba(255,250,235,.28)'; c.beginPath(); c.moveTo(q[3][0], q[3][1]); c.lineTo(q[2][0], q[2][1]); c.stroke(); // jasny brzeg od strony nieba (dalszy)
-      c.strokeStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.moveTo(q[0][0], q[0][1]); c.lineTo(q[1][0], q[1][1]); c.stroke(); // cień od dołu
-      if (S.shine && r() < 0.15) { const [x, y] = P((u0 + u1) / 2, 0.6); c.fillStyle = 'rgba(255,255,255,.8)'; c.fillRect(x - 2 * s, y, 3 * s, Math.max(1, s)); }
-    }
-    if (S.lava && fx && k % 8 === 4) { const [x, y] = pathAt(a, 0); fx.glows.push([x, y, 16 * s, '#ff5a10']); }
+  const [len, wid] = S.tile, dz = len / 300, gap = 0.14, cells = new Map();
+  for (const f of F) { // komórki siatki pod drogą (z wysokością z najbliższego punktu drogi)
+    const hw = f[3] / 2 + wid, row0 = Math.floor((f[1] - hw / 300) / dz), row1 = Math.floor((f[1] + hw / 300) / dz);
+    for (let row = row0; row <= row1; row++) { const sh = row & 1 ? 0.5 : 0, c0 = Math.floor((f[0] - hw) / wid - sh), c1 = Math.floor((f[0] + hw) / wid - sh);
+      for (let col = c0; col <= c1; col++) { const k = row * 100000 + col; if (!cells.has(k)) cells.set(k, [row, col, f[2]]); } }
+  }
+  const list = [...cells.values()].sort((a, b) => b[0] - a[0]);
+  for (const [row, col, e] of list) {
+    const h = thash(row, col, 77), j = S.jag ? ((h % 100) / 100 - 0.5) * 0.3 * S.jag : 0, sh = row & 1 ? 0.5 : 0;
+    const x0 = (col + sh + gap / 2) * wid, x1 = (col + sh + 1 - gap / 2) * wid, z0 = (row + gap + j * 0.4) * dz, z1 = (row + 1 - gap + j * 0.4) * dz;
+    const q = [proj(x0, z0, e), proj(x1, z0, e), proj(x1, z1, e), proj(x0, z1, e)], s = q[0][2];
+    if (S.lava && h % 6 === 0) { c.strokeStyle = '#ff6a1a'; c.lineWidth = Math.max(1, s * 1.3); c.beginPath(); c.moveTo(q[0][0], q[0][1] + s); c.lineTo(q[1][0], q[1][1] + s); c.stroke(); if (fx && h % 24 === 0) fx.glows.push([q[0][0], q[0][1], 14 * s, '#ff5a10']); }
+    c.fillStyle = S.stones[(h >> 3) % S.stones.length]; c.beginPath(); q.forEach(([x, y], m) => m ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+    c.lineWidth = Math.max(1, s * 1.1);
+    c.strokeStyle = 'rgba(255,250,235,.26)'; c.beginPath(); c.moveTo(q[3][0], q[3][1]); c.lineTo(q[2][0], q[2][1]); c.stroke(); // jasna krawędź od strony nieba
+    c.strokeStyle = 'rgba(0,0,0,.26)'; c.beginPath(); c.moveTo(q[0][0], q[0][1]); c.lineTo(q[1][0], q[1][1]); c.stroke(); // cień od dołu
+    if (S.shine && h % 7 === 0) { c.fillStyle = 'rgba(255,255,255,.8)'; c.fillRect((q[0][0] + q[1][0]) / 2 - 2 * s, (q[0][1] + q[3][1]) / 2, 3 * s, Math.max(1, s)); }
   }
 }
-// Dwa przebiegi (pass): 'under' = brzeg (szersza wstęga w kolorze brzegu, śnieżne zaspy), 'top' = nawierzchnia i drobiazgi.
-// Najpierw brzegi wszystkich ścieżek, potem nawierzchnie: stykające się i nakładające ścieżki tworzą jedną sieć z jednym obrysem.
 function roadStyled(c, A, Rd, Wd, fx, pass = 'both') {
   const S = ROAD_LOOK[Rd.style]; if (!S) return pass === 'under' ? undefined : roadArtW(c, A, Rd);
-  const pts = subdiv(Rd.pts, 5), line = (E, col, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.lineJoin = 'round'; c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); };
+  Rd = { ...Rd, pts: smoothPts(Rd.pts) }; // łuki zamiast załamań
+  const pts = subdiv(Rd.pts, 3), line = (E, col, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.lineJoin = 'round'; c.beginPath(); E.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); };
   const widen = k => pts.map(p => [p[0], p[1], p[2], (p[3] || Rd.w) * k]), r = mulberry32(7 + Math.round(Rd.pts[0][0] + Rd.pts[0][1] * 100));
   const sMid = proj(0, pts[pts.length >> 1][1])[2], bw = Math.max(1.5, 2 * sMid) / sMid * 2; // brzeg ok. 2 px z każdej strony
   if (pass !== 'top') {
@@ -239,7 +251,7 @@ function roadStyled(c, A, Rd, Wd, fx, pass = 'both') {
 }
 
 // --- sieć ścieżek: od drzwi każdej budowli do najbliższego miejsca na drodze albo na innej ścieżce ---
-function townPaths(r, T, L, Bm) {
+function townPaths(r, T, L, Bm, walks = []) {
   const M = L.roads.find(R => R.main); if (!M) return;
   const wade = !!(Bm.wade || T.planks);
   M.w *= Bm.mainW; for (const p of M.pts) if (p[3]) p[3] *= Bm.mainW; M.style = Bm.road;
@@ -247,6 +259,11 @@ function townPaths(r, T, L, Bm) {
   const main = subdiv(M.pts, 3).map(W), net = [];
   main.forEach((p, i) => { if (Math.abs(p[2] - townElev(T, L, p[0], p[1])) < 1 && p[1] > 0.84) net.push({ X: p[0], Z: p[1], e: p[2], route: main.slice(0, i + 1) }); });
   L.mainRoute = main; L.doorRoutes = {};
+  for (const wk of walks) { // pomosty i ścieżki ułożone w scenie: dołączają do sieci, reszta ścieżek podłącza się do nich
+    const P = subdiv(wk.map(q => [q[0], q[1], q[2] || 0]), 4).map(W), base = net.reduce((b, p) => (!b || Math.hypot(p.X - P[0][0], (p.Z - P[0][1]) * 300) < Math.hypot(b.X - P[0][0], (b.Z - P[0][1]) * 300) ? p : b), null);
+    L.roads.splice(L.roads.indexOf(M), 0, { w: Bm.laneW * 1.2, style: Bm.lane, pts: P.map(q => [...q]) }); T.feats.push({ pts: P.map(q => [q[0], q[1]]), w: Bm.laneW + 8 });
+    P.forEach((q, i) => net.push({ X: q[0], Z: q[1], e: q[2], route: [...base.route, ...P.slice(0, i + 1)] }));
+  }
   const wet = (X, Z) => {
     if (T.river && segDist(X, Z, T.river.pts) < T.river.w / 2 + 6) return 2;
     if (T.chasm && segDist(X, Z, T.chasm.pts) < 95) return 2;
@@ -279,7 +296,7 @@ function townPaths(r, T, L, Bm) {
       }
       pts.push([X, Z, e]); lastE = e;
     }
-    return { pts, len: len * (1 + Math.abs(wig)) + water * 30 + cover * 40, water };
+    return { pts, len: len * (1 + Math.abs(wig)) + water * 60 + cover * 40, water };
   };
   const order = L.slots.map((S, i) => ({ i, d: Math.min(...net.map(p => Math.hypot(p.X - S.X, (p.Z - S.Z) * 300))) })).filter(o => o.i > 1).sort((a, b) => a.d - b.d);
   for (const { i } of order) {
