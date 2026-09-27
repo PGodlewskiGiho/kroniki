@@ -143,8 +143,9 @@
    wysepkach mokradła, Inferno w kraterze z jeziorem lawy, Akademia na ośnieżonych tarasach, Loch w grocie ze świecącym jeziorem,
    Cytadela pod stołową górą z oazą i palisadą. Stałe są niebo, teren, miejsca 15 budowli i rekwizyty; ścieżki do drzwi
    i mieszkańców wylicza MIASTO: TEREN. Drogi (roadStyled) „malowane”: falujące brzegi przechodzące w trawę,
-   wydeptany środek, bruk z nieregularnych otoczaków (cobbleAt), plac z otoczaków (plazaArt). Rysowana jest tylko droga główna
-   i ścieżki ułożone w scenie (walks); do drzwi mieszkańcy dochodzą po trawie (poza pomostami Twierdzy, Bm.drawLanes).
+   wydeptany środek, bruk z nieregularnych otoczaków (cobbleAt). Sceny odchudzone jak w Heroes 3: drogi tylko tam, gdzie są
+   częścią budowy (schody Akademii, most Kurhanu, kładki Twierdzy), bez placów, przechodniów i tabliczek na pustych działkach
+   (co tam stanie, widać po najechaniu myszą); ziemia z nielicznymi szczegółami, lawa Inferno w dwóch strumykach do jeziora.
    Akademia (śnieg, TER.SNOW): gremliny, gargulce, golemy, magowie, dżiny, nagi (nowy wężowy ogon L.serpent), olbrzymi i tytani;
    klasy Alchemik i Czarodziej, miasto białych wież ze złotymi kopułami i padającym śniegiem (18b), mury i portrety. Pocisk z look.orb
    bez laski to kula (gremlin, tytan). SI bierze z garnizonu tylko to, co zmieści (takeableArmy), więc nie krąży między miastami.
