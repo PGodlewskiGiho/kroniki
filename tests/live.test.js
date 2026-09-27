@@ -98,7 +98,7 @@ test('udana obrona daje bohaterowi doświadczenie', async () => {
   const exp0 = await page.evaluate(() => { const me = hero(G.state); me.army[0] = { cid: 'dawnbringer', n: 40 }; return me.exp; }); // posiłki w ostatniej chwili
   await pressDialog(page, 'Automatycznie');
   const d = await dialog(page);
-  assert.match(d.msg, /Obrona udana!.*Doświadczenie: \+\d+/);
+  assert.match(d.msg, /Obrona udana!.*otrzymuje \d+ doświadczenia/);
   await pressDialog(page, 'OK');
   while (await dialog(page)) await pressDialog(page, (await dialog(page)).labels[0]);
   assert.ok(await page.evaluate(e => hero(G.state).exp > e, exp0));
@@ -115,9 +115,11 @@ test('obrona na ekranie bitwy: gracz po prawej, bez ucieczki, po bitwie tura trw
   assert.deepEqual(b, { me: 1, flee: true, mine: true });
   await frames(page, 20);
   await page.evaluate(() => { const s = G.screens.battle; s.B.auto = true; if (s.phase === 'input') s.startTurnFor(s.B.active); });
-  await page.waitForFunction(() => G.screenName === 'adventure' && G.modal, null, { timeout: 90000 });
+  await page.waitForFunction(() => G.screenName === 'battle' && G.modal && G.modal.report, null, { timeout: 90000 }); // okno wyniku nad polem bitwy
   assert.match((await dialog(page)).msg, /Porażka w obronie|Obrona udana/);
   await pressDialog(page, 'OK');
+  await page.waitForFunction(() => G.screenName === 'adventure');
+  while (await dialog(page)) await pressDialog(page, (await dialog(page)).labels[0]);
   const r = await driveAi();
   assert.equal(r.running, false);
   assert.ok(await page.evaluate(() => G.screens.adventure.buttons.some(x => !x.disabled)), 'przyciski odblokowane');

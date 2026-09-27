@@ -2,7 +2,7 @@
 // Ruch, odkrywanie mapy, obiekty, potyczki, dochód, budowanie.
 // Dzienny limit ruchu zależy od najwolniejszej jednostki w armii (jak w oryginale)
 function mpBySpeed(s) { return s <= 3 ? 1500 : s >= 11 ? 2000 : [1560, 1630, 1700, 1760, 1830, 1900, 1960][s - 4]; }
-function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp'); }
+function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp') + (G.state && h.stableWeek === weekIndex(G.state) ? STABLE_MP : 0); }
 // Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
 function reveal(st, cx, cy, r, owner = ME) {
   const P = playerOf(st, owner); if (!P || !P.explored) return;
@@ -285,8 +285,9 @@ const knows = (h, id) => (h.spells || []).includes(id);
 function rollGuildLevel(st, t, L) {
   const pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L), r = mulberry32(st.seed ^ (t.id * 7777) ^ (L * 131));
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  if (!t.guild) t.guild = {}; t.guild[L] = pool.slice(0, GUILD_OFFER[L] || 1);
+  if (!t.guild) t.guild = {}; t.guild[L] = pool.slice(0, guildOffer(t, L));
 }
+const guildOffer = (t, L) => (GUILD_OFFER[L] || 1) + (t.faction === 'academy' && hasB(t, 'special') ? 1 : 0); // Biblioteka Akademii
 const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild' + L)) return L; return 0; };
 // Bohater w mieście z gildią: poznaje jej czary i odzyskuje całą manę. Zwraca nowo poznane czary.
 function visitGuild(st, t, h) {
@@ -388,6 +389,7 @@ function startWeek(st, newMonth) {
     if (M && M.kind === 'monsters') o.count = Math.ceil(o.count * 1.5);
   }
   for (const t of st.towns) townGrowthWeek(t, st);
+  weeklyTreasury(st);
   const S = seasonOf(st), head = newMonth ? `Nadchodzi ${S.name.toLowerCase()}: ${S.text}. ` + (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
   return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
 }
@@ -460,7 +462,34 @@ function buildIn(st, t, B) {
   for (const r of RESOURCES) if (B.cost[r.id]) R[r.id] -= B.cost[r.id];
   t.built.push(B.id); t.builtToday = true;
   const gm = /^guild(\d)$/.exec(B.id); if (gm) rollGuildLevel(st, t, +gm[1]);
+  if (B.id === 'special' && t.faction === 'academy') for (let L = 1; L <= guildLevel(t); L++) rollGuildLevel(st, t, L); // Biblioteka: czar więcej na każdym poziomie
   const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1], st); // nowe siedlisko od razu daje przyrost
+}
+// --- budowle specjalne frakcji (FACTION_SPECIAL) ---------------------------------------------
+const STABLE_MP = 400;
+// Bohater w mieście z budowlą specjalną: stajnie, wir many, klatka wodzów, sala Walhalli. Zwraca opis albo null.
+function specialVisit(st, t, h) {
+  if (!h || !hasB(t, 'special')) return null;
+  const wk = weekIndex(st), S = FACTION_SPECIAL[t.faction]; h.specVisits = h.specVisits || [];
+  if (t.faction === 'haven' && h.stableWeek !== wk) { h.stableWeek = wk; h.mp += STABLE_MP; return `${S.name}: ${h.name} dostaje świeże konie (+${STABLE_MP} ruchu do końca tygodnia).`; }
+  if (t.faction === 'dungeon' && t.vortexWeek !== wk) { t.vortexWeek = wk; h.mana = Math.max(h.mana, heroMaxMana(h) * 2); return `${S.name}: mana bohatera ${h.name} podwojona (${h.mana}).`; }
+  const stat = { fortress: ['def', 'obrony'], stronghold: ['att', 'ataku'] }[t.faction];
+  if (stat && !h.specVisits.includes(t.id)) { h.specVisits.push(t.id); h.stats[stat[0]]++; return `${S.name}: ${h.name} zyskuje +1 do ${stat[1]} (teraz ${h.stats[stat[0]]}).`; }
+  return null;
+}
+// Skarbiec krasnoludów (Knieja): na początku tygodnia 10% złota właściciela, najwyżej 2500 za skarbiec
+function weeklyTreasury(st) {
+  for (const t of st.towns) if (t.faction === 'sylvan' && hasB(t, 'special') && t.owner >= 0) {
+    const R = playerOf(st, t.owner).resources, add = Math.min(2500, Math.floor(R.gold * 0.1)); R.gold += add;
+    if (add) tell(st, t.owner, `Skarbiec krasnoludów w mieście ${t.name} przynosi ${add} złota.`);
+  }
+}
+const necroAmplifiers = (st, owner) => st.towns.filter(t => t.owner === owner && t.faction === 'barrow' && hasB(t, 'special')).length;
+// Brama piekieł (Inferno): miasta, do których bohater z miasta t może przejść (własne, z bramą, bez innego bohatera)
+const gateTargets = (st, t) => hasB(t, 'special') && t.faction === 'inferno' ? st.towns.filter(o => o !== t && o.owner === t.owner && o.faction === 'inferno' && hasB(o, 'special') && !heroInTown(st, o)) : [];
+function gateTravel(st, t, h, dest) {
+  if (!gateTargets(st, t).includes(dest) || heroInTown(st, t) !== h) return 'Brama nie prowadzi do tego miasta';
+  h.x = dest.x; h.y = dest.y; if (h.owner === ME) reveal(st, h.x, h.y, heroSight(h)); rebuildObjIndex(st); return null;
 }
 // --- rynek: handel surowcami ---------------------------------------------------------------
 // Wartość surowca w złocie; kupno drożeje, a sprzedaż tanieje, im mniej rynków ma gracz (jak w oryginale).

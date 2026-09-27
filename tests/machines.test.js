@@ -126,7 +126,9 @@ test('ekran bitwy z machinami: rysuje się, a machiny gracza działają same', a
     if (i % 40 === 0) await frames(page, 2);
   }
   assert.ok(seen.has('ballista'), [...seen].join(','));
-  assert.equal(await page.evaluate(() => G.screenName), 'adventure');
+  await page.waitForFunction(() => G.modal && G.modal.report, null, { timeout: 10000 }); // okno wyniku nad polem bitwy
+  await pressDialog(page, 'OK');
+  await page.waitForFunction(() => G.screenName === 'adventure');
   while (await dialog(page)) await pressDialog(page, (await dialog(page)).labels[0]);
 });
 

@@ -541,6 +541,7 @@ function cloudBank(c, cx, cy, w, h, dark, lit, r) {
   c.fillStyle = dark; for (const [x, y, rx, ry] of puffs) { c.beginPath(); c.ellipse(x + 1, y - 1, rx, ry, 0, 0, TAU); c.fill(); }
 }
 function skyDramatic(c, P) {
+  if (P.cave) return caveSky(c, P);
   const g = c.createLinearGradient(0, 8, 0, 190); g.addColorStop(0, P.top); g.addColorStop(0.55, P.mid); g.addColorStop(1, P.hor); c.fillStyle = g; c.fillRect(8, 8, 576, 432);
   const [sx, sy] = P.sun, sg = c.createRadialGradient(sx, sy, 4, sx, sy, 240);
   if (P.stars) { const q = mulberry32(88 + (P.seed || 0)); for (let i = 0; i < 160; i++) { const x = 8 + q() * 576, y = 8 + q() * 170; c.fillStyle = `rgba(235,230,255,${((0.3 + q() * 0.7) * (1 - y / 190)).toFixed(2)})`; c.fillRect(x, y, q() < 0.12 ? 2 : 1, q() < 0.12 ? 2 : 1); } }
@@ -567,7 +568,7 @@ function groundPlane(c, Wd) {
   g.addColorStop(0, Wd.ground[0]); g.addColorStop(0.35, Wd.ground[1]); g.addColorStop(1, Wd.ground[2]); c.fillStyle = g; c.fillRect(8, yF, 576, 440 - yF);
   const r = mulberry32(17 + (Wd.seed || 0));
   for (let i = 0; i < 30; i++) { const X = (r() - 0.5) * 2000, Z = 1.1 + r() * 2.8, [sx, sy, s] = proj(X, Z); c.fillStyle = r() < 0.55 ? 'rgba(0,0,0,.09)' : 'rgba(255,230,170,.06)'; c.beginPath(); c.ellipse(sx, sy, (70 + r() * 140) * s, (16 + r() * 22) * s, 0, 0, TAU); c.fill(); }
-  for (let i = 0; i < 900; i++) {
+  for (let i = 0, n = Math.round(900 * (Wd.tufts ?? 1)); i < n; i++) {
     const X = (r() - 0.5) * 1700, Z = 0.8 + Math.pow(r(), 0.8) * 3.3, [sx, sy, s] = proj(X, Z), k = r(); if (sx < 0 || sx > 592 || sy > 440) continue;
     c.strokeStyle = k < 0.55 ? (Wd.tuft ? Wd.tuft[0] : 'rgba(14,26,8,.4)') : (Wd.tuft ? Wd.tuft[1] : 'rgba(190,200,130,.22)'); c.lineWidth = Math.max(0.6, 1.3 * s);
     c.beginPath(); c.moveTo(sx - 3 * s, sy); c.lineTo(sx, sy - 6 * s); c.lineTo(sx + 3 * s, sy); c.stroke();
@@ -584,7 +585,7 @@ function hillArt(c, Hl, hazeCol) {
     const x = (r() - 0.5) * rw * 1.7, y = top(x) + 4 + r() * (sy - top(x)), w = (10 + r() * 22) * s * 2.2;
     c.fillStyle = r() < 0.5 ? 'rgba(0,0,0,.18)' : 'rgba(255,240,220,.08)'; c.beginPath(); c.moveTo(sx + x - w / 2, y + w * 0.3); c.lineTo(sx + x - w * 0.2, y - w * 0.25); c.lineTo(sx + x + w * 0.3, y - w * 0.15); c.lineTo(sx + x + w / 2, y + w * 0.3); c.closePath(); c.fill();
   }
-  for (let i = 0; i < 120; i++) { const x = (r() - 0.5) * rw * 2, y = top(x) + 3 + r() * (sy - top(x)); c.strokeStyle = r() < 0.5 ? 'rgba(10,20,5,.3)' : 'rgba(190,200,140,.18)'; c.lineWidth = 1; c.beginPath(); c.moveTo(sx + x - 2 * s * 2, y); c.lineTo(sx + x, y - 5 * s * 2); c.lineTo(sx + x + 2 * s * 2, y); c.stroke(); }
+  if (Hl.tufts !== false) for (let i = 0; i < 120; i++) { const x = (r() - 0.5) * rw * 2, y = top(x) + 3 + r() * (sy - top(x)); c.strokeStyle = r() < 0.5 ? 'rgba(10,20,5,.3)' : 'rgba(190,200,140,.18)'; c.lineWidth = 1; c.beginPath(); c.moveTo(sx + x - 2 * s * 2, y); c.lineTo(sx + x, y - 5 * s * 2); c.lineTo(sx + x + 2 * s * 2, y); c.stroke(); }
   const shade = c.createLinearGradient(sx - rw, 0, sx + rw, 0); shade.addColorStop(0, 'rgba(255,220,160,.08)'); shade.addColorStop(1, 'rgba(10,14,40,.28)'); c.fillStyle = shade; c.fillRect(sx - rw - 30, sy - hh - 5, rw * 2 + 60, hh + 20);
   c.restore();
   c.strokeStyle = 'rgba(255,230,180,.2)'; c.lineWidth = 1.5; c.beginPath(); for (let x = -rw; x <= rw; x += 3) x === -rw ? c.moveTo(sx + x, top(x)) : c.lineTo(sx + x, top(x)); c.stroke();
@@ -732,12 +733,6 @@ function drawCreaturesFX(ctx, LL, tm) {
     else if (F.kind === 'wisp') { const a = 0.55 + 0.35 * Math.sin(tm * 3 + ph); ctx.fillStyle = `rgba(170,255,200,${(a * 0.3).toFixed(2)})`; ctx.beginPath(); ctx.arc(x, y, 7 * sc, 0, TAU); ctx.fill(); circ(ctx, x, y, 1.8 * sc + 0.8, `rgba(230,255,220,${a.toFixed(2)})`); }
     else { ctx.globalAlpha = 0.5 + 0.25 * Math.sin(tm * 2 + ph); ghost(ctx, x, y, sc * 1.2); ctx.globalAlpha = 1; }
   }
-  if (LL.skeletons) LL.skeletons.forEach((pts, k) => { for (let j = 0; j < 2; j++) {
-    const per = 30 + k * 7 + j * 9, u0 = ((tm + j * 13 + k * 5) % per) / per, fwd = u0 < 0.5, u = fwd ? u0 * 2 : 2 - u0 * 2;
-    const f = u * (pts.length - 1), i0 = Math.min(pts.length - 2, Math.floor(f)), fr = f - i0, a = pts[i0], b = pts[i0 + 1];
-    const [x, y, sc] = proj(a[0] + (b[0] - a[0]) * fr + (j ? 10 : -10), a[1] + (b[1] - a[1]) * fr, (a[2] || 0) + ((b[2] || 0) - (a[2] || 0)) * fr);
-    drawSkeleton(ctx, x, y, sc * 1.1, tm, (b[0] >= a[0]) === fwd ? 1 : -1, j === 1);
-  } });
 }
 const TOWN_LAYOUTS = {};
 // --- Przystań w perspektywie ---
@@ -759,15 +754,14 @@ TOWN_LAYOUTS.haven = {
     { X: -380, Z: 1.5, k: 1.1, w: 118, h: 86 }, { X: 310, Z: 2.05, k: 1.3, w: 74, h: 140 }, { X: -80, Z: 0.88, k: 1, w: 88, h: 78 },
     { X: -250, Z: 1.52, k: 1, w: 76, h: 76 }, { X: -205, Z: 0.97, k: 1, w: 90, h: 80 }, { X: 190, Z: 1.45, k: 1, w: 110, h: 66 },
     { X: 90, Z: 0.98, k: 1, w: 100, h: 92 }, { X: 205, Z: 0.92, k: 1, w: 128, h: 70 },
+    { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
   ],
   props: [
     ['tree', -540, 1.78, 0, 1.3], ['tree', -470, 1.95, 0, 1.3], ['tree', -620, 2.25, 0, 1.4], ['tree', -470, 2.35, 20, 1.4], ['tree', 380, 2.2, 0, 1.4],
     ['tree', 720, 2.1, 0, 1.4], ['tree', 660, 1.85, 0, 1.3], ['tree', -560, 1.3, 0, 1.2], ['tree', -470, 1.05, 0, 1.3], ['tree', 440, 1.06, 0, 1.2], ['tree', 400, 1.55, 0, 1.2],
     ['tree', 80, 2.45, 0, 1.3], ['bush', -150, 0.88], ['bush', 520, 1.4], ['lamp', -25, 0.82], ['lamp', -18, 0.9], ['lamp', 42, 1.06], ['lamp', -38, 1.1],
     ['fence', 330, 1.02], ['fence', -350, 1.0],
-  ],
-  walksW: [[[26, 0.82], [15, 0.9], [2, 1.02], [-12, 1.15], [-20, 1.26]], [[-100, 1.27], [-40, 1.28], [30, 1.27]]],
-  guardsW: [[-262, 1.985, 42], [-218, 1.985, 42]], birds: true,
+  ], birds: true,
 };
 // --- Knieja: jezioro pośrodku, pomost do Drzewa Życia, las dookoła ---
 TOWN_LAYOUTS.sylvan = {
@@ -784,6 +778,7 @@ TOWN_LAYOUTS.sylvan = {
     { X: 322, Z: 2.7, k: 1.3, w: 130, h: 130 }, { X: -176, Z: 1.58, k: 1.1, w: 120, h: 80 }, { X: -48, Z: 0.9, k: 1, w: 90, h: 80 },
     { X: 524, Z: 2.57, k: 1, w: 76, h: 76 }, { X: 62, Z: 1, k: 1, w: 100, h: 100 }, { X: 335, Z: 1.98, k: 1, w: 70, h: 120 },
     { X: -146, Z: 0.86, k: 1, w: 100, h: 96 }, { X: 150, Z: 0.93, k: 1, w: 128, h: 72 },
+    { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
   ],
   props: [
     ['tree', -420, 2.2, 0, 1.4], ['tree', -380, 1.6, 0, 1.3], ['tree', 330, 1.55, 0, 1.2], ['tree', 200, 2.9, 0, 1.4], ['tree', -120, 2.9, 0, 1.4],
@@ -812,15 +807,15 @@ TOWN_LAYOUTS.barrow = {
     { X: -300, Z: 1.25, k: 1.1, w: 118, h: 90 }, { X: 170, Z: 2.26, k: 1.3, w: 100, h: 118 }, { X: -180, Z: 0.88, k: 1, w: 88, h: 78 },
     { X: -120, Z: 1.36, k: 1, w: 76, h: 76 }, { X: -170, Z: 1.1, k: 1, w: 90, h: 80 }, { X: 250, Z: 1.25, k: 1, w: 110, h: 60 },
     { X: 170, Z: 0.9, k: 1, w: 100, h: 92 }, { X: 130, Z: 1.3, k: 0.9, w: 128, h: 70 },
+    { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
   ],
   props: [
     ['tree', -420, 2.3, 0, 1.3], ['tree', 380, 2.35, 0, 1.3], ['tree', -360, 1.5, 0, 1.2], ['tree', 360, 1.2, 0, 1.2], ['tree', -260, 0.95, 0, 1.1],
     ['grave', -110, 0.95], ['grave', -122, 0.99], ['grave', 110, 0.98], ['grave', 96, 1.12], ['grave', -90, 1.9], ['bones', -100, 1.05], ['bones', 110, 1.12], ['bones', 90, 1.9],
     ['rock', -60, 2.0], ['rock', 60, 2.05], ['lamp', -85, 1.42], ['lamp', -100, 1.95], ['lamp', 100, 1.95], ['fence', 330, 1.05], ['fence', -390, 1.3],
   ],
-  skeletons: [[[-70, 1.46, 0], [60, 1.46, 0]], [[-190, 1.62], [-130, 1.52], [-90, 1.47]]],
   floaters: [{ kind: 'ghost', X: 0, Z: 1.25, e: 40, n: 3, spread: 50, spreadZ: 0.25 }, { kind: 'ghost', X: 260, Z: 1.3, e: 30, n: 2, spread: 50, spreadZ: 0.1, seed: 3 }, { kind: 'ghost', X: -60, Z: 2.3, e: 90, n: 2, spread: 60, spreadZ: 0.1, seed: 7 }],
-  birds: true, birdCol: 'rgba(10,8,14,.9)', guardSkel: [[-26, 2.47, 76], [26, 2.47, 76]],
+  birds: true, birdCol: 'rgba(10,8,14,.9)',
 };
 let TownFXCache = {}, lastTownKey = null;
 // --- malowanie całej sceny ---
@@ -829,15 +824,16 @@ function paintTownWorld(c, t, col, Wd) {
   c.save(); c.beginPath(); c.rect(8, 8, 576, 422); c.clip();
   skyDramatic(c, Wd.sky);
   const [rs1, rs2, rb] = Wd.ridge || [211, 237, 170]; ridge(c, rs1, rb, 96, Wd.mountains[0]); ridge(c, rs2, rb + 6, 58, Wd.mountains[1]);
-  farForest(c, Wd.forest, hzC, Wd.seed || 0);
+  farBand(c, Wd, hzC);
   groundPlane(c, Wd);
+  c.save(); groundDetail(c, Wd, fx); c.restore();
   for (const Sa of Wd.seas || []) seaArt(c, Sa);
   for (const Lk of [...(Wd.lake ? [Wd.lake] : []), ...(Wd.lakes || [])]) { lakeArt(c, Lk); if (Lk.hot) { const [lx, ly, ls] = proj(Lk.X, Lk.Z); fx.glows.push([lx, ly, Lk.rx * ls * 1.2, Lk.hot]); } }
   for (const Rv of [...(Wd.river ? [Wd.river] : []), ...(Wd.rivers || [])]) { riverArt(c, Rv, hzC); if (Rv.chasm) chasmGlow(c, Rv); }
   for (const I of Wd.islands || []) islandArt(c, I, Wd);
   [...Wd.hills.map(Hl => ({ Z: Hl.Z, Hl })), ...(Wd.slabs || []).map(Sb => ({ Z: Sb.Z0, Sb }))].sort((a, b) => b.Z - a.Z).forEach(o => o.Hl ? hillArt(c, o.Hl, hzC) : slabArt(c, o.Sb, hzC));
-  for (const Rd of Wd.roads) roadArtW(c, A, Rd);
-  if (Wd.plaza) { const [px, py, s] = proj(Wd.plaza.X, Wd.plaza.Z); c.fillStyle = '#8e8470'; c.beginPath(); c.ellipse(px, py, Wd.plaza.r * s, 12 * s, 0, 0, TAU); c.fill(); c.strokeStyle = 'rgba(40,30,20,.3)'; c.lineWidth = 1; const r = mulberry32(3); for (let i = 0; i < 90; i++) { const a = r() * TAU, d = Math.sqrt(r()); c.strokeRect(px + Math.cos(a) * Wd.plaza.r * s * d - 2, py + Math.sin(a) * 12 * s * d - 1, 4 * s, 2.5 * s); } }
+  for (const Rd of Wd.roads) roadStyled(c, A, Rd, Wd, fx);
+  if (Wd.plaza) { const [px, py, s] = proj(Wd.plaza.X, Wd.plaza.Z); c.fillStyle = Wd.plazaCol || '#8e8470'; c.beginPath(); c.ellipse(px, py, Wd.plaza.r * s, 12 * s, 0, 0, TAU); c.fill(); c.strokeStyle = 'rgba(40,30,20,.3)'; c.lineWidth = 1; const r = mulberry32(3); for (let i = 0; i < 90; i++) { const a = r() * TAU, d = Math.sqrt(r()); c.strokeRect(px + Math.cos(a) * Wd.plaza.r * s * d - 2, py + Math.sin(a) * 12 * s * d - 1, 4 * s, 2.5 * s); } }
   const objs = [];
   Wd.slots.forEach((S, i) => objs.push({ Z: S.Z, slot: i, S }));
   Wd.props.forEach(([kind, X, Z, e = 0, k = 1]) => objs.push({ Z, prop: kind, X, e, k }));
@@ -865,6 +861,7 @@ function paintTownWorld(c, t, col, Wd) {
     }
   }
   if (Wd.frame === 'forest') forestFrame(c);
+  if (Wd.frame === 'cave') caveFrame(c, fx, Wd.seed || 0);
   c.save(); c.globalCompositeOperation = 'saturation'; c.globalAlpha = Wd.desat || 0.25; c.fillStyle = '#808080'; c.fillRect(8, 8, 576, 422); c.restore();
   const lg = c.createLinearGradient(8, 8, 584, 430); lg.addColorStop(0, 'rgba(255,190,110,.16)'); lg.addColorStop(0.5, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(16,20,56,.32)'); c.fillStyle = lg; c.fillRect(8, 8, 576, 422);
   const vg = c.createRadialGradient(296, 230, 150, 296, 230, 400); vg.addColorStop(0, 'rgba(6,6,14,0)'); vg.addColorStop(1, 'rgba(6,6,14,.58)'); c.fillStyle = vg; c.fillRect(8, 8, 576, 422);
@@ -895,18 +892,8 @@ function drawTownFX(ctx, t, fx) {
     for (let i = 6; i >= 0; i--) ctx.lineTo(i * 2.4, 6 - i * 0.75 + Math.sin(tm * 5 - i * 0.8 + x) * 1.4 * i / 6);
     ctx.closePath(); ctx.fill(); ctx.restore();
   }
-  if (LL.walksW) LL.walksW.forEach((pts, k) => { for (let j = 0; j < 2; j++) {
-    const per = 26 + k * 6 + j * 7, u0 = ((tm + j * 11 + k * 5) % per) / per, fwd = u0 < 0.5, u = fwd ? u0 * 2 : 2 - u0 * 2;
-    const f = u * (pts.length - 1), i0 = Math.min(pts.length - 2, Math.floor(f)), fr = f - i0, a = pts[i0], b = pts[i0 + 1];
-    const [x, y, sc] = proj(a[0] + (b[0] - a[0]) * fr + (j ? 12 : -12), a[1] + (b[1] - a[1]) * fr);
-    drawWalker(ctx, x, y, sc * 1.05, (LL.walkCols || ['#7a3a2a', '#3a4a6a', '#5a6a3a', '#7a5a3a'])[(k * 2 + j) % 4], tm, (pts[pts.length - 1][0] >= pts[0][0]) === fwd ? 1 : -1);
-  } });
   drawCreaturesFX(ctx, LL, tm);
-  if (LL.guardSkel) for (const [gX, gZ, gE] of LL.guardSkel) { const [gx, gy, sc] = proj(gX, gZ, gE); drawSkeleton(ctx, gx, gy, sc * 1.15, 0, 1, true); }
-  if (LL.guardsW) for (const [gX, gZ, gE] of LL.guardsW) {
-    const [gx, gy, sc] = proj(gX, gZ, gE); drawWalker(ctx, gx, gy, sc * 1.1, LL.guardCol || (t.faction === 'barrow' ? '#c8c0ac' : t.faction === 'sylvan' ? '#3a6a3a' : '#7a8494'), 0, 1);
-    ctx.strokeStyle = '#5a3a1e'; ctx.lineWidth = 1.2 * sc; ctx.beginPath(); ctx.moveTo(gx + 4 * sc, gy); ctx.lineTo(gx + 4 * sc, gy - 22 * sc); ctx.stroke();
-  }
+  drawTownFolk(ctx, LL, tm, fx.rects);
   if (LL.birds) for (let i = 0; i < 4; i++) {
     const x = ((tm * 18 + i * 170) % 720) - 60, y = 46 + i * 15 + Math.sin(tm * 0.8 + i) * 6, f = Math.sin(tm * 9 + i * 2) * 3;
     ctx.strokeStyle = LL.birdCol || 'rgba(40,40,60,.8)'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(x - 5, y - f); ctx.quadraticCurveTo(x - 2, y - 1, x, y + 1); ctx.quadraticCurveTo(x + 2, y - 1, x + 5, y - f); ctx.stroke();

@@ -163,8 +163,6 @@ TOWN_LAYOUTS.fortress = {
     ['reeds', -300, 1.62], ['reeds', 40, 1.56], ['reeds', 250, 1.6], ['reeds', -120, 1.58], ['reeds', 480, 1.7], ['bush', -150, 0.88], ['bush', 520, 1.4],
     ['lamp', -25, 0.82], ['lamp', 42, 1.06], ['mushroom', -80, 0.9], ['fence', 330, 1.02], ['fence', -350, 1.0],
   ],
-  walksW: [[[26, 0.82], [15, 0.9], [2, 1.02], [-12, 1.15], [-20, 1.26]], [[-100, 1.27], [-40, 1.28], [30, 1.27]]], walkCols: ['#5a7a3a', '#7a6a3a', '#4a6a4a', '#8a5a2a'],
-  guardsW: [[-262, 1.985, 10], [-218, 1.985, 10]], guardCol: '#5a7a3a',
   floaters: [{ kind: 'wisp', X: -100, Z: 1.62, e: 14, n: 5, spread: 260, spreadZ: 0.08 }], birds: true, birdCol: 'rgba(20,28,16,.85)', mist: true,
 };
 TOWN_LAYOUTS.inferno = {
@@ -183,7 +181,5 @@ TOWN_LAYOUTS.inferno = {
     ['spike', -110, 0.95], ['spike', 110, 0.98], ['spike', 96, 1.12], ['spike', -90, 1.9], ['spike', -60, 2.0, 0, 1.4], ['spike', 60, 2.05, 0, 1.4],
     ['brazier', -85, 1.42], ['brazier', 85, 1.42], ['brazier', -100, 1.95], ['brazier', 100, 1.95], ['fence', 330, 1.05], ['fence', -390, 1.3], ['rock', -200, 1.1],
   ],
-  walksW: [[[-190, 1.62], [-130, 1.52], [-80, 1.46], [80, 1.46], [150, 1.52], [220, 1.66]]], walkCols: ['#8a2a1a', '#5a1a14', '#a0402a', '#6a2a20'],
-  guardsW: [[-26, 2.47, 76], [26, 2.47, 76]], guardCol: '#6a1a14',
   floaters: [{ kind: 'ember', X: 0, Z: 1.3, e: 10, n: 10, spread: 90, spreadZ: 0.4 }], birds: true, birdCol: 'rgba(20,4,2,.9)', embers: true,
 };

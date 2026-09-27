@@ -301,11 +301,9 @@ G.screens.adventure = {
       { label: 'Automatycznie', key: 'a', action: () => after(resolveBattle(simulateBattle(createBattle(st, a.h, a.foe)), false)) },
     ], { locked: true, iconH: 84, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, a.h, ownerColor(st, a.h.owner), 2) });
   },
-  defenseResult(st, a, D, res, done) {
-    const held = res.outcome !== 'win', mine = res.foeLost.length ? `Twoje straty: ${res.foeLost.join(', ')}.` : 'Bez strat.';
-    const msg = held ? `Obrona udana! ${a.h.name} zostaje odparty. ${mine}${raisedText(res.foeRaised)}${D && res.foeExp ? ` Doświadczenie: +${res.foeExp}.` : ''}`
-      : `Porażka w obronie.${res.captured ? ` Miasto ${res.captured} przepada.` : ''}${res.heroDefeated ? ` ${res.heroDefeated.name} ${res.heroDefeated.female ? 'poległa' : 'poległ'}.` : ''} ${mine}`;
-    showDialog(msg, [{ label: 'OK', key: 'enter', action: () => { if (held && D && res.foeExp && st.heroes.includes(D)) gainExp(st, D, res.foeExp); } }]);
+  defenseResult(st, a, D, res, done) { // okno wyniku obrony (po bitwie na ekranie bitwy już było), potem doświadczenie obrońcy
+    const held = res.outcome !== 'win', exp = () => { if (held && D && res.foeExp && st.heroes.includes(D)) gainExp(st, D, res.foeExp); };
+    if (res.reported) exp(); else showBattleReport(st, res, defenseReport(st, a, D, res), exp);
     done(res);
   },
   // Koniec gry sprawdzamy w każdej klatce bez otwartego okna: po bitwie, zdobyciu miasta i turze przeciwników
@@ -317,12 +315,12 @@ G.screens.adventure = {
       return;
     }
     if (!r) return;
-    st.over = r; if (r === 'win' && !hotseat(st)) recordScore(st);
+    st.over = r; if (r === 'win' && !hotseat(st)) st.scoreRow = recordScore(st);
     const days = `${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}`;
     const msg = hotseat(st) ? (r === 'win' ? `Zwycięstwo! ${cap1(playerName(st, st.winner))} (${factionOf(st.players[st.winner].faction).name}) pokonuje wszystkich rywali w ${days}.` : 'Koniec gry: wszyscy ludzie przegrali, królestwa należą do komputera.')
       : r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${days}. Twoja kronika trafia do księgi najlepszych wyników.`
       : 'Porażka. Twoje królestwo upadło: nie masz już miast ani bohaterów, którzy mogliby walczyć dalej.';
-    showDialog(msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])], { locked: true });
+    showGameEnd(st, r, msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])]);
   },
   update(dt) {
     if (G.state && G.state.map) this.layout();

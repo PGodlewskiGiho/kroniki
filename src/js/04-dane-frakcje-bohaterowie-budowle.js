@@ -174,6 +174,7 @@ const BUILDINGS = [
   { id: 'guild3', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 4, crystal: 4 }, req: ['guild2', 'hall2'], emblem: 'book', desc: 'Dodaje czary 3 poziomu.' },
   { id: 'guild4', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 6, sulfur: 6, crystal: 6, gems: 6 }, req: ['guild3'], emblem: 'book', desc: 'Dodaje czary 4 poziomu.' },
   { id: 'guild5', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 10, sulfur: 10, crystal: 10, gems: 10 }, req: ['guild4', 'hall3'], emblem: 'book', desc: 'Dodaje czary 5 poziomu.' },
+  { id: 'special', slot: 14, cost: { gold: 3000, wood: 5, ore: 5 }, req: ['fort'] }, // budowla specjalna frakcji: nazwa i działanie w FACTION_SPECIAL
   { id: 'dw1', slot: 10, cost: { gold: 500 }, req: [] },
   { id: 'dw1u', slot: 10, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
   { id: 'dw2', slot: 11, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
@@ -190,9 +191,21 @@ const BUILDINGS = [
   { id: 'dw7u', slot: 3, cost: { gold: 10000, gems: 10, crystal: 10 }, req: ['dw7', 'guild3'] },
 ];
 const BUILD_BY_ID = Object.fromEntries(BUILDINGS.map(b => [b.id, b]));
+// Budowle specjalne frakcji (jak w Heroes 3), działanie w MIASTO: ZASADY (specialVisit, weeklyTreasury, raiseDead, guildOffer, bramy)
+const FACTION_SPECIAL = {
+  haven: { name: 'Stajnie', emblem: 'horse', desc: 'Bohater odwiedzający miasto ma do końca tygodnia 400 punktów ruchu więcej każdego dnia.' },
+  sylvan: { name: 'Skarbiec krasnoludów', emblem: 'coin', desc: 'Na początku tygodnia dokłada 10% zgromadzonego złota (najwyżej 2500).' },
+  barrow: { name: 'Wzmacniacz nekromancji', emblem: 'skull', desc: 'Bohaterowie właściciela wskrzeszają po bitwie o 10% więcej poległych (za każdy wzmacniacz).' },
+  fortress: { name: 'Klatka wodzów', emblem: 'wall', desc: 'Każdy bohater, który odwiedzi miasto, raz na zawsze zyskuje +1 do obrony.' },
+  inferno: { name: 'Brama piekieł', emblem: 'flame', desc: 'Bohater stojący w mieście przechodzi przez bramę do innego twojego miasta z Bramą piekieł.' },
+  academy: { name: 'Biblioteka', emblem: 'book', desc: 'Gildia magów oferuje o jeden czar więcej na każdym poziomie.' },
+  dungeon: { name: 'Wir many', emblem: 'eye', desc: 'Raz w tygodniu podwaja manę bohatera, który odwiedzi miasto.' },
+  stronghold: { name: 'Sala Walhalli', emblem: 'axe', desc: 'Każdy bohater, który odwiedzi miasto, raz na zawsze zyskuje +1 do ataku.' },
+};
 // Nazwa, jednostka, symbol i opis budowli dla danej frakcji
 function bInfo(B, fac) {
   const F = factionOf(fac), m = /^dw(\d)(u?)$/.exec(B.id);
+  if (B.id === 'special') { const S = FACTION_SPECIAL[F.id]; return { name: S.name, emblem: S.emblem, desc: S.desc }; }
   if (m) {
     const [name, unit] = F.dw[B.id], c = CREATURES[unit];
     return { name, unit, emblem: F.emb[+m[1] - 1], desc: `${m[2] ? 'Ulepszone siedlisko' : 'Siedlisko'}: ${c.plural.toLowerCase()} (poziom ${m[1]}).` };

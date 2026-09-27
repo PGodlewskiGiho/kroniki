@@ -9,15 +9,15 @@ test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
 
-test('każda frakcja i każdy krajobraz: 14 budowli w kadrze, bez wzajemnego zasłaniania', async () => {
+test('każda frakcja i każdy krajobraz: 15 budowli w kadrze, bez wzajemnego zasłaniania', async () => {
   const r = await page.evaluate(() => {
     const bad = []; let n = 0;
     for (const fac of FACTIONS.map(f => f.id)) for (const arche of Object.keys(ARCHETYPES)) for (let k = 0; k < 4; k++) {
       const L = generateTownLayout(fac, strHash(`${fac}/${arche}/${k}`), arche); usePJ(L); n++;
       const R = L.slots.map(slotRect);
-      if (R.length !== 14) bad.push(`${fac}/${arche}/${k}: ${R.length} miejsc`);
+      if (R.length !== 15) bad.push(`${fac}/${arche}/${k}: ${R.length} miejsc`);
       R.forEach((q, i) => { if (q.x < 0 || q.x + q.w > 592 || q.y < 4 || q.sy > 440) bad.push(`${fac}/${arche}/${k}: miejsce ${i} poza kadrem`); });
-      for (let i = 0; i < 14; i++) for (let j = i + 1; j < 14; j++) if (rectOverlap(R[i], R[j]) > 0.6) bad.push(`${fac}/${arche}/${k}: ${i} zasłania ${j}`);
+      for (let i = 0; i < 15; i++) for (let j = i + 1; j < 15; j++) if (rectOverlap(R[i], R[j]) > 0.6) bad.push(`${fac}/${arche}/${k}: ${i} zasłania ${j}`);
       usePJ(null);
     }
     return { n, bad, want: FACTIONS.length * Object.keys(ARCHETYPES).length * 4 };
@@ -44,6 +44,23 @@ test('ta sama nazwa daje tę samą planszę, różne miasta frakcji różnią si
   }
 });
 
+test('kraj frakcji: ścieżki od drzwi budowli, mieszkańcy i straż z własnej frakcji, Loch w grocie', async () => {
+  const r = await page.evaluate(() => {
+    const out = {};
+    for (const F of FACTIONS) {
+      const Ls = F.towns.map(name => generateTownLayout(F.id, strHash(F.id + ':' + name))), Bm = TOWN_BIOME[F.id];
+      const lanes = Ls.reduce((a, L) => a + Object.keys(L.doorRoutes).length, 0) / Ls.length;
+      const folk = [...new Set(Ls.flatMap(L => L.folk.map(w => w.kind)))].filter(k => !Bm.folk.includes(k));
+      const guards = Ls.every(L => L.guards.length === 2 && L.guards.every(g => g.kind === Bm.guard));
+      const styles = Ls.every(L => L.roads.find(R => R.main).style === Bm.road), cave = Ls.every(L => (L.frame === 'cave') === (F.id === 'dungeon'));
+      const arches = Ls.every(L => TOWN_STYLE[F.id].arche.some(([a]) => a === L.arche));
+      out[F.id] = { lanes: lanes >= 8, folk, guards, styles, cave, arches };
+    }
+    return out;
+  });
+  for (const [fac, x] of Object.entries(r)) assert.deepEqual(x, { lanes: true, folk: [], guards: true, styles: true, cave: true, arches: true }, fac);
+});
+
 test('ekran miasta rysuje się dla każdego krajobrazu; budowle mają pola do wskazania myszą', async () => {
   const facs = await page.evaluate(() => FACTIONS.map(f => f.id)), arches = await page.evaluate(() => Object.keys(ARCHETYPES));
   for (let k = 0; k < arches.length; k++) {
@@ -55,7 +72,7 @@ test('ekran miasta rysuje się dla każdego krajobrazu; budowle mają pola do ws
     }, [arches[k]]);
     await frames(page, 6);
     const r = await page.evaluate(() => { const t = G.state.towns[0]; return { arche: townLayout(t).arche, rects: Object.keys((TownFXCache[lastTownKey] || {}).rects || {}).length, screen: G.screenName }; });
-    assert.deepEqual(r, { arche: arches[k], rects: 14, screen: 'town' }, `${fac}/${arches[k]}`);
+    assert.deepEqual(r, { arche: arches[k], rects: 15, screen: 'town' }, `${fac}/${arches[k]}`);
   }
 });
 

@@ -142,8 +142,11 @@
    Loch (skały, TER.ROUGH) i Cytadela (step, TER.SAND), 18d: nowe ciała 'eye' (obserwator) i 'bird' (rok, ptak gromu),
    czworonóg z wings/stinger/mane/horns/stripes/rider (mantykora, behemot, jeździec wargów), cyklop (L.cyclops), tur bez łusek
    (L.plain, barding). Woda 'glow' i 'oasis', rekwizyty glowShroom/stalagmite/acacia/cactus/totem, pogoda 'spores' i 'dust'.
-   Koniec bitwy (22, startEnding/endingStep/drawEnding): zwycięstwo = złote promienie, fajerwerki, konfetti, sztandar ze sprężystym
-   wejściem i podskakujący zwycięzcy; porażka = szarość, czerwona winieta, popiół i dym, opadający postrzępiony sztandar z pęknięciem.
+   Koniec bitwy jak w Heroes 3 (22a): zwycięzcy chwilę wiwatują, potem okno wyniku nad polem bitwy (showBattleReport): portrety
+   obu stron z podpisem zwycięzca/pokonany, ruchomy obraz (świt i bohater ze sztandarami, burza z krukami i złamanym sztandarem,
+   odjazd o zmierzchu), opis kroniki, straty obu stron z ikonami stworów (res.sides). To samo okno po walce automatycznej i obronie.
+   Koniec gry (showGameEnd): scena miasta gracza z fajerwerkami albo w dymie i szarości, wstęga z napisem, kronika królestwa
+   i ranga od Chłopa do Czarnego smoka.
    Pory roku (SEASONS, seasonIdx: miesiąc 1 wiosna, 2 lato, 3 jesień, 4 zima, potem od nowa): lato +10% ruchu, jesień +1 drewna
    i rudy z miasta, zima −20% ruchu. Wygląd: seasonLand (barwy terenu), lód przy brzegach, drzewa i ozdoby wg SEASON_DRAW
    (obstacleSprite/decorSprite z porą w kluczu), MapRender.setSeason czyści kawałki, drawSeasonFx (śnieg, liście).
@@ -156,6 +159,18 @@
    szamana. Ikona miasta na mapie to pomniejszony fort frakcji (drawTownMap), flagi na masztach z rysunku (townFlagPoints).
    Gildia magów (showGuildView, 23): wnętrze w stylu frakcji (GUILD_LOOK: kształt okna, półki, drobiazgi), w oknie żywy widok
    na miasto (bufor sceny ekranu miasta), półki poziomów V–I ze zwojami czarów, opis czaru po kliknięciu, klawisz G.
+   Kraj frakcji w mieście (18f, TOWN_BIOME): własna ziemia (łąka z polami, mech z liśćmi, spękana martwa ziemia, bagno z kałużami,
+   bazalt ze szczelinami lawy, zaspy, dno groty z kryształami, wydmy), horyzont (dęby, puszcza, martwe drzewa, wierzby, iglice,
+   świerki, stalagmity, góry stołowe), tylko pasujące krajobrazy, Loch pod sklepieniem groty (caveSky, caveFrame). Drogi w stylu
+   frakcji (ROAD_LOOK: bruk, leśna ścieżka, płyty z czaszkami, pomosty na palach, bazalt z żarem, lód, piach z koleinami),
+   ścieżka od drzwi każdej budowli do drogi (townPaths: bez rzek i przepaści, schody tylko na krawędzi tarasu, kładki nad wodą,
+   po lodzie Akademii bez kładek). Mieszkańcy frakcji chodzą od bramy do budowli i znikają w drzwiach (townFolk, drawDweller):
+   chłopi i straż, elfy i krasnoludy, szkielety i zombie, jaszczuroludzie i gnolle, diabełki i demony, magowie z gremlinami
+   i golemem, troglodyci z czarnoksiężnikami i minotaurem, gobliny, orkowie i wilki.
+   Budowle specjalne frakcji (FACTION_SPECIAL, 15. miejsce w mieście, rysunki w 18g): Stajnie (+400 ruchu do końca tygodnia),
+   Skarbiec krasnoludów (+10% złota co tydzień, do 2500), Wzmacniacz nekromancji (+10% wskrzeszeń), Klatka wodzów (+1 obrony raz
+   na bohatera), Brama piekieł (przejście między miastami Inferna), Biblioteka (czar więcej na każdym poziomie gildii), Wir many
+   (podwójna mana raz w tygodniu), Sala Walhalli (+1 ataku raz na bohatera). Działają przy wejściu do miasta i na początku dnia.
    Cechy frakcji (FACTION_TRAITS, heroFaction z klasy bohatera): morale Przystani, szczęście Kniei, nekromancja Kurhanu,
    bagna Twierdzy, siarka Inferna, zima i śnieg Akademii, wzrok Lochu, przyrost Cytadeli; opisy w dymkach (nowa gra, miasto, bohater).
    Słaby laptop: menu i miasto bez pixelQuantize co klatkę (paleta wypalona w nieruchomym tle), płótno bez przezroczystości

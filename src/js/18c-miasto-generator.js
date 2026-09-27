@@ -1,7 +1,7 @@
 // ==================== MIASTO: GENERATOR PLANSZ ============================================
 // Każde miasto ma własną planszę wyliczoną z frakcji i nazwy (to samo miasto zawsze wygląda tak samo, zapis gry nic
 // nie przechowuje): typ krajobrazu (dolina z rzeką, jezioro, przepaść, tarasy, wyspy, płaskowyż, krater, wybrzeże),
-// rozmieszczenie 14 budowli, drogi z mostami i schodami, place, drzewa i drobiazgi, pora dnia, pogoda i kolory dachów.
+// rozmieszczenie 15 budowli, drogi z mostami i schodami, place, drzewa i drobiazgi, pora dnia, pogoda i kolory dachów.
 // Frakcja podaje tylko styl (TOWN_STYLE): wodę, ulubione krajobrazy z wagami, rekwizyty, niebo, pogodę i dachy.
 // Nowa frakcja = TOWN_ART (paleta), BUILD_ART (rysunki budowli), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi) i TOWN_STYLE.
 //
@@ -38,7 +38,7 @@ const TOWN_STYLE = {
     weather: [['clear', 5], ['mist', 2], ['rain', 1]], slab: { top: ['#4c7a3a', '#34582a'], face: ['#6a6a50', '#3a3a2a'] }, hill: ['#3a5a2e', '#26401e'],
     roofs: [TOWN_ART.sylvan.roof, { hall: '#c8a040', dw: '#8a6a30', util: '#6a5a30', tower: '#3e6a8a', wall: '#5a7a3a' }, { hall: '#a8c85a', dw: '#c87a3a', util: '#7a6a40', tower: '#6a8a3e', wall: '#8a6a3a' }] },
   barrow: { walls: ['iron', 0.45], arche: [['chasm', 3], ['plateau', 2], ['crater', 2], ['valley', 1]], water: 'dark',
-    trees: ['tree', 8, 14], deco: [['grave', 4], ['bones', 2], ['rock', 2], ['fence', 1]], lamp: 'lamp', sand: '#4a4454', skel: true,
+    trees: ['tree', 8, 14], deco: [['grave', 4], ['bones', 2], ['rock', 2], ['fence', 1]], lamp: 'lamp', sand: '#4a4454',
     skies: [[TOWN_LAYOUTS.barrow.sky, 3], [{ top: '#0a0406', mid: '#2a0a14', hor: '#6a1a2a', sun: [180, 70], moon: true, moonR: 40, stars: true, cloudDark: 'rgba(20,6,10,.7)', cloudLit: 'rgba(200,80,90,.25)' }, 2],
       [{ top: '#1a1a22', mid: '#3a3a48', hor: '#6a6a78', sun: [420, 80], moon: true, moonR: 18, cloudDark: 'rgba(40,40,50,.7)', cloudLit: 'rgba(160,160,180,.3)' }, 1]],
     weather: [['mist', 3], ['clear', 2]], slab: { top: ['#4a4454', '#34303e'], face: ['#3a3444', '#1e1b24'] }, hill: ['#34303c', '#1e1b24'],
@@ -61,12 +61,13 @@ const TOWN_STYLE = {
     weather: [['snow', 5], ['clear', 2]], slab: { top: ['#cfd8e4', '#aebacc'], face: ['#8a94a6', '#525a6c'] }, hill: ['#d4dce8', '#a8b4c6'],
     roofs: [TOWN_ART.academy.roof, { hall: '#7a3a8a', dw: '#5a4a9a', util: '#5a6a8e', tower: '#4a2a7a', wall: '#5a4a8a' }, { hall: '#2a7a8a', dw: '#3a6a9a', util: '#5a6a7a', tower: '#1e5a6a', wall: '#3a5a70' }] },
 };
-// Rola każdego z 14 miejsc: [najbliżej, najdalej] (Z), czy woli wzniesienia, czy to mała budowla przy drodze
+// Rola każdego z 15 miejsc: [najbliżej, najdalej] (Z), czy woli wzniesienia, czy to mała budowla przy drodze
 const SLOT_ROLE = [
   [1.1, 1.7, 0, 0], [1.9, 2.9, 1, 0], [1.4, 2.4, 1, 0], [1.9, 2.9, 1, 0], [1.2, 2.2, 0, 0], [1.4, 2.4, 0, 0], [1.1, 1.9, 0, 0],
   [1.3, 2.3, 0, 0], [0.86, 1.2, 0, 1], [0.86, 1.25, 0, 1], [0.9, 1.4, 0, 1], [0.9, 1.5, 0, 1], [0.86, 1.3, 0, 1], [0.88, 1.35, 0, 1],
+  [1.2, 2.2, 0, 0], // budowla specjalna frakcji
 ];
-const SLOT_ORDER = [1, 0, 3, 2, 5, 7, 4, 6, 13, 12, 11, 10, 8, 9]; // najpierw duże i ważne
+const SLOT_ORDER = [1, 0, 3, 2, 5, 7, 4, 6, 14, 13, 12, 11, 10, 8, 9]; // najpierw duże i ważne
 const hillTop = (Hl, X) => Hl.h * Math.pow(Math.max(0, 1 - ((X - Hl.X) / Hl.rx) ** 2), Hl.flat || 0.65);
 
 // --- typy krajobrazu: każdy dopisuje teren do planszy L i strefy pod budowę do T ---
@@ -129,7 +130,7 @@ const ARCHETYPES = {
     const s = r() < 0.5 ? -1 : 1, a = between(r, 110, 170), b = between(r, 130, 180), ph = r() * 6, xAt = Z => s * (a + b * (Z - 0.8) + Math.sin(Z * 4 + ph) * 18);
     const pts = [0.72, 0.9, 1.1, 1.35, 1.65, 2, 2.5, 3.1, 3.8, 4.6].map(Z => [xAt(Z), Z]);
     L.seas.push({ side: s, pts, cols: W.lake, sand: St.sand }); T.sea = { s, xAt };
-    const Zp = between(r, 1.15, 1.45), x0 = xAt(Zp); L.roads.push({ w: 26, planks: true, pts: [[x0 - s * 40, Zp], [x0 + s * 170, Zp + 0.04]] }); T.feats.push({ pts: [[x0 - s * 40, Zp], [x0 + s * 170, Zp + 0.04]], w: 30 });
+    const Zp = between(r, 1.15, 1.45), x0 = xAt(Zp); L.roads.push({ w: 26, planks: true, style: 'planks', pts: [[x0 - s * 40, Zp], [x0 + s * 170, Zp + 0.04]] }); T.feats.push({ pts: [[x0 - s * 40, Zp], [x0 + s * 170, Zp + 0.04]], w: 30 });
     for (let k = 0; k < 2 + (r() * 2 | 0); k++) { const Z = between(r, 1.2, 2.6); L.props.push(['boat', xAt(Z) + s * between(r, 90, 200) * Z, Z]); }
     if (r() < 0.6) { const Hl = { X: -s * between(r, 250, 520), Z: between(r, 2.4, 2.85), rx: between(r, 240, 360), h: between(r, 40, 80), cols: St.hill, rock: r() < 0.5, flat: 0.2 }; L.hills.push(Hl); }
     T.focus = { X: -s * between(r, 30, 140), Z: between(r, 1.15, 1.35) }; T.entryX = -s * between(r, 20, 90);
@@ -181,7 +182,7 @@ function placeTownSlots(r, T, L, dims) {
         const wS = D.w * D.k / Z, lo = (margin + wS / 2 - 296) * Z, hi = (592 - margin - wS / 2 - 296) * Z, X = between(r, Math.max(lo, zn.x0), Math.min(hi, zn.x1)); if (!(X >= lo && X <= hi && X >= zn.x0 && X <= zn.x1)) continue;
         if (zn.hill && Math.abs(X - zn.hill.X) + D.w * D.k / 2 > zn.hill.rx * (zn.hill.flat < 0.3 ? 0.8 : 0.5)) continue; // budowla mieści się na grzbiecie
         const e = zn.e === null ? townElev(T, L, X, Z) : typeof zn.e === 'function' ? zn.e(X) : zn.e, S = { X, Z, e, k: D.k, w: D.w, h: D.h }, R = slotRect(S);
-        if (R.y < 12 || R.sy > 432 || townBlocked(T, L, X, Z, e, D.w * D.k / 2, zn.tag === 'island')) continue;
+        if (R.y < (L.frame === 'cave' ? 30 : 12) || R.sy > 432 || townBlocked(T, L, X, Z, e, D.w * D.k / 2, zn.tag === 'island')) continue;
         let ov = 0, near = 999; for (const P of placed) { ov = Math.max(ov, rectOverlap(R, P.R)); near = Math.min(near, Math.hypot(R.sx - P.R.sx, (R.sy - R.h / 2) - (P.R.sy - P.R.h / 2))); }
         if (ov > thr) continue;
         let score = r() * 0.35 - Math.abs(Z - (z0 + z1) / 2) * 1.2 + Math.min(near, 160) / 320 - ov * 3 + (high && e > 0 ? 0.8 : 0);
@@ -220,10 +221,9 @@ function townMainRoad(r, T, L) {
   leg(way[0], [hallF[0], hallF[1], hallF[2], 44]); leg(way[way.length - 1], [fortF[0], fortF[1], fortF[2], 34]);
   way.sort((a, b) => a[1] - b[1]);
   const steps = way.some(p => p[2] > 2);
-  L.roads.push({ w: 44, steps, planks: !!T.planks, pts: way }); T.main = way.map(p => [p[0], p[1]]);
+  L.roads.push({ w: 44, steps, planks: !!T.planks, pts: way, main: true }); T.main = way.map(p => [p[0], p[1]]);
   T.feats.push({ pts: T.main, w: 44 }); L.bridges.push(...bridges);
   if (!hall.e && !T.planks) { L.plaza = { X: hall.X, Z: hall.Z - 0.09, r: between(r, 85, 120) }; T.ells.push({ X: L.plaza.X, Z: L.plaza.Z, rx: L.plaza.r, rz: 0.05 }); }
-  L.walksW = [way.filter(p => !p[2]).map(p => [p[0], p[1]])].filter(w => w.length >= 2);
 }
 // Drzewa, drobiazgi i latarnie w wolnych miejscach (nie na drogach, w wodzie ani przed budowlami)
 function townProps(r, T, L, St) {
@@ -237,16 +237,18 @@ function townProps(r, T, L, St) {
   for (let k = 0, t = 0, m = 6 + (r() * 6 | 0); k < m && t < 300; t++) { const Z = between(r, 0.86, 2.2), X = between(r, -290, 290) * Z, e = townElev(T, L, X, Z); if (free(X, Z, e, 30, 22)) { L.props.push([pickW(r, St.deco), X, Z, e]); k++; } }
   for (let i = 1; i < T.main.length; i++) { const p = L.roads[L.roads.length - 1].pts[i]; if (p[2] || i % 2 || T.planks) continue; const X = p[0] + (r() < 0.5 ? -1 : 1) * 30, e = townElev(T, L, X, p[1]); if (free(X, p[1], e, 12, 40)) L.props.push([St.lamp, X, p[1], e]); }
 }
-// Cała plansza miasta: typ krajobrazu, budowle, drogi, rekwizyty, niebo, pogoda, dachy i ozdobne istoty (duchy, ogniki)
+// Cała plansza miasta: typ krajobrazu, budowle, drogi i ścieżki do drzwi, rekwizyty, niebo, pogoda, dachy, mieszkańcy i ozdobne istoty
 function generateTownLayout(fac, seed, force) {
-  const St = TOWN_STYLE[fac] || TOWN_STYLE.haven, B = TOWN_LAYOUTS[fac] || TOWN_LAYOUTS.haven, r = mulberry32(seed), W = TOWN_WATER[St.water] || TOWN_WATER.blue;
+  const St = TOWN_STYLE[fac] || TOWN_STYLE.haven, B = TOWN_LAYOUTS[fac] || TOWN_LAYOUTS.haven, Bm = TOWN_BIOME[fac] || TOWN_BIOME.haven, r = mulberry32(seed), W = TOWN_WATER[St.water] || TOWN_WATER.blue;
   const arche = force || pickW(r, St.arche), wx = pickW(r, St.weather), sky = { ...pickW(r, St.skies) };
-  const L = { arche, seed, pj: null, frame: St.frame && r() < St.frame ? 'forest' : null, mountains: B.mountains, forest: B.forest, ground: B.ground, haze: B.haze, desat: B.desat, tuft: B.tuft,
+  const L = { arche, seed, pj: null, frame: St.frame && r() < St.frame ? St.frameKind || 'forest' : null, fac, mountains: B.mountains, forest: B.forest, ground: B.ground, haze: B.haze, desat: B.desat,
+    tuft: B.tuft || Bm.tuft, tufts: Bm.tufts, plazaCol: Bm.plaza,
     hills: [], rivers: [], lakes: [], islands: [], slabs: [], seas: [], roads: [], bridges: [], props: [], slots: [], bone: fac === 'barrow',
-    walkCols: B.walkCols, guardCol: B.guardCol, birds: B.birds, birdCol: B.birdCol, mist: wx === 'mist', rain: wx === 'rain', snow: wx === 'snow', embers: wx === 'embers', spores: wx === 'spores', dust: wx === 'dust' };
-  const T = { feats: [], ells: [], islands: [], focus: { X: 0, Z: 1.25 }, entryX: 0 };
+    birds: B.birds, birdCol: B.birdCol, mist: wx === 'mist', rain: wx === 'rain', snow: wx === 'snow', embers: wx === 'embers', spores: wx === 'spores', dust: wx === 'dust' };
+  const T = { feats: [], ells: [], islands: [], focus: { X: 0, Z: 1.25 }, entryX: 0, frozen: St.water === 'ice' };
   L.pj = { hor: Math.round(between(r, 62, 112)), d: Math.round(between(r, 262, 326)) }; // kamera: wyżej albo niżej, bliżej albo dalej
   ARCHETYPES[arche](r, St, W, L, T);
+  for (const Hl of L.hills) Hl.tufts = Bm.tufts > 0.3; // trawa na zboczach tylko tam, gdzie rośnie też na ziemi
   T.roles = SLOT_ROLE.map(x => x.slice()); T.flank = r() < 0.45 ? (r() < 0.5 ? -1 : 1) : 0; // zamek z tyłu albo z boku planszy
   if (T.flank) T.roles[1] = [1.35, 2.1, 1, 0];
   if (L.slabs.length && r() < 0.4) { T.roles[0] = [1.3, 2.5, 1, 0]; T.hallHigh = true; } // ratusz na tarasie albo płaskowyżu
@@ -262,11 +264,11 @@ function generateTownLayout(fac, seed, force) {
   sky.sun = [between(r, 90, 500), Math.min(sky.sun[1], hor - 28)]; sky.seed = seed; L.sky = sky; L.ridge = [1 + (seed % 997), 3 + (seed % 991), hor + 12];
   L.art = { ...(TOWN_ART[fac] || TOWN_ART.haven), roof: pickW(r, St.roofs.map(x => [x, 1])) };
   placeTownSlots(r, T, L, B.slots);
+  townPaths(r, T, L, Bm);
   townProps(r, T, L, St);
   if (L.walls) townWallGates(r, T, L);
-  const fort = L.slots[1], F = T.focus;
-  if (St.skel) { L.guardSkel = [[fort.X - 24, fort.Z - 0.02, fort.e], [fort.X + 24, fort.Z - 0.02, fort.e]]; if (L.walksW.length) L.skeletons = L.walksW.slice(0, 1); }
-  else L.guardsW = [[fort.X - 24, fort.Z - 0.02, fort.e], [fort.X + 24, fort.Z - 0.02, fort.e]];
+  townFolk(r, T, L, Bm);
+  const F = T.focus;
   L.floaters = fac === 'sylvan' || fac === 'fortress' ? [{ kind: 'wisp', X: F.X, Z: F.Z + 0.2, e: 18, n: 5, spread: 200, spreadZ: 0.2 }]
     : fac === 'barrow' ? [{ kind: 'ghost', X: F.X, Z: F.Z + 0.1, e: 40, n: 3, spread: 120, spreadZ: 0.25 }]
     : fac === 'inferno' ? [{ kind: 'ember', X: F.X, Z: F.Z + 0.2, e: 10, n: 10, spread: 160, spreadZ: 0.4 }]

@@ -74,7 +74,7 @@ function estimateStrike(B, a, t, ranged, moved = 0) {
   return { min: out[0], max: out[1], kmin: kills(out[0]), kmax: kills(out[1]) };
 }
 G.screens.battle = {
-  fps() { return this.phase === 'over' ? 40 : this.phase === 'input' && !this.play && !this.floats.length ? 24 : 60; }, // czekając na rozkaz wystarczy spokojna animacja
+  fps() { return this.phase === 'over' || this.phase === 'done' ? 40 : this.phase === 'input' && !this.play && !this.floats.length ? 24 : 60; }, // czekając na rozkaz wystarczy spokojna animacja
   // Szersze okno: pole walki ciągnie się na boki (lustrzane odbicie brzegów tła, lekko przyciemnione)
   backdrop(ctx) { // gotowy obraz na dany rozmiar okna i teren (kamień, odbite brzegi pola, przyciemnienie): jedna warstwa zamiast pięciu
     const f = this.B && this.B.walls ? this.B.sides[1].town.faction : '';
@@ -92,7 +92,7 @@ G.screens.battle = {
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
     const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null;
-    this.me = B.sides[0].owner === ME ? 0 : 1; // strona gracza: 0 gdy atakuje, 1 gdy się broni this.floats = []; this.preview = null; this.timer = 0;
+    this.me = B.sides[0].owner === ME ? 0 : 1; this.floats = []; this.preview = null; this.timer = 0; this.ending = null; // strona gracza: 0 gdy atakuje, 1 gdy się broni
     this.terr = B.st.map.terrain[B.h.y * B.st.map.n + B.h.x] || TER.GRASS;
     for (const u of B.units) { [u.px, u.py] = hexCenter(u.x, u.y); u.anim = null; u.dieT = null; u.flashT = null; }
     BattleFX.reset(); this.intro = { t: 0, dur: 0.9 };
@@ -139,20 +139,15 @@ G.screens.battle = {
     if (B.cast[this.me]) { B.log.push('W tej rundzie bohater już rzucił czar.'); return; }
     showSpellbook(mh, 'battle', id => { this.casting = id; this.onPointerMove(G.mouse.x, G.mouse.y); });
   },
-  // Koniec bitwy: krótka scena zwycięstwa albo porażki (z punktu widzenia gracza), potem wynik na mapie. Klik albo klawisz pomija.
+  // Koniec bitwy: zwycięzcy wiwatują przez chwilę, potem okno wyniku nad polem bitwy (jak w Heroes 3). Klik albo klawisz przyspiesza.
   startEnding() {
-    const B = this.B, winner = fighters(B, 0).length ? 0 : 1, both = humanSide(B, 0) && humanSide(B, 1);
-    const win = both || humanSide(B, winner) || (!humanSide(B, 0) && !humanSide(B, 1)), wh = sideHero(B, winner);
-    const beaten = B.units.filter(u => u.side !== winner && !isMachine(u)).length;
-    this.phase = 'over'; this.preview = null; this.casting = null;
-    this.ending = { t: 0, dur: 3.6, win, winner, parts: [], next: 0.15, col: ownerColor(B.st, B.sides[winner].owner >= 0 ? B.sides[winner].owner : B.h.owner),
-      title: win ? 'Zwycięstwo!' : 'Porażka', sub: win ? (both && wh ? `${wh.name} wygrywa bitwę` : `Wróg rozbity: ${beaten} ${beaten === 1 ? 'oddział' : beaten < 5 ? 'oddziały' : 'oddziałów'}`) : 'Twoja armia została rozbita' };
+    const B = this.B, winner = fighters(B, 0).length ? 0 : 1;
+    this.phase = 'over'; this.preview = null; this.casting = null; this.ending = { t: 0, dur: 1.1, winner };
   },
   finish(fled) {
-    const B = this.B, st = B.st, h = B.h, res = resolveBattle(B, fled);
-    if (this.onDone) { const f = this.onDone; this.onDone = null; f(res); } // bitwa obronna: wynik wraca do tury przeciwnika
-    else G.go('adventure', { after: () => showBattleResult(st, h, res) });
-    this.phase = 'done';
+    const B = this.B, st = B.st, h = B.h, res = resolveBattle(B, fled), f = this.onDone; this.onDone = null; this.phase = 'done';
+    if (f) showBattleReport(st, res, defenseReport(st, { h }, B.sides[1].hero, res), () => { res.reported = true; f(res); }); // obrona: wynik wraca do tury przeciwnika
+    else showBattleReport(st, res, attackReport(st, h, res), () => G.go('adventure', { after: () => battleAftermath(st, h, res) }));
   },
   update(dt) {
     const B = this.B; if (!B || this.phase === 'done') return;
@@ -165,7 +160,7 @@ G.screens.battle = {
       this.nextTurn(); return;
     }
     if (this.phase === 'ai') { this.timer -= dt; if (this.timer <= 0) { aiAct(B, B.active); this.phase = 'play'; } return; }
-    if (this.phase === 'over') { const E = this.ending; E.t += dt; endingStep(E, dt); if (E.t >= E.dur) this.finish(false); }
+    if (this.phase === 'over') { const E = this.ending; E.t += dt; if (E.t >= E.dur) this.finish(false); }
   },
   // Czasy efektów (w sekundach); walka automatyczna odtwarza się szybciej
   startPlay(fx) {
@@ -240,7 +235,7 @@ G.screens.battle = {
   unitLook(u) {
     const d = u.side === 0 ? 1 : -1, now = G.time, a = u.anim && now - u.anim.t0 < u.anim.dur ? u.anim : null;
     let pose = 'idle', i = Math.floor(now * 3.5 + u.id * 1.37) % BATTLE_FRAMES.idle, ox = 0;
-    const E = this.phase === 'over' && this.ending;
+    const E = (this.phase === 'over' || this.phase === 'done') && this.ending;
     if (E && u.side === E.winner && !u.dead && !isMachine(u)) { // zwycięzcy podskakują i wymachują bronią
       const k = now * 1.6 + u.id * 0.37, hop = Math.abs(Math.sin(k * Math.PI)) * 7 * clamp(E.t * 3, 0, 1);
       return { s: battleSprite(u.cid, d, 'attack', Math.floor((k % 1) * BATTLE_FRAMES.attack)), ox: 0, hop, flash: false };
@@ -274,9 +269,9 @@ G.screens.battle = {
     } else if (!occ && this.reach.dist.has(k)) this.preview = { kind: 'move', to: [hx.x, hx.y] };
     else if (occ) this.preview = { kind: 'info', target: occ };
   },
-  onKey() { if (this.phase === 'over' && this.ending.t > 0.6) this.finish(false); },
+  onKey() { if (this.phase === 'over' && this.ending.t > 0.3) this.finish(false); },
   onClick(x, y) {
-    if (this.phase === 'over') { if (this.ending.t > 0.6) this.finish(false); return; }
+    if (this.phase === 'over') { if (this.ending.t > 0.3) this.finish(false); return; }
     if (clickButtons(this.buttons, x, y)) return;
     const B = this.B, p = this.preview; if (this.phase !== 'input' || !p) return;
     if (p.kind === 'cast') { this.casting = null; castBattle(B, p.id, p.x, p.y); this.phase = 'play'; this.resume = true; return; }
@@ -342,7 +337,6 @@ G.screens.battle = {
     }
     ctx.restore(); // koniec wstrząsu
     BattleFX.drawFlash(ctx);
-    if (this.phase === 'over' && this.ending) drawEnding(ctx, this.ending);
     // pasek górny
     drawHeroPortrait(ctx, 6, 1, B.h, col); text(ctx, heroTitle(B.h), 50, 19, { size: 15, color: '#ecd9a8', fam: 'title' });
     text(ctx, `Runda ${B.round}`, W / 2, 19, { size: 16, align: 'center', color: '#f0e4c0', fam: 'title' });
@@ -363,84 +357,10 @@ G.screens.battle = {
   },
 };
 // Okno po bitwie (pokazywane już na mapie przygody)
-function showBattleResult(st, h, res) {
-  const lost = res.lost.length ? `Straty: ${res.lost.join(', ')}.` : 'Bez strat.';
-  if (res.outcome === 'win') {
-    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
-    showDialog(`Zwycięstwo!${extra} ${lost}${raisedText(res.raised)} Doświadczenie: +${res.exp}.`, [{ label: 'OK', key: 'enter', action: () => {
-      advFloat(`+${res.exp} dośw.`, h.x, h.y);
-      gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank') visitObject(st, h, here); });
-    } }]);
-  } else if (res.outcome === 'fled') showDialog(`${h.name} wycofuje się z pola bitwy. ${lost} Na dziś koniec marszu.`, [{ label: 'OK', key: 'enter' }]);
-  else if (res.heroLost) showDialog(`Porażka. Armia została rozbita, a ${h.name} opuszcza twoją służbę: wszystkie bramy twoich miast są zajęte.`, [{ label: 'OK', key: 'enter' }]);
-  else { showDialog(`Porażka. Armia została rozbita, a ${h.name} ledwie uchodzi z życiem${res.home ? ` do miasta ${res.home}` : ''}. Zwerbuj nowe wojsko, zanim ruszysz dalej.`, [{ label: 'OK', key: 'enter' }]); }
-}
-
-// --- scena końca bitwy ---
-const END_GOLD = ['#ffd970', '#fff4c0', '#ffb040', '#f0e0a0'];
-function endingStep(E, dt) {
-  const R = Math.random;
-  if (E.win) {
-    E.next -= dt;
-    if (E.next <= 0 && E.t < E.dur - 0.8) { // fajerwerk: rozbłysk kolorowych iskier w górnej części pola
-      E.next = 0.28 + R() * 0.25; const x = 90 + R() * (W - 180), y = 60 + R() * 150, cols = [E.col, END_GOLD[(R() * 4) | 0], '#ffffff'];
-      for (let i = 0; i < 34; i++) { const a = i / 34 * TAU + R() * 0.2, v = 70 + R() * 110; E.parts.push({ k: 'spark', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.9 + R() * 0.5, age: 0, col: cols[i % 3] }); }
-    }
-    for (let i = 0; i < 5; i++) E.parts.push({ k: 'conf', x: R() * W, y: -10, vx: (R() - 0.5) * 40, vy: 60 + R() * 70, rot: R() * 6, vr: (R() - 0.5) * 10, life: 4, age: 0, col: [E.col, '#ffd970', '#ffffff', '#6ac0ff', '#ff6a8a'][(R() * 5) | 0] });
-  } else {
-    for (let i = 0; i < 3; i++) E.parts.push({ k: 'ash', x: R() * W, y: -8, vx: 12 + R() * 16, vy: 22 + R() * 30, life: 5, age: 0, sw: R() * 6 });
-    if (R() < dt * 6) E.parts.push({ k: 'smoke', x: R() * W, y: 500, vx: (R() - 0.5) * 10, vy: -18 - R() * 16, life: 3, age: 0, r: 20 + R() * 30 });
-  }
-  for (const p of E.parts) {
-    p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt;
-    if (p.k === 'spark') { p.vy += 90 * dt; p.vx *= 1 - dt * 1.4; p.vy *= 1 - dt * 0.6; }
-    if (p.k === 'conf') { p.rot += p.vr * dt; p.vx += Math.sin(p.age * 3 + p.rot) * 30 * dt; }
-    if (p.k === 'ash') p.x += Math.sin(p.age * 2 + p.sw) * 12 * dt;
-  }
-  E.parts = E.parts.filter(p => p.age < p.life && p.y < 520);
-}
-function drawEnding(ctx, E) {
-  const t = E.t, fin = clamp(t / 0.5, 0, 1), out = clamp((E.dur - t) / 0.35, 0, 1), cx = W / 2, cy = 210;
-  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, 490); ctx.clip();
-  if (E.win) {
-    ctx.fillStyle = `rgba(255,210,120,${(0.14 * fin).toFixed(3)})`; ctx.fillRect(0, 0, W, 490);
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(cx, cy); ctx.rotate(t * 0.35); // złote promienie za napisem
-    const len = 520 * ease(fin);
-    for (let i = 0; i < 16; i++) { ctx.rotate(TAU / 16); ctx.fillStyle = `rgba(255,220,130,${(0.11 * fin * out).toFixed(3)})`; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, -len * 0.09); ctx.lineTo(len, len * 0.09); ctx.closePath(); ctx.fill(); }
-    ctx.restore();
-  } else {
-    ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = 0.75 * fin; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, 490); ctx.restore();
-    ctx.fillStyle = `rgba(10,4,6,${(0.42 * fin).toFixed(3)})`; ctx.fillRect(0, 0, W, 490);
-    const vg = ctx.createRadialGradient(cx, 245, 120, cx, 245, 480); vg.addColorStop(0, 'rgba(120,0,0,0)'); vg.addColorStop(1, `rgba(120,10,10,${(0.55 * fin).toFixed(3)})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, 490);
-  }
-  for (const p of E.parts) { // cząstki: iskry, konfetti, popiół, dym
-    const a = clamp(1 - p.age / p.life, 0, 1) * out;
-    if (p.k === 'spark') { ctx.globalAlpha = a; ctx.fillStyle = p.col; ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3); ctx.globalAlpha = a * 0.4; ctx.fillRect(p.x - p.vx * 0.04 - 1, p.y - p.vy * 0.04 - 1, 2, 2); }
-    else if (p.k === 'conf') { ctx.globalAlpha = out; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.col; ctx.fillRect(-3, -1.5 * Math.abs(Math.cos(p.rot * 2)) - 0.5, 6, 3 * Math.abs(Math.cos(p.rot * 2)) + 1); ctx.restore(); }
-    else if (p.k === 'ash') { ctx.globalAlpha = 0.7 * out; ctx.fillStyle = p.sw > 4 ? '#ff7a3a' : '#9a948c'; ctx.fillRect(p.x, p.y, 2, 2); }
-    else { ctx.globalAlpha = 0.18 * a; circ(ctx, p.x, p.y, p.r * (1 + p.age * 0.4), '#2a2426'); }
-  }
-  ctx.globalAlpha = out;
-  // sztandar z napisem: przy zwycięstwie wyskakuje ze sprężystym odbiciem, przy porażce opada z góry i pęka
-  const pop = E.win ? (t < 0.55 ? 1.70158 : 0) : 0, k = clamp(t / 0.55, 0, 1);
-  const sc = E.win ? 1 + (pop + 1) * (k - 1) ** 3 + pop * (k - 1) ** 2 : 1, by = E.win ? cy : -80 + (cy + 80) * (1 - (1 - k) ** 3) + Math.sin(clamp(t - 0.55, 0, 0.5) * 12) * 6 * clamp(0.9 - t, 0, 1);
-  ctx.save(); ctx.translate(cx, by); ctx.scale(Math.max(0.01, sc), Math.max(0.01, sc));
-  const bw = 330, bh = 92, cloth = E.win ? '#8a1e1a' : '#2e2a30', trim = E.win ? '#e0b24a' : '#6a6268';
-  ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(-bw / 2 + 6, -bh / 2 + 8, bw, bh);
-  for (const sd of [-1, 1]) fillPoly(ctx, [[sd * bw / 2, -bh / 2 + 16], [sd * (bw / 2 + 44), -bh / 2 + 20], [sd * (bw / 2 + 28), 0], [sd * (bw / 2 + 44), bh / 2 - 4], [sd * bw / 2, bh / 2 - 10]], shadeHex(cloth, -0.3)); // końce wstęgi
-  ctx.fillStyle = cloth; ctx.fillRect(-bw / 2, -bh / 2, bw, bh); ctx.fillStyle = trim; ctx.fillRect(-bw / 2, -bh / 2, bw, 4); ctx.fillRect(-bw / 2, bh / 2 - 4, bw, 4);
-  if (!E.win) { ctx.fillStyle = '#12101a'; for (let i = 0; i < 7; i++) fillPoly(ctx, [[-bw / 2 + 20 + i * 46, bh / 2], [-bw / 2 + 32 + i * 46, bh / 2 - 12 - (i % 3) * 5], [-bw / 2 + 44 + i * 46, bh / 2]], '#1a161c'); } // postrzępiony brzeg
-  // godło nad napisem: skrzyżowane miecze albo złamany miecz
-  ctx.save(); ctx.translate(0, -bh / 2 - 6);
-  if (E.win) { for (const sd of [-1, 1]) { ctx.save(); ctx.rotate(sd * 0.7); ctx.fillStyle = '#e8ecf4'; ctx.fillRect(-2, -30, 4, 30); ctx.fillStyle = '#e0b24a'; ctx.fillRect(-7, -2, 14, 3); ctx.fillStyle = '#6a3a1a'; ctx.fillRect(-1.5, 1, 3, 8); ctx.restore(); } circ(ctx, 0, -4, 7, '#e0b24a'); circ(ctx, 0, -4, 4, E.col); }
-  else { const sp = ease(clamp((t - 0.9) / 0.5, 0, 1)) * 8; ctx.fillStyle = '#9aa0a8'; ctx.save(); ctx.translate(-sp, sp * 0.5); ctx.rotate(-0.25 - sp * 0.02); ctx.fillRect(-2, -30, 4, 16); ctx.restore(); ctx.save(); ctx.translate(sp * 0.4, 0); ctx.fillRect(-2, -14, 4, 14); ctx.fillStyle = '#6a6268'; ctx.fillRect(-7, -2, 14, 3); ctx.fillStyle = '#3a2a1a'; ctx.fillRect(-1.5, 1, 3, 8); ctx.restore(); }
-  ctx.restore();
-  ctx.font = font(44, 700, 'title'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(20,10,5,.9)'; ctx.strokeText(E.title, 0, -10);
-  const tg = ctx.createLinearGradient(0, -34, 0, 14); tg.addColorStop(0, E.win ? '#fff6c8' : '#e8dcdc'); tg.addColorStop(1, E.win ? '#e0a030' : '#a04a4a'); ctx.fillStyle = tg; ctx.fillText(E.title, 0, -10);
-  if (E.win && t > 0.5) { const sx = -120 + ((t - 0.5) % 1.4) / 1.4 * 260; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,255,220,.35)'; ctx.beginPath(); ctx.moveTo(sx, -34); ctx.lineTo(sx + 14, -34); ctx.lineTo(sx - 2, 14); ctx.lineTo(sx - 16, 14); ctx.closePath(); ctx.fill(); ctx.restore(); } // połysk
-  if (!E.win && t > 0.9) { const f = clamp((t - 0.9) / 0.3, 0, 1); ctx.strokeStyle = 'rgba(10,6,8,.95)'; ctx.lineWidth = 2.5; ctx.beginPath(); const pts = [[-40, -38], [-26, -20], [-34, -8], [-18, 4], [-24, 16]]; pts.slice(0, 1 + Math.round(f * 4)).forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); } // pęknięcie
-  text(ctx, E.sub, 0, 26, { size: 15, align: 'center', color: E.win ? '#f4e2a8' : '#c8bcbc', fam: 'body' });
-  ctx.restore();
-  if (t > 1.2) text(ctx, 'Kliknij, aby kontynuować', cx, by + bh / 2 + 34, { size: 13, align: 'center', color: `rgba(255,240,210,${(0.45 + 0.35 * Math.sin(t * 5)).toFixed(2)})`, fam: 'body' });
-  ctx.restore();
+// Wynik bitwy na mapie (po walce automatycznej): okno jak po bitwie na ekranie, potem doświadczenie i odwiedziny miejsca
+function showBattleResult(st, h, res) { showBattleReport(st, res, attackReport(st, h, res), () => battleAftermath(st, h, res)); }
+function battleAftermath(st, h, res) {
+  if (res.outcome !== 'win') return;
+  advFloat(`+${res.exp} dośw.`, h.x, h.y);
+  gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank') visitObject(st, h, here); });
 }
