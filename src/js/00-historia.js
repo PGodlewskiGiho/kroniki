@@ -164,6 +164,10 @@
    po lodzie Akademii bez kładek). Mieszkańcy frakcji chodzą od bramy do budowli i znikają w drzwiach (townFolk, drawDweller):
    chłopi i straż, elfy i krasnoludy, szkielety i zombie, jaszczuroludzie i gnolle, diabełki i demony, magowie z gremlinami
    i golemem, troglodyci z czarnoksiężnikami i minotaurem, gobliny, orkowie i wilki.
+   Budowle specjalne frakcji (FACTION_SPECIAL, 15. miejsce w mieście, rysunki w 18g): Stajnie (+400 ruchu do końca tygodnia),
+   Skarbiec krasnoludów (+10% złota co tydzień, do 2500), Wzmacniacz nekromancji (+10% wskrzeszeń), Klatka wodzów (+1 obrony raz
+   na bohatera), Brama piekieł (przejście między miastami Inferna), Biblioteka (czar więcej na każdym poziomie gildii), Wir many
+   (podwójna mana raz w tygodniu), Sala Walhalli (+1 ataku raz na bohatera). Działają przy wejściu do miasta i na początku dnia.
    Cechy frakcji (FACTION_TRAITS, heroFaction z klasy bohatera): morale Przystani, szczęście Kniei, nekromancja Kurhanu,
    bagna Twierdzy, siarka Inferna, zima i śnieg Akademii, wzrok Lochu, przyrost Cytadeli; opisy w dymkach (nowa gra, miasto, bohater).
    Słaby laptop: menu i miasto bez pixelQuantize co klatkę (paleta wypalona w nieruchomym tle), płótno bez przezroczystości

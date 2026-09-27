@@ -1,7 +1,7 @@
 // ==================== MIASTO: GENERATOR PLANSZ ============================================
 // Każde miasto ma własną planszę wyliczoną z frakcji i nazwy (to samo miasto zawsze wygląda tak samo, zapis gry nic
 // nie przechowuje): typ krajobrazu (dolina z rzeką, jezioro, przepaść, tarasy, wyspy, płaskowyż, krater, wybrzeże),
-// rozmieszczenie 14 budowli, drogi z mostami i schodami, place, drzewa i drobiazgi, pora dnia, pogoda i kolory dachów.
+// rozmieszczenie 15 budowli, drogi z mostami i schodami, place, drzewa i drobiazgi, pora dnia, pogoda i kolory dachów.
 // Frakcja podaje tylko styl (TOWN_STYLE): wodę, ulubione krajobrazy z wagami, rekwizyty, niebo, pogodę i dachy.
 // Nowa frakcja = TOWN_ART (paleta), BUILD_ART (rysunki budowli), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi) i TOWN_STYLE.
 //
@@ -61,12 +61,13 @@ const TOWN_STYLE = {
     weather: [['snow', 5], ['clear', 2]], slab: { top: ['#cfd8e4', '#aebacc'], face: ['#8a94a6', '#525a6c'] }, hill: ['#d4dce8', '#a8b4c6'],
     roofs: [TOWN_ART.academy.roof, { hall: '#7a3a8a', dw: '#5a4a9a', util: '#5a6a8e', tower: '#4a2a7a', wall: '#5a4a8a' }, { hall: '#2a7a8a', dw: '#3a6a9a', util: '#5a6a7a', tower: '#1e5a6a', wall: '#3a5a70' }] },
 };
-// Rola każdego z 14 miejsc: [najbliżej, najdalej] (Z), czy woli wzniesienia, czy to mała budowla przy drodze
+// Rola każdego z 15 miejsc: [najbliżej, najdalej] (Z), czy woli wzniesienia, czy to mała budowla przy drodze
 const SLOT_ROLE = [
   [1.1, 1.7, 0, 0], [1.9, 2.9, 1, 0], [1.4, 2.4, 1, 0], [1.9, 2.9, 1, 0], [1.2, 2.2, 0, 0], [1.4, 2.4, 0, 0], [1.1, 1.9, 0, 0],
   [1.3, 2.3, 0, 0], [0.86, 1.2, 0, 1], [0.86, 1.25, 0, 1], [0.9, 1.4, 0, 1], [0.9, 1.5, 0, 1], [0.86, 1.3, 0, 1], [0.88, 1.35, 0, 1],
+  [1.2, 2.2, 0, 0], // budowla specjalna frakcji
 ];
-const SLOT_ORDER = [1, 0, 3, 2, 5, 7, 4, 6, 13, 12, 11, 10, 8, 9]; // najpierw duże i ważne
+const SLOT_ORDER = [1, 0, 3, 2, 5, 7, 4, 6, 14, 13, 12, 11, 10, 8, 9]; // najpierw duże i ważne
 const hillTop = (Hl, X) => Hl.h * Math.pow(Math.max(0, 1 - ((X - Hl.X) / Hl.rx) ** 2), Hl.flat || 0.65);
 
 // --- typy krajobrazu: każdy dopisuje teren do planszy L i strefy pod budowę do T ---

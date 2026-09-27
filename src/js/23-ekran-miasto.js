@@ -29,8 +29,20 @@ G.screens.town = {
   say(m) { this.msg = m; this.msgT = G.time; },
   // Bohater w mieście z gildią poznaje jej czary i odnawia manę
   guildVisit() {
-    const st = G.state, t = this.town(), h = heroInTown(st, t); if (!h || !guildLevel(t)) return;
+    const st = G.state, t = this.town(), h = heroInTown(st, t); if (!h) return;
+    const sp = specialVisit(st, t, h); if (sp) this.say(sp);
+    if (!guildLevel(t)) return;
     const learned = visitGuild(st, t, h); if (learned.length) this.say(`${h.name} poznaje: ${learned.map(id => SPELLS[id].name).join(', ')}`);
+  },
+  // Budowla specjalna: opis, a w Inferno przejście przez Bramę piekieł do innego miasta
+  showSpecial() {
+    const st = G.state, t = this.town(), S = FACTION_SPECIAL[t.faction], h = heroInTown(st, t);
+    if (t.faction !== 'inferno') return showDialog(`${S.name}. ${S.desc}`, [{ label: 'OK', key: 'enter' }]);
+    const dest = gateTargets(st, t);
+    if (!h || !dest.length) return showDialog(`${S.name}. ${S.desc} ${!h ? 'Wprowadź bohatera do miasta.' : 'Nie masz innego wolnego miasta z Bramą piekieł.'}`, [{ label: 'OK', key: 'enter' }]);
+    showDialog(`${S.name}: dokąd ma przejść ${h.name}?`, [
+      ...dest.slice(0, 4).map(d => ({ label: d.name, action: () => { const e = gateTravel(st, t, h, d); if (e) return this.say(e); G.go('town', { townId: d.id }); } })),
+      { label: 'Wyjdź', key: 'escape' }]);
   },
   // Tawerna: dwóch chętnych na ten tydzień, najem za HERO_COST złota; nowy bohater staje w bramie miasta
   showTavern() {
@@ -64,7 +76,7 @@ G.screens.town = {
     if (t.builtToday) return this.say('W tym mieście zbudowano już dziś budowlę');
     if (!canAfford(st, B.cost)) return this.say('Brakuje zasobów na tę budowlę');
     showDialog(`Zbudować: ${info.name}? ${info.desc}`, [
-      { label: 'Zbuduj', key: 'enter', action: () => { buildIn(st, t, B); this.say(`Zbudowano: ${info.name}`); if (/^guild/.test(B.id)) this.guildVisit(); } },
+      { label: 'Zbuduj', key: 'enter', action: () => { buildIn(st, t, B); this.say(`Zbudowano: ${info.name}`); if (/^guild/.test(B.id) || B.id === 'special') this.guildVisit(); } },
       { label: 'Nie', key: 'escape' },
     ], { iconH: 40, icon: (ctx, cx, cy) => { ctx.font = font(14, 700, 'body'); const w = RESOURCES.reduce((a, r) => a + (B.cost[r.id] ? 29 + ctx.measureText(String(B.cost[r.id])).width : 0), 0); drawCost(ctx, B.cost, cx - w / 2, cy, { size: 24 }); } });
   },
@@ -99,6 +111,7 @@ G.screens.town = {
     if (B && /^guild/.test(B.id)) return this.showGuild(); // gildia: podgląd czarów (rozbudowa z listy albo przyciskiem w gildii)
     if (B && B.id === 'tavern') return this.showTavern();
     if (B && B.id === 'smith') return this.showSmith();
+    if (B && B.id === 'special') return this.showSpecial();
     if (B && B.id === 'market' && !(next && reqMet(t, next))) return showMarket(st, t.owner, m => this.say(m));
     if (next && reqMet(t, next)) this.tryBuild(next);
     else if (next) showDialog(`${bInfo(next, fac).name} wymaga wcześniej: ${next.req.map(r => bInfo(BUILD_BY_ID[r], fac).name).join(', ')}.`, [{ label: 'OK', key: 'enter' }]);
@@ -111,7 +124,7 @@ G.screens.town = {
     if (slot) return slot.a[slot.i] ? stackInfo(slot.a[slot.i]) : 'Wolne miejsce. Kliknij oddział, a potem miejsce, aby go przenieść, połączyć z takim samym albo zamienić.';
     if (x >= 600 && x <= 784 && y >= 40 && y <= 60) { const F = factionOf(fac); return `${F.name}: ${F.desc} Cecha frakcji — ${traitText(fac)}.`; }
     const i = this.slotAt(x, y); if (i === null) return resourceBarInfo(G.state, x, y);
-    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'smith' ? ' Kliknij, aby kupić machiny wojenne.' : B.id === 'market' ? ' Kliknij, aby handlować.' : /^guild/.test(B.id) ? ' Kliknij, aby obejrzeć czary (klawisz G).' : ''); }
+    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'smith' ? ' Kliknij, aby kupić machiny wojenne.' : B.id === 'market' ? ' Kliknij, aby handlować.' : B.id === 'special' && t.faction === 'inferno' ? ' Kliknij, aby przejść przez bramę.' : /^guild/.test(B.id) ? ' Kliknij, aby obejrzeć czary (klawisz G).' : ''); }
     const next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id)); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }
     return null;
   },

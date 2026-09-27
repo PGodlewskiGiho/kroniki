@@ -187,6 +187,10 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    po lodzie Akademii bez kładek). Mieszkańcy frakcji chodzą od bramy do budowli i znikają w drzwiach (townFolk, drawDweller):
    chłopi i straż, elfy i krasnoludy, szkielety i zombie, jaszczuroludzie i gnolle, diabełki i demony, magowie z gremlinami
    i golemem, troglodyci z czarnoksiężnikami i minotaurem, gobliny, orkowie i wilki.
+   Budowle specjalne frakcji (FACTION_SPECIAL, 15. miejsce w mieście, rysunki w 18g): Stajnie (+400 ruchu do końca tygodnia),
+   Skarbiec krasnoludów (+10% złota co tydzień, do 2500), Wzmacniacz nekromancji (+10% wskrzeszeń), Klatka wodzów (+1 obrony raz
+   na bohatera), Brama piekieł (przejście między miastami Inferna), Biblioteka (czar więcej na każdym poziomie gildii), Wir many
+   (podwójna mana raz w tygodniu), Sala Walhalli (+1 ataku raz na bohatera). Działają przy wejściu do miasta i na początku dnia.
    Cechy frakcji (FACTION_TRAITS, heroFaction z klasy bohatera): morale Przystani, szczęście Kniei, nekromancja Kurhanu,
    bagna Twierdzy, siarka Inferna, zima i śnieg Akademii, wzrok Lochu, przyrost Cytadeli; opisy w dymkach (nowa gra, miasto, bohater).
    Słaby laptop: menu i miasto bez pixelQuantize co klatkę (paleta wypalona w nieruchomym tle), płótno bez przezroczystości
@@ -642,6 +646,7 @@ const BUILDINGS = [
   { id: 'guild3', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 4, crystal: 4 }, req: ['guild2', 'hall2'], emblem: 'book', desc: 'Dodaje czary 3 poziomu.' },
   { id: 'guild4', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 6, sulfur: 6, crystal: 6, gems: 6 }, req: ['guild3'], emblem: 'book', desc: 'Dodaje czary 4 poziomu.' },
   { id: 'guild5', slot: 2, cost: { gold: 1000, wood: 5, ore: 5, mercury: 10, sulfur: 10, crystal: 10, gems: 10 }, req: ['guild4', 'hall3'], emblem: 'book', desc: 'Dodaje czary 5 poziomu.' },
+  { id: 'special', slot: 14, cost: { gold: 3000, wood: 5, ore: 5 }, req: ['fort'] }, // budowla specjalna frakcji: nazwa i działanie w FACTION_SPECIAL
   { id: 'dw1', slot: 10, cost: { gold: 500 }, req: [] },
   { id: 'dw1u', slot: 10, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
   { id: 'dw2', slot: 11, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
@@ -658,9 +663,21 @@ const BUILDINGS = [
   { id: 'dw7u', slot: 3, cost: { gold: 10000, gems: 10, crystal: 10 }, req: ['dw7', 'guild3'] },
 ];
 const BUILD_BY_ID = Object.fromEntries(BUILDINGS.map(b => [b.id, b]));
+// Budowle specjalne frakcji (jak w Heroes 3), działanie w MIASTO: ZASADY (specialVisit, weeklyTreasury, raiseDead, guildOffer, bramy)
+const FACTION_SPECIAL = {
+  haven: { name: 'Stajnie', emblem: 'horse', desc: 'Bohater odwiedzający miasto ma do końca tygodnia 400 punktów ruchu więcej każdego dnia.' },
+  sylvan: { name: 'Skarbiec krasnoludów', emblem: 'coin', desc: 'Na początku tygodnia dokłada 10% zgromadzonego złota (najwyżej 2500).' },
+  barrow: { name: 'Wzmacniacz nekromancji', emblem: 'skull', desc: 'Bohaterowie właściciela wskrzeszają po bitwie o 10% więcej poległych (za każdy wzmacniacz).' },
+  fortress: { name: 'Klatka wodzów', emblem: 'wall', desc: 'Każdy bohater, który odwiedzi miasto, raz na zawsze zyskuje +1 do obrony.' },
+  inferno: { name: 'Brama piekieł', emblem: 'flame', desc: 'Bohater stojący w mieście przechodzi przez bramę do innego twojego miasta z Bramą piekieł.' },
+  academy: { name: 'Biblioteka', emblem: 'book', desc: 'Gildia magów oferuje o jeden czar więcej na każdym poziomie.' },
+  dungeon: { name: 'Wir many', emblem: 'eye', desc: 'Raz w tygodniu podwaja manę bohatera, który odwiedzi miasto.' },
+  stronghold: { name: 'Sala Walhalli', emblem: 'axe', desc: 'Każdy bohater, który odwiedzi miasto, raz na zawsze zyskuje +1 do ataku.' },
+};
 // Nazwa, jednostka, symbol i opis budowli dla danej frakcji
 function bInfo(B, fac) {
   const F = factionOf(fac), m = /^dw(\d)(u?)$/.exec(B.id);
+  if (B.id === 'special') { const S = FACTION_SPECIAL[F.id]; return { name: S.name, emblem: S.emblem, desc: S.desc }; }
   if (m) {
     const [name, unit] = F.dw[B.id], c = CREATURES[unit];
     return { name, unit, emblem: F.emb[+m[1] - 1], desc: `${m[2] ? 'Ulepszone siedlisko' : 'Siedlisko'}: ${c.plural.toLowerCase()} (poziom ${m[1]}).` };
@@ -3422,7 +3439,7 @@ function startNewGame() { saveSettings(); G.state = createNewGame(G.settings); G
 // Ruch, odkrywanie mapy, obiekty, potyczki, dochód, budowanie.
 // Dzienny limit ruchu zależy od najwolniejszej jednostki w armii (jak w oryginale)
 function mpBySpeed(s) { return s <= 3 ? 1500 : s >= 11 ? 2000 : [1560, 1630, 1700, 1760, 1830, 1900, 1960][s - 4]; }
-function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp'); }
+function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp') + (G.state && h.stableWeek === weekIndex(G.state) ? STABLE_MP : 0); }
 // Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
 function reveal(st, cx, cy, r, owner = ME) {
   const P = playerOf(st, owner); if (!P || !P.explored) return;
@@ -3705,8 +3722,9 @@ const knows = (h, id) => (h.spells || []).includes(id);
 function rollGuildLevel(st, t, L) {
   const pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L), r = mulberry32(st.seed ^ (t.id * 7777) ^ (L * 131));
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  if (!t.guild) t.guild = {}; t.guild[L] = pool.slice(0, GUILD_OFFER[L] || 1);
+  if (!t.guild) t.guild = {}; t.guild[L] = pool.slice(0, guildOffer(t, L));
 }
+const guildOffer = (t, L) => (GUILD_OFFER[L] || 1) + (t.faction === 'academy' && hasB(t, 'special') ? 1 : 0); // Biblioteka Akademii
 const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild' + L)) return L; return 0; };
 // Bohater w mieście z gildią: poznaje jej czary i odzyskuje całą manę. Zwraca nowo poznane czary.
 function visitGuild(st, t, h) {
@@ -3808,6 +3826,7 @@ function startWeek(st, newMonth) {
     if (M && M.kind === 'monsters') o.count = Math.ceil(o.count * 1.5);
   }
   for (const t of st.towns) townGrowthWeek(t, st);
+  weeklyTreasury(st);
   const S = seasonOf(st), head = newMonth ? `Nadchodzi ${S.name.toLowerCase()}: ${S.text}. ` + (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
   return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
 }
@@ -3880,7 +3899,34 @@ function buildIn(st, t, B) {
   for (const r of RESOURCES) if (B.cost[r.id]) R[r.id] -= B.cost[r.id];
   t.built.push(B.id); t.builtToday = true;
   const gm = /^guild(\d)$/.exec(B.id); if (gm) rollGuildLevel(st, t, +gm[1]);
+  if (B.id === 'special' && t.faction === 'academy') for (let L = 1; L <= guildLevel(t); L++) rollGuildLevel(st, t, L); // Biblioteka: czar więcej na każdym poziomie
   const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1], st); // nowe siedlisko od razu daje przyrost
+}
+// --- budowle specjalne frakcji (FACTION_SPECIAL) ---------------------------------------------
+const STABLE_MP = 400;
+// Bohater w mieście z budowlą specjalną: stajnie, wir many, klatka wodzów, sala Walhalli. Zwraca opis albo null.
+function specialVisit(st, t, h) {
+  if (!h || !hasB(t, 'special')) return null;
+  const wk = weekIndex(st), S = FACTION_SPECIAL[t.faction]; h.specVisits = h.specVisits || [];
+  if (t.faction === 'haven' && h.stableWeek !== wk) { h.stableWeek = wk; h.mp += STABLE_MP; return `${S.name}: ${h.name} dostaje świeże konie (+${STABLE_MP} ruchu do końca tygodnia).`; }
+  if (t.faction === 'dungeon' && t.vortexWeek !== wk) { t.vortexWeek = wk; h.mana = Math.max(h.mana, heroMaxMana(h) * 2); return `${S.name}: mana bohatera ${h.name} podwojona (${h.mana}).`; }
+  const stat = { fortress: ['def', 'obrony'], stronghold: ['att', 'ataku'] }[t.faction];
+  if (stat && !h.specVisits.includes(t.id)) { h.specVisits.push(t.id); h.stats[stat[0]]++; return `${S.name}: ${h.name} zyskuje +1 do ${stat[1]} (teraz ${h.stats[stat[0]]}).`; }
+  return null;
+}
+// Skarbiec krasnoludów (Knieja): na początku tygodnia 10% złota właściciela, najwyżej 2500 za skarbiec
+function weeklyTreasury(st) {
+  for (const t of st.towns) if (t.faction === 'sylvan' && hasB(t, 'special') && t.owner >= 0) {
+    const R = playerOf(st, t.owner).resources, add = Math.min(2500, Math.floor(R.gold * 0.1)); R.gold += add;
+    if (add) tell(st, t.owner, `Skarbiec krasnoludów w mieście ${t.name} przynosi ${add} złota.`);
+  }
+}
+const necroAmplifiers = (st, owner) => st.towns.filter(t => t.owner === owner && t.faction === 'barrow' && hasB(t, 'special')).length;
+// Brama piekieł (Inferno): miasta, do których bohater z miasta t może przejść (własne, z bramą, bez innego bohatera)
+const gateTargets = (st, t) => hasB(t, 'special') && t.faction === 'inferno' ? st.towns.filter(o => o !== t && o.owner === t.owner && o.faction === 'inferno' && hasB(o, 'special') && !heroInTown(st, o)) : [];
+function gateTravel(st, t, h, dest) {
+  if (!gateTargets(st, t).includes(dest) || heroInTown(st, t) !== h) return 'Brama nie prowadzi do tego miasta';
+  h.x = dest.x; h.y = dest.y; if (h.owner === ME) reveal(st, h.x, h.y, heroSight(h)); rebuildObjIndex(st); return null;
 }
 // --- rynek: handel surowcami ---------------------------------------------------------------
 // Wartość surowca w złocie; kupno drożeje, a sprzedaż tanieje, im mniej rynków ma gracz (jak w oryginale).
@@ -4415,8 +4461,9 @@ function captureTown(st, t, owner) {
 // Nekromancja zwycięzcy: z pct% życia poległych żywych wrogów wstają kościotrupy w armii bohatera (gdy jest miejsce)
 function raiseDead(B, side) {
   const h = sideHero(B, side), pct = skillVal(h, 'necromancy') + (heroTrait(h, 'barrow') ? 10 : 0); if (!pct) return 0; // cecha Kurhanu
+  const amp = B.st && h ? necroAmplifiers(B.st, h.owner) * 10 : 0; // Wzmacniacze nekromancji właściciela
   const hp = B.units.filter(u => u.side !== side && !hasAb(u, 'undead') && !isMachine(u)).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
-  const n = Math.floor(hp * pct / 100 / CREATURES.boneWarrior.hp);
+  const n = Math.floor(hp * (pct + amp) / 100 / CREATURES.boneWarrior.hp);
   const i = h.army.findIndex(s => s && s.cid === 'boneWarrior'), k = i >= 0 ? i : h.army.findIndex(s => !s);
   if (!n || k < 0) return 0;
   if (h.army[k]) h.army[k].n += n; else h.army[k] = { cid: 'boneWarrior', n };
@@ -4453,7 +4500,7 @@ function resolveBattle(B, fled) {
 // SI widzi całą mapę. Kolejność: miasta (budowa, werbunek, najem), potem bohaterowie wybierają cele
 // z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do jego skrzynki (tell), zobaczy je na początku swojej tury.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
-  'castle', 'smith', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u', 'guild4', 'guild5'];
+  'castle', 'smith', 'special', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u', 'guild4', 'guild5'];
 // Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
 function buyMissing(st, owner, cost) {
   if (!marketCount(st, owner)) return false;
@@ -4670,6 +4717,7 @@ function advanceDay(st) {
     h.mp = heroMaxMP(h);
     const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
     if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
+    if (t) { const m = specialVisit(st, t, h); if (m && h.owner !== ME) h.mp = heroMaxMP(h); } // budowla specjalna (stajnie, wir many, klatka, Walhalla)
   }
   collectIncome(st);
   for (const t of st.towns) t.builtToday = false;
@@ -6155,6 +6203,7 @@ TOWN_LAYOUTS.haven = {
     { X: -380, Z: 1.5, k: 1.1, w: 118, h: 86 }, { X: 310, Z: 2.05, k: 1.3, w: 74, h: 140 }, { X: -80, Z: 0.88, k: 1, w: 88, h: 78 },
     { X: -250, Z: 1.52, k: 1, w: 76, h: 76 }, { X: -205, Z: 0.97, k: 1, w: 90, h: 80 }, { X: 190, Z: 1.45, k: 1, w: 110, h: 66 },
     { X: 90, Z: 0.98, k: 1, w: 100, h: 92 }, { X: 205, Z: 0.92, k: 1, w: 128, h: 70 },
+    { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
   ],
   props: [
     ['tree', -540, 1.78, 0, 1.3], ['tree', -470, 1.95, 0, 1.3], ['tree', -620, 2.25, 0, 1.4], ['tree', -470, 2.35, 20, 1.4], ['tree', 380, 2.2, 0, 1.4],
@@ -6178,6 +6227,7 @@ TOWN_LAYOUTS.sylvan = {
     { X: 322, Z: 2.7, k: 1.3, w: 130, h: 130 }, { X: -176, Z: 1.58, k: 1.1, w: 120, h: 80 }, { X: -48, Z: 0.9, k: 1, w: 90, h: 80 },
     { X: 524, Z: 2.57, k: 1, w: 76, h: 76 }, { X: 62, Z: 1, k: 1, w: 100, h: 100 }, { X: 335, Z: 1.98, k: 1, w: 70, h: 120 },
     { X: -146, Z: 0.86, k: 1, w: 100, h: 96 }, { X: 150, Z: 0.93, k: 1, w: 128, h: 72 },
+    { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
   ],
   props: [
     ['tree', -420, 2.2, 0, 1.4], ['tree', -380, 1.6, 0, 1.3], ['tree', 330, 1.55, 0, 1.2], ['tree', 200, 2.9, 0, 1.4], ['tree', -120, 2.9, 0, 1.4],
@@ -6206,6 +6256,7 @@ TOWN_LAYOUTS.barrow = {
     { X: -300, Z: 1.25, k: 1.1, w: 118, h: 90 }, { X: 170, Z: 2.26, k: 1.3, w: 100, h: 118 }, { X: -180, Z: 0.88, k: 1, w: 88, h: 78 },
     { X: -120, Z: 1.36, k: 1, w: 76, h: 76 }, { X: -170, Z: 1.1, k: 1, w: 90, h: 80 }, { X: 250, Z: 1.25, k: 1, w: 110, h: 60 },
     { X: 170, Z: 0.9, k: 1, w: 100, h: 92 }, { X: 130, Z: 1.3, k: 0.9, w: 128, h: 70 },
+    { X: 0, Z: 1.6, k: 1.15, w: 120, h: 112 },
   ],
   props: [
     ['tree', -420, 2.3, 0, 1.3], ['tree', 380, 2.35, 0, 1.3], ['tree', -360, 1.5, 0, 1.2], ['tree', 360, 1.2, 0, 1.2], ['tree', -260, 0.95, 0, 1.1],
@@ -6636,7 +6687,7 @@ TOWN_LAYOUTS.academy = {
 // ==================== MIASTO: GENERATOR PLANSZ ============================================
 // Każde miasto ma własną planszę wyliczoną z frakcji i nazwy (to samo miasto zawsze wygląda tak samo, zapis gry nic
 // nie przechowuje): typ krajobrazu (dolina z rzeką, jezioro, przepaść, tarasy, wyspy, płaskowyż, krater, wybrzeże),
-// rozmieszczenie 14 budowli, drogi z mostami i schodami, place, drzewa i drobiazgi, pora dnia, pogoda i kolory dachów.
+// rozmieszczenie 15 budowli, drogi z mostami i schodami, place, drzewa i drobiazgi, pora dnia, pogoda i kolory dachów.
 // Frakcja podaje tylko styl (TOWN_STYLE): wodę, ulubione krajobrazy z wagami, rekwizyty, niebo, pogodę i dachy.
 // Nowa frakcja = TOWN_ART (paleta), BUILD_ART (rysunki budowli), TOWN_LAYOUTS (rozmiary miejsc i barwy ziemi) i TOWN_STYLE.
 //
@@ -6696,12 +6747,13 @@ const TOWN_STYLE = {
     weather: [['snow', 5], ['clear', 2]], slab: { top: ['#cfd8e4', '#aebacc'], face: ['#8a94a6', '#525a6c'] }, hill: ['#d4dce8', '#a8b4c6'],
     roofs: [TOWN_ART.academy.roof, { hall: '#7a3a8a', dw: '#5a4a9a', util: '#5a6a8e', tower: '#4a2a7a', wall: '#5a4a8a' }, { hall: '#2a7a8a', dw: '#3a6a9a', util: '#5a6a7a', tower: '#1e5a6a', wall: '#3a5a70' }] },
 };
-// Rola każdego z 14 miejsc: [najbliżej, najdalej] (Z), czy woli wzniesienia, czy to mała budowla przy drodze
+// Rola każdego z 15 miejsc: [najbliżej, najdalej] (Z), czy woli wzniesienia, czy to mała budowla przy drodze
 const SLOT_ROLE = [
   [1.1, 1.7, 0, 0], [1.9, 2.9, 1, 0], [1.4, 2.4, 1, 0], [1.9, 2.9, 1, 0], [1.2, 2.2, 0, 0], [1.4, 2.4, 0, 0], [1.1, 1.9, 0, 0],
   [1.3, 2.3, 0, 0], [0.86, 1.2, 0, 1], [0.86, 1.25, 0, 1], [0.9, 1.4, 0, 1], [0.9, 1.5, 0, 1], [0.86, 1.3, 0, 1], [0.88, 1.35, 0, 1],
+  [1.2, 2.2, 0, 0], // budowla specjalna frakcji
 ];
-const SLOT_ORDER = [1, 0, 3, 2, 5, 7, 4, 6, 13, 12, 11, 10, 8, 9]; // najpierw duże i ważne
+const SLOT_ORDER = [1, 0, 3, 2, 5, 7, 4, 6, 14, 13, 12, 11, 10, 8, 9]; // najpierw duże i ważne
 const hillTop = (Hl, X) => Hl.h * Math.pow(Math.max(0, 1 - ((X - Hl.X) / Hl.rx) ** 2), Hl.flat || 0.65);
 
 // --- typy krajobrazu: każdy dopisuje teren do planszy L i strefy pod budowę do T ---
@@ -8327,6 +8379,129 @@ function drawDweller(ctx, kind, x, y, sc, t, dir, still, v = 0) {
   }
   ctx.restore();
 }
+// ==================== MIASTO: BUDOWLE SPECJALNE FRAKCJI =====================================
+// Jedna budowla na frakcję (FACTION_SPECIAL): Stajnie Przystani, Skarbiec krasnoludów Kniei, Wzmacniacz nekromancji Kurhanu,
+// Klatka wodzów Twierdzy, Brama piekieł Inferna, Biblioteka Akademii, Wir many Lochu, Sala Walhalli Cytadeli.
+// Budowla dostaje s = { x, b, w, h } (lewy dolny róg, podstawa b), jak budowle główne w MIASTO: BUDOWLE GŁÓWNE FRAKCJI.
+
+function horseHead(c, x, y, col, dir = 1) { // koński łeb wychylony z boksu
+  c.save(); c.translate(x, y); c.scale(dir, 1); fillPoly(c, [[-3, 6], [-3, -2], [2, -7], [8, -5], [9, -1], [4, 0], [3, 6]], col);
+  fillPoly(c, [[-2, -3], [0, -9], [1, -5]], sh(col, -0.2)); c.fillStyle = '#1a0e06'; c.fillRect(3, -5, 1.5, 1.5); c.fillStyle = sh(col, -0.35); c.fillRect(-3.5, -3, 2, 8); c.restore();
+}
+function coinPile(c, cx, b, w, h) { // kopiec złotych monet z błyskami
+  fillPoly(c, [[cx - w / 2, b], [cx - w * 0.2, b - h * 0.8], [cx, b - h], [cx + w * 0.25, b - h * 0.75], [cx + w / 2, b]], '#d8a830');
+  fillPoly(c, [[cx, b - h], [cx + w * 0.25, b - h * 0.75], [cx + w / 2, b], [cx + w * 0.1, b]], '#a87a20');
+  for (let i = 0; i < 7; i++) { const x = cx - w * 0.35 + i * w * 0.11, y = b - 2 - (i % 3) * h * 0.25; c.fillStyle = '#f8e070'; c.beginPath(); c.ellipse(x, y, 2.4, 1.2, 0, 0, TAU); c.fill(); }
+  c.fillStyle = '#fffbe0'; c.fillRect(cx - 2, b - h * 0.8, 1.5, 1.5); c.fillRect(cx + w * 0.2, b - h * 0.4, 1.5, 1.5);
+}
+function swirl(c, cx, cy, r, cols, turns = 2.2) { // wirująca spirala (portal, wir many)
+  for (let k = 0; k < cols.length; k++) { c.strokeStyle = cols[k]; c.lineWidth = 3 - k * 0.6; c.beginPath();
+    for (let a = 0; a < TAU * turns; a += 0.2) { const rr2 = r * (1 - a / (TAU * turns)), x = cx + Math.cos(a + k * 2.1) * rr2, y = cy + Math.sin(a + k * 2.1) * rr2 * 0.9; a ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); }
+}
+
+Object.assign(BUILD_ART.haven, {
+  special(c, A, s, tier, col, fx) { // stajnie: długi budynek z muru pruskiego, boksy z końskimi łbami, wybieg z płotem, siano i podkowa
+    const { x, b, w, h } = s, bx = x + 4, bw = w * 0.72, top = b - h * 0.4;
+    c.fillStyle = PAL.plaster; c.fillRect(bx, top, bw, b - top); timber(c, bx, top, bw, b - top);
+    roofArt(c, GABLE, A.roof.util, bx, top, bw, h * 0.22); c.fillStyle = PAL.stoneD; c.fillRect(bx + bw / 2 - 5, top - h * 0.22 - 6, 10, 9); cone(c, A.roof.tower, bx + bw / 2, top - h * 0.22 - 6, 12, 10);
+    for (let i = 0; i < 3; i++) { const dx = bx + 8 + i * (bw - 16) / 3; c.fillStyle = '#2a1a0c'; c.fillRect(dx, b - 22, 18, 22); c.fillStyle = '#6a4424'; c.fillRect(dx, b - 11, 18, 11);
+      c.strokeStyle = '#3a2410'; c.lineWidth = 1; c.beginPath(); c.moveTo(dx, b - 11); c.lineTo(dx + 18, b); c.moveTo(dx + 18, b - 11); c.lineTo(dx, b); c.stroke(); horseHead(c, dx + 9, b - 14, ['#6a3a1a', '#e8e0d0', '#2a2020'][i]); }
+    c.strokeStyle = '#a8a8b0'; c.lineWidth = 2.2; c.beginPath(); c.arc(bx + bw / 2, top + 7, 4, 0.2, Math.PI - 0.2, true); c.stroke();
+    fence(c, x + w * 0.76, x + w, b, '#7a5230', 12); horseHead(c, x + w * 0.88, b - 16, '#8a5a2a', -1); c.fillStyle = '#8a5a2a'; c.fillRect(x + w * 0.84, b - 12, 12, 6);
+    c.fillStyle = PAL.straw; rr(c, x + w * 0.78, b - 9, 12, 9, 2); c.fill(); c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(x + w * 0.78, b - 5, 12, 1);
+    bannerArt(c, bx + bw - 6, top - h * 0.22 - 4, col);
+  },
+});
+Object.assign(BUILD_ART.sylvan, {
+  special(c, A, s, tier, col, fx) { // skarbiec krasnoludów: kamienny kopiec z okutymi okrągłymi wrotami, runy, wózek i sterty złota
+    const { x, b, w, h } = s, cx = x + w * 0.45;
+    rockMound(c, cx - w * 0.42, b, w * 0.84, h * 0.62, '#6a6660', 11);
+    circ(c, cx, b - 18, 19, '#3a3430'); circ(c, cx, b - 18, 16, '#5a3a1e'); c.strokeStyle = '#8a8e98'; c.lineWidth = 2.2; for (const r of [8, 14]) { c.beginPath(); c.arc(cx, b - 18, r, 0, TAU); c.stroke(); }
+    c.fillStyle = '#b0b4bc'; for (let a = 0; a < 8; a++) c.fillRect(cx + Math.cos(a * TAU / 8) * 14 - 1, b - 18 + Math.sin(a * TAU / 8) * 14 - 1, 2, 2); circ(c, cx, b - 18, 3, '#d8a830');
+    c.fillStyle = '#3a3430'; c.fillRect(cx - 22, b - 3, 44, 3);
+    c.strokeStyle = '#8af0b8'; c.lineWidth = 1.4; for (const [rx, ry] of [[cx - 30, b - 34], [cx + 26, b - 38], [cx - 6, b - 50]]) { c.beginPath(); c.moveTo(rx, ry); c.lineTo(rx + 3, ry - 6); c.lineTo(rx + 6, ry); c.moveTo(rx + 1, ry - 3); c.lineTo(rx + 5, ry - 3); c.stroke(); fx.glows.push([rx + 3, ry - 3, 8, '#60e0a0']); }
+    lantern(c, cx - 26, b - h * 0.4, 6, '#fff0a0', fx); lantern(c, cx + 26, b - h * 0.4, 6, '#fff0a0', fx);
+    coinPile(c, x + w * 0.86, b, 22, 12); c.fillStyle = '#4a3a2a'; c.fillRect(x + 2, b - 12, 20, 9); c.fillStyle = '#2a2420'; circ(c, x + 6, b - 2, 3, '#2a2420'); circ(c, x + 18, b - 2, 3, '#2a2420'); coinPile(c, x + 12, b - 12, 18, 7);
+  },
+});
+Object.assign(BUILD_ART.barrow, {
+  special(c, A, s, tier, col, fx) { // wzmacniacz nekromancji: czarny pylon z zieloną kulą, kościane żebra wokół, zielone smugi dusz
+    const { x, b, w, h } = s, cx = x + w * 0.5, top = b - h * 0.86;
+    fillPoly(c, [[cx - 30, b], [cx + 30, b], [cx + 22, b - 10], [cx - 22, b - 10]], '#34303e'); c.fillStyle = '#4a4454'; c.fillRect(cx - 22, b - 12, 44, 2);
+    fillPoly(c, [[cx - 11, b - 10], [cx - 5, top + 14], [cx + 5, top + 14], [cx + 11, b - 10]], '#221e2a'); fillPoly(c, [[cx, b - 10], [cx + 5, top + 14], [cx + 11, b - 10]], '#161218');
+    c.strokeStyle = '#6af0a0'; c.lineWidth = 1.2; for (let k = 0; k < 4; k++) { const y = b - 20 - k * 12; c.beginPath(); c.moveTo(cx - 3, y); c.lineTo(cx + 3, y - 4); c.stroke(); }
+    for (const sd of [-1, 1]) for (let k = 0; k < 3; k++) { c.strokeStyle = '#d8d0bc'; c.lineWidth = 2.6 - k * 0.4; c.beginPath(); c.moveTo(cx + sd * 9, b - 18 - k * 14); c.quadraticCurveTo(cx + sd * (30 - k * 4), b - 26 - k * 14, cx + sd * (24 - k * 5), b - 8 - k * 12); c.stroke(); }
+    circ(c, cx, top + 8, 11, '#1a3a24'); circ(c, cx, top + 8, 8, '#4ad080'); circ(c, cx - 3, top + 5, 3, '#c8ffd8'); fx.glows.push([cx, top + 8, 40, '#40ff90']);
+    for (const sd of [-1, 1]) { skullAt(c, cx + sd * 26, b - 13, 0.8); fx.glows.push([cx + sd * 26, b - 15, 8, '#40ff90']); }
+    c.strokeStyle = 'rgba(120,255,170,.4)'; c.lineWidth = 1.5; for (const sd of [-1, 1]) { c.beginPath(); c.moveTo(cx + sd * 40, b - 4); c.bezierCurveTo(cx + sd * 34, b - 40, cx + sd * 16, b - 50, cx + sd * 6, top + 10); c.stroke(); }
+  },
+});
+Object.assign(BUILD_ART.fortress, {
+  special(c, A, s, tier, col, fx) { // klatka wodzów: bambusowa klatka na palach pod strzechą, w środku jeniec-wódz, totemy z czaszkami
+    const { x, b, w, h } = s, cx = x + w * 0.46, cw = w * 0.5, fl = b - 14, top = b - h * 0.62;
+    c.fillStyle = '#4a3418'; for (const px of [cx - cw / 2 + 3, cx + cw / 2 - 3, cx - 4]) c.fillRect(px - 2, fl, 4, 14); c.fillStyle = '#6a4a24'; c.fillRect(cx - cw / 2 - 4, fl - 3, cw + 8, 4);
+    c.fillStyle = '#1e1a10'; c.fillRect(cx - cw / 2, top, cw, fl - top); c.fillStyle = '#4a7a3a'; c.fillRect(cx - 5, fl - 22, 10, 16); circ(c, cx, fl - 26, 5, '#5a8a3a'); c.fillStyle = '#f0d040'; c.fillRect(cx + 1, fl - 28, 1.5, 1.5);
+    c.fillStyle = '#b09a50'; for (let px = cx - cw / 2; px <= cx + cw / 2; px += 6) { c.fillRect(px - 1.2, top, 2.4, fl - top); c.fillStyle = '#8a7a3a'; c.fillRect(px - 1.2, top + (fl - top) * 0.5, 2.4, 1.5); c.fillStyle = '#b09a50'; }
+    c.fillRect(cx - cw / 2, top + 4, cw, 2);
+    fillPoly(c, [[cx - cw / 2 - 12, top + 4], [cx, top - h * 0.28], [cx + cw / 2 + 12, top + 4]], PAL.straw); fillPoly(c, [[cx, top - h * 0.28], [cx + cw / 2 + 12, top + 4], [cx, top + 4]], '#a88a40');
+    c.strokeStyle = 'rgba(80,60,20,.5)'; c.lineWidth = 1; for (let k = 1; k < 5; k++) { const y = top + 4 - k * h * 0.056; c.beginPath(); c.moveTo(cx - (cw / 2 + 12) * (1 - k / 5), y); c.lineTo(cx + (cw / 2 + 12) * (1 - k / 5), y); c.stroke(); }
+    for (const tx of [x + 8, x + w - 10]) { totem(c, tx, b, 42, '#6a4a2a', '#d8f078'); skullAt(c, tx, b - 46, 0.7); }
+    bannerArt(c, cx, top - h * 0.28 - 4, col);
+  },
+});
+Object.assign(BUILD_ART.inferno, {
+  special(c, A, s, tier, col, fx) { // brama piekieł: łuk z czarnego kamienia z rogami, w środku wirujący ognisty portal, kosze z ogniem
+    const { x, b, w, h } = s, cx = x + w * 0.5, aw = w * 0.56, ah = h * 0.8;
+    c.fillStyle = '#2a1a18'; archPath(c, cx - aw / 2 - 8, b, aw + 16, ah + 8); c.fill(); c.fillStyle = '#3a2422'; archPath(c, cx - aw / 2 - 4, b, aw + 8, ah + 4); c.fill();
+    c.fillStyle = '#1a0402'; archPath(c, cx - aw / 2, b, aw, ah); c.fill();
+    c.save(); archPath(c, cx - aw / 2, b, aw, ah); c.clip(); const g = c.createRadialGradient(cx, b - ah * 0.45, 2, cx, b - ah * 0.45, aw * 0.6); g.addColorStop(0, '#ffe080'); g.addColorStop(0.4, '#ff6a1a'); g.addColorStop(1, '#5a0a04'); c.fillStyle = g; c.fillRect(cx - aw / 2, b - ah, aw, ah);
+    swirl(c, cx, b - ah * 0.45, aw * 0.42, ['#ffd070', '#c82a0a', '#ff9a3a']); c.restore(); fx.glows.push([cx, b - ah * 0.45, aw * 0.9, '#ff5a10']);
+    horn(c, cx - aw / 2 - 2, b - ah + 10, 10, 30, -1); horn(c, cx + aw / 2 + 2, b - ah + 10, 10, 30, 1);
+    c.fillStyle = '#5a1a14'; for (let k = 0; k < 5; k++) { const a = Math.PI + (k + 0.5) * Math.PI / 5, r = aw / 2 + 4; c.fillRect(cx + Math.cos(a) * r - 2, b - ah + aw / 2 + Math.sin(a) * r - 2, 4, 4); }
+    for (const bx of [x + 6, x + w - 6]) { c.fillStyle = '#2a1a18'; c.fillRect(bx - 2, b - 18, 4, 18); fillPoly(c, [[bx - 7, b - 18], [bx + 7, b - 18], [bx + 4, b - 24], [bx - 4, b - 24]], '#3a2422'); flame(c, bx, b - 24, 1.1, fx); }
+    c.fillStyle = '#3a2422'; c.fillRect(cx - aw / 2 - 12, b - 3, aw + 24, 3);
+  },
+});
+Object.assign(BUILD_ART.academy, {
+  special(c, A, s, tier, col, fx) { // biblioteka: marmurowy gmach z kolumnadą, niebieska kopuła z latarnią, wielka księga nad wejściem, stosy ksiąg
+    const { x, b, w, h } = s, bx = x + 8, bw = w * 0.8, top = b - h * 0.44, cx = bx + bw / 2;
+    c.fillStyle = PAL.marbleD; c.fillRect(bx - 4, b - 5, bw + 8, 5); c.fillStyle = PAL.marble; c.fillRect(bx, top, bw, b - top - 5);
+    for (let i = 0; i < 6; i++) { const px = bx + 5 + i * (bw - 10) / 5; c.fillStyle = '#ffffff'; c.fillRect(px - 2.5, top + 6, 5, b - top - 11); c.fillStyle = 'rgba(0,0,0,.14)'; c.fillRect(px + 1, top + 6, 1.5, b - top - 11); }
+    for (let i = 0; i < 5; i++) { const px = bx + 5 + (i + 0.5) * (bw - 10) / 5; winArt(c, A, px - 3, top + 12, 6, 12, fx); }
+    fillPoly(c, [[bx - 6, top + 1], [cx, top - 16], [bx + bw + 6, top + 1]], PAL.marble); fillPoly(c, [[bx, top], [cx, top - 12], [bx + bw, top]], PAL.marbleD);
+    hemiDome(c, cx, top - 12, 22, A.roof.hall, 20); c.fillStyle = PAL.marble; c.fillRect(cx - 3, top - 40, 6, 8); circ(c, cx, top - 42, 3, '#9ad8ff'); fx.glows.push([cx, top - 42, 14, '#9ad8ff']);
+    c.save(); c.translate(cx, top - 4); c.fillStyle = '#6a3a1a'; c.fillRect(-11, -6, 22, 8); c.fillStyle = '#f4eee0'; c.fillRect(-10, -7, 9.5, 7); c.fillRect(0.5, -7, 9.5, 7);
+    c.strokeStyle = 'rgba(60,50,40,.5)'; c.lineWidth = 0.8; for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(-8, -5 + k * 2); c.lineTo(-3, -5 + k * 2); c.moveTo(3, -5 + k * 2); c.lineTo(8, -5 + k * 2); c.stroke(); } c.restore();
+    doorArt(c, A, cx - 6, b - 5, 12, 16);
+    for (const [px, n] of [[x + 2, 4], [x + w - 8, 3]]) for (let k = 0; k < n; k++) { c.fillStyle = ['#8a2a2a', '#2a4a8a', '#3a6a3a', '#8a6a2a'][k % 4]; c.fillRect(px - (k % 2), b - 3 - k * 3, 9, 3); }
+  },
+});
+Object.assign(BUILD_ART.dungeon, {
+  special(c, A, s, tier, col, fx) { // wir many: kamienny krąg z runami, nad nim fioletowa spirala many i krążące kryształy
+    const { x, b, w, h } = s, cx = x + w * 0.5, cy = b - h * 0.5;
+    c.fillStyle = '#2a2434'; c.beginPath(); c.ellipse(cx, b - 6, w * 0.44, 9, 0, 0, TAU); c.fill(); c.fillStyle = '#4a4454'; c.beginPath(); c.ellipse(cx, b - 8, w * 0.4, 7, 0, 0, TAU); c.fill();
+    c.fillStyle = '#b080ff'; for (let k = 0; k < 8; k++) { const a = k * TAU / 8; c.fillRect(cx + Math.cos(a) * w * 0.34 - 1.5, b - 8 + Math.sin(a) * 5.5 - 1, 3, 2); }
+    for (const sd of [-1, 1]) stalag(c, cx + sd * w * 0.4, b - 6, 12, 46, '#4a4454');
+    const g = c.createRadialGradient(cx, cy, 2, cx, cy, w * 0.34); g.addColorStop(0, 'rgba(240,210,255,.95)'); g.addColorStop(0.5, 'rgba(150,80,255,.7)'); g.addColorStop(1, 'rgba(60,20,120,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(cx, cy, w * 0.34, h * 0.36, 0, 0, TAU); c.fill();
+    swirl(c, cx, cy, w * 0.3, ['#e8d0ff', '#8a40e0', '#b070ff'], 2.6); fx.glows.push([cx, cy, w * 0.6, '#a060ff']);
+    c.strokeStyle = 'rgba(200,150,255,.6)'; c.lineWidth = 2; c.beginPath(); c.moveTo(cx - 6, b - 9); c.quadraticCurveTo(cx - 2, cy + 20, cx, cy); c.moveTo(cx + 6, b - 9); c.quadraticCurveTo(cx + 3, cy + 20, cx, cy); c.stroke();
+    for (const [dx, dy] of [[-0.36, -0.1], [0.34, -0.2], [0.05, -0.9]]) { const px = cx + dx * w, py = cy + dy * h * 0.5; fillPoly(c, [[px, py - 7], [px + 4, py], [px, py + 7], [px - 4, py]], '#b88aff'); fillPoly(c, [[px, py - 7], [px + 4, py], [px, py + 7]], '#7a40d0'); fx.glows.push([px, py, 10, '#b070ff']); }
+  },
+});
+Object.assign(BUILD_ART.stronghold, {
+  special(c, A, s, tier, col, fx) { // sala Walhalli: długi dom z bali, skrzyżowane smocze głowy na szczytach, tarcze na ścianie, pochodnie, rogi
+    const { x, b, w, h } = s, bx = x + 6, bw = w * 0.86, top = b - h * 0.36, rh = h * 0.34;
+    c.fillStyle = '#7a4a24'; c.fillRect(bx, top, bw, b - top); c.strokeStyle = 'rgba(40,20,8,.5)'; c.lineWidth = 1; for (let y = top + 5; y < b; y += 5) { c.beginPath(); c.moveTo(bx, y); c.lineTo(bx + bw, y); c.stroke(); }
+    fillPoly(c, [[bx - 8, top + 3], [bx + bw * 0.5, top - rh], [bx + bw + 8, top + 3]], '#5a3418'); fillPoly(c, [[bx + bw * 0.5, top - rh], [bx + bw + 8, top + 3], [bx + bw * 0.5, top + 3]], '#3e2410');
+    c.fillStyle = 'rgba(255,220,170,.15)'; for (let k = 1; k < 5; k++) c.fillRect(bx - 8 + k * 4, top + 3 - k * rh / 5, bw + 16 - k * 8, 1.5);
+    for (const [px, d] of [[bx + bw * 0.5 - 2, -1], [bx + bw * 0.5 + 2, 1]]) { c.strokeStyle = '#4a2a10'; c.lineWidth = 3; c.beginPath(); c.moveTo(px, top - rh + 4); c.quadraticCurveTo(px + d * 6, top - rh - 8, px + d * 12, top - rh - 10); c.stroke(); fillPoly(c, [[px + d * 10, top - rh - 13], [px + d * 17, top - rh - 10], [px + d * 11, top - rh - 7]], '#4a2a10'); }
+    for (let i = 0; i < 4; i++) { const px = bx + 10 + i * (bw - 20) / 3; circ(c, px, top + 10, 5.5, i % 2 ? col : '#c8a040'); circ(c, px, top + 10, 1.8, '#8a8e98'); c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 1; c.beginPath(); c.arc(px, top + 10, 5.5, 0, TAU); c.stroke(); }
+    c.fillStyle = '#1e1008'; c.fillRect(bx + bw / 2 - 8, b - 20, 16, 20); c.fillStyle = '#ffb050'; c.fillRect(bx + bw / 2 - 6, b - 17, 12, 3); fx.wins.push([bx + bw / 2 - 6, b - 17, 12, 3]);
+    horn(c, bx + bw / 2 - 12, b - 24, 5, 12, -1, '#e8dcc0'); horn(c, bx + bw / 2 + 12, b - 24, 5, 12, 1, '#e8dcc0');
+    for (const px of [bx - 2, bx + bw + 2]) { c.fillStyle = '#4a2a10'; c.fillRect(px - 1.5, b - 20, 3, 20); flame(c, px, b - 20, 0.9, fx); }
+    fx.smokes.push([bx + bw * 0.3, top - rh * 0.4]);
+  },
+});
 // ==================== EKRANY: MENU, NOWA GRA, LISTY =====================================
 // Scena tytułowa i ekrany poza rozgrywką.
 const CASTLE_WINDOWS = [
@@ -9782,8 +9957,20 @@ G.screens.town = {
   say(m) { this.msg = m; this.msgT = G.time; },
   // Bohater w mieście z gildią poznaje jej czary i odnawia manę
   guildVisit() {
-    const st = G.state, t = this.town(), h = heroInTown(st, t); if (!h || !guildLevel(t)) return;
+    const st = G.state, t = this.town(), h = heroInTown(st, t); if (!h) return;
+    const sp = specialVisit(st, t, h); if (sp) this.say(sp);
+    if (!guildLevel(t)) return;
     const learned = visitGuild(st, t, h); if (learned.length) this.say(`${h.name} poznaje: ${learned.map(id => SPELLS[id].name).join(', ')}`);
+  },
+  // Budowla specjalna: opis, a w Inferno przejście przez Bramę piekieł do innego miasta
+  showSpecial() {
+    const st = G.state, t = this.town(), S = FACTION_SPECIAL[t.faction], h = heroInTown(st, t);
+    if (t.faction !== 'inferno') return showDialog(`${S.name}. ${S.desc}`, [{ label: 'OK', key: 'enter' }]);
+    const dest = gateTargets(st, t);
+    if (!h || !dest.length) return showDialog(`${S.name}. ${S.desc} ${!h ? 'Wprowadź bohatera do miasta.' : 'Nie masz innego wolnego miasta z Bramą piekieł.'}`, [{ label: 'OK', key: 'enter' }]);
+    showDialog(`${S.name}: dokąd ma przejść ${h.name}?`, [
+      ...dest.slice(0, 4).map(d => ({ label: d.name, action: () => { const e = gateTravel(st, t, h, d); if (e) return this.say(e); G.go('town', { townId: d.id }); } })),
+      { label: 'Wyjdź', key: 'escape' }]);
   },
   // Tawerna: dwóch chętnych na ten tydzień, najem za HERO_COST złota; nowy bohater staje w bramie miasta
   showTavern() {
@@ -9817,7 +10004,7 @@ G.screens.town = {
     if (t.builtToday) return this.say('W tym mieście zbudowano już dziś budowlę');
     if (!canAfford(st, B.cost)) return this.say('Brakuje zasobów na tę budowlę');
     showDialog(`Zbudować: ${info.name}? ${info.desc}`, [
-      { label: 'Zbuduj', key: 'enter', action: () => { buildIn(st, t, B); this.say(`Zbudowano: ${info.name}`); if (/^guild/.test(B.id)) this.guildVisit(); } },
+      { label: 'Zbuduj', key: 'enter', action: () => { buildIn(st, t, B); this.say(`Zbudowano: ${info.name}`); if (/^guild/.test(B.id) || B.id === 'special') this.guildVisit(); } },
       { label: 'Nie', key: 'escape' },
     ], { iconH: 40, icon: (ctx, cx, cy) => { ctx.font = font(14, 700, 'body'); const w = RESOURCES.reduce((a, r) => a + (B.cost[r.id] ? 29 + ctx.measureText(String(B.cost[r.id])).width : 0), 0); drawCost(ctx, B.cost, cx - w / 2, cy, { size: 24 }); } });
   },
@@ -9852,6 +10039,7 @@ G.screens.town = {
     if (B && /^guild/.test(B.id)) return this.showGuild(); // gildia: podgląd czarów (rozbudowa z listy albo przyciskiem w gildii)
     if (B && B.id === 'tavern') return this.showTavern();
     if (B && B.id === 'smith') return this.showSmith();
+    if (B && B.id === 'special') return this.showSpecial();
     if (B && B.id === 'market' && !(next && reqMet(t, next))) return showMarket(st, t.owner, m => this.say(m));
     if (next && reqMet(t, next)) this.tryBuild(next);
     else if (next) showDialog(`${bInfo(next, fac).name} wymaga wcześniej: ${next.req.map(r => bInfo(BUILD_BY_ID[r], fac).name).join(', ')}.`, [{ label: 'OK', key: 'enter' }]);
@@ -9864,7 +10052,7 @@ G.screens.town = {
     if (slot) return slot.a[slot.i] ? stackInfo(slot.a[slot.i]) : 'Wolne miejsce. Kliknij oddział, a potem miejsce, aby go przenieść, połączyć z takim samym albo zamienić.';
     if (x >= 600 && x <= 784 && y >= 40 && y <= 60) { const F = factionOf(fac); return `${F.name}: ${F.desc} Cecha frakcji — ${traitText(fac)}.`; }
     const i = this.slotAt(x, y); if (i === null) return resourceBarInfo(G.state, x, y);
-    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'smith' ? ' Kliknij, aby kupić machiny wojenne.' : B.id === 'market' ? ' Kliknij, aby handlować.' : /^guild/.test(B.id) ? ' Kliknij, aby obejrzeć czary (klawisz G).' : ''); }
+    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'smith' ? ' Kliknij, aby kupić machiny wojenne.' : B.id === 'market' ? ' Kliknij, aby handlować.' : B.id === 'special' && t.faction === 'inferno' ? ' Kliknij, aby przejść przez bramę.' : /^guild/.test(B.id) ? ' Kliknij, aby obejrzeć czary (klawisz G).' : ''); }
     const next = BUILDINGS.find(b => b.slot === i && !hasB(t, b.id)); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }
     return null;
   },
