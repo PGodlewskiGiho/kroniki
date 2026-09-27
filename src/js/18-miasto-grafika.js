@@ -630,6 +630,23 @@ function slabArt(c, Sb, hazeCol) {
   c.strokeStyle = 'rgba(255,245,225,.3)'; c.lineWidth = 1.4; c.beginPath(); edge.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke();
   const hz = hazeAt(Sb.Z0); if (hz > 0) { face(); c.globalAlpha = hz * 0.8; c.fillStyle = hazeCol; c.fill(); c.globalAlpha = 1; }
 }
+// Schody wykute w ścianie tarasu (Sb.stairs: [[X, wysokość podnóża], ...]): proste stopnie wysunięte przed ścianę, murki po bokach
+function stairsArt(c, Sb, X, e0, hazeCol) {
+  const H = Sb.e - e0, n = Math.max(3, Math.round(H / 7)), h = H / n, D = 0.0016 * H, w = Sb.stairW || 44;
+  const Zs = i => Sb.Z0 - D * (1 - i / n), q = (pts, col) => fillPoly(c, pts.map(([x, z, e]) => proj(x, z, e)), col);
+  const tread = Sb.top[0], riser = shadeHex(Sb.face[0], -0.18), cheek = shadeHex(Sb.face[0], 0.06), cheekTop = shadeHex(Sb.top[0], -0.08);
+  q([[X - w / 2 - 6, Zs(0), e0], [X + w / 2 + 6, Zs(0), e0], [X + w / 2 + 6, Sb.Z0, e0], [X - w / 2 - 6, Sb.Z0, e0]], 'rgba(0,0,0,.25)'); // cień u podnóża
+  for (let i = n - 1; i >= 0; i--) {
+    q([[X - w / 2, Zs(i), e0 + (i + 1) * h], [X + w / 2, Zs(i), e0 + (i + 1) * h], [X + w / 2, Zs(i + 1), e0 + (i + 1) * h], [X - w / 2, Zs(i + 1), e0 + (i + 1) * h]], tread);
+    q([[X - w / 2, Zs(i), e0 + i * h], [X + w / 2, Zs(i), e0 + i * h], [X + w / 2, Zs(i), e0 + (i + 1) * h], [X - w / 2, Zs(i), e0 + (i + 1) * h]], riser);
+  }
+  for (const x0 of [X - w / 2 - 6, X + w / 2]) { // murki: ściana z przodu, pochyła korona
+    q([[x0, Zs(0), e0], [x0 + 6, Zs(0), e0], [x0 + 6, Zs(0), e0 + h + 4], [x0, Zs(0), e0 + h + 4]], cheek);
+    q([[x0, Zs(0), e0 + h + 4], [x0 + 6, Zs(0), e0 + h + 4], [x0 + 6, Sb.Z0, Sb.e + 4], [x0, Sb.Z0, Sb.e + 4]], cheekTop);
+    const out = x0 < X ? x0 : x0 + 6; q([[out, Zs(0), e0], [out, Zs(0), e0 + h + 4], [out, Sb.Z0, Sb.e + 4], [out, Sb.Z0, e0]], cheek);
+  }
+  const hz = hazeAt(Sb.Z0); if (hz > 0) { c.globalAlpha = hz * 0.8; q([[X - w / 2 - 6, Zs(0), e0], [X + w / 2 + 6, Zs(0), e0], [X + w / 2 + 6, Sb.Z0, Sb.e + 4], [X - w / 2 - 6, Sb.Z0, Sb.e + 4]], hazeCol); c.globalAlpha = 1; }
+}
 // Wysepka na wodzie (mokradło, jezioro): obrzeże, ziemia w kolorze planszy, kępki
 function islandArt(c, I, Wd) {
   const [cx, cy, s] = proj(I.X, I.Z), yT = proj(I.X, I.Z + I.rz)[1], yB = proj(I.X, I.Z - I.rz)[1], rx = I.rx * s, ry = (yB - yT) / 2, my = (yB + yT) / 2;
@@ -829,6 +846,7 @@ function paintTownWorld(c, t, col, Wd) {
   for (const Rv of [...(Wd.river ? [Wd.river] : []), ...(Wd.rivers || [])]) { riverArt(c, Rv, hzC); if (Rv.chasm) chasmGlow(c, Rv); }
   for (const I of Wd.islands || []) islandArt(c, I, Wd);
   [...Wd.hills.map(Hl => ({ Z: Hl.Z, Hl })), ...(Wd.slabs || []).map(Sb => ({ Z: Sb.Z0, Sb }))].sort((a, b) => b.Z - a.Z).forEach(o => o.Hl ? hillArt(c, o.Hl, hzC) : slabArt(c, o.Sb, hzC));
+  for (const Sb of [...(Wd.slabs || [])].sort((a, b) => b.Z0 - a.Z0)) for (const [X, e0 = 0] of Sb.stairs || []) stairsArt(c, Sb, X, e0, hzC);
   const lanes = Wd.roads.filter(Rd => !Rd.main), mains = Wd.roads.filter(Rd => Rd.main); // ścieżki pod drogą główną; brzegi przed nawierzchnią
   for (const grp of [lanes, mains]) { for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'under'); for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'top'); }
   if (Wd.plaza) plazaArt(c, Wd);

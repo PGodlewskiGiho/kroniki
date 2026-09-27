@@ -10,6 +10,8 @@
 // pierwszy punkt przy drodze głównej); ścieżki do pozostałych drzwi dołączają do nich same.
 
 const TOWN_SCENES = {};
+// Miejsce budowli podane na ekranie: sx = środek w pikselach kadru (8–584), Z = głębokość (X świata wylicza się sam)
+const atPx = (sx, Z, o) => [Math.round((sx - 296) * Z), Z, o];
 
 // Zbudowanie planszy L (jak dawniej z generatora) z opisu sceny
 function buildTownScene(fac) {
@@ -36,6 +38,7 @@ function buildTownScene(fac) {
     const D = B.slots[i]; let e = o.e; if (o.hill !== undefined) [Z, e] = onHill(X, o.hill); if (e === undefined) e = townElev(T, L, X, Z);
     return { X, Z, e, k: D.k * (o.k || 1), w: D.w, h: D.h, flip: !!o.flip };
   });
+  for (const i of Sc.islandsUnder || []) { const S = L.slots[i]; L.islands.push({ X: S.X, Z: S.Z - 0.012, rx: S.w * S.k * 0.62 * S.Z / 1.4 + 26, rz: 0.075 }); }
   if (Sc.road) { // droga główna podana wprost: [X, Z, e, szerokość]
     const R = { w: Sc.road.w || 44, steps: Sc.road.pts.some(p => p[2] > 2), planks: !!Sc.planks, pts: Sc.road.pts.map(p => p.slice()), main: true };
     L.roads.push(R); T.main = R.pts.map(p => [p[0], p[1]]); T.feats.push({ pts: T.main, w: R.w });
@@ -46,7 +49,7 @@ function buildTownScene(fac) {
   townPaths(r, T, L, Bm, Sc.walks || []);
   for (const [kind, X, Z, k = 1, e] of Sc.props || []) L.props.push([kind, X, Z, e ?? townElev(T, L, X, Z), k]);
   if (L.walls) townWallGates(r, T, L);
-  if (!Sc.road && !Sc.planks) { L.roads = []; L.bridges = L.bridges.slice(0, (Sc.bridges || []).length); } // drogi tylko tam, gdzie są częścią budowy (schody, most, kładki); reszta to czysty teren
+  if (!Sc.planks) { L.roads = []; L.bridges = L.bridges.slice(0, (Sc.bridges || []).length); } // bez dróg jak w Heroes 3 (poza kładkami Twierdzy); trasy do drzwi zostają dla straży i wyboru miejsc
   townFolk(r, T, L, Bm); L.folk = []; // bez chodzących mieszkańców: została tylko straż przed zamkiem
   L.floaters = Sc.floaters || [];
   usePJ(null); return L;
@@ -64,35 +67,34 @@ TOWN_SCENES.haven = {
   pj: { hor: 92, d: 280 },
   sky: { top: '#2a4a82', mid: '#7a9cc4', hor: '#f0d8a8', sun: [470, 70], cloudDark: 'rgba(120,130,160,.55)', cloudLit: 'rgba(255,240,215,.8)' },
   hills: [
-    { X: -250, Z: 2.3, rx: 330, h: 64, flat: 0.2 },
+    { X: -130, Z: 2.3, rx: 360, h: 64, flat: 0.2 },
     { X: 470, Z: 2.72, rx: 300, h: 86, rock: true, flat: 0.3, cols: ['#6a665c', '#43423a'] },
   ],
-  rivers: [{ w: 66, pts: [[-1100, 1.86], [-700, 1.8], [-420, 1.72], [-200, 1.66], [0, 1.68], [220, 1.74], [480, 1.72], [800, 1.64], [1100, 1.6]] }],
+  rivers: [{ w: 66, pts: [[-1100, 1.86], [-700, 1.8], [-420, 1.76], [-200, 1.74], [0, 1.76], [220, 1.8], [480, 1.78], [800, 1.72], [1100, 1.68]] }],
   entryX: 10,
   slots: [
-    [10, 1.24], [-250, 0, { hill: 0 }], [150, 2.1], [470, 0, { hill: 1 }], [-300, 1.5], [270, 1.98], [300, 1.5], [60, 2.45, { flip: true }],
-    [-230, 0.97], [-150, 1.5], [225, 0.97, { flip: true }], [150, 1.46], [-120, 1.0], [120, 1.0, { flip: true }], [-420, 1.95], [-80, 0, { hill: 0 }],
+    atPx(310, 1.28, { k: 1.15 }), [-130, 0, { hill: 0, k: 1.6 }], atPx(425, 2.12, { k: 1.2 }), [470, 0, { hill: 1, k: 1.35 }], atPx(95, 2.0, { k: 1.3 }), atPx(540, 1.95, { k: 1.25 }), atPx(480, 1.42, { k: 1.15 }), atPx(42, 1.55, { k: 1.2 }),
+    atPx(195, 0.96), atPx(556, 1.3), atPx(70, 1.0), atPx(515, 1.02, { flip: true }), atPx(128, 1.3, { k: 1.1 }), atPx(390, 0.96, { flip: true, k: 1.1 }), atPx(200, 1.56, { k: 1.15 }), atPx(398, 1.62),
   ],
   props: [
-    ['tree', -520, 1.2, 1.3], ['tree', -560, 1.55, 1.3], ['tree', 520, 1.25, 1.3], ['tree', 560, 1.5, 1.2], ['tree', -620, 2.3, 1.4], ['tree', 700, 2.2, 1.4],
-    ['tree', 60, 2.6, 1.4], ['tree', -40, 2.7, 1.4], ['bush', -380, 1.02], ['bush', 400, 1.05], ['fence', -470, 0.98], ['fence', 470, 1.0], ['mushroom', -30, 0.9],
+    ['tree', -620, 2.3, 1.4], ['tree', 700, 2.2, 1.4], ['tree', 40, 2.75, 1.4], ['tree', -40, 2.8, 1.4], ['bush', -250, 0.9], ['bush', 280, 0.9], ['mushroom', -30, 0.9],
   ],
   weather: {}, birds: true,
 };
 
-// --- Knieja: polana w puszczy nad leśnym jeziorem, Drzewo Rady na drugim brzegu, smocze urwisko w głębi ---
+// --- Knieja: polana w puszczy nad leśnym jeziorem, Drzewo Rady za wodą, smocze urwisko w głębi ---
 TOWN_SCENES.sylvan = {
-  pj: { hor: 150, d: 250 }, frame: 'forest',
-  sky: { top: '#0e1614', mid: '#2a3a30', hor: '#a88450', sun: [420, 170], cloudDark: 'rgba(24,32,28,.6)', cloudLit: 'rgba(200,150,90,.4)' },
-  hills: [{ X: -270, Z: 2.5, rx: 300, h: 30, flat: 0.3 }, { X: 470, Z: 2.85, rx: 280, h: 86, rock: true, cols: ['#4a5448', '#2e362c'] }],
-  lakes: [{ X: -70, Z: 1.45, rx: 160, rz: 0.22 }],
+  pj: { hor: 120, d: 270 }, frame: 'forest',
+  sky: { top: '#0e1614', mid: '#2a3a30', hor: '#a88450', sun: [420, 150], cloudDark: 'rgba(24,32,28,.6)', cloudLit: 'rgba(200,150,90,.4)' },
+  hills: [{ X: -300, Z: 2.5, rx: 320, h: 34, flat: 0.3 }, { X: 470, Z: 2.85, rx: 280, h: 86, rock: true, cols: ['#4a5448', '#2e362c'] }],
+  lakes: [{ X: -80, Z: 1.42, rx: 150, rz: 0.17 }],
   entryX: 60,
   slots: [
-    [0, 2.05], [-250, 0, { hill: 0 }], [-300, 1.4], [470, 0, { hill: 1 }], [150, 1.85], [280, 1.55], [300, 2.65], [-200, 1.75],
-    [-190, 0.95], [-470, 2.6], [230, 1.0, { flip: true }], [190, 1.6], [-80, 0.95], [110, 0.98, { flip: true }], [400, 2.05], [-130, 1.95],
+    atPx(360, 1.9, { k: 1.1 }), [-300, 0, { hill: 0, k: 1.45 }], atPx(465, 2.05), [470, 0, { hill: 1, k: 1.25 }], atPx(515, 1.62), atPx(165, 1.62), atPx(85, 1.62), atPx(470, 1.35),
+    atPx(405, 1.0), atPx(255, 2.3), atPx(110, 1.03), atPx(515, 1.0), atPx(235, 1.0), atPx(395, 1.3), atPx(215, 1.95, { k: 1.1 }), atPx(290, 1.72),
   ],
-  props: [['fern', 60, 0.92], ['fern', -40, 1.25], ['mushroom', 150, 1.2], ['mushroom', 20, 1.75], ['rock', -30, 1.8], ['bush', 300, 1.25], ['bush', -300, 1.35], ['tree', -470, 1.3, 1.3], ['tree', 480, 1.2, 1.3]],
-  floaters: [{ kind: 'wisp', X: -70, Z: 1.45, e: 18, n: 6, spread: 110, spreadZ: 0.18 }, { kind: 'wisp', X: -250, Z: 1.9, e: 30, n: 3, spread: 90, spreadZ: 0.2, seed: 5 }],
+  props: [['fern', 40, 0.9], ['mushroom', 20, 1.2], ['rock', -30, 1.62], ['tree', -560, 1.25, 1.3], ['tree', 560, 1.2, 1.3]],
+  floaters: [{ kind: 'wisp', X: -80, Z: 1.42, e: 18, n: 6, spread: 110, spreadZ: 0.15 }, { kind: 'wisp', X: -250, Z: 1.9, e: 30, n: 3, spread: 90, spreadZ: 0.2, seed: 5 }],
   weather: {}, birds: true, birdCol: 'rgba(20,30,20,.8)',
 };
 
@@ -102,31 +104,28 @@ TOWN_SCENES.barrow = {
   sky: TOWN_LAYOUTS.barrow.sky,
   hills: TOWN_LAYOUTS.barrow.hills,
   rivers: [{ w: 150, chasm: true, pts: TOWN_LAYOUTS.barrow.river.pts }],
-  road: { w: 34, pts: [[-60, 0.8, 0, 46], [-80, 1.0], [-100, 1.2], [-90, 1.46], [90, 1.46], [110, 1.92], [80, 2.1, 20], [50, 2.3, 50], [24, 2.46, 76, 20]] },
-  plaza: null,
   bridges: [{ X: 0, Z: 1.46, w: 170 }],
-  slots: [...TOWN_LAYOUTS.barrow.slots.slice(0, 15).map((S, i) => [i === 6 ? -280 : S.X, S.Z, S.e !== undefined ? { e: S.e } : {}]), [-90, 1.95]],
-  props: TOWN_LAYOUTS.barrow.props.map(([k, X, Z, e, s]) => [k, X, Z, s || 1, e]),
+  slots: [
+    atPx(150, 1.42, { k: 1.1 }), [0, 2.5, { e: 80, k: 1.25 }], atPx(425, 1.62), [440, 0, { hill: 1, k: 1.15 }], [-440, 0, { hill: 2, k: 1.15 }], atPx(205, 2.0), atPx(525, 1.42), atPx(385, 2.0),
+    atPx(420, 1.0), atPx(40, 1.62), atPx(70, 1.02), atPx(530, 1.03, { flip: true }), atPx(170, 1.0), atPx(400, 1.28), atPx(55, 2.0), atPx(245, 1.75),
+  ],
+  props: [['tree', -620, 2.4, 1.3], ['tree', 640, 2.3, 1.3], ['grave', -20, 0.9], ['grave', 50, 0.92], ['lamp', -85, 1.42], ['lamp', 85, 1.42]],
   floaters: TOWN_LAYOUTS.barrow.floaters,
   weather: { mist: true }, birds: true, birdCol: 'rgba(10,8,14,.9)',
 };
 
-// --- Twierdza: mokradło z wysepkami, kładki między chatami na palach, wierzby i mgła ---
+// --- Twierdza: mokradło, każda chata na własnej wysepce, twierdza na drugim brzegu, wierzby i mgła ---
 TOWN_SCENES.fortress = {
-  sky: TOWN_LAYOUTS.fortress.sky, planks: true,
+  sky: TOWN_LAYOUTS.fortress.sky,
   hills: [{ X: 500, Z: 2.7, rx: 320, h: 70, rock: true, cols: ['#5a5e4a', '#3e4234'] }],
-  lakes: [{ X: 0, Z: 1.72, rx: 1500, rz: 0.6 }],
-  islands: [
-    { X: 0, Z: 1.34, rx: 190, rz: 0.1 }, { X: -240, Z: 2.02, rx: 230, rz: 0.1 }, { X: 270, Z: 1.7, rx: 210, rz: 0.1 },
-    { X: -340, Z: 1.45, rx: 150, rz: 0.09 }, { X: 90, Z: 2.27, rx: 120, rz: 0.06 }, { X: 420, Z: 2.1, rx: 140, rz: 0.08 }, { X: -130, Z: 1.61, rx: 80, rz: 0.05 },
-  ],
+  lakes: [{ X: 0, Z: 1.7, rx: 1500, rz: 0.58 }],
   entryX: 0,
-  walks: [[[40, 1.3], [150, 1.46], [240, 1.66]], [[-40, 1.3], [-190, 1.4], [-320, 1.44]], [[250, 1.7], [350, 1.92], [410, 2.07]], [[20, 1.42], [60, 1.85], [90, 2.24]]],
   slots: [
-    [0, 1.36], [-240, 2.03], [90, 2.28], [500, 0, { hill: 0 }], [-340, 1.46], [230, 1.72], [280, 1.28], [-80, 2.45],
-    [-220, 0.95], [-470, 2.45], [230, 0.97, { flip: true }], [420, 2.1], [-110, 1.0], [120, 1.0, { flip: true }], [200, 2.45], [-130, 1.6],
+    atPx(300, 1.38, { k: 1.1 }), atPx(300, 2.42, { k: 1.45 }), atPx(150, 2.38, { k: 1.2 }), [500, 0, { hill: 0, k: 1.3 }], atPx(55, 2.35), atPx(425, 2.0), atPx(495, 1.5), atPx(125, 1.95),
+    atPx(190, 0.97), atPx(560, 1.28), atPx(70, 1.0), atPx(525, 1.0, { flip: true }), atPx(410, 0.96), atPx(75, 1.4), atPx(205, 1.62, { k: 1.1 }), atPx(385, 1.72),
   ],
-  props: [['reeds', -150, 1.2], ['reeds', 150, 1.25], ['reeds', -60, 1.62], ['reeds', 420, 1.55], ['reeds', -470, 1.8], ['tree', -520, 1.2, 1.3], ['tree', 520, 1.15, 1.3], ['tree', -560, 2.5, 1.4], ['tree', 380, 2.55, 1.4], ['mushroom', -40, 0.9]],
+  islandsUnder: [0, 5, 6, 7, 9, 13, 14, 15],
+  props: [['reeds', -150, 1.16], ['reeds', 150, 1.18], ['reeds', 420, 1.6], ['reeds', -470, 1.8], ['tree', -620, 2.5, 1.4], ['tree', 700, 2.4, 1.4], ['mushroom', -40, 0.9]],
   floaters: TOWN_LAYOUTS.fortress.floaters,
   weather: { mist: true }, birds: true, birdCol: 'rgba(20,28,16,.85)',
 };
@@ -136,32 +135,29 @@ TOWN_SCENES.inferno = {
   pj: { hor: 60, d: 310 },
   sky: TOWN_LAYOUTS.inferno.sky,
   hills: [{ X: -540, Z: 2.6, rx: 300, h: 90, rock: true, flat: 0.5 }, { X: 540, Z: 2.6, rx: 300, h: 100, rock: true, flat: 0.5 }],
-  lakes: [{ X: 0, Z: 1.58, rx: 150, rz: 0.2, pit: true }],
+  lakes: [{ X: 0, Z: 1.58, rx: 150, rz: 0.18, pit: true }],
   slabs: [{ x0: -270, x1: 270, Z0: 2.2, Z1: 2.9, e: 70, jag: 5 }],
   entryX: 0,
   slots: [
-    [-150, 1.3], [0, 2.5], [230, 1.95], [-500, 0, { hill: 0 }], [280, 1.3], [-190, 2.05], [-370, 1.75], [210, 2.45],
-    [-220, 0.95], [-330, 2.2], [230, 0.97, { flip: true }], [340, 1.75], [-110, 1.0], [120, 1.02, { flip: true }], [500, 0, { hill: 1 }], [90, 1.25],
+    atPx(150, 1.4, { k: 1.1 }), atPx(296, 2.5, { k: 1.3 }), atPx(455, 1.6), [540, 0, { hill: 1, k: 1.15 }], [-540, 0, { hill: 0, k: 1.15 }], atPx(205, 2.08), atPx(530, 1.3), atPx(385, 2.05),
+    atPx(420, 1.0), atPx(40, 1.6), atPx(70, 1.02), atPx(530, 1.03, { flip: true }), atPx(180, 1.0), atPx(385, 1.24), atPx(45, 1.98), atPx(296, 1.95),
   ],
-  props: [['spike', -110, 1.25], ['spike', 120, 1.3], ['spike', -60, 1.9, 1.3], ['spike', 60, 1.95, 1.3], ['brazier', -40, 0.95], ['brazier', 50, 0.95], ['rock', -400, 1.1], ['rock', 420, 1.2]],
-  floaters: [{ kind: 'ember', X: 0, Z: 1.5, e: 10, n: 12, spread: 120, spreadZ: 0.3 }],
+  props: [['spike', -60, 1.95, 1.3], ['spike', 60, 1.95, 1.3], ['brazier', -40, 0.92], ['brazier', 50, 0.92]],
+  floaters: [{ kind: 'ember', X: 0, Z: 1.55, e: 10, n: 12, spread: 120, spreadZ: 0.25 }],
   weather: { embers: true }, birds: true, birdCol: 'rgba(20,4,2,.9)',
 };
 
-// --- Akademia: ośnieżone tarasy nad zamarzniętym stawem, schody zygzakiem aż do zamku magów ---
+// --- Akademia: ośnieżone tarasy z kamiennymi schodami, zamek magów na najwyższym ---
 TOWN_SCENES.academy = {
   pj: { hor: 80, d: 290 },
   sky: TOWN_LAYOUTS.academy.sky,
-  slabs: [{ x0: -1600, x1: 1600, Z0: 1.45, Z1: 1.95, e: 40 }, { x0: -1600, x1: 1600, Z0: 1.95, Z1: 2.4, e: 86 }, { x0: -1600, x1: 1600, Z0: 2.4, Z1: 3.4, e: 136 }],
-  lakes: [{ X: -330, Z: 1.18, rx: 120, rz: 0.12 }],
-  road: { w: 34, pts: [[30, 0.8, 0, 42], [50, 1.1, 0], [70, 1.3, 0], [80, 1.43, 0], [80, 1.47, 40], [40, 1.53, 40], [10, 1.57, 40],
-    [-60, 1.66, 40], [-90, 1.8, 40], [-95, 1.93, 40], [-95, 1.97, 86], [-40, 2.08, 86], [40, 2.2, 86], [60, 2.38, 86], [60, 2.42, 136], [20, 2.52, 136, 26]] },
+  slabs: [{ x0: -1600, x1: 1600, Z0: 1.45, Z1: 1.95, e: 40, stairs: [[4, 0]] }, { x0: -1600, x1: 1600, Z0: 1.95, Z1: 2.4, e: 86, stairs: [[-158, 40]] }, { x0: -1600, x1: 1600, Z0: 2.4, Z1: 3.4, e: 136, stairs: [[290, 86]] }],
   entryX: 20,
   slots: [
-    [0, 1.62], [0, 2.62], [-300, 2.15], [430, 2.8], [-330, 1.7], [230, 2.2], [320, 1.62], [-470, 2.8],
-    [-220, 0.95], [-240, 1.3], [230, 0.97, { flip: true }], [220, 1.28], [-110, 1.0], [120, 1.02, { flip: true }], [-130, 2.15], [-180, 1.62],
+    atPx(296, 1.62, { k: 1.1 }), atPx(296, 2.62, { k: 1.4 }), atPx(130, 2.15, { k: 1.2 }), atPx(480, 2.65, { k: 1.2 }), atPx(185, 2.7, { k: 1.2 }), atPx(460, 2.15), atPx(470, 1.6), atPx(45, 1.7),
+    atPx(190, 1.0), atPx(560, 1.55), atPx(70, 1.02), atPx(520, 1.02, { flip: true }), atPx(410, 1.0), atPx(135, 1.3), atPx(150, 1.65), atPx(385, 1.75),
   ],
-  props: [['snowPine', -540, 1.3, 1.3], ['snowPine', 560, 1.25, 1.3], ['snowPine', -600, 2.2, 1.3], ['snowPine', 600, 2.3, 1.3], ['iceCrystal', -250, 1.15], ['iceCrystal', 380, 1.1], ['rock', 300, 1.95]],
+  props: [['snowPine', -600, 1.3, 1.3], ['snowPine', 620, 1.25, 1.3], ['snowPine', -700, 2.2, 1.3], ['snowPine', 700, 2.3, 1.3], ['iceCrystal', -60, 0.9], ['iceCrystal', 80, 0.92]],
   weather: { snow: true }, birds: true, birdCol: 'rgba(30,36,50,.8)',
 };
 
@@ -170,14 +166,14 @@ TOWN_SCENES.dungeon = {
   frame: 'cave', water: 'glow',
   sky: { cave: true, top: '#07050c', mid: '#1a1226', hor: '#3a2a4a', sun: [300, 200] },
   slabs: [{ x0: -330, x1: 330, Z0: 2.2, Z1: 2.9, e: 60, jag: 6 }],
-  lakes: [{ X: 250, Z: 1.5, rx: 170, rz: 0.2 }],
+  lakes: [{ X: 280, Z: 1.75, rx: 150, rz: 0.14 }],
   entryX: -20,
   slots: [
-    [-60, 1.4], [0, 2.5], [-260, 1.95], [-240, 2.55], [-300, 1.4], [240, 2.0], [280, 1.25], [230, 2.55],
-    [-220, 0.95], [-420, 2.0], [230, 0.97, { flip: true }], [100, 1.62], [-110, 1.0], [120, 1.02, { flip: true }], [420, 2.1], [100, 2.1],
+    atPx(190, 1.4, { k: 1.1 }), atPx(296, 2.35, { k: 1.4 }), atPx(470, 2.15), atPx(125, 2.45, { k: 1.15 }), atPx(540, 2.5, { k: 1.15 }), atPx(390, 2.05), atPx(60, 1.42), atPx(215, 2.02),
+    atPx(190, 0.98), atPx(545, 1.25), atPx(70, 1.02), atPx(480, 1.03, { flip: true }), atPx(360, 1.0), atPx(60, 1.95), atPx(440, 1.36), atPx(315, 1.62),
   ],
-  props: [['stalagmite', -460, 1.2, 1.4], ['stalagmite', 470, 1.4, 1.3], ['stalagmite', -30, 1.9, 1.2], ['glowShroom', 60, 1.2], ['glowShroom', -420, 1.6], ['glowShroom', 150, 1.25], ['bones', -40, 0.95]],
-  floaters: [{ kind: 'spore', X: 200, Z: 1.5, e: 20, n: 10, spread: 220, spreadZ: 0.3 }],
+  props: [['stalagmite', -560, 1.2, 1.4], ['stalagmite', 580, 1.4, 1.3], ['glowShroom', 20, 1.2], ['glowShroom', -60, 0.92], ['bones', 300, 0.92]],
+  floaters: [{ kind: 'spore', X: 280, Z: 1.75, e: 20, n: 10, spread: 200, spreadZ: 0.2 }],
   weather: { spores: true }, birds: false,
 };
 
@@ -187,13 +183,13 @@ TOWN_SCENES.stronghold = {
   sky: TOWN_LAYOUTS.stronghold.sky,
   slabs: [{ x0: -380, x1: 120, Z0: 2.15, Z1: 2.9, e: 100, jag: 7, top: ['#c4895a', '#a06a40'], face: ['#a45e36', '#5e3218'] }],
   hills: [{ X: 480, Z: 2.75, rx: 280, h: 70, flat: 0.25 }],
-  lakes: [{ X: 300, Z: 1.35, rx: 120, rz: 0.12 }],
+  lakes: [{ X: 300, Z: 1.38, rx: 110, rz: 0.1 }],
   wall: { style: 'palisade', h: 30, pts: Array.from({ length: 61 }, (_, i) => [-1500 + i * 50, 1.88 + Math.sin(i * 0.4) * 0.03]) },
   entryX: -30,
   slots: [
-    [-60, 1.35], [-150, 2.5], [180, 2.2], [480, 0, { hill: 0 }], [-200, 1.4], [300, 2.2], [-360, 1.6], [30, 2.3],
-    [-220, 0.95], [220, 1.85], [230, 0.97, { flip: true }], [330, 1.7], [-110, 1.0], [120, 1.02, { flip: true }], [-420, 2.3], [90, 1.22],
+    atPx(260, 1.35, { k: 1.1 }), atPx(225, 2.5, { k: 1.5 }), atPx(430, 2.2), [480, 0, { hill: 0, k: 1.15 }], atPx(80, 2.2), atPx(345, 2.05), atPx(90, 1.45), atPx(545, 2.1),
+    atPx(180, 0.98), atPx(40, 1.75), atPx(70, 1.02), atPx(400, 1.0, { flip: true }), atPx(530, 1.05), atPx(420, 1.6), atPx(160, 1.62), atPx(370, 1.5),
   ],
-  props: [['acacia', 380, 1.2, 1.2], ['acacia', 200, 1.3, 1.1], ['acacia', -520, 1.3, 1.3], ['cactus', -40, 0.92], ['cactus', 60, 1.15], ['bones', 0, 1.6], ['totem', -30, 1.2], ['rock', 450, 1.6]],
+  props: [['acacia', -560, 1.3, 1.3], ['acacia', 620, 1.5, 1.2], ['cactus', -40, 0.92], ['cactus', 60, 0.95], ['rock', 700, 1.6]],
   weather: {}, birds: true, birdCol: 'rgba(60,30,10,.8)',
 };
