@@ -133,6 +133,11 @@
    SCHOOL_COST), schoolMul (moc SCHOOL_POWER), +poziom rund czarów na oddziały, ekspert = czar na całą armię (massBuff). Nowe czary:
    Tarcza, Klątwa, Przywołanie łodzi, Lodowy pocisk, Fortuna, Fala śmierci, Pierścień mrozu, Tarcza powietrza, Łańcuch piorunów,
    Ognista tarcza, Źródło życia; księga czarów z zakładkami szkół i stronami.
+   Wymagania budowli: lista budowania pokazuje też zablokowane (kłódka, „Wymaga: …” z pośrednimi, missingReqs/buildList),
+   najechanie zaznacza w scenie miejsce budowli i brakujących budowli, opis mówi, co budowla odblokowuje (unlocksOf).
+   Interfejs w pixel arcie: pergamin, kamień (cegły paintBricks), tła przycisków (paintButton, stany n/h/s/d) i duże złote napisy
+   malowane w buforze 1:2 (uiLayer + crispLayer, drawUi bez wygładzania); rr ze schodkowymi rogami; rogi i przerywniki z pikseli
+   (pixDiamond); napisy i ikony przycisków z twardym cieniem zamiast poświaty.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.

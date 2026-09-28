@@ -541,6 +541,22 @@ const canAfford = (st, cost, owner = ME) => RESOURCES.every(r => (playerOf(st, o
 const reqMet = (t, B) => B.req.every(r => hasB(t, r));
 function townGold(t) { let g = 0; for (const id of ['hall1', 'hall2', 'hall3', 'hall4']) if (hasB(t, id)) g = BUILD_BY_ID[id].gold; return g + (hasB(t, 'grail') ? GRAIL_GOLD : 0); }
 function availableBuildings(t, st = G.state) { return BUILDINGS.filter(B => !B.grail && !hasB(t, B.id) && reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t)))); }
+// Wymagania jak w Heroes 3: wszystkie brakujące budowle na drodze do B (także pośrednie), w kolejności, w jakiej trzeba je stawiać
+function missingReqs(t, B, seen = new Set()) {
+  const out = [];
+  for (const r of B.req) { if (hasB(t, r) || seen.has(r)) continue; seen.add(r); out.push(...missingReqs(t, BUILD_BY_ID[r], seen), r); }
+  return out;
+}
+// Budowle, które B bezpośrednio odblokowuje (jeszcze niepostawione)
+const unlocksOf = (t, B) => BUILDINGS.filter(X => !X.grail && !hasB(t, X.id) && X.req.includes(B.id));
+// Lista budowania: najpierw dostępne, potem zablokowane (najbliższe odblokowania najpierw)
+function buildList(t, st = G.state) {
+  const ok = availableBuildings(t, st).map(B => ({ B, locked: false }));
+  const lk = BUILDINGS.filter(B => !B.grail && !hasB(t, B.id) && !reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t))))
+    .map(B => ({ B, locked: true, miss: missingReqs(t, B) })).sort((a, b) => a.miss.length - b.miss.length);
+  return [...ok, ...lk];
+}
+const reqNames = (ids, fac) => ids.map(id => bInfo(BUILD_BY_ID[id], fac).name).join(', ');
 // Następna budowla do postawienia na miejscu (działka w scenie); budowli Graala nie da się kupić, więc nie ma działki
 const slotNext = (t, slot) => BUILDINGS.find(B => B.slot === slot && !B.grail && !hasB(t, B.id));
 function slotBuilding(t, slot) { let best = null; for (const B of BUILDINGS) if (B.slot === slot && hasB(t, B.id)) best = B; return best; }

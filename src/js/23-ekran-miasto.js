@@ -29,7 +29,7 @@ G.screens.town = {
       { label: 'Kup łódź', key: 'enter', action: () => { const e = buyBoat(st, t); this.say(e || 'Łódź czeka na wodzie przy mieście'); } },
       { label: 'Wyjdź', key: 'escape' }]);
   },
-  onWheel(d) { const n = availableBuildings(this.town()).length; this.scroll = clamp(this.scroll + d, 0, Math.max(0, n - this.LIST_ROWS)); },
+  onWheel(d) { const n = buildList(this.town()).length; this.scroll = clamp(this.scroll + d, 0, Math.max(0, n - this.LIST_ROWS)); },
   say(m) { this.msg = m; this.msgT = G.time; },
   // Bohater w mieście z gildią poznaje jej czary i odnawia manę
   guildVisit() {
@@ -111,6 +111,7 @@ G.screens.town = {
       const err = armyMove(from.a, from.i, slot.a, slot.i, heroes); if (err) this.say(err); return;
     }
     this.sel = null;
+    if (row && row.locked) return showDialog(`${bInfo(row.B, fac).name}: najpierw trzeba zbudować (w tej kolejności): ${reqNames(row.miss, fac)}.`, [{ label: 'OK', key: 'enter' }]);
     if (row) return this.tryBuild(row.B);
     const i = this.slotAt(x, y); if (i === null) return;
     const B = slotBuilding(t, i), next = slotNext(t, i);
@@ -121,18 +122,18 @@ G.screens.town = {
     if (B && B.id === 'special') return this.showSpecial();
     if (B && B.id === 'market' && !(next && reqMet(t, next))) return showMarket(st, t.owner, m => this.say(m));
     if (next && reqMet(t, next)) this.tryBuild(next);
-    else if (next) showDialog(`${bInfo(next, fac).name} wymaga wcześniej: ${next.req.map(r => bInfo(BUILD_BY_ID[r], fac).name).join(', ')}.`, [{ label: 'OK', key: 'enter' }]);
+    else if (next) showDialog(`${bInfo(next, fac).name}: najpierw trzeba zbudować (w tej kolejności): ${reqNames(missingReqs(t, next), fac)}.`, [{ label: 'OK', key: 'enter' }]);
     else if (B) showDialog(`${bInfo(B, fac).name}. ${bInfo(B, fac).desc}`, [{ label: 'OK', key: 'enter' }]);
   },
   rightInfo(x, y) {
     const t = this.town(), fac = t.faction, row = this.rows.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
-    if (row) { const inf = bInfo(row.B, fac); return `${inf.name}. ${inf.desc}`; }
+    if (row) return buildTip(t, row.B);
     const slot = this.armySlotAt(x, y);
     if (slot) return slot.a[slot.i] ? stackInfo(slot.a[slot.i]) : 'Wolne miejsce. Kliknij oddział, a potem miejsce, aby go przenieść, połączyć z takim samym albo zamienić.';
     if (x >= 600 && x <= 784 && y >= 40 && y <= 60) { const F = factionOf(fac); return `${F.name}: ${F.desc} Cecha frakcji — ${traitText(fac)}.`; }
     const i = this.slotAt(x, y); if (i === null) return resourceBarInfo(G.state, x, y);
-    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'smith' ? ' Kliknij, aby kupić machiny wojenne.' : B.id === 'market' ? ' Kliknij, aby handlować.' : B.id === 'special' && t.faction === 'inferno' ? ' Kliknij, aby przejść przez bramę.' : /^guild/.test(B.id) ? ' Kliknij, aby obejrzeć czary (klawisz G).' : ''); }
-    const next = slotNext(t, i); if (next) { const inf = bInfo(next, fac); return `${inf.name} (niezbudowane). ${inf.desc}`; }
+    const B = slotBuilding(t, i); if (B) { const inf = bInfo(B, fac), dw = /^dw(\d)u?$/.exec(B.id); return `${inf.name}. ${inf.desc}` + (dw ? ` Dostępne: ${t.avail[+dw[1]] || 0}. Kliknij, aby werbować.` : B.id === 'tavern' ? ` Kliknij, aby nająć bohatera (${HERO_COST} złota).` : B.id === 'smith' ? ' Kliknij, aby kupić machiny wojenne.' : B.id === 'market' ? ' Kliknij, aby handlować.' : B.id === 'special' && t.faction === 'inferno' ? ' Kliknij, aby przejść przez bramę.' : /^guild/.test(B.id) ? ' Kliknij, aby obejrzeć czary (klawisz G).' : '') + unlocksText(t, B); }
+    const next = slotNext(t, i); if (next) return buildTip(t, next);
     return null;
   },
   draw(ctx) {
@@ -159,7 +160,7 @@ G.screens.town = {
       const hb = ((TownFXCache[key] || {}).rects || {})[this.hoverSlot] || { x: 0, y: 0, w: 0, h: 0 };
       const s = { x: hb.x, b: hb.y + hb.h, w: hb.w, h: hb.h }, B = slotBuilding(t, this.hoverSlot), next = slotNext(t, this.hoverSlot);
       ctx.strokeStyle = 'rgba(255,232,154,.85)'; ctx.lineWidth = 2; rr(ctx, s.x - 2, s.b - s.h - 4, s.w + 4, s.h + 8, 5); ctx.stroke();
-      const label = B ? bInfo(B, fac).name : (next ? `${bInfo(next, fac).name} (do zbudowania)` : '');
+      const miss = next && !B ? missingReqs(t, next) : [], label = B ? bInfo(B, fac).name : (next ? (miss.length ? `${bInfo(next, fac).name} — wymaga: ${reqNames(miss, fac)}` : `${bInfo(next, fac).name} (do zbudowania)`) : '');
       if (label) { ctx.font = font(15, 700, 'title'); const w = ctx.measureText(label).width + 20, x = clamp(s.x + s.w / 2 - w / 2, 12, 580 - w), y = Math.max(14, s.b - s.h - 30);
         ctx.fillStyle = 'rgba(12,8,3,.82)'; rr(ctx, x, y, w, 22, 3); ctx.fill(); text(ctx, label, x + w / 2, y + 11, { size: 15, align: 'center', color: '#f3e2b0', fam: 'title' }); }
     }
@@ -177,19 +178,30 @@ G.screens.town = {
     text(ctx, t.name, 692, 28, { size: 20, align: 'center', color: '#f3e2b0', fam: 'title' });
     text(ctx, `${factionOf(fac).name}, ${townGold(t)} złota dziennie`, 692, 50, { size: 14, weight: 500, align: 'center', color: '#d8c8a0' });
     text(ctx, t.builtToday ? 'Budowa: wykorzystana dziś' : 'Budowa: dostępna', 692, 70, { size: 14, weight: 500, align: 'center', color: t.builtToday ? '#e0a070' : '#8ad080' });
-    const list = availableBuildings(t), N = this.LIST_ROWS; this.rows = [];
+    // lista budowania: dostępne, a pod nimi zablokowane (szare, z kłódką i brakującymi budowlami); najechanie wskazuje w scenie,
+    // gdzie stanie budowla (złota ramka) i co trzeba postawić wcześniej (czerwone ramki)
+    const list = buildList(t, st), N = this.LIST_ROWS; this.rows = [];
     this.scroll = clamp(this.scroll, 0, Math.max(0, list.length - N));
-    list.slice(this.scroll, this.scroll + N).forEach((B, i) => {
-      const y = 88 + i * 50, afford = canAfford(st, B.cost) && !t.builtToday, info = bInfo(B, fac);
-      this.rows.push({ B, x: 596, y, w: 192, h: 46 });
-      const hot = !G.modal && G.mouse.x >= 596 && G.mouse.x <= 788 && G.mouse.y >= y && G.mouse.y <= y + 46;
-      ctx.fillStyle = hot ? 'rgba(210,160,60,.3)' : 'rgba(0,0,0,.3)'; rr(ctx, 596, y, 192, 46, 3); ctx.fill();
-      ctx.strokeStyle = afford ? '#b8913f' : '#6a5a3a'; ctx.lineWidth = 1.2; ctx.stroke();
-      ctx.font = font(14, 700, 'title'); let fs = 14; while (fs > 10 && ctx.measureText(info.name).width > 180) { fs--; ctx.font = font(fs, 700, 'title'); }
-      text(ctx, info.name, 604, y + 14, { size: fs, color: afford ? '#f3e2b0' : '#a89a80', fam: 'title' });
-      drawCost(ctx, B.cost, 604, y + 32, { size: 18, font: 13, color: '#e8dcb8', missing: '#e07a6a', free: '#8ad080', have: human(st).resources });
+    let hotRow = null;
+    list.slice(this.scroll, this.scroll + N).forEach(({ B, locked, miss }, i) => {
+      const y = 88 + i * 50, afford = !locked && canAfford(st, B.cost) && !t.builtToday, info = bInfo(B, fac);
+      const row = { B, locked, miss, x: 596, y, w: 192, h: 46 }; this.rows.push(row);
+      const hot = !G.modal && G.mouse.x >= 596 && G.mouse.x <= 788 && G.mouse.y >= y && G.mouse.y <= y + 46; if (hot) hotRow = row;
+      ctx.fillStyle = hot ? 'rgba(210,160,60,.3)' : locked ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.3)'; rr(ctx, 596, y, 192, 46, 3); ctx.fill();
+      ctx.strokeStyle = afford ? '#b8913f' : locked ? '#4a3e2a' : '#6a5a3a'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.font = font(14, 700, 'title'); let fs = 14; const maxW = locked ? 160 : 180; while (fs > 10 && ctx.measureText(info.name).width > maxW) { fs--; ctx.font = font(fs, 700, 'title'); }
+      text(ctx, info.name, 604, y + 14, { size: fs, color: afford ? '#f3e2b0' : locked ? '#8a7e68' : '#a89a80', fam: 'title' });
+      if (!locked) { drawCost(ctx, B.cost, 604, y + 32, { size: 18, font: 13, color: '#e8dcb8', missing: '#e07a6a', free: '#8ad080', have: human(st).resources }); return; }
+      padlock(ctx, 776, y + 13, '#a89a80');
+      ctx.font = font(11, 500, 'body'); let req = `Wymaga: ${reqNames(miss, fac)}`; if (ctx.measureText(req).width > 178) { while (req.length > 10 && ctx.measureText(req + '…').width > 178) req = req.slice(0, -1); req += '…'; }
+      text(ctx, req, 604, y + 33, { size: 11, weight: 500, color: '#d08a6a' });
     });
-    if (!list.length) text(ctx, 'Brak dostępnych budowli', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
+    if (hotRow) { // ramki w scenie miasta
+      const RR = (TownFXCache[lastTownKey] || {}).rects || {}, mark = (slot, col) => { const r = RR[slot]; if (!r) return; ctx.save(); ctx.setLineDash([5, 3]); ctx.strokeStyle = col; ctx.lineWidth = 2; rr(ctx, r.x - 2, r.y - 4, r.w + 4, r.h + 8, 5); ctx.stroke(); ctx.restore(); };
+      for (const id of hotRow.miss || []) mark(BUILD_BY_ID[id].slot, 'rgba(240,110,80,.9)');
+      mark(hotRow.B.slot, 'rgba(255,232,154,.95)');
+    }
+    if (!list.length) text(ctx, 'Wszystko zbudowane', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
     const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, ...this.baseButtons.slice(1)] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
     this.buttons = [...(paged ? [...base, this.btnUp, this.btnDown] : base), this.bSwap];
@@ -202,6 +214,17 @@ G.screens.town = {
     drawResourceBar(ctx, st);
   },
 };
+// Opis budowli w mieście: wymagania (także pośrednie) i co odblokowuje
+function buildTip(t, B) {
+  const fac = t.faction, inf = bInfo(B, fac), miss = missingReqs(t, B);
+  return `${inf.name}${hasB(t, B.id) ? '' : ' (niezbudowane)'}. ${inf.desc}${miss.length ? ` Wymaga (w tej kolejności): ${reqNames(miss, fac)}.` : ''}${unlocksText(t, B)}`;
+}
+const unlocksText = (t, B) => { const u = unlocksOf(t, B); return u.length ? ` Odblokowuje: ${u.map(X => bInfo(X, t.faction).name).join(', ')}.` : ''; };
+// Mała kłódka (zablokowana budowla)
+function padlock(ctx, cx, cy, col) {
+  ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(cx, cy - 2, 3.5, Math.PI, 0); ctx.stroke();
+  ctx.fillStyle = col; ctx.fillRect(cx - 5, cy - 2, 10, 8); ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(cx - 1, cy + 1, 2, 3); ctx.restore();
+}
 function paintTownChrome(c) {
   stoneFill(c, 0, 0, W, H);
   goldFrame(c, 8, 8, 576, 422);
