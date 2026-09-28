@@ -506,12 +506,12 @@ function drawMapView(ctx, st, scr) {
   }
   // efekty czarów na mapie: rozchodzący się krąg światła i słup blasku
   scr.mapFx = (scr.mapFx || []).filter(e => G.time - e.t < 1.2);
-  for (const e of scr.mapFx) {
+  if (scr.mapFx.length) pixLayer('mapFx', ctx, VIEW.x, VIEW.y, VIEW.w, VIEW.h, ctx => { for (const e of scr.mapFx) {
     const f = (G.time - e.t) / 1.2, x = ox + e.x * T + 16, y = oy + e.y * T + 16; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - f;
     if (e.kind === 'ring') { ctx.strokeStyle = e.col; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(x, y, e.r * T * ease(f), e.r * T * ease(f) * 0.6, 0, 0, TAU); ctx.stroke(); }
     else { const g = ctx.createLinearGradient(0, y - 160, 0, y); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, e.col); ctx.fillStyle = g; ctx.fillRect(x - 18 * (1 - f * 0.5), y - 160, 36 * (1 - f * 0.5), 170); }
     ctx.restore();
-  }
+  } }, { add: true });
   drawSeasonFx(ctx, seasonIdx(st));
   if (scr.banner) {
     const a = clamp(1.8 - (G.time - scr.banner.t), 0, 1);

@@ -255,7 +255,7 @@ function drawScroll(ctx, cx, top, id, hot, known) { // zwój z ikoną czaru; hot
   if (hot) { ctx.fillStyle = 'rgba(255,230,150,.28)'; rr(ctx, cx - w / 2 - 6, y - 8, w + 12, h + 16, 8); ctx.fill(); }
   ctx.fillStyle = '#e8d8b0'; ctx.fillRect(cx - w / 2, y + 4, w, h - 8); ctx.fillStyle = 'rgba(120,90,40,.25)'; ctx.fillRect(cx + w / 2 - 8, y + 4, 8, h - 8);
   for (const yy of [y + 4, y + h - 4]) { ctx.fillStyle = '#c8b080'; ctx.beginPath(); ctx.ellipse(cx, yy, w / 2 + 3, 5, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#a88a58'; ctx.beginPath(); ctx.ellipse(cx + w / 2 + 3, yy, 2.5, 5, 0, 0, TAU); ctx.fill(); }
-  ctx.save(); ctx.translate(cx, y + h / 2); ctx.scale(1.45, 1.45); drawSpellIcon(ctx, id); ctx.restore();
+  drawSprite(ctx, spellSprite(id), cx, y + h / 2, 1.5);
   if (known) { ctx.strokeStyle = '#2a8a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx + w / 2 - 12, y + 12); ctx.lineTo(cx + w / 2 - 7, y + 17); ctx.lineTo(cx + w / 2 + 1, y + 6); ctx.stroke(); }
   let fs = 12; ctx.font = font(fs, 700, 'body'); const nm = SPELLS[id].name; while (fs > 9 && ctx.measureText(nm).width > 124) { fs--; ctx.font = font(fs, 700, 'body'); }
   const tw = ctx.measureText(nm).width + 10; ctx.fillStyle = 'rgba(12,8,4,.72)'; rr(ctx, cx - tw / 2, top + h + 2, tw, 16, 3); ctx.fill();
@@ -306,7 +306,7 @@ function showGuildView(st, t, scr) {
       const tx = I.x + 14, ty = I.y + 28, tw = I.w - 28;
       if (this.sel) {
         const Sp = SPELLS[this.sel], sp = this.spAt();
-        ctx.save(); ctx.translate(tx + 20, ty + 14); ctx.scale(1.7, 1.7); drawSpellIcon(ctx, this.sel); ctx.restore();
+        drawSprite(ctx, spellSprite(this.sel), tx + 20, ty + 14, 1.5);
         text(ctx, Sp.name, tx + 46, ty + 6, { size: 17, color: '#f3e2b0', fam: 'title' });
         text(ctx, `Poziom ${Sp.level} · ${Sp.cost} many · ${Sp.kind === 'battle' ? 'czar bitewny' : 'czar mapy'}`, tx + 46, ty + 24, { size: 12, weight: 600, color: '#c8b88a' });
         ctx.font = font(13, 500, 'body'); wrapText(ctx, `${cap1(Sp.desc(sp))}.`, tw).slice(0, 4).forEach((l, i) => text(ctx, l, tx, ty + 50 + i * 17, { size: 13, weight: 500, color: '#ecd9a8' }));

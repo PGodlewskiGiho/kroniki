@@ -147,6 +147,9 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    Kronika tygodnia (20b): ogłoszenie astrologów z rysunkiem na początku tygodnia (st.weekNews, p.seenWeek, chronicleIconOpts),
    nowe tygodnie Żniw (+HARVEST drewna i rudy) i Magii (pełna mana), Kronika tawerny (showChronicle: ranking graczy jak Gildia
    Złodziei, rubryki CHRONICLE_ROWS odkrywane liczbą własnych tawern).
+   Pixel art efektów: pixLayer/crispLayer (bufor 1/px rozdzielczości, paleta z ditheringiem, 3 stopnie krycia) dla czarów
+   w bitwie (BattleFX: warstwa zwykła i świetlna, poświaty jako pierścienie), czarów na mapie, sceny okna wyniku bitwy
+   i ekranu końca gry (tło miasta w skali 1,5, piksel = 3 px ekranu); ikony czarów w gildii jako sprite'y.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
@@ -1214,6 +1217,25 @@ const drawSpriteBox = (ctx, s, x, y, k = 1) => drawSprite(ctx, s, x + s.ax * 2 *
 // Sprite w buforze mapy (bufor ma połowę rozdzielczości, więc 1 piksel grafiki = 1 piksel bufora)
 function blit(b, s, lx, ly) { b.drawImage(s.c, Math.round(lx / 2) * 2 - s.ax * 2, Math.round(ly / 2) * 2 - s.ay * 2, s.c.width * 2, s.c.height * 2); }
 const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+// Warstwa pixel art dla rysunków ruchomych (efekty czarów, sceny okien wyniku): rysunek trafia do bufora o rozdzielczości
+// 1/px (px = ile pikseli ekranu na piksel grafiki; 2 jak mapa i jednostki w bitwie), dostaje ograniczoną paletę z ditheringiem
+// i trzy twarde stopnie krycia (bez miękkich krawędzi), a potem jest powiększany bez wygładzania. add: nakładanie addytywne (światło).
+function pixLayer(key, ctx, x, y, w, h, draw, o = {}) {
+  const px = o.px || 2, bw = Math.ceil(w / px), bh = Math.ceil(h / px), c = pixBuf(key, bw, bh, true), g = c._ctx;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, bw, bh);
+  g.save(); g.setTransform(1 / px, 0, 0, 1 / px, -x / px, -y / px); draw(g); g.restore();
+  crispLayer(c, o.step || 24);
+  ctx.save(); ctx.imageSmoothingEnabled = false; if (o.add) ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(c, x, y, bw * px, bh * px); ctx.restore();
+}
+function crispLayer(c, step) {
+  const g = c._ctx, w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data;
+  for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k += 4) {
+    const a = d[k + 3]; if (!a) continue; const b = BAYER4[(y & 3) * 4 + (x & 3)] / 16, lv = Math.min(2, Math.floor(a / 255 * 2 + b));
+    if (!lv) { d[k + 3] = 0; continue; } d[k + 3] = lv === 2 ? 255 : 150; const o = (b - 0.5) * step;
+    d[k] = clamp(Math.round((d[k] + o) / step) * step, 0, 255); d[k + 1] = clamp(Math.round((d[k + 1] + o) / step) * step, 0, 255); d[k + 2] = clamp(Math.round((d[k + 2] + o) / step) * step, 0, 255);
+  }
+  g.putImageData(img, 0, 0);
+}
 // Ograniczona paleta z ditheringiem (styl pikselowy jak na mapie)
 function pixelQuantize(cv, step = 18) {
   if (!cv || !cv.getContext) return;
@@ -5769,12 +5791,12 @@ function drawMapView(ctx, st, scr) {
   }
   // efekty czarów na mapie: rozchodzący się krąg światła i słup blasku
   scr.mapFx = (scr.mapFx || []).filter(e => G.time - e.t < 1.2);
-  for (const e of scr.mapFx) {
+  if (scr.mapFx.length) pixLayer('mapFx', ctx, VIEW.x, VIEW.y, VIEW.w, VIEW.h, ctx => { for (const e of scr.mapFx) {
     const f = (G.time - e.t) / 1.2, x = ox + e.x * T + 16, y = oy + e.y * T + 16; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - f;
     if (e.kind === 'ring') { ctx.strokeStyle = e.col; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(x, y, e.r * T * ease(f), e.r * T * ease(f) * 0.6, 0, 0, TAU); ctx.stroke(); }
     else { const g = ctx.createLinearGradient(0, y - 160, 0, y); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, e.col); ctx.fillStyle = g; ctx.fillRect(x - 18 * (1 - f * 0.5), y - 160, 36 * (1 - f * 0.5), 170); }
     ctx.restore();
-  }
+  } }, { add: true });
   drawSeasonFx(ctx, seasonIdx(st));
   if (scr.banner) {
     const a = clamp(1.8 - (G.time - scr.banner.t), 0, 1);
@@ -10060,14 +10082,21 @@ const BattleFX = {
     if (this.flash) { this.flash.a -= dt * 2.2; if (this.flash.a <= 0) this.flash = null; }
     this.shake = Math.max(0, this.shake - dt * 30);
   },
+  // Efekty jako pixel art: zwykłe (kręgi, kamienie, strzały, iskry) i świetlne (poświaty, pioruny, pociski magii) nakładane addytywnie
   draw(ctx) {
-    for (const g of this.glows) {
+    if (!(this.glows.length + this.rings.length + this.projs.length + this.bolts.length + this.parts.length)) return;
+    pixLayer('fxN', ctx, 0, 0, W, H, g => this.drawLayer(g, false));
+    pixLayer('fxA', ctx, 0, 0, W, H, g => this.drawLayer(g, true), { add: true });
+  },
+  drawLayer(ctx, add) {
+    if (add) for (const g of this.glows) {
       const f = g.t / g.dur, r = g.r * (0.6 + 0.4 * ease(Math.min(1, f * 3))); ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - f;
-      const gr = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, r); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.25, g.col); gr.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(g.x, g.y, r, 0, TAU); ctx.fill(); ctx.restore();
+      for (const [k, col, al] of [[1, g.col, 0.3], [0.62, g.col, 0.75], [0.3, LT(g.col, 0.5), 1], [0.14, '#ffffff', 1]]) { ctx.globalAlpha = (1 - f) * al; circ(ctx, g.x, g.y, r * k, col); } // pierścienie jak w pixel arcie
+      ctx.restore();
     }
-    for (const r of this.rings) { const f = r.t / r.dur; ctx.save(); ctx.globalAlpha = 1 - f; ctx.strokeStyle = r.col; ctx.lineWidth = r.w * (1 - f) + 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r1 * ease(f), r.r1 * ease(f) * 0.45, 0, 0, TAU); ctx.stroke(); ctx.restore(); }
+    if (!add) for (const r of this.rings) { const f = r.t / r.dur; ctx.save(); ctx.globalAlpha = 1 - f; ctx.strokeStyle = r.col; ctx.lineWidth = r.w * (1 - f) + 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r1 * ease(f), r.r1 * ease(f) * 0.45, 0, 0, TAU); ctx.stroke(); ctx.restore(); }
     for (const p of this.projs) {
+      if ((p.kind === 'rock' || p.kind === 'arrow') === add) continue;
       const [x, y] = projPos(p), [nx, ny] = projPos({ ...p, t: Math.min(p.dur, p.t + 0.02) }), ang = Math.atan2(ny - y, nx - x);
       ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
       if (p.kind === 'rock') { circ(ctx, 0, 0, 6, '#6e6a62'); circ(ctx, -1.5, -1.5, 3.5, '#9a948a'); }
@@ -10076,13 +10105,13 @@ const BattleFX = {
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, TAU); ctx.fill(); fillPoly(ctx, [[0, -r * 0.6], [-r * 2.2, 0], [0, r * 0.6]], p.col); }
       ctx.restore();
     }
-    for (const b of this.bolts) {
+    if (add) for (const b of this.bolts) {
       const f = b.t / b.dur, flick = Math.random() < 0.8 ? 1 : 0.3; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - f) * flick;
       for (const [w, col] of [[9, b.col], [3, '#ffffff']]) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.globalAlpha *= w > 5 ? 0.45 : 1; ctx.beginPath(); b.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); ctx.globalAlpha = (1 - f) * flick; }
       ctx.restore();
     }
     for (const p of this.parts) {
-      const a = clamp(p.life / p.max, 0, 1), s = Math.max(1, Math.round(p.size * (p.glow ? 0.6 + a * 0.6 : 1)));
+      if (p.glow !== add) continue; const a = clamp(p.life / p.max, 0, 1), s = Math.max(1, Math.round(p.size * (p.glow ? 0.6 + a * 0.6 : 1)));
       ctx.save(); if (p.glow) ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a; ctx.fillStyle = p.col;
       ctx.fillRect(Math.round(p.x / 2) * 2 - s / 2, Math.round(p.y / 2) * 2 - s / 2, s, s); ctx.restore();
     }
@@ -10528,7 +10557,7 @@ function showBattleReport(st, res, R, onOk) {
     text(ctx, label, x + 34, ry + 30, { size: 15, color: '#3a1e08', fam: 'title' });
     if (!list.length) return text(ctx, 'bez strat', x + 190, ry + 30, { size: 15, italic: true, weight: 500, color: '#5a3814' });
     list.slice(0, 8).forEach((L, i) => { const cx = x + 190 + i * 50; ctx.fillStyle = 'rgba(60,36,12,.12)'; ctx.fillRect(cx - 23, ry, 46, 52);
-      ctx.save(); ctx.beginPath(); ctx.rect(cx - 23, ry, 46, 52); ctx.clip(); drawSprite(ctx, battleSprite(L.cid, dir, 'idle', 0), cx, ry + 50, 0.42); ctx.restore(); text(ctx, String(L.n), cx, ry + 64, { size: 14, align: 'center', color: '#2a1606', fam: 'title' }); });
+      ctx.save(); ctx.beginPath(); ctx.rect(cx - 23, ry, 46, 52); ctx.clip(); drawSprite(ctx, battleSprite(L.cid, dir, 'idle', 0), cx, ry + 50, 0.5); ctx.restore(); text(ctx, String(L.n), cx, ry + 64, { size: 14, align: 'center', color: '#2a1606', fam: 'title' }); });
     if (list.length > 8) text(ctx, `+${list.length - 8}`, x + 190 + 8 * 50, ry + 30, { size: 14, color: '#3a1e08' });
   };
   const winnerMe = R.kind === 'win';
@@ -10538,7 +10567,7 @@ function showBattleReport(st, res, R, onOk) {
       dimScreen(ctx, 0.45); drawParchment(ctx, x, y, w, h); const t = G.time - t0;
       goldText(ctx, R.title, W / 2, y + 34, 30);
       const px = x + 120, py = y + 60, pw = w - 240, ph = 150;
-      ctx.save(); ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip(); drawReportScene(ctx, px, py, pw, ph, R.kind, me, colOf(me), t, st); ctx.restore();
+      pixLayer('report', ctx, px, py, pw, ph, g => drawReportScene(g, px, py, pw, ph, R.kind, me, colOf(me), t, st)); // obraz jako pixel art
       ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 3; ctx.strokeRect(px - 1.5, py - 1.5, pw + 3, ph + 3); ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1; ctx.strokeRect(px - 4, py - 4, pw + 8, ph + 8);
       portrait(ctx, me, x + 20, y + 64, 1, winnerMe); portrait(ctx, foe, x + w - 100, y + 64, -1, !winnerMe && R.kind !== 'fled');
       lines.forEach((l, i) => text(ctx, l, W / 2, y + 240 + i * 22, { size: 17, weight: 500, align: 'center', color: '#2a1606' }));
@@ -10614,18 +10643,22 @@ function showGameEnd(st, r, msg, opts) {
     msg, buttons, locked: true, gameEnd: r,
     draw(ctx) {
       const t = G.time - t0; G.dirty = true;
-      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(scene, 8, 8, 576, 422, 0, 0, W, H); ctx.restore();
-      if (win) {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,120,${(0.08 + 0.04 * Math.sin(t)).toFixed(3)})`; ctx.fillRect(0, 0, W, H);
+      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(scene, 30, 20, 534, 400, 0, 0, W, H); ctx.restore(); // piksel sceny = 3 px ekranu (równe piksele)
+      if (win) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,120,${(0.08 + 0.04 * Math.sin(t)).toFixed(3)})`; ctx.fillRect(0, 0, W, H); ctx.restore(); } // ciepłe światło: gładkie (dithering dałby siatkę kropek)
+      if (win) pixLayer('endFx', ctx, 0, 0, W, H, ctx => {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
         for (const B of bursts) { const u = ((t - B.t) % 3.2 + 3.2) % 3.2; if (u > 1.4) continue; const k = u / 1.4, rad = 20 + ease(k) * 70; // fajerwerki
           for (let i = 0; i < 26; i++) { const a = i / 26 * TAU, px = B.x + Math.cos(a) * rad, py = B.y + Math.sin(a) * rad + k * k * 30; ctx.fillStyle = B.c; ctx.globalAlpha = 1 - k; ctx.fillRect(px - 1.5, py - 1.5, 3, 3); } }
         ctx.restore(); ctx.globalAlpha = 1;
-      } else {
+      }, { px: 3, add: true });
+      else {
         ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = 0.85; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, H); ctx.restore();
         ctx.fillStyle = 'rgba(10,4,6,.45)'; ctx.fillRect(0, 0, W, H);
+        pixLayer('endFx', ctx, 0, 0, W, H, ctx => {
         for (let i = 0; i < 5; i++) for (let k = 0; k < 6; k++) { const u = (t * 0.15 + k / 6 + i * 0.13) % 1, x = 90 + i * 150 + Math.sin(u * 5 + i) * 20, y = 470 - u * 420; circ(ctx, x, y, 14 + u * 40, `rgba(30,26,28,${(0.35 * (1 - u)).toFixed(2)})`); } // dym z pogorzeliska
         for (let i = 0; i < 30; i++) { const u = (t * 0.2 + i * 0.137) % 1; ctx.fillStyle = `rgba(255,${120 + (i % 4) * 25},40,${(0.8 * (1 - u)).toFixed(2)})`; ctx.fillRect(40 + (i * 97) % 720 + Math.sin(t + i) * 8, 560 - u * 420, 2, 2); }
         for (let i = 0; i < 5; i++) { const a = t * 0.6 + i * TAU / 5, bx2 = 400 + Math.cos(a) * (150 + i * 20), by2 = 110 + Math.sin(a) * 40, f = Math.sin(t * 8 + i) * 4; ctx.fillStyle = '#0a0808'; ctx.beginPath(); ctx.moveTo(bx2 - 9, by2 - f); ctx.quadraticCurveTo(bx2 - 3, by2 - 1, bx2, by2 + 1); ctx.quadraticCurveTo(bx2 + 3, by2 - 1, bx2 + 9, by2 - f); ctx.lineTo(bx2, by2 + 4); ctx.closePath(); ctx.fill(); }
+        }, { px: 3 });
         const vg = ctx.createRadialGradient(W / 2, H / 2, 160, W / 2, H / 2, 520); vg.addColorStop(0, 'rgba(120,0,0,0)'); vg.addColorStop(1, 'rgba(110,10,10,.6)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
       }
       const k = ease(clamp(t / 0.8, 0, 1)); // wstęga z napisem opada z góry
@@ -10901,7 +10934,7 @@ function drawScroll(ctx, cx, top, id, hot, known) { // zwój z ikoną czaru; hot
   if (hot) { ctx.fillStyle = 'rgba(255,230,150,.28)'; rr(ctx, cx - w / 2 - 6, y - 8, w + 12, h + 16, 8); ctx.fill(); }
   ctx.fillStyle = '#e8d8b0'; ctx.fillRect(cx - w / 2, y + 4, w, h - 8); ctx.fillStyle = 'rgba(120,90,40,.25)'; ctx.fillRect(cx + w / 2 - 8, y + 4, 8, h - 8);
   for (const yy of [y + 4, y + h - 4]) { ctx.fillStyle = '#c8b080'; ctx.beginPath(); ctx.ellipse(cx, yy, w / 2 + 3, 5, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#a88a58'; ctx.beginPath(); ctx.ellipse(cx + w / 2 + 3, yy, 2.5, 5, 0, 0, TAU); ctx.fill(); }
-  ctx.save(); ctx.translate(cx, y + h / 2); ctx.scale(1.45, 1.45); drawSpellIcon(ctx, id); ctx.restore();
+  drawSprite(ctx, spellSprite(id), cx, y + h / 2, 1.5);
   if (known) { ctx.strokeStyle = '#2a8a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx + w / 2 - 12, y + 12); ctx.lineTo(cx + w / 2 - 7, y + 17); ctx.lineTo(cx + w / 2 + 1, y + 6); ctx.stroke(); }
   let fs = 12; ctx.font = font(fs, 700, 'body'); const nm = SPELLS[id].name; while (fs > 9 && ctx.measureText(nm).width > 124) { fs--; ctx.font = font(fs, 700, 'body'); }
   const tw = ctx.measureText(nm).width + 10; ctx.fillStyle = 'rgba(12,8,4,.72)'; rr(ctx, cx - tw / 2, top + h + 2, tw, 16, 3); ctx.fill();
@@ -10952,7 +10985,7 @@ function showGuildView(st, t, scr) {
       const tx = I.x + 14, ty = I.y + 28, tw = I.w - 28;
       if (this.sel) {
         const Sp = SPELLS[this.sel], sp = this.spAt();
-        ctx.save(); ctx.translate(tx + 20, ty + 14); ctx.scale(1.7, 1.7); drawSpellIcon(ctx, this.sel); ctx.restore();
+        drawSprite(ctx, spellSprite(this.sel), tx + 20, ty + 14, 1.5);
         text(ctx, Sp.name, tx + 46, ty + 6, { size: 17, color: '#f3e2b0', fam: 'title' });
         text(ctx, `Poziom ${Sp.level} · ${Sp.cost} many · ${Sp.kind === 'battle' ? 'czar bitewny' : 'czar mapy'}`, tx + 46, ty + 24, { size: 12, weight: 600, color: '#c8b88a' });
         ctx.font = font(13, 500, 'body'); wrapText(ctx, `${cap1(Sp.desc(sp))}.`, tw).slice(0, 4).forEach((l, i) => text(ctx, l, tx, ty + 50 + i * 17, { size: 13, weight: 500, color: '#ecd9a8' }));

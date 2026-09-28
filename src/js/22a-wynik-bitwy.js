@@ -53,7 +53,7 @@ function showBattleReport(st, res, R, onOk) {
     text(ctx, label, x + 34, ry + 30, { size: 15, color: '#3a1e08', fam: 'title' });
     if (!list.length) return text(ctx, 'bez strat', x + 190, ry + 30, { size: 15, italic: true, weight: 500, color: '#5a3814' });
     list.slice(0, 8).forEach((L, i) => { const cx = x + 190 + i * 50; ctx.fillStyle = 'rgba(60,36,12,.12)'; ctx.fillRect(cx - 23, ry, 46, 52);
-      ctx.save(); ctx.beginPath(); ctx.rect(cx - 23, ry, 46, 52); ctx.clip(); drawSprite(ctx, battleSprite(L.cid, dir, 'idle', 0), cx, ry + 50, 0.42); ctx.restore(); text(ctx, String(L.n), cx, ry + 64, { size: 14, align: 'center', color: '#2a1606', fam: 'title' }); });
+      ctx.save(); ctx.beginPath(); ctx.rect(cx - 23, ry, 46, 52); ctx.clip(); drawSprite(ctx, battleSprite(L.cid, dir, 'idle', 0), cx, ry + 50, 0.5); ctx.restore(); text(ctx, String(L.n), cx, ry + 64, { size: 14, align: 'center', color: '#2a1606', fam: 'title' }); });
     if (list.length > 8) text(ctx, `+${list.length - 8}`, x + 190 + 8 * 50, ry + 30, { size: 14, color: '#3a1e08' });
   };
   const winnerMe = R.kind === 'win';
@@ -63,7 +63,7 @@ function showBattleReport(st, res, R, onOk) {
       dimScreen(ctx, 0.45); drawParchment(ctx, x, y, w, h); const t = G.time - t0;
       goldText(ctx, R.title, W / 2, y + 34, 30);
       const px = x + 120, py = y + 60, pw = w - 240, ph = 150;
-      ctx.save(); ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip(); drawReportScene(ctx, px, py, pw, ph, R.kind, me, colOf(me), t, st); ctx.restore();
+      pixLayer('report', ctx, px, py, pw, ph, g => drawReportScene(g, px, py, pw, ph, R.kind, me, colOf(me), t, st)); // obraz jako pixel art
       ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 3; ctx.strokeRect(px - 1.5, py - 1.5, pw + 3, ph + 3); ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1; ctx.strokeRect(px - 4, py - 4, pw + 8, ph + 8);
       portrait(ctx, me, x + 20, y + 64, 1, winnerMe); portrait(ctx, foe, x + w - 100, y + 64, -1, !winnerMe && R.kind !== 'fled');
       lines.forEach((l, i) => text(ctx, l, W / 2, y + 240 + i * 22, { size: 17, weight: 500, align: 'center', color: '#2a1606' }));
@@ -139,18 +139,22 @@ function showGameEnd(st, r, msg, opts) {
     msg, buttons, locked: true, gameEnd: r,
     draw(ctx) {
       const t = G.time - t0; G.dirty = true;
-      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(scene, 8, 8, 576, 422, 0, 0, W, H); ctx.restore();
-      if (win) {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,120,${(0.08 + 0.04 * Math.sin(t)).toFixed(3)})`; ctx.fillRect(0, 0, W, H);
+      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(scene, 30, 20, 534, 400, 0, 0, W, H); ctx.restore(); // piksel sceny = 3 px ekranu (równe piksele)
+      if (win) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,120,${(0.08 + 0.04 * Math.sin(t)).toFixed(3)})`; ctx.fillRect(0, 0, W, H); ctx.restore(); } // ciepłe światło: gładkie (dithering dałby siatkę kropek)
+      if (win) pixLayer('endFx', ctx, 0, 0, W, H, ctx => {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
         for (const B of bursts) { const u = ((t - B.t) % 3.2 + 3.2) % 3.2; if (u > 1.4) continue; const k = u / 1.4, rad = 20 + ease(k) * 70; // fajerwerki
           for (let i = 0; i < 26; i++) { const a = i / 26 * TAU, px = B.x + Math.cos(a) * rad, py = B.y + Math.sin(a) * rad + k * k * 30; ctx.fillStyle = B.c; ctx.globalAlpha = 1 - k; ctx.fillRect(px - 1.5, py - 1.5, 3, 3); } }
         ctx.restore(); ctx.globalAlpha = 1;
-      } else {
+      }, { px: 3, add: true });
+      else {
         ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = 0.85; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, H); ctx.restore();
         ctx.fillStyle = 'rgba(10,4,6,.45)'; ctx.fillRect(0, 0, W, H);
+        pixLayer('endFx', ctx, 0, 0, W, H, ctx => {
         for (let i = 0; i < 5; i++) for (let k = 0; k < 6; k++) { const u = (t * 0.15 + k / 6 + i * 0.13) % 1, x = 90 + i * 150 + Math.sin(u * 5 + i) * 20, y = 470 - u * 420; circ(ctx, x, y, 14 + u * 40, `rgba(30,26,28,${(0.35 * (1 - u)).toFixed(2)})`); } // dym z pogorzeliska
         for (let i = 0; i < 30; i++) { const u = (t * 0.2 + i * 0.137) % 1; ctx.fillStyle = `rgba(255,${120 + (i % 4) * 25},40,${(0.8 * (1 - u)).toFixed(2)})`; ctx.fillRect(40 + (i * 97) % 720 + Math.sin(t + i) * 8, 560 - u * 420, 2, 2); }
         for (let i = 0; i < 5; i++) { const a = t * 0.6 + i * TAU / 5, bx2 = 400 + Math.cos(a) * (150 + i * 20), by2 = 110 + Math.sin(a) * 40, f = Math.sin(t * 8 + i) * 4; ctx.fillStyle = '#0a0808'; ctx.beginPath(); ctx.moveTo(bx2 - 9, by2 - f); ctx.quadraticCurveTo(bx2 - 3, by2 - 1, bx2, by2 + 1); ctx.quadraticCurveTo(bx2 + 3, by2 - 1, bx2 + 9, by2 - f); ctx.lineTo(bx2, by2 + 4); ctx.closePath(); ctx.fill(); }
+        }, { px: 3 });
         const vg = ctx.createRadialGradient(W / 2, H / 2, 160, W / 2, H / 2, 520); vg.addColorStop(0, 'rgba(120,0,0,0)'); vg.addColorStop(1, 'rgba(110,10,10,.6)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
       }
       const k = ease(clamp(t / 0.8, 0, 1)); // wstęga z napisem opada z góry
