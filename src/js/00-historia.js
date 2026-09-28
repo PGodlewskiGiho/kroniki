@@ -253,5 +253,12 @@
    viewW/viewH, setZoom; świat rysowany w widoku wirtualnym i skalowany; fale liczone w grubych pikselach).
    Etap C, krok 17: magia frakcji (FACTION_MAGIC: najwyższy poziom gildii i wagi szkół przy losowaniu czarów, bAllowed,
    magicText w opisie frakcji i w gildii). Przystań IV, Twierdza i Cytadela III, reszta V.
+   Krok 25: grafiki jednostek z modeli 3D. Narzędzie tools/grafika3d (three.js w Chromium z Playwrighta, nie trafia do gry):
+   modele.js (render: światło, cienie, odbicia, AO, kontur wewnętrzny, pixel art; tekstury rysowane kodem; bryły),
+   postacie.js (humanoid z cech look), zwierzeta.js (czworonogi, skrzydlate, gady, potwory), podglad.js (galeria PNG),
+   wypal.js (npm run grafika: arkusze PNG w src/grafika/, opis klatek w jednostki.json i bohaterowie.json). build.js wbudowuje
+   je jako UNIT_ART i HERO_ART; 11c-grafika-jednostek.js podaje klatki (battleSprite, creatureSprite, drawCreatureIcon,
+   heroBattleSprite z podmianą koloru-klucza na barwę gracza). Piksel jednostek 1,3 px (bitwa), 1,8 px (mapa). Bez arkusza
+   (machiny) zostaje dawny rysunek wektorowy (battleSprite2D, creatureSprite2D, heroBattleSprite2D).
    ===================================================================================== */
 

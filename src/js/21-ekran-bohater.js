@@ -14,7 +14,7 @@ function drawSpecBox(ctx, h) {
   const r = SPEC_BOX, sp = heroSpec(h), cx = r.x + r.w / 2, hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
   ctx.fillStyle = 'rgba(90,55,20,.14)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill(); ctx.strokeStyle = hot ? '#b8862a' : 'rgba(90,55,20,.5)'; ctx.lineWidth = hot ? 1.8 : 1; ctx.stroke();
   text(ctx, 'Specjalność', cx, r.y + 9, { size: 10, weight: 700, align: 'center', color: '#6a4418' });
-  if (sp.dw) { ctx.save(); rr(ctx, r.x + 3, r.y + 16, r.w - 6, 44, 3); ctx.clip(); drawSprite(ctx, creatureSprite(specUnits(h)[0], 1), cx, r.y + 56, 1.2); ctx.restore(); }
+  if (sp.dw) { ctx.save(); rr(ctx, r.x + 3, r.y + 16, r.w - 6, 44, 3); ctx.clip(); drawCreatureIcon(ctx, specUnits(h)[0], cx, r.y + 56, 1.2); ctx.restore(); }
   else if (sp.res) resIcon(ctx, sp.res, cx, r.y + 38, 30);
   else if (sp.spell) drawSprite(ctx, spellSprite(sp.spell), cx, r.y + 38, 1.8);
   else { ctx.save(); ctx.translate(cx, r.y + 38); ctx.fillStyle = '#6a2a2a'; ctx.fillRect(-12, -14, 24, 28); ctx.fillStyle = '#f0e0b0'; ctx.fillRect(-9, -11, 18, 22); ctx.restore(); iconStat(ctx, 'sp', cx, r.y + 38, '#b8862a'); }

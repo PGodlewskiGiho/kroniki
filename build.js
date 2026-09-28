@@ -2,6 +2,7 @@
 //   node build.js          zbuduj
 //   node build.js --check  sprawdź, czy zbudowany plik jest aktualny (kod 1, gdy nie)
 //   node build.js --watch  buduj po każdej zmianie w src/
+// Grafiki jednostek (src/grafika) wypala z modeli 3D osobny skrypt: npm run grafika (tools/grafika3d/wypal.js).
 // Pliki src/js/*.js są sklejane w kolejności nazw (numer na początku) i wstawiane w miejsce @@SKRYPT@@
 // w src/szablon.html. Wszystkie działają w jednym <script>, więc widzą nawzajem swoje stałe i funkcje.
 'use strict';
@@ -21,7 +22,14 @@ function build() {
     const [fam, range] = f.replace('.woff2', '').split('__'), data = fs.readFileSync(path.join(fdir, f)).toString('base64');
     return `@font-face{font-family:'${fam.replace(/-/g, ' ')}';font-style:normal;font-weight:400 800;font-display:block;src:url(data:font/woff2;base64,${data}) format('woff2');unicode-range:${RANGES[range]}}`;
   }).join('\n') : '';
-  return shell.replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => js);
+  // Grafiki jednostek wypalone z modeli 3D (tools/grafika3d/wypal.js): opis klatek i arkusze PNG jako dane base64
+  const gdir = path.join(SRC, 'grafika'), gmeta = path.join(gdir, 'jednostki.json');
+  const art = fs.existsSync(gmeta) ? JSON.parse(fs.readFileSync(gmeta, 'utf8')) : {};
+  for (const id of Object.keys(art)) { const f = path.join(gdir, 'jednostki', id + '.png'); if (fs.existsSync(f)) art[id].png = fs.readFileSync(f).toString('base64'); else delete art[id]; }
+  const hmeta = path.join(gdir, 'bohaterowie.json'), hart = fs.existsSync(hmeta) ? JSON.parse(fs.readFileSync(hmeta, 'utf8')) : {};
+  for (const id of Object.keys(hart)) { const f = path.join(gdir, 'bohaterowie', id + '.png'); if (fs.existsSync(f)) hart[id].png = fs.readFileSync(f).toString('base64'); else delete hart[id]; }
+  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d): klatki jednostek i bohaterów\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\n`;
+  return shell.replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => artJs + js);
 }
 
 const arg = process.argv[2];

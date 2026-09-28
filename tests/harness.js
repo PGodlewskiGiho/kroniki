@@ -19,6 +19,7 @@ async function openGame() {
   page.on('requestfailed', r => { if (!/fonts\.(googleapis|gstatic)\.com/.test(r.url())) errors.push(`requestfailed: ${r.url()}`); });
   await page.goto(GAME_URL);
   await page.waitForFunction(() => typeof G !== 'undefined' && G.screen);
+  await page.waitForFunction(() => unitArtReady()); // wbudowane arkusze jednostek (obrazki dekodują się asynchronicznie)
   return { browser, page, errors };
 }
 

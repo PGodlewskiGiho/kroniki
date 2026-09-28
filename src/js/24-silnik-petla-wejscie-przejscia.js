@@ -179,7 +179,7 @@ function showGfxSettings(back) {
     [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), fontBtn, wxBtn, { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 100 });
 }
 function init() {
-  loadSettings();
+  loadSettings(); loadUnitArt(); // arkusze jednostek dekodują się w tle (do tego czasu dawne rysunki)
   setPixelSize(G.settings.quality === 'low' ? 2 : PIX_DEFAULT); ZOOM = ZOOMS.includes(G.settings.zoom) ? G.settings.zoom : 1; // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
   G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: false }); // nieprzezroczyste płótno: przeglądarka nie miesza go z tłem strony
   resize(); window.addEventListener('resize', resize); bindInput();

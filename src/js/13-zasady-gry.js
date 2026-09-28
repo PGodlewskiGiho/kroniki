@@ -128,7 +128,7 @@ function showDwelling(st, h, ob) {
   const k = dwellMax(st, h, ob), c = CREATURES[ob.cid];
   const msg = `${SITES.dwelling.name}: ${c.plural.toLowerCase()} (poziom ${c.level}). Czeka ${ob.avail}, koszt ${costText(c.cost)} za jednego. ${k ? `Stać cię na ${k}.` : ob.avail ? 'Brakuje ci surowców.' : 'W tym tygodniu nikt już nie czeka.'}`;
   showDialog(msg, [...(k ? [{ label: `Zwerbuj ${k}`, key: 'enter', action: () => { const e = dwellHire(st, h, ob, k); if (e) G.screens.adventure.flash(e); } }] : []), { label: 'Wyjdź', key: 'escape' }],
-    { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, creatureSprite(ob.cid, 1), cx, cy + 26, 2) });
+    { iconH: 70, icon: (ctx, cx, cy) => drawCreatureIcon(ctx, ob.cid, cx, cy + 26, 2) });
 }
 function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); }
 function visitObject(st, h, ob) {
@@ -180,7 +180,7 @@ function startEncounter(st, h, m) {
   if (m.dead) return; const c = CREATURES[m.cid];
   // h.prev jest puste, gdy bohater sam wszedł na potwora; ustawione, gdy wszedł w strefę strażnika
   const who = h.prev ? `${qtyName(m.count)} ${c.gen} atakuje twojego bohatera!` : `${h.name} atakuje: ${qtyName(m.count).toLowerCase()} ${c.gen}.`;
-  offerBattle(st, h, m, who, m.count * c.value, (ctx, cx, cy) => drawSprite(ctx, creatureSprite(m.cid, 1), cx, cy + 34, 2));
+  offerBattle(st, h, m, who, m.count * c.value, (ctx, cx, cy) => drawCreatureIcon(ctx, m.cid, cx, cy + 34, 2));
 }
 // Skarbiec: opis załogi i łupu, potem zwykłe okno przed bitwą (odwrót cofa bohatera o pole)
 const bankPower = ob => ob.guards.reduce((s, [cid, n]) => s + n * CREATURES[cid].value, 0);

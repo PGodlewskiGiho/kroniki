@@ -9,7 +9,7 @@ function chronicleIconOpts(st) {
     ctx.save(); ctx.fillStyle = '#1a1830'; ctx.beginPath(); ctx.arc(cx, cy, 46, 0, TAU); ctx.fill();
     ctx.strokeStyle = '#c8962a'; ctx.lineWidth = 2; ctx.stroke(); ctx.clip();
     for (let i = 0; i < 24; i++) { ctx.fillStyle = `rgba(255,248,220,${(0.3 + (thash(i, 7, 3) % 70) / 100).toFixed(2)})`; ctx.fillRect(cx - 44 + thash(i, 1, 9) % 88, cy - 44 + thash(i, 2, 9) % 88, 1.5, 1.5); }
-    if (Wk.kind === 'creature') drawSprite(ctx, creatureSprite(Wk.cid, 1), cx, cy + 38, 2.4);
+    if (Wk.kind === 'creature') drawCreatureIcon(ctx, Wk.cid, cx, cy + 38, 2.4);
     else if (Wk.kind === 'gold' || Wk.kind === 'mines') resIcon(ctx, Wk.kind === 'gold' ? 'gold' : 'ore', cx, cy, 52);
     else if (Wk.kind === 'harvest') { resIcon(ctx, 'wood', cx - 18, cy + 4, 40); resIcon(ctx, 'ore', cx + 18, cy + 4, 40); }
     else if (Wk.kind === 'exp') { ctx.fillStyle = '#6a2a2a'; ctx.fillRect(cx - 22, cy - 18, 44, 36); ctx.fillStyle = '#f0e0b0'; ctx.fillRect(cx - 19, cy - 15, 18, 30); ctx.fillRect(cx + 1, cy - 15, 18, 30); iconStat(ctx, 'kn', cx, cy, '#6a4418'); }

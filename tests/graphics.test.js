@@ -150,3 +150,15 @@ test('kółko myszy przybliża i oddala mapę wokół kursora; pole pod kursorem
   });
   assert.deepEqual(r, { z1: 1.5, z2: 0.75, zMin: 0.5, zMax: 2, key: 0.75, same: true });
 });
+
+test('jednostki z modeli 3D: wbudowane arkusze dają klatki bitwy i mapy, odbicie dla drugiej strony, machiny z dawnego rysunku', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const ids = Object.keys(UNIT_ART), a = battleSprite('pikeman', 1, 'idle', 0), b = battleSprite('pikeman', -1, 'idle', 0), m = creatureSprite('pikeman', 1, 2);
+    const poses = ['idle', 'walk', 'attack', 'hurt', 'dead', 'map'].every(p => UNIT_ART.pikeman.f[p].length === (BATTLE_FRAMES[p] || 4));
+    const mach = battleSprite('ballista', 1, 'idle', 0); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 2); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 1);
+    return { n: ids.length, u: a.u, mu: m.u, mirror: a.c.width === b.c.width && a.ax + b.ax === a.c.width, poses, mach: !UNIT_ART.ballista && mach.u !== 1.3, tall: a.c.height };
+  });
+  assert.ok(r.n >= 70, `arkuszy: ${r.n}`); assert.equal(r.u, 1.3); assert.equal(r.mu, 1.8); assert.ok(r.mirror, 'odbicie w poziomie'); assert.ok(r.poses); assert.ok(r.mach);
+  assert.ok(r.tall > 35 && r.tall < 80, `wysokość klatki: ${r.tall}`);
+});
