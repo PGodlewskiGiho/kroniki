@@ -235,7 +235,7 @@ function advanceDay(st) {
   }
   collectIncome(st);
   for (const t of st.towns) t.builtToday = false;
-  if (newWeek) tell(st, -1, startWeek(st, newMonth));
+  if (newWeek) st.weekNews = { wk: st.month * 10 + st.week, month: newMonth, text: startWeek(st, newMonth) }; // ludzie zobaczą ogłoszenie astrologów (KRONIKA TYGODNIA)
   dailyTownCheck(st); rebuildObjIndex(st); MapRender.miniDirty = true;
   return { newWeek };
 }

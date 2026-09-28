@@ -144,6 +144,9 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    bez kar machiny i sharpshooter; licznik strzał przy oddziale. Kliknięcie w wieże miasta na mapie: drawnObjectAt.
    Garnizon z bohaterem (h.garrison = id miasta): swapGarrison (przycisk „Zamień”, klawisz Z) wprowadza bohatera z bramy do murów
    (przejmuje wojsko garnizonu) i wyprowadza tego z murów; heroAt go pomija (brama wolna na najem), townHero broni miasta.
+   Kronika tygodnia (20b): ogłoszenie astrologów z rysunkiem na początku tygodnia (st.weekNews, p.seenWeek, chronicleIconOpts),
+   nowe tygodnie Żniw (+HARVEST drewna i rudy) i Magii (pełna mana), Kronika tawerny (showChronicle: ranking graczy jak Gildia
+   Złodziei, rubryki CHRONICLE_ROWS odkrywane liczbą własnych tawern).
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
@@ -1335,7 +1338,7 @@ function showDialog(msg, opts, extra = {}) {
   const total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
   const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip }); bx += bw + gap; return b; });
   G.modal = {
-    msg, buttons, locked: !!extra.locked, // msg: treść okna (podgląd w testach)
+    msg, buttons, locked: !!extra.locked, hasIcon: !!extra.icon, // msg, hasIcon: treść okna i czy ma rysunek (podgląd w testach)
     draw(ctx) {
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, h);
       lines.forEach((l, i) => text(ctx, l, W / 2, y + 44 + i * 26, { size: 20, weight: 500, align: 'center', color: '#2a1606' }));
@@ -4015,10 +4018,13 @@ function townGrowthWeek(t, st) {
 // --- tygodnie i miesiące z efektem (jak w oryginale). Wynik zależy tylko od daty i ziarna, więc nie trafia do zapisu. ---
 // Pierwszy tydzień gry jest spokojny. Potem: tydzień stworzenia (+5 przyrostu), Dobrobytu (złoto z miast +25%),
 // Górników (kopalnie dają podwójnie), Mędrców (doświadczenie +25%) albo spokojny tydzień z nazwą zwierzęcia.
+const HARVEST = 5;
 const WEEK_EFFECTS = {
   gold: { name: 'Dobrobytu', text: 'miasta dają o 25% więcej złota' },
   mines: { name: 'Górników', text: 'kopalnie wydobywają podwójnie' },
   exp: { name: 'Mędrców', text: 'bohaterowie zdobywają o 25% więcej doświadczenia' },
+  harvest: { name: 'Żniw', text: `każdy gracz dostaje ${HARVEST} drewna i ${HARVEST} rudy` },
+  magic: { name: 'Magii', text: 'bohaterowie odzyskują całą manę' },
 };
 let WEEK_CREATURES = null; // podstawowe jednostki poziomów 1–6 wszystkich frakcji
 function weekInfo(st) {
@@ -4030,7 +4036,7 @@ function weekInfo(st) {
     const cid = WEEK_CREATURES[(h >>> 4) % WEEK_CREATURES.length], g = CREATURES[cid].gen;
     return { kind: 'creature', cid, name: g[0].toUpperCase() + g.slice(1), text: `przyrost: ${CREATURES[cid].plural.toLowerCase()} +5` };
   }
-  const kind = r < 50 ? 'gold' : r < 62 ? 'mines' : r < 74 ? 'exp' : null;
+  const kind = r < 47 ? 'gold' : r < 57 ? 'mines' : r < 67 ? 'exp' : r < 75 ? 'harvest' : r < 82 ? 'magic' : null;
   return kind ? { kind, ...WEEK_EFFECTS[kind] } : calm;
 }
 const weekKind = (st, k) => weekInfo(st).kind === k;
@@ -4050,6 +4056,8 @@ function startWeek(st, newMonth) {
   }
   for (const t of st.towns) townGrowthWeek(t, st);
   weeklyTreasury(st);
+  if (W.kind === 'harvest') for (const p of st.players) { p.resources.wood += HARVEST; p.resources.ore += HARVEST; }
+  if (W.kind === 'magic') for (const h of st.heroes) h.mana = Math.max(h.mana, heroMaxMana(h));
   const S = seasonOf(st), head = newMonth ? `Nadchodzi ${S.name.toLowerCase()}: ${S.text}. ` + (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
   return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
 }
@@ -5079,7 +5087,7 @@ function advanceDay(st) {
   }
   collectIncome(st);
   for (const t of st.towns) t.builtToday = false;
-  if (newWeek) tell(st, -1, startWeek(st, newMonth));
+  if (newWeek) st.weekNews = { wk: st.month * 10 + st.week, month: newMonth, text: startWeek(st, newMonth) }; // ludzie zobaczą ogłoszenie astrologów (KRONIKA TYGODNIA)
   dailyTownCheck(st); rebuildObjIndex(st); MapRender.miniDirty = true;
   return { newWeek };
 }
@@ -5145,7 +5153,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [] },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -9440,8 +9448,9 @@ G.screens.adventure = {
   startHumanTurn(st, live) {
     const p = human(st), msgs = [];
     if (!p.welcomed) { p.welcomed = true; msgs.push([this.welcomeText(st), 'Do dzieła']); }
+    const N = st.weekNews; if (N && p.seenWeek !== N.wk) { p.seenWeek = N.wk; msgs.push([`Astrolodzy ogłaszają: ${N.text}`, 'Wspaniale', chronicleIconOpts(st)]); }
     const inbox = takeInbox(p); if (inbox.length) msgs.push([inbox.join(' '), 'OK']);
-    const next = () => { const m = msgs.shift(); if (m) showDialog(m[0], [{ label: m[1], key: 'enter', action: next }]); };
+    const next = () => { const m = msgs.shift(); if (m) showDialog(m[0], [{ label: m[1], key: 'enter', action: next }], m[2]); };
     if (live && sharedScreen(st)) {
       this.curtain = ME;
       showDialog(`Tura: ${cap1(playerName(st, ME))} (${factionOf(p.faction).name}), ${dateText(st).toLowerCase()}. Pozostali gracze, nie patrzcie na ekran.`, [{ label: 'Zaczynam', key: 'enter', action: () => { this.curtain = null; next(); } }],
@@ -9792,6 +9801,72 @@ function iconPuzzle(ctx, cx, cy, col) { // kawałek układanki
 function iconShovel(ctx, cx, cy, col) { // łopata
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.6); ctx.fillStyle = col; ctx.fillRect(-1.2, -11, 2.4, 13); ctx.fillRect(-4, -12, 8, 2.4);
   ctx.beginPath(); ctx.moveTo(-5, 2); ctx.lineTo(5, 2); ctx.lineTo(4, 8); ctx.lineTo(0, 11); ctx.lineTo(-4, 8); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+// ==================== KRONIKA TYGODNIA ===================================================
+// Ogłoszenie astrologów na początku tygodnia (okno z rysunkiem stwora albo symbolem tygodnia) i Kronika tawerny:
+// ranking graczy jak Gildia Złodziei w Heroes 3. Im więcej własnych miast z tawerną, tym więcej rubryk widać.
+
+// Rysunek do ogłoszenia astrologów: stwór tygodnia, surowiec, księga, gwiazda many albo nocne niebo z księżycem
+function chronicleIconOpts(st) {
+  const Wk = weekInfo(st);
+  return { iconH: 96, icon: (ctx, cx, cy) => {
+    ctx.save(); ctx.fillStyle = '#1a1830'; ctx.beginPath(); ctx.arc(cx, cy, 46, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#c8962a'; ctx.lineWidth = 2; ctx.stroke(); ctx.clip();
+    for (let i = 0; i < 24; i++) { ctx.fillStyle = `rgba(255,248,220,${(0.3 + (thash(i, 7, 3) % 70) / 100).toFixed(2)})`; ctx.fillRect(cx - 44 + thash(i, 1, 9) % 88, cy - 44 + thash(i, 2, 9) % 88, 1.5, 1.5); }
+    if (Wk.kind === 'creature') drawSprite(ctx, creatureSprite(Wk.cid, 1), cx, cy + 38, 2.4);
+    else if (Wk.kind === 'gold' || Wk.kind === 'mines') resIcon(ctx, Wk.kind === 'gold' ? 'gold' : 'ore', cx, cy, 52);
+    else if (Wk.kind === 'harvest') { resIcon(ctx, 'wood', cx - 18, cy + 4, 40); resIcon(ctx, 'ore', cx + 18, cy + 4, 40); }
+    else if (Wk.kind === 'exp') { ctx.fillStyle = '#6a2a2a'; ctx.fillRect(cx - 22, cy - 18, 44, 36); ctx.fillStyle = '#f0e0b0'; ctx.fillRect(cx - 19, cy - 15, 18, 30); ctx.fillRect(cx + 1, cy - 15, 18, 30); iconStat(ctx, 'kn', cx, cy, '#6a4418'); }
+    else if (Wk.kind === 'magic') { ctx.save(); ctx.translate(cx, cy); ctx.scale(3, 3); iconStat(ctx, 'sp', 0, 0, '#8ac0ff'); ctx.restore(); }
+    else { circ(ctx, cx + 8, cy - 6, 22, '#f0ecd8'); circ(ctx, cx + 18, cy - 12, 20, '#1a1830'); } // spokojny tydzień: sierp księżyca
+    ctx.restore();
+  } };
+}
+
+// Rubryki kroniki: [nazwa, ile tawern potrzeba, wartość dla gracza (liczba do porównań), opis wartości]
+const CHRONICLE_ROWS = [
+  ['Miasta', 0, (st, p) => st.towns.filter(t => t.owner === p.id).length],
+  ['Bohaterowie', 0, (st, p) => st.heroes.filter(h => h.owner === p.id).length],
+  ['Złoto', 1, (st, p) => p.resources.gold],
+  ['Najlepszy bohater', 1, (st, p) => Math.max(0, ...st.heroes.filter(h => h.owner === p.id).map(h => h.level)), v => (v ? `poziom ${v}` : '—')],
+  ['Siła armii', 2, (st, p) => Math.round(st.heroes.filter(h => h.owner === p.id).reduce((s, h) => s + armyPower(h.army) * heroFactor(h), 0) + st.towns.filter(t => t.owner === p.id).reduce((s, t) => s + armyPower(t.garrison), 0))],
+  ['Rzadkie surowce', 2, (st, p) => RARE.reduce((s, r) => s + p.resources[r], 0)],
+  ['Obeliski', 3, (st, p) => obelisksSeen(st, p.id)],
+  ['Kopalnie', 3, (st, p) => st.objects.filter(o => o.type === 'mine' && !o.dead && o.owner === p.id).length],
+];
+const tavernCount = (st, pid) => st.towns.filter(t => t.owner === pid && hasB(t, 'tavern')).length;
+// Tabela dla gracza pid: wiersze z wartościami (null = rubryka ukryta, za mało tawern) i numerem prowadzącego
+function chronicleTable(st, pid) {
+  const players = st.players.filter(p => !p.out), k = tavernCount(st, pid);
+  return { players, taverns: k, rows: CHRONICLE_ROWS.map(([name, need, val, fmt]) => {
+    if (k < need) return { name, need, vals: null };
+    const vals = players.map(p => val(st, p)), best = Math.max(...vals);
+    return { name, need, vals, fmt, lead: vals.map(v => v === best && best > 0) };
+  }) };
+}
+function showChronicle(st) {
+  const T0 = chronicleTable(st, ME), cols = T0.players.length, W0 = Math.min(760, 250 + cols * 110), H0 = 172 + T0.rows.length * 34, x = (W - W0) / 2, y = (H - H0) / 2, cw = (W0 - 230) / cols;
+  const btn = new Button(W / 2 - 70, y + H0 - 46, 140, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
+  G.modal = {
+    msg: `Kronika tawerny. Tawerny: ${T0.taverns}.`, buttons: [btn], chronicle: T0,
+    draw(ctx) {
+      dimScreen(ctx, 0.55); drawParchment(ctx, x, y, W0, H0);
+      text(ctx, 'Kronika tawerny', W / 2, y + 30, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, `${dateText(st)} · tydzień ${weekInfo(st).name}`, W / 2, y + 54, { size: 13, italic: true, weight: 500, align: 'center', color: '#5a3814' });
+      T0.players.forEach((p, i) => { const cx = x + 220 + cw * (i + 0.5);
+        ctx.save(); ctx.translate(cx - 12, y + 70); drawFlag(ctx, 0, 0, 24, 13, G.time, ownerColor(st, p.id)); ctx.restore();
+        text(ctx, cap1(playerName(st, p.id)), cx, y + 98, { size: 12, weight: 700, align: 'center', color: p.id === ME ? '#2a6a1e' : '#3a1e08' }); });
+      T0.rows.forEach((r, j) => {
+        const ry = y + 112 + j * 34; ctx.fillStyle = j % 2 ? 'rgba(90,55,20,.06)' : 'rgba(90,55,20,.13)'; ctx.fillRect(x + 20, ry, W0 - 40, 32);
+        text(ctx, r.name, x + 30, ry + 16, { size: 15, color: '#3a1e08', fam: 'title' });
+        if (!r.vals) { text(ctx, `potrzeba ${r.need} ${r.need === 1 ? 'tawerny' : 'tawern'}`, x + 220 + (W0 - 250) / 2, ry + 16, { size: 12, italic: true, weight: 500, align: 'center', color: 'rgba(90,55,20,.55)' }); return; }
+        r.vals.forEach((v, i) => { const cx = x + 220 + cw * (i + 0.5);
+          if (r.lead[i]) { ctx.fillStyle = 'rgba(224,178,74,.35)'; rr(ctx, cx - cw / 2 + 6, ry + 3, cw - 12, 26, 4); ctx.fill(); }
+          text(ctx, r.fmt ? r.fmt(v) : String(v), cx, ry + 16, { size: 14, weight: r.lead[i] ? 800 : 500, align: 'center', color: '#2a1606' }); });
+      });
+      btn.draw(ctx);
+    },
+  };
 }
 // ==================== EKRAN: BOHATER ====================================================
 // Cechy, doświadczenie, armia i ekwipunek. Parametry: { heroId, back: { name, params } } – dokąd wrócić.
@@ -10624,9 +10699,10 @@ G.screens.town = {
   showTavern() {
     const st = G.state, t = this.town(), offers = tavernOffer(st, t.owner), avail = offers.map((o, k) => o && { o, k }).filter(Boolean);
     const who = o => `${o.name} (${(o.female ? HERO_CLASSES[o.cls].nameF : HERO_CLASSES[o.cls].name).toLowerCase()}, ${factionOf(o.fac).name})`;
-    if (!avail.length) return showDialog('W tawernie nikt już nie czeka. Nowi chętni pojawią się w przyszłym tygodniu.', [{ label: 'OK', key: 'enter' }]);
+    if (!avail.length) return showDialog('W tawernie nikt już nie czeka. Nowi chętni pojawią się w przyszłym tygodniu.', [{ label: 'Kronika', key: 'k', action: () => showChronicle(st) }, { label: 'OK', key: 'enter' }]);
     showDialog(`W tawernie czekają: ${avail.map(a => who(a.o)).join(' i ')}. Najem kosztuje ${HERO_COST} złota, a bohater przychodzi z małym oddziałem.`, [
       ...avail.map(({ o, k }) => ({ label: o.name, sub: specName({ ...o, level: 1 }), tip: `Specjalność: ${specText({ ...o, level: 1 })}.`, action: () => { const r = hireHero(st, t, k); this.say(r.error || `${r.hero.name} dołącza do twojej sprawy`); } })),
+      { label: 'Kronika', key: 'k', tip: 'Kronika tawerny: kto prowadzi w królestwie (im więcej masz tawern, tym więcej wiesz).', action: () => showChronicle(st) },
       { label: 'Wyjdź', key: 'escape' },
     ], { iconH: 96, icon: (ctx, cx, cy) => avail.forEach(({ o }, i) => {
       const x = cx + (i - (avail.length - 1) / 2) * 144 - 36, look = { name: o.name, cls: o.cls, female: o.female, asleep: false };

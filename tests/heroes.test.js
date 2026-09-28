@@ -82,7 +82,7 @@ test('okno tawerny w mieście: najem przez kliknięcie budowli', async () => {
   await page.evaluate(() => G.screens.town.showTavern());
   const d = await dialog(page);
   assert.match(d.msg, /W tawernie czekają/);
-  assert.equal(d.labels.length, 3);
+  assert.equal(d.labels.length, 4); // dwóch chętnych, Kronika, Wyjdź
   await frames(page, 3);
   await pressDialog(page, d.labels[0]);
   const r = await page.evaluate(() => ({ heroes: myHeroes(G.state).length, msg: G.screens.town.msg, inTown: !!heroInTown(G.state, G.state.towns[0]) }));

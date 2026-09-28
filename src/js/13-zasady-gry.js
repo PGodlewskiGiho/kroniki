@@ -404,10 +404,13 @@ function townGrowthWeek(t, st) {
 // --- tygodnie i miesiące z efektem (jak w oryginale). Wynik zależy tylko od daty i ziarna, więc nie trafia do zapisu. ---
 // Pierwszy tydzień gry jest spokojny. Potem: tydzień stworzenia (+5 przyrostu), Dobrobytu (złoto z miast +25%),
 // Górników (kopalnie dają podwójnie), Mędrców (doświadczenie +25%) albo spokojny tydzień z nazwą zwierzęcia.
+const HARVEST = 5;
 const WEEK_EFFECTS = {
   gold: { name: 'Dobrobytu', text: 'miasta dają o 25% więcej złota' },
   mines: { name: 'Górników', text: 'kopalnie wydobywają podwójnie' },
   exp: { name: 'Mędrców', text: 'bohaterowie zdobywają o 25% więcej doświadczenia' },
+  harvest: { name: 'Żniw', text: `każdy gracz dostaje ${HARVEST} drewna i ${HARVEST} rudy` },
+  magic: { name: 'Magii', text: 'bohaterowie odzyskują całą manę' },
 };
 let WEEK_CREATURES = null; // podstawowe jednostki poziomów 1–6 wszystkich frakcji
 function weekInfo(st) {
@@ -419,7 +422,7 @@ function weekInfo(st) {
     const cid = WEEK_CREATURES[(h >>> 4) % WEEK_CREATURES.length], g = CREATURES[cid].gen;
     return { kind: 'creature', cid, name: g[0].toUpperCase() + g.slice(1), text: `przyrost: ${CREATURES[cid].plural.toLowerCase()} +5` };
   }
-  const kind = r < 50 ? 'gold' : r < 62 ? 'mines' : r < 74 ? 'exp' : null;
+  const kind = r < 47 ? 'gold' : r < 57 ? 'mines' : r < 67 ? 'exp' : r < 75 ? 'harvest' : r < 82 ? 'magic' : null;
   return kind ? { kind, ...WEEK_EFFECTS[kind] } : calm;
 }
 const weekKind = (st, k) => weekInfo(st).kind === k;
@@ -439,6 +442,8 @@ function startWeek(st, newMonth) {
   }
   for (const t of st.towns) townGrowthWeek(t, st);
   weeklyTreasury(st);
+  if (W.kind === 'harvest') for (const p of st.players) { p.resources.wood += HARVEST; p.resources.ore += HARVEST; }
+  if (W.kind === 'magic') for (const h of st.heroes) h.mana = Math.max(h.mana, heroMaxMana(h));
   const S = seasonOf(st), head = newMonth ? `Nadchodzi ${S.name.toLowerCase()}: ${S.text}. ` + (M.name ? `Nastał Miesiąc ${M.name}: ${M.text}. ` : 'Rozpoczyna się nowy miesiąc. ') : '';
   return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
 }
