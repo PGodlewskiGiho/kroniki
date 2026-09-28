@@ -278,17 +278,17 @@ const WaterFx = {
     return this.pat = gradeCanvas(c); // kolory fal po tej samej korekcji co teren
   },
   draw(b, ch, dx, dy, size, wx, wy) {
-    if (!ch._deep || G.settings.quality === 'low') return; const S = ch.width, t = G.time; // fale na wodzie: nie przy niskiej jakości
+    if (!ch._deep || G.settings.quality === 'low' || ZOOM < 1) return; const S = Math.round(ch.width / PXD), t = G.time; // fale liczone w dawnych (grubych) pikselach: 4 razy mniej pracy. Fale na wodzie: nie przy niskiej jakości ani po oddaleniu (za drobne, a kosztowne)
     const tmp = this.tmp || (this.tmp = document.createElement('canvas')); if (tmp.width !== S) { tmp.width = tmp.height = S; }
     const g = tmp.getContext('2d'), pat = g.createPattern(this.pattern(), 'repeat');
     const layer = (ox, oy, a) => { g.save(); g.globalAlpha = a; g.translate(ox, oy); g.fillStyle = pat; g.fillRect(-ox, -oy, S, S); g.restore(); };
     g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S);
-    const D = PXD; layer(Math.floor(t * 4 * D) - wx, Math.floor(t * 1.5 * D) - wy, 0.5 + 0.2 * Math.sin(t * 1.3)); // prędkość w dawnych pikselach
-    layer(-Math.floor(t * 3 * D) - wx + 21, Math.floor(t * 2 * D) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
-    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0);
+    wx /= PXD; wy /= PXD; layer(Math.floor(t * 4) - wx, Math.floor(t * 1.5) - wy, 0.5 + 0.2 * Math.sin(t * 1.3));
+    layer(-Math.floor(t * 3) - wx + 21, Math.floor(t * 2) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0, S, S);
     b.drawImage(tmp, dx, dy, size, size);
     g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = this.foam || (this.foam = `rgb(${gradeRgb(hexRgb('#eef8fc')).map(Math.round).join(',')})`); g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
-    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0); g.globalCompositeOperation = 'source-over';
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0, S, S); g.globalCompositeOperation = 'source-over';
     b.drawImage(tmp, dx, dy, size, size);
   },
 };
@@ -326,11 +326,11 @@ const MapRender = {
     const idle = window.requestIdleCallback ? f => window.requestIdleCallback(f, { timeout: 120 }) : f => setTimeout(() => f(null), 16);
     idle(dl => {
       this.warming = false; if (!G.state || G.state.map !== this.map) return;
-      const n = this.map.n, nC = Math.ceil(n / CHUNK), CP = CHUNK * T, cam = G.state.cam || { x: 0, y: 0 }, mx = (cam.x + VIEW.w / 2) / CP, my = (cam.y + VIEW.h / 2) / CP, todo = [];
+      const n = this.map.n, nC = Math.ceil(n / CHUNK), CP = CHUNK * T, cam = G.state.cam || { x: 0, y: 0 }, mx = (cam.x + viewW() / 2) / CP, my = (cam.y + viewH() / 2) / CP, todo = [];
       for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!this.has(cx, cy)) todo.push([cx, cy, Math.hypot(cx + 0.5 - mx, cy + 0.5 - my)]);
       if (!todo.length) { this.warmed = true; return; }
       todo.sort((a, b) => a[2] - b[2]);
-      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(3, dl.timeRemaining() - 2) : 6), vis = Math.hypot(VIEW.w, VIEW.h) / CP / 2 + 1;
+      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(3, dl.timeRemaining() - 2) : 6), vis = Math.hypot(viewW(), viewH()) / CP / 2 + 1;
       // tyle kawałków, ile zmieści się w wolnym czasie (wg średniego czasu jednego), ale co najmniej jeden
       for (const [cx, cy, d] of todo) {
         const t0 = performance.now(); this.get(cx, cy); const dt = performance.now() - t0; this.avgGen = this.avgGen ? this.avgGen * 0.8 + dt * 0.2 : dt;
@@ -359,9 +359,18 @@ function layoutAdventure() {
   LIST.x = 600 + dx; LIST.h = 186 + dy; INFOBOX.x = 600 + dx; INFOBOX.y = 456 + dy;
   LIST_ROWS = Math.floor((LIST.h - 28) / LIST_ROW_H); // nad wierszami pasek zakładek (bohaterowie / miasta)
 }
-function camClamp(st) { const m = st.map.n * T; st.cam.x = clamp(st.cam.x, -T, m - VIEW.w + T); st.cam.y = clamp(st.cam.y, -T, m - VIEW.h + T); }
-function centerCam(st, tx, ty) { st.cam = { x: tx * T + T / 2 - VIEW.w / 2, y: ty * T + T / 2 - VIEW.h / 2 }; camClamp(st); }
-function screenToTile(st, x, y) { return { tx: Math.floor((x - VIEW.x + st.cam.x) / T), ty: Math.floor((y - VIEW.y + st.cam.y) / T) }; }
+// Przybliżenie mapy (kółko myszy): ZOOM > 1 powiększa. viewW/viewH = ile pikseli świata mieści widok.
+const ZOOMS = [0.5, 0.75, 1, 1.5, 2]; let ZOOM = 1;
+const viewW = () => VIEW.w / ZOOM, viewH = () => VIEW.h / ZOOM;
+function camClamp(st) { const m = st.map.n * T, w = viewW(), h = viewH(); st.cam.x = w > m + 2 * T ? (m - w) / 2 : clamp(st.cam.x, -T, m - w + T); st.cam.y = h > m + 2 * T ? (m - h) / 2 : clamp(st.cam.y, -T, m - h + T); }
+function centerCam(st, tx, ty) { st.cam = { x: tx * T + T / 2 - viewW() / 2, y: ty * T + T / 2 - viewH() / 2 }; camClamp(st); }
+function screenToTile(st, x, y) { return { tx: Math.floor(((x - VIEW.x) / ZOOM + st.cam.x) / T), ty: Math.floor(((y - VIEW.y) / ZOOM + st.cam.y) / T) }; }
+// Zmienia przybliżenie o krok (d = -1 bliżej, +1 dalej), trzymając w miejscu punkt świata pod myszą (sx, sy)
+function setZoom(st, z, sx = VIEW.x + VIEW.w / 2, sy = VIEW.y + VIEW.h / 2) {
+  z = clamp(z, ZOOMS[0], ZOOMS[ZOOMS.length - 1]); if (z === ZOOM) return false;
+  const wx = st.cam.x + (sx - VIEW.x) / ZOOM, wy = st.cam.y + (sy - VIEW.y) / ZOOM; ZOOM = z;
+  st.cam.x = wx - (sx - VIEW.x) / ZOOM; st.cam.y = wy - (sy - VIEW.y) / ZOOM; camClamp(st); MapRender.warmed = false; G.settings.zoom = z; saveSettings(); return true;
+}
 function drawFog(ctx, st, ox, oy, camX, camY) {
   const n = st.map.n, ex = human(st).explored;
   const tx0 = Math.max(0, Math.floor(camX / T) - 1), ty0 = Math.max(0, Math.floor(camY / T) - 1);
@@ -391,7 +400,7 @@ function drawMinimap(ctx, st) {
     else if (ob.type === 'town') mark(ob.x + 0.5, ob.y, ownerColor(st, ob.owner), 6); // miasto: pola x-1..x+1, y-1..y
   }
   for (const h of st.heroes) if (h.owner === ME && h.garrison == null) mark(h.x + 0.5, h.y + 0.5, h === hero(st) ? '#fff4c8' : '#c8bc98', 4);
-  ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 1.2; ctx.strokeRect(MINI.x + st.cam.x * k, MINI.y + st.cam.y * k, VIEW.w * k, VIEW.h * k);
+  ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 1.2; ctx.strokeRect(MINI.x + st.cam.x * k, MINI.y + st.cam.y * k, viewW() * k, viewH() * k);
   ctx.restore();
 }
 // --- świat w trybie pikselowym ---
@@ -473,7 +482,7 @@ function drawWorldPixel(b, st) {
     }
   }
   drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
-  if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, VIEW)) {
+  if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, { x: VIEW.x, y: VIEW.y, w: VIEW.w * ZOOM, h: VIEW.h * ZOOM })) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
     b.fillStyle = 'rgba(255,240,190,.55)'; const q = PIX; b.fillRect(x, y, T, q); b.fillRect(x, y + T - q, T, q); b.fillRect(x, y + q, q, T - 2 * q); b.fillRect(x + T - q, y + q, q, T - 2 * q);
   }
@@ -511,13 +520,18 @@ function mapLight(w, h) {
 }
 function drawMapView(ctx, st, scr) {
   MapRender.setSeason(seasonIdx(st));
-  {
-    const wb = pixBuf('world', VIEW.w / PIX, VIEW.h / PIX), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
-    b.setTransform(1 / PIX, 0, 0, 1 / PIX, -VIEW.x / PIX, -VIEW.y / PIX); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / PIX, VIEW.h / PIX), 0, 0); b.restore();
-    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(wb, VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.restore();
-  }
-  const ox = VIEW.x - Math.round(st.cam.x / PIX) * PIX, oy = VIEW.y - Math.round(st.cam.y / PIX) * PIX; // to samo zaokrąglenie co w drawWorldPixel
-  ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.clip();
+  // Przybliżenie: świat rysujemy w widoku „wirtualnym” (VIEW o rozmiarze viewW × viewH), potem skalujemy do prawdziwego
+  const RW = VIEW.w, RH = VIEW.h; VIEW.w = Math.round(RW / ZOOM); VIEW.h = Math.round(RH / ZOOM);
+  let ox, oy;
+  try {
+    // bufor świata: przy oddaleniu ma rozmiar ekranu (świat rysowany pomniejszony, z wygładzaniem), inaczej piksele grafiki
+    const sc = Math.min(1, ZOOM) / PIX, bw = Math.round(VIEW.w * sc), bh = Math.round(VIEW.h * sc);
+    const wb = pixBuf('world', bw, bh), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
+    b.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); b.imageSmoothingEnabled = ZOOM < 1; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore();
+    ctx.save(); ctx.imageSmoothingEnabled = ZOOM < 1; ctx.drawImage(wb, VIEW.x, VIEW.y, RW, RH); ctx.restore(); // oddalenie: pomniejszenie z wygładzaniem
+  ox = VIEW.x - Math.round(st.cam.x / PIX) * PIX; oy = VIEW.y - Math.round(st.cam.y / PIX) * PIX; // to samo zaokrąglenie co w drawWorldPixel
+  ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, RW, RH); ctx.clip();
+  ctx.translate(VIEW.x, VIEW.y); ctx.scale(ZOOM, ZOOM); ctx.translate(-VIEW.x, -VIEW.y); // napisy i efekty czarów w skali świata
   scr.floats = (scr.floats || []).filter(f => G.time - f.t < 1.6);
   for (const f of scr.floats) {
     const age = G.time - f.t, fx = ox + f.x * T + 16, fy = oy + f.y * T - 14 - age * 18;
@@ -534,6 +548,9 @@ function drawMapView(ctx, st, scr) {
     else { const g = ctx.createLinearGradient(0, y - 160, 0, y); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, e.col); ctx.fillStyle = g; ctx.fillRect(x - 18 * (1 - f * 0.5), y - 160, 36 * (1 - f * 0.5), 170); }
     ctx.restore();
   } }, { add: true });
+  ctx.restore();
+  } finally { VIEW.w = RW; VIEW.h = RH; }
+  ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.clip();
   drawSeasonFx(ctx, seasonIdx(st));
   drawWeather(ctx, st, ox, oy);
   if (scr.banner) {
@@ -589,7 +606,7 @@ function weatherBlob() {
 function drawWeather(ctx, st, ox, oy) {
   const w = weatherOf(st); if (w === 'clear' || !weatherOn()) return;
   const t = G.time, lo = G.settings.quality === 'low', map = st.map, n = map.n, V = VIEW, blob = weatherBlob();
-  const terAt = (x, y) => { const tx = Math.floor((x - ox) / T), ty = Math.floor((y - oy) / T); return tx < 0 || ty < 0 || tx >= n || ty >= n ? -1 : map.terrain[ty * n + tx]; };
+  const terAt = (x, y) => { const { tx, ty } = screenToTile(st, x, y); return tx < 0 || ty < 0 || tx >= n || ty >= n ? -1 : map.terrain[ty * n + tx]; };
   const blobs = (k, col, a, sp, sw, sh) => { ctx.save(); ctx.globalAlpha = a; for (let i = 0; i < k; i++) { // plamy przesuwają się razem z mapą i z wiatrem
       const x = V.x + ((((i * 263 + ox * 0.9 + t * sp) % (V.w + sw)) + V.w + sw) % (V.w + sw)) - sw / 2, y = V.y + ((((i * 181 + oy * 0.9 + (i % 2 ? 40 : 0)) % (V.h + sh)) + V.h + sh) % (V.h + sh)) - sh / 2;
       ctx.drawImage(col, x - sw / 2, y - sh / 2, sw, sh); } ctx.restore(); };

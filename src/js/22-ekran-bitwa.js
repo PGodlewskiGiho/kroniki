@@ -154,6 +154,7 @@ G.screens.battle = {
   },
   update(dt) {
     const B = this.B; if (!B || this.phase === 'done') return;
+    if (!G.hover && !G.modal && this.phase === 'input') G.wantCursor = battleCursor(this); // miecz, strzała, koń, skrzydło, czar
     BattleFX.update(dt); this.floats = this.floats.filter(f => G.time - f.t < 1.2);
     if (this.phase === 'intro') { this.intro.t += dt; if (this.intro.t >= this.intro.dur) this.nextTurn(); return; }
     if (this.play) { this.play.t += dt; this.stepPlay(); return; }

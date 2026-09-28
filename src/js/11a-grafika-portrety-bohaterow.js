@@ -5,8 +5,8 @@
 // (fryzura, zarost, nakrycie głowy, wyraz twarzy, znaki szczególne, tło); pozostałe cechy i bohaterowie
 // spoza listy dostają wygląd losowany z imienia (ten sam bohater wygląda zawsze tak samo).
 // Peleryna ma kolor gracza. Na ekranie 1 piksel = 1 px logiczny (k = 1) albo 2 px, jak piksel mapy (k = 2).
-const PORTRAIT_N = 36;
-const PORTRAITS = new Map();
+const PORTRAIT_N = 36, PORTRAIT_K = () => PXD; // siatka rysunku 36×36, płótno PORTRAIT_K razy gęstsze
+const PORTRAITS = new Map(); PIX_CLEAR.push(() => PORTRAITS.clear());
 const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058',
   beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e', alchemist: '#5a5e70', wizard: '#2e3a6a',
   overlord: '#3a2a3e', warlock: '#2a1e3a', barbarian: '#6a4a2a', battleMage: '#6a3a24' };
@@ -85,14 +85,14 @@ function heroFace(h) {
   return F;
 }
 function drawHeroPortrait(ctx, x, y, h, col, k = 1) {
-  const s = 36 * k; ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(portraitCanvas(h, col), x, y, s, s); ctx.restore();
+  const s = 36 * k, pc = portraitCanvas(h, col); ctx.save(); ctx.imageSmoothingEnabled = s * G.rs * (G.dpr || 1) < pc.width * 0.9; ctx.drawImage(pc, x, y, s, s); ctx.restore(); // pomniejszony: z wygładzaniem
   if (h.asleep) { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x, y, s, s); text(ctx, 'z z', x + s / 2, y + s / 2, { size: 14, align: 'center', color: '#ecd9a8', fam: 'title' }); }
   ctx.lineWidth = 2; ctx.strokeStyle = '#b8913f'; ctx.strokeRect(x, y, s, s);
 }
 function portraitCanvas(h, col) {
   const key = `${h.name}|${h.cls}|${h.female ? 1 : 0}|${col}`; let c = PORTRAITS.get(key);
   if (!c) {
-    const N = PORTRAIT_N, F = heroFace(h), P = paintPortrait(h, F, col), img = new ImageData(N, N);
+    const F = heroFace(h), P = paintPortrait(h, F, col), N = P.M, img = new ImageData(N, N);
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const p = P.px[y * N + (F.flip ? N - 1 - x : x)]; img.data.set([p[0], p[1], p[2], 255], (y * N + x) * 4); }
     c = document.createElement('canvas'); c.width = c.height = N; c.getContext('2d').putImageData(img, 0, 0); PORTRAITS.set(key, c);
   }
@@ -110,44 +110,67 @@ const mOr = (...m) => (x, y) => m.some(f => f(x, y));
 const mAnd = (...m) => (x, y) => m.every(f => f(x, y));
 const mNot = m => (x, y) => !m(x, y);
 const mirX = pts => pts.map(([x, y]) => [35 - x, y]); // lewa strona twarzy → prawa (środek między kolumnami 17 i 18)
-function pixPainter(N) {
-  const px = new Array(N * N).fill(null), fig = new Uint8Array(N * N), Lz = [-0.5, -0.62, 0.6];
+// Malarz w dwóch skalach: współrzędne rysunku 0..N (siatka 36), płótno ma K razy więcej pikseli (drobny piksel: K = 2).
+// set/dots stawiają piksel rysunku (blok K×K), fset piksel płótna; shape liczy maskę i światło w każdym pikselu płótna
+// (gładsze krawędzie i cieniowanie), tex dostaje współrzędne płótna (drobniejsza faktura włosów i materiału).
+function pixPainter(N, K = 1) {
+  const M = N * K, px = new Array(M * M).fill(null), fig = new Uint8Array(M * M), Lz = [-0.5, -0.62, 0.6];
   const bay = (x, y) => (BAYER4[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
   const P = {
-    px, fig, N, bay,
-    set(x, y, c, isFig = true) { if (x >= 0 && y >= 0 && x < N && y < N && c) { px[y * N + x] = c; fig[y * N + x] = isFig ? 1 : 0; } },
-    tone(R, t, x, y, dither) { const k = clamp(t, 0, 1) * (R.length - 1); return R[clamp(dither ? Math.floor(k + bay(x, y)) : Math.round(k), 0, R.length - 1)]; },
+    px, fig, N, K, M, bay,
+    fset(x, y, c, isFig = true) { if (x >= 0 && y >= 0 && x < M && y < M && c) { px[y * M + x] = c; fig[y * M + x] = isFig ? 1 : 0; } },
+    set(x, y, c, isFig = true) { for (let j = 0; j < K; j++) for (let i = 0; i < K; i++) P.fset(x * K + i, y * K + j, c, isFig); },
+    get(x, y) { return px[y * M + x]; },
+    tone(R, t, x, y, dither) {
+      const k = clamp(t, 0, 1) * (R.length - 1);
+      if (K > 1) { const i = Math.min(R.length - 2, Math.floor(k)), f = Math.round((k - i) * 4) / 4; return pxMix(R[i], R[i + 1], f); } // drobny piksel: płynnie, 4 stopnie między odcieniami (jak malowany portret)
+      return R[clamp(dither ? Math.floor(k + bay(x, y)) : Math.round(k), 0, R.length - 1)];
+    },
     // Wypełnia maskę; odcień z oświetlenia kuli (cx, cy, rx, ry). bias > 0 przyciemnia, tex(x, y) dodaje fakturę.
     shape(mask, R, o = {}) {
       const { cx = 18, cy = 18, rx = 10, ry = 10, bias = 0, dither = false, tex = null } = o;
-      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-        const X = x + 0.5, Y = y + 0.5; if (!mask(X, Y)) continue;
+      for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) {
+        const X = (x + 0.5) / K, Y = (y + 0.5) / K; if (!mask(X, Y)) continue;
         const nx = clamp((X - cx) / rx, -1, 1), ny = clamp((Y - cy) / ry, -1, 1), nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
         const lit = Math.max(0, nx * Lz[0] + ny * Lz[1] + nz * Lz[2]);
-        P.set(x, y, P.tone(R, 1 - (0.12 + 0.88 * lit) + bias + (tex ? tex(x, y) : 0), x, y, dither));
+        P.fset(x, y, P.tone(R, 1 - (0.12 + 0.88 * lit) + bias + (tex ? tex(x, y) : 0), x, y, dither));
       }
     },
+    // Każdy piksel płótna: fn(X, Y, x, y) w jednostkach rysunku (X, Y) i płótna (x, y) zwraca kolor tła
+    each(fn) { for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) { const c = fn((x + 0.5) / K, (y + 0.5) / K, x, y); if (c) P.fset(x, y, c, false); } },
     dots(list, c) { for (const [x, y] of list) P.set(x, y, c); },
   };
   return P;
+}
+// Wykończenie jak w malowanych portretach: światło konturowe od strony lampy, cień przy przeciwnej krawędzi, winieta tła
+function portraitFinish(P) {
+  const M = P.M, K = P.K, out = P.px.slice(), lt = (c, k) => pxMix(c, [255, 236, 200], k), dk = (c, k) => pxMix(c, [8, 4, 14], k);
+  for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) {
+    const i = y * M + x, c = P.px[i]; if (!c) continue;
+    if (!P.fig[i]) { const d = Math.hypot(x / M - 0.42, y / M - 0.38); out[i] = dk(c, clamp((d - 0.28) * 1.1, 0, 0.55)); continue; }
+    const bgAt = (dx, dy) => { const X = x + dx, Y = y + dy; return X < 0 || Y < 0 || X >= M || Y >= M ? false : !P.fig[Y * M + X]; };
+    if (bgAt(-K, -K) || bgAt(-K, 0) && bgAt(0, -K)) out[i] = lt(c, 0.3);
+    else if (bgAt(K, K) || bgAt(2 * K, 0)) out[i] = dk(c, 0.22);
+  }
+  for (let i = 0; i < out.length; i++) P.px[i] = out[i];
 }
 
 // Tło: kolor klasy i scena (niebo, okno zamku, noc, ogień, las albo gładka poświata)
 function paintPortraitBg(P, F, r) {
   const N = P.N, bg = hexRgb(PORTRAIT_BG[F.cls]), set = (x, y, c) => P.set(x, y, c, false);
   const BG = [pxMix(bg, [255, 240, 200], 0.22), pxMix(bg, [255, 240, 200], 0.08), bg, pxMix(bg, [10, 6, 16], 0.25), pxMix(bg, [10, 6, 16], 0.5)];
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) set(x, y, P.tone(BG, 0.05 + Math.hypot(x - 15, (y - 12) * 0.9) / 24, x, y, true));
+  P.each((X, Y, x, y) => P.tone(BG, 0.05 + Math.hypot(X - 15, (Y - 12) * 0.9) / 24, x, y, true));
   if (F.bg === 'sky') {
     const S = [[150, 190, 230], [120, 164, 214], [96, 134, 190], [74, 106, 160]], hill = pxMix(bg, [20, 30, 20], 0.4);
     for (let y = 0; y < 26; y++) for (let x = 0; x < N; x++) set(x, y, S[clamp(Math.floor(y / 7 + P.bay(x, y) * 0.9), 0, 3)]);
     for (const [cx, cy, rx] of [[7, 5, 5], [11, 4, 4], [27, 8, 5]]) for (let x = cx - rx; x <= cx + rx; x++) { set(x, cy, [236, 240, 246]); if (Math.abs(x - cx) < rx - 2) set(x, cy - 1, [250, 250, 252]); }
     for (let x = 0; x < N; x++) { const hy = Math.round(24 + 3 * Math.sin(x / 5 + r() * 0.2)); for (let y = hy; y < N; y++) set(x, y, y === hy ? pxMix(hill, [255, 255, 255], 0.2) : hill); }
   } else if (F.bg === 'night') {
-    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) set(x, y, P.tone([[40, 44, 80], [30, 32, 62], [22, 22, 46], [14, 14, 30]], y / 40 + 0.15, x, y, true));
+    P.each((X, Y, x, y) => P.tone([[40, 44, 80], [30, 32, 62], [22, 22, 46], [14, 14, 30]], Y / 40 + 0.15, x, y, true));
     for (let i = 0; i < 14; i++) set(Math.floor(r() * N), Math.floor(r() * 22), r() < 0.5 ? [220, 220, 255] : [160, 160, 210]);
     for (let y = 2; y < 9; y++) for (let x = 25; x < 33; x++) if (Math.hypot(x - 28.5, y - 5.5) < 3.4 && Math.hypot(x - 29.8, y - 4.6) > 2.6) set(x, y, [236, 232, 200]);
   } else if (F.bg === 'fire') {
-    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) set(x, y, P.tone([[250, 190, 90], [220, 120, 50], [150, 56, 30], [70, 24, 18], [30, 12, 12]], 1 - y / 36 + Math.sin(x * 1.3 + y * 0.4) * 0.08, x, y, true));
+    P.each((X, Y, x, y) => P.tone([[250, 190, 90], [220, 120, 50], [150, 56, 30], [70, 24, 18], [30, 12, 12]], 1 - Y / 36 + Math.sin(X * 1.3 + Y * 0.4) * 0.08, x, y, true));
     for (let i = 0; i < 10; i++) set(Math.floor(r() * N), Math.floor(r() * 30), [255, 220, 140]);
   } else if (F.bg === 'window') {
     const ST = pxRamp(pxMix(bg, [150, 140, 130], 0.5));
@@ -164,12 +187,12 @@ function paintPortraitBg(P, F, r) {
 }
 
 function paintPortrait(h, F, col) {
-  const N = PORTRAIT_N, P = pixPainter(N), cls = F.cls, look = heroClass(h).look, r = mulberry32(heroLookSeed(h) ^ 0x5bd1e995);
+  const N = PORTRAIT_N, P = pixPainter(N, PORTRAIT_K()), cls = F.cls, look = heroClass(h).look, r = mulberry32(heroLookSeed(h) ^ 0x5bd1e995);
   const BG = paintPortraitBg(P, F, r);
   const S = pxRamp(F.skin), HR = pxRamp(F.hair), CL = pxRamp(col);
   const hideHair = ['horned', 'skullhelm', 'cowl', 'helm', 'crest', 'winged', 'hood', 'mitre', 'veil'].includes(F.head);
   const curly = F.style === 'curly';
-  const hairTex = curly ? (x, y) => ((x + y) % 3 === 0 ? 0.28 : (x * y) % 4 === 1 ? -0.12 : 0) : (x, y) => ((x * 2 + y * 3) % 7 === 0 ? 0.22 : 0);
+  const hairTex = curly ? (P.K > 1 ? (x, y) => { const q = Math.sin(x * 0.9) + Math.sin(y * 0.9 + x * 0.3); return q > 1.2 ? 0.2 : q < -1.2 ? -0.1 : 0; } : (x, y) => ((x + y) % 3 === 0 ? 0.28 : (x * y) % 4 === 1 ? -0.12 : 0)) : P.K > 1 ? (x, y) => ((x + (y >> 2)) % 5 === 0 ? 0.13 : (x + (y >> 2)) % 5 === 2 ? -0.06 : 0) : (x, y) => ((x * 2 + y * 3) % 7 === 0 ? 0.22 : 0); // pasma włosów
   // twarz: owal (okrągły, pociągły albo zwykły) zwężony ku brodzie, lekko zwrócony w bok
   const fcx = 18.3, fcy = 14.8, frx = F.face === 'round' ? 7.8 : F.face === 'long' ? 6.6 : 7.2, fry = F.face === 'long' ? 9.8 : F.face === 'round' ? 8.8 : 9.2;
   const taper = F.face === 'round' ? 0.18 : F.f ? 0.45 : 0.3;
@@ -203,12 +226,13 @@ function paintPortrait(h, F, col) {
   if (!hideHair) paintHairPx(P, F, face, S, HR, hairTex);
   paintHeadgearPx(P, F, face, S, CL, look);
   // obrys sylwetki na tle
-  const O = pxMix(BG[4], [0, 0, 0], 0.55), edge = [];
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const i = y * N + x; if (P.fig[i]) continue;
-    if ((x > 0 && P.fig[i - 1]) || (x < N - 1 && P.fig[i + 1]) || (y > 0 && P.fig[i - N]) || (y < N - 1 && P.fig[i + N])) edge.push(i);
+  const O = pxMix(BG[4], [0, 0, 0], 0.55), edge = [], M = P.M;
+  for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) {
+    const i = y * M + x; if (P.fig[i]) continue;
+    if ((x > 0 && P.fig[i - 1]) || (x < M - 1 && P.fig[i + 1]) || (y > 0 && P.fig[i - M]) || (y < M - 1 && P.fig[i + M])) edge.push(i);
   }
   for (const i of edge) P.px[i] = O;
+  if (P.K > 1) portraitFinish(P);
   return P;
 }
 
@@ -241,6 +265,12 @@ function paintFacePx(P, F, face, S, HR) {
   if (m === 'smile') P.dots([[17, my + 1], [18, my + 1]], F.f ? pxMix(lip, [255, 230, 220], 0.3) : S[2]);
   else if (F.f) P.dots([[17, my + 1], [18, my + 1]], pxMix(lip, [255, 220, 210], 0.25)); else P.dots([[17, my + 1], [18, my + 1]], S[2]);
   if (F.f && !F.undead) P.dots([[13, 18], [22, 18]], pxMix(S[2], [220, 110, 110], 0.35));
+  if (P.K > 1) { // drobne szczegóły w pikselach płótna: blask w oczach, nozdrza, blik na nosie i dolnej wardze, kącik ust
+    const K = P.K, ey = F.eyes === 'wide' ? 14 : 15;
+    if (F.eyes !== 'glow') for (const i of [14, 21]) P.fset(i * K, ey * K, [255, 250, 240]);
+    P.fset(17 * K + 1, 18 * K, pxMix(S[0], [255, 255, 255], 0.3)); P.fset(16 * K + 1, 19 * K + 1, S[4]); P.fset(18 * K, 19 * K + 1, S[4]);
+    P.fset(17 * K + 1, (my + 1) * K, pxMix(F.f ? lip : S[1], [255, 240, 230], 0.35)); P.fset(15 * K + 1, my * K + 1, S[3]); P.fset(20 * K, my * K + 1, S[3]);
+  }
   if (F.age === 'old') P.dots([[15, 9], [16, 9], [19, 9], [20, 9], [12, 16], [23, 16], [15, 20], [21, 20]], S[3]);
   const mk = F.marks || [];
   if (mk.includes('scar')) P.dots([[13, 10], [13, 11], [14, 13], [15, 16], [15, 17], [16, 18]], [150, 60, 60]);

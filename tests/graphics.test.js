@@ -19,7 +19,7 @@ test('portrety: każdy bohater frakcji wygląda inaczej, ten sam zawsze tak samo
   });
   assert.equal(r.unique, r.n);
   assert.ok(r.same);
-  assert.equal(r.size, 36);
+  assert.equal(r.size, 36 * PXD_TEST, 'portret 72×72 (siatka 36 w drobnych pikselach)');
   assert.ok(r.looks, 'każdy bohater frakcji ma własny opis wyglądu');
 });
 
@@ -119,4 +119,34 @@ test('drobny piksel: przy niskiej jakości grafika wraca do grubego piksela i od
     return { a, b, u: battleSprite('pikeman', 1, 'idle', 0).u, world: PixBufs.world.width, view: VIEW.w };
   });
   assert.equal(r.b, r.a * 2); assert.equal(r.u, 1); assert.equal(r.world, r.view, 'bufor mapy: 1 piksel grafiki = 1 px logiczny');
+});
+
+test('kursor zmienia się wg celu: mapa (ruch, atak, odwiedziny, zakaz), przyciski, bitwa (miecz, strzała)', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), n = st.map.n; human(st).explored.fill(1); centerCam(st, h.x, h.y); G.modal = null;
+    const at = (tx, ty) => adventureCursor(st, VIEW.x + (tx * T - st.cam.x) * ZOOM + 5, VIEW.y + (ty * T - st.cam.y) * ZOOM + 5);
+    const m = st.objects.find(o => o.type === 'monster' && !o.dead), res = st.objects.find(o => o.type === 'res');
+    let free = null; for (let d = 1; d < 6 && !free; d++) for (const [dx, dy] of [[d, 0], [0, d], [-d, 0], [0, -d]]) { const x = h.x + dx, y = h.y + dy; if (passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y)) { free = [x, y]; break; } }
+    let wall = null; for (let i = 0; i < n * n && !wall; i++) if (st.map.obst[i] && !objectAt(st, i)) wall = [i % n, Math.floor(i / n)];
+    const out = { monster: at(m.x, m.y), res: res ? at(res.x, res.y) : 'visit', free: free ? at(...free) : 'move', wall: at(...wall) };
+    out.css = cursorCss('attack').startsWith('url(data:image/png'); setCursor('attack'); out.set = G.canvas.style.cursor.includes('url(');
+    const B = createBattle(st, h, m), scr = G.screens.battle; setScreen('battle', { battle: B }); scr.phase = 'input';
+    scr.preview = { kind: 'attack' }; out.bAtt = battleCursor(scr); scr.preview = { kind: 'shoot' }; out.bShoot = battleCursor(scr); scr.preview = { kind: 'far' }; out.bFar = battleCursor(scr);
+    return out;
+  });
+  assert.deepEqual(r, { monster: 'attack', res: 'visit', free: 'move', wall: 'no', css: true, set: true, bAtt: 'attack', bShoot: 'shoot', bFar: 'no' });
+});
+
+test('kółko myszy przybliża i oddala mapę wokół kursora; pole pod kursorem zostaje to samo', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const st = G.state, s = G.screens.adventure, h = hero(st); setScreen('adventure', {}); centerCam(st, h.x, h.y);
+    const mx = VIEW.x + 200, my = VIEW.y + 150, before = screenToTile(st, mx, my); G.mouse.x = mx; G.mouse.y = my;
+    s.onWheel(-1); const z1 = ZOOM, after = screenToTile(st, mx, my); s.onWheel(1); s.onWheel(1); const z2 = ZOOM;
+    for (let i = 0; i < 5; i++) s.onWheel(1); const zMin = ZOOM; for (let i = 0; i < 9; i++) s.onWheel(-1); const zMax = ZOOM;
+    s.draw(G.ctx); setZoom(st, 1); s.onKey('-'); const key = ZOOM; setZoom(st, 1);
+    return { z1, z2, zMin, zMax, key, same: before.tx === after.tx && before.ty === after.ty };
+  });
+  assert.deepEqual(r, { z1: 1.5, z2: 0.75, zMin: 0.5, zMax: 2, key: 0.75, same: true });
 });

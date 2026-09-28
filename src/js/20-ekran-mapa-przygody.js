@@ -186,12 +186,17 @@ G.screens.adventure = {
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
   autosave(st) { SaveStore.write('auto', st).catch(() => { if (G.state === st) this.flash('Autozapis się nie udał'); }); },
-  onKey(k) { const h = hero(G.state); if (!h || this.aiRun) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
+  onKey(k) {
+    if ((k === '+' || k === '=' || k === '-') && G.state) { const i = ZOOMS.indexOf(ZOOM); setZoom(G.state, ZOOMS[clamp(i + (k === '-' ? -1 : 1), 0, ZOOMS.length - 1)]); return; } // klawisze +/−: przybliż, oddal
+    const h = hero(G.state); if (!h || this.aiRun) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
   selectHero(h) {
     const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
     setListTab(this, 'heroes'); const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
   },
-  onWheel(d) { if (inRect(G.mouse.x, G.mouse.y, LIST)) this.listScroll = clamp((this.listScroll || 0) + Math.sign(d), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS)); },
+  onWheel(d) {
+    if (inRect(G.mouse.x, G.mouse.y, LIST)) this.listScroll = clamp((this.listScroll || 0) + Math.sign(d), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS));
+    else if (inRect(G.mouse.x, G.mouse.y, VIEW) && G.state) { const i = ZOOMS.indexOf(ZOOM); setZoom(G.state, ZOOMS[clamp(i - Math.sign(d), 0, ZOOMS.length - 1)], G.mouse.x, G.mouse.y); } // kółko: przybliż / oddal wokół kursora
+  },
   nextHero() {
     const st = G.state, mine = myHeroes(st), i0 = mine.indexOf(hero(st)); if (!mine.length) return;
     for (let k = 1; k <= mine.length; k++) { const h = mine[(i0 + k) % mine.length]; if ((!h.asleep && h.garrison == null) || k === mine.length) { this.selectHero(h); break; } }
@@ -288,7 +293,7 @@ G.screens.adventure = {
     if (R.anim) {
       const h = R.anim; h.anim.t += dt;
       const [hx, hy] = heroDrawPos(h), k = Math.min(1, dt * 6);
-      st.cam.x += (hx * T + T / 2 - VIEW.w / 2 - st.cam.x) * k; st.cam.y += (hy * T + T / 2 - VIEW.h / 2 - st.cam.y) * k; camClamp(st);
+      st.cam.x += (hx * T + T / 2 - viewW() / 2 - st.cam.x) * k; st.cam.y += (hy * T + T / 2 - viewH() / 2 - st.cam.y) * k; camClamp(st);
       if (h.anim.t < STEP_TIME) return; h.anim = null; R.anim = null;
     }
     if (R.wait || G.modal || G.fade.next) return;
@@ -360,7 +365,7 @@ G.screens.adventure = {
     this.btnMove.disabled = !(hero(st) && hero(st).path);
     if (G.modal || !h) return;
     if (h.anim) {
-      const [hx, hy] = heroDrawPos(h), tx = hx * T + T / 2 - VIEW.w / 2, ty = hy * T + T / 2 - VIEW.h / 2, k = Math.min(1, dt * 5);
+      const [hx, hy] = heroDrawPos(h), tx = hx * T + T / 2 - viewW() / 2, ty = hy * T + T / 2 - viewH() / 2, k = Math.min(1, dt * 5);
       st.cam.x += (tx - st.cam.x) * k; st.cam.y += (ty - st.cam.y) * k; camClamp(st);
     }
     let vx = 0, vy = 0;
@@ -369,9 +374,9 @@ G.screens.adventure = {
       if (m.x < 10) vx -= 1; else if (m.x > VW - 10) vx += 1;
       if (m.y < 10) vy -= 1; else if (m.y > VH - 10) vy += 1;
     }
-    if (vx || vy) { st.cam.x += vx * 640 * dt; st.cam.y += vy * 640 * dt; camClamp(st); }
-    if (this.drag && this.drag.moved) G.canvas.style.cursor = 'grabbing';
-    else if (inRect(m.x, m.y, VIEW) && !G.hover) G.canvas.style.cursor = 'pointer';
+    if (vx || vy) { st.cam.x += vx * 640 / ZOOM * dt; st.cam.y += vy * 640 / ZOOM * dt; camClamp(st); }
+    if (this.drag && this.drag.moved) G.wantCursor = 'grab';
+    else if (inRect(m.x, m.y, VIEW) && !G.hover && m.type === 'mouse') G.wantCursor = this.aiRun ? 'arrow' : adventureCursor(st, m.x, m.y);
   },
   onPointerDown(x, y) {
     const st = G.state;
@@ -385,7 +390,7 @@ G.screens.adventure = {
     if (d.mode === 'mini') { this.miniJump(x, y); return; }
     if (d.mode === 'list') { if (Math.abs(y - d.sy) > 6) d.moved = true; if (d.moved) this.listScroll = clamp(d.s0 - Math.round((y - d.sy) / LIST_ROW_H), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS)); return; }
     const dx = x - d.sx, dy = y - d.sy; if (!d.moved && Math.hypot(dx, dy) > 6) d.moved = true;
-    if (d.moved) { G.state.cam.x = d.cx - dx; G.state.cam.y = d.cy - dy; camClamp(G.state); }
+    if (d.moved) { G.state.cam.x = d.cx - dx / ZOOM; G.state.cam.y = d.cy - dy / ZOOM; camClamp(G.state); }
   },
   onPointerUp() { const d = this.drag; this.drag = null; return !!(d && (d.mode === 'mini' || d.moved)); }, // przeciągnięcie listy to nie kliknięcie
   miniJump(x, y) { const st = G.state, n = st.map.n; centerCam(st, clamp((x - MINI.x) / MINI.s * n, 0, n) - 0.5, clamp((y - MINI.y) / MINI.s * n, 0, n) - 0.5); },

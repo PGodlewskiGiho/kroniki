@@ -271,6 +271,12 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    (heroBattleSprite w narożniku, heroSpot; czar wylatuje z jego ręki), mur z cegieł z wyszczerbieniami, pęknięciami, mchem
    i wyblakłymi malowidłami (paintBricks), obraz frakcji na zakrytych kawałkach mapy zagadki (puzzleCover), pogoda na mapie
    (weatherOf: losowana codziennie wg pory roku, drawWeather: deszcz, burza, mgła, śnieżyca, cienie chmur; wyłącznik w ustawieniach).
+   Etap B2: drobny piksel w całej grafice (PIX = px logicznych na piksel grafiki: 1, przy niskiej jakości 2; PXD = gęstość
+   względem dawnej grafiki; sprite ma s.u, setPixelSize czyści pamięci obrazów przez PIX_CLEAR). Teren mapy, tło bitwy, sceny
+   miast, interfejs i menu w drobnych pikselach; jednostki z detalami (twarz, szwy, nity, uzda). Portrety 72×72 (siatka 36,
+   pixPainter z K, płynne cieniowanie, portraitFinish: światło konturowe, winieta). Kursory gry (11b-kursory.js: setCursor,
+   adventureCursor, battleCursor; G.wantCursor ustawiany co klatkę). Przybliżenie mapy kółkiem i klawiszami +/− (ZOOM, ZOOMS,
+   viewW/viewH, setZoom; świat rysowany w widoku wirtualnym i skalowany; fale liczone w grubych pikselach).
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
@@ -2885,8 +2891,8 @@ function resIcon(ctx, id, cx, cy, size = 24) { drawSprite(ctx, resSprite(id), cx
 // (fryzura, zarost, nakrycie głowy, wyraz twarzy, znaki szczególne, tło); pozostałe cechy i bohaterowie
 // spoza listy dostają wygląd losowany z imienia (ten sam bohater wygląda zawsze tak samo).
 // Peleryna ma kolor gracza. Na ekranie 1 piksel = 1 px logiczny (k = 1) albo 2 px, jak piksel mapy (k = 2).
-const PORTRAIT_N = 36;
-const PORTRAITS = new Map();
+const PORTRAIT_N = 36, PORTRAIT_K = () => PXD; // siatka rysunku 36×36, płótno PORTRAIT_K razy gęstsze
+const PORTRAITS = new Map(); PIX_CLEAR.push(() => PORTRAITS.clear());
 const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058',
   beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e', alchemist: '#5a5e70', wizard: '#2e3a6a',
   overlord: '#3a2a3e', warlock: '#2a1e3a', barbarian: '#6a4a2a', battleMage: '#6a3a24' };
@@ -2965,14 +2971,14 @@ function heroFace(h) {
   return F;
 }
 function drawHeroPortrait(ctx, x, y, h, col, k = 1) {
-  const s = 36 * k; ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(portraitCanvas(h, col), x, y, s, s); ctx.restore();
+  const s = 36 * k, pc = portraitCanvas(h, col); ctx.save(); ctx.imageSmoothingEnabled = s * G.rs * (G.dpr || 1) < pc.width * 0.9; ctx.drawImage(pc, x, y, s, s); ctx.restore(); // pomniejszony: z wygładzaniem
   if (h.asleep) { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x, y, s, s); text(ctx, 'z z', x + s / 2, y + s / 2, { size: 14, align: 'center', color: '#ecd9a8', fam: 'title' }); }
   ctx.lineWidth = 2; ctx.strokeStyle = '#b8913f'; ctx.strokeRect(x, y, s, s);
 }
 function portraitCanvas(h, col) {
   const key = `${h.name}|${h.cls}|${h.female ? 1 : 0}|${col}`; let c = PORTRAITS.get(key);
   if (!c) {
-    const N = PORTRAIT_N, F = heroFace(h), P = paintPortrait(h, F, col), img = new ImageData(N, N);
+    const F = heroFace(h), P = paintPortrait(h, F, col), N = P.M, img = new ImageData(N, N);
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const p = P.px[y * N + (F.flip ? N - 1 - x : x)]; img.data.set([p[0], p[1], p[2], 255], (y * N + x) * 4); }
     c = document.createElement('canvas'); c.width = c.height = N; c.getContext('2d').putImageData(img, 0, 0); PORTRAITS.set(key, c);
   }
@@ -2990,44 +2996,67 @@ const mOr = (...m) => (x, y) => m.some(f => f(x, y));
 const mAnd = (...m) => (x, y) => m.every(f => f(x, y));
 const mNot = m => (x, y) => !m(x, y);
 const mirX = pts => pts.map(([x, y]) => [35 - x, y]); // lewa strona twarzy → prawa (środek między kolumnami 17 i 18)
-function pixPainter(N) {
-  const px = new Array(N * N).fill(null), fig = new Uint8Array(N * N), Lz = [-0.5, -0.62, 0.6];
+// Malarz w dwóch skalach: współrzędne rysunku 0..N (siatka 36), płótno ma K razy więcej pikseli (drobny piksel: K = 2).
+// set/dots stawiają piksel rysunku (blok K×K), fset piksel płótna; shape liczy maskę i światło w każdym pikselu płótna
+// (gładsze krawędzie i cieniowanie), tex dostaje współrzędne płótna (drobniejsza faktura włosów i materiału).
+function pixPainter(N, K = 1) {
+  const M = N * K, px = new Array(M * M).fill(null), fig = new Uint8Array(M * M), Lz = [-0.5, -0.62, 0.6];
   const bay = (x, y) => (BAYER4[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
   const P = {
-    px, fig, N, bay,
-    set(x, y, c, isFig = true) { if (x >= 0 && y >= 0 && x < N && y < N && c) { px[y * N + x] = c; fig[y * N + x] = isFig ? 1 : 0; } },
-    tone(R, t, x, y, dither) { const k = clamp(t, 0, 1) * (R.length - 1); return R[clamp(dither ? Math.floor(k + bay(x, y)) : Math.round(k), 0, R.length - 1)]; },
+    px, fig, N, K, M, bay,
+    fset(x, y, c, isFig = true) { if (x >= 0 && y >= 0 && x < M && y < M && c) { px[y * M + x] = c; fig[y * M + x] = isFig ? 1 : 0; } },
+    set(x, y, c, isFig = true) { for (let j = 0; j < K; j++) for (let i = 0; i < K; i++) P.fset(x * K + i, y * K + j, c, isFig); },
+    get(x, y) { return px[y * M + x]; },
+    tone(R, t, x, y, dither) {
+      const k = clamp(t, 0, 1) * (R.length - 1);
+      if (K > 1) { const i = Math.min(R.length - 2, Math.floor(k)), f = Math.round((k - i) * 4) / 4; return pxMix(R[i], R[i + 1], f); } // drobny piksel: płynnie, 4 stopnie między odcieniami (jak malowany portret)
+      return R[clamp(dither ? Math.floor(k + bay(x, y)) : Math.round(k), 0, R.length - 1)];
+    },
     // Wypełnia maskę; odcień z oświetlenia kuli (cx, cy, rx, ry). bias > 0 przyciemnia, tex(x, y) dodaje fakturę.
     shape(mask, R, o = {}) {
       const { cx = 18, cy = 18, rx = 10, ry = 10, bias = 0, dither = false, tex = null } = o;
-      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-        const X = x + 0.5, Y = y + 0.5; if (!mask(X, Y)) continue;
+      for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) {
+        const X = (x + 0.5) / K, Y = (y + 0.5) / K; if (!mask(X, Y)) continue;
         const nx = clamp((X - cx) / rx, -1, 1), ny = clamp((Y - cy) / ry, -1, 1), nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
         const lit = Math.max(0, nx * Lz[0] + ny * Lz[1] + nz * Lz[2]);
-        P.set(x, y, P.tone(R, 1 - (0.12 + 0.88 * lit) + bias + (tex ? tex(x, y) : 0), x, y, dither));
+        P.fset(x, y, P.tone(R, 1 - (0.12 + 0.88 * lit) + bias + (tex ? tex(x, y) : 0), x, y, dither));
       }
     },
+    // Każdy piksel płótna: fn(X, Y, x, y) w jednostkach rysunku (X, Y) i płótna (x, y) zwraca kolor tła
+    each(fn) { for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) { const c = fn((x + 0.5) / K, (y + 0.5) / K, x, y); if (c) P.fset(x, y, c, false); } },
     dots(list, c) { for (const [x, y] of list) P.set(x, y, c); },
   };
   return P;
+}
+// Wykończenie jak w malowanych portretach: światło konturowe od strony lampy, cień przy przeciwnej krawędzi, winieta tła
+function portraitFinish(P) {
+  const M = P.M, K = P.K, out = P.px.slice(), lt = (c, k) => pxMix(c, [255, 236, 200], k), dk = (c, k) => pxMix(c, [8, 4, 14], k);
+  for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) {
+    const i = y * M + x, c = P.px[i]; if (!c) continue;
+    if (!P.fig[i]) { const d = Math.hypot(x / M - 0.42, y / M - 0.38); out[i] = dk(c, clamp((d - 0.28) * 1.1, 0, 0.55)); continue; }
+    const bgAt = (dx, dy) => { const X = x + dx, Y = y + dy; return X < 0 || Y < 0 || X >= M || Y >= M ? false : !P.fig[Y * M + X]; };
+    if (bgAt(-K, -K) || bgAt(-K, 0) && bgAt(0, -K)) out[i] = lt(c, 0.3);
+    else if (bgAt(K, K) || bgAt(2 * K, 0)) out[i] = dk(c, 0.22);
+  }
+  for (let i = 0; i < out.length; i++) P.px[i] = out[i];
 }
 
 // Tło: kolor klasy i scena (niebo, okno zamku, noc, ogień, las albo gładka poświata)
 function paintPortraitBg(P, F, r) {
   const N = P.N, bg = hexRgb(PORTRAIT_BG[F.cls]), set = (x, y, c) => P.set(x, y, c, false);
   const BG = [pxMix(bg, [255, 240, 200], 0.22), pxMix(bg, [255, 240, 200], 0.08), bg, pxMix(bg, [10, 6, 16], 0.25), pxMix(bg, [10, 6, 16], 0.5)];
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) set(x, y, P.tone(BG, 0.05 + Math.hypot(x - 15, (y - 12) * 0.9) / 24, x, y, true));
+  P.each((X, Y, x, y) => P.tone(BG, 0.05 + Math.hypot(X - 15, (Y - 12) * 0.9) / 24, x, y, true));
   if (F.bg === 'sky') {
     const S = [[150, 190, 230], [120, 164, 214], [96, 134, 190], [74, 106, 160]], hill = pxMix(bg, [20, 30, 20], 0.4);
     for (let y = 0; y < 26; y++) for (let x = 0; x < N; x++) set(x, y, S[clamp(Math.floor(y / 7 + P.bay(x, y) * 0.9), 0, 3)]);
     for (const [cx, cy, rx] of [[7, 5, 5], [11, 4, 4], [27, 8, 5]]) for (let x = cx - rx; x <= cx + rx; x++) { set(x, cy, [236, 240, 246]); if (Math.abs(x - cx) < rx - 2) set(x, cy - 1, [250, 250, 252]); }
     for (let x = 0; x < N; x++) { const hy = Math.round(24 + 3 * Math.sin(x / 5 + r() * 0.2)); for (let y = hy; y < N; y++) set(x, y, y === hy ? pxMix(hill, [255, 255, 255], 0.2) : hill); }
   } else if (F.bg === 'night') {
-    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) set(x, y, P.tone([[40, 44, 80], [30, 32, 62], [22, 22, 46], [14, 14, 30]], y / 40 + 0.15, x, y, true));
+    P.each((X, Y, x, y) => P.tone([[40, 44, 80], [30, 32, 62], [22, 22, 46], [14, 14, 30]], Y / 40 + 0.15, x, y, true));
     for (let i = 0; i < 14; i++) set(Math.floor(r() * N), Math.floor(r() * 22), r() < 0.5 ? [220, 220, 255] : [160, 160, 210]);
     for (let y = 2; y < 9; y++) for (let x = 25; x < 33; x++) if (Math.hypot(x - 28.5, y - 5.5) < 3.4 && Math.hypot(x - 29.8, y - 4.6) > 2.6) set(x, y, [236, 232, 200]);
   } else if (F.bg === 'fire') {
-    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) set(x, y, P.tone([[250, 190, 90], [220, 120, 50], [150, 56, 30], [70, 24, 18], [30, 12, 12]], 1 - y / 36 + Math.sin(x * 1.3 + y * 0.4) * 0.08, x, y, true));
+    P.each((X, Y, x, y) => P.tone([[250, 190, 90], [220, 120, 50], [150, 56, 30], [70, 24, 18], [30, 12, 12]], 1 - Y / 36 + Math.sin(X * 1.3 + Y * 0.4) * 0.08, x, y, true));
     for (let i = 0; i < 10; i++) set(Math.floor(r() * N), Math.floor(r() * 30), [255, 220, 140]);
   } else if (F.bg === 'window') {
     const ST = pxRamp(pxMix(bg, [150, 140, 130], 0.5));
@@ -3044,12 +3073,12 @@ function paintPortraitBg(P, F, r) {
 }
 
 function paintPortrait(h, F, col) {
-  const N = PORTRAIT_N, P = pixPainter(N), cls = F.cls, look = heroClass(h).look, r = mulberry32(heroLookSeed(h) ^ 0x5bd1e995);
+  const N = PORTRAIT_N, P = pixPainter(N, PORTRAIT_K()), cls = F.cls, look = heroClass(h).look, r = mulberry32(heroLookSeed(h) ^ 0x5bd1e995);
   const BG = paintPortraitBg(P, F, r);
   const S = pxRamp(F.skin), HR = pxRamp(F.hair), CL = pxRamp(col);
   const hideHair = ['horned', 'skullhelm', 'cowl', 'helm', 'crest', 'winged', 'hood', 'mitre', 'veil'].includes(F.head);
   const curly = F.style === 'curly';
-  const hairTex = curly ? (x, y) => ((x + y) % 3 === 0 ? 0.28 : (x * y) % 4 === 1 ? -0.12 : 0) : (x, y) => ((x * 2 + y * 3) % 7 === 0 ? 0.22 : 0);
+  const hairTex = curly ? (P.K > 1 ? (x, y) => { const q = Math.sin(x * 0.9) + Math.sin(y * 0.9 + x * 0.3); return q > 1.2 ? 0.2 : q < -1.2 ? -0.1 : 0; } : (x, y) => ((x + y) % 3 === 0 ? 0.28 : (x * y) % 4 === 1 ? -0.12 : 0)) : P.K > 1 ? (x, y) => ((x + (y >> 2)) % 5 === 0 ? 0.13 : (x + (y >> 2)) % 5 === 2 ? -0.06 : 0) : (x, y) => ((x * 2 + y * 3) % 7 === 0 ? 0.22 : 0); // pasma włosów
   // twarz: owal (okrągły, pociągły albo zwykły) zwężony ku brodzie, lekko zwrócony w bok
   const fcx = 18.3, fcy = 14.8, frx = F.face === 'round' ? 7.8 : F.face === 'long' ? 6.6 : 7.2, fry = F.face === 'long' ? 9.8 : F.face === 'round' ? 8.8 : 9.2;
   const taper = F.face === 'round' ? 0.18 : F.f ? 0.45 : 0.3;
@@ -3083,12 +3112,13 @@ function paintPortrait(h, F, col) {
   if (!hideHair) paintHairPx(P, F, face, S, HR, hairTex);
   paintHeadgearPx(P, F, face, S, CL, look);
   // obrys sylwetki na tle
-  const O = pxMix(BG[4], [0, 0, 0], 0.55), edge = [];
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const i = y * N + x; if (P.fig[i]) continue;
-    if ((x > 0 && P.fig[i - 1]) || (x < N - 1 && P.fig[i + 1]) || (y > 0 && P.fig[i - N]) || (y < N - 1 && P.fig[i + N])) edge.push(i);
+  const O = pxMix(BG[4], [0, 0, 0], 0.55), edge = [], M = P.M;
+  for (let y = 0; y < M; y++) for (let x = 0; x < M; x++) {
+    const i = y * M + x; if (P.fig[i]) continue;
+    if ((x > 0 && P.fig[i - 1]) || (x < M - 1 && P.fig[i + 1]) || (y > 0 && P.fig[i - M]) || (y < M - 1 && P.fig[i + M])) edge.push(i);
   }
   for (const i of edge) P.px[i] = O;
+  if (P.K > 1) portraitFinish(P);
   return P;
 }
 
@@ -3121,6 +3151,12 @@ function paintFacePx(P, F, face, S, HR) {
   if (m === 'smile') P.dots([[17, my + 1], [18, my + 1]], F.f ? pxMix(lip, [255, 230, 220], 0.3) : S[2]);
   else if (F.f) P.dots([[17, my + 1], [18, my + 1]], pxMix(lip, [255, 220, 210], 0.25)); else P.dots([[17, my + 1], [18, my + 1]], S[2]);
   if (F.f && !F.undead) P.dots([[13, 18], [22, 18]], pxMix(S[2], [220, 110, 110], 0.35));
+  if (P.K > 1) { // drobne szczegóły w pikselach płótna: blask w oczach, nozdrza, blik na nosie i dolnej wardze, kącik ust
+    const K = P.K, ey = F.eyes === 'wide' ? 14 : 15;
+    if (F.eyes !== 'glow') for (const i of [14, 21]) P.fset(i * K, ey * K, [255, 250, 240]);
+    P.fset(17 * K + 1, 18 * K, pxMix(S[0], [255, 255, 255], 0.3)); P.fset(16 * K + 1, 19 * K + 1, S[4]); P.fset(18 * K, 19 * K + 1, S[4]);
+    P.fset(17 * K + 1, (my + 1) * K, pxMix(F.f ? lip : S[1], [255, 240, 230], 0.35)); P.fset(15 * K + 1, my * K + 1, S[3]); P.fset(20 * K, my * K + 1, S[3]);
+  }
   if (F.age === 'old') P.dots([[15, 9], [16, 9], [19, 9], [20, 9], [12, 16], [23, 16], [15, 20], [21, 20]], S[3]);
   const mk = F.marks || [];
   if (mk.includes('scar')) P.dots([[13, 10], [13, 11], [14, 13], [15, 16], [15, 17], [16, 18]], [150, 60, 60]);
@@ -3412,6 +3448,94 @@ function castleSprite(fac, col, walls) {
 }
 // Bruk dziedzińca za murem (tło bitwy): kolor płyt [jasny, ciemny] wg frakcji
 const SIEGE_PAVE = { haven: [[176, 164, 140], [142, 130, 108]], sylvan: [[140, 146, 118], [108, 116, 90]], barrow: [[104, 98, 114], [78, 74, 88]], fortress: [[132, 126, 98], [102, 98, 74]], inferno: [[96, 64, 58], [70, 44, 40]], academy: [[188, 194, 206], [150, 156, 170]], dungeon: [[92, 86, 100], [66, 60, 74]], stronghold: [[186, 150, 104], [148, 114, 76]] };
+// ==================== GRAFIKA: KURSORY ======================================================
+// Pikselowe kursory w stylu gry (sprite'y jak reszta grafiki, z obrysem), zmieniane zależnie od tego, co wskazuje mysz:
+// strzałka, dłoń nad przyciskiem, koń (ruch), szary koń (za daleko), miecz (atak), strzała (strzał), brama (odwiedziny),
+// kotwica (łódź), gwiazdka (czar), skrzydło (lot), zakaz, krzyż strzałek (przeciąganie mapy).
+// Obraz ma 32×32 px CSS (przy drobnym pikselu 1 piksel grafiki = 1 px), a gorący punkt zależy od kształtu.
+const CURSORS = {
+  arrow: { hot: [2, 2], fb: 'default', draw(c) {
+    fillPoly(c, [[2, 2], [2, 25], [8, 19.5], [12, 28.5], [16, 26.5], [12.2, 18], [19.5, 18]], '#e8c060');
+    fillPoly(c, [[2, 2], [2, 25], [4.5, 22.5], [4.5, 7]], '#fff0b0'); fillPoly(c, [[8, 19.5], [12, 28.5], [16, 26.5], [12.2, 18], [19.5, 18], [13, 16]], '#a8782a');
+  } },
+  hand: { hot: [11, 2], fb: 'pointer', draw(c) {
+    const g = '#e8c070', d = '#b08040';
+    rr(c, 9, 2, 5.5, 16, 2.5); c.fillStyle = g; c.fill(); // palec wskazujący
+    for (const [x, y] of [[14, 10], [18, 11], [22, 13]]) { rr(c, x, y, 4.5, 9, 2); c.fillStyle = d; c.fill(); }
+    fillPoly(c, [[4, 15], [7, 13], [10, 18], [9, 22]], g); rr(c, 7, 15, 19, 11, 4); c.fillStyle = g; c.fill();
+    limb(c, 10.5, 4, 10.5, 14, 1, '#fff0c0'); c.fillStyle = '#9aa0ac'; c.fillRect(8, 25, 17, 5); c.fillStyle = '#d8dce4'; c.fillRect(8, 25, 17, 1.6);
+  } },
+  move: { hot: [16, 16], fb: 'pointer', draw(c) { cursorHorse(c, '#e8c060', '#8a5a1e'); } },
+  far: { hot: [16, 16], fb: 'pointer', draw(c) { cursorHorse(c, '#a8a4a0', '#5a5650'); } },
+  attack: { hot: [16, 16], fb: 'crosshair', draw(c) {
+    limb(c, 7, 25, 25, 7, 3.4, '#d8dce4'); fillPoly(c, [[23.5, 5.5], [28.5, 3.5], [26.5, 8.5]], '#ffffff'); limb(c, 9, 22, 24, 7, 1, '#ffffff');
+    limb(c, 5, 19, 13, 27, 3, '#e0b24a'); limb(c, 7, 25, 3.5, 28.5, 3, '#6a4424'); circ(c, 3, 29, 2, '#e0b24a');
+  } },
+  shoot: { hot: [16, 16], fb: 'crosshair', draw(c) {
+    limb(c, 5, 27, 24, 8, 1.8, '#9a6a3a'); fillPoly(c, [[21, 6], [28, 4], [26, 11]], '#dfe3ea');
+    fillPoly(c, [[5, 27], [3, 20], [8, 24]], '#d84a3a'); fillPoly(c, [[5, 27], [12, 29], [8, 24]], '#f07a5a');
+  } },
+  visit: { hot: [16, 16], fb: 'pointer', draw(c) {
+    c.fillStyle = '#8a8478'; c.fillRect(4, 10, 24, 19); fillPoly(c, [[4, 10], [4, 5], [8, 5], [8, 8], [12, 8], [12, 5], [20, 5], [20, 8], [24, 8], [24, 5], [28, 5], [28, 10]], '#a8a296');
+    c.fillStyle = '#3a2410'; c.beginPath(); c.moveTo(10, 29); c.lineTo(10, 18); c.arc(16, 18, 6, Math.PI, 0); c.lineTo(22, 29); c.fill();
+    c.fillStyle = '#e8c060'; c.fillRect(15, 20, 2, 9); circ(c, 16, 14, 1.4, '#ffd060');
+  } },
+  boat: { hot: [16, 16], fb: 'pointer', draw(c) {
+    c.lineCap = 'round'; c.strokeStyle = '#d8dce4'; c.lineWidth = 3; c.beginPath(); c.arc(16, 6, 3, 0, TAU); c.stroke();
+    limb(c, 16, 9, 16, 27, 3, '#d8dce4'); limb(c, 10, 13, 22, 13, 3, '#d8dce4'); c.beginPath(); c.arc(16, 17, 11, Math.PI * 0.15, Math.PI * 0.85); c.stroke();
+  } },
+  spell: { hot: [16, 16], fb: 'crosshair', draw(c) {
+    fillPoly(c, [[16, 2], [19, 13], [30, 16], [19, 19], [16, 30], [13, 19], [2, 16], [13, 13]], '#b890ff'); fillPoly(c, [[16, 8], [18, 14], [24, 16], [18, 18], [16, 24], [14, 18], [8, 16], [14, 14]], '#e8d8ff');
+    circ(c, 16, 16, 2, '#ffffff'); circ(c, 26, 5, 1.6, '#e8d8ff'); circ(c, 6, 26, 1.3, '#e8d8ff');
+  } },
+  fly: { hot: [16, 16], fb: 'pointer', draw(c) {
+    fillPoly(c, [[4, 24], [8, 12], [16, 5], [28, 3], [24, 9], [28, 10], [22, 15], [26, 17], [18, 21], [20, 23], [10, 25]], '#f0ecf4');
+    limb(c, 6, 23, 22, 7, 1, '#b8b0c8'); limb(c, 9, 23, 20, 14, 1, '#b8b0c8');
+  } },
+  no: { hot: [16, 16], fb: 'not-allowed', draw(c) { c.strokeStyle = '#d83a2a'; c.lineWidth = 4; c.beginPath(); c.arc(16, 16, 11, 0, TAU); c.stroke(); limb(c, 8.5, 8.5, 23.5, 23.5, 4, '#d83a2a'); } },
+  grab: { hot: [16, 16], fb: 'grabbing', draw(c) {
+    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const tx = 16 + dx * 13, ty = 16 + dy * 13, px = -dy, py = dx; fillPoly(c, [[tx, ty], [tx - dx * 6 + px * 5, ty - dy * 6 + py * 5], [tx - dx * 6 - px * 5, ty - dy * 6 - py * 5]], '#e8c060'); }
+    limb(c, 16, 6, 16, 26, 2.4, '#e8c060'); limb(c, 6, 16, 26, 16, 2.4, '#e8c060'); circ(c, 16, 16, 2.4, '#fff0b0');
+  } },
+};
+// Głowa konia (ruch po mapie i w bitwie), jak kursor ruchu w klasycznych grach o bohaterach
+function cursorHorse(c, col, mane) {
+  fillPoly(c, [[9, 29], [10, 18], [6, 14], [7, 8], [12, 4], [15, 1], [16, 5], [21, 6], [28, 13], [28, 17], [25, 18], [20, 15], [18, 20], [21, 29]], col);
+  fillPoly(c, [[12, 4], [15, 1], [16, 5], [11, 13], [10, 20], [9, 29], [6, 29], [7, 17], [5, 12]], mane);
+  circ(c, 19, 9.5, 1.3, '#1a0e06'); circ(c, 26, 15, 0.9, '#1a0e06'); limb(c, 14, 7, 12, 14, 0.8, LT(col, 0.35));
+}
+let CURSOR_CSS = {}; PIX_CLEAR.push(() => { CURSOR_CSS = {}; G._cursor = null; });
+function cursorCss(kind) {
+  if (CURSOR_CSS[kind]) return CURSOR_CSS[kind];
+  const C = CURSORS[kind] || CURSORS.arrow, s = sprite(`cursor_${kind}`, 16, 16, 0, 0, C.draw, OUTLINE, 0.5);
+  const cv = document.createElement('canvas'); cv.width = cv.height = 32; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(s.c, 0, 0, 32, 32);
+  return (CURSOR_CSS[kind] = `url(${cv.toDataURL()}) ${C.hot[0]} ${C.hot[1]}, ${C.fb}`);
+}
+// Ustawia kursor (tylko gdy się zmienił: podmiana obrazu kursora co klatkę kosztowałaby przeglądarkę)
+function setCursor(kind) {
+  if (!G.canvas || G._cursor === kind) return; G._cursor = kind;
+  try { G.canvas.style.cursor = cursorCss(kind); } catch (e) { G.canvas.style.cursor = (CURSORS[kind] || CURSORS.arrow).fb; }
+}
+// Mapa przygody: co pokazuje kursor nad polem (x, y) dla wybranego bohatera
+function adventureCursor(st, x, y) {
+  const h = hero(st); if (!h || !st.map) return 'arrow';
+  const { tx, ty } = screenToTile(st, x, y), n = st.map.n; if (tx < 0 || ty < 0 || tx >= n || ty >= n) return 'arrow';
+  const i = ty * n + tx; if (!human(st).explored[i]) return 'no';
+  const oh = heroAt(st, tx, ty); if (oh) return oh === h ? 'arrow' : oh.owner === h.owner ? 'visit' : 'attack';
+  const ob = objectAt(st, i);
+  if (ob) { if (ob.type === 'monster') return 'attack'; if (ob.type === 'town') return st.towns[ob.townId].owner === h.owner ? 'visit' : 'attack'; if (ob.type === 'boat') return 'boat'; return 'visit'; }
+  if (!passableTile(st, tx, ty, h)) return 'no';
+  if (h.path && h.path.length) { const e = h.path[h.path.length - 1]; if (e[0] === tx && e[1] === ty && pathCostMp(st, h) > h.mp) return 'far'; }
+  return 'move';
+}
+// Koszt całej wyznaczonej ścieżki (punkty ruchu)
+function pathCostMp(st, h) { let c = 0, px = h.x, py = h.y; for (const [x, y] of h.path) { c += stepCost(st.map, px, py, x, y, h); px = x; py = y; } return c; }
+// Bitwa: kursor z podglądu akcji pod myszą
+function battleCursor(scr) {
+  const p = scr.preview, u = scr.B && scr.B.active; if (!p) return scr.casting ? 'no' : 'arrow';
+  if (p.kind === 'move') return u && hasAb(u, 'fly') ? 'fly' : 'move';
+  return { attack: 'attack', shoot: 'shoot', cast: 'spell', nocast: 'no', far: 'no', info: 'arrow' }[p.kind] || 'arrow';
+}
 // ==================== GRAFIKA: STWORY TWIERDZY I INFERNA =================================
 // Rodzaje ciała spoza postaci i czworonogów: ważka ('insect'), bazyliszek ('lizard'), gorgona ('bull'), hydra ('hydra').
 // Jak pozostałe stwory: (0,0) = ziemia pod stworem, przód w stronę +x, P = { t, walk, atk, hurt }.
@@ -6006,17 +6130,17 @@ const WaterFx = {
     return this.pat = gradeCanvas(c); // kolory fal po tej samej korekcji co teren
   },
   draw(b, ch, dx, dy, size, wx, wy) {
-    if (!ch._deep || G.settings.quality === 'low') return; const S = ch.width, t = G.time; // fale na wodzie: nie przy niskiej jakości
+    if (!ch._deep || G.settings.quality === 'low' || ZOOM < 1) return; const S = Math.round(ch.width / PXD), t = G.time; // fale liczone w dawnych (grubych) pikselach: 4 razy mniej pracy. Fale na wodzie: nie przy niskiej jakości ani po oddaleniu (za drobne, a kosztowne)
     const tmp = this.tmp || (this.tmp = document.createElement('canvas')); if (tmp.width !== S) { tmp.width = tmp.height = S; }
     const g = tmp.getContext('2d'), pat = g.createPattern(this.pattern(), 'repeat');
     const layer = (ox, oy, a) => { g.save(); g.globalAlpha = a; g.translate(ox, oy); g.fillStyle = pat; g.fillRect(-ox, -oy, S, S); g.restore(); };
     g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S);
-    const D = PXD; layer(Math.floor(t * 4 * D) - wx, Math.floor(t * 1.5 * D) - wy, 0.5 + 0.2 * Math.sin(t * 1.3)); // prędkość w dawnych pikselach
-    layer(-Math.floor(t * 3 * D) - wx + 21, Math.floor(t * 2 * D) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
-    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0);
+    wx /= PXD; wy /= PXD; layer(Math.floor(t * 4) - wx, Math.floor(t * 1.5) - wy, 0.5 + 0.2 * Math.sin(t * 1.3));
+    layer(-Math.floor(t * 3) - wx + 21, Math.floor(t * 2) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0, S, S);
     b.drawImage(tmp, dx, dy, size, size);
     g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = this.foam || (this.foam = `rgb(${gradeRgb(hexRgb('#eef8fc')).map(Math.round).join(',')})`); g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
-    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0); g.globalCompositeOperation = 'source-over';
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0, S, S); g.globalCompositeOperation = 'source-over';
     b.drawImage(tmp, dx, dy, size, size);
   },
 };
@@ -6054,11 +6178,11 @@ const MapRender = {
     const idle = window.requestIdleCallback ? f => window.requestIdleCallback(f, { timeout: 120 }) : f => setTimeout(() => f(null), 16);
     idle(dl => {
       this.warming = false; if (!G.state || G.state.map !== this.map) return;
-      const n = this.map.n, nC = Math.ceil(n / CHUNK), CP = CHUNK * T, cam = G.state.cam || { x: 0, y: 0 }, mx = (cam.x + VIEW.w / 2) / CP, my = (cam.y + VIEW.h / 2) / CP, todo = [];
+      const n = this.map.n, nC = Math.ceil(n / CHUNK), CP = CHUNK * T, cam = G.state.cam || { x: 0, y: 0 }, mx = (cam.x + viewW() / 2) / CP, my = (cam.y + viewH() / 2) / CP, todo = [];
       for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!this.has(cx, cy)) todo.push([cx, cy, Math.hypot(cx + 0.5 - mx, cy + 0.5 - my)]);
       if (!todo.length) { this.warmed = true; return; }
       todo.sort((a, b) => a[2] - b[2]);
-      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(3, dl.timeRemaining() - 2) : 6), vis = Math.hypot(VIEW.w, VIEW.h) / CP / 2 + 1;
+      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(3, dl.timeRemaining() - 2) : 6), vis = Math.hypot(viewW(), viewH()) / CP / 2 + 1;
       // tyle kawałków, ile zmieści się w wolnym czasie (wg średniego czasu jednego), ale co najmniej jeden
       for (const [cx, cy, d] of todo) {
         const t0 = performance.now(); this.get(cx, cy); const dt = performance.now() - t0; this.avgGen = this.avgGen ? this.avgGen * 0.8 + dt * 0.2 : dt;
@@ -6087,9 +6211,18 @@ function layoutAdventure() {
   LIST.x = 600 + dx; LIST.h = 186 + dy; INFOBOX.x = 600 + dx; INFOBOX.y = 456 + dy;
   LIST_ROWS = Math.floor((LIST.h - 28) / LIST_ROW_H); // nad wierszami pasek zakładek (bohaterowie / miasta)
 }
-function camClamp(st) { const m = st.map.n * T; st.cam.x = clamp(st.cam.x, -T, m - VIEW.w + T); st.cam.y = clamp(st.cam.y, -T, m - VIEW.h + T); }
-function centerCam(st, tx, ty) { st.cam = { x: tx * T + T / 2 - VIEW.w / 2, y: ty * T + T / 2 - VIEW.h / 2 }; camClamp(st); }
-function screenToTile(st, x, y) { return { tx: Math.floor((x - VIEW.x + st.cam.x) / T), ty: Math.floor((y - VIEW.y + st.cam.y) / T) }; }
+// Przybliżenie mapy (kółko myszy): ZOOM > 1 powiększa. viewW/viewH = ile pikseli świata mieści widok.
+const ZOOMS = [0.5, 0.75, 1, 1.5, 2]; let ZOOM = 1;
+const viewW = () => VIEW.w / ZOOM, viewH = () => VIEW.h / ZOOM;
+function camClamp(st) { const m = st.map.n * T, w = viewW(), h = viewH(); st.cam.x = w > m + 2 * T ? (m - w) / 2 : clamp(st.cam.x, -T, m - w + T); st.cam.y = h > m + 2 * T ? (m - h) / 2 : clamp(st.cam.y, -T, m - h + T); }
+function centerCam(st, tx, ty) { st.cam = { x: tx * T + T / 2 - viewW() / 2, y: ty * T + T / 2 - viewH() / 2 }; camClamp(st); }
+function screenToTile(st, x, y) { return { tx: Math.floor(((x - VIEW.x) / ZOOM + st.cam.x) / T), ty: Math.floor(((y - VIEW.y) / ZOOM + st.cam.y) / T) }; }
+// Zmienia przybliżenie o krok (d = -1 bliżej, +1 dalej), trzymając w miejscu punkt świata pod myszą (sx, sy)
+function setZoom(st, z, sx = VIEW.x + VIEW.w / 2, sy = VIEW.y + VIEW.h / 2) {
+  z = clamp(z, ZOOMS[0], ZOOMS[ZOOMS.length - 1]); if (z === ZOOM) return false;
+  const wx = st.cam.x + (sx - VIEW.x) / ZOOM, wy = st.cam.y + (sy - VIEW.y) / ZOOM; ZOOM = z;
+  st.cam.x = wx - (sx - VIEW.x) / ZOOM; st.cam.y = wy - (sy - VIEW.y) / ZOOM; camClamp(st); MapRender.warmed = false; G.settings.zoom = z; saveSettings(); return true;
+}
 function drawFog(ctx, st, ox, oy, camX, camY) {
   const n = st.map.n, ex = human(st).explored;
   const tx0 = Math.max(0, Math.floor(camX / T) - 1), ty0 = Math.max(0, Math.floor(camY / T) - 1);
@@ -6119,7 +6252,7 @@ function drawMinimap(ctx, st) {
     else if (ob.type === 'town') mark(ob.x + 0.5, ob.y, ownerColor(st, ob.owner), 6); // miasto: pola x-1..x+1, y-1..y
   }
   for (const h of st.heroes) if (h.owner === ME && h.garrison == null) mark(h.x + 0.5, h.y + 0.5, h === hero(st) ? '#fff4c8' : '#c8bc98', 4);
-  ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 1.2; ctx.strokeRect(MINI.x + st.cam.x * k, MINI.y + st.cam.y * k, VIEW.w * k, VIEW.h * k);
+  ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 1.2; ctx.strokeRect(MINI.x + st.cam.x * k, MINI.y + st.cam.y * k, viewW() * k, viewH() * k);
   ctx.restore();
 }
 // --- świat w trybie pikselowym ---
@@ -6201,7 +6334,7 @@ function drawWorldPixel(b, st) {
     }
   }
   drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
-  if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, VIEW)) {
+  if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, { x: VIEW.x, y: VIEW.y, w: VIEW.w * ZOOM, h: VIEW.h * ZOOM })) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
     b.fillStyle = 'rgba(255,240,190,.55)'; const q = PIX; b.fillRect(x, y, T, q); b.fillRect(x, y + T - q, T, q); b.fillRect(x, y + q, q, T - 2 * q); b.fillRect(x + T - q, y + q, q, T - 2 * q);
   }
@@ -6239,13 +6372,18 @@ function mapLight(w, h) {
 }
 function drawMapView(ctx, st, scr) {
   MapRender.setSeason(seasonIdx(st));
-  {
-    const wb = pixBuf('world', VIEW.w / PIX, VIEW.h / PIX), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
-    b.setTransform(1 / PIX, 0, 0, 1 / PIX, -VIEW.x / PIX, -VIEW.y / PIX); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / PIX, VIEW.h / PIX), 0, 0); b.restore();
-    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(wb, VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.restore();
-  }
-  const ox = VIEW.x - Math.round(st.cam.x / PIX) * PIX, oy = VIEW.y - Math.round(st.cam.y / PIX) * PIX; // to samo zaokrąglenie co w drawWorldPixel
-  ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.clip();
+  // Przybliżenie: świat rysujemy w widoku „wirtualnym” (VIEW o rozmiarze viewW × viewH), potem skalujemy do prawdziwego
+  const RW = VIEW.w, RH = VIEW.h; VIEW.w = Math.round(RW / ZOOM); VIEW.h = Math.round(RH / ZOOM);
+  let ox, oy;
+  try {
+    // bufor świata: przy oddaleniu ma rozmiar ekranu (świat rysowany pomniejszony, z wygładzaniem), inaczej piksele grafiki
+    const sc = Math.min(1, ZOOM) / PIX, bw = Math.round(VIEW.w * sc), bh = Math.round(VIEW.h * sc);
+    const wb = pixBuf('world', bw, bh), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
+    b.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); b.imageSmoothingEnabled = ZOOM < 1; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore();
+    ctx.save(); ctx.imageSmoothingEnabled = ZOOM < 1; ctx.drawImage(wb, VIEW.x, VIEW.y, RW, RH); ctx.restore(); // oddalenie: pomniejszenie z wygładzaniem
+  ox = VIEW.x - Math.round(st.cam.x / PIX) * PIX; oy = VIEW.y - Math.round(st.cam.y / PIX) * PIX; // to samo zaokrąglenie co w drawWorldPixel
+  ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, RW, RH); ctx.clip();
+  ctx.translate(VIEW.x, VIEW.y); ctx.scale(ZOOM, ZOOM); ctx.translate(-VIEW.x, -VIEW.y); // napisy i efekty czarów w skali świata
   scr.floats = (scr.floats || []).filter(f => G.time - f.t < 1.6);
   for (const f of scr.floats) {
     const age = G.time - f.t, fx = ox + f.x * T + 16, fy = oy + f.y * T - 14 - age * 18;
@@ -6262,6 +6400,9 @@ function drawMapView(ctx, st, scr) {
     else { const g = ctx.createLinearGradient(0, y - 160, 0, y); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, e.col); ctx.fillStyle = g; ctx.fillRect(x - 18 * (1 - f * 0.5), y - 160, 36 * (1 - f * 0.5), 170); }
     ctx.restore();
   } }, { add: true });
+  ctx.restore();
+  } finally { VIEW.w = RW; VIEW.h = RH; }
+  ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.clip();
   drawSeasonFx(ctx, seasonIdx(st));
   drawWeather(ctx, st, ox, oy);
   if (scr.banner) {
@@ -6317,7 +6458,7 @@ function weatherBlob() {
 function drawWeather(ctx, st, ox, oy) {
   const w = weatherOf(st); if (w === 'clear' || !weatherOn()) return;
   const t = G.time, lo = G.settings.quality === 'low', map = st.map, n = map.n, V = VIEW, blob = weatherBlob();
-  const terAt = (x, y) => { const tx = Math.floor((x - ox) / T), ty = Math.floor((y - oy) / T); return tx < 0 || ty < 0 || tx >= n || ty >= n ? -1 : map.terrain[ty * n + tx]; };
+  const terAt = (x, y) => { const { tx, ty } = screenToTile(st, x, y); return tx < 0 || ty < 0 || tx >= n || ty >= n ? -1 : map.terrain[ty * n + tx]; };
   const blobs = (k, col, a, sp, sw, sh) => { ctx.save(); ctx.globalAlpha = a; for (let i = 0; i < k; i++) { // plamy przesuwają się razem z mapą i z wiatrem
       const x = V.x + ((((i * 263 + ox * 0.9 + t * sp) % (V.w + sw)) + V.w + sw) % (V.w + sw)) - sw / 2, y = V.y + ((((i * 181 + oy * 0.9 + (i % 2 ? 40 : 0)) % (V.h + sh)) + V.h + sh) % (V.h + sh)) - sh / 2;
       ctx.drawImage(col, x - sw / 2, y - sh / 2, sw, sh); } ctx.restore(); };
@@ -10032,12 +10173,17 @@ G.screens.adventure = {
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
   autosave(st) { SaveStore.write('auto', st).catch(() => { if (G.state === st) this.flash('Autozapis się nie udał'); }); },
-  onKey(k) { const h = hero(G.state); if (!h || this.aiRun) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
+  onKey(k) {
+    if ((k === '+' || k === '=' || k === '-') && G.state) { const i = ZOOMS.indexOf(ZOOM); setZoom(G.state, ZOOMS[clamp(i + (k === '-' ? -1 : 1), 0, ZOOMS.length - 1)]); return; } // klawisze +/−: przybliż, oddal
+    const h = hero(G.state); if (!h || this.aiRun) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
   selectHero(h) {
     const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
     setListTab(this, 'heroes'); const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
   },
-  onWheel(d) { if (inRect(G.mouse.x, G.mouse.y, LIST)) this.listScroll = clamp((this.listScroll || 0) + Math.sign(d), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS)); },
+  onWheel(d) {
+    if (inRect(G.mouse.x, G.mouse.y, LIST)) this.listScroll = clamp((this.listScroll || 0) + Math.sign(d), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS));
+    else if (inRect(G.mouse.x, G.mouse.y, VIEW) && G.state) { const i = ZOOMS.indexOf(ZOOM); setZoom(G.state, ZOOMS[clamp(i - Math.sign(d), 0, ZOOMS.length - 1)], G.mouse.x, G.mouse.y); } // kółko: przybliż / oddal wokół kursora
+  },
   nextHero() {
     const st = G.state, mine = myHeroes(st), i0 = mine.indexOf(hero(st)); if (!mine.length) return;
     for (let k = 1; k <= mine.length; k++) { const h = mine[(i0 + k) % mine.length]; if ((!h.asleep && h.garrison == null) || k === mine.length) { this.selectHero(h); break; } }
@@ -10134,7 +10280,7 @@ G.screens.adventure = {
     if (R.anim) {
       const h = R.anim; h.anim.t += dt;
       const [hx, hy] = heroDrawPos(h), k = Math.min(1, dt * 6);
-      st.cam.x += (hx * T + T / 2 - VIEW.w / 2 - st.cam.x) * k; st.cam.y += (hy * T + T / 2 - VIEW.h / 2 - st.cam.y) * k; camClamp(st);
+      st.cam.x += (hx * T + T / 2 - viewW() / 2 - st.cam.x) * k; st.cam.y += (hy * T + T / 2 - viewH() / 2 - st.cam.y) * k; camClamp(st);
       if (h.anim.t < STEP_TIME) return; h.anim = null; R.anim = null;
     }
     if (R.wait || G.modal || G.fade.next) return;
@@ -10206,7 +10352,7 @@ G.screens.adventure = {
     this.btnMove.disabled = !(hero(st) && hero(st).path);
     if (G.modal || !h) return;
     if (h.anim) {
-      const [hx, hy] = heroDrawPos(h), tx = hx * T + T / 2 - VIEW.w / 2, ty = hy * T + T / 2 - VIEW.h / 2, k = Math.min(1, dt * 5);
+      const [hx, hy] = heroDrawPos(h), tx = hx * T + T / 2 - viewW() / 2, ty = hy * T + T / 2 - viewH() / 2, k = Math.min(1, dt * 5);
       st.cam.x += (tx - st.cam.x) * k; st.cam.y += (ty - st.cam.y) * k; camClamp(st);
     }
     let vx = 0, vy = 0;
@@ -10215,9 +10361,9 @@ G.screens.adventure = {
       if (m.x < 10) vx -= 1; else if (m.x > VW - 10) vx += 1;
       if (m.y < 10) vy -= 1; else if (m.y > VH - 10) vy += 1;
     }
-    if (vx || vy) { st.cam.x += vx * 640 * dt; st.cam.y += vy * 640 * dt; camClamp(st); }
-    if (this.drag && this.drag.moved) G.canvas.style.cursor = 'grabbing';
-    else if (inRect(m.x, m.y, VIEW) && !G.hover) G.canvas.style.cursor = 'pointer';
+    if (vx || vy) { st.cam.x += vx * 640 / ZOOM * dt; st.cam.y += vy * 640 / ZOOM * dt; camClamp(st); }
+    if (this.drag && this.drag.moved) G.wantCursor = 'grab';
+    else if (inRect(m.x, m.y, VIEW) && !G.hover && m.type === 'mouse') G.wantCursor = this.aiRun ? 'arrow' : adventureCursor(st, m.x, m.y);
   },
   onPointerDown(x, y) {
     const st = G.state;
@@ -10231,7 +10377,7 @@ G.screens.adventure = {
     if (d.mode === 'mini') { this.miniJump(x, y); return; }
     if (d.mode === 'list') { if (Math.abs(y - d.sy) > 6) d.moved = true; if (d.moved) this.listScroll = clamp(d.s0 - Math.round((y - d.sy) / LIST_ROW_H), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS)); return; }
     const dx = x - d.sx, dy = y - d.sy; if (!d.moved && Math.hypot(dx, dy) > 6) d.moved = true;
-    if (d.moved) { G.state.cam.x = d.cx - dx; G.state.cam.y = d.cy - dy; camClamp(G.state); }
+    if (d.moved) { G.state.cam.x = d.cx - dx / ZOOM; G.state.cam.y = d.cy - dy / ZOOM; camClamp(G.state); }
   },
   onPointerUp() { const d = this.drag; this.drag = null; return !!(d && (d.mode === 'mini' || d.moved)); }, // przeciągnięcie listy to nie kliknięcie
   miniJump(x, y) { const st = G.state, n = st.map.n; centerCam(st, clamp((x - MINI.x) / MINI.s * n, 0, n) - 0.5, clamp((y - MINI.y) / MINI.s * n, 0, n) - 0.5); },
@@ -10872,6 +11018,7 @@ G.screens.battle = {
   },
   update(dt) {
     const B = this.B; if (!B || this.phase === 'done') return;
+    if (!G.hover && !G.modal && this.phase === 'input') G.wantCursor = battleCursor(this); // miecz, strzała, koń, skrzydło, czar
     BattleFX.update(dt); this.floats = this.floats.filter(f => G.time - f.t < 1.2);
     if (this.phase === 'intro') { this.intro.t += dt; if (this.intro.t >= this.intro.dur) this.nextTurn(); return; }
     if (this.play) { this.play.t += dt; this.stepPlay(); return; }
@@ -11701,7 +11848,7 @@ G.go = function (name, params) { if (G.fade.next) return; G.fade.next = { name, 
 function activeButtons() { return G.modal ? G.modal.buttons : (G.screen.buttons || []); }
 function updateHover() {
   G.hover = G.fade.next ? null : (activeButtons().find(b => !b.disabled && b.hit(G.mouse.x, G.mouse.y)) || null);
-  G.canvas.style.cursor = G.hover ? 'pointer' : 'default';
+  G.wantCursor = G.hover ? 'hand' : 'arrow'; // ekran może to zmienić w update (np. miecz nad wrogiem); ustawia pętla
 }
 function handleClick(x, y) {
   if (G.fade.next) return;
@@ -11784,7 +11931,7 @@ function update(dt) {
   G.time += dt; const f = G.fade, sp = 3.5;
   if (f.a < f.target) f.a = Math.min(f.target, f.a + dt * sp); else if (f.a > f.target) f.a = Math.max(f.target, f.a - dt * sp);
   if (f.next && f.a >= 1) { const n = f.next; f.next = null; f.target = 0; setScreen(n.name, n.params); } // enter() może od razu zlecić kolejne przejście
-  syncMouse(); updateHover(); if (G.screen.update) G.screen.update(dt);
+  syncMouse(); updateHover(); if (G.screen.update) G.screen.update(dt); setCursor(G.wantCursor);
 }
 function render() {
   // przesunięcie wyśrodkowanego ekranu w całych pikselach: przy ułamkowym każdy obraz byłby filtrowany (wolno i nieostro)
@@ -11876,7 +12023,7 @@ function showGfxSettings(back) {
 }
 function init() {
   loadSettings();
-  setPixelSize(G.settings.quality === 'low' ? 2 : 1); // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
+  setPixelSize(G.settings.quality === 'low' ? 2 : 1); ZOOM = ZOOMS.includes(G.settings.zoom) ? G.settings.zoom : 1; // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
   G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: false }); // nieprzezroczyste płótno: przeglądarka nie miesza go z tłem strony
   resize(); window.addEventListener('resize', resize); bindInput();
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)
