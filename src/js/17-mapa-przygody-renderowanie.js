@@ -178,7 +178,7 @@ function landColor(t, ax, ay, hh) {
   switch (t) {
     case TER.GRASS: if (hh < 0.02) col = P[3]; else if (hh < 0.035) col = P[0]; else if (hh > 0.997) col = PC.flY; else if (hh > 0.994) col = PC.flW; break;
     case TER.DIRT: if (hh < 0.03) col = P[3]; else if (hh > 0.985) col = P[2]; break;
-    case TER.SAND: if (((ay + Math.floor(vnoise2(ax / 9, ay / 9, 5) * 8)) % 6) === 0 && hh < 0.6) col = P[2]; else if (hh < 0.025) col = P[3]; break;
+    case TER.SAND: if (((Math.floor(ay) + Math.floor(vnoise2(ax / 9, ay / 9, 5) * 8)) % 6) === 0 && hh < 0.6) col = P[2]; else if (hh < 0.025) col = P[3]; break;
     case TER.SNOW: if (hh < 0.015) col = P[3]; else if (hh > 0.99) col = PC.white; break;
     case TER.SWAMP: { const pv = vnoise2(ax / 4, ay / 4, 41); if (pv > 0.7) col = P[3]; else if (pv > 0.66) col = PC.rim; else if (hh < 0.02) col = PC.reed; break; }
     case TER.ROUGH: if (hh < 0.035) col = P[3]; else if (hh > 0.985) col = P[2]; break;
@@ -199,64 +199,66 @@ function seasonLand(col, t, ax, ay, hh, S) {
 }
 function renderChunkPixel(map, cx, cy) {
   const SN = MapRender.season || 0;
-  const n = map.n, S = CHUNK * AP, M = 5, R = S + 2 * M, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
+  // D = gęstość pikseli (PXD): teren liczony w drobnych pikselach, współrzędne tekstur (ax, ay) w dawnych pikselach grafiki
+  const D = PXD, n = map.n, S = CHUNK * AP, SF = S * D, M = 5, MF = M * D, R = SF + 2 * MF, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
   for (let y = 0; y < R; y++) for (let x = 0; x < R; x++) {
-    const ax = bx + x - M, ay = by + y - M, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
+    const ax = bx + (x - MF) / D, ay = by + (y - MF) / D, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
     tid[y * R + x] = map.terrain[clamp(Math.floor((ay + jy) / AP), 0, n - 1) * n + clamp(Math.floor((ax + jx) / AP), 0, n - 1)];
   }
-  const TT = (x, y) => tid[(y + M) * R + x + M], rd = map.road, at = (x, y) => (x >= 0 && y >= 0 && x < n && y < n) ? rd[y * n + x] : 0;
+  const TT = (x, y) => tid[(y + MF) * R + x + MF], TO = (x, y) => TT(Math.floor(x * D), Math.floor(y * D)), rd = map.road, at = (x, y) => (x >= 0 && y >= 0 && x < n && y < n) ? rd[y * n + x] : 0;
   const segs = [], x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1;
   for (let y = y0; y <= y0 + CHUNK + 1; y++) for (let x = x0; x <= x0 + CHUNK + 1; x++) {
     const t = at(x, y); if (!t) continue; const px = x * AP + 8 - bx, py = y * AP + 8 - by; let any = false;
     for (let d = 0; d < 8; d++) { const dx = DX8[d], dy = DY8[d]; if (!at(x + dx, y + dy) || (dx && dy && (at(x + dx, y) || at(x, y + dy)))) continue; segs.push([px, py, px + dx * 8, py + dy * 8, t]); any = true; }
     if (!any) segs.push([px, py, px, py, t]);
   }
-  const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), img = g.createImageData(S, S), d = img.data;
-  const wm = new Uint8Array(S * S); let wet = false; // maska wody: 1 = głębia (fale), 2 = pas przy brzegu (piana)
-  for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
-    const k = (py * S + px) * 4, ax = bx + px, ay = by + py; let col;
+  const c = document.createElement('canvas'); c.width = c.height = SF; const g = c.getContext('2d'), img = g.createImageData(SF, SF), d = img.data;
+  const wm = new Uint8Array(SF * SF); let wet = false; // maska wody: 1 = głębia (fale), 2 = pas przy brzegu (piana)
+  for (let fy = 0; fy < SF; fy++) for (let fx = 0; fx < SF; fx++) {
+    const k = (fy * SF + fx) * 4, px = fx / D, py = fy / D, ax = bx + px, ay = by + py, ia = Math.floor(ax), ja = Math.floor(ay), wi = fy * SF + fx; let col;
     if (ax >= lim || ay >= lim) col = PC.void;
     else {
-      const t = TT(px, py), hh = thash(ax, ay, 77) / 4294967296;
+      const t = TT(fx, fy), hh = thash(bx * D + fx, by * D + fy, 77) / 4294967296; // drobny szum: plamki w drobnych pikselach
       if (t === TER.WATER) {
-        let near = 9; for (const r of RING) if (TT(px + r[0], py + r[1]) !== TER.WATER) { near = r[2]; break; }
-        wm[py * S + px] = near <= 2 ? 2 : 1; wet = true;
-        if (SN === 3 && near <= 4) { wm[py * S + px] = 0; col = near === 1 ? SNOWC[2] : (thash(ax >> 1, ay >> 2, 81) % 23 === 0) ? [150, 186, 214] : near <= 2 ? [206, 226, 240] : [184, 212, 232]; } // zimą lód przy brzegu
+        let near = 9; for (const r of RING) if (TT(fx + r[0] * D, fy + r[1] * D) !== TER.WATER) { near = r[2]; break; }
+        wm[wi] = near <= 2 ? 2 : 1; wet = true;
+        if (SN === 3 && near <= 4) { wm[wi] = 0; col = near === 1 ? SNOWC[2] : (thash(ax >> 1, ay >> 2, 81) % 23 === 0) ? [150, 186, 214] : near <= 2 ? [206, 226, 240] : [184, 212, 232]; } // zimą lód przy brzegu
         else if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
         else { const P = TPAL[0]; col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; }
       } else {
         col = seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN);
-        const below = TT(px, py + 1); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
+        const below = TT(fx, fy + D); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
       }
       if (segs.length) {
         let best = 99, bt = 0;
-        for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5, py + 0.5, s); if (dd < best) { best = dd; bt = s[4]; } }
-        if (best <= 4.3) wm[py * S + px] = 0;
-        if (best <= 3.3) col = SN === 3 ? mixRgb(roadColor(bt, ax, ay, hh), SNOWC[0], 0.3) : roadColor(bt, ax, ay, hh); else if (best <= 4.3) col = PC.edge;
+        for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5 / D, py + 0.5 / D, s); if (dd < best) { best = dd; bt = s[4]; } }
+        if (best <= 4.3) wm[wi] = 0;
+        if (best <= 3.3) col = SN === 3 ? mixRgb(roadColor(bt, ia, ja, hh), SNOWC[0], 0.3) : roadColor(bt, ia, ja, hh); else if (best <= 4.3) col = PC.edge;
       }
     }
     d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2]; d[k + 3] = 255;
   }
-  g.putImageData(img, 0, 0);
+  g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); // sprite'y ozdób i przeszkód w dawnych jednostkach
+  const put = (gg, sp, x, y) => gg.drawImage(sp.c, x - sp.ax / D, y - sp.ay / D, sp.c.width / D, sp.c.height / D);
   // ozdoby: pola bez przeszkody, drogi i obiektu; teren sprawdzany w miejscu ozdoby (brzegi terenu są poszarpane)
   const oa = G.state && G.state.map === map ? G.state.objAt : null;
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x0 + CHUNK + 1); x++) {
     const i = y * n + x, h = thash(x, y, map.seed + 5); if (map.obst[i] || rd[i] || (oa && oa[i]) || h % 100 >= 22) continue;
     const lx = x * AP + 8 - bx + ((h >>> 8) % 9) - 4, ly = y * AP + 8 - by + ((h >>> 12) % 7) - 3, t = map.terrain[i];
-    if (t === TER.WATER || lx < -M || ly < -M || lx >= S + M || ly >= S + M || TT(lx, ly) !== t) continue;
-    const s = decorSprite(t, (h >>> 16) % 4, SN); g.drawImage(s.c, lx - s.ax, ly - s.ay);
+    if (t === TER.WATER || lx < -M || ly < -M || lx >= S + M || ly >= S + M || TO(lx, ly) !== t) continue;
+    const s = decorSprite(t, (h >>> 16) % 4, SN); put(g, s, lx, ly);
   }
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
     const o = map.obst[y * n + x]; if (!o) continue;
     const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
-    g.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
+    put(g, s, x * AP + 8 - bx, y * AP + 8 - by);
   }
-  gradeCanvas(c, bx, by);
+  gradeCanvas(c, bx * D, by * D);
   if (wet) { // maski do animacji wody (WaterFx); przeszkody stojące nad wodą (drzewa, góry przy brzegu) ją zasłaniają
-    const mk = v => { const m = document.createElement('canvas'); m.width = m.height = S; const mg = m.getContext('2d'), mi = mg.createImageData(S, S);
-      for (let i = 0; i < S * S; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out';
+    const mk = v => { const m = document.createElement('canvas'); m.width = m.height = SF; const mg = m.getContext('2d'), mi = mg.createImageData(SF, SF);
+      for (let i = 0; i < SF * SF; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out'; mg.setTransform(D, 0, 0, D, 0, 0);
       for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
-        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); mg.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
+        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); put(mg, s, x * AP + 8 - bx, y * AP + 8 - by);
       }
       return m; };
     c._deep = mk(1); c._shore = mk(2);
@@ -276,17 +278,17 @@ const WaterFx = {
     return this.pat = gradeCanvas(c); // kolory fal po tej samej korekcji co teren
   },
   draw(b, ch, dx, dy, size, wx, wy) {
-    if (!ch._deep || G.settings.quality === 'low') return; const S = ch.width, t = G.time; // fale na wodzie: nie przy niskiej jakości
+    if (!ch._deep || G.settings.quality === 'low' || ZOOM < 1) return; const S = Math.round(ch.width / PXD), t = G.time; // fale liczone w dawnych (grubych) pikselach: 4 razy mniej pracy. Fale na wodzie: nie przy niskiej jakości ani po oddaleniu (za drobne, a kosztowne)
     const tmp = this.tmp || (this.tmp = document.createElement('canvas')); if (tmp.width !== S) { tmp.width = tmp.height = S; }
     const g = tmp.getContext('2d'), pat = g.createPattern(this.pattern(), 'repeat');
     const layer = (ox, oy, a) => { g.save(); g.globalAlpha = a; g.translate(ox, oy); g.fillStyle = pat; g.fillRect(-ox, -oy, S, S); g.restore(); };
     g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S);
-    layer(Math.floor(t * 4) - wx, Math.floor(t * 1.5) - wy, 0.5 + 0.2 * Math.sin(t * 1.3));
+    wx /= PXD; wy /= PXD; layer(Math.floor(t * 4) - wx, Math.floor(t * 1.5) - wy, 0.5 + 0.2 * Math.sin(t * 1.3));
     layer(-Math.floor(t * 3) - wx + 21, Math.floor(t * 2) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
-    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0);
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0, S, S);
     b.drawImage(tmp, dx, dy, size, size);
     g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = this.foam || (this.foam = `rgb(${gradeRgb(hexRgb('#eef8fc')).map(Math.round).join(',')})`); g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
-    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0); g.globalCompositeOperation = 'source-over';
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0, S, S); g.globalCompositeOperation = 'source-over';
     b.drawImage(tmp, dx, dy, size, size);
   },
 };
@@ -324,11 +326,11 @@ const MapRender = {
     const idle = window.requestIdleCallback ? f => window.requestIdleCallback(f, { timeout: 120 }) : f => setTimeout(() => f(null), 16);
     idle(dl => {
       this.warming = false; if (!G.state || G.state.map !== this.map) return;
-      const n = this.map.n, nC = Math.ceil(n / CHUNK), CP = CHUNK * T, cam = G.state.cam || { x: 0, y: 0 }, mx = (cam.x + VIEW.w / 2) / CP, my = (cam.y + VIEW.h / 2) / CP, todo = [];
+      const n = this.map.n, nC = Math.ceil(n / CHUNK), CP = CHUNK * T, cam = G.state.cam || { x: 0, y: 0 }, mx = (cam.x + viewW() / 2) / CP, my = (cam.y + viewH() / 2) / CP, todo = [];
       for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!this.has(cx, cy)) todo.push([cx, cy, Math.hypot(cx + 0.5 - mx, cy + 0.5 - my)]);
       if (!todo.length) { this.warmed = true; return; }
       todo.sort((a, b) => a[2] - b[2]);
-      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(3, dl.timeRemaining() - 2) : 6), vis = Math.hypot(VIEW.w, VIEW.h) / CP / 2 + 1;
+      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(3, dl.timeRemaining() - 2) : 6), vis = Math.hypot(viewW(), viewH()) / CP / 2 + 1;
       // tyle kawałków, ile zmieści się w wolnym czasie (wg średniego czasu jednego), ale co najmniej jeden
       for (const [cx, cy, d] of todo) {
         const t0 = performance.now(); this.get(cx, cy); const dt = performance.now() - t0; this.avgGen = this.avgGen ? this.avgGen * 0.8 + dt * 0.2 : dt;
@@ -357,9 +359,18 @@ function layoutAdventure() {
   LIST.x = 600 + dx; LIST.h = 186 + dy; INFOBOX.x = 600 + dx; INFOBOX.y = 456 + dy;
   LIST_ROWS = Math.floor((LIST.h - 28) / LIST_ROW_H); // nad wierszami pasek zakładek (bohaterowie / miasta)
 }
-function camClamp(st) { const m = st.map.n * T; st.cam.x = clamp(st.cam.x, -T, m - VIEW.w + T); st.cam.y = clamp(st.cam.y, -T, m - VIEW.h + T); }
-function centerCam(st, tx, ty) { st.cam = { x: tx * T + T / 2 - VIEW.w / 2, y: ty * T + T / 2 - VIEW.h / 2 }; camClamp(st); }
-function screenToTile(st, x, y) { return { tx: Math.floor((x - VIEW.x + st.cam.x) / T), ty: Math.floor((y - VIEW.y + st.cam.y) / T) }; }
+// Przybliżenie mapy (kółko myszy): ZOOM > 1 powiększa. viewW/viewH = ile pikseli świata mieści widok.
+const ZOOMS = [0.5, 0.75, 1, 1.5, 2]; let ZOOM = 1;
+const viewW = () => VIEW.w / ZOOM, viewH = () => VIEW.h / ZOOM;
+function camClamp(st) { const m = st.map.n * T, w = viewW(), h = viewH(); st.cam.x = w > m + 2 * T ? (m - w) / 2 : clamp(st.cam.x, -T, m - w + T); st.cam.y = h > m + 2 * T ? (m - h) / 2 : clamp(st.cam.y, -T, m - h + T); }
+function centerCam(st, tx, ty) { st.cam = { x: tx * T + T / 2 - viewW() / 2, y: ty * T + T / 2 - viewH() / 2 }; camClamp(st); }
+function screenToTile(st, x, y) { return { tx: Math.floor(((x - VIEW.x) / ZOOM + st.cam.x) / T), ty: Math.floor(((y - VIEW.y) / ZOOM + st.cam.y) / T) }; }
+// Zmienia przybliżenie o krok (d = -1 bliżej, +1 dalej), trzymając w miejscu punkt świata pod myszą (sx, sy)
+function setZoom(st, z, sx = VIEW.x + VIEW.w / 2, sy = VIEW.y + VIEW.h / 2) {
+  z = clamp(z, ZOOMS[0], ZOOMS[ZOOMS.length - 1]); if (z === ZOOM) return false;
+  const wx = st.cam.x + (sx - VIEW.x) / ZOOM, wy = st.cam.y + (sy - VIEW.y) / ZOOM; ZOOM = z;
+  st.cam.x = wx - (sx - VIEW.x) / ZOOM; st.cam.y = wy - (sy - VIEW.y) / ZOOM; camClamp(st); MapRender.warmed = false; G.settings.zoom = z; saveSettings(); return true;
+}
 function drawFog(ctx, st, ox, oy, camX, camY) {
   const n = st.map.n, ex = human(st).explored;
   const tx0 = Math.max(0, Math.floor(camX / T) - 1), ty0 = Math.max(0, Math.floor(camY / T) - 1);
@@ -389,7 +400,7 @@ function drawMinimap(ctx, st) {
     else if (ob.type === 'town') mark(ob.x + 0.5, ob.y, ownerColor(st, ob.owner), 6); // miasto: pola x-1..x+1, y-1..y
   }
   for (const h of st.heroes) if (h.owner === ME && h.garrison == null) mark(h.x + 0.5, h.y + 0.5, h === hero(st) ? '#fff4c8' : '#c8bc98', 4);
-  ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 1.2; ctx.strokeRect(MINI.x + st.cam.x * k, MINI.y + st.cam.y * k, VIEW.w * k, VIEW.h * k);
+  ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 1.2; ctx.strokeRect(MINI.x + st.cam.x * k, MINI.y + st.cam.y * k, viewW() * k, viewH() * k);
   ctx.restore();
 }
 // --- świat w trybie pikselowym ---
@@ -403,13 +414,13 @@ function drawPathPixel(b, st, h, ox, oy) {
 // Mgła wojny w kawałkach 8×8 pól (jak teren): kółka nad nieodkrytymi polami, progowanie alfy na twardą krawędź
 // z ditheringiem w szachownicę. Kawałek przelicza się tylko wtedy, gdy zmieni się odkrycie pól w nim i wokół niego.
 function fogChunk(ex, n, cx, cy) {
-  const S = CHUNK * AP, x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1, x1 = x0 + CHUNK + 1, y1 = y0 + CHUNK + 1; let sig = 0, any = false;
+  const S = CHUNK * AP * PXD, x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1, x1 = x0 + CHUNK + 1, y1 = y0 + CHUNK + 1; let sig = 0, any = false;
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (!ex[y * n + x]) { sig = (sig * 31 + y * n + x) | 0; any = true; }
   const key = cx + ',' + cy, old = MapRender.fog.get(key); if (old && old._sig === sig) return old.c;
   let c = null;
   if (any) {
     const w = pixBuf('fogWork', S, S, true), f = w._ctx, ox = -cx * CHUNK * T, oy = -cy * CHUNK * T; f.setTransform(1, 0, 0, 1, 0, 0); f.clearRect(0, 0, S, S);
-    f.setTransform(0.5, 0, 0, 0.5, 0, 0);
+    f.setTransform(1 / PIX, 0, 0, 1 / PIX, 0, 0);
     for (const [alpha, extra] of [[0.45, 7], [1, 0]]) {
       f.fillStyle = `rgba(0,0,0,${alpha})`; f.beginPath();
       for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) {
@@ -431,7 +442,7 @@ function drawFogPixel(b, st, ox, oy, c0, c1, r0, r1) {
   for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) { const f = fogChunk(ex, n, cx, cy); if (f) b.drawImage(f, ox + cx * CP, oy + cy * CP, CP, CP); }
 }
 function drawWorldPixel(b, st) {
-  const map = st.map, n = map.n, CP = CHUNK * T, camX = Math.round(st.cam.x / 2) * 2, camY = Math.round(st.cam.y / 2) * 2, nC = Math.ceil(n / CHUNK);
+  const map = st.map, n = map.n, CP = CHUNK * T, camX = Math.round(st.cam.x / PIX) * PIX, camY = Math.round(st.cam.y / PIX) * PIX, nC = Math.ceil(n / CHUNK);
   b.fillStyle = '#000'; b.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
   const c0 = Math.max(0, Math.floor(camX / CP)), c1 = Math.min(nC - 1, Math.floor((camX + VIEW.w - 1) / CP));
   const r0 = Math.max(0, Math.floor(camY / CP)), r1 = Math.min(nC - 1, Math.floor((camY + VIEW.h - 1) / CP));
@@ -471,9 +482,9 @@ function drawWorldPixel(b, st) {
     }
   }
   drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
-  if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, VIEW)) {
+  if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, { x: VIEW.x, y: VIEW.y, w: VIEW.w * ZOOM, h: VIEW.h * ZOOM })) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
-    b.fillStyle = 'rgba(255,240,190,.55)'; b.fillRect(x, y, T, 2); b.fillRect(x, y + T - 2, T, 2); b.fillRect(x, y + 2, 2, T - 4); b.fillRect(x + T - 2, y + 2, 2, T - 4);
+    b.fillStyle = 'rgba(255,240,190,.55)'; const q = PIX; b.fillRect(x, y, T, q); b.fillRect(x, y + T - q, T, q); b.fillRect(x, y + q, q, T - 2 * q); b.fillRect(x + T - q, y + q, q, T - 2 * q);
   }
 }
 // Korekcja barw mapy (przyciemnienie i odbarwienie jak gradeRgb) oraz paleta z ditheringiem są wypalone raz: w kawałkach
@@ -489,7 +500,7 @@ function gradeCanvas(c, ox = 0, oy = 0, step = 18) {
   g.putImageData(img, 0, 0); return c;
 }
 function gradedSprite(s) {
-  if (!s._g) { const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; c.getContext('2d').drawImage(s.c, 0, 0); s._g = { c: gradeCanvas(c), ax: s.ax, ay: s.ay }; }
+  if (!s._g) { const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; c.getContext('2d').drawImage(s.c, 0, 0); s._g = { c: gradeCanvas(c), ax: s.ax, ay: s.ay, u: s.u }; }
   return s._g;
 }
 const blitG = (b, s, x, y) => blit(b, gradedSprite(s), x, y);
@@ -509,13 +520,18 @@ function mapLight(w, h) {
 }
 function drawMapView(ctx, st, scr) {
   MapRender.setSeason(seasonIdx(st));
-  {
-    const wb = pixBuf('world', VIEW.w / 2, VIEW.h / 2), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
-    b.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / 2, VIEW.h / 2), 0, 0); b.restore();
-    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(wb, VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.restore();
-  }
-  const ox = VIEW.x - Math.round(st.cam.x / 2) * 2, oy = VIEW.y - Math.round(st.cam.y / 2) * 2; // to samo zaokrąglenie co w drawWorldPixel
-  ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.clip();
+  // Przybliżenie: świat rysujemy w widoku „wirtualnym” (VIEW o rozmiarze viewW × viewH), potem skalujemy do prawdziwego
+  const RW = VIEW.w, RH = VIEW.h; VIEW.w = Math.round(RW / ZOOM); VIEW.h = Math.round(RH / ZOOM);
+  let ox, oy;
+  try {
+    // bufor świata: przy oddaleniu ma rozmiar ekranu (świat rysowany pomniejszony, z wygładzaniem), inaczej piksele grafiki
+    const sc = Math.min(1, ZOOM) / PIX, bw = Math.round(VIEW.w * sc), bh = Math.round(VIEW.h * sc);
+    const wb = pixBuf('world', bw, bh), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
+    b.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); b.imageSmoothingEnabled = ZOOM < 1; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore();
+    ctx.save(); ctx.imageSmoothingEnabled = ZOOM < 1; ctx.drawImage(wb, VIEW.x, VIEW.y, RW, RH); ctx.restore(); // oddalenie: pomniejszenie z wygładzaniem
+  ox = VIEW.x - Math.round(st.cam.x / PIX) * PIX; oy = VIEW.y - Math.round(st.cam.y / PIX) * PIX; // to samo zaokrąglenie co w drawWorldPixel
+  ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, RW, RH); ctx.clip();
+  ctx.translate(VIEW.x, VIEW.y); ctx.scale(ZOOM, ZOOM); ctx.translate(-VIEW.x, -VIEW.y); // napisy i efekty czarów w skali świata
   scr.floats = (scr.floats || []).filter(f => G.time - f.t < 1.6);
   for (const f of scr.floats) {
     const age = G.time - f.t, fx = ox + f.x * T + 16, fy = oy + f.y * T - 14 - age * 18;
@@ -532,7 +548,11 @@ function drawMapView(ctx, st, scr) {
     else { const g = ctx.createLinearGradient(0, y - 160, 0, y); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, e.col); ctx.fillStyle = g; ctx.fillRect(x - 18 * (1 - f * 0.5), y - 160, 36 * (1 - f * 0.5), 170); }
     ctx.restore();
   } }, { add: true });
+  ctx.restore();
+  } finally { VIEW.w = RW; VIEW.h = RH; }
+  ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.clip();
   drawSeasonFx(ctx, seasonIdx(st));
+  drawWeather(ctx, st, ox, oy);
   if (scr.banner) {
     const a = clamp(1.8 - (G.time - scr.banner.t), 0, 1);
     if (a > 0) { ctx.globalAlpha = a; drawParchment(ctx, VIEW.x + VIEW.w / 2 - 90, VIEW.y + 16, 180, 44); text(ctx, scr.banner.text, VIEW.x + VIEW.w / 2, VIEW.y + 39, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' }); ctx.globalAlpha = 1; }
@@ -566,6 +586,58 @@ function tileInfo(st, tx, ty) {
 }
 
 // Opady pory roku nad mapą: płatki śniegu zimą, spadające liście jesienią (bez nich przy niskiej jakości)
+// ---- Pogoda na mapie (tylko wygląd): losowana codziennie wg pory roku. Nad śniegiem deszcz pada jako śnieg,
+// nad piaskiem i lawą nie pada wcale. Chmury rzucają cienie, burza błyska, mgła snuje się pasmami. Wyłącznik w ustawieniach grafiki.
+const WEATHERS = { clear: 'pogodnie', clouds: 'pochmurno', rain: 'deszcz', storm: 'burza', fog: 'mgła', snow: 'śnieżyca' };
+const WEATHER_ODDS = [ // wiosna, lato, jesień, zima: [pogoda, waga]
+  [['clear', 40], ['clouds', 25], ['rain', 25], ['fog', 10]], [['clear', 60], ['clouds', 20], ['storm', 12], ['rain', 8]],
+  [['clear', 20], ['clouds', 25], ['rain', 30], ['fog', 15], ['storm', 10]], [['clear', 25], ['clouds', 25], ['snow', 35], ['fog', 15]],
+];
+function weatherOf(st) {
+  if (!st || !st.dayTotal) return 'clear'; const L = WEATHER_ODDS[seasonIdx(st)]; let r = thash(st.seed, st.dayTotal, 77) % L.reduce((s, x) => s + x[1], 0);
+  for (const [k, w] of L) if ((r -= w) < 0) return k; return 'clear';
+}
+const weatherOn = () => G.settings.weather !== 'off';
+let WEATHER_BLOB = null; // miękka plama (cień chmury, pasmo mgły)
+function weatherBlob() {
+  if (WEATHER_BLOB) return WEATHER_BLOB; const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.setTransform(2, 0, 0, 1, 0, 0); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return (WEATHER_BLOB = c);
+}
+function drawWeather(ctx, st, ox, oy) {
+  const w = weatherOf(st); if (w === 'clear' || !weatherOn()) return;
+  const t = G.time, lo = G.settings.quality === 'low', map = st.map, n = map.n, V = VIEW, blob = weatherBlob();
+  const terAt = (x, y) => { const { tx, ty } = screenToTile(st, x, y); return tx < 0 || ty < 0 || tx >= n || ty >= n ? -1 : map.terrain[ty * n + tx]; };
+  const blobs = (k, col, a, sp, sw, sh) => { ctx.save(); ctx.globalAlpha = a; for (let i = 0; i < k; i++) { // plamy przesuwają się razem z mapą i z wiatrem
+      const x = V.x + ((((i * 263 + ox * 0.9 + t * sp) % (V.w + sw)) + V.w + sw) % (V.w + sw)) - sw / 2, y = V.y + ((((i * 181 + oy * 0.9 + (i % 2 ? 40 : 0)) % (V.h + sh)) + V.h + sh) % (V.h + sh)) - sh / 2;
+      ctx.drawImage(col, x - sw / 2, y - sh / 2, sw, sh); } ctx.restore(); };
+  if (w !== 'fog') { const sh = tintBlob('#0a1020'); blobs(lo ? 3 : 6, sh, w === 'clouds' ? 0.3 : 0.26, 9, 300, 150); }
+  if (w === 'rain' || w === 'storm' || w === 'snow') { ctx.fillStyle = w === 'storm' ? 'rgba(14,20,40,.26)' : w === 'snow' ? 'rgba(200,210,230,.08)' : 'rgba(20,30,50,.14)'; ctx.fillRect(V.x, V.y, V.w, V.h); }
+  if (w === 'fog') { ctx.fillStyle = 'rgba(210,215,220,.1)'; ctx.fillRect(V.x, V.y, V.w, V.h); blobs(lo ? 5 : 9, tintBlob('#e8ecf0'), 0.3, 6, 340, 110); }
+  if (w === 'rain' || w === 'storm') {
+    const N = (w === 'storm' ? 180 : 110) >> (lo ? 1 : 0), flakes = []; ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const sp = 380 + (i % 5) * 45, x = V.x + (((i * 53.7 + t * 70) % V.w) + V.w) % V.w, y = V.y + ((i * 97.3 + t * sp) % V.h), ter = terAt(x, y);
+      if (ter === TER.SAND || ter === TER.LAVA) continue; if (ter === TER.SNOW) { flakes.push([x, y]); continue; }
+      ctx.moveTo(x, y); ctx.lineTo(x - 3, y - 12);
+      if ((i + Math.floor(t * 5)) % 19 === 0) { ctx.moveTo(x - 3, y + 2); ctx.lineTo(x + 3, y + 2); } // bryzg
+    }
+    ctx.strokeStyle = 'rgba(190,210,240,.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.8)'; for (const [x, y] of flakes) ctx.fillRect(x - 1, (y * 0.4 + V.y * 0.6) | 0, 2, 2);
+    if (w === 'storm') { const ph = (t + st.dayTotal * 1.7) % 6.5; if (ph < 0.25) { ctx.fillStyle = `rgba(230,240,255,${(0.4 * (1 - ph / 0.25) * (ph < 0.08 || ph > 0.14 ? 1 : 0.3)).toFixed(2)})`; ctx.fillRect(V.x, V.y, V.w, V.h); } } // błyskawica
+  }
+  if (w === 'snow') {
+    const N = lo ? 90 : 200; ctx.fillStyle = 'rgba(255,255,255,.9)';
+    for (let i = 0; i < N; i++) {
+      const u = (t * (0.07 + (i % 6) * 0.015) + i * 0.137) % 1, x = V.x + (((i * 83.1 + t * 22 + Math.sin(t * 1.1 + i) * 14) % V.w) + V.w) % V.w, y = V.y + u * V.h;
+      if (terAt(x, y) === TER.LAVA) continue; const r = i % 3 ? 3 : 4; ctx.fillRect(Math.round(x - r / 2), Math.round(y - r / 2), r, r);
+    }
+  }
+}
+const BLOB_TINTS = {};
+function tintBlob(col) {
+  if (BLOB_TINTS[col]) return BLOB_TINTS[col]; const b = weatherBlob(), c = document.createElement('canvas'); c.width = b.width; c.height = b.height; const g = c.getContext('2d');
+  g.drawImage(b, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height); return (BLOB_TINTS[col] = c);
+}
 function drawSeasonFx(ctx, S) {
   if ((S !== 2 && S !== 3) || G.settings.quality === 'low') return;
   const t = G.time, n = S === 3 ? 70 : 22;

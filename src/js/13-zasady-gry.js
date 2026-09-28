@@ -154,7 +154,7 @@ function visitObject(st, h, ob) {
     const r = useSite(st, h, ob), S = SITES[ob.kind];
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
     showDialog(`${S.name}. ${r.text}`, [{ label: r.puzzle ? 'Mapa zagadki' : 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); if (r.puzzle) showPuzzle(st); } }],
-      { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5) });
+      { iconH: 76, icon: (ctx, cx, cy) => { drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5); if (ob.kind === 'witchHut') skillIcon(ctx, ob.skill, cx + 64, cy + 8, 48); } });
   } else if (ob.type === 'town') {
     const t = st.towns[ob.townId];
     if (ob.owner !== h.owner) startTownAssault(st, h, t);
@@ -194,7 +194,7 @@ function bankLootText(kind) {
 function startBankAssault(st, h, ob) {
   const B = BANKS[ob.kind];
   offerBattle(st, h, ob, `${B.name}: ${B.desc}. Załoga: ${bankGuardText(ob)}. Łup: ${bankLootText(ob.kind)}.`, bankPower(ob),
-    (ctx, cx, cy) => { const sp = bankSprite(ob.kind, false), k = Math.min(1.1, 40 / sp.c.height); drawSpriteBox(ctx, sp, cx - sp.c.width * k, cy - sp.c.height * k, k); });
+    (ctx, cx, cy) => { const sp = bankSprite(ob.kind, false), H2 = sp.c.height * sp.u / 2, k = Math.min(1.1, 40 / H2); drawSpriteBox(ctx, sp, cx - sp.c.width * sp.u / 2 * k, cy - H2 * k, k); });
 }
 // Łup ze skarbca dla zwycięzcy (człowieka albo SI); zwraca opis do okna wyniku
 function lootBank(st, h, ob) {
@@ -317,7 +317,7 @@ function gainExp(st, h, amount, then, silent = false) { // silent: awans bez oki
     if (!offer.length) { showDialog(msg, [{ label: 'Wspaniale', key: 'enter', action: () => next(i + 1) }], icon); return; }
     showDialog(`${msg} Wybierz umiejętność:`, offer.map((id, k) => {
       const L = heroSkill(h, id) + 1;
-      return { label: SKILLS[id].name, sub: SKILL_LEVELS[L], tip: skillText(id, L) + '.', key: String(k + 1), action: () => { learnSkill(h, id); next(i + 1); } };
+      return { label: SKILLS[id].name, sub: SKILL_LEVELS[L], tip: skillText(id, L) + '.', key: String(k + 1), lead: (ctx, cx, cy) => skillIcon(ctx, id, cx, cy), action: () => { learnSkill(h, id); next(i + 1); } };
     }), Object.assign(icon, { bw: 200 }));
   };
   next(0); return ups.length;

@@ -281,7 +281,8 @@ function drawHumanoid(ctx, L, P = {}) {
     const lift = walking ? Math.max(0, (back ? -1 : 1) * Math.cos(ph)) * 2 : 0, fx = x0 + off, fy = -lift;
     const kx = (x0 + fx) / 2 + 1.3, ky = (hipY + fy) / 2 - 0.5, c = back ? DK(legCol, 0.25) : legCol;
     limb(ctx, x0, hipY, kx, ky, bony ? 1.3 : 2.9, c); limb(ctx, kx, ky, fx, fy - 1.3, bony ? 1.2 : 2.6, c);
-    if (!bony) { ctx.fillStyle = back ? DK(boot, 0.25) : boot; rr(ctx, fx - 1.7, fy - 2.6, 4.4, 2.6, 0.8); ctx.fill(); }
+    if (!bony) { ctx.fillStyle = back ? DK(boot, 0.25) : boot; rr(ctx, fx - 1.7, fy - 2.6, 4.4, 2.6, 0.8); ctx.fill();
+      limb(ctx, fx - 1.5, fy - 0.3, fx + 2.5, fy - 0.3, 0.5, DK(boot, 0.45)); if (!back) { limb(ctx, fx - 0.6, fy - 2.2, fx + 1.6, fy - 2.2, 0.45, LT(boot, 0.3)); limb(ctx, kx - 0.4, ky - 0.6, kx + 0.8, ky + 0.8, 0.5, LT(c, 0.25)); } } // podeszwa, blik, kolano
   };
   if (L.mounted) { limb(ctx, 1, hipY, 3.5, hipY + 5, 2.6, legCol); ctx.fillStyle = boot; rr(ctx, 2, hipY + 4, 4, 2.4, 0.8); ctx.fill(); }
   else if (!L.robe && !L.serpent) leg(-1.8, -sw * 3.6, true);
@@ -302,7 +303,7 @@ function drawHumanoid(ctx, L, P = {}) {
     fillPoly(ctx, [[0, 0], [-8, -14], [-15, -18], [-13, -11], [-17, -9], [-12, -5], [-15, -2], [-6, 2]], DK(L.wings, 0.12));
     fillPoly(ctx, [[0, 0], [-7, -12], [-11, -12], [-6, -4]], LT(L.wings, 0.1)); ctx.restore();
   }
-  if (L.cape) { const cw = walking ? sw * 1.5 : Math.sin(t * 1.8) * 0.6; fillPoly(ctx, [[-4, shY], [2, shY], [-3, hipY + 7], [-10 + cw, hipY + 6]], DK(L.cape, 0.15)); }
+  if (L.cape) { const cw = walking ? sw * 1.5 : Math.sin(t * 1.8) * 0.6; fillPoly(ctx, [[-4, shY], [2, shY], [-3, hipY + 7], [-10 + cw, hipY + 6]], DK(L.cape, 0.15)); limb(ctx, -3.6, shY + 1, -9.4 + cw, hipY + 5.6, 0.5, LT(L.cape, 0.2)); limb(ctx, -10 + cw, hipY + 6, -3, hipY + 7, 0.6, '#e0b24a'); }
   // tylne ramię (+ tarcza)
   const shoulder2 = [-3.2, shY + 1.2], backA = walking ? -sw * 0.5 : (P.atk != null && style === 'bow' ? 1.2 : -0.15);
   const pullX = style === 'bow' && P.atk != null ? 3.4 - arm.pull * 4 : null;
@@ -311,7 +312,9 @@ function drawHumanoid(ctx, L, P = {}) {
   const sleeve = bony ? sk : L.armor ? DK(met, 0.15) : DK(cl, 0.2);
   limb(ctx, ...shoulder2, ...e2, bony ? 1.2 : 2.4, DK(sleeve, 0.15)); limb(ctx, ...e2, ...h2, bony ? 1.1 : 2.1, DK(sleeve, 0.15)); circ(ctx, h2[0], h2[1], bony ? 0.9 : 1.2, DK(sk, 0.2));
   if (L.shield) { fillPoly(ctx, [[h2[0] - 4.5, h2[1] - 6], [h2[0] + 1.5, h2[1] - 6], [h2[0] + 1.5, h2[1] + 1], [h2[0] - 1.5, h2[1] + 5], [h2[0] - 4.5, h2[1] + 1]], L.shield);
-    limb(ctx, h2[0] - 1.5, h2[1] - 5.5, h2[0] - 1.5, h2[1] + 4, 1, L.shieldMark || LT(L.shield, 0.35)); }
+    limb(ctx, h2[0] - 1.5, h2[1] - 5.5, h2[0] - 1.5, h2[1] + 4, 1, L.shieldMark || LT(L.shield, 0.35));
+    ctx.strokeStyle = DK(L.shield, 0.4); ctx.lineWidth = 0.5; ctx.beginPath(); [[h2[0] - 4.5, h2[1] - 6], [h2[0] + 1.5, h2[1] - 6], [h2[0] + 1.5, h2[1] + 1], [h2[0] - 1.5, h2[1] + 5], [h2[0] - 4.5, h2[1] + 1]].forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.stroke();
+    circ(ctx, h2[0] - 1.5, h2[1] - 1, 0.9, '#d8c890'); circ(ctx, h2[0] - 1.8, h2[1] - 1.3, 0.35, '#fff8e0'); } // obrzeże i guz tarczy
   // tułów
   if (bony) {
     limb(ctx, 0, hipY, 0.4, shY + 1, 1.4, sk);
@@ -322,6 +325,11 @@ function drawHumanoid(ctx, L, P = {}) {
     fillPoly(ctx, [[-5, shY], [5, shY], [wB, bottom], [-wB, bottom]], cl);
     fillPoly(ctx, [[-5, shY], [-1, shY], [-1.5, bottom], [-wB, bottom]], DK(cl, 0.22));
     fillPoly(ctx, [[2.2, shY + 0.5], [4.6, shY + 0.5], [4.1, shY + 6], [2.6, shY + 6]], LT(cl));
+    if (!L.armor) { // kołnierz, szew i fałdy materiału
+      fillPoly(ctx, [[-1.6, shY], [2.6, shY], [0.6, shY + 2.2]], DK(cl, 0.35)); limb(ctx, 0.6, shY + 2.4, 0.4, bottom - 1, 0.4, DK(cl, 0.32));
+      limb(ctx, -3, shY + 4, -2.4, bottom - 1.5, 0.45, DK(cl, 0.38)); limb(ctx, 3.2, shY + 7, 3.6, bottom - 1.5, 0.45, DK(cl, 0.12));
+      if (L.robe) { limb(ctx, -3.5, hipY, -4.8, bottom - 1, 0.45, DK(cl, 0.4)); limb(ctx, 2.4, hipY, 3.4, bottom - 1, 0.45, DK(cl, 0.2)); }
+    }
     if (L.robe && !L.flame) { limb(ctx, -5.5, bottom - 0.5, 5.5, bottom - 0.5, 1, DK(cl, 0.4)); }
     if (L.flame) for (let i = 0; i < 5; i++) { // języki ognia zamiast nóg
       const fx0 = -5 + i * 2.5, fl = Math.sin(t * 9 + i * 1.9) * 1.6;
@@ -331,9 +339,11 @@ function drawHumanoid(ctx, L, P = {}) {
       fillPoly(ctx, [[-4.3, shY + 0.6], [4.3, shY + 0.6], [3.7, hipY - 1.6], [-3.7, hipY - 1.6]], met);
       fillPoly(ctx, [[-4.3, shY + 0.6], [-0.6, shY + 0.6], [-0.9, hipY - 1.6], [-3.7, hipY - 1.6]], DK(met, 0.22));
       limb(ctx, 2.6, shY + 1.8, 2.3, hipY - 3, 0.8, LT(met, 0.4));
+      const pl = DK(met, 0.38); limb(ctx, -4, shY + 4.6, 4, shY + 4.6, 0.45, pl); limb(ctx, -3.8, shY + 8, 3.8, shY + 8, 0.45, pl); // płyty napierśnika i nity
+      for (const [rx, ry] of [[-3.2, shY + 1.6], [3.4, shY + 1.6], [-3, shY + 5.6], [3.2, shY + 5.6]]) circ(ctx, rx, ry, 0.4, LT(met, 0.5));
       if (L.tabard) { fillPoly(ctx, [[-1.6, shY + 1], [1.6, shY + 1], [1.9, hipY + 3], [-1.9, hipY + 3]], L.tabard); if (L.cross) { limb(ctx, 0, shY + 2.5, 0, hipY, 0.9, L.cross); limb(ctx, -1.4, shY + 4.5, 1.4, shY + 4.5, 0.9, L.cross); } }
     }
-    ctx.fillStyle = lea; ctx.fillRect(-4.6, hipY - 1.8, 9.2, 1.8); ctx.fillStyle = '#c8a050'; ctx.fillRect(0.6, hipY - 1.8, 1.4, 1.8);
+    ctx.fillStyle = lea; ctx.fillRect(-4.6, hipY - 1.8, 9.2, 1.8); ctx.fillStyle = '#c8a050'; ctx.fillRect(0.6, hipY - 1.8, 1.4, 1.8); ctx.fillStyle = DK(lea, 0.4); ctx.fillRect(1, hipY - 1.3, 0.6, 0.8); ctx.fillStyle = '#f0d890'; ctx.fillRect(0.6, hipY - 1.8, 1.4, 0.45);
   }
   // głowa
   const hx = 0.6, hy = hdY;
@@ -346,9 +356,13 @@ function drawHumanoid(ctx, L, P = {}) {
     circ(ctx, hx, hy, 3.9, sk); fillPoly(ctx, [[hx - 3.9, hy], [hx - 1, hy - 3.8], [hx - 1, hy + 3.9], [hx - 3, hy + 2.5]], DK(sk, 0.2));
     if (L.ears) fillPoly(ctx, [[hx - 1.5, hy - 1], [hx - 6.5, hy - 4.5], [hx - 2.5, hy + 1.5]], sk);
     if (L.cyclops) { circ(ctx, hx + 2, hy - 1, 1.5, '#f0ead8'); circ(ctx, hx + 2.5, hy - 1, 0.8, L.eyes || '#3a2a1a'); limb(ctx, hx + 0.2, hy - 3, hx + 3.6, hy - 2.8, 0.7, DK(sk, 0.4)); }
-    else { ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1, 1.3, 1.3); }
+    else { // oko z białkiem i źrenicą, brew, nos, usta, rumieniec
+      ctx.fillStyle = L.eyes ? L.eyes : '#f4ecd8'; ctx.fillRect(hx + 1.4, hy - 1, 1.7, 1.1); ctx.fillStyle = L.eyes ? LT(L.eyes, 0.5) : '#1a1a1a'; ctx.fillRect(hx + 2.3, hy - 1, 0.8, 1.1);
+      limb(ctx, hx + 1.2, hy - 1.9, hx + 3.2, hy - 1.7, 0.5, DK(L.hair || sk, 0.45)); limb(ctx, hx + 3.5, hy - 0.6, hx + 4.1, hy + 0.9, 0.5, DK(sk, 0.25));
+      limb(ctx, hx + 2, hy + 2.2, hx + 3.3, hy + 2, 0.45, DK(sk, 0.42)); circ(ctx, hx + 1.4, hy + 0.9, 0.6, LT(sk, 0.18)); }
     if (L.beard) fillPoly(ctx, [[hx - 1, hy + 1.5], [hx + 4, hy + 1.2], [hx + 2.5, hy + 6], [hx - 0.5, hy + 4.5]], L.beard);
-    if (L.hair && !L.helm) fillPoly(ctx, [[hx - 4.1, hy + 1], [hx - 3.4, hy - 3.2], [hx + 0.5, hy - 4.6], [hx + 3.6, hy - 2.6], [hx + 1, hy - 2.2], [hx - 1.2, hy + 1.8]], L.hair);
+    if (L.hair && !L.helm) { fillPoly(ctx, [[hx - 4.1, hy + 1], [hx - 3.4, hy - 3.2], [hx + 0.5, hy - 4.6], [hx + 3.6, hy - 2.6], [hx + 1, hy - 2.2], [hx - 1.2, hy + 1.8]], L.hair);
+      limb(ctx, hx - 2.8, hy - 2.6, hx - 0.4, hy - 3.8, 0.45, LT(L.hair, 0.3)); limb(ctx, hx - 3, hy - 0.5, hx - 1.8, hy - 2.2, 0.45, DK(L.hair, 0.3)); } // pasma włosów
     if (L.snout) { fillPoly(ctx, [[hx + 2, hy - 1], [hx + 7.5, hy + 0.2], [hx + 7.2, hy + 2.8], [hx + 2.2, hy + 3.4]], sk); fillPoly(ctx, [[hx + 2.2, hy + 2.2], [hx + 7.2, hy + 2], [hx + 7, hy + 2.8], [hx + 2.2, hy + 3.4]], DK(sk, 0.25)); ctx.fillStyle = '#1a1210'; ctx.fillRect(hx + 6.4, hy + 0.2, 1, 1); ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1.6, 1.3, 1.3); }
     if (L.tusks) { ctx.fillStyle = '#f0ead8'; ctx.fillRect(hx + (L.snout ? 5 : 2.4), hy + (L.snout ? 2.6 : 1.8), 0.9, 1.6); }
   }
@@ -358,6 +372,7 @@ function drawHumanoid(ctx, L, P = {}) {
     const hc = L.helmCol || met;
     ctx.fillStyle = hc; ctx.beginPath(); ctx.arc(hx, hy - 0.4, 4.4, Math.PI * 0.95, Math.PI * 2.05); ctx.fill();
     fillPoly(ctx, [[hx - 4.4, hy - 0.4], [hx - 1, hy - 4.4], [hx - 1, hy - 0.4]], DK(hc, 0.2)); limb(ctx, hx + 0.5, hy - 4.2, hx + 3, hy - 3, 0.7, LT(hc, 0.4));
+    limb(ctx, hx - 4.3, hy - 0.5, hx + 4.3, hy - 0.5, 0.55, DK(hc, 0.4)); limb(ctx, hx - 0.2, hy - 4.3, hx - 0.2, hy - 0.8, 0.45, DK(hc, 0.3)); // obręcz i grzebień hełmu
     if (hm === 'greathelm') { fillPoly(ctx, [[hx - 4.4, hy - 0.6], [hx + 4.4, hy - 0.6], [hx + 4.2, hy + 4], [hx - 4.2, hy + 4]], hc); ctx.fillStyle = '#1a1a22'; ctx.fillRect(hx + 0.8, hy, 3.4, 1); }
     else { ctx.fillStyle = hc; ctx.fillRect(hx + 2.2, hy - 1, 1, 3); }
     if (hm === 'horn') { fillPoly(ctx, [[hx - 2, hy - 3.5], [hx - 5, hy - 8.5], [hx - 3.8, hy - 3.2]], '#e8e0cc'); fillPoly(ctx, [[hx + 2, hy - 3.8], [hx + 4, hy - 9], [hx + 3.4, hy - 3]], '#d8d0bc'); }
@@ -395,6 +410,7 @@ function quadLegs(ctx, xs, top, len, col, P, w) {
     const kx = x + swing * 0.4 + 0.8, ky = top + len * 0.5 - lift * 0.5;
     limb(ctx, x, top, kx, ky, w, c); limb(ctx, kx, ky, x + swing, -lift, w * 0.85, c);
     ctx.fillStyle = far ? '#1a140e' : '#2a2018'; ctx.fillRect(x + swing - w * 0.55, -lift - 1.2, w * 1.2, 1.4);
+    if (!far) { limb(ctx, x + 0.5, top + 1, kx + 0.4, ky, w * 0.25, LT(col, 0.18)); ctx.fillStyle = '#5a4a3a'; ctx.fillRect(x + swing - w * 0.55, -lift - 0.3, w * 1.2, 0.4); } // blik mięśnia, kopyto
   });
 }
 function horse(c, x, b, dir, col = '#7a4a26', mane = '#2a1a0e', P = {}, o = {}) {
@@ -411,7 +427,9 @@ function horse(c, x, b, dir, col = '#7a4a26', mane = '#2a1a0e', P = {}, o = {}) 
     fillPoly(c, [[6, -15], [11.5, -26], [16.5, -24.5], [12.5, -11]], col); fillPoly(c, [[6, -15], [11.5, -26], [10.5, -14]], dk);
     fillPoly(c, [[11.5, -27.5], [18, -25.5], [23, -20.5], [22.5, -18], [17.5, -18.5], [13.5, -22]], col);
     fillPoly(c, [[17.5, -18.5], [22.5, -18], [23, -20.5]], dk); fillPoly(c, [[13, -27], [14, -31], [15.8, -26.8]], col);
-    circ(c, 17, -23.6, 0.9, '#140c06'); circ(c, 21.6, -19.6, 0.6, '#140c06');
+    circ(c, 17, -23.6, 0.9, '#140c06'); circ(c, 21.6, -19.6, 0.6, '#140c06'); circ(c, 16.7, -23.9, 0.3, '#f0e8d8');
+    limb(c, 14, -25.5, 22.4, -19.4, 0.5, '#3a2414'); limb(c, 14.2, -21, 17.5, -19, 0.5, '#3a2414'); limb(c, 17.5, -19.2, 9, -15.5, 0.45, '#5a3a1e'); // uzda i wodze
+    limb(c, 9.5, -17, 12.5, -24, 0.5, LT(mane, 0.25)); limb(c, 8, -14, 11, -21, 0.45, DK(mane, 0.3)); // pasma grzywy
     fillPoly(c, [[7, -16], [11, -27], [13.5, -27.5], [10, -17.5], [8.5, -12.5]], mane);
   }
   const legs2 = [[-6, Math.PI, false], [9, 0, false]]; quadLegs(c, legs2, -9, 9, col, P, 2.6);
@@ -605,7 +623,7 @@ function drawTowerUnit(ctx, L, P) {
 }
 // x, y = punkt na ziemi pod stworzeniem; s = skala, dir = 1 w prawo / -1 w lewo; P = poza (domyślnie spoczynek w chwili t)
 function drawCreature(ctx, cid, x, y, s, dir, t, P) {
-  const L = CREATURES[cid].look; P = P || { t };
+  const L = (P && P.look) || CREATURES[cid].look; P = P || { t }; // P.look: własny wygląd (np. bohater w bitwie)
   ctx.save(); ctx.translate(x, y); ctx.scale(dir * s, s);
   if (L.kind !== 'tower') { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 0, 10, 3.5, 0, 0, TAU); ctx.fill(); }
   if (L.kind !== 'hum' && L.kind !== 'treant') ctx.scale(L.size || 1, L.size || 1);
@@ -734,7 +752,7 @@ function drawTownMap(ctx, x0, y0, fac = 'haven', lvl = 1) {
 function townFlagPoints(fac, lvl) {
   const s = townSprite(fac, lvl), key = fac + lvl; if (TOWN_FLAGS[key] && TOWN_FLAGS[key].length) return TOWN_FLAGS[key];
   const d = s.c._ctx.getImageData(0, 0, s.c.width, s.c.height).data, W = s.c.width; let top = null; // bez masztu: najwyższy punkt środka rysunku
-  for (let y = 0; y < s.c.height && !top; y++) for (let x = Math.floor(W * 0.3); x < W * 0.7; x++) if (d[(y * W + x) * 4 + 3] > 0) { top = [(x - s.ax) * 2, (y - s.ay) * 2 + 20]; break; }
+  for (let y = 0; y < s.c.height && !top; y++) for (let x = Math.floor(W * 0.3); x < W * 0.7; x++) if (d[(y * W + x) * 4 + 3] > 0) { top = [(x - s.ax) * s.u, (y - s.ay) * s.u + 20]; break; }
   return (TOWN_FLAGS[key] = [top || [48, -16]]);
 }
 
@@ -777,11 +795,23 @@ function corpseSprite(cid, dir) {
   return s;
 }
 // Biała albo barwna sylwetka sprite'a (błysk trafienia, poświata czaru)
+// Bohater na polu bitwy: jeździec w barwach gracza z chorągwią (magowie z laską i w kapturze). i: klatka, cast: rzuca czar
+function heroBattleLook(h, col) {
+  const L = heroClass(h).look, mage = MAGE_CLASSES.includes(h.cls);
+  return { kind: 'rider', horse: L.horse, mane: L.mane, skin: L.skin, cloth: col, weapon: mage ? 'staff' : 'sword', helm: L.hood ? 'hood' : 'helm', hoodCol: L.hood, helmCol: L.helm,
+    armor: !L.hood, cape: col, barding: shadeHex(col, -0.15), trim: '#e0b24a' };
+}
+const heroBattleSprite = (h, col, dir, i, cast) => sprite(`bh_${h.cls}_${col}_${dir}_${cast ? 1 : 0}_${i}`, 76, 88, 38, 72, p => {
+  const n = cast ? BATTLE_FRAMES.attack : BATTLE_FRAMES.idle, P = cast ? { t: 0, atk: i / (n - 1) } : { t: i / n * TAU / 2.4 };
+  p.save(); p.scale(dir, 1); limb(p, -12, -20, -12, -62, 1.6, '#5a3a1e'); const wv = Math.sin(P.t * 2) * 1.5; // chorągiew za plecami
+  fillPoly(p, [[-12, -61], [3, -59 + wv], [0, -54 + wv], [3, -49 + wv], [-12, -50]], col); limb(p, -12, -61, 3, -59 + wv, 0.8, '#e0b24a'); circ(p, -12, -63, 1.4, '#e0b24a'); p.restore();
+  drawCreature(p, null, 0, 0, 1, dir, P.t, { ...P, look: heroBattleLook(h, col) });
+}, OUTLINE, 1);
 function tintSprite(s, col) {
   s.tints = s.tints || {}; if (s.tints[col]) return s.tints[col];
   const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; const g = c.getContext('2d');
   g.drawImage(s.c, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height);
-  return (s.tints[col] = { c, ax: s.ax, ay: s.ay });
+  return (s.tints[col] = { c, ax: s.ax, ay: s.ay, u: s.u });
 }
 function heroSprite(h, col) {
   const moving = !!h.anim, fr = Math.floor(G.time * (moving ? 12 : 4)) % 4, tk = moving ? fr * TAU / 88 : fr * TAU / 20;
@@ -1139,6 +1169,48 @@ function drawSpellIcon(c, id) {
 const schoolNote = (h, id) => { const L = spellSchoolLv(h, id); return L ? ` ${SKILLS[SCHOOLS[SPELLS[id].school].skill].name} (${SKILL_LEVELS[L]}): koszt −${SCHOOL_COST[L]}%, moc +${SCHOOL_POWER[L]}%${SPELLS[id].buff ? `, +${L} ${L === 1 ? 'runda' : 'rundy'}` : ''}${massBuffable(id) && L >= 3 ? ', działa na całą armię' : ''}.` : ''; };
 const massBuffable = id => !!(SPELLS[id].buff && (SPELLS[id].target === 'ally' || SPELLS[id].target === 'enemy'));
 const spellSprite = id => sprite(`sp_${id}`, 16, 16, 8, 8, p => drawSpellIcon(p, id));
+// --- umiejętności drugorzędne: ikony (kwadratowa plakietka w kolorze grupy, jasny znak) ---
+const SKILL_TINT = { might: '#7a2e22', magic: '#2a3e7a', land: '#2e5a2e', gold: '#7a5a1a', dark: '#3a2a4a' };
+const SKILL_GROUP = { leadership: 'might', offense: 'might', archery: 'might', armorer: 'might', artillery: 'might', ballistics: 'might', firstAid: 'might', resistance: 'might',
+  sorcery: 'magic', intelligence: 'magic', mysticism: 'magic', wisdom: 'magic', eagleSight: 'magic', learning: 'magic',
+  logistics: 'land', pathfinding: 'land', scouting: 'land', navigation: 'land', luck: 'gold', estates: 'gold', necromancy: 'dark' };
+function drawSkillIcon(c, id) {
+  const sc = SKILLS[id].school, bg = sc ? shadeHex(SCHOOLS[sc].col, -0.55) : SKILL_TINT[SKILL_GROUP[id]] || '#4a3e2c', fg = '#f4e8c4', gd = '#ffd060', dk = shadeHex(bg, -0.4);
+  c.fillStyle = '#c8a050'; c.fillRect(-15, -15, 30, 30); c.fillStyle = bg; c.fillRect(-13, -13, 26, 26); c.fillStyle = 'rgba(255,240,200,.16)'; c.fillRect(-13, -13, 26, 4);
+  c.fillStyle = fg; c.strokeStyle = fg; c.lineCap = 'round'; c.lineJoin = 'round';
+  const poly = (pts, col) => { if (col) c.fillStyle = col; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); };
+  const line = (w, col, ...pts) => { c.lineWidth = w; if (col) c.strokeStyle = col; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); };
+  const dot = (x, y, r, col) => { if (col) c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); };
+  switch (id) {
+    case 'leadership': line(2, '#c8a050', [-6, 10], [-6, -10]); poly([[-5, -10], [9, -7], [4, -3], [9, 1], [-5, 1]], '#d84a3a'); poly([[-5, -10], [9, -7], [7, -6], [-5, -7]], '#f07a5a'); dot(-6, -10, 1.8, gd); break;
+    case 'luck': for (const [x, y] of [[-3.5, -3.5], [3.5, -3.5], [-3.5, 3.5], [3.5, 3.5]]) dot(x, y, 4.2, '#6ad05a'); dot(0, 0, 2, '#a8f090'); line(1.8, '#4a9a3a', [2, 5], [6, 11]); break;
+    case 'offense': line(3, '#dfe3ea', [-7, 7], [8, -8]); poly([[8, -8], [10, -10], [9, -6]], '#ffffff'); line(3, '#c8a050', [-9, 3], [-3, 9]); line(3, '#7a5230', [-8, 8], [-11, 11]); break;
+    case 'archery': line(2, '#c8a050', [-4, -11], [4, -6], [6, 0], [4, 6], [-4, 11]); line(1, fg, [-4, -11], [-4, 11]); line(1.6, '#dfe3ea', [-9, 0], [9, 0]); poly([[9, -2.5], [12, 0], [9, 2.5]], '#ffffff'); poly([[-9, 0], [-12, -2.5], [-10, 0], [-12, 2.5]], '#d84a3a'); break;
+    case 'armorer': poly([[-9, -9], [-3, -7], [0, -9], [3, -7], [9, -9], [8, 2], [0, 10], [-8, 2]], '#b8c0cc'); poly([[-1, -7], [1, -7], [1, 8], [-1, 8]], '#e8ecf2'); c.fillStyle = '#7a8290'; c.fillRect(-7, -1, 14, 1.6); break;
+    case 'logistics': c.lineWidth = 3.4; c.strokeStyle = '#b8c0cc'; c.beginPath(); c.arc(0, -1, 7.5, Math.PI * 0.85, Math.PI * 2.15); c.stroke(); for (const [x, y] of [[-6, -5], [6, -5], [-7.5, 1], [7.5, 1]]) dot(x, y, 0.9, dk); line(2, gd, [-12, 9], [-5, 9]); line(2, gd, [-12, 5], [-8, 5]); break;
+    case 'pathfinding': line(2.4, '#c8a050', [0, 11], [0, -10]); poly([[-10, -9], [6, -9], [9, -6], [6, -3], [-10, -3]], fg); poly([[10, -1], [-6, -1], [-9, 2], [-6, 5], [10, 5]], shadeHex(fg, -0.2)); break;
+    case 'scouting': c.save(); c.rotate(-0.5); c.fillStyle = '#c8a050'; c.fillRect(-11, -2.5, 8, 5); c.fillStyle = '#e8c070'; c.fillRect(-3, -3.5, 7, 7); c.fillStyle = '#c8a050'; c.fillRect(4, -4.5, 7, 9); dot(11, 0, 3.5, '#9ad8ff'); c.restore(); break;
+    case 'sorcery': { const P = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 4 : 10; P.push([Math.cos(a) * r, Math.sin(a) * r + 1]); } poly(P, '#c8a0ff'); dot(0, 1, 2.4, '#ffffff'); break; }
+    case 'intelligence': poly([[-3, -10], [3, -10], [3, -5], [8, 6], [5, 10], [-5, 10], [-8, 6], [-3, -5]], '#dfe3ea'); poly([[-5.5, 2], [5.5, 2], [8, 6], [5, 10], [-5, 10], [-8, 6]], '#4a8aff'); dot(-2, 5, 1.2, '#bfe0ff'); break;
+    case 'mysticism': dot(0, 0, 9, '#e8e0a0'); dot(4, -3, 8, bg); dot(-7, 8, 1, gd); dot(7, 6, 1.4, gd); dot(8, -9, 1, gd); break;
+    case 'estates': for (const [x, y] of [[-5, 7], [5, 7], [0, 3], [-5, -1], [5, 3]]) { c.fillStyle = shadeHex(gd, -0.35); c.beginPath(); c.ellipse(x, y + 1.2, 5, 2.6, 0, 0, TAU); c.fill(); c.fillStyle = gd; c.beginPath(); c.ellipse(x, y, 5, 2.6, 0, 0, TAU); c.fill(); } poly([[-2, -11], [2, -11], [5, -5], [-5, -5]], '#c8a050'); break;
+    case 'learning': poly([[-11, -7], [-1, -5], [-1, 9], [-11, 7]], fg); poly([[11, -7], [1, -5], [1, 9], [11, 7]], shadeHex(fg, -0.12)); c.fillStyle = '#8a7a5a'; for (const y of [-2, 1, 4]) { c.fillRect(-9, y, 6, 1); c.fillRect(3, y, 6, 1); } line(1.2, '#d84a3a', [0, -6], [0, 11]); break;
+    case 'necromancy': dot(0, -2, 8, '#e8e4d4'); c.fillRect(-4.5, 4, 9, 5); c.fillStyle = dk; c.fillRect(-5, -4, 3.6, 3.6); c.fillRect(1.4, -4, 3.6, 3.6); poly([[-1, 1], [1, 1], [0, 3]], dk); c.fillRect(-2, 6, 1, 3); c.fillRect(1, 6, 1, 3); dot(-4, -2.5, 0.9, '#7aff9a'); dot(3, -2.5, 0.9, '#7aff9a'); break;
+    case 'wisdom': poly([[-8, -9], [8, -9], [8, 9], [-8, 9]], fg); c.fillStyle = '#c8a050'; c.fillRect(-10, -11, 20, 3); c.fillRect(-10, 8, 20, 3); c.fillStyle = '#8a7a5a'; for (const y of [-5, -2, 1, 4]) c.fillRect(-5, y, y === 4 ? 6 : 10, 1); break;
+    case 'navigation': c.lineWidth = 2.4; c.strokeStyle = '#b8c0cc'; c.beginPath(); c.arc(0, -8, 2.4, 0, TAU); c.stroke(); line(2.4, null, [0, -5], [0, 9]); line(2.4, null, [-5, -2], [5, -2]); c.beginPath(); c.arc(0, 1, 8.5, Math.PI * 0.15, Math.PI * 0.85); c.stroke(); poly([[-10, 2], [-7, 5], [-6, 1]], '#b8c0cc'); poly([[10, 2], [7, 5], [6, 1]]); break;
+    case 'artillery': c.fillStyle = '#7a5230'; c.fillRect(-2, -1, 4, 11); c.fillRect(-7, 8, 14, 2.4); line(2.4, '#c8a050', [-11, -3], [-5, -7], [5, -7], [11, -3]); line(1, fg, [-11, -3], [0, 2], [11, -3]); line(2, '#dfe3ea', [0, 2], [0, -11]); poly([[-2.5, -10], [0, -13], [2.5, -10]], '#ffffff'); break;
+    case 'ballistics': c.setLineDash([2, 2.6]); line(1.4, fg, [-10, 9], [-6, -2], [0, -7], [6, -5]); c.setLineDash([]); dot(8, -2, 4, '#9a948a'); dot(7, -3, 2, '#c8c2b8'); c.fillStyle = '#8a7a6a'; c.fillRect(-11, 8, 8, 3); break;
+    case 'firstAid': poly([[-10, 9], [0, -9], [10, 9]], '#e8e4d4'); poly([[-3, 9], [0, 3], [3, 9]], dk); c.fillStyle = '#d83a3a'; c.fillRect(-1.2, -3, 2.4, 7); c.fillRect(-3.5, -0.7, 7, 2.4); break;
+    case 'resistance': poly([[-8, -9], [8, -9], [8, 1], [0, 10], [-8, 1]], '#b8c0cc'); poly([[-6, -7], [6, -7], [6, 0], [0, 7.5], [-6, 0]], '#4a6aa0'); line(1.8, '#c8a0ff', [-11, -11], [-4, -4]); line(1.8, '#c8a0ff', [11, -11], [4, -4]); dot(0, -1, 2, fg); break;
+    case 'fireMagic': poly([[0, -11], [5, -3], [8, 3], [5, 9], [-5, 9], [-8, 3], [-4, -2], [-3, 2]], '#e8602a'); poly([[0, -4], [4, 3], [2, 8], [-2, 8], [-4, 3]], '#ffd060'); dot(0, 6, 1.5, '#ffffff'); break;
+    case 'airMagic': c.lineWidth = 2; c.strokeStyle = '#c8e8ff'; c.beginPath(); c.arc(0, 0, 8, Math.PI * 0.2, Math.PI * 1.6); c.stroke(); c.beginPath(); c.arc(0, 0, 4.5, Math.PI * 1.2, Math.PI * 2.6); c.stroke(); dot(0, 0, 1.6, '#ffffff'); line(1.6, '#8ac8ff', [-11, 10], [-3, 10]); break;
+    case 'waterMagic': c.fillStyle = '#6ab8ff'; c.beginPath(); c.moveTo(0, -11); c.quadraticCurveTo(9, 2, 7, 5); c.arc(0, 4, 7, 0.14, Math.PI - 0.14); c.quadraticCurveTo(-9, 2, 0, -11); c.fill(); dot(-2.5, 4, 2, '#d8f0ff'); break;
+    case 'earthMagic': poly([[-11, 9], [-4, -5], [0, 1], [4, -9], [11, 9]], '#a8864a'); poly([[4, -9], [7, -3], [4, -4], [2, -5]], fg); poly([[-4, -5], [-2, -2], [-5, -1]], fg); c.fillStyle = '#6a8a3a'; c.fillRect(-11, 8, 22, 2); break;
+    case 'eagleSight': poly([[-11, -2], [-6, -6], [-2, -3], [0, -7], [2, -3], [6, -6], [11, -2], [5, 0], [2, 6], [0, 9], [-2, 6], [-5, 0]], '#c8a060'); dot(0, -2, 2, gd); poly([[-1, -1], [1, -1], [0, 2]], '#e8c070'); break;
+  }
+}
+const skillSprite = id => sprite(`sk_${id}`, 16, 16, 8, 8, p => drawSkillIcon(p, id));
+function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id), cx, cy, size / 32); }
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
 function showSpellbook(h, mode, onPick) {
   // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły

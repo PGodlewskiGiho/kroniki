@@ -494,7 +494,8 @@ const PJ_BASE = { hor: 94, d: 282 };
 function usePJ(L) { const p = (L && L.pj) || PJ_BASE; PJ.hor = p.hor; PJ.d = p.d; }
 function proj(X, Z, e = 0) { const s = 1 / Z; return [PJ.cx + X * s, PJ.hor + PJ.d * s - e * s, s]; }
 const hazeAt = Z => clamp((Z - 1.05) * 0.36, 0, 0.45);
-const TOWN_ART_SCALE = 0.5;
+let TOWN_ART_SCALE = 1 / PIX; // pikseli sceny na px logiczny (drobny piksel: 1, niska jakość: 0,5)
+PIX_CLEAR.push(() => { TOWN_ART_SCALE = 1 / PIX; });
 // Rysuje obiekt jako pikselowy sprite w skali perspektywy (twarde krawędzie, obrys, mgła oddalenia)
 function drawObj(dst, draw, box, anchor, sx, sy, sc, haze, hazeCol, fx, flip) { // flip: odbicie w poziomie (to samo miasto, inne ustawienie budowli)
   const [bx0, by0, bw, bh] = box, R = TOWN_ART_SCALE * sc, cw = Math.ceil(bw * R) + 2, ch = Math.ceil(bh * R) + 2;

@@ -422,7 +422,7 @@ function castBattle(B, id, x, y) {
   const s = casterSide(B), h = sideHero(B, s), S = SPELLS[id], sp = heroStat(h, 'sp'), tu = spellUnitAt(B, id, x, y);
   const area = spellArea(id, x, y, B);
   h.mana -= spellCost(h, id); B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
-  if (B.fx) B.fx.push({ kind: 'spell', id, x, y, area });
+  if (B.fx) B.fx.push({ kind: 'spell', id, x, y, area, side: s });
   learnBySight(B, s, id);
   if (S.dmg) area.forEach(([ax, ay], i) => {
     const v = unitAt(B, ax, ay); if (!v || !targetable(v)) return;

@@ -240,5 +240,16 @@
    1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (zrobione: do 8 graczy, zasłona między turami).
    5. Samouczek (wykreślony). 6. Porządki (zrobione: migracja zapisów, test balansu, trudniejsza mapa i skarbce).
    7. Grafika (zrobione: animowana woda, świerki, surowce w stylu rudy, tła bitew zależne od terenu).
+   Etap B1 (grafika): strzały z łuku lecą szybko po parabolicznym torze ze smugą (projPos), ikony umiejętności
+   (drawSkillIcon/skillIcon: ekran bohatera, okno awansu przez Button.lead, chata wiedźmy), bohater na polu bitwy
+   (heroBattleSprite w narożniku, heroSpot; czar wylatuje z jego ręki), mur z cegieł z wyszczerbieniami, pęknięciami, mchem
+   i wyblakłymi malowidłami (paintBricks), obraz frakcji na zakrytych kawałkach mapy zagadki (puzzleCover), pogoda na mapie
+   (weatherOf: losowana codziennie wg pory roku, drawWeather: deszcz, burza, mgła, śnieżyca, cienie chmur; wyłącznik w ustawieniach).
+   Etap B2: drobny piksel w całej grafice (PIX = px logicznych na piksel grafiki: 1, przy niskiej jakości 2; PXD = gęstość
+   względem dawnej grafiki; sprite ma s.u, setPixelSize czyści pamięci obrazów przez PIX_CLEAR). Teren mapy, tło bitwy, sceny
+   miast, interfejs i menu w drobnych pikselach; jednostki z detalami (twarz, szwy, nity, uzda). Portrety 72×72 (siatka 36,
+   pixPainter z K, płynne cieniowanie, portraitFinish: światło konturowe, winieta). Kursory gry (11b-kursory.js: setCursor,
+   adventureCursor, battleCursor; G.wantCursor ustawiany co klatkę). Przybliżenie mapy kółkiem i klawiszami +/− (ZOOM, ZOOMS,
+   viewW/viewH, setZoom; świat rysowany w widoku wirtualnym i skalowany; fale liczone w grubych pikselach).
    ===================================================================================== */
 

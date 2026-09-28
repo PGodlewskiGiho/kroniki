@@ -42,7 +42,7 @@ G.screens.hero = {
   equipAt(x, y) { return EQUIP_SLOTS.find(s => x >= s.x && x <= s.x + SLOT_BOX && y >= s.y && y <= s.y + SLOT_BOX) || null; },
   bagAt(x, y) { for (let i = 0; i < BAG_VIEW; i++) { const bx = 432 + i * 58; if (x >= bx && x <= bx + SLOT_BOX && y >= 386 && y <= 386 + SLOT_BOX) return this.bagPage * BAG_VIEW + i; } return -1; },
   // Umiejętności: 8 pól (4 × 2) w prawym panelu pod premiami z artefaktów
-  skillRect: i => ({ x: 424 + (i % 4) * 90, y: 512 + Math.floor(i / 4) * 32, w: 86, h: 28 }),
+  skillRect: i => ({ x: 424 + (i % 4) * 90, y: 484 + Math.floor(i / 4) * 56, w: 86, h: 52 }),
   skillAt(x, y) { for (let i = 0; i < MAX_SKILLS; i++) if (inRect(x, y, this.skillRect(i))) return i; return -1; },
   statAt(x, y) { if (y < 164 || y > 244) return null; const i = Math.floor((x - 32) / 90); return i >= 0 && i < 4 && x - 32 - i * 90 <= 84 ? PRIMARY[i] : null; },
   onClick(x, y) {
@@ -135,15 +135,16 @@ G.screens.hero = {
     if (pages > 1) text(ctx, `${this.bagPage + 1} / ${pages}`, 602, 461, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const all = {}; for (const id of Object.values(h.equip)) if (id) for (const [k, v] of Object.entries(ARTIFACTS[id].bonus)) all[k] = (all[k] || 0) + v;
     ctx.font = font(13, 500, 'body');
-    wrapText(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 350).slice(0, 2)
-      .forEach((l, i) => text(ctx, l, 602, 482 + i * 16, { size: 12, weight: 500, align: 'center', color: '#c8b68a' }));
+    wrapText(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 236).slice(0, 2)
+      .forEach((l, i) => text(ctx, l, 602, 453 + i * 14, { size: 11, weight: 500, align: 'center', color: '#c8b68a' })); // między strzałkami plecaka
     for (let i = 0; i < MAX_SKILLS; i++) {
       const r = this.skillRect(i), sk = h.skills[i], hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
       ctx.fillStyle = sk ? 'rgba(90,60,20,.45)' : 'rgba(0,0,0,.3)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
       ctx.strokeStyle = hot ? '#ffd970' : sk ? '#b8913f' : '#4a3e2c'; ctx.lineWidth = hot ? 1.8 : 1; ctx.stroke();
       if (!sk) continue;
-      text(ctx, SKILLS[sk.id].name, r.x + r.w / 2, r.y + 10, { size: SKILLS[sk.id].name.length > 13 ? 10 : 11, weight: 700, align: 'center', color: '#f0e4c0' });
-      for (let k = 0; k < 3; k++) { ctx.fillStyle = k < sk.lv ? '#ffd970' : 'rgba(240,228,192,.2)'; ctx.fillRect(r.x + r.w / 2 - 17 + k * 12, r.y + 19, 10, 4); }
+      skillIcon(ctx, sk.id, r.x + r.w / 2, r.y + 19); // ikona 32 px, obok niej poziom (kreski od dołu)
+      for (let k = 0; k < 3; k++) { ctx.fillStyle = k < sk.lv ? '#ffd970' : 'rgba(240,228,192,.2)'; ctx.fillRect(r.x + r.w / 2 + 20, r.y + 27 - k * 8, 5, 6); }
+      text(ctx, SKILLS[sk.id].name, r.x + r.w / 2, r.y + 44, { size: SKILLS[sk.id].name.length > 13 ? 10 : 11, weight: 700, align: 'center', color: '#f0e4c0' });
     }
     this.buttons.forEach(b => b.draw(ctx));
     if (this.msg && G.time - this.msgT < 2.5) text(ctx, this.msg, 300, 580, { size: 14, weight: 500, align: 'center', color: '#ffd970' });
@@ -221,7 +222,9 @@ const BattleFX = {
       const [x, y] = projPos(p), [nx, ny] = projPos({ ...p, t: Math.min(p.dur, p.t + 0.02) }), ang = Math.atan2(ny - y, nx - x);
       ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
       if (p.kind === 'rock') { circ(ctx, 0, 0, 6, '#6e6a62'); circ(ctx, -1.5, -1.5, 3.5, '#9a948a'); }
-      else if (p.kind === 'arrow') { limb(ctx, -9, 0, 7, 0, 2, '#6a4424'); fillPoly(ctx, [[7, -3], [12, 0], [7, 3]], '#d8dce4'); fillPoly(ctx, [[-9, 0], [-12, -3], [-7, 0], [-12, 3]], '#e8e0cc'); }
+      else if (p.kind === 'arrow') { // smuga za strzałą, cienkie drzewce, grot i lotki
+        const g = ctx.createLinearGradient(-46, 0, -12, 0); g.addColorStop(0, 'rgba(255,250,230,0)'); g.addColorStop(1, 'rgba(255,250,230,.45)'); ctx.fillStyle = g; ctx.fillRect(-46, -1, 34, 2);
+        limb(ctx, -13, 0, 9, 0, 1.6, '#7a5230'); fillPoly(ctx, [[8, -2.6], [14, 0], [8, 2.6]], '#dfe3ea'); fillPoly(ctx, [[-8, 0], [-14, -3.4], [-11, 0], [-14, 3.4]], '#c83a2a'); }
       else { ctx.globalCompositeOperation = 'lighter'; const r = p.kind === 'fireball' ? 13 : 7, gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.2); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.3, p.col); gr.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, TAU); ctx.fill(); fillPoly(ctx, [[0, -r * 0.6], [-r * 2.2, 0], [0, r * 0.6]], p.col); }
       ctx.restore();
@@ -239,7 +242,7 @@ const BattleFX = {
   },
   drawFlash(ctx) { if (this.flash) { ctx.save(); ctx.globalAlpha = clamp(this.flash.a, 0, 1) * 0.6; ctx.fillStyle = this.flash.col; ctx.fillRect(0, 38, W, 452); ctx.restore(); } },
 };
-function projPos(p) { const f = clamp(p.t / p.dur, 0, 1); return [lerp(p.x0, p.x1, f), lerp(p.y0, p.y1, f) - Math.sin(f * Math.PI) * p.arc]; }
+function projPos(p) { const f = clamp(p.t / p.dur, 0, 1); return [lerp(p.x0, p.x1, f), lerp(p.y0, p.y1, f) - (p.kind === 'arrow' ? 4 * f * (1 - f) : Math.sin(f * Math.PI)) * p.arc]; } // strzała: parabola balistyczna
 // Aura czaru wokół oddziału (cząsteczki zależne od rodzaju)
 function spellAura(x, y, fx) {
   const c = fx.col, top = y - 70;

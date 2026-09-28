@@ -5,7 +5,7 @@ G.go = function (name, params) { if (G.fade.next) return; G.fade.next = { name, 
 function activeButtons() { return G.modal ? G.modal.buttons : (G.screen.buttons || []); }
 function updateHover() {
   G.hover = G.fade.next ? null : (activeButtons().find(b => !b.disabled && b.hit(G.mouse.x, G.mouse.y)) || null);
-  G.canvas.style.cursor = G.hover ? 'pointer' : 'default';
+  G.wantCursor = G.hover ? 'hand' : 'arrow'; // ekran może to zmienić w update (np. miecz nad wrogiem); ustawia pętla
 }
 function handleClick(x, y) {
   if (G.fade.next) return;
@@ -88,7 +88,7 @@ function update(dt) {
   G.time += dt; const f = G.fade, sp = 3.5;
   if (f.a < f.target) f.a = Math.min(f.target, f.a + dt * sp); else if (f.a > f.target) f.a = Math.max(f.target, f.a - dt * sp);
   if (f.next && f.a >= 1) { const n = f.next; f.next = null; f.target = 0; setScreen(n.name, n.params); } // enter() może od razu zlecić kolejne przejście
-  syncMouse(); updateHover(); if (G.screen.update) G.screen.update(dt);
+  syncMouse(); updateHover(); if (G.screen.update) G.screen.update(dt); setCursor(G.wantCursor);
 }
 function render() {
   // przesunięcie wyśrodkowanego ekranu w całych pikselach: przy ułamkowym każdy obraz byłby filtrowany (wolno i nieostro)
@@ -170,14 +170,17 @@ function drawPerfInfo(ctx) {
 }
 function showGfxSettings(back) {
   const S = G.settings, cur = (QUALITIES.find(q => q.id === S.quality) || QUALITIES[0]).name;
-  const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); resize(); showGfxSettings(back); };
+  const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); setPixelSize(id === 'low' ? 2 : 1); resize(); showGfxSettings(back); };
   const fontBtn = { label: pixelFont() ? 'Czcionka: piksele' : 'Czcionka: klasyczna', sub: 'zmień', tip: 'Czcionka interfejsu: pikselowa (pasuje do grafiki) albo klasyczna szeryfowa.',
     action: () => { S.font = pixelFont() ? 'classic' : 'pixel'; saveSettings(); Layers.cache = {}; showGfxSettings(back); } };
+  const wxBtn = { label: weatherOn() ? 'Pogoda: tak' : 'Pogoda: nie', sub: 'zmień', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
+    action: () => { S.weather = weatherOn() ? 'off' : 'on'; saveSettings(); showGfxSettings(back); } };
   showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało. Klawisz F pokazuje licznik klatek.`,
-    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), fontBtn, { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 120 });
+    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), fontBtn, wxBtn, { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 100 });
 }
 function init() {
   loadSettings();
+  setPixelSize(G.settings.quality === 'low' ? 2 : 1); ZOOM = ZOOMS.includes(G.settings.zoom) ? G.settings.zoom : 1; // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
   G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: false }); // nieprzezroczyste płótno: przeglądarka nie miesza go z tłem strony
   resize(); window.addEventListener('resize', resize); bindInput();
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)

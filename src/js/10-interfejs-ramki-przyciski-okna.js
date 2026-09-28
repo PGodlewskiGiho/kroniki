@@ -3,11 +3,10 @@
 // --- pixel art interfejsu ---
 // Pergamin, kamień i tła przycisków malujemy w buforze o połowie rozdzielczości (1 piksel grafiki = 2 px ekranu), z paletą
 // i ditheringiem (crispLayer: twarde krawędzie, 3 stopnie krycia), i powiększamy bez wygładzania — tak jak mapę, sceny i jednostki.
-const UI_PX = 2;
 function uiLayer(key, w, h, paint) {
-  return Layers.get('ui_' + key, w, h, c => { c.imageSmoothingEnabled = false; paint(c, w, h); c.canvas._ctx = c; crispLayer(c.canvas, 12); }, 1 / UI_PX);
+  return Layers.get('ui_' + key, w, h, c => { c.imageSmoothingEnabled = false; paint(c, w, h); c.canvas._ctx = c; crispLayer(c.canvas, 12); }, 1 / PIX);
 }
-function drawUi(ctx, c, x, y) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(c, Math.round(x), Math.round(y), c.width * UI_PX, c.height * UI_PX); ctx.restore(); }
+function drawUi(ctx, c, x, y) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(c, Math.round(x), Math.round(y), c.width / c._s, c.height / c._s); ctx.restore(); }
 // Romb z pikseli (ozdoba rogów i przerywników): rzędy po 2 px
 function pixDiamond(ctx, cx, cy, col, n = 3) {
   cx = Math.round(cx / 2) * 2; cy = Math.round(cy / 2) * 2; ctx.fillStyle = col;
@@ -17,14 +16,49 @@ function drawCorners(ctx, x, y, w, h) {
   for (const [cx, cy] of [[x + 7, y + 7], [x + w - 7, y + 7], [x + 7, y + h - 7], [x + w - 7, y + h - 7]]) { pixDiamond(ctx, cx, cy, '#6a4a14', 4); pixDiamond(ctx, cx, cy - 1, '#e0b44c', 3); pixDiamond(ctx, cx - 1, cy - 2, '#fff0b0', 1); }
 }
 // Cegły kamiennego tła: każda w nieco innym odcieniu, jaśniejsza krawędź u góry, cień u dołu, fuga 2 px
+// Mur z cegieł (pixel art w połowie rozdzielczości): różne odcienie, wyszczerbienia, pęknięcia, mech przy dole,
+// a gdzieniegdzie wyblakłe malowidła (fryz, herb, słońce), wyryte runy i żelazne kółka
 function paintBricks(c, w, h, seed = 1) {
-  const r = mulberry32(seed * 7919 + Math.round(w) * 31 + Math.round(h)); c.fillStyle = '#28231e'; c.fillRect(0, 0, w, h);
+  const r = mulberry32(seed * 7919 + Math.round(w) * 31 + Math.round(h)), MORT = '#28231e', px = (x, y, a = 2, b = 2) => c.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, a, b);
+  c.fillStyle = MORT; c.fillRect(0, 0, w, h);
   for (let yy = 0, row = 0; yy < h; yy += 20, row++) for (let xx = row % 2 ? -22 : 0; xx < w; xx += 44) {
-    const t = r(), k = yy / Math.max(1, h), v = Math.round(74 + t * 10 - k * 26);
-    c.fillStyle = `rgb(${v + 6},${v},${v - 8})`; c.fillRect(xx + 2, yy + 2, 42, 18);
+    const t = r(), k = yy / Math.max(1, h), kind = r(); let v = Math.round(74 + t * 10 - k * 26); if (kind < 0.06) v -= 14;
+    c.fillStyle = kind < 0.14 ? `rgb(${v + 13},${v + 1},${v - 9})` : kind < 0.17 ? `rgb(${v + 3},${v + 1},${v - 3})` : `rgb(${v + 6},${v},${v - 8})`; c.fillRect(xx + 2, yy + 2, 42, 18);
     c.fillStyle = 'rgba(255,238,200,.08)'; c.fillRect(xx + 2, yy + 2, 42, 2); c.fillRect(xx + 2, yy + 2, 2, 18);
     c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(xx + 2, yy + 18, 42, 2); c.fillRect(xx + 42, yy + 2, 2, 18);
     for (let k2 = 0; k2 < 3; k2++) { c.fillStyle = r() < 0.5 ? 'rgba(0,0,0,.22)' : 'rgba(255,240,210,.08)'; c.fillRect(xx + 6 + Math.floor(r() * 16) * 2, yy + 6 + Math.floor(r() * 5) * 2, 2 + (r() < 0.3 ? 2 : 0), 2); }
+    if (r() < 0.2) { c.fillStyle = MORT; const L = r() < 0.5, T = r() < 0.5; px(L ? xx + 2 : xx + 38, T ? yy + 2 : yy + 16, 6, 4); px(L ? xx + 2 : xx + 40, T ? yy + 6 : yy + 14, 4, 2); } // wyszczerbiony róg
+    if (r() < 0.07) { c.fillStyle = 'rgba(10,8,6,.5)'; let cx = xx + 10 + r() * 24, cy = yy + 2; while (cy < yy + 18) { px(cx, cy); cy += 2; cx += r() < 0.4 ? 2 : r() < 0.5 ? -2 : 0; } } // pęknięcie
+    if (r() < 0.05 + k * k * 0.3) for (let m = 0; m < 10; m++) { c.fillStyle = ['#3a5a2a', '#4a6a30', '#2e4a24'][m % 3]; px(xx + 4 + r() * 38, yy + 14 + r() * 6 - (m % 4 === 0 ? 4 : 0)); } // mech
+  }
+  const mortar = (x0, y0, x1, y1) => { c.fillStyle = 'rgba(40,35,30,.7)'; for (let yy = 0, row = 0; yy < h; yy += 20, row++) { if (yy < y0 - 20 || yy > y1) continue; c.fillRect(x0, yy, x1 - x0, 2); for (let xx = row % 2 ? -22 : 0; xx < w; xx += 44) if (xx >= x0 && xx <= x1) c.fillRect(xx, Math.max(y0, yy), 2, 20); } };
+  const at = (mw, mh) => [Math.floor(r() * Math.max(1, (w - mw - 16) / 2)) * 2 + 8, Math.floor(r() * Math.max(1, (h - mh - 16) / 2)) * 2 + 8];
+  const n = Math.min(5, Math.floor(w * h / 60000 + 0.4 + r())), PAINT = ['#8a2a1e', '#2a4a7a', '#8a6a1e', '#3a5a2a'];
+  for (let i = 0; i < n; i++) {
+    const q = r(), m = q < 0.28 ? 0 : q < 0.58 ? 1 : q < 0.78 ? 2 : q < 0.9 ? 3 : 4, col = PAINT[Math.floor(r() * PAINT.length)];
+    if (m === 0 && w > 180) { // fryz: pas ochry z zygzakiem przez kilka cegieł
+      const fw = Math.min(w - 16, 120 + Math.floor(r() * 60) * 2), [x0] = at(fw, 20), y0 = Math.floor(r() * Math.max(1, h / 20 - 1)) * 20 + 4;
+      c.globalAlpha = 0.3; c.fillStyle = '#c8a050'; c.fillRect(x0, y0, fw, 14); c.globalAlpha = 0.5; c.fillStyle = col;
+      for (let x = 0; x < fw; x += 2) { const z = Math.abs(((x / 2) % 8) - 4); c.fillRect(x0 + x, y0 + 2 + z * 2, 2, 2); } c.fillRect(x0, y0, fw, 2); c.fillRect(x0, y0 + 12, fw, 2);
+      c.globalAlpha = 1; mortar(x0, y0, x0 + fw, y0 + 14);
+    } else if (m === 1) { // wyblakły herb
+      const [x0, y0] = at(48, 58); c.globalAlpha = 0.42; c.fillStyle = col;
+      for (let y = 0; y < 58; y += 2) { const half = y < 30 ? 24 : Math.max(0, 24 - Math.round((y - 30) * 0.86)); c.fillRect(x0 + 24 - half, y0 + y, half * 2, 2); }
+      c.globalAlpha = 0.4; c.fillStyle = '#e8d8a8'; if (r() < 0.5) { c.fillRect(x0 + 20, y0 + 6, 8, 42); c.fillRect(x0 + 6, y0 + 18, 36, 8); } else for (let y = 0; y < 20; y += 2) c.fillRect(x0 + 24 - y, y0 + 20 + y, 4, 2), c.fillRect(x0 + 20 + y, y0 + 20 + y, 4, 2);
+      c.globalAlpha = 1; mortar(x0, y0, x0 + 48, y0 + 58);
+    } else if (m === 2) { // słońce
+      const [x0, y0] = at(64, 64), cx = x0 + 32, cy = y0 + 32; c.globalAlpha = 0.4; c.fillStyle = '#d8a040';
+      for (let y = -14; y < 14; y += 2) for (let x = -14; x < 14; x += 2) if (x * x + y * y < 196) c.fillRect(cx + x, cy + y, 2, 2);
+      for (let a = 0; a < 12; a++) for (let d = 18; d < 30; d += 2) px(cx + Math.cos(a * Math.PI / 6) * d, cy + Math.sin(a * Math.PI / 6) * d, 4, 2);
+      c.fillStyle = '#8a4a1e'; px(cx - 6, cy - 4, 4, 2); px(cx + 4, cy - 4, 4, 2); px(cx - 4, cy + 6, 8, 2);
+      c.globalAlpha = 1; mortar(x0, y0, x0 + 64, y0 + 64);
+    } else if (m === 3) { // runy wyryte w jednej cegle
+      const row = Math.floor(r() * Math.max(1, h / 20)), xx = Math.floor(r() * Math.max(1, (w - 60) / 44)) * 44 + (row % 2 ? 22 : 0), yy = row * 20; c.fillStyle = 'rgba(12,10,8,.6)';
+      for (let g = 0; g < 4; g++) { const gx = xx + 8 + g * 9, gy = yy + 6; px(gx, gy, 2, 10); if (r() < 0.5) px(gx + 2, gy + (r() < 0.5 ? 0 : 4)); if (r() < 0.5) px(gx + 4, gy + 2 + Math.floor(r() * 3) * 2); }
+    } else { // żelazne kółko w murze
+      const [x0, y0] = at(12, 14); c.fillStyle = '#1a1612'; px(x0 + 4, y0, 4, 4); c.fillStyle = '#5a5048'; for (const [dx, dy] of [[2, 4], [8, 4], [0, 6], [10, 6], [0, 8], [10, 8], [2, 10], [8, 10], [4, 12], [6, 12]]) px(x0 + dx, y0 + dy);
+      c.fillStyle = 'rgba(120,60,20,.3)'; px(x0 + 4, y0 + 14, 4, 6);
+    }
   }
 }
 function drawStone(ctx, x, y, w, h) {
@@ -76,7 +110,7 @@ function paintButton(c, w, h, st) {
 class Button {
   constructor(x, y, w, h, label, action, o = {}) {
     Object.assign(this, { x, y, w, h, label, action, key: o.key || null, size: o.size || 18, disabled: !!o.disabled,
-      selected: o.selected || null, sub: o.sub || null, swatch: o.swatch || null, icon: o.icon || null, tip: o.tip || null });
+      selected: o.selected || null, sub: o.sub || null, swatch: o.swatch || null, icon: o.icon || null, lead: o.lead || null, tip: o.tip || null });
   }
   hit(px, py) { return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h; }
   isSel() { return typeof this.selected === 'function' ? this.selected() : !!this.selected; }
@@ -91,8 +125,9 @@ class Button {
       ctx.fillStyle = typeof this.swatch === 'function' ? this.swatch() : this.swatch; ctx.fillRect(x + 10, y + h / 2 - 8, 16, 16);
       ctx.lineWidth = 2; ctx.strokeStyle = '#e0b24a'; ctx.strokeRect(x + 10, y + h / 2 - 8, 16, 16); cx = x + (w + 26) / 2;
     }
+    if (this.lead) { this.lead(ctx, x + 24, y + h / 2); cx = x + (w + 34) / 2; } // mała ikona przed napisem (np. umiejętność)
     if (this.icon) { this.icon(ctx, cx + 2, y + h / 2 + 2, '#120a03'); this.icon(ctx, cx, y + h / 2, col); ctx.restore(); return; } // twardy cień zamiast poświaty
-    let fs = this.size; const maxW = w - (this.swatch ? 40 : 14);
+    let fs = this.size; const maxW = w - (this.swatch ? 40 : this.lead ? 48 : 14);
     ctx.font = font(fs, 700, 'title'); while (fs > 9 && ctx.measureText(this.label).width > maxW) { fs--; ctx.font = font(fs, 700, 'title'); }
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const ly = this.sub ? y + h / 2 - 7 : y + h / 2 + 1;
@@ -106,13 +141,13 @@ function clickButtons(list, x, y) {
   if (b && b === G.downTarget) { if (b.action) b.action(); return true; }
   return false;
 }
-// opts: [{label, key, action, sub, tip}]; extra: icon, iconH, locked (Esc nie zamyka), bw (szerokość przycisków)
+// opts: [{label, key, action, sub, tip, lead}]; extra: icon, iconH, locked (Esc nie zamyka), bw (szerokość przycisków)
 function showDialog(msg, opts, extra = {}) {
   const bw = extra.bw || 120, gap = 24, bh = opts.some(o => o.sub) ? 50 : 40;
   const w = Math.max(400, opts.length * (bw + gap) + 36); G.ctx.font = font(20, 500, 'body'); const lines = wrapText(G.ctx, msg, w - 70);
   const iconH = extra.icon ? (extra.iconH || 56) : 0, h = 120 + bh + lines.length * 26 + iconH, x = (W - w) / 2, y = (H - h) / 2;
   const total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
-  const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip }); bx += bw + gap; return b; });
+  const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip, lead: o.lead }); bx += bw + gap; return b; });
   G.modal = {
     msg, buttons, locked: !!extra.locked, hasIcon: !!extra.icon, // msg, hasIcon: treść okna i czy ma rysunek (podgląd w testach)
     draw(ctx) {
