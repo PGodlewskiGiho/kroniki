@@ -75,7 +75,7 @@ test('najem: warunki (tawerna, złoto, wolna brama, limit bohaterów)', async ()
   assert.match(r.limit, /najwyżej 8/);
 });
 
-test('okno tawerny w mieście: najem przez kliknięcie budowli', async () => {
+test('okno tawerny w mieście: podgląd kandydata na ekranie bohatera, najem z podglądu', async () => {
   await withTavern();
   await page.evaluate(() => setScreen('town', { townId: 0 }));
   await frames(page, 5);
@@ -84,8 +84,12 @@ test('okno tawerny w mieście: najem przez kliknięcie budowli', async () => {
   assert.match(d.msg, /W tawernie czekają/);
   assert.equal(d.labels.length, 4); // dwóch chętnych, Kronika, Wyjdź
   await frames(page, 3);
-  await pressDialog(page, d.labels[0]);
-  const r = await page.evaluate(() => ({ heroes: myHeroes(G.state).length, msg: G.screens.town.msg, inTown: !!heroInTown(G.state, G.state.towns[0]) }));
+  await pressDialog(page, d.labels[0]); await page.waitForFunction(() => G.screenName === 'hero'); // podgląd kandydata na ekranie bohatera
+  const pv = await page.evaluate(() => { const s = G.screens.hero; return { screen: G.screenName, preview: !!s.preview, heroes: myHeroes(G.state).length, army: armySize(s.hero().army) }; });
+  assert.deepEqual([pv.screen, pv.preview, pv.heroes], ['hero', true, 1], 'podgląd nie dodaje bohatera'); assert.ok(pv.army > 0);
+  await page.evaluate(() => G.screens.hero.bHire.action()); await page.waitForFunction(() => G.screenName === 'town');
+  const r = await page.evaluate(() => ({ heroes: myHeroes(G.state).length, msg: G.screens.town.msg, inTown: !!heroInTown(G.state, G.state.towns[0]), army: armySize(heroInTown(G.state, G.state.towns[0]).army) }));
+  assert.equal(r.army, pv.army, 'najęty bohater ma tę samą armię co w podglądzie');
   assert.equal(r.heroes, 2);
   assert.match(r.msg, /dołącza do twojej sprawy/);
   assert.ok(r.inTown);

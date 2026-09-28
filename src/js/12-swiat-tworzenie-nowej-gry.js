@@ -270,6 +270,8 @@ function createHero(st, owner, x, y, pick = null) {
     path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null };
   initHeroProgress(h); h.mp = heroMaxMP(h); st.heroes.push(h); return h;
 }
+// Podgląd kandydata z tawerny: ten sam bohater, którego dałby najem (ta sama armia i umiejętności), ale bez dopisania do gry
+function previewHero(st, owner, pick) { const h = createHero(st, owner, -1, -1, pick); st.heroes.pop(); h.preview = true; return h; }
 // Cały świat powstaje tutaj, zanim pokaże się jakikolwiek ekran. Stan (st) nie zawiera nic z grafiki,
 // dlatego da się go później zapisać i wczytać (krok 14).
 // seed podaje się tylko w testach (powtarzalny świat); w grze jest losowy.

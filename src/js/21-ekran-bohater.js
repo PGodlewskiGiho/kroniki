@@ -22,14 +22,20 @@ function drawSpecBox(ctx, h) {
 }
 G.screens.hero = {
   buttons: [], sel: null, bagPage: 0, armyRects: [], back: null,
-  hero() { return G.state.heroes[this.heroId] || hero(G.state); },
+  hero() { return this.preview || G.state.heroes[this.heroId] || hero(G.state); },
+  // p.preview: kandydat z tawerny (podgląd przed najęciem; p.hire = { townId, k }) — bez zmian w armii i ekwipunku
   enter(p) {
     this.heroId = p.heroId != null ? p.heroId : G.state.heroes.indexOf(hero(G.state)); this.back = p.back || { name: 'adventure', params: {} };
+    this.preview = p.preview || null; this.hire = p.hire || null;
     this.sel = null; this.bagPage = 0; this.armyRects = []; this.msg = null;
     this.bPrev = new Button(432, 446, 44, 28, 'Poprzednie', () => { this.bagPage--; }, { icon: iconArrowSide(-1), tip: 'Poprzednie artefakty w plecaku.' });
     this.bNext = new Button(728, 446, 44, 28, 'Następne', () => { this.bagPage++; }, { icon: iconArrowSide(1), tip: 'Następne artefakty w plecaku.' });
     this.buttons = [new Button(32, 500, 170, 44, 'Wróć', () => this.onBack(), { key: 'escape', size: 18, tip: 'Powrót (klawisz Esc).' }), this.bPrev, this.bNext,
       new Button(216, 500, 172, 44, 'Księga czarów', () => showSpellbook(this.hero(), 'view', () => {}), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C).' })];
+    if (this.preview) this.buttons.splice(3, 1, this.bHire = new Button(216, 500, 172, 44, 'Najmij', () => {
+      const st = G.state, t = st.towns[this.hire.townId], r = hireHero(st, t, this.hire.k); if (r.error) return this.say(r.error);
+      G.go('town', { townId: t.id, msg: `${r.hero.name} dołącza do twojej sprawy` });
+    }, { key: 'enter', size: 17, sub: `${HERO_COST} złota`, tip: `Najmij bohatera za ${HERO_COST} złota; stanie w bramie miasta (klawisz Enter).` }));
   },
   onBack() { G.go(this.back.name, this.back.params); },
   say(m) { this.msg = m; this.msgT = G.time; },
@@ -41,6 +47,7 @@ G.screens.hero = {
   statAt(x, y) { if (y < 164 || y > 244) return null; const i = Math.floor((x - 32) / 90); return i >= 0 && i < 4 && x - 32 - i * 90 <= 84 ? PRIMARY[i] : null; },
   onClick(x, y) {
     if (clickButtons(this.buttons, x, y)) return;
+    if (this.preview) return; // podgląd kandydata: tylko oglądanie
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y);
     if (ar) {
       if (!this.sel) { if (h.army[ar.i]) this.sel = ar.i; return; }
@@ -105,7 +112,7 @@ G.screens.hero = {
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });
     if (h.machines.length) text(ctx, `Machiny wojenne: ${h.machines.map(id => CREATURES[id].name.toLowerCase()).join(', ')}`, 210, 480, { size: 13, weight: 700, align: 'center', color: '#5a3814' });
-    else text(ctx, 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
+    else text(ctx, this.preview ? `Kandydat z tawerny: podgląd przed najęciem (${HERO_COST} złota).` : 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
     // ekwipunek
     text(ctx, 'Ekwipunek', 602, 38, { size: 20, align: 'center', color: '#f0e4c0', fam: 'title' });
     ctx.fillStyle = 'rgba(240,228,192,.07)'; circ(ctx, 599, 89, 26, 'rgba(240,228,192,.07)'); rr(ctx, 560, 118, 78, 170, 20); ctx.fill(); ctx.fillRect(566, 280, 26, 70); ctx.fillRect(606, 280, 26, 70);

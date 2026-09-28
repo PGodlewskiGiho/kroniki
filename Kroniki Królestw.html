@@ -3724,6 +3724,8 @@ function createHero(st, owner, x, y, pick = null) {
     path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null };
   initHeroProgress(h); h.mp = heroMaxMP(h); st.heroes.push(h); return h;
 }
+// Podgląd kandydata z tawerny: ten sam bohater, którego dałby najem (ta sama armia i umiejętności), ale bez dopisania do gry
+function previewHero(st, owner, pick) { const h = createHero(st, owner, -1, -1, pick); st.heroes.pop(); h.preview = true; return h; }
 // Cały świat powstaje tutaj, zanim pokaże się jakikolwiek ekran. Stan (st) nie zawiera nic z grafiki,
 // dlatego da się go później zapisać i wczytać (krok 14).
 // seed podaje się tylko w testach (powtarzalny świat); w grze jest losowy.
@@ -10220,14 +10222,20 @@ function drawSpecBox(ctx, h) {
 }
 G.screens.hero = {
   buttons: [], sel: null, bagPage: 0, armyRects: [], back: null,
-  hero() { return G.state.heroes[this.heroId] || hero(G.state); },
+  hero() { return this.preview || G.state.heroes[this.heroId] || hero(G.state); },
+  // p.preview: kandydat z tawerny (podgląd przed najęciem; p.hire = { townId, k }) — bez zmian w armii i ekwipunku
   enter(p) {
     this.heroId = p.heroId != null ? p.heroId : G.state.heroes.indexOf(hero(G.state)); this.back = p.back || { name: 'adventure', params: {} };
+    this.preview = p.preview || null; this.hire = p.hire || null;
     this.sel = null; this.bagPage = 0; this.armyRects = []; this.msg = null;
     this.bPrev = new Button(432, 446, 44, 28, 'Poprzednie', () => { this.bagPage--; }, { icon: iconArrowSide(-1), tip: 'Poprzednie artefakty w plecaku.' });
     this.bNext = new Button(728, 446, 44, 28, 'Następne', () => { this.bagPage++; }, { icon: iconArrowSide(1), tip: 'Następne artefakty w plecaku.' });
     this.buttons = [new Button(32, 500, 170, 44, 'Wróć', () => this.onBack(), { key: 'escape', size: 18, tip: 'Powrót (klawisz Esc).' }), this.bPrev, this.bNext,
       new Button(216, 500, 172, 44, 'Księga czarów', () => showSpellbook(this.hero(), 'view', () => {}), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C).' })];
+    if (this.preview) this.buttons.splice(3, 1, this.bHire = new Button(216, 500, 172, 44, 'Najmij', () => {
+      const st = G.state, t = st.towns[this.hire.townId], r = hireHero(st, t, this.hire.k); if (r.error) return this.say(r.error);
+      G.go('town', { townId: t.id, msg: `${r.hero.name} dołącza do twojej sprawy` });
+    }, { key: 'enter', size: 17, sub: `${HERO_COST} złota`, tip: `Najmij bohatera za ${HERO_COST} złota; stanie w bramie miasta (klawisz Enter).` }));
   },
   onBack() { G.go(this.back.name, this.back.params); },
   say(m) { this.msg = m; this.msgT = G.time; },
@@ -10239,6 +10247,7 @@ G.screens.hero = {
   statAt(x, y) { if (y < 164 || y > 244) return null; const i = Math.floor((x - 32) / 90); return i >= 0 && i < 4 && x - 32 - i * 90 <= 84 ? PRIMARY[i] : null; },
   onClick(x, y) {
     if (clickButtons(this.buttons, x, y)) return;
+    if (this.preview) return; // podgląd kandydata: tylko oglądanie
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y);
     if (ar) {
       if (!this.sel) { if (h.army[ar.i]) this.sel = ar.i; return; }
@@ -10303,7 +10312,7 @@ G.screens.hero = {
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });
     if (h.machines.length) text(ctx, `Machiny wojenne: ${h.machines.map(id => CREATURES[id].name.toLowerCase()).join(', ')}`, 210, 480, { size: 13, weight: 700, align: 'center', color: '#5a3814' });
-    else text(ctx, 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
+    else text(ctx, this.preview ? `Kandydat z tawerny: podgląd przed najęciem (${HERO_COST} złota).` : 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
     // ekwipunek
     text(ctx, 'Ekwipunek', 602, 38, { size: 20, align: 'center', color: '#f0e4c0', fam: 'title' });
     ctx.fillStyle = 'rgba(240,228,192,.07)'; circ(ctx, 599, 89, 26, 'rgba(240,228,192,.07)'); rr(ctx, 560, 118, 78, 170, 20); ctx.fill(); ctx.fillRect(566, 280, 26, 70); ctx.fillRect(606, 280, 26, 70);
@@ -11012,6 +11021,8 @@ G.screens.town = {
   enter(p) {
     this.townId = p.townId || 0; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.split = false; this.garRects = []; this.heroRects = [];
     this.guildVisit();
+    if (p.msg) this.say(p.msg);
+    if (p.tavern) setTimeout(() => { if (G.screen === this && !G.modal) this.showTavern(); }, 0); // powrót z podglądu bohatera: znów tawerna
     this.baseButtons = [
       new Button(596, 448, 192, 40, 'Rekrutacja', () => showRecruitList(G.state, this.town(), m => this.say(m)), { key: 'r', size: 16, tip: 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).' }),
       new Button(730, 496, 58, 40, 'Mapa', () => G.go('adventure'), { key: 'escape', size: 14, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
@@ -11065,8 +11076,9 @@ G.screens.town = {
     const st = G.state, t = this.town(), offers = tavernOffer(st, t.owner), avail = offers.map((o, k) => o && { o, k }).filter(Boolean);
     const who = o => `${o.name} (${(o.female ? HERO_CLASSES[o.cls].nameF : HERO_CLASSES[o.cls].name).toLowerCase()}, ${factionOf(o.fac).name})`;
     if (!avail.length) return showDialog('W tawernie nikt już nie czeka. Nowi chętni pojawią się w przyszłym tygodniu.', [{ label: 'Kronika', key: 'k', action: () => showChronicle(st) }, { label: 'OK', key: 'enter' }]);
-    showDialog(`W tawernie czekają: ${avail.map(a => who(a.o)).join(' i ')}. Najem kosztuje ${HERO_COST} złota, a bohater przychodzi z małym oddziałem.`, [
-      ...avail.map(({ o, k }) => ({ label: o.name, sub: specName({ ...o, level: 1 }), tip: `Specjalność: ${specText({ ...o, level: 1 })}.`, action: () => { const r = hireHero(st, t, k); this.say(r.error || `${r.hero.name} dołącza do twojej sprawy`); } })),
+    showDialog(`W tawernie czekają: ${avail.map(a => who(a.o)).join(' i ')}. Najem kosztuje ${HERO_COST} złota, a bohater przychodzi z małym oddziałem. Kliknij bohatera, aby go obejrzeć.`, [
+      ...avail.map(({ o, k }) => ({ label: o.name, sub: specName({ ...o, level: 1 }), tip: `Specjalność: ${specText({ ...o, level: 1 })}. Kliknij, aby obejrzeć bohatera i go nająć.`,
+        action: () => G.go('hero', { preview: previewHero(st, t.owner, o), hire: { townId: t.id, k }, back: { name: 'town', params: { townId: t.id, tavern: true } } }) })),
       { label: 'Kronika', key: 'k', tip: 'Kronika tawerny: kto prowadzi w królestwie (im więcej masz tawern, tym więcej wiesz).', action: () => showChronicle(st) },
       { label: 'Wyjdź', key: 'escape' },
     ], { iconH: 96, icon: (ctx, cx, cy) => avail.forEach(({ o }, i) => {
