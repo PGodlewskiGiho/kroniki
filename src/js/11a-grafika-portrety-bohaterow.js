@@ -85,7 +85,7 @@ function heroFace(h) {
   return F;
 }
 function drawHeroPortrait(ctx, x, y, h, col, k = 1) {
-  const s = 36 * k, pc = portraitCanvas(h, col); ctx.save(); ctx.imageSmoothingEnabled = s * G.rs * (G.dpr || 1) < pc.width * 0.9; ctx.drawImage(pc, x, y, s, s); ctx.restore(); // pomniejszony: z wygładzaniem
+  const s = 36 * k, pc = portraitArt(h) || portraitCanvas(h, col); /* obraz z tools/portrety-ai, inaczej rysunek z kodu */ ctx.save(); ctx.imageSmoothingEnabled = s * G.rs * (G.dpr || 1) < pc.width * 0.9; ctx.drawImage(pc, x, y, s, s); ctx.restore(); // pomniejszony: z wygładzaniem
   if (h.asleep) { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x, y, s, s); text(ctx, 'z z', x + s / 2, y + s / 2, { size: 14, align: 'center', color: '#ecd9a8', fam: 'title' }); }
   ctx.lineWidth = 2; ctx.strokeStyle = '#b8913f'; ctx.strokeRect(x, y, s, s);
 }

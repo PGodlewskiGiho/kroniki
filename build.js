@@ -28,7 +28,10 @@ function build() {
   for (const id of Object.keys(art)) { const f = path.join(gdir, 'jednostki', id + '.png'); if (fs.existsSync(f)) art[id].png = fs.readFileSync(f).toString('base64'); else delete art[id]; }
   const hmeta = path.join(gdir, 'bohaterowie.json'), hart = fs.existsSync(hmeta) ? JSON.parse(fs.readFileSync(hmeta, 'utf8')) : {};
   for (const id of Object.keys(hart)) { const f = path.join(gdir, 'bohaterowie', id + '.png'); if (fs.existsSync(f)) hart[id].png = fs.readFileSync(f).toString('base64'); else delete hart[id]; }
-  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d): klatki jednostek i bohaterów\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\n`;
+  // Portrety bohaterów (tools/portrety-ai): imię -> PNG 72×72
+  const pmeta = path.join(gdir, 'portrety.json'), port = {};
+  if (fs.existsSync(pmeta)) for (const [name, f] of Object.entries(JSON.parse(fs.readFileSync(pmeta, 'utf8')))) { const pf = path.join(gdir, 'portrety', f); if (fs.existsSync(pf)) port[name] = fs.readFileSync(pf).toString('base64'); }
+  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\n`;
   return shell.replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => artJs + js);
 }
 
