@@ -119,6 +119,8 @@
    dwellMax/dwellHire, okno showDwelling), ołtarz ofiarny (artefakty z plecaka za SACRIFICE_EXP) i wraki na wodzie.
    Użycia 'free' (bez limitu) i 'once' (obiekt znika). Strzał: kary za odległość (SHOT_RANGE) i przeszkody (shotBlocked),
    bez kar machiny i sharpshooter; licznik strzał przy oddziale. Kliknięcie w wieże miasta na mapie: drawnObjectAt.
+   Garnizon z bohaterem (h.garrison = id miasta): swapGarrison (przycisk „Zamień”, klawisz Z) wprowadza bohatera z bramy do murów
+   (przejmuje wojsko garnizonu) i wyprowadza tego z murów; heroAt go pomija (brama wolna na najem), townHero broni miasta.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.

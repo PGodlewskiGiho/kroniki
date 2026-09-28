@@ -172,7 +172,7 @@ function* aiVisit(st, h, i, news) {
   if (ob && ob.type === 'town') {
     const t = st.towns[ob.townId];
     if (t.owner === h.owner) { if (buildGrail(st, t, h)) tell(st, -1, `${ownerName(st, h.owner)} wznosi budowlę Graala w mieście ${t.name}.`); armyTransfer(t.garrison, h.army); return; }
-    if (!armySize(t.garrison) && !heroInTown(st, t)) { tell(st, t.owner, `${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
+    if (!armySize(t.garrison) && !townHero(st, t)) { tell(st, t.owner, `${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
     else yield* aiBattle(st, h, t, news);
     return;
   }
@@ -241,7 +241,7 @@ function advanceDay(st) {
 }
 // Obrona człowieka bez ekranu bitwy: walka automatyczna, doświadczenie dla obrońcy
 function autoDefend(st, act) {
-  const D = act.foe.garrison ? heroInTown(st, act.foe) : act.foe, res = resolveBattle(simulateBattle(createBattle(st, act.h, act.foe)), false);
+  const D = act.foe.garrison ? townHero(st, act.foe) : act.foe, res = resolveBattle(simulateBattle(createBattle(st, act.h, act.foe)), false);
   if (res.outcome !== 'win' && D && res.foeExp) gainExp(st, D, res.foeExp);
   return res;
 }

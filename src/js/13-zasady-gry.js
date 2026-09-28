@@ -206,13 +206,13 @@ function startHeroEncounter(st, h, foe) {
 }
 // Siła obrońców miasta: garnizon, bohater w mieście (z premią za cechy) i mury
 function townPower(st, t) {
-  const hh = heroInTown(st, t), wall = 1 + 0.05 * TOWN_WALL_DEF[townLevel(t)];
+  const hh = townHero(st, t), wall = 1 + 0.05 * TOWN_WALL_DEF[townLevel(t)];
   return Math.round((armyPower(t.garrison) + (hh ? armyPower(hh.army) * heroFactor(hh) : 0)) * wall);
 }
 // Wejście do obcego miasta: puste zajmujemy od razu, bronione trzeba zdobyć w bitwie
 function startTownAssault(st, h, t) {
   if (t.owner === h.owner) return;
-  const hh = heroInTown(st, t), walls = ['', ' Miasto otaczają mury Fortu.', ' Miasto otaczają mury Cytadeli.', ' Miasto otaczają mury Zamku.'][townLevel(t)];
+  const hh = townHero(st, t), walls = ['', ' Miasto otaczają mury Fortu.', ' Miasto otaczają mury Cytadeli.', ' Miasto otaczają mury Zamku.'][townLevel(t)];
   if (!armySize(t.garrison) && !hh) {
     captureTown(st, t, h.owner); rebuildObjIndex(st);
     showDialog(`Miasto ${t.name} nie ma obrońców. ${h.name} zajmuje je bez walki.`, [{ label: 'Wejdź do miasta', key: 'enter', action: () => G.go('town', { townId: t.id }) }]);
@@ -449,13 +449,28 @@ function maxAffordable(st, cost, owner = ME) {
   for (const r of RESOURCES) if (cost[r.id]) m = Math.min(m, Math.floor(R[r.id] / cost[r.id]));
   return m === Infinity ? 0 : m;
 }
-const heroInTown = (st, t) => st.heroes.find(h => h.x === t.x && h.y === t.y && h.owner === t.owner) || null;
+const heroInTown = (st, t) => st.heroes.find(h => h.x === t.x && h.y === t.y && h.owner === t.owner && h.garrison == null) || null; // w bramie
+// Garnizon z bohaterem (jak w Heroes 3): bohater w murach dowodzi wojskiem garnizonu, brama zostaje wolna (np. na najem w tawernie)
+const garrisonHero = (st, t) => st.heroes.find(h => h.garrison === t.id) || null;
+const townHero = (st, t) => garrisonHero(st, t) || heroInTown(st, t); // kto broni miasta
+// Zamiana miejsc: bohater z bramy wchodzi do garnizonu (wojsko garnizonu przechodzi do jego armii), bohater z garnizonu wychodzi do bramy.
+// Zwraca tekst błędu albo null.
+function swapGarrison(st, t) {
+  const g = garrisonHero(st, t), v = heroInTown(st, t);
+  if (!g && !v) return 'W mieście nie ma bohatera';
+  if (v) { const from = t.garrison.map(s => s && { ...s }); armyTransfer(from, v.army.map(s => s && { ...s }));
+    if (from.some(Boolean)) return 'Wojsko garnizonu nie zmieści się w armii bohatera: połącz albo przenieś oddziały';
+    armyTransfer(t.garrison, v.army); }
+  if (g) g.garrison = null;
+  if (v) { v.garrison = t.id; v.path = null; v.dest = null; }
+  return null;
+}
 // Werbunek do garnizonu; gdy garnizon pełny, do armii bohatera stojącego w mieście. Zwraca błąd albo null.
 function recruit(st, t, L, cid, n) {
   if (n <= 0) return 'Wybierz liczbę jednostek';
   if (n > (t.avail[L] || 0)) return 'Tylu jednostek nie ma w siedlisku';
   const cost = unitCost(cid); if (n > maxAffordable(st, cost, t.owner)) return 'Brakuje zasobów';
-  const h = heroInTown(st, t), dest = armyHasRoom(t.garrison, cid) ? t.garrison : (h && armyHasRoom(h.army, cid) ? h.army : null);
+  const g = garrisonHero(st, t), h = heroInTown(st, t), dest = g && armyHasRoom(g.army, cid) ? g.army : armyHasRoom(t.garrison, cid) ? t.garrison : (h && armyHasRoom(h.army, cid) ? h.army : null);
   if (!dest) return 'Brak miejsca w garnizonie';
   const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id] * n;
   armyAdd(dest, cid, n); t.avail[L] -= n; return null;
@@ -597,7 +612,7 @@ function hireHero(st, t, k) {
 // Kuźnia: machina wojenna dla bohatera stojącego w mieście (każdej najwyżej jedna). Zwraca błąd albo null.
 function buyMachine(st, t, h, id) {
   if (!hasB(t, 'smith')) return 'Brak kuźni';
-  if (!h || !heroInTown(st, t) || heroInTown(st, t) !== h) return 'Bohater musi stać w mieście';
+  if (!h || (heroInTown(st, t) !== h && garrisonHero(st, t) !== h)) return 'Bohater musi stać w mieście';
   if (h.machines.includes(id)) return 'Bohater ma już tę machinę';
   const cost = CREATURES[id].cost; if (!canAfford(st, cost, h.owner)) return 'Brakuje złota';
   const R = playerOf(st, h.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id];

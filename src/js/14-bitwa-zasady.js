@@ -26,7 +26,7 @@ function battleSide(st, foe) {
   }
   if (foe.type === 'monster') return { owner: -1, hero: null, monster: foe, town: null, key: foe.id, stacks: splitMonster(foe.count).map(n => ({ cid: foe.cid, n, src: null, slot: null })) };
   if (foe.garrison) { // miasto: bohater stojący w mieście broni się razem z garnizonem
-    const h = heroInTown(st, foe);
+    const h = townHero(st, foe); // bohater w garnizonie, a gdy go nie ma: bohater w bramie
     return { owner: foe.owner, hero: h, monster: null, town: foe, key: 9000 + st.towns.indexOf(foe), stacks: [...(h ? armyEntries(h.army, 'hero') : []), ...armyEntries(foe.garrison, 'garrison')] };
   }
   return { owner: foe.owner, hero: foe, monster: null, town: null, key: 5000 + foe.id, stacks: armyEntries(foe.army, 'hero') };
@@ -452,6 +452,7 @@ function removeHero(st, h) {
 }
 // Zmiana właściciela miasta (i jego obiektu na mapie)
 function captureTown(st, t, owner) {
+  for (const o of st.heroes.filter(o => o.x === t.x && o.y === t.y && o.owner !== owner)) removeHero(st, o); // bohaterowie poprzedniego właściciela w murach i bramie
   t.owner = owner; if (owner >= 0) reveal(st, t.x, t.y, HERO_SIGHT, owner);
   for (const ob of st.objects) if (ob.type === 'town' && ob.townId === t.id) ob.owner = owner;
   MapRender.miniDirty = true;
