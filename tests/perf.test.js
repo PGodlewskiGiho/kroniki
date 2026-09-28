@@ -29,12 +29,12 @@ test('nieruchomy ekran bohatera rysuje się rzadko, ruch myszy wymusza klatkę',
   assert.ok(moved >= 15, `przy ruchu: ${moved} klatek`);
 });
 
-test('mapa: w spoczynku ~20 klatek, gdy kamera jedzie – płynnie', async () => {
+test('mapa: w spoczynku ~30 klatek, gdy kamera jedzie – płynnie', async () => {
   await newGame(page, { mapSize: 'M' });
   await page.evaluate(() => { setScreen('adventure', {}); G.modal = null; });
   await noMouse(); await frames(page, 5);
   const idle = await renders(1000);
-  assert.ok(idle >= 12 && idle <= 26, `spoczynek: ${idle}`);
+  assert.ok(idle >= 20 && idle <= 36, `spoczynek: ${idle}`);
   await page.evaluate(() => { window.__iv = setInterval(() => { G.state.cam.x += 3; }, 8); });
   const busy = await renders(1000);
   await page.evaluate(() => clearInterval(window.__iv));
@@ -64,4 +64,13 @@ test('mgła w kawałkach: odkrycie pola odświeża tylko potrzebny kawałek', as
     return { again, changed: b !== a, clear: fogChunk(ex, n, cx, cy) === null };
   });
   assert.deepEqual(r, { again: true, changed: true, clear: true });
+});
+
+test('miasto i menu płynnie (60 klatek), przy niskiej jakości połowa; efekty miasta w pełnej rozdzielczości', async () => {
+  await newGame(page);
+  await page.evaluate(() => { setScreen('town', { townId: G.state.towns.find(t => t.owner === ME).id }); G.modal = null; });
+  await noMouse(); await frames(page, 5);
+  const town = await renders(1000);
+  const r = await page.evaluate(() => { const q = G.settings.quality; G.settings.quality = 'low'; const low = screenFps(); G.settings.quality = q; return { low, fb: !!G.screens.town.fb }; });
+  assert.ok(town >= 40, `miasto: ${town}`); assert.equal(r.low, 30); assert.equal(r.fb, false, 'bez okna efekty idą prosto na ekran');
 });

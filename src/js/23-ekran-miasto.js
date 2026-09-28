@@ -1,7 +1,7 @@
 // ==================== EKRAN: MIASTO =====================================================
 // Widok miasta, lista budowli, garnizon.
 G.screens.town = {
-  fps: 15, // dym i światła w oknach
+  fps: smoothFps, // dym, ptaki, śnieg, żar: płynnie (klatka efektów kosztuje ok. 1 ms)
   buttons: [], townId: 0, rows: [], hoverSlot: null, scroll: 0, sel: null, garRects: [], heroRects: [],
   LIST_ROWS: 6, // tyle budowli mieści się na liście; resztę przewija się strzałkami albo kółkiem myszy
   town() { return G.state.towns[this.townId]; },
@@ -142,13 +142,19 @@ G.screens.town = {
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
     const scene = Layers.get(key, 592, 438, c => { c.imageSmoothingEnabled = false; TownFXCache[key] = paintTownScene(c, t, col); }, TOWN_ART_SCALE);
-    const fb = pixBuf('townFx', scene.width, scene.height), fbx = fb._ctx;
-    if (fb._key !== key || !(G.time >= fb._t && G.time - fb._t < 1 / 15)) { // dym i światła w oknach: najwyżej 15 klatek na sekundę
-      fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
-      fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, TownFXCache[key] || { wins: [], smokes: [] }); fb._key = key; fb._t = G.time;
+    const fxs = TownFXCache[key] || { wins: [], smokes: [] };
+    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(scene, 0, 0, scene.width / TOWN_ART_SCALE, scene.height / TOWN_ART_SCALE);
+    // dym, ptaki, śnieg i żar w pełnej rozdzielczości ekranu: w buforze o połowie rozdzielczości wolny ruch skakał co 2 piksele
+    if (!G.modal) drawTownFX(ctx, t, fxs); ctx.restore();
+    if (G.modal) { // widok z okna gildii: scena z efektami w buforze sceny
+      const fb = pixBuf('townFx', scene.width, scene.height), fbx = fb._ctx;
+      if (fb._key !== key || fb._t !== G.time) {
+        fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
+        fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, fxs); fb._key = key; fb._t = G.time;
+      }
+      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(fb, 0, 0, fb.width / TOWN_ART_SCALE, fb.height / TOWN_ART_SCALE); ctx.restore();
+      this.fb = fb;
     }
-    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(fb, 0, 0, fb.width / TOWN_ART_SCALE, fb.height / TOWN_ART_SCALE); ctx.restore();
-    this.fb = fb; // widok z okna gildii
     if (this.hoverSlot !== null && !G.modal) {
       const hb = ((TownFXCache[key] || {}).rects || {})[this.hoverSlot] || { x: 0, y: 0, w: 0, h: 0 };
       const s = { x: hb.x, b: hb.y + hb.h, w: hb.w, h: hb.h }, B = slotBuilding(t, this.hoverSlot), next = slotNext(t, this.hoverSlot);

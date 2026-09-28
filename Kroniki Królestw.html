@@ -150,6 +150,8 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    Pixel art efektów: pixLayer/crispLayer (bufor 1/px rozdzielczości, paleta z ditheringiem, 3 stopnie krycia) dla czarów
    w bitwie (BattleFX: warstwa zwykła i świetlna, poświaty jako pierścienie), czarów na mapie, sceny okna wyniku bitwy
    i ekranu końca gry (tło miasta w skali 1,5, piksel = 3 px ekranu); ikony czarów w gildii jako sprite'y.
+   Płynność: miasto, menu i bitwa w 60 klatkach (smoothFps, przy niskiej jakości 30), mapa w spoczynku 30; efekty miasta (dym,
+   ptaki, śnieg, żar) rysowane prosto na ekranie w pełnej rozdzielczości, bufor sceny z efektami tylko dla okna gildii.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
@@ -9068,10 +9070,10 @@ function menuRider(b, t) {
 }
 // Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize, wypalona raz w nieruchomym niebie i lądzie)
 // i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
-// Scena menu zmienia się powoli (chmury, ognie w oknach), więc przeliczamy ją najwyżej 12 razy na sekundę, a pomiędzy wklejamy gotową
+// Scenę przeliczamy raz na klatkę (kilka ułamków milisekundy), a przy ponownym rysowaniu tej samej klatki wklejamy gotową
 function drawMenuScene(ctx) {
   const pb = pixBuf('menuScene', VW / 2, VH / 2);
-  if (!(pb._t != null && G.time >= pb._t && G.time - pb._t < 1 / 12)) { paintMenuScene(pb); pb._t = G.time; }
+  if (pb._t !== G.time) { paintMenuScene(pb); pb._t = G.time; }
   viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
 }
 function paintMenuScene(pb) {
@@ -9108,7 +9110,7 @@ function askToMenu() {
     { label: 'Tak', key: 'enter', action: () => G.go('menu') }, { label: 'Nie', key: 'escape' }]);
 }
 G.screens.menu = {
-  fps: 12, // animowana scena menu w tle
+  fps: smoothFps, // animowana scena menu w tle: płynnie
   backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'main',
   enter(p) { G.state = null; this.setMode(p.mode || 'main'); },
@@ -9140,7 +9142,7 @@ G.screens.menu = {
 const setupCap = S => (SITE_COUNT[(MAP_SIZES.find(m => m.id === S.mapSize) || MAP_SIZES[0]).n] || 4);
 const SLOT_LABEL = { human: 'Człowiek', ai: 'Komputer', off: '—' };
 G.screens.setup = {
-  fps: 12, // animowana scena menu w tle
+  fps: smoothFps, // animowana scena menu w tle: płynnie
   backdrop() {}, // scena menu maluje całe okno
   buttons: [],
   enter() {
@@ -9202,7 +9204,7 @@ G.screens.setup = {
 };
 function makeListScreen(title, drawBody) {
   return {
-    fps: 12,
+    fps: smoothFps,
     backdrop() {}, // scena menu maluje całe okno
     buttons: [],
     enter() { this.buttons = [new Button(300, 478, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 })]; },
@@ -9215,7 +9217,7 @@ function makeListScreen(title, drawBody) {
 }
 // Lista slotów zapisu. mode 'load' (z menu albo z gry) lub 'save' (z gry).
 G.screens.load = {
-  fps: 12, // animowana scena menu w tle
+  fps: smoothFps, // animowana scena menu w tle: płynnie
   backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'load', slots: null, err: null, busy: false, token: 0, hover: -1,
   ROW: { x: 180, y: 132, w: 440, h: 44, gap: 50 },
@@ -9294,7 +9296,7 @@ G.screens.scores = makeListScreen('Najlepsze wyniki', ctx => {
   });
 });
 G.screens.credits = {
-  fps: 30,
+  fps: smoothFps,
   backdrop() {}, // scena menu maluje całe okno
   lines: ['#KRONIKI KRÓLESTW', 'Turowa strategia w klimacie klasycznych gier fantasy', '', '#Pomysł i testy', 'Ty', '',
     '#Kod, grafika i interfejs', 'Claude', '', '#Technologia', 'HTML5 Canvas i czysty JavaScript', '',
@@ -9313,7 +9315,7 @@ G.screens.credits = {
   },
 };
 G.screens.bye = {
-  fps: 30,
+  fps: smoothFps,
   backdrop() {}, // scena menu maluje całe okno
   enter() { this.t0 = G.time; },
   onClick() { G.go('menu'); }, onBack() { G.go('menu'); },
@@ -9431,13 +9433,13 @@ function drawPanel(ctx, st, scr) {
   wrapText(ctx, info.text, INFOBOX.w - 24).slice(0, 4).forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18, { size: 14, weight: 500, align: 'center', color: info.col }));
 }
 G.screens.adventure = {
-  // Płynnie (60 klatek) tylko, gdy coś się rusza: bohater, kamera, tura komputera, napisy; w spoczynku woda i stwory w 20 klatkach
+  // Płynnie (60 klatek), gdy coś się rusza: bohater, kamera, tura komputera, napisy; w spoczynku woda i stwory w 30 klatkach
   fps() {
     const st = G.state; if (!st || !st.map || !st.cam) return 4;
     const cam = st.cam.x + ',' + st.cam.y, moved = cam !== this._cam; this._cam = cam;
     const busy = moved || this.aiRun || this.drag || G.keys.size || (this.floats && this.floats.length) || (this.mapFx && this.mapFx.length)
       || (this.banner && G.time - this.banner.t < 3) || (this.flashMsg && G.time - this.flashMsg.t < 3) || st.heroes.some(h => h.anim || h.moving);
-    return busy ? 60 : G.settings.quality === 'low' ? 10 : 20; // w spoczynku przy niskiej jakości (bez fal) wystarczy 10
+    return busy ? 60 : smoothFps(30); // w spoczynku fale i stwory w 30 klatkach (przy niskiej jakości 15)
   },
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
@@ -10207,7 +10209,7 @@ function estimateStrike(B, a, t, ranged, moved = 0) {
   return { min: out[0], max: out[1], kmin: kills(out[0]), kmax: kills(out[1]) };
 }
 G.screens.battle = {
-  fps() { return this.phase === 'over' || this.phase === 'done' ? 40 : this.phase === 'input' && !this.play && !this.floats.length ? 24 : 60; }, // czekając na rozkaz wystarczy spokojna animacja
+  fps: smoothFps, // płynnie także czekając na rozkaz (oddychające jednostki, płomienie)
   // Szersze okno: pole walki ciągnie się na boki (lustrzane odbicie brzegów tła, lekko przyciemnione)
   backdrop(ctx) { // gotowy obraz na dany rozmiar okna i teren (kamień, odbite brzegi pola, przyciemnienie): jedna warstwa zamiast pięciu
     const f = this.B && this.B.walls ? this.B.sides[1].town.faction : '';
@@ -10680,7 +10682,7 @@ function showGameEnd(st, r, msg, opts) {
 // ==================== EKRAN: MIASTO =====================================================
 // Widok miasta, lista budowli, garnizon.
 G.screens.town = {
-  fps: 15, // dym i światła w oknach
+  fps: smoothFps, // dym, ptaki, śnieg, żar: płynnie (klatka efektów kosztuje ok. 1 ms)
   buttons: [], townId: 0, rows: [], hoverSlot: null, scroll: 0, sel: null, garRects: [], heroRects: [],
   LIST_ROWS: 6, // tyle budowli mieści się na liście; resztę przewija się strzałkami albo kółkiem myszy
   town() { return G.state.towns[this.townId]; },
@@ -10821,13 +10823,19 @@ G.screens.town = {
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
     const scene = Layers.get(key, 592, 438, c => { c.imageSmoothingEnabled = false; TownFXCache[key] = paintTownScene(c, t, col); }, TOWN_ART_SCALE);
-    const fb = pixBuf('townFx', scene.width, scene.height), fbx = fb._ctx;
-    if (fb._key !== key || !(G.time >= fb._t && G.time - fb._t < 1 / 15)) { // dym i światła w oknach: najwyżej 15 klatek na sekundę
-      fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
-      fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, TownFXCache[key] || { wins: [], smokes: [] }); fb._key = key; fb._t = G.time;
+    const fxs = TownFXCache[key] || { wins: [], smokes: [] };
+    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(scene, 0, 0, scene.width / TOWN_ART_SCALE, scene.height / TOWN_ART_SCALE);
+    // dym, ptaki, śnieg i żar w pełnej rozdzielczości ekranu: w buforze o połowie rozdzielczości wolny ruch skakał co 2 piksele
+    if (!G.modal) drawTownFX(ctx, t, fxs); ctx.restore();
+    if (G.modal) { // widok z okna gildii: scena z efektami w buforze sceny
+      const fb = pixBuf('townFx', scene.width, scene.height), fbx = fb._ctx;
+      if (fb._key !== key || fb._t !== G.time) {
+        fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
+        fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, fxs); fb._key = key; fb._t = G.time;
+      }
+      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(fb, 0, 0, fb.width / TOWN_ART_SCALE, fb.height / TOWN_ART_SCALE); ctx.restore();
+      this.fb = fb;
     }
-    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(fb, 0, 0, fb.width / TOWN_ART_SCALE, fb.height / TOWN_ART_SCALE); ctx.restore();
-    this.fb = fb; // widok z okna gildii
     if (this.hoverSlot !== null && !G.modal) {
       const hb = ((TownFXCache[key] || {}).rects || {})[this.hoverSlot] || { x: 0, y: 0, w: 0, h: 0 };
       const s = { x: hb.x, b: hb.y + hb.h, w: hb.w, h: hb.h }, B = slotBuilding(t, this.hoverSlot), next = slotNext(t, this.hoverSlot);
@@ -11120,6 +11128,8 @@ function drawBackdrop(ctx) {
 // Klatkę rysujemy tylko wtedy, gdy trzeba: ekran podaje, ilu klatek na sekundę potrzebuje (screen.fps: liczba albo funkcja,
 // domyślnie 4 dla ekranów bez animacji), a wejście (mysz, klawisze) i każda zmiana okna, dymka czy podświetlenia wymusza klatkę od razu.
 // Na słabym komputerze to połowa sukcesu: nieruchomy ekran prawie nie zużywa procesora.
+// Ekrany z ciągłą animacją: pełna płynność, przy niskiej jakości grafiki połowa klatek (słaby komputer)
+function smoothFps(n = 60) { return G.settings.quality === 'low' ? n / 2 : n; }
 function screenFps() { const f = G.screen && G.screen.fps; return typeof f === 'function' ? f.call(G.screen) : (f || 4); }
 function frame(ts) {
   const t = ts / 1000, raw = G.last ? t - G.last : 0, dt = Math.min(0.05, Math.max(0, raw)); G.last = t;

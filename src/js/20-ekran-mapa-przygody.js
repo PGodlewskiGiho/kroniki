@@ -104,13 +104,13 @@ function drawPanel(ctx, st, scr) {
   wrapText(ctx, info.text, INFOBOX.w - 24).slice(0, 4).forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18, { size: 14, weight: 500, align: 'center', color: info.col }));
 }
 G.screens.adventure = {
-  // Płynnie (60 klatek) tylko, gdy coś się rusza: bohater, kamera, tura komputera, napisy; w spoczynku woda i stwory w 20 klatkach
+  // Płynnie (60 klatek), gdy coś się rusza: bohater, kamera, tura komputera, napisy; w spoczynku woda i stwory w 30 klatkach
   fps() {
     const st = G.state; if (!st || !st.map || !st.cam) return 4;
     const cam = st.cam.x + ',' + st.cam.y, moved = cam !== this._cam; this._cam = cam;
     const busy = moved || this.aiRun || this.drag || G.keys.size || (this.floats && this.floats.length) || (this.mapFx && this.mapFx.length)
       || (this.banner && G.time - this.banner.t < 3) || (this.flashMsg && G.time - this.flashMsg.t < 3) || st.heroes.some(h => h.anim || h.moving);
-    return busy ? 60 : G.settings.quality === 'low' ? 10 : 20; // w spoczynku przy niskiej jakości (bez fal) wystarczy 10
+    return busy ? 60 : smoothFps(30); // w spoczynku fale i stwory w 30 klatkach (przy niskiej jakości 15)
   },
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
