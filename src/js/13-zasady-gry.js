@@ -391,6 +391,8 @@ function armyAdd(a, cid, n) {
 }
 const armyHasRoom = (a, cid) => a.some(x => x && x.cid === cid) || a.includes(null);
 // Armia startowa bohatera: jednostki z dwóch najniższych siedlisk jego frakcji
+// Bohater bez armii startowej (późniejsi kandydaci w tygodniu, powracający uciekinierzy): jeden stwór 1. poziomu
+function weakArmy(fac) { const a = emptyArmy(); a[0] = { cid: factionOf(fac).dw.dw1[1], n: 1 }; return a; }
 function startingArmy(fac, r) {
   const F = factionOf(fac), a = emptyArmy();
   a[0] = { cid: F.dw.dw1[1], n: 14 + Math.floor(r() * 11) };
@@ -693,20 +695,32 @@ const HERO_COST = 2500, MAX_HEROES = 8;
 const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
 // Oferta tawerny gracza na bieżący tydzień (wspólna dla wszystkich jego miast): dwóch chętnych,
 // pierwszy z frakcji gracza, drugi z innej. Imiona nie powtarzają się z bohaterami na mapie.
+// Tawerna: dwaj kandydaci tygodnia (z pełną armią startową); po najęciu na miejsce wchodzi nowy, ale już z jednym stworem (weak).
+// Pula to bohaterowie frakcji i ci, którzy odeszli z mapy (st.retired): uciekinier od razu u swojego gracza, pokonani po tygodniu u wszystkich.
 function tavernOffer(st, owner) {
-  const p = playerOf(st, owner), wk = weekIndex(st);
+  const p = playerOf(st, owner), wk = weekIndex(st), ret = st.retired || [];
   if (!p.tavern || p.tavern.week !== wk) p.tavern = { week: wk, hired: 0, offers: [null, null] };
-  const tv = p.tavern, taken = new Set([...st.heroes.map(h => h.name), ...tv.offers.filter(Boolean).map(o => o.name)]);
+  const tv = p.tavern, open = r => r.from <= st.dayTotal && (r.owner === owner || r.owner < 0), card = (r, weak) => ({ name: r.hero.name, cls: r.hero.cls, female: !!r.hero.female, fac: heroFaction(r.hero) || p.faction, retired: true, weak, level: r.hero.level });
+  const mine = ret.find(r => r.owner === owner && open(r) && !tv.offers.some(o => o && o.name === r.hero.name));
+  if (mine) tv.offers[1] = card(mine, true); // uciekinier czeka od razu (zastępuje drugiego kandydata)
+  const taken = new Set([...st.heroes.map(h => h.name), ...tv.offers.filter(Boolean).map(o => o.name), ...ret.map(r => r.hero.name)]);
   const r = mulberry32(st.seed ^ (wk * 7717) ^ (owner * 131) ^ (tv.hired * 977));
   tv.offers.forEach((o, k) => {
     if (o) return;
     const facs = FACTIONS.map(f => f.id).filter(f => (k === 0) === (f === p.faction));
-    const pool = facs.flatMap(fac => factionOf(fac).heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac }))).filter(c => !taken.has(c.name));
-    if (pool.length) { tv.offers[k] = pool[Math.floor(r() * pool.length)]; taken.add(tv.offers[k].name); }
+    const pool = [...facs.flatMap(fac => factionOf(fac).heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac }))).filter(c => !taken.has(c.name)),
+      ...ret.filter(q => q.owner < 0 && open(q) && facs.includes(heroFaction(q.hero)) && !tv.offers.some(x => x && x.name === q.hero.name)).map(q => card(q, true))];
+    if (pool.length) { tv.offers[k] = { ...pool[Math.floor(r() * pool.length)] }; if (tv.hired > 0) tv.offers[k].weak = true; taken.add(tv.offers[k].name); }
   });
   return tv.offers;
 }
-// Najem k-tego chętnego w mieście t. Zwraca { hero } albo { error }.
+// Bohater z tawerny: nowy (createHero) albo powracający z st.retired (z poziomem i umiejętnościami, bez armii)
+function tavernHero(st, owner, x, y, o) {
+  if (!o.retired) return createHero(st, owner, x, y, o);
+  const i = (st.retired || []).findIndex(r => r.hero.name === o.name), h = { ...st.retired[i].hero };
+  st.retired.splice(i, 1); h.id = st.heroes.reduce((m, q) => Math.max(m, q.id + 1), 0); h.owner = owner; h.x = x; h.y = y;
+  h.army = weakArmy(heroFaction(h) || playerOf(st, owner).faction); h.mp = heroMaxMP(h); h.mana = heroMaxMana(h); st.heroes.push(h); return h;
+}
 function hireHero(st, t, k) {
   const owner = t.owner, P = playerOf(st, owner), o = tavernOffer(st, owner)[k];
   if (!hasB(t, 'tavern')) return { error: 'W mieście nie ma tawerny' };
@@ -715,7 +729,7 @@ function hireHero(st, t, k) {
   if (!o) return { error: 'Nikt więcej nie czeka w tawernie' };
   if (P.resources.gold < HERO_COST) return { error: `Najem kosztuje ${HERO_COST} złota` };
   P.resources.gold -= HERO_COST; P.tavern.offers[k] = null; P.tavern.hired++;
-  const h = createHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner);
+  const h = tavernHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner);
   return { hero: h };
 }
 

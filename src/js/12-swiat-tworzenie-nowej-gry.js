@@ -266,12 +266,15 @@ function createHero(st, owner, x, y, pick = null) {
   const pool = factionOf(st.players[owner].faction).heroes, r = mulberry32(st.seed ^ 0x1234 ^ (id * 977));
   const P = pick || (([name, cls, female]) => ({ name, cls, female: !!female, fac: st.players[owner].faction }))(pool[Math.floor(r() * pool.length)]);
   const { name, cls, female } = P;
-  const h = { id, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: startingArmy(P.fac, r),
+  const h = { id, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: P.weak ? weakArmy(P.fac) : startingArmy(P.fac, r),
     path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null };
   initHeroProgress(h); h.mp = heroMaxMP(h); st.heroes.push(h); return h;
 }
 // Podgląd kandydata z tawerny: ten sam bohater, którego dałby najem (ta sama armia i umiejętności), ale bez dopisania do gry
-function previewHero(st, owner, pick) { const h = createHero(st, owner, -1, -1, pick); st.heroes.pop(); h.preview = true; return h; }
+function previewHero(st, owner, pick) {
+  if (pick.retired) { const r = (st.retired || []).find(q => q.hero.name === pick.name), h = { ...r.hero, owner, army: weakArmy(heroFaction(r.hero) || playerOf(st, owner).faction), preview: true }; h.mp = heroMaxMP(h); return h; }
+  const h = createHero(st, owner, -1, -1, pick); st.heroes.pop(); h.preview = true; return h;
+}
 // Cały świat powstaje tutaj, zanim pokaże się jakikolwiek ekran. Stan (st) nie zawiera nic z grafiki,
 // dlatego da się go później zapisać i wczytać (krok 14).
 // seed podaje się tylko w testach (powtarzalny świat); w grze jest losowy.

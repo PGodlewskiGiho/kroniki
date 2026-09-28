@@ -73,15 +73,15 @@ test('odwrót sprzed miasta cofa bohatera i nic nie zmienia', async () => {
   assert.deepEqual(r, { owner: -1, at: [0, 1] });
 });
 
-test('przegrane oblężenie: bohater wraca do domu, garnizon zostaje osłabiony', async () => {
+test('przegrane oblężenie: bohater znika z mapy, garnizon zostaje osłabiony', async () => {
   await newGame(page, { mapSize: 'M' }, 21);
   const before = await page.evaluate(() => armySize(G.state.towns[1].garrison));
   await walkIntoTown(1, [['pikeman', 2]]);
   await pressDialog(page, 'Automatycznie');
   assert.match((await dialog(page)).msg, /Porażka/);
-  const r = await page.evaluate(() => { const st = G.state, t = st.towns[1], h = hero(st); return { owner: t.owner, garrison: armySize(t.garrison), home: h.x === st.towns[0].x && h.y === st.towns[0].y }; });
+  const r = await page.evaluate(() => { const st = G.state, t = st.towns[1]; return { owner: t.owner, garrison: armySize(t.garrison), home: myHeroes(st).length === 0 && (st.retired || []).length === 1 }; });
   assert.equal(r.owner, -1);
-  assert.ok(r.home);
+  assert.ok(r.home, 'pokonany bohater w puli tawern');
   assert.ok(r.garrison > 0 && r.garrison <= before);
 });
 

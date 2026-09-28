@@ -3720,12 +3720,15 @@ function createHero(st, owner, x, y, pick = null) {
   const pool = factionOf(st.players[owner].faction).heroes, r = mulberry32(st.seed ^ 0x1234 ^ (id * 977));
   const P = pick || (([name, cls, female]) => ({ name, cls, female: !!female, fac: st.players[owner].faction }))(pool[Math.floor(r() * pool.length)]);
   const { name, cls, female } = P;
-  const h = { id, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: startingArmy(P.fac, r),
+  const h = { id, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: P.weak ? weakArmy(P.fac) : startingArmy(P.fac, r),
     path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null };
   initHeroProgress(h); h.mp = heroMaxMP(h); st.heroes.push(h); return h;
 }
 // Podgląd kandydata z tawerny: ten sam bohater, którego dałby najem (ta sama armia i umiejętności), ale bez dopisania do gry
-function previewHero(st, owner, pick) { const h = createHero(st, owner, -1, -1, pick); st.heroes.pop(); h.preview = true; return h; }
+function previewHero(st, owner, pick) {
+  if (pick.retired) { const r = (st.retired || []).find(q => q.hero.name === pick.name), h = { ...r.hero, owner, army: weakArmy(heroFaction(r.hero) || playerOf(st, owner).faction), preview: true }; h.mp = heroMaxMP(h); return h; }
+  const h = createHero(st, owner, -1, -1, pick); st.heroes.pop(); h.preview = true; return h;
+}
 // Cały świat powstaje tutaj, zanim pokaże się jakikolwiek ekran. Stan (st) nie zawiera nic z grafiki,
 // dlatego da się go później zapisać i wczytać (krok 14).
 // seed podaje się tylko w testach (powtarzalny świat); w grze jest losowy.
@@ -4155,6 +4158,8 @@ function armyAdd(a, cid, n) {
 }
 const armyHasRoom = (a, cid) => a.some(x => x && x.cid === cid) || a.includes(null);
 // Armia startowa bohatera: jednostki z dwóch najniższych siedlisk jego frakcji
+// Bohater bez armii startowej (późniejsi kandydaci w tygodniu, powracający uciekinierzy): jeden stwór 1. poziomu
+function weakArmy(fac) { const a = emptyArmy(); a[0] = { cid: factionOf(fac).dw.dw1[1], n: 1 }; return a; }
 function startingArmy(fac, r) {
   const F = factionOf(fac), a = emptyArmy();
   a[0] = { cid: F.dw.dw1[1], n: 14 + Math.floor(r() * 11) };
@@ -4457,20 +4462,32 @@ const HERO_COST = 2500, MAX_HEROES = 8;
 const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
 // Oferta tawerny gracza na bieżący tydzień (wspólna dla wszystkich jego miast): dwóch chętnych,
 // pierwszy z frakcji gracza, drugi z innej. Imiona nie powtarzają się z bohaterami na mapie.
+// Tawerna: dwaj kandydaci tygodnia (z pełną armią startową); po najęciu na miejsce wchodzi nowy, ale już z jednym stworem (weak).
+// Pula to bohaterowie frakcji i ci, którzy odeszli z mapy (st.retired): uciekinier od razu u swojego gracza, pokonani po tygodniu u wszystkich.
 function tavernOffer(st, owner) {
-  const p = playerOf(st, owner), wk = weekIndex(st);
+  const p = playerOf(st, owner), wk = weekIndex(st), ret = st.retired || [];
   if (!p.tavern || p.tavern.week !== wk) p.tavern = { week: wk, hired: 0, offers: [null, null] };
-  const tv = p.tavern, taken = new Set([...st.heroes.map(h => h.name), ...tv.offers.filter(Boolean).map(o => o.name)]);
+  const tv = p.tavern, open = r => r.from <= st.dayTotal && (r.owner === owner || r.owner < 0), card = (r, weak) => ({ name: r.hero.name, cls: r.hero.cls, female: !!r.hero.female, fac: heroFaction(r.hero) || p.faction, retired: true, weak, level: r.hero.level });
+  const mine = ret.find(r => r.owner === owner && open(r) && !tv.offers.some(o => o && o.name === r.hero.name));
+  if (mine) tv.offers[1] = card(mine, true); // uciekinier czeka od razu (zastępuje drugiego kandydata)
+  const taken = new Set([...st.heroes.map(h => h.name), ...tv.offers.filter(Boolean).map(o => o.name), ...ret.map(r => r.hero.name)]);
   const r = mulberry32(st.seed ^ (wk * 7717) ^ (owner * 131) ^ (tv.hired * 977));
   tv.offers.forEach((o, k) => {
     if (o) return;
     const facs = FACTIONS.map(f => f.id).filter(f => (k === 0) === (f === p.faction));
-    const pool = facs.flatMap(fac => factionOf(fac).heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac }))).filter(c => !taken.has(c.name));
-    if (pool.length) { tv.offers[k] = pool[Math.floor(r() * pool.length)]; taken.add(tv.offers[k].name); }
+    const pool = [...facs.flatMap(fac => factionOf(fac).heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac }))).filter(c => !taken.has(c.name)),
+      ...ret.filter(q => q.owner < 0 && open(q) && facs.includes(heroFaction(q.hero)) && !tv.offers.some(x => x && x.name === q.hero.name)).map(q => card(q, true))];
+    if (pool.length) { tv.offers[k] = { ...pool[Math.floor(r() * pool.length)] }; if (tv.hired > 0) tv.offers[k].weak = true; taken.add(tv.offers[k].name); }
   });
   return tv.offers;
 }
-// Najem k-tego chętnego w mieście t. Zwraca { hero } albo { error }.
+// Bohater z tawerny: nowy (createHero) albo powracający z st.retired (z poziomem i umiejętnościami, bez armii)
+function tavernHero(st, owner, x, y, o) {
+  if (!o.retired) return createHero(st, owner, x, y, o);
+  const i = (st.retired || []).findIndex(r => r.hero.name === o.name), h = { ...st.retired[i].hero };
+  st.retired.splice(i, 1); h.id = st.heroes.reduce((m, q) => Math.max(m, q.id + 1), 0); h.owner = owner; h.x = x; h.y = y;
+  h.army = weakArmy(heroFaction(h) || playerOf(st, owner).faction); h.mp = heroMaxMP(h); h.mana = heroMaxMana(h); st.heroes.push(h); return h;
+}
 function hireHero(st, t, k) {
   const owner = t.owner, P = playerOf(st, owner), o = tavernOffer(st, owner)[k];
   if (!hasB(t, 'tavern')) return { error: 'W mieście nie ma tawerny' };
@@ -4479,7 +4496,7 @@ function hireHero(st, t, k) {
   if (!o) return { error: 'Nikt więcej nie czeka w tawernie' };
   if (P.resources.gold < HERO_COST) return { error: `Najem kosztuje ${HERO_COST} złota` };
   P.resources.gold -= HERO_COST; P.tavern.offers[k] = null; P.tavern.hired++;
-  const h = createHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner);
+  const h = tavernHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner);
   return { hero: h };
 }
 
@@ -5098,9 +5115,25 @@ function removeHero(st, h) {
   st.heroes.splice(i, 1);
   const keep = sel !== h ? sel : myHeroes(st)[0]; st.selHero = Math.max(0, st.heroes.indexOf(keep));
 }
+// Bohater, który przegrał albo uciekł, znika z mapy i czeka w tawernach jak w Heroes 3 (st.retired): uciekinier od razu
+// u swojego gracza, pokonany po RETIRE_DAYS dniach w puli wszystkich graczy (także przeciwników). Zachowuje poziom,
+// umiejętności i czary; armię traci (wraca z jednym stworem), a artefakty pokonanego przejmuje zwycięski bohater (lootHero).
+const RETIRE_DAYS = 7;
+function retireHero(st, h, fled, keepArts = fled) {
+  removeHero(st, h);
+  const keep = { ...h, army: emptyArmy(), machines: [], path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null, garrison: null, boat: false, asleep: false, boost: undefined };
+  if (!keepArts) { keep.equip = emptyEquip(); keep.bag = []; }
+  st.retired = (st.retired || []).filter(r => r.hero.name !== h.name);
+  st.retired.push({ hero: keep, owner: fled ? h.owner : -1, from: st.dayTotal + (fled ? 0 : RETIRE_DAYS) });
+}
+// Artefakty pokonanego (założone i z plecaka) trafiają do plecaka zwycięzcy; zwraca ich liczbę
+function lootHero(winner, loser) {
+  const ids = [...Object.values(loser.equip || {}).filter(Boolean), ...(loser.bag || [])];
+  winner.bag.push(...ids); loser.equip = emptyEquip(); loser.bag = []; return ids.length;
+}
 // Zmiana właściciela miasta (i jego obiektu na mapie)
 function captureTown(st, t, owner) {
-  for (const o of st.heroes.filter(o => o.x === t.x && o.y === t.y && o.owner !== owner)) removeHero(st, o); // bohaterowie poprzedniego właściciela w murach i bramie
+  for (const o of st.heroes.filter(o => o.x === t.x && o.y === t.y && o.owner !== owner)) retireHero(st, o, false, true); // bohaterowie poprzedniego właściciela w murach i bramie
   t.owner = owner; if (owner >= 0) reveal(st, t.x, t.y, HERO_SIGHT, owner);
   for (const ob of st.objects) if (ob.type === 'town' && ob.townId === t.id) ob.owner = owner;
   MapRender.miniDirty = true;
@@ -5127,18 +5160,13 @@ function resolveBattle(B, fled) {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);
     if (D.bank) res.bankText = lootBank(st, h, D.bank);
-    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) { D.hero.bag.splice(D.hero.bag.indexOf('grail'), 1); h.bag.push('grail'); res.grail = true; } removeHero(st, D.hero); }
+    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) res.grail = true; res.loot = lootHero(h, D.hero); retireHero(st, D.hero, false); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
   } else {
-    if (D.hero && outcome === 'lose' && hasGrail(h)) { h.bag.splice(h.bag.indexOf('grail'), 1); D.hero.bag.push('grail'); res.grailLost = true; } // Graal przechodzi na zwycięzcę
+    if (D.hero && outcome === 'lose' && hasGrail(h)) res.grailLost = true; // Graal przechodzi na zwycięzcę razem z artefaktami
     if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); res.foeRaised = raiseDead(B, 1); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie
-    if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
-    else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
-      const towns = st.towns.filter(t => t.owner === h.owner), t = towns.find(t => !heroAt(st, t.x, t.y)) || (towns.length && st.heroes.filter(o => o.owner === h.owner).length === 1 ? towns[0] : null);
-      h.army = emptyArmy(); h.machines = []; h.mp = 0; res.home = t ? t.name : null;
-      if (t) { h.x = t.x; h.y = t.y; reveal(st, h.x, h.y, heroSight(h), h.owner); }
-      else if (towns.length) { removeHero(st, h); res.heroLost = true; }
-    }
+    if (outcome === 'fled') { res.fledHero = true; retireHero(st, h, true); } // ucieczka: bez armii do własnej tawerny
+    else { if (D.hero) res.foeLoot = lootHero(D.hero, h); res.heroLost = true; retireHero(st, h, false, !D.hero); } // porażka: artefakty dla zwycięzcy, bohater po tygodniu w tawernach
   }
   h.prev = null; h.path = null; h.dest = null; rebuildObjIndex(st);
   return res;
@@ -5447,7 +5475,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null, caravans: st.caravans || [] },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null, caravans: st.caravans || [], retired: st.retired || [] },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -5466,6 +5494,7 @@ function deserializeGame(d) {
 // (usunięte stwory, budowle, artefakty, miejsca), znika zamiast psuć rozgrywkę. Kolejne kroki w kolejności powstawania gry.
 function migrateSave(st) {
   const r = mulberry32(st.seed), cr = s => (s && CREATURES[s.cid] && s.n > 0 ? s : null), armyFix = a => Array.from({ length: ARMY_SLOTS }, (_, i) => cr(a && a[i]));
+  st.retired = (st.retired || []).filter(r => r && r.hero && r.hero.name && HERO_CLASSES[r.hero.cls]); // bohaterowie czekający w tawernach
   st.caravans = (st.caravans || []).filter(c => st.towns[c.from] && st.towns[c.to]).map(c => ({ ...c, army: c.army.filter(s => s && CREATURES[s.cid] && s.n > 0) })).filter(c => c.army.length); // karawany
   if (!(st.settings.difficulty >= 0 && st.settings.difficulty < DIFFICULTIES.length)) st.settings.difficulty = 1;
   // gracze: znane frakcje i kolory, komplet surowców
@@ -10859,12 +10888,12 @@ const heroExpText = (h, exp) => (h && exp ? ` Za odwagę ${h.name} otrzymuje ${e
 // Opis wyniku z punktu widzenia atakującego (strona 0); tekst zgodny z dawnymi oknami
 function attackReport(st, h, res) {
   if (res.outcome === 'win') {
-    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
+    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.${res.loot ? ` Zdobyte artefakty: ${res.loot}.` : ''}` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
     return { me: 0, kind: 'win', title: 'Zwycięstwo!', body: `${flavorOf(st, 'win')}${extra}${raisedText(res.raised)}${heroExpText(h, res.exp)}` };
   }
-  if (res.outcome === 'fled') return { me: 0, kind: 'fled', title: 'Odwrót', body: `${h.name} wycofuje się z pola bitwy. ${flavorOf(st, 'fled')} Na dziś koniec marszu.` };
-  const tail = res.heroLost ? `${h.name} opuszcza twoją służbę: wszystkie bramy twoich miast są zajęte.` : `${h.name} ledwie uchodzi z życiem${res.home ? ` do miasta ${res.home}` : ''}. Zwerbuj nowe wojsko, zanim ruszysz dalej.`;
-  return { me: 0, kind: 'lose', title: 'Porażka', body: `${flavorOf(st, 'lose')} Armia została rozbita, a ${tail}` };
+  if (res.outcome === 'fled') return { me: 0, kind: 'fled', title: 'Odwrót', body: `${h.name} ucieka z pola bitwy, a armia się rozprasza. ${flavorOf(st, 'fled')} ${h.female ? 'Czeka' : 'Czeka'} w twojej tawernie: możesz ${h.female ? 'ją' : 'go'} znów nająć (z poziomem, umiejętnościami i artefaktami).` };
+  const tail = `${h.name} ${h.female ? 'znika' : 'znika'} z mapy${res.foeLoot ? ', a artefakty przejmuje zwycięzca' : ''}. Za tydzień ${h.female ? 'pojawi się' : 'pojawi się'} w tawernach — może ${h.female ? 'ją' : 'go'} nająć każdy, także przeciwnik.`;
+  return { me: 0, kind: 'lose', title: 'Porażka', body: `${flavorOf(st, 'lose')} Armia została rozbita. ${tail}` };
 }
 // Opis wyniku obrony (gracz to strona 1)
 function defenseReport(st, a, D, res) {
@@ -11077,7 +11106,8 @@ G.screens.town = {
     const who = o => `${o.name} (${(o.female ? HERO_CLASSES[o.cls].nameF : HERO_CLASSES[o.cls].name).toLowerCase()}, ${factionOf(o.fac).name})`;
     if (!avail.length) return showDialog('W tawernie nikt już nie czeka. Nowi chętni pojawią się w przyszłym tygodniu.', [{ label: 'Kronika', key: 'k', action: () => showChronicle(st) }, { label: 'OK', key: 'enter' }]);
     showDialog(`W tawernie czekają: ${avail.map(a => who(a.o)).join(' i ')}. Najem kosztuje ${HERO_COST} złota, a bohater przychodzi z małym oddziałem. Kliknij bohatera, aby go obejrzeć.`, [
-      ...avail.map(({ o, k }) => ({ label: o.name, sub: specName({ ...o, level: 1 }), tip: `Specjalność: ${specText({ ...o, level: 1 })}. Kliknij, aby obejrzeć bohatera i go nająć.`,
+      ...avail.map(({ o, k }) => ({ label: o.name, sub: o.retired ? `poziom ${o.level}, 1 stwór` : o.weak ? `${specName({ ...o, level: 1 })}, 1 stwór` : specName({ ...o, level: 1 }),
+        tip: `${o.retired ? 'Wraca z tułaczki: ma swój poziom i umiejętności, ale nie ma armii. ' : o.weak ? 'Przychodzi bez armii (tylko z jednym stworem). ' : ''}Specjalność: ${specText({ ...o, level: o.level || 1 })}. Kliknij, aby obejrzeć bohatera i go nająć.`,
         action: () => G.go('hero', { preview: previewHero(st, t.owner, o), hire: { townId: t.id, k }, back: { name: 'town', params: { townId: t.id, tavern: true } } }) })),
       { label: 'Kronika', key: 'k', tip: 'Kronika tawerny: kto prowadzi w królestwie (im więcej masz tawern, tym więcej wiesz).', action: () => showChronicle(st) },
       { label: 'Wyjdź', key: 'escape' },

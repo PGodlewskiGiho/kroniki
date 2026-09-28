@@ -64,7 +64,8 @@ G.screens.town = {
     const who = o => `${o.name} (${(o.female ? HERO_CLASSES[o.cls].nameF : HERO_CLASSES[o.cls].name).toLowerCase()}, ${factionOf(o.fac).name})`;
     if (!avail.length) return showDialog('W tawernie nikt już nie czeka. Nowi chętni pojawią się w przyszłym tygodniu.', [{ label: 'Kronika', key: 'k', action: () => showChronicle(st) }, { label: 'OK', key: 'enter' }]);
     showDialog(`W tawernie czekają: ${avail.map(a => who(a.o)).join(' i ')}. Najem kosztuje ${HERO_COST} złota, a bohater przychodzi z małym oddziałem. Kliknij bohatera, aby go obejrzeć.`, [
-      ...avail.map(({ o, k }) => ({ label: o.name, sub: specName({ ...o, level: 1 }), tip: `Specjalność: ${specText({ ...o, level: 1 })}. Kliknij, aby obejrzeć bohatera i go nająć.`,
+      ...avail.map(({ o, k }) => ({ label: o.name, sub: o.retired ? `poziom ${o.level}, 1 stwór` : o.weak ? `${specName({ ...o, level: 1 })}, 1 stwór` : specName({ ...o, level: 1 }),
+        tip: `${o.retired ? 'Wraca z tułaczki: ma swój poziom i umiejętności, ale nie ma armii. ' : o.weak ? 'Przychodzi bez armii (tylko z jednym stworem). ' : ''}Specjalność: ${specText({ ...o, level: o.level || 1 })}. Kliknij, aby obejrzeć bohatera i go nająć.`,
         action: () => G.go('hero', { preview: previewHero(st, t.owner, o), hire: { townId: t.id, k }, back: { name: 'town', params: { townId: t.id, tavern: true } } }) })),
       { label: 'Kronika', key: 'k', tip: 'Kronika tawerny: kto prowadzi w królestwie (im więcej masz tawern, tym więcej wiesz).', action: () => showChronicle(st) },
       { label: 'Wyjdź', key: 'escape' },
