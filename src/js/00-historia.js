@@ -121,6 +121,9 @@
    bez kar machiny i sharpshooter; licznik strzał przy oddziale. Kliknięcie w wieże miasta na mapie: drawnObjectAt.
    Garnizon z bohaterem (h.garrison = id miasta): swapGarrison (przycisk „Zamień”, klawisz Z) wprowadza bohatera z bramy do murów
    (przejmuje wojsko garnizonu) i wyprowadza tego z murów; heroAt go pomija (brama wolna na najem), townHero broni miasta.
+   Kronika tygodnia (20b): ogłoszenie astrologów z rysunkiem na początku tygodnia (st.weekNews, p.seenWeek, chronicleIconOpts),
+   nowe tygodnie Żniw (+HARVEST drewna i rudy) i Magii (pełna mana), Kronika tawerny (showChronicle: ranking graczy jak Gildia
+   Złodziei, rubryki CHRONICLE_ROWS odkrywane liczbą własnych tawern).
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.

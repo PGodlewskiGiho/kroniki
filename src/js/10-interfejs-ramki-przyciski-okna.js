@@ -111,7 +111,7 @@ function showDialog(msg, opts, extra = {}) {
   const total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
   const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip }); bx += bw + gap; return b; });
   G.modal = {
-    msg, buttons, locked: !!extra.locked, // msg: treść okna (podgląd w testach)
+    msg, buttons, locked: !!extra.locked, hasIcon: !!extra.icon, // msg, hasIcon: treść okna i czy ma rysunek (podgląd w testach)
     draw(ctx) {
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, h);
       lines.forEach((l, i) => text(ctx, l, W / 2, y + 44 + i * 26, { size: 20, weight: 500, align: 'center', color: '#2a1606' }));

@@ -143,8 +143,9 @@ G.screens.adventure = {
   startHumanTurn(st, live) {
     const p = human(st), msgs = [];
     if (!p.welcomed) { p.welcomed = true; msgs.push([this.welcomeText(st), 'Do dzieła']); }
+    const N = st.weekNews; if (N && p.seenWeek !== N.wk) { p.seenWeek = N.wk; msgs.push([`Astrolodzy ogłaszają: ${N.text}`, 'Wspaniale', chronicleIconOpts(st)]); }
     const inbox = takeInbox(p); if (inbox.length) msgs.push([inbox.join(' '), 'OK']);
-    const next = () => { const m = msgs.shift(); if (m) showDialog(m[0], [{ label: m[1], key: 'enter', action: next }]); };
+    const next = () => { const m = msgs.shift(); if (m) showDialog(m[0], [{ label: m[1], key: 'enter', action: next }], m[2]); };
     if (live && sharedScreen(st)) {
       this.curtain = ME;
       showDialog(`Tura: ${cap1(playerName(st, ME))} (${factionOf(p.faction).name}), ${dateText(st).toLowerCase()}. Pozostali gracze, nie patrzcie na ekran.`, [{ label: 'Zaczynam', key: 'enter', action: () => { this.curtain = null; next(); } }],
