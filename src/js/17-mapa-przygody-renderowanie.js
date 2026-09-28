@@ -533,6 +533,7 @@ function drawMapView(ctx, st, scr) {
     ctx.restore();
   } }, { add: true });
   drawSeasonFx(ctx, seasonIdx(st));
+  drawWeather(ctx, st, ox, oy);
   if (scr.banner) {
     const a = clamp(1.8 - (G.time - scr.banner.t), 0, 1);
     if (a > 0) { ctx.globalAlpha = a; drawParchment(ctx, VIEW.x + VIEW.w / 2 - 90, VIEW.y + 16, 180, 44); text(ctx, scr.banner.text, VIEW.x + VIEW.w / 2, VIEW.y + 39, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' }); ctx.globalAlpha = 1; }
@@ -566,6 +567,58 @@ function tileInfo(st, tx, ty) {
 }
 
 // Opady pory roku nad mapą: płatki śniegu zimą, spadające liście jesienią (bez nich przy niskiej jakości)
+// ---- Pogoda na mapie (tylko wygląd): losowana codziennie wg pory roku. Nad śniegiem deszcz pada jako śnieg,
+// nad piaskiem i lawą nie pada wcale. Chmury rzucają cienie, burza błyska, mgła snuje się pasmami. Wyłącznik w ustawieniach grafiki.
+const WEATHERS = { clear: 'pogodnie', clouds: 'pochmurno', rain: 'deszcz', storm: 'burza', fog: 'mgła', snow: 'śnieżyca' };
+const WEATHER_ODDS = [ // wiosna, lato, jesień, zima: [pogoda, waga]
+  [['clear', 40], ['clouds', 25], ['rain', 25], ['fog', 10]], [['clear', 60], ['clouds', 20], ['storm', 12], ['rain', 8]],
+  [['clear', 20], ['clouds', 25], ['rain', 30], ['fog', 15], ['storm', 10]], [['clear', 25], ['clouds', 25], ['snow', 35], ['fog', 15]],
+];
+function weatherOf(st) {
+  if (!st || !st.dayTotal) return 'clear'; const L = WEATHER_ODDS[seasonIdx(st)]; let r = thash(st.seed, st.dayTotal, 77) % L.reduce((s, x) => s + x[1], 0);
+  for (const [k, w] of L) if ((r -= w) < 0) return k; return 'clear';
+}
+const weatherOn = () => G.settings.weather !== 'off';
+let WEATHER_BLOB = null; // miękka plama (cień chmury, pasmo mgły)
+function weatherBlob() {
+  if (WEATHER_BLOB) return WEATHER_BLOB; const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.setTransform(2, 0, 0, 1, 0, 0); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return (WEATHER_BLOB = c);
+}
+function drawWeather(ctx, st, ox, oy) {
+  const w = weatherOf(st); if (w === 'clear' || !weatherOn()) return;
+  const t = G.time, lo = G.settings.quality === 'low', map = st.map, n = map.n, V = VIEW, blob = weatherBlob();
+  const terAt = (x, y) => { const tx = Math.floor((x - ox) / T), ty = Math.floor((y - oy) / T); return tx < 0 || ty < 0 || tx >= n || ty >= n ? -1 : map.terrain[ty * n + tx]; };
+  const blobs = (k, col, a, sp, sw, sh) => { ctx.save(); ctx.globalAlpha = a; for (let i = 0; i < k; i++) { // plamy przesuwają się razem z mapą i z wiatrem
+      const x = V.x + ((((i * 263 + ox * 0.9 + t * sp) % (V.w + sw)) + V.w + sw) % (V.w + sw)) - sw / 2, y = V.y + ((((i * 181 + oy * 0.9 + (i % 2 ? 40 : 0)) % (V.h + sh)) + V.h + sh) % (V.h + sh)) - sh / 2;
+      ctx.drawImage(col, x - sw / 2, y - sh / 2, sw, sh); } ctx.restore(); };
+  if (w !== 'fog') { const sh = tintBlob('#0a1020'); blobs(lo ? 3 : 6, sh, w === 'clouds' ? 0.3 : 0.26, 9, 300, 150); }
+  if (w === 'rain' || w === 'storm' || w === 'snow') { ctx.fillStyle = w === 'storm' ? 'rgba(14,20,40,.26)' : w === 'snow' ? 'rgba(200,210,230,.08)' : 'rgba(20,30,50,.14)'; ctx.fillRect(V.x, V.y, V.w, V.h); }
+  if (w === 'fog') { ctx.fillStyle = 'rgba(210,215,220,.1)'; ctx.fillRect(V.x, V.y, V.w, V.h); blobs(lo ? 5 : 9, tintBlob('#e8ecf0'), 0.3, 6, 340, 110); }
+  if (w === 'rain' || w === 'storm') {
+    const N = (w === 'storm' ? 180 : 110) >> (lo ? 1 : 0), flakes = []; ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const sp = 380 + (i % 5) * 45, x = V.x + (((i * 53.7 + t * 70) % V.w) + V.w) % V.w, y = V.y + ((i * 97.3 + t * sp) % V.h), ter = terAt(x, y);
+      if (ter === TER.SAND || ter === TER.LAVA) continue; if (ter === TER.SNOW) { flakes.push([x, y]); continue; }
+      ctx.moveTo(x, y); ctx.lineTo(x - 3, y - 12);
+      if ((i + Math.floor(t * 5)) % 19 === 0) { ctx.moveTo(x - 3, y + 2); ctx.lineTo(x + 3, y + 2); } // bryzg
+    }
+    ctx.strokeStyle = 'rgba(190,210,240,.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.8)'; for (const [x, y] of flakes) ctx.fillRect(x - 1, (y * 0.4 + V.y * 0.6) | 0, 2, 2);
+    if (w === 'storm') { const ph = (t + st.dayTotal * 1.7) % 6.5; if (ph < 0.25) { ctx.fillStyle = `rgba(230,240,255,${(0.4 * (1 - ph / 0.25) * (ph < 0.08 || ph > 0.14 ? 1 : 0.3)).toFixed(2)})`; ctx.fillRect(V.x, V.y, V.w, V.h); } } // błyskawica
+  }
+  if (w === 'snow') {
+    const N = lo ? 90 : 200; ctx.fillStyle = 'rgba(255,255,255,.9)';
+    for (let i = 0; i < N; i++) {
+      const u = (t * (0.07 + (i % 6) * 0.015) + i * 0.137) % 1, x = V.x + (((i * 83.1 + t * 22 + Math.sin(t * 1.1 + i) * 14) % V.w) + V.w) % V.w, y = V.y + u * V.h;
+      if (terAt(x, y) === TER.LAVA) continue; const r = i % 3 ? 3 : 4; ctx.fillRect(Math.round(x - r / 2), Math.round(y - r / 2), r, r);
+    }
+  }
+}
+const BLOB_TINTS = {};
+function tintBlob(col) {
+  if (BLOB_TINTS[col]) return BLOB_TINTS[col]; const b = weatherBlob(), c = document.createElement('canvas'); c.width = b.width; c.height = b.height; const g = c.getContext('2d');
+  g.drawImage(b, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height); return (BLOB_TINTS[col] = c);
+}
 function drawSeasonFx(ctx, S) {
   if ((S !== 2 && S !== 3) || G.settings.quality === 'low') return;
   const t = G.time, n = S === 3 ? 70 : 22;

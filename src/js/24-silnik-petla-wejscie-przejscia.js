@@ -173,8 +173,10 @@ function showGfxSettings(back) {
   const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); resize(); showGfxSettings(back); };
   const fontBtn = { label: pixelFont() ? 'Czcionka: piksele' : 'Czcionka: klasyczna', sub: 'zmień', tip: 'Czcionka interfejsu: pikselowa (pasuje do grafiki) albo klasyczna szeryfowa.',
     action: () => { S.font = pixelFont() ? 'classic' : 'pixel'; saveSettings(); Layers.cache = {}; showGfxSettings(back); } };
+  const wxBtn = { label: weatherOn() ? 'Pogoda: tak' : 'Pogoda: nie', sub: 'zmień', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
+    action: () => { S.weather = weatherOn() ? 'off' : 'on'; saveSettings(); showGfxSettings(back); } };
   showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało. Klawisz F pokazuje licznik klatek.`,
-    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), fontBtn, { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 120 });
+    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), fontBtn, wxBtn, { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 100 });
 }
 function init() {
   loadSettings();

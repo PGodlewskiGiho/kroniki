@@ -1,6 +1,8 @@
 // ==================== EKRAN: BITWA =====================================================
 // Rysuje bitwę i obsługuje ruchy gracza. Logika jest w BITWA: ZASADY; ekran odtwarza efekty z B.fx.
 const HEX = { w: 54, h: 62, row: 46, x0: 36, y0: 52 };
+// Miejsce bohatera strony (x, y stóp, zwrot) i skala jego rysunku
+const HERO_BATTLE_K = 0.9, heroSpot = side => side ? [W - 22, 122, -1] : [22, 122, 1];
 const hexCenter = (x, y) => [HEX.x0 + x * HEX.w + (y & 1 ? HEX.w / 2 : 0) + HEX.w / 2, HEX.y0 + y * HEX.row + HEX.h / 2];
 function hexPath(ctx, x, y, inset = 0) {
   const [cx, cy] = hexCenter(x, y), r = HEX.h / 2 - inset, rx = HEX.w / 2 - inset; ctx.beginPath();
@@ -195,7 +197,7 @@ G.screens.battle = {
       const LK = CREATURES[p.a.cid].look, orb = LK.weapon === 'staff' || !!LK.orb, col = LK.orb || '#c8e0ff'; // kula: laska albo własny pocisk (kamień gremlina, piorun tytana)
       if (!p.launched && f >= 0.42) {
         p.launched = true; const dist = Math.hypot(p.tg.px - p.a.px, p.tg.py - p.a.py);
-        p.pr = BattleFX.proj(orb ? 'orb' : 'arrow', p.a.px + (p.tg.px > p.a.px ? 14 : -14), p.a.py - 18, p.tg.px, p.tg.py - 16, (0.12 + dist / 900) * p.sp, col, orb ? 8 : 26 + dist * 0.04);
+        p.pr = BattleFX.proj(orb ? 'orb' : 'arrow', p.a.px + (p.tg.px > p.a.px ? 14 : -14), p.a.py - 18, p.tg.px, p.tg.py - 16, (orb ? 0.12 + dist / 900 : 0.08 + dist / 1500) * p.sp, col, orb ? 8 : 6 + dist * 0.07); // strzała z łuku: szybka, płaski łuk rosnący z odległością
         p.hitAt = p.t + p.pr.dur;
       }
       if (p.launched && !p.landed && p.t >= p.hitAt) { p.landed = true; this.impact(p.tg, p.dmg, p.killed, orb ? col : '#ffe8a0'); if (orb) BattleFX.emit(p.tg.px, p.tg.py - 16, { n: 14, col: [col, '#ffffff'], spd: 90, life: 0.4, size: 3, glow: true }); }
@@ -215,8 +217,9 @@ G.screens.battle = {
     } else if (p.kind === 'spell') {
       const S = SPELL_FX[p.id] || {}, [tx, ty] = hexCenter(p.x, p.y), aim = [tx, ty - 16];
       if (!p.launched) {
-        p.launched = true; BattleFX.ring(24, 19, S.col || '#ffffff', 26, 0.5, 2);
-        if (S.proj) { p.pr = BattleFX.proj(S.proj, 40, 34, aim[0], aim[1], 0.5 * p.sp, S.col, 40); p.hitAt = p.pr.dur; }
+        p.launched = true; const hp = heroSpot(p.side || 0), hand = [hp[0] + hp[2] * 16, hp[1] - 44]; this.heroCast = { side: p.side || 0, t0: G.time }; // bohater unosi rękę
+        BattleFX.ring(hand[0], hand[1], S.col || '#ffffff', 26, 0.5, 2);
+        if (S.proj) { p.pr = BattleFX.proj(S.proj, hand[0], hand[1], aim[0], aim[1], 0.5 * p.sp, S.col, 40); p.hitAt = p.pr.dur; }
         else if (S.meteor) { for (let i = 0; i < 3; i++) p.pr = BattleFX.proj('fireball', tx - 140 + i * 50, -30 - i * 20, aim[0] + (i - 1) * 14, aim[1], (0.4 + i * 0.08) * p.sp, S.col); p.hitAt = p.pr.dur; }
         else if (S.strike) { BattleFX.bolt(tx + (Math.random() - 0.5) * 60, 0, aim[0], aim[1], S.col); BattleFX.bolt(tx + (Math.random() - 0.5) * 80, 0, aim[0], aim[1], S.col); p.hitAt = 0.05;
           if (S.chain && p.area) for (let i = 1; i < p.area.length; i++) { const [x0, y0] = hexCenter(...p.area[i - 1]), [x1, y1] = hexCenter(...p.area[i]); BattleFX.bolt(x0, y0 - 16, x1, y1 - 16, S.col); BattleFX.glow(x1, y1 - 16, 40, S.col, 0.4); } } // łańcuch: piorun skacze od celu do celu
@@ -233,6 +236,17 @@ G.screens.battle = {
     if (p.t >= p.dur) { if (p.kind === 'move') { [p.u.px, p.u.py] = hexCenter(p.u.x, p.u.y); p.u.lift = 0; p.u.anim = null; } this.play = null; }
   },
   // Klatka do narysowania: poza, sprite, przesunięcia
+  // Bohaterowie w narożnikach pola (jak w H3): lewy górny atakujący, prawy górny obrońca; czar = krótka animacja zamachu
+  drawHeroes(ctx) {
+    const B = this.B, st = G.state, E = (this.phase === 'over' || this.phase === 'done') && this.ending, now = G.time;
+    for (const side of [0, 1]) {
+      const h = side ? B.sides[1].hero : B.h; if (!h) continue;
+      const [x, y, dir] = heroSpot(side), c = this.heroCast && this.heroCast.side === side && now - this.heroCast.t0 < 0.6 ? this.heroCast : null, win = E && E.winner === side;
+      const nA = BATTLE_FRAMES.attack, i = c ? Math.min(nA - 1, Math.floor((now - c.t0) / 0.6 * nA)) : win ? Math.floor((now * 1.6 % 1) * nA) : Math.floor(now * 3 + side) % BATTLE_FRAMES.idle;
+      ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, 14, 4.5, 0, 0, TAU); ctx.fill();
+      drawSprite(ctx, heroBattleSprite(h, ownerColor(st, h.owner), dir, i, !!(c || win)), x, y, HERO_BATTLE_K);
+    }
+  },
   unitLook(u) {
     const d = u.side === 0 ? 1 : -1, now = G.time, a = u.anim && now - u.anim.t0 < u.anim.dur ? u.anim : null;
     let pose = 'idle', i = Math.floor(now * 3.5 + u.id * 1.37) % BATTLE_FRAMES.idle, ox = 0;
@@ -307,6 +321,7 @@ G.screens.battle = {
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,90,${0.18 + 0.12 * pulse})`; ctx.beginPath(); ctx.ellipse(u0.px, u0.py + 14, 24, 9, 0, 0, TAU); ctx.fill(); ctx.restore();
     }
     if (B.moat) drawMoat(ctx, B); // fosa przed murem
+    this.drawHeroes(ctx);
     // polegli leżą pod żywymi
     for (const u of B.units) if (u.dead && u.dieT != null && G.time - u.dieT > 0.45) drawSprite(ctx, corpseSprite(u.cid, u.side === 0 ? 1 : -1), u.px, u.py + 14, 1);
     // oddziały i przeszkody (od góry ekranu w dół, żeby niższe zasłaniały wyższe)

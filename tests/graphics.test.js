@@ -57,3 +57,55 @@ test('czcionka pikselowa wbudowana w plik gry (także polskie znaki) i przełąc
   });
   assert.ok(r.ok, 'czcionka załadowana z pliku gry'); assert.match(r.classic, /Cinzel/); assert.match(r.pixel, /Jersey/); assert.equal(r.label, 'Czcionka: piksele');
 });
+
+test('ikony umiejętności: każda umiejętność ma własny obrazek; okno awansu i ekran bohatera je rysują', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const pix = id => Array.from(skillSprite(id).c.getContext('2d').getImageData(0, 0, 16, 16).data).join(',');
+    const ids = Object.keys(SKILLS), h = hero(G.state); h.skills = ids.slice(0, MAX_SKILLS).map(id => ({ id, lv: 2 }));
+    setScreen('hero', { heroId: G.state.selHero }); G.screens.hero.draw(G.ctx);
+    setScreen('adventure', {}); h.exp = 0; gainExp(G.state, h, 1000); const lead = G.modal.buttons.every(b => typeof b.lead === 'function'); G.modal = null;
+    return { n: ids.length, unique: new Set(ids.map(pix)).size, lead };
+  });
+  assert.equal(r.unique, r.n); assert.ok(r.lead, 'wybór umiejętności z ikoną');
+});
+
+test('bohater stoi na polu bitwy i unosi rękę, rzucając czar; strzała leci szybko po parabolicznym torze', async () => {
+  await newGame(page, { mapSize: 'M', opponents: 1 }, 3);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), f = st.heroes.find(x => x.owner === 1); h.book = true; h.spells = ['magicArrow']; h.mana = 50;
+    const B = createBattle(st, h, f), scr = G.screens.battle; setScreen('battle', { battle: B }); scr.intro = { t: 99, dur: 1 }; scr.phase = 'input';
+    const t = B.units.find(u => u.side === 1); castBattle(B, 'magicArrow', t.x, t.y); scr.play = null; for (let i = 0; i < 3; i++) scr.update(0.02); scr.draw(G.ctx);
+    const pr = { kind: 'arrow', x0: 0, y0: 100, x1: 600, y1: 100, dur: 1, arc: 48, t: 0.5 };
+    return { cast: scr.heroCast && scr.heroCast.side, spr: !!heroBattleSprite(f, '#2a5ac8', -1, 0, false).c, peak: projPos(pr)[1], dur: (0.08 + 600 / 1500) };
+  });
+  assert.equal(r.cast, 0); assert.ok(r.spr); assert.equal(r.peak, 52); assert.ok(r.dur < 0.5, 'strzała na 600 px krócej niż pół sekundy');
+});
+
+test('pogoda: codziennie inna wg pory roku, rysuje się bez błędów i da się ją wyłączyć', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const st = G.state, seen = {}, month = st.month, day = st.dayTotal, out = { winterRain: false };
+    for (let m = 1; m <= 4; m++) for (let d = 1; d <= 60; d++) { st.month = m; st.dayTotal = d; const w = weatherOf(st); seen[w] = 1; if (m === 4 && (w === 'rain' || w === 'storm')) out.winterRain = true; }
+    st.dayTotal = 5; out.stable = weatherOf(st) === weatherOf(st);
+    const real = weatherOf; for (const w of Object.keys(WEATHERS)) { window.weatherOf = () => w; drawMapView(G.ctx, st, G.screens.adventure); }
+    G.settings.weather = 'off'; out.off = !weatherOn(); delete G.settings.weather; out.on = weatherOn(); window.weatherOf = real;
+    st.month = month; st.dayTotal = day; out.kinds = Object.keys(seen).sort(); out.tip = G.screens.adventure.rightInfo(INFOBOX.x + 10, INFOBOX.y + 10);
+    return out;
+  });
+  assert.deepEqual(r.kinds, ['clear', 'clouds', 'fog', 'rain', 'snow', 'storm']);
+  assert.ok(!r.winterRain, 'zimą nie pada deszcz'); assert.ok(r.stable && r.off && r.on); assert.match(r.tip, /Pogoda dziś: /);
+});
+
+test('mur z cegieł ma detale i malowidła; zakryte kawałki mapy zagadki pokazują obraz frakcji', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const c = document.createElement('canvas'); c.width = 800; c.height = 600; const g = c.getContext('2d'); let alpha = 0;
+    const f = g.fillRect.bind(g); g.fillRect = (...a) => { if (g.globalAlpha < 1) alpha++; f(...a); }; paintBricks(g, 800, 600, 5);
+    const st = G.state; if (!st.grail) return { alpha, skip: true };
+    const a = puzzleCover(st, 512, 384); st.players[ME].faction = st.players[ME].faction === 'inferno' ? 'haven' : 'inferno'; const b = puzzleCover(st, 512, 384);
+    showPuzzle(st); G.modal.draw(G.ctx); G.modal = null;
+    return { alpha, diff: a !== b && a.width === 256 };
+  });
+  assert.ok(r.alpha > 50, `malowidła: ${r.alpha}`); if (!r.skip) assert.ok(r.diff, 'obraz zależy od frakcji');
+});

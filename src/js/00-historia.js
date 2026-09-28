@@ -240,5 +240,10 @@
    1. Dźwięk (zrobione). 2. Nowe frakcje (zrobione: Twierdza i Inferno). 3. Statki (zrobione: stocznia, łodzie). 4. Hot-seat (zrobione: do 8 graczy, zasłona między turami).
    5. Samouczek (wykreślony). 6. Porządki (zrobione: migracja zapisów, test balansu, trudniejsza mapa i skarbce).
    7. Grafika (zrobione: animowana woda, świerki, surowce w stylu rudy, tła bitew zależne od terenu).
+   Etap B1 (grafika): strzały z łuku lecą szybko po parabolicznym torze ze smugą (projPos), ikony umiejętności
+   (drawSkillIcon/skillIcon: ekran bohatera, okno awansu przez Button.lead, chata wiedźmy), bohater na polu bitwy
+   (heroBattleSprite w narożniku, heroSpot; czar wylatuje z jego ręki), mur z cegieł z wyszczerbieniami, pęknięciami, mchem
+   i wyblakłymi malowidłami (paintBricks), obraz frakcji na zakrytych kawałkach mapy zagadki (puzzleCover), pogoda na mapie
+   (weatherOf: losowana codziennie wg pory roku, drawWeather: deszcz, burza, mgła, śnieżyca, cienie chmur; wyłącznik w ustawieniach).
    ===================================================================================== */
 
