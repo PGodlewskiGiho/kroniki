@@ -113,12 +113,12 @@ test('mur z cegieł ma detale i malowidła; zakryte kawałki mapy zagadki pokazu
 test('rozmiar piksela: 2 (niska jakość), 1 (drobny) i domyślny, bez błędów rysowania', async () => {
   await newGame(page);
   const r = await page.evaluate(() => {
-    const w = s => s.c.width; setPixelSize(2); const a = w(battleSprite('pikeman', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx);
-    setPixelSize(1); const b = w(battleSprite('pikeman', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx);
-    const out = { a, b, u: battleSprite('pikeman', 1, 'idle', 0).u, world: PixBufs.world.width, view: VIEW.w }; setPixelSize(PIX_DEFAULT); G.screens.adventure.draw(G.ctx);
+    const w = s => s.c.width; setPixelSize(2); const a = w(battleSprite('ballista', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx); // machina: dawny rysunek wektorowy
+    setPixelSize(1); const b = w(battleSprite('ballista', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx);
+    const out = { a, b, u: battleSprite('ballista', 1, 'idle', 0).u, unit: battleSprite('pikeman', 1, 'idle', 0).u, world: PixBufs.world.width, view: VIEW.w }; setPixelSize(PIX_DEFAULT); G.screens.adventure.draw(G.ctx);
     return { ...out, mid: PixBufs.world.width === Math.round(VIEW.w / PIX_DEFAULT) };
   });
-  assert.equal(r.b, r.a * 2); assert.equal(r.u, 1); assert.equal(r.world, r.view, 'bufor mapy: 1 piksel grafiki = 1 px logiczny'); assert.ok(r.mid, 'domyślny piksel PIX_DEFAULT');
+  assert.equal(r.b, r.a * 2); assert.equal(r.u, 1); assert.equal(r.unit, 1.3, 'jednostki z arkuszy: stały piksel 1,3'); assert.equal(r.world, r.view, 'bufor mapy: 1 piksel grafiki = 1 px logiczny'); assert.ok(r.mid, 'domyślny piksel PIX_DEFAULT');
 });
 
 test('kursor zmienia się wg celu: mapa (ruch, atak, odwiedziny, zakaz), przyciski, bitwa (miecz, strzała)', async () => {

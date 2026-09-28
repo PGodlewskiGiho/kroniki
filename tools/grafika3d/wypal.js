@@ -16,12 +16,12 @@ const WORKERS = +(process.env.WORKERS || 3);
 
 async function bakeGroup(ids, done) {
   if (!ids.length) return;
-  let st = null, n = 0;
+  let st = null, n = 0; const retry = {};
   for (const id of ids) {
     if (!st || n++ % 6 === 0) { if (st) await st.browser.close(); st = await openStudio({ width: 400, height: 300 }); } // świeża przeglądarka co kilka jednostek (pamięć karty programowej)
     const page = st.page;
     const r = await page.evaluate(([id, KB, KM, UB, UM]) => {
-      const L = CREATURES[id].look, s = Math.max(1, L.size || 1), F = BATTLE_FRAMES, frames = [];
+      const L = CREATURES[id].look, s = Math.max(1, L.size || 1), F = BATTLE_FRAMES, frames = []; window.__blank = 0;
       if (!buildUnit(L, {})) return null;
       const W = Math.round(150 * s), H = Math.round(150 * s), AX = Math.round(W * 0.45), AY = H - Math.round(18 * s);
       const add = (pose, i, P, map) => {
@@ -31,7 +31,7 @@ async function bakeGroup(ids, done) {
         // przycięcie do zajętych pikseli (z marginesem 1 px)
         const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
         for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-        if (x1 < 0) { x0 = y0 = 0; x1 = y1 = 0; }
+        if (x1 < 0) { x0 = y0 = 0; x1 = y1 = 0; window.__blank = (window.__blank || 0) + 1; }
         frames.push({ pose, i, c, sx: x0, sy: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, ax: ax - x0, ay: ay - y0 });
       };
       for (let i = 0; i < F.idle; i++) add('idle', i, { t: i / F.idle * Math.PI * 2 / 2.4 });
@@ -44,8 +44,10 @@ async function bakeGroup(ids, done) {
       let sw = 0, sh = 0; for (const r of Object.values(rows)) { sw = Math.max(sw, r.reduce((a, f) => a + f.w + 1, 0)); sh += Math.max(...r.map(f => f.h)) + 1; }
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = sh; const g = sheet.getContext('2d'), meta = {};
       let y = 0; for (const [pose, r] of Object.entries(rows)) { let x = 0; meta[pose] = r.map(f => { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, x, y, f.w, f.h); const m = [x, y, f.w, f.h, f.ax, f.ay]; x += f.w + 1; return m; }); y += Math.max(...r.map(f => f.h)) + 1; }
-      return { png: sheet.toDataURL('image/png').split(',')[1], f: meta, u: UB, mu: UM };
+      return window.__blank ? { blank: window.__blank } : { png: sheet.toDataURL('image/png').split(',')[1], f: meta, u: UB, mu: UM };
     }, [id, KB, KM, UB, UM]);
+    if (r && r.blank) { // pusta klatka: kontekst grafiki padł (np. brak pamięci) - świeża przeglądarka i jeszcze raz
+      process.stdout.write('!'); await st.browser.close(); st = null; n = 0; ids.push(id); if ((retry[id] = (retry[id] || 0) + 1) > 2) throw new Error(`Puste klatki: ${id}`); continue; }
     done(id, r); process.stdout.write(r ? '.' : '-');
   }
   if (st) await st.browser.close();
