@@ -6,7 +6,7 @@ G.screens.town = {
   LIST_ROWS: 6, // tyle budowli mieści się na liście; resztę przewija się strzałkami albo kółkiem myszy
   town() { return G.state.towns[this.townId]; },
   enter(p) {
-    this.townId = p.townId || 0; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.split = false; this.garRects = []; this.heroRects = [];
+    this.townId = p.townId || 0; this.bookAsked = false; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.split = false; this.garRects = []; this.heroRects = [];
     this.guildVisit();
     if (p.msg) this.say(p.msg);
     if (p.tavern) setTimeout(() => { if (G.screen === this && !G.modal) this.showTavern(); }, 0); // powrót z podglądu bohatera: znów tawerna
@@ -46,7 +46,14 @@ G.screens.town = {
     const h = heroInTown(st, t); if (!h) return;
     const sp = specialVisit(st, t, h); if (sp) this.say(sp);
     if (!guildLevel(t)) return;
+    if (!hasBook(h) && !this.bookAsked) { this.bookAsked = true; this.offerBook(h); return; } // jak w Heroes 3: gildia proponuje księgę
     const learned = visitGuild(st, t, h); if (learned.length) this.say(`${h.name} poznaje: ${learned.map(id => SPELLS[id].name).join(', ')}`);
+  },
+  offerBook(h) {
+    const st = G.state, t = this.town();
+    showDialog(`${h.name} nie ma księgi czarów, więc nie może poznawać ani rzucać czarów. Gildia magów sprzedaje ją za ${SPELLBOOK_COST} złota.`, [
+      { label: 'Kup księgę', sub: `${SPELLBOOK_COST} złota`, key: 'enter', action: () => { const e = buyBook(st, t, h); this.say(e || `${h.name} ma teraz księgę czarów`); if (!e) this.guildVisit(); } },
+      { label: 'Nie teraz', key: 'escape' }], { bw: 150 });
   },
   // Budowla specjalna: opis, a w Inferno przejście przez Bramę piekieł do innego miasta
   showSpecial() {
@@ -306,8 +313,10 @@ function showGuildView(st, t, scr) {
   const next = BUILDINGS.find(b => /^guild/.test(b.id) && !hasB(t, b.id));
   const close = new Button(GV.x + GV.w - 148, GV.y + GV.h - 48, 128, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
   const up = next && reqMet(t, next) ? new Button(I.x + 8, GV.y + GV.h - 48, 150, 36, 'Rozbuduj', () => { G.modal = null; scr.tryBuild(next); }, { size: 15, tip: `Zbuduj: ${bInfo(next, t.faction).name}.` }) : null;
+  const vh = heroInTown(st, t), book = vh && !hasBook(vh) ? new Button(GV.x + GV.w - 300, GV.y + GV.h - 48, 144, 36, 'Kup księgę', () => { const e = buyBook(st, t, vh); scr.say(e || `${vh.name} ma teraz księgę czarów`); if (!e) { G.modal = null; scr.guildVisit(); } },
+    { size: 14, tip: `Księga czarów dla bohatera ${vh.name}: ${SPELLBOOK_COST} złota. Bez niej nie pozna ani nie rzuci czarów.` }) : null;
   const M = {
-    guild: true, sel: null, rects: [], buttons: up ? [up, close] : [close],
+    guild: true, sel: null, rects: [], buttons: [...(up ? [up] : []), ...(book ? [book] : []), close],
     spAt() { const h = heroInTown(st, t); return h ? heroStat(h, 'sp') : 1; },
     scrollAt(x, y) { const r = this.rects.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); return r ? r.id : null; },
     onClick(x, y) { const id = this.scrollAt(x, y); if (id) this.sel = id; },

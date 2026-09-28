@@ -31,7 +31,7 @@ G.screens.hero = {
     this.bPrev = new Button(432, 446, 44, 28, 'Poprzednie', () => { this.bagPage--; }, { icon: iconArrowSide(-1), tip: 'Poprzednie artefakty w plecaku.' });
     this.bNext = new Button(728, 446, 44, 28, 'Następne', () => { this.bagPage++; }, { icon: iconArrowSide(1), tip: 'Następne artefakty w plecaku.' });
     this.buttons = [new Button(32, 500, 170, 44, 'Wróć', () => this.onBack(), { key: 'escape', size: 18, tip: 'Powrót (klawisz Esc).' }), this.bPrev, this.bNext,
-      new Button(216, 500, 172, 44, 'Księga czarów', () => showSpellbook(this.hero(), 'view', () => {}), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C).' })];
+      new Button(216, 500, 172, 44, 'Księga czarów', () => hasBook(this.hero()) ? showSpellbook(this.hero(), 'view', () => {}) : this.say(`Brak księgi czarów: kupisz ją w gildii magów (${SPELLBOOK_COST} złota).`), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C). Wojownicy muszą najpierw kupić księgę w gildii magów.' })];
     if (this.preview) this.buttons.splice(3, 1, this.bHire = new Button(216, 500, 172, 44, 'Najmij', () => {
       const st = G.state, t = st.towns[this.hire.townId], r = hireHero(st, t, this.hire.k); if (r.error) return this.say(r.error);
       G.go('town', { townId: t.id, msg: `${r.hero.name} dołącza do twojej sprawy` });

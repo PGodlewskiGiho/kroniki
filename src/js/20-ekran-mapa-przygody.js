@@ -229,6 +229,7 @@ G.screens.adventure = {
   },
   spellbook() {
     const st = G.state, h = hero(st); if (!h || h.moving || h.anim) return;
+    if (!hasBook(h)) return this.flash(`${h.name} nie ma księgi czarów. Kupisz ją w mieście z gildią magów (${SPELLBOOK_COST} złota).`);
     showSpellbook(h, 'adv', id => {
       const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); if (err) return;
       this.mapFx = this.mapFx || []; const col = SPELLS[id].col;

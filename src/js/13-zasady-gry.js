@@ -348,9 +348,21 @@ function rollGuildLevel(st, t, L) {
 }
 const guildOffer = (t, L) => (GUILD_OFFER[L] || 1) + (t.faction === 'academy' && hasB(t, 'special') ? 1 : 0); // Biblioteka Akademii
 const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild' + L)) return L; return 0; };
+// Księga czarów (jak w Heroes 3): magowie zaczynają z nią, wojownicy kupują ją w mieście z gildią magów. Bez księgi bohater
+// nie poznaje czarów (gildia, kapliczka, Orle oko) i nie może ich rzucać. Bohaterowie z dawnych zapisów mają ją (book !== false).
+const SPELLBOOK_COST = 500;
+const hasBook = h => !!h && h.book !== false;
+function buyBook(st, t, h) {
+  if (hasBook(h)) return `${h.name} ma już księgę czarów`; if (!guildLevel(t)) return 'Księgę czarów sprzedaje gildia magów';
+  const R = playerOf(st, h.owner).resources; if (R.gold < SPELLBOOK_COST) return `Księga czarów kosztuje ${SPELLBOOK_COST} złota`;
+  R.gold -= SPELLBOOK_COST; h.book = true; return null;
+}
 // Bohater w mieście z gildią: poznaje jej czary i odzyskuje całą manę. Zwraca nowo poznane czary.
+// Komputer bez księgi kupuje ją sam, gdy go stać (z zapasem na wojsko).
 function visitGuild(st, t, h) {
   const L = guildLevel(t); if (!L) return [];
+  if (!hasBook(h) && !playerOf(st, h.owner).human && playerOf(st, h.owner).resources.gold >= SPELLBOOK_COST * 3) buyBook(st, t, h);
+  if (!hasBook(h)) { h.mana = Math.max(h.mana, heroMaxMana(h)); return []; }
   const learned = [];
   for (let k = 1; k <= Math.min(L, spellCap(h)); k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); } // wyżej tylko z Mądrością
   h.mana = Math.max(h.mana, heroMaxMana(h)); return learned;
@@ -798,6 +810,7 @@ function useSite(st, h, ob) {
   switch (ob.kind) {
     case 'shrine': {
       const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
+      if (!hasBook(h)) return { text: `Kapliczka uczy czaru „${sp.name}”, ale ${h.name} nie ma księgi czarów. Kupisz ją w mieście z gildią magów (${SPELLBOOK_COST} złota).` };
       if (sp.level > spellCap(h)) return { text: `Kapliczka uczy czaru „${sp.name}” (poziom ${sp.level}), ale ${h.name} go nie pojmuje: potrzebna Mądrość (${SKILL_LEVELS[sp.level - 2]}).` };
       mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(heroStat(h, 'sp'))}.` };
     }

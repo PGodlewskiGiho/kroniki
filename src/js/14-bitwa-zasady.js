@@ -372,7 +372,7 @@ function nextActive(B) {
 const unitAtt = u => CREATURES[u.cid].att + (u.spec ? u.spec.att : 0) + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
 const unitDef = u => CREATURES[u.cid].def + (u.spec ? u.spec.def : 0) + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
 const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.spec ? u.spec.spd : 0) + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
-const battleSpells = h => (h.spells || []).filter(id => SPELLS[id].kind === 'battle');
+const battleSpells = h => (hasBook(h) ? h.spells || [] : []).filter(id => SPELLS[id].kind === 'battle'); // bez księgi nie ma czarów
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
 const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => spellCost(h, id) <= h.mana)); };
@@ -415,7 +415,7 @@ function spellArea(id, x, y, B) {
 const hitMul = (S, i) => (S.chain ? Math.pow(0.5, i) : 1);
 // Orle oko: bohater strony przeciwnej może nauczyć się rzuconego czaru (do poziomu wg umiejętności)
 function learnBySight(B, s, id) {
-  const o = sideHero(B, 1 - s), v = skillVal(o, 'eagleSight'); if (!v || knows(o, id) || SPELLS[id].level > v / 10 - 2) return;
+  const o = sideHero(B, 1 - s), v = skillVal(o, 'eagleSight'); if (!v || !hasBook(o) || knows(o, id) || SPELLS[id].level > v / 10 - 2) return;
   if (B.rng() * 100 < v) { o.spells.push(id); B.log.push(`${o.name} podpatruje czar „${SPELLS[id].name}” (Orle oko).`); }
 }
 function castBattle(B, id, x, y) {

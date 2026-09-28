@@ -170,6 +170,12 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    CARAVAN_MP dziennie), dołączają do garnizonu, zawracają, gdy cel przepadł; wóz na mapie, okno w mieście (klawisz K).
    Mapa bez szarpnięć: kawałki terenu malują się w tle (MapRender.warm, requestIdleCallback, od najbliższych widoku po całą mapę),
    w klatce tylko zastępczy rysunek; pamięć na całą mapę; mapa w spoczynku 60 klatek; auto-jakość wraca po ~10 s płynnej gry.
+   Etap A (wygoda i zasady): panel mapy w zakładkach bohaterowie/miasta, młotek przy mieście (czy dziś budowano); klik na dalekiego
+   własnego bohatera = ścieżka i spotkanie po dojściu; szybkie przekazanie armii (giveArmy: zostaje jeden stwór najsłabszego oddziału)
+   w spotkaniu i w mieście; werbunek z listy wraca do listy, „Werbuj wszystko” (recruitAll, od najsilniejszych); podgląd kandydata
+   z tawerny na ekranie bohatera (previewHero) i najem z podglądu; ucieczka/porażka jak w H3 (retireHero, st.retired: uciekinier od razu
+   w swojej tawernie, pokonany po tygodniu u wszystkich, łup artefaktów lootHero), pełna armia tylko dla dwóch kandydatów tygodnia
+   (weak/weakArmy); księga czarów (hasBook, buyBook za SPELLBOOK_COST w gildii; wojownicy zaczynają bez niej).
    Czcionka pikselowa: Jersey 10 (OFL, czytelne cyfry) wbudowana przez build.js z src/czcionki; ustawienie Grafika → Czcionka (piksele/klasyczna).
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
@@ -3722,7 +3728,7 @@ function createHero(st, owner, x, y, pick = null) {
   const { name, cls, female } = P;
   const h = { id, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: P.weak ? weakArmy(P.fac) : startingArmy(P.fac, r),
     path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null };
-  initHeroProgress(h); h.mp = heroMaxMP(h); st.heroes.push(h); return h;
+  initHeroProgress(h); h.book = MAGE_CLASSES.includes(cls) || !!CLASS_SPELLS[cls]; h.mp = heroMaxMP(h); st.heroes.push(h); return h; // wojownicy bez księgi czarów
 }
 // Podgląd kandydata z tawerny: ten sam bohater, którego dałby najem (ta sama armia i umiejętności), ale bez dopisania do gry
 function previewHero(st, owner, pick) {
@@ -4115,9 +4121,21 @@ function rollGuildLevel(st, t, L) {
 }
 const guildOffer = (t, L) => (GUILD_OFFER[L] || 1) + (t.faction === 'academy' && hasB(t, 'special') ? 1 : 0); // Biblioteka Akademii
 const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild' + L)) return L; return 0; };
+// Księga czarów (jak w Heroes 3): magowie zaczynają z nią, wojownicy kupują ją w mieście z gildią magów. Bez księgi bohater
+// nie poznaje czarów (gildia, kapliczka, Orle oko) i nie może ich rzucać. Bohaterowie z dawnych zapisów mają ją (book !== false).
+const SPELLBOOK_COST = 500;
+const hasBook = h => !!h && h.book !== false;
+function buyBook(st, t, h) {
+  if (hasBook(h)) return `${h.name} ma już księgę czarów`; if (!guildLevel(t)) return 'Księgę czarów sprzedaje gildia magów';
+  const R = playerOf(st, h.owner).resources; if (R.gold < SPELLBOOK_COST) return `Księga czarów kosztuje ${SPELLBOOK_COST} złota`;
+  R.gold -= SPELLBOOK_COST; h.book = true; return null;
+}
 // Bohater w mieście z gildią: poznaje jej czary i odzyskuje całą manę. Zwraca nowo poznane czary.
+// Komputer bez księgi kupuje ją sam, gdy go stać (z zapasem na wojsko).
 function visitGuild(st, t, h) {
   const L = guildLevel(t); if (!L) return [];
+  if (!hasBook(h) && !playerOf(st, h.owner).human && playerOf(st, h.owner).resources.gold >= SPELLBOOK_COST * 3) buyBook(st, t, h);
+  if (!hasBook(h)) { h.mana = Math.max(h.mana, heroMaxMana(h)); return []; }
   const learned = [];
   for (let k = 1; k <= Math.min(L, spellCap(h)); k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); } // wyżej tylko z Mądrością
   h.mana = Math.max(h.mana, heroMaxMana(h)); return learned;
@@ -4565,6 +4583,7 @@ function useSite(st, h, ob) {
   switch (ob.kind) {
     case 'shrine': {
       const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
+      if (!hasBook(h)) return { text: `Kapliczka uczy czaru „${sp.name}”, ale ${h.name} nie ma księgi czarów. Kupisz ją w mieście z gildią magów (${SPELLBOOK_COST} złota).` };
       if (sp.level > spellCap(h)) return { text: `Kapliczka uczy czaru „${sp.name}” (poziom ${sp.level}), ale ${h.name} go nie pojmuje: potrzebna Mądrość (${SKILL_LEVELS[sp.level - 2]}).` };
       mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(heroStat(h, 'sp'))}.` };
     }
@@ -4998,7 +5017,7 @@ function nextActive(B) {
 const unitAtt = u => CREATURES[u.cid].att + (u.spec ? u.spec.att : 0) + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
 const unitDef = u => CREATURES[u.cid].def + (u.spec ? u.spec.def : 0) + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
 const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.spec ? u.spec.spd : 0) + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
-const battleSpells = h => (h.spells || []).filter(id => SPELLS[id].kind === 'battle');
+const battleSpells = h => (hasBook(h) ? h.spells || [] : []).filter(id => SPELLS[id].kind === 'battle'); // bez księgi nie ma czarów
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
 const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => spellCost(h, id) <= h.mana)); };
@@ -5041,7 +5060,7 @@ function spellArea(id, x, y, B) {
 const hitMul = (S, i) => (S.chain ? Math.pow(0.5, i) : 1);
 // Orle oko: bohater strony przeciwnej może nauczyć się rzuconego czaru (do poziomu wg umiejętności)
 function learnBySight(B, s, id) {
-  const o = sideHero(B, 1 - s), v = skillVal(o, 'eagleSight'); if (!v || knows(o, id) || SPELLS[id].level > v / 10 - 2) return;
+  const o = sideHero(B, 1 - s), v = skillVal(o, 'eagleSight'); if (!v || !hasBook(o) || knows(o, id) || SPELLS[id].level > v / 10 - 2) return;
   if (B.rng() * 100 < v) { o.spells.push(id); B.log.push(`${o.name} podpatruje czar „${SPELLS[id].name}” (Orle oko).`); }
 }
 function castBattle(B, id, x, y) {
@@ -9878,6 +9897,7 @@ G.screens.adventure = {
   },
   spellbook() {
     const st = G.state, h = hero(st); if (!h || h.moving || h.anim) return;
+    if (!hasBook(h)) return this.flash(`${h.name} nie ma księgi czarów. Kupisz ją w mieście z gildią magów (${SPELLBOOK_COST} złota).`);
     showSpellbook(h, 'adv', id => {
       const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); if (err) return;
       this.mapFx = this.mapFx || []; const col = SPELLS[id].col;
@@ -10260,7 +10280,7 @@ G.screens.hero = {
     this.bPrev = new Button(432, 446, 44, 28, 'Poprzednie', () => { this.bagPage--; }, { icon: iconArrowSide(-1), tip: 'Poprzednie artefakty w plecaku.' });
     this.bNext = new Button(728, 446, 44, 28, 'Następne', () => { this.bagPage++; }, { icon: iconArrowSide(1), tip: 'Następne artefakty w plecaku.' });
     this.buttons = [new Button(32, 500, 170, 44, 'Wróć', () => this.onBack(), { key: 'escape', size: 18, tip: 'Powrót (klawisz Esc).' }), this.bPrev, this.bNext,
-      new Button(216, 500, 172, 44, 'Księga czarów', () => showSpellbook(this.hero(), 'view', () => {}), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C).' })];
+      new Button(216, 500, 172, 44, 'Księga czarów', () => hasBook(this.hero()) ? showSpellbook(this.hero(), 'view', () => {}) : this.say(`Brak księgi czarów: kupisz ją w gildii magów (${SPELLBOOK_COST} złota).`), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C). Wojownicy muszą najpierw kupić księgę w gildii magów.' })];
     if (this.preview) this.buttons.splice(3, 1, this.bHire = new Button(216, 500, 172, 44, 'Najmij', () => {
       const st = G.state, t = st.towns[this.hire.townId], r = hireHero(st, t, this.hire.k); if (r.error) return this.say(r.error);
       G.go('town', { townId: t.id, msg: `${r.hero.name} dołącza do twojej sprawy` });
@@ -11048,7 +11068,7 @@ G.screens.town = {
   LIST_ROWS: 6, // tyle budowli mieści się na liście; resztę przewija się strzałkami albo kółkiem myszy
   town() { return G.state.towns[this.townId]; },
   enter(p) {
-    this.townId = p.townId || 0; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.split = false; this.garRects = []; this.heroRects = [];
+    this.townId = p.townId || 0; this.bookAsked = false; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.split = false; this.garRects = []; this.heroRects = [];
     this.guildVisit();
     if (p.msg) this.say(p.msg);
     if (p.tavern) setTimeout(() => { if (G.screen === this && !G.modal) this.showTavern(); }, 0); // powrót z podglądu bohatera: znów tawerna
@@ -11088,7 +11108,14 @@ G.screens.town = {
     const h = heroInTown(st, t); if (!h) return;
     const sp = specialVisit(st, t, h); if (sp) this.say(sp);
     if (!guildLevel(t)) return;
+    if (!hasBook(h) && !this.bookAsked) { this.bookAsked = true; this.offerBook(h); return; } // jak w Heroes 3: gildia proponuje księgę
     const learned = visitGuild(st, t, h); if (learned.length) this.say(`${h.name} poznaje: ${learned.map(id => SPELLS[id].name).join(', ')}`);
+  },
+  offerBook(h) {
+    const st = G.state, t = this.town();
+    showDialog(`${h.name} nie ma księgi czarów, więc nie może poznawać ani rzucać czarów. Gildia magów sprzedaje ją za ${SPELLBOOK_COST} złota.`, [
+      { label: 'Kup księgę', sub: `${SPELLBOOK_COST} złota`, key: 'enter', action: () => { const e = buyBook(st, t, h); this.say(e || `${h.name} ma teraz księgę czarów`); if (!e) this.guildVisit(); } },
+      { label: 'Nie teraz', key: 'escape' }], { bw: 150 });
   },
   // Budowla specjalna: opis, a w Inferno przejście przez Bramę piekieł do innego miasta
   showSpecial() {
@@ -11348,8 +11375,10 @@ function showGuildView(st, t, scr) {
   const next = BUILDINGS.find(b => /^guild/.test(b.id) && !hasB(t, b.id));
   const close = new Button(GV.x + GV.w - 148, GV.y + GV.h - 48, 128, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
   const up = next && reqMet(t, next) ? new Button(I.x + 8, GV.y + GV.h - 48, 150, 36, 'Rozbuduj', () => { G.modal = null; scr.tryBuild(next); }, { size: 15, tip: `Zbuduj: ${bInfo(next, t.faction).name}.` }) : null;
+  const vh = heroInTown(st, t), book = vh && !hasBook(vh) ? new Button(GV.x + GV.w - 300, GV.y + GV.h - 48, 144, 36, 'Kup księgę', () => { const e = buyBook(st, t, vh); scr.say(e || `${vh.name} ma teraz księgę czarów`); if (!e) { G.modal = null; scr.guildVisit(); } },
+    { size: 14, tip: `Księga czarów dla bohatera ${vh.name}: ${SPELLBOOK_COST} złota. Bez niej nie pozna ani nie rzuci czarów.` }) : null;
   const M = {
-    guild: true, sel: null, rects: [], buttons: up ? [up, close] : [close],
+    guild: true, sel: null, rects: [], buttons: [...(up ? [up] : []), ...(book ? [book] : []), close],
     spAt() { const h = heroInTown(st, t); return h ? heroStat(h, 'sp') : 1; },
     scrollAt(x, y) { const r = this.rects.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); return r ? r.id : null; },
     onClick(x, y) { const id = this.scrollAt(x, y); if (id) this.sel = id; },
