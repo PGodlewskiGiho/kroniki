@@ -168,8 +168,10 @@ function drawPerfInfo(ctx) {
 function showGfxSettings(back) {
   const S = G.settings, cur = (QUALITIES.find(q => q.id === S.quality) || QUALITIES[0]).name;
   const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); resize(); showGfxSettings(back); };
+  const fontBtn = { label: pixelFont() ? 'Czcionka: piksele' : 'Czcionka: klasyczna', sub: 'zmień', tip: 'Czcionka interfejsu: pikselowa (pasuje do grafiki) albo klasyczna szeryfowa.',
+    action: () => { S.font = pixelFont() ? 'classic' : 'pixel'; saveSettings(); Layers.cache = {}; showGfxSettings(back); } };
   showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało. Klawisz F pokazuje licznik klatek.`,
-    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 130 });
+    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), fontBtn, { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 120 });
 }
 function init() {
   loadSettings();
@@ -177,6 +179,8 @@ function init() {
   resize(); window.addEventListener('resize', resize); bindInput();
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)
   setScreen('menu'); G.fade.a = 1; G.fade.target = 0;
+  // wbudowana czcionka ładuje się chwilę: potem odświeżamy obrazy z napisami trzymane w pamięci (tytuły, przyciski)
+  if (document.fonts) document.fonts.load(`16px ${FONT_PIXEL}`).then(() => { Layers.cache = {}; G.dirty = true; }, () => {});
   requestAnimationFrame(frame);
 }
 init();

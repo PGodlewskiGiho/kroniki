@@ -568,6 +568,55 @@ function buildIn(st, t, B) {
   if (B.id === 'special' && t.faction === 'academy') for (let L = 1; L <= guildLevel(t); L++) rollGuildLevel(st, t, L); // Biblioteka: czar więcej na każdym poziomie
   const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1], st); // nowe siedlisko od razu daje przyrost
 }
+// --- karawany (jak w HotA): oddziały z garnizonu jadą bez bohatera do innego własnego miasta; CARAVAN_SPEED pól dziennie ---
+// Po dotarciu dołączają do garnizonu (albo armii bohatera, który nim dowodzi). Gdy miasto celu przepadło, karawana zawraca;
+// gdy nie ma już dokąd wrócić, przepada. Brak miejsca w garnizonie: czeka do następnego dnia.
+const CARAVAN_MP = 1200; // punktów ruchu dziennie (bohater bez premii ma ~1500)
+// Droga karawany: po lądzie jak bohater (teren i drogi), bez zatrzymywania się na obiektach; bez drogi lądem — prosto (statkiem)
+function caravanRoute(st, a, b) {
+  const map = st.map, n = map.n, p = findPath(n, a.x, a.y, b.x, b.y, (j, i) => (map.terrain[j] !== TER.WATER && !map.obst[j]) || j === b.y * n + b.x ? baseCost(map, i, j, null) : Infinity, 50);
+  if (!p) return { route: null, cost: Math.hypot(a.x - b.x, a.y - b.y) * 100 };
+  let cost = 0; for (let k = 1; k < p.length; k++) cost += baseCost(map, p[k - 1], p[k], null) * (p[k] % n !== p[k - 1] % n && ((p[k] / n) | 0) !== ((p[k - 1] / n) | 0) ? 1.414 : 1);
+  return { route: p, cost };
+}
+const caravanDays = (a, b, st = G.state) => Math.max(1, Math.ceil(caravanRoute(st, a, b).cost / CARAVAN_MP));
+const caravanSrc = (st, t) => { const gh = garrisonHero(st, t); return gh ? gh.army : t.garrison; };
+function sendCaravan(st, from, to, slots) {
+  if (!to || to === from || to.owner !== from.owner) return 'Wybierz inne własne miasto';
+  const src = caravanSrc(st, from), pick = [...new Set(slots)].filter(i => src[i]);
+  if (!pick.length) return 'Wybierz oddziały do wysłania';
+  if (garrisonHero(st, from) && armyStacks(src).length <= pick.length) return 'Bohater w garnizonie musi zatrzymać co najmniej jeden oddział';
+  const army = pick.map(i => ({ ...src[i] })); for (const i of pick) src[i] = null;
+  const R = caravanRoute(st, from, to), days = Math.max(1, Math.ceil(R.cost / CARAVAN_MP)); st.caravans = st.caravans || [];
+  st.caravans.push({ owner: from.owner, from: from.id, to: to.id, army, start: st.dayTotal, arrive: st.dayTotal + days, route: R.route });
+  return null;
+}
+// Dołącz oddziały do armii (ten sam stwór albo wolne miejsce); zwraca to, co się nie zmieściło
+function mergeInto(dst, army) {
+  const left = [];
+  for (const s of army) { const i = dst.findIndex(x => x && x.cid === s.cid), j = i >= 0 ? i : dst.findIndex(x => !x); if (j < 0) { left.push(s); continue; } if (dst[j]) dst[j].n += s.n; else dst[j] = { ...s }; }
+  return left;
+}
+function caravanArrivals(st) {
+  for (const c of [...(st.caravans || [])]) {
+    if (c.arrive > st.dayTotal) continue;
+    const to = st.towns[c.to], from = st.towns[c.from], drop = () => { st.caravans = st.caravans.filter(x => x !== c); };
+    if (to.owner !== c.owner) {
+      if (from.owner === c.owner && c.from !== c.to) { tell(st, c.owner, `Miasto ${to.name} przepadło: karawana zawraca do miasta ${from.name}.`); const R = caravanRoute(st, to, from); Object.assign(c, { to: from.id, from: to.id, start: st.dayTotal, arrive: st.dayTotal + Math.max(1, Math.ceil(R.cost / CARAVAN_MP)), route: R.route }); }
+      else { tell(st, c.owner, 'Karawana nie ma dokąd wrócić i rozprasza się.'); drop(); }
+      continue;
+    }
+    c.army = mergeInto(caravanSrc(st, to), c.army);
+    if (c.army.length) { c.arrive = st.dayTotal + 1; tell(st, c.owner, `Karawana czeka pod miastem ${to.name}: w garnizonie brak miejsca.`); }
+    else { drop(); tell(st, c.owner, `Karawana dotarła do miasta ${to.name}.`); }
+  }
+}
+// Pozycja karawany na mapie: punkt drogi wg upływu dni (bez drogi lądem: na prostej między miastami)
+function caravanPos(st, c) {
+  const a = st.towns[c.from], b = st.towns[c.to], f = clamp((st.dayTotal - c.start) / Math.max(1, c.arrive - c.start), 0, 1), n = st.map.n;
+  if (c.route && c.route.length > 1) { const i = c.route[Math.min(c.route.length - 1, Math.max(1, Math.round(f * (c.route.length - 1))))]; return [i % n, (i / n) | 0]; }
+  return [Math.round(a.x + (b.x - a.x) * f), Math.round(a.y + (b.y - a.y) * f)];
+}
 // --- budowle specjalne frakcji (FACTION_SPECIAL) ---------------------------------------------
 const STABLE_MP = 400;
 // Bohater w mieście z budowlą specjalną: stajnie, wir many, klatka wodzów, sala Walhalli. Zwraca opis albo null.

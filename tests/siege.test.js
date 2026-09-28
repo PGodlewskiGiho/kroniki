@@ -112,3 +112,30 @@ test('ekran oblężenia: rysuje mury, katapulta rzuca, dymek muru', async () => 
   assert.match(info, /Brama miasta/);
   await frames(page, 5);
 });
+
+test('fosa (od Cytadeli): kończy ruch napastnika i go rani, most przy bramie; Fort bez fosy', async () => {
+  await newGame(page, { mapSize: 'M' }, 8);
+  await siege(['fort'], [['pikeman', 10]], [['pikeman', 10]]);
+  const none = await page.evaluate(() => !__B.moat);
+  await siege(['fort', 'citadel'], [['swordsman', 10]], [['pikeman', 10]]);
+  const r = await page.evaluate(() => {
+    const B = __B, sw = B.units.find(u => u.side === 0 && u.cid === 'swordsman'); B.obst.clear(); sw.x = MOAT_X - 2; sw.y = 2;
+    const reach = battleDist(B, sw, 99), beyond = [...reach.dist.keys()].some(k => { const x = k % BCOLS, y = Math.floor(k / BCOLS); return x < MOAT_X && reach.prev.get(k) != null && moatAt(B, reach.prev.get(k) % BCOLS, Math.floor(reach.prev.get(k) / BCOLS)); });
+    const hp0 = (sw.n - 1) * CREATURES.swordsman.hp + sw.hp; actMoveAttack(B, sw, pathTo(reach, sw, MOAT_X, 2), null);
+    return { inMoat: sw.x === MOAT_X, lost: hp0 - ((sw.n - 1) * CREATURES.swordsman.hp + sw.hp), dmg: B.moat.dmg, bridge: !moatAt(B, MOAT_X, GATE_Y), beyond, wallHp: [...B.walls.values()].find(w => w.kind === 'wall').hp };
+  });
+  assert.ok(none, 'Fort: bez fosy');
+  assert.equal(r.inMoat, true); assert.equal(r.lost, r.dmg); assert.equal(r.bridge, true); assert.equal(r.beyond, false, 'nie przechodzi przez fosę w jednym ruchu');
+  assert.equal(r.wallHp, 3);
+});
+
+test('obrońca walczący wręcz czeka za murem; przy dużej przewadze robi wypad', async () => {
+  await newGame(page, { mapSize: 'M' }, 8);
+  await siege(['fort'], [['archer', 30]], [['swordsman', 10]]);
+  const r = await page.evaluate(() => {
+    const B = __B; for (const w of B.walls.values()) if (w.kind === 'gate') w.hp = 0; B.obst.clear();
+    const d = B.units.find(u => u.side === 1 && u.cid === 'swordsman'), x0 = d.x; B.active = d; aiAct(B, d); const stayed = d.x > SIEGE_X - 1 || d.x === x0;
+    d.n = 400; d.x = x0; d.y = 4; aiAct(B, d); return { stayed, sortie: d.x < x0 };
+  });
+  assert.deepEqual(r, { stayed: true, sortie: true });
+});

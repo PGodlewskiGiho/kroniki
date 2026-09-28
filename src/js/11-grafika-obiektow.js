@@ -744,6 +744,13 @@ const obstacleSprite = (o, t, v, season = 0) => sprite(`ob${o}_${t}_${v}_${seaso
 const decorSprite = (t, v, season = 0) => sprite(`dec${t}_${v}_${season}`, 12, 10, 6, 7, p => { SEASON_DRAW = season; drawDecor(p, t, v); SEASON_DRAW = 0; }, null);
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
+// Karawana na mapie: kryty wóz z koniem i chorągiewką koloru gracza (fr: klatka kół)
+const caravanSprite = (col, fr) => sprite(`caravan_${col}_${fr}`, 26, 22, 13, 18, p => {
+  p.fillStyle = '#6a4424'; p.fillRect(-3, 4, 14, 5); p.fillStyle = '#e8dcc0'; p.beginPath(); p.moveTo(-3, 4); p.quadraticCurveTo(4, -6, 11, 4); p.closePath(); p.fill();
+  p.fillStyle = '#c8b690'; p.fillRect(-2, 1, 12, 2); p.fillStyle = col; p.fillRect(4, -9, 1.5, 6); p.fillRect(5.5, -9, 4, 3);
+  for (const wx of [0, 8]) { p.fillStyle = '#3a2410'; p.beginPath(); p.arc(wx, 10, 2.6, 0, TAU); p.fill(); p.fillStyle = '#a07a4a'; p.fillRect(wx - 0.5 + (fr ? 1 : 0), 8, 1, 4); }
+  p.fillStyle = '#8a5a30'; p.fillRect(-11, 1, 7, 4); p.fillRect(-12, -2, 3, 4); p.fillRect(-10, 5, 1.5, 5); p.fillRect(-6, 5, 1.5, 5); p.fillStyle = '#5a3a1a'; p.fillRect(-4, 4, 2, 1);
+});
 const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
 // Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki

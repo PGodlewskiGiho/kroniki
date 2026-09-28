@@ -10,8 +10,9 @@ G.screens.town = {
     this.guildVisit();
     this.baseButtons = [
       new Button(596, 448, 192, 40, 'Rekrutacja', () => showRecruitList(G.state, this.town(), m => this.say(m)), { key: 'r', size: 16, tip: 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).' }),
-      new Button(694, 496, 94, 40, 'Na mapę', () => G.go('adventure'), { key: 'escape', size: 14, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
-      new Button(596, 496, 94, 40, 'Dziel', () => { this.split = !this.split; this.say(this.split ? 'Wybierz oddział i miejsce' : 'Przenoszenie całych oddziałów'); }, { key: 'd', size: 14, selected: () => this.split, tip: 'Podział oddziału: przenieś tylko część jednostek (klawisz D albo Shift+klik na miejscu docelowym).' }),
+      new Button(730, 496, 58, 40, 'Mapa', () => G.go('adventure'), { key: 'escape', size: 14, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
+      new Button(658, 496, 68, 40, 'Karawana', () => showCaravan(G.state, this.town(), m => this.say(m)), { key: 'k', size: 12, tip: 'Karawana: wyślij oddziały z garnizonu do innego własnego miasta, bez bohatera (klawisz K).' }),
+      new Button(596, 496, 58, 40, 'Dziel', () => { this.split = !this.split; this.say(this.split ? 'Wybierz oddział i miejsce' : 'Przenoszenie całych oddziałów'); }, { key: 'd', size: 14, selected: () => this.split, tip: 'Podział oddziału: przenieś tylko część jednostek (klawisz D albo Shift+klik na miejscu docelowym).' }),
     ];
     this.bRecruitHalf = new Button(596, 448, 94, 40, 'Rekrutacja', this.baseButtons[0].action, { key: 'r', size: 14, tip: this.baseButtons[0].tip });
     this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
@@ -354,3 +355,30 @@ function showGuildView(st, t, scr) {
   };
   G.modal = M;
 }
+// Okno karawany: zaznacz oddziały garnizonu (klik), wybierz miasto celu (liczba dni podróży) i wyślij; niżej karawany w drodze
+function showCaravan(st, t, say) {
+  const own = st.towns.filter(x => x.owner === t.owner && x !== t), x = 130, y = 70, w = 540, h = 440, sel = new Set(); let dest = own.length === 1 ? own[0] : null, rects = [];
+  const cancel = new Button(x + w - 164, y + h - 56, 140, 38, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
+  const send = new Button(x + 24, y + h - 56, 170, 38, 'Wyślij', () => { const e = sendCaravan(st, t, dest, [...sel]); if (e) return say(e); G.modal = null; const c = st.caravans[st.caravans.length - 1], dd = c.arrive - c.start; say(`Karawana wyrusza do miasta ${dest.name} (${dd} ${dd === 1 ? 'dzień' : 'dni'})`); }, { key: 'enter', size: 16 });
+  const destBtns = own.slice(0, 6).map((d, i, _, dd = caravanDays(t, d, st)) => new Button(x + 24 + (i % 3) * 166, y + 176 + Math.floor(i / 3) * 50, 158, 42, d.name, () => { dest = d; },
+    { size: 14, sub: `${dd} ${dd === 1 ? 'dzień' : 'dni'} drogi`, selected: () => dest === d, tip: `Karawana do miasta ${d.name}.` }));
+  G.modal = {
+    caravan: true, buttons: [send, cancel, ...destBtns],
+    onClick(px, py) { const r = hitRect(rects, px, py); if (r && caravanSrc(st, t)[r.i]) { if (sel.has(r.i)) sel.delete(r.i); else sel.add(r.i); } },
+    pick(i) { sel.add(i); }, choose(d) { dest = d; }, // do testów
+    draw(ctx) {
+      dimScreen(ctx, 0.55); drawParchment(ctx, x, y, w, h);
+      text(ctx, `Karawana z miasta ${t.name}`, W / 2, y + 30, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, 'Kliknij oddziały do wysłania:', x + 24, y + 62, { size: 14, weight: 600, color: '#5a3814' });
+      rects = drawArmyRow(ctx, caravanSrc(st, t), x + 24, y + 76, { w: 64, h: 54, gap: 6, light: true });
+      for (const r of rects) if (sel.has(r.i)) { ctx.strokeStyle = '#2a8a3a'; ctx.lineWidth = 3; rr(ctx, r.x - 1, r.y - 1, r.w + 2, r.h + 2, 4); ctx.stroke(); }
+      text(ctx, own.length ? 'Dokąd:' : 'Nie masz innego miasta, do którego mogłaby pojechać karawana.', x + 24, y + 158, { size: 14, weight: 600, color: '#5a3814' });
+      const road = (st.caravans || []).filter(c => c.owner === t.owner && (c.from === t.id || c.to === t.id));
+      text(ctx, road.length ? 'W drodze:' : '', x + 24, y + 290, { size: 14, weight: 600, color: '#5a3814' });
+      road.slice(0, 3).forEach((c, i) => { const n = c.army.reduce((a, s) => a + s.n, 0), left = Math.max(0, c.arrive - st.dayTotal);
+        text(ctx, `${c.to === t.id ? `z miasta ${st.towns[c.from].name}` : `do miasta ${st.towns[c.to].name}`}: ${n} ${n === 1 ? 'stwór' : 'stworów'}, dotrze za ${left} ${left === 1 ? 'dzień' : 'dni'}`, x + 36, y + 312 + i * 20, { size: 14, weight: 500, color: '#2a1606' }); });
+      send.disabled = !sel.size || !dest; [send, cancel, ...destBtns].forEach(b => b.draw(ctx));
+    },
+  };
+}
+

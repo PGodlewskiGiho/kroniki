@@ -2,7 +2,12 @@
 // Czcionki, tekst, cache warstw, potok sprite'ów: rysunek wektorowy -> ostre piksele z obrysem.
 const FONT_TITLE = "Cinzel, Georgia, 'Times New Roman', serif";
 const FONT_BODY = "'Cormorant Garamond', Georgia, 'Times New Roman', serif";
+// Pikselowa czcionka (domyślna; ustawienie Grafika → Czcionka): Jersey 10 wbudowana w plik gry. Rozmiary są przeskalowane
+// (PIXEL_FONT_K), żeby napisy zajmowały tyle miejsca co w czcionce klasycznej; kursywy nie ma (pochyłe piksele wyglądają źle).
+const FONT_PIXEL = "'Jersey 10', 'Courier New', monospace", PIXEL_FONT_K = { title: 1.12, body: 1.1 };
+const pixelFont = () => G.settings.font !== 'classic';
 function font(size, weight = 700, fam = 'title', italic = false) {
+  if (pixelFont()) return `400 ${Math.max(13, Math.round(size * PIXEL_FONT_K[fam === 'title' ? 'title' : 'body']))}px ${FONT_PIXEL}`; // jedna grubość (pogrubienie rozmywa piksele), najmniej 13 px
   return `${italic ? 'italic ' : ''}${weight} ${size}px ${fam === 'title' ? FONT_TITLE : FONT_BODY}`;
 }
 // Prostokąt z rogami: przy promieniu od 2 px róg jest schodkowy (stopnie po 2 px jak w pixel arcie), mniejsze zaokrąglenia zostają łukiem
