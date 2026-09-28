@@ -271,7 +271,7 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    (heroBattleSprite w narożniku, heroSpot; czar wylatuje z jego ręki), mur z cegieł z wyszczerbieniami, pęknięciami, mchem
    i wyblakłymi malowidłami (paintBricks), obraz frakcji na zakrytych kawałkach mapy zagadki (puzzleCover), pogoda na mapie
    (weatherOf: losowana codziennie wg pory roku, drawWeather: deszcz, burza, mgła, śnieżyca, cienie chmur; wyłącznik w ustawieniach).
-   Etap B2: drobny piksel w całej grafice (PIX = px logicznych na piksel grafiki: 1, przy niskiej jakości 2; PXD = gęstość
+   Etap B2: drobny piksel w całej grafice (PIX = px logicznych na piksel grafiki: PIX_DEFAULT 1,8, przy niskiej jakości 2; PXD = gęstość
    względem dawnej grafiki; sprite ma s.u, setPixelSize czyści pamięci obrazów przez PIX_CLEAR). Teren mapy, tło bitwy, sceny
    miast, interfejs i menu w drobnych pikselach; jednostki z detalami (twarz, szwy, nity, uzda). Portrety 72×72 (siatka 36,
    pixPainter z K, płynne cieniowanie, portraitFinish: światło konturowe, winieta). Kursory gry (11b-kursory.js: setCursor,
@@ -1268,9 +1268,10 @@ function shadowAt(g, x, y, w) { g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); 
 // Mapa to pixel art: AP = pikseli grafiki na pole (połowa T), OUTLINE = kolor obrysu sprite'ów.
 // Ramki, przyciski i tekst interfejsu są gładkie; obiekty gry wszędzie są sprite'ami (patrz GRAFIKA OBIEKTÓW).
 const AP = 16, OUTLINE = [24, 16, 10];
-// Rozmiar piksela grafiki w px logicznych: 1 (drobny, ostry pixel art) albo 2 (dawny, grubszy; niska jakość grafiki).
+// Rozmiar piksela grafiki w px logicznych: PIX_DEFAULT (1,8: niewiele drobniejszy od dawnego), 1 (drobny) albo 2 (dawny; niska jakość grafiki).
 // PXD = gęstość względem dawnej grafiki (ile pikseli na dawny piksel). Zmiana czyści wszystkie gotowe obrazy (setPixelSize).
-let PIX = 1, PXD = 2;
+const PIX_DEFAULT = 1.8;
+let PIX = PIX_DEFAULT, PXD = 2 / PIX_DEFAULT;
 const PIX_CLEAR = []; // funkcje czyszczące pamięci podręczne obrazów (rejestrują je moduły grafiki)
 function setPixelSize(p) {
   if (p === PIX) return; PIX = p; PXD = 2 / p; SPR.clear(); Layers.cache = {}; for (const f of PIX_CLEAR) f();
@@ -1278,7 +1279,7 @@ function setPixelSize(p) {
 }
 const PixBufs = {};
 function pixBuf(key, w, h, read) {
-  let c = PixBufs[key];
+  w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h)); let c = PixBufs[key];
   if (!c || c.width !== w || c.height !== h) { c = document.createElement('canvas'); c.width = w; c.height = h; c._ctx = c.getContext('2d', { willReadFrequently: !!read }); PixBufs[key] = c; }
   return c;
 }
@@ -2908,7 +2909,7 @@ function resIcon(ctx, id, cx, cy, size = 24) { drawSprite(ctx, resSprite(id), cx
 // (fryzura, zarost, nakrycie głowy, wyraz twarzy, znaki szczególne, tło); pozostałe cechy i bohaterowie
 // spoza listy dostają wygląd losowany z imienia (ten sam bohater wygląda zawsze tak samo).
 // Peleryna ma kolor gracza. Na ekranie 1 piksel = 1 px logiczny (k = 1) albo 2 px, jak piksel mapy (k = 2).
-const PORTRAIT_N = 36, PORTRAIT_K = () => PXD; // siatka rysunku 36×36, płótno PORTRAIT_K razy gęstsze
+const PORTRAIT_N = 36, PORTRAIT_K = () => (PXD > 1 ? 2 : 1); // siatka rysunku 36×36, płótno PORTRAIT_K razy gęstsze
 const PORTRAITS = new Map(); PIX_CLEAR.push(() => PORTRAITS.clear());
 const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058',
   beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e', alchemist: '#5a5e70', wizard: '#2e3a6a',
@@ -6074,12 +6075,12 @@ function seasonLand(col, t, ax, ay, hh, S) {
 function renderChunkPixel(map, cx, cy) {
   const SN = MapRender.season || 0;
   // D = gęstość pikseli (PXD): teren liczony w drobnych pikselach, współrzędne tekstur (ax, ay) w dawnych pikselach grafiki
-  const D = PXD, n = map.n, S = CHUNK * AP, SF = S * D, M = 5, MF = M * D, R = SF + 2 * MF, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
+  const n = map.n, S = CHUNK * AP, SF = Math.round(S * PXD), D = SF / S, M = 5, MF = Math.round(M * D), R = SF + 2 * MF, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
   for (let y = 0; y < R; y++) for (let x = 0; x < R; x++) {
     const ax = bx + (x - MF) / D, ay = by + (y - MF) / D, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
     tid[y * R + x] = map.terrain[clamp(Math.floor((ay + jy) / AP), 0, n - 1) * n + clamp(Math.floor((ax + jx) / AP), 0, n - 1)];
   }
-  const TT = (x, y) => tid[(y + MF) * R + x + MF], TO = (x, y) => TT(Math.floor(x * D), Math.floor(y * D)), rd = map.road, at = (x, y) => (x >= 0 && y >= 0 && x < n && y < n) ? rd[y * n + x] : 0;
+  const TT = (x, y) => tid[(Math.round(y) + MF) * R + Math.round(x) + MF], TO = (x, y) => TT(Math.floor(x * D), Math.floor(y * D)), rd = map.road, at = (x, y) => (x >= 0 && y >= 0 && x < n && y < n) ? rd[y * n + x] : 0;
   const segs = [], x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1;
   for (let y = y0; y <= y0 + CHUNK + 1; y++) for (let x = x0; x <= x0 + CHUNK + 1; x++) {
     const t = at(x, y); if (!t) continue; const px = x * AP + 8 - bx, py = y * AP + 8 - by; let any = false;
@@ -6127,7 +6128,7 @@ function renderChunkPixel(map, cx, cy) {
     const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     put(g, s, x * AP + 8 - bx, y * AP + 8 - by);
   }
-  gradeCanvas(c, bx * D, by * D);
+  gradeCanvas(c, Math.round(bx * D), Math.round(by * D));
   if (wet) { // maski do animacji wody (WaterFx); przeszkody stojące nad wodą (drzewa, góry przy brzegu) ją zasłaniają
     const mk = v => { const m = document.createElement('canvas'); m.width = m.height = SF; const mg = m.getContext('2d'), mi = mg.createImageData(SF, SF);
       for (let i = 0; i < SF * SF; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out'; mg.setTransform(D, 0, 0, D, 0, 0);
@@ -6288,7 +6289,7 @@ function drawPathPixel(b, st, h, ox, oy) {
 // Mgła wojny w kawałkach 8×8 pól (jak teren): kółka nad nieodkrytymi polami, progowanie alfy na twardą krawędź
 // z ditheringiem w szachownicę. Kawałek przelicza się tylko wtedy, gdy zmieni się odkrycie pól w nim i wokół niego.
 function fogChunk(ex, n, cx, cy) {
-  const S = CHUNK * AP * PXD, x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1, x1 = x0 + CHUNK + 1, y1 = y0 + CHUNK + 1; let sig = 0, any = false;
+  const S = Math.round(CHUNK * AP * PXD), x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1, x1 = x0 + CHUNK + 1, y1 = y0 + CHUNK + 1; let sig = 0, any = false;
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (!ex[y * n + x]) { sig = (sig * 31 + y * n + x) | 0; any = true; }
   const key = cx + ',' + cy, old = MapRender.fog.get(key); if (old && old._sig === sig) return old.c;
   let c = null;
@@ -10904,7 +10905,7 @@ const PAVE_X = 572; // bruk dziedzińca od tej kolumny pikseli (px logiczne) w p
 // Tło bitwy w stylu mapy: teren z palety TERRAINS, piksele 2×2, ta sama korekcja barw
 function paintBattleBg(c, terr, fac) {
   // D = gęstość pikseli: teren liczony w drobnych pikselach (fx, fy), wzory w dawnych pikselach (x, y = połowa px logicznych)
-  const D = PXD, w = W / 2, h = H / 2, fw = w * D, fh = h * D, off = document.createElement('canvas'); off.width = fw; off.height = fh;
+  const w = W / 2, h = H / 2, fw = Math.round(w * PXD), fh = Math.round(h * PXD), D = fw / w, off = document.createElement('canvas'); off.width = fw; off.height = fh;
   const g = off.getContext('2d'), img = g.createImageData(fw, fh), P = TPAL[terr].map(gradeRgb), sky = [[40, 44, 62], [70, 72, 92]];
   for (let fy = 0; fy < fh; fy++) for (let fx = 0; fx < fw; fx++) {
     const o = (fy * fw + fx) * 4, x = Math.floor(fx / D), y = Math.floor(fy / D), xs = fx / D, ys = fy / D; let col;
@@ -12036,7 +12037,7 @@ function drawPerfInfo(ctx) {
 }
 function showGfxSettings(back) {
   const S = G.settings, cur = (QUALITIES.find(q => q.id === S.quality) || QUALITIES[0]).name;
-  const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); setPixelSize(id === 'low' ? 2 : 1); resize(); showGfxSettings(back); };
+  const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); setPixelSize(id === 'low' ? 2 : PIX_DEFAULT); resize(); showGfxSettings(back); };
   const fontBtn = { label: pixelFont() ? 'Czcionka: piksele' : 'Czcionka: klasyczna', sub: 'zmień', tip: 'Czcionka interfejsu: pikselowa (pasuje do grafiki) albo klasyczna szeryfowa.',
     action: () => { S.font = pixelFont() ? 'classic' : 'pixel'; saveSettings(); Layers.cache = {}; showGfxSettings(back); } };
   const wxBtn = { label: weatherOn() ? 'Pogoda: tak' : 'Pogoda: nie', sub: 'zmień', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
@@ -12046,7 +12047,7 @@ function showGfxSettings(back) {
 }
 function init() {
   loadSettings();
-  setPixelSize(G.settings.quality === 'low' ? 2 : 1); ZOOM = ZOOMS.includes(G.settings.zoom) ? G.settings.zoom : 1; // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
+  setPixelSize(G.settings.quality === 'low' ? 2 : PIX_DEFAULT); ZOOM = ZOOMS.includes(G.settings.zoom) ? G.settings.zoom : 1; // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
   G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: false }); // nieprzezroczyste płótno: przeglądarka nie miesza go z tłem strony
   resize(); window.addEventListener('resize', resize); bindInput();
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)

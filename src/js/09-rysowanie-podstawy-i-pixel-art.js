@@ -91,9 +91,10 @@ function shadowAt(g, x, y, w) { g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); 
 // Mapa to pixel art: AP = pikseli grafiki na pole (połowa T), OUTLINE = kolor obrysu sprite'ów.
 // Ramki, przyciski i tekst interfejsu są gładkie; obiekty gry wszędzie są sprite'ami (patrz GRAFIKA OBIEKTÓW).
 const AP = 16, OUTLINE = [24, 16, 10];
-// Rozmiar piksela grafiki w px logicznych: 1 (drobny, ostry pixel art) albo 2 (dawny, grubszy; niska jakość grafiki).
+// Rozmiar piksela grafiki w px logicznych: PIX_DEFAULT (1,8: niewiele drobniejszy od dawnego), 1 (drobny) albo 2 (dawny; niska jakość grafiki).
 // PXD = gęstość względem dawnej grafiki (ile pikseli na dawny piksel). Zmiana czyści wszystkie gotowe obrazy (setPixelSize).
-let PIX = 1, PXD = 2;
+const PIX_DEFAULT = 1.8;
+let PIX = PIX_DEFAULT, PXD = 2 / PIX_DEFAULT;
 const PIX_CLEAR = []; // funkcje czyszczące pamięci podręczne obrazów (rejestrują je moduły grafiki)
 function setPixelSize(p) {
   if (p === PIX) return; PIX = p; PXD = 2 / p; SPR.clear(); Layers.cache = {}; for (const f of PIX_CLEAR) f();
@@ -101,7 +102,7 @@ function setPixelSize(p) {
 }
 const PixBufs = {};
 function pixBuf(key, w, h, read) {
-  let c = PixBufs[key];
+  w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h)); let c = PixBufs[key];
   if (!c || c.width !== w || c.height !== h) { c = document.createElement('canvas'); c.width = w; c.height = h; c._ctx = c.getContext('2d', { willReadFrequently: !!read }); PixBufs[key] = c; }
   return c;
 }
