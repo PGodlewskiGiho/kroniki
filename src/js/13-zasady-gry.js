@@ -51,6 +51,7 @@ function buyBoat(st, t) {
 function baseCost(map, i, j, h) {
   if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
   const t = map.terrain[i]; let c = TERRAINS[t].cost || 100; const pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
+  if (t === TER.WATER && h && skillVal(h, 'navigation')) return Math.round(c / (1 + skillVal(h, 'navigation') / 100)); // Nawigacja
   if (h && ((heroTrait(h, 'fortress') && (t === TER.SWAMP || t === TER.ROUGH)) || (heroTrait(h, 'academy') && t === TER.SNOW))) c = 100; // cechy frakcji
   return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
 }
@@ -70,6 +71,13 @@ function rebuildObjIndex(st) {
   }
 }
 function objectAt(st, i) { const o = st.objAt[i]; return o ? st.objects[o - 1] : null; }
+// Budowla wielopolowa (miasto, kopalnia, skarbiec) pod kursorem: jej pola albo wieże i dachy rysowane do 2 pól nad nimi
+// (kliknięcie w zamek prowadzi do bramy, a nie za miasto)
+function drawnObjectAt(st, tx, ty) {
+  const n = st.map.n, own = objectAt(st, ty * n + tx); if (own) return own.blocks ? own : null;
+  for (let k = 1; k <= 2 && ty + k < n; k++) { const ob = objectAt(st, (ty + k) * n + tx); if (ob) return ob.blocks && (ob.type === 'town' || k === 1) ? ob : null; }
+  return null;
+}
 function removeObject(st, ob) { ob.dead = true; rebuildObjIndex(st); }
 // Obiekty i strefy strażników można tylko "odwiedzić" jako cel ścieżki, nie przejść przez nie.
 // Inny bohater zajmuje pole: można na nie tylko wejść jako cel (wrogi bohater = bitwa).
@@ -109,6 +117,13 @@ function heroStep(st, h) {
   else if (ob) { halt(); h.pending = () => visitObject(st, h, ob); }
   return true;
 }
+// Siedlisko najemników: okno werbunku (wszyscy, na ilu stać, albo nic)
+function showDwelling(st, h, ob) {
+  const k = dwellMax(st, h, ob), c = CREATURES[ob.cid];
+  const msg = `${SITES.dwelling.name}: ${c.plural.toLowerCase()} (poziom ${c.level}). Czeka ${ob.avail}, koszt ${costText(c.cost)} za jednego. ${k ? `Stać cię na ${k}.` : ob.avail ? 'Brakuje ci surowców.' : 'W tym tygodniu nikt już nie czeka.'}`;
+  showDialog(msg, [...(k ? [{ label: `Zwerbuj ${k}`, key: 'enter', action: () => { const e = dwellHire(st, h, ob, k); if (e) G.screens.adventure.flash(e); } }] : []), { label: 'Wyjdź', key: 'escape' }],
+    { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, creatureSprite(ob.cid, 1), cx, cy + 26, 2) });
+}
 function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); }
 function visitObject(st, h, ob) {
   const R = playerOf(st, h.owner).resources;
@@ -123,6 +138,12 @@ function visitObject(st, h, ob) {
     removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
     showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}`, [{ label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art), cx, cy, 2) });
+  } else if (ob.type === 'site' && ob.kind === 'dwelling') showDwelling(st, h, ob);
+  else if (ob.type === 'site' && ob.kind === 'sacrifice' && h.bag.some(id => SACRIFICE_EXP[ARTIFACTS[id].rarity])) {
+    const arts = h.bag.filter(id => SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
+    showDialog(`Ołtarz ofiarny. Złożyć w ofierze wszystkie artefakty z plecaka (${arts.length}: ${arts.map(id => ARTIFACTS[id].name).join(', ')}) za ${exp} doświadczenia? Założonych nie rusza.`, [
+      { label: 'Poświęć', key: 'enter', action: () => { const r = useSite(st, h, ob); advFloat(r.float, h.x, h.y); gainExp(st, h, r.exp); } }, { label: 'Nie', key: 'escape' },
+    ], { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite('sacrifice'), cx, cy + 30, 1.5) });
   } else if (ob.type === 'site') {
     const r = useSite(st, h, ob), S = SITES[ob.kind];
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
@@ -185,13 +206,13 @@ function startHeroEncounter(st, h, foe) {
 }
 // Siła obrońców miasta: garnizon, bohater w mieście (z premią za cechy) i mury
 function townPower(st, t) {
-  const hh = heroInTown(st, t), wall = 1 + 0.05 * TOWN_WALL_DEF[townLevel(t)];
+  const hh = townHero(st, t), wall = 1 + 0.05 * TOWN_WALL_DEF[townLevel(t)];
   return Math.round((armyPower(t.garrison) + (hh ? armyPower(hh.army) * heroFactor(hh) : 0)) * wall);
 }
 // Wejście do obcego miasta: puste zajmujemy od razu, bronione trzeba zdobyć w bitwie
 function startTownAssault(st, h, t) {
   if (t.owner === h.owner) return;
-  const hh = heroInTown(st, t), walls = ['', ' Miasto otaczają mury Fortu.', ' Miasto otaczają mury Cytadeli.', ' Miasto otaczają mury Zamku.'][townLevel(t)];
+  const hh = townHero(st, t), walls = ['', ' Miasto otaczają mury Fortu.', ' Miasto otaczają mury Cytadeli.', ' Miasto otaczają mury Zamku.'][townLevel(t)];
   if (!armySize(t.garrison) && !hh) {
     captureTown(st, t, h.owner); rebuildObjIndex(st);
     showDialog(`Miasto ${t.name} nie ma obrońców. ${h.name} zajmuje je bez walki.`, [{ label: 'Wejdź do miasta', key: 'enter', action: () => G.go('town', { townId: t.id }) }]);
@@ -224,14 +245,33 @@ function initHeroProgress(h) {
 }
 // --- umiejętności drugorzędne ---
 const heroSkill = (h, id) => { const s = h && h.skills && h.skills.find(s => s.id === id); return s ? s.lv : 0; };
-const skillVal = (h, id) => { const L = heroSkill(h, id); return L ? SKILLS[id].v[L - 1] : 0; };
+const skillVal = (h, id) => { const L = heroSkill(h, id); if (!L) return 0; const sp = heroSpec(h), v = SKILLS[id].v[L - 1]; return sp && sp.skill === id ? Math.round(v * (1 + 0.05 * h.level)) : v; };
+// --- specjalności bohaterów (HERO_SPECS) ---
+// Stwory specjalności: oba stwory z siedliska danego poziomu w rodzimej frakcji bohatera
+const specUnits = h => { const sp = heroSpec(h), F = sp && sp.dw && factionOf(heroFaction(h)); return F ? [F.dw['dw' + sp.dw][1], F.dw['dw' + sp.dw + 'u'][1]] : []; };
+// Premia dla oddziału stworów specjalności: +5% ataku i obrony za każdy poziom bohatera na poziom stwora (co najmniej +1), +1 szybkości
+function specBonus(h, cid) {
+  if (!specUnits(h).includes(cid)) return null; const c = CREATURES[cid], k = 0.05 * h.level / c.level;
+  return { att: Math.max(1, Math.round(c.att * k)), def: Math.max(1, Math.round(c.def * k)), spd: 1 };
+}
+const specSpellMul = (h, id) => { const sp = heroSpec(h); return sp && sp.spell === id ? 1 + 0.03 * h.level : 1; };
+function specText(h) {
+  const sp = heroSpec(h); if (!sp) return '';
+  if (sp.dw) { const [a, b] = specUnits(h), bo = specBonus(h, a); return `${CREATURES[a].plural} i ${CREATURES[b].plural.toLowerCase()}: +${bo.att} do ataku, +${bo.def} do obrony, +1 do szybkości (rośnie z poziomem)`; }
+  if (sp.res) return `+${sp.n} ${sp.res === 'gold' ? 'złota' : resName(sp.res).toLowerCase()} dziennie`;
+  if (sp.skill) return `${SKILLS[sp.skill].name}: działa o ${5 * h.level}% mocniej (5% za poziom)`;
+  return `${SPELLS[sp.spell].name}: o ${3 * h.level}% mocniejszy (3% za poziom)`;
+}
+const specName = h => { const sp = heroSpec(h); return !sp ? '' : sp.dw ? CREATURES[specUnits(h)[0]].plural : sp.res ? resName(sp.res) : sp.skill ? SKILLS[sp.skill].name : SPELLS[sp.spell].name; };
 const skillText = (id, L) => `${SKILLS[id].name} (${SKILL_LEVELS[L]}): ${SKILLS[id].desc(SKILLS[id].v[L - 1])}`;
 // Propozycja przy awansie na poziom L (jak w oryginale): ulepszenie znanej umiejętności i nowa umiejętność;
 // gdy którejś grupy brak, obie z drugiej. Losowanie powtarzalne (ziarno gry, bohater, poziom).
+// Nowe umiejętności losowane z wagami klasy (skillWeight): ulubione częściej, obce rzadziej.
 function skillOffer(st, h, L) {
   const up = (h.skills || []).filter(s => s.lv < 3).map(s => s.id);
   const fresh = (h.skills || []).length < MAX_SKILLS ? Object.keys(SKILLS).filter(id => !heroSkill(h, id) && (id !== 'necromancy' || NECRO_CLASSES.includes(h.cls))) : [];
-  const r = mulberry32(thash(h.id, L, st.seed) ^ 0x5a1d), pick = a => (a.length ? a.splice(Math.floor(r() * a.length), 1)[0] : null);
+  const r = mulberry32(thash(h.id, L, st.seed) ^ 0x5a1d);
+  const pick = a => { if (!a.length) return null; const w = a.map(id => skillWeight(h.cls, id)); let x = r() * w.reduce((s, v) => s + v, 0), i = 0; while (i < a.length - 1 && (x -= w[i]) >= 0) i++; return a.splice(i, 1)[0]; };
   return [pick(up) || pick(fresh), pick(fresh) || pick(up)].filter(Boolean);
 }
 function learnSkill(h, id) {
@@ -249,14 +289,14 @@ const heroFactor = h => 1 + 0.05 * (heroStat(h, 'att') + heroStat(h, 'def'));
 // Doświadczenie z awansami. Wzrost cechy losowany deterministycznie (ziarno gry, bohater, poziom).
 // Każdy awans daje też wybór umiejętności: SI wybiera od razu, człowiek w oknie (po kolei, gdy awansów jest kilka).
 // then(): co zrobić po zamknięciu okien awansu (np. obejrzeć obiekt, na którym stoi bohater)
-function gainExp(st, h, amount, then) {
+function gainExp(st, h, amount, then, silent = false) { // silent: awans bez okien (np. uwolniony więzień)
   h.exp += Math.round(amount * (1 + skillVal(h, 'learning') / 100 + (weekKind(st, 'exp') ? 0.25 : 0))); const ups = [];
   while (h.exp >= expForLevel(h.level + 1)) {
     h.level++; const g = (CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight).grow, r = thash(h.id, h.level, st.seed) % 100;
     let acc = 0, k = 0; for (; k < 3; k++) { acc += g[k]; if (r < acc) break; }
     h.stats[PRIMARY[k].id]++; ups.push({ level: h.level, stat: PRIMARY[k] });
   }
-  if (h.owner !== ME || !ups.length) {
+  if (h.owner !== ME || silent || !ups.length) {
     for (const u of ups) { const offer = skillOffer(st, h, u.level); if (offer.length) learnSkill(h, aiPickSkill(offer)); }
     if (then) then(); return ups.length;
   }
@@ -302,7 +342,7 @@ const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild
 function visitGuild(st, t, h) {
   const L = guildLevel(t); if (!L) return [];
   const learned = [];
-  for (let k = 1; k <= L; k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); }
+  for (let k = 1; k <= Math.min(L, spellCap(h)); k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); } // wyżej tylko z Mądrością
   h.mana = Math.max(h.mana, heroMaxMana(h)); return learned;
 }
 // Czary na mapie przygody. Zwraca tekst błędu albo null.
@@ -403,18 +443,34 @@ function startWeek(st, newMonth) {
   return `${head}Nastał Tydzień ${W.name}${W.text ? `: ${W.text}` : ''}.${M && M.kind === 'plague' ? '' : ' W siedliskach pojawiły się nowe jednostki.'}`;
 }
 const unitCost = cid => CREATURES[cid].cost || { gold: CREATURES[cid].value };
+const costText = c => Object.entries(c).filter(([, v]) => v).map(([k, v]) => `${v} ${k === 'gold' ? 'złota' : resName(k).toLowerCase()}`).join(', ');
 function maxAffordable(st, cost, owner = ME) {
   const R = playerOf(st, owner).resources; let m = Infinity;
   for (const r of RESOURCES) if (cost[r.id]) m = Math.min(m, Math.floor(R[r.id] / cost[r.id]));
   return m === Infinity ? 0 : m;
 }
-const heroInTown = (st, t) => st.heroes.find(h => h.x === t.x && h.y === t.y && h.owner === t.owner) || null;
+const heroInTown = (st, t) => st.heroes.find(h => h.x === t.x && h.y === t.y && h.owner === t.owner && h.garrison == null) || null; // w bramie
+// Garnizon z bohaterem (jak w Heroes 3): bohater w murach dowodzi wojskiem garnizonu, brama zostaje wolna (np. na najem w tawernie)
+const garrisonHero = (st, t) => st.heroes.find(h => h.garrison === t.id) || null;
+const townHero = (st, t) => garrisonHero(st, t) || heroInTown(st, t); // kto broni miasta
+// Zamiana miejsc: bohater z bramy wchodzi do garnizonu (wojsko garnizonu przechodzi do jego armii), bohater z garnizonu wychodzi do bramy.
+// Zwraca tekst błędu albo null.
+function swapGarrison(st, t) {
+  const g = garrisonHero(st, t), v = heroInTown(st, t);
+  if (!g && !v) return 'W mieście nie ma bohatera';
+  if (v) { const from = t.garrison.map(s => s && { ...s }); armyTransfer(from, v.army.map(s => s && { ...s }));
+    if (from.some(Boolean)) return 'Wojsko garnizonu nie zmieści się w armii bohatera: połącz albo przenieś oddziały';
+    armyTransfer(t.garrison, v.army); }
+  if (g) g.garrison = null;
+  if (v) { v.garrison = t.id; v.path = null; v.dest = null; }
+  return null;
+}
 // Werbunek do garnizonu; gdy garnizon pełny, do armii bohatera stojącego w mieście. Zwraca błąd albo null.
 function recruit(st, t, L, cid, n) {
   if (n <= 0) return 'Wybierz liczbę jednostek';
   if (n > (t.avail[L] || 0)) return 'Tylu jednostek nie ma w siedlisku';
   const cost = unitCost(cid); if (n > maxAffordable(st, cost, t.owner)) return 'Brakuje zasobów';
-  const h = heroInTown(st, t), dest = armyHasRoom(t.garrison, cid) ? t.garrison : (h && armyHasRoom(h.army, cid) ? h.army : null);
+  const g = garrisonHero(st, t), h = heroInTown(st, t), dest = g && armyHasRoom(g.army, cid) ? g.army : armyHasRoom(t.garrison, cid) ? t.garrison : (h && armyHasRoom(h.army, cid) ? h.army : null);
   if (!dest) return 'Brak miejsca w garnizonie';
   const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id] * n;
   armyAdd(dest, cid, n); t.avail[L] -= n; return null;
@@ -453,7 +509,7 @@ function dailyIncomeAll(st, owner = ME) {
     inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; }
     if (autumn) { inc.wood += 1; inc.ore += 1; } if (t.faction === 'inferno') inc.sulfur += 1; // jesienne zbiory, cecha Inferna
   }
-  for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates');
+  for (const h of st.heroes) if (h.owner === owner) { inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates'); const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; } // specjalność: surowiec
   return inc;
 }
 const dailyIncome = (st, res) => dailyIncomeAll(st)[res];
@@ -556,7 +612,7 @@ function hireHero(st, t, k) {
 // Kuźnia: machina wojenna dla bohatera stojącego w mieście (każdej najwyżej jedna). Zwraca błąd albo null.
 function buyMachine(st, t, h, id) {
   if (!hasB(t, 'smith')) return 'Brak kuźni';
-  if (!h || !heroInTown(st, t) || heroInTown(st, t) !== h) return 'Bohater musi stać w mieście';
+  if (!h || (heroInTown(st, t) !== h && garrisonHero(st, t) !== h)) return 'Bohater musi stać w mieście';
   if (h.machines.includes(id)) return 'Bohater ma już tę machinę';
   const cost = CREATURES[id].cost; if (!canAfford(st, cost, h.owner)) return 'Brakuje złota';
   const R = playerOf(st, h.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id];
@@ -566,7 +622,26 @@ function buyMachine(st, t, h, id) {
 // Znacznik odwiedzin: dla kogo (bohater, gracz albo cały świat) i do kiedy nagroda jest wykorzystana
 function siteStamp(st, ob, h) {
   const u = SITES[ob.kind].use, wk = weekIndex(st);
-  return u === 'hero' ? [h.id, 1] : u === 'day' ? [h.id, st.dayTotal] : u === 'heroWeek' ? [h.id, wk] : u === 'week' ? ['all', wk] : ['p' + h.owner, 1];
+  return u === 'hero' ? [h.id, 1] : u === 'day' ? [h.id, st.dayTotal] : u === 'heroWeek' ? [h.id, wk] : u === 'week' ? ['all', wk] : u === 'free' ? ['free', -1] : u === 'once' ? ['all', 1] : ['p' + h.owner, 1];
+}
+// --- nowe miejsca: siedlisko, więzienie, portal, wrak, ołtarz ofiarny ---
+// Siedlisko: przyrost co tydzień (zapas najwyżej na DWELL_WEEKS tygodni)
+function dwellRefresh(st, ob) { const wk = weekIndex(st), g = CREATURES[ob.cid].growth; if (ob.week !== wk) { ob.avail = Math.min(g * DWELL_WEEKS, (ob.avail || 0) + g * Math.max(1, wk - (ob.week || 0))); ob.week = wk; } }
+// Ilu stworów z siedliska gracza stać (wszystkie surowce kosztu)
+function dwellMax(st, h, ob) { dwellRefresh(st, ob); const R = playerOf(st, h.owner).resources, c = CREATURES[ob.cid].cost; return Object.entries(c).reduce((m, [r, v]) => Math.min(m, Math.floor(R[r] / v)), ob.avail); }
+function dwellHire(st, h, ob, k) {
+  if (k <= 0) return 'Nikogo nie zwerbowano'; if (!armyAdd(h.army, ob.cid, k)) return 'W armii nie ma miejsca na nowy oddział';
+  const R = playerOf(st, h.owner).resources; for (const [r, v] of Object.entries(CREATURES[ob.cid].cost)) R[r] -= v * k; ob.avail -= k; return null;
+}
+// Więzienie: uwolniony bohater (losowy, z doświadczeniem) staje obok. Zwraca nowego bohatera albo tekst przeszkody.
+function freePrisoner(st, h, ob) {
+  if (st.heroes.filter(o => o.owner === h.owner).length >= MAX_HEROES) return `Więzień nie ma dokąd pójść: masz już ${MAX_HEROES} bohaterów.`;
+  const n = st.map.n, spot = DX8.map((dx, d) => [ob.x + dx, ob.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && !st.guard[y * n + x]);
+  if (!spot) return 'Przy więzieniu nie ma wolnego miejsca dla uwolnionego.';
+  const taken = new Set(st.heroes.map(o => o.name)), pool = FACTIONS.flatMap(F => F.heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac: F.id }))).filter(c => !taken.has(c.name));
+  if (!pool.length) return 'W celi nikogo już nie ma.';
+  const r = mulberry32(st.seed ^ (ob.id * 7919)), P = pool[Math.floor(r() * pool.length)], p = createHero(st, h.owner, spot[0], spot[1], P);
+  gainExp(st, p, expForLevel(4 + Math.floor(r() * 4)), null, true); p.mp = 0; reveal(st, p.x, p.y, heroSight(p), p.owner); return p;
 }
 // --- Graal i obeliski ---
 const obelisksTotal = st => st.objects.filter(o => o.type === 'site' && o.kind === 'obelisk' && !o.dead).length;
@@ -599,6 +674,7 @@ function useSite(st, h, ob) {
   switch (ob.kind) {
     case 'shrine': {
       const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
+      if (sp.level > spellCap(h)) return { text: `Kapliczka uczy czaru „${sp.name}” (poziom ${sp.level}), ale ${h.name} go nie pojmuje: potrzebna Mądrość (${SKILL_LEVELS[sp.level - 2]}).` };
       mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(heroStat(h, 'sp'))}.` };
     }
     case 'well': {
@@ -614,6 +690,33 @@ function useSite(st, h, ob) {
     }
     case 'stables': mark(); h.mp += SITE_MP; return { text: `Świeże konie: +${SITE_MP} punktów ruchu na dziś.` };
     case 'lookout': mark(); reveal(st, ob.x, ob.y, LOOKOUT_R, h.owner); MapRender.miniDirty = true; return { text: `Z wieży widać okolicę w promieniu ${LOOKOUT_R} pól.` };
+    case 'witchHut': {
+      const sk = ob.skill, nm = SKILLS[sk].name; if (heroSkill(h, sk)) { mark(); return { text: `Wiedźma uczy umiejętności ${nm}, którą ${h.name} już zna.` }; }
+      if (h.skills.length >= MAX_SKILLS) return { text: `Wiedźma uczy umiejętności ${nm}, ale ${h.name} nie ma już miejsca na nowe umiejętności.` };
+      mark(); learnSkill(h, sk); return { text: `Wiedźma uczy: ${skillText(sk, 1)}.`, float: nm };
+    }
+    case 'prison': { const p = freePrisoner(st, h, ob); if (typeof p === 'string') return { text: p }; removeObject(st, ob);
+      return { text: `${h.name} otwiera celę. ${heroTitle(p)} (poziom ${p.level}) wychodzi na wolność i przyłącza się do twojej sprawy.`, freed: p }; }
+    case 'portal': {
+      const to = st.objects[ob.pair]; if (!to || to.dead) return { text: 'Portal gaśnie: jego drugi koniec zniknął.' };
+      if (heroAt(st, to.x, to.y)) return { text: 'Drugi koniec portalu zajmuje inny bohater. Spróbuj później.' };
+      h.x = to.x; h.y = to.y; h.path = null; h.dest = null; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); MapRender.miniDirty = true;
+      if (h.owner === ME && G.state === st) centerCam(st, h.x, h.y); return { text: 'Wir światła porywa armię i wyrzuca ją w drugim portalu, daleko stąd.' };
+    }
+    case 'dwelling': { // SI werbuje, ile może (człowiek wybiera w oknie: visitObject)
+      const k = dwellMax(st, h, ob), err = k > 0 ? dwellHire(st, h, ob, k) : 'pusto'; const c = CREATURES[ob.cid];
+      return { text: err ? `${c.plural}: nikogo nie zwerbowano.` : `Do armii dołączają: ${c.plural.toLowerCase()} (${k}).` };
+    }
+    case 'sacrifice': {
+      const arts = h.bag.filter(id => SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
+      if (!arts.length) return { text: 'Na ołtarzu można złożyć artefakty z plecaka, ale plecak jest pusty.' };
+      h.bag = h.bag.filter(id => !arts.includes(id)); return { text: `${h.name} składa w ofierze: ${arts.map(id => ARTIFACTS[id].name).join(', ')}. +${exp} doświadczenia.`, float: `+${exp} dośw.`, exp };
+    }
+    case 'wreck': {
+      const r = mulberry32(st.seed ^ (ob.id * 131)), gold = 1500 + Math.floor(r() * 4) * 500, pool = ARTS_BY_RARITY(r() < 0.3 ? 'minor' : 'treasure'), art = r() < 0.5 ? pool[Math.floor(r() * pool.length)] : null;
+      removeObject(st, ob); R.gold += gold; if (art) giveArtifact(h, art);
+      return { text: `Z wraku udaje się wyłowić ${gold} złota${art ? ` i artefakt: ${ARTIFACTS[art].name}` : ''}.`, float: `+${gold}`, res: 'gold' };
+    }
     case 'obelisk': { mark(); const k = obelisksSeen(st, h.owner), N = obelisksTotal(st);
       return { puzzle: true, text: k >= N ? 'Ostatni obelisk! Mapa zagadki jest kompletna: krzyżyk wskazuje, gdzie zakopano Graala.' : `Runy na obelisku odsłaniają kolejny fragment mapy zagadki (${k} z ${N}).` }; }
   }
@@ -623,7 +726,10 @@ function useSite(st, h, ob) {
 // Opis miejsca w dymku: co daje i czy wybrany bohater już z niego skorzystał
 function siteInfo(st, ob, h) {
   const S = SITES[ob.kind];
-  const what = ob.kind === 'shrine' ? `uczy czaru „${SPELLS[ob.spell].name}” (poziom ${SPELLS[ob.spell].level})` : ob.kind === 'windmill' ? `co tydzień 3–6 jednostek surowca (${resName(ob.res).toLowerCase()}) dla pierwszego gościa` : S.desc;
+  if (ob.kind === 'dwelling') dwellRefresh(st, ob);
+  const what = ob.kind === 'shrine' ? `uczy czaru „${SPELLS[ob.spell].name}” (poziom ${SPELLS[ob.spell].level})` : ob.kind === 'windmill' ? `co tydzień 3–6 jednostek surowca (${resName(ob.res).toLowerCase()}) dla pierwszego gościa`
+    : ob.kind === 'witchHut' ? `uczy umiejętności ${skillText(ob.skill, 1)}` : ob.kind === 'dwelling' ? `${CREATURES[ob.cid].plural.toLowerCase()} do werbunku: ${ob.avail} (po ${costText(CREATURES[ob.cid].cost)}), co tydzień przybywa ${CREATURES[ob.cid].growth}`
+    : ob.kind === 'portal' && st.objects[ob.pair] ? `${S.desc} (pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})` : S.desc;
   const used = h && siteUsed(st, ob, h) ? { hero: ' Ten bohater już tu był.', day: ' Dziś już wykorzystane.', heroWeek: ' W tym tygodniu już wykorzystane.', week: ' Plon z tego tygodnia już zebrany.', player: ' Już odwiedzone.' }[S.use] : '';
   return `${S.name}: ${what}.${used}${st.guard[ob.y * st.map.n + ob.x] ? ' Pilnuje go potwór.' : ''}`;
 }

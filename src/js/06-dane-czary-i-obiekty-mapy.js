@@ -36,7 +36,8 @@ const CLASS_SPELLS = { cleric: ['bless'], druid: ['cure'], necro: ['magicArrow']
 // ==================== DANE: OBIEKTY MAPY =================================================
 // Miejsca na mapie (obiekt type: 'site', kind): bohater wchodzi na pole i dostaje nagrodę; obiekt zostaje.
 // use: 'hero' raz na bohatera, 'day' raz dziennie na bohatera, 'heroWeek' raz w tygodniu na bohatera,
-// 'week' raz w tygodniu dla całego świata (plon zbiera pierwszy), 'player' raz na gracza (potem bez skutku).
+// 'week' raz w tygodniu dla całego świata (plon zbiera pierwszy), 'player' raz na gracza (potem bez skutku),
+// 'free' bez limitu (skutek zależy od stanu obiektu: portal, siedlisko, ołtarz), 'once' jeden raz, potem obiekt znika.
 // per = jeden obiekt na tyle pól mapy (co najmniej jeden), guard = pilnuje go potwór, ai = wartość celu dla SI.
 const SITES = {
   shrine: { name: 'Kapliczka magii', use: 'hero', per: 700, ai: 1500, desc: 'uczy czaru' },
@@ -53,7 +54,17 @@ const SITES = {
   stables: { name: 'Stajnie', use: 'heroWeek', per: 1400, ai: 700, desc: '+400 punktów ruchu na dziś (raz w tygodniu)' },
   lookout: { name: 'Wieża obserwacyjna', use: 'player', per: 1600, ai: 500, desc: 'odsłania okolicę w promieniu 12 pól' },
   obelisk: { name: 'Obelisk', use: 'player', per: 0, ai: 1800, desc: 'odsłania fragment mapy zagadki, która prowadzi do Graala' },
+  witchHut: { name: 'Chata wiedźmy', use: 'hero', per: 1500, ai: 2200, desc: 'uczy umiejętności' },
+  prison: { name: 'Więzienie', use: 'once', per: 3500, ai: 5000, guard: true, desc: 'uwolniony bohater z doświadczeniem przyłącza się do ciebie' },
+  dwelling: { name: 'Siedlisko najemników', use: 'free', per: 1500, ai: 1500, desc: 'co tydzień przybywają stwory do werbunku' },
+  sacrifice: { name: 'Ołtarz ofiarny', use: 'free', per: 2500, ai: 0, desc: 'artefakty z plecaka zamienia na doświadczenie' },
+  portal: { name: 'Portal', use: 'free', per: 0, ai: 0, desc: 'przenosi bohatera do drugiego portalu z pary' },
+  wreck: { name: 'Wrak statku', use: 'once', per: 0, ai: 1600, desc: 'zatopiony ładunek: złoto, czasem artefakt (dostępny łodzią)' },
 };
+// Nowe miejsca: portale w parach (PORTAL_PAIRS wg rozmiaru mapy), wraki na wodzie (jeden na WRECK_PER pól wody),
+// siedlisko: tygodniowy przyrost stworów (DWELL_WEEKS tygodni zapasu), ołtarz: doświadczenie za artefakt wg rzadkości.
+const PORTAL_PAIRS = { S: 1, M: 1, L: 2, XL: 3 }, WRECK_PER = 700, DWELL_WEEKS = 3;
+const SACRIFICE_EXP = { treasure: 800, minor: 2000, major: 4500 };
 // Graal (jak w Heroes 3): zakopany na mapie; obeliski odsłaniają kolejne kawałki mapy zagadki (PUZZLE_COLS × PUZZLE_ROWS
 // kawałków, wycinek PUZZLE_W × PUZZLE_H pól wokół Graala). Kopać można z pełnymi punktami ruchu (zużywa wszystkie).
 // Bohater z Graalem wchodzi do własnego miasta i buduje tam budowlę Graala: +GRAIL_GOLD złota dziennie i +50% przyrostu.

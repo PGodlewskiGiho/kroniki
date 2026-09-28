@@ -87,7 +87,8 @@ function drawPanel(ctx, st, scr) {
       drawHeroPortrait(ctx, LIST.x + 8, y + 4, h, ownerColor(st, h.owner));
       text(ctx, h.name, LIST.x + 52, y + 14, { size: 15, color: '#ecd9a8', fam: 'title' });
       ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(LIST.x + 52, y + 27, 132, 9);
-      ctx.fillStyle = h.asleep ? '#7a7466' : '#3aa14a'; ctx.fillRect(LIST.x + 52, y + 27, 132 * frac, 9);
+      ctx.fillStyle = h.asleep || h.garrison != null ? '#7a7466' : '#3aa14a'; ctx.fillRect(LIST.x + 52, y + 27, 132 * frac, 9);
+      if (h.garrison != null) text(ctx, 'w garnizonie', LIST.x + 118, y + 32, { size: 10, weight: 700, align: 'center', color: '#f0e4c0' });
       ctx.strokeStyle = '#8a6d32'; ctx.lineWidth = 1; ctx.strokeRect(LIST.x + 52.5, y + 27.5, 131, 8);
       text(ctx, `${h.mp} / ${max}`, LIST.x + 186, y + 14, { size: 12, align: 'right', color: '#c8b68a' });
     } else {
@@ -178,7 +179,7 @@ G.screens.adventure = {
   onWheel(d) { if (inRect(G.mouse.x, G.mouse.y, LIST)) this.listScroll = clamp((this.listScroll || 0) + Math.sign(d), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS)); },
   nextHero() {
     const st = G.state, mine = myHeroes(st), i0 = mine.indexOf(hero(st)); if (!mine.length) return;
-    for (let k = 1; k <= mine.length; k++) { const h = mine[(i0 + k) % mine.length]; if (!h.asleep || k === mine.length) { this.selectHero(h); break; } }
+    for (let k = 1; k <= mine.length; k++) { const h = mine[(i0 + k) % mine.length]; if ((!h.asleep && h.garrison == null) || k === mine.length) { this.selectHero(h); break; } }
   },
   toggleSleep() { const h = hero(G.state); if (!h) return; h.asleep = !h.asleep; if (h.asleep) { h.path = null; h.dest = null; } this.flash(h.asleep ? `${h.name} odpoczywa` : `${h.name} znów rusza w drogę`); },
   rightInfo(x, y) {
@@ -191,7 +192,7 @@ G.screens.adventure = {
       if (!human(st).explored[i]) return 'Nieodkryty teren. Wyślij tam bohatera, żeby zobaczyć, co się kryje.';
       const hh = heroAt(st, tx, ty);
       if (hh) return `${heroTitle(hh)}. Punkty ruchu: ${hh.mp} z ${heroMaxMP(hh)}. Doświadczenie: ${hh.exp}.`;
-      const ob = objectAt(st, i);
+      const ob = objectAt(st, i) || drawnObjectAt(st, tx, ty);
       if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid]; return `${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}.`; }
       if (ob && ob.type === 'town') {
         const t = st.towns[ob.townId];
@@ -230,9 +231,10 @@ G.screens.adventure = {
   tileClick(tx, ty) {
     const st = G.state, h = hero(st), n = st.map.n; if (!h) return;
     if (h.moving || h.anim) { h.stop = true; return; }
+    if (h.garrison != null) { const t = st.towns[h.garrison]; if (tx === t.x && ty === t.y) G.go('town', { townId: t.id }); else this.flash(`${h.name} stoi w garnizonie miasta ${t.name}. Wyprowadź go do bramy w mieście (przycisk „Zamień”).`); return; }
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
     // kliknięcie w budynek miasta albo kopalni oznacza jego wejście
-    const ob = objectAt(st, ty * n + tx); if (ob && ob.blocks && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
+    const ob = drawnObjectAt(st, tx, ty); if (ob && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
     const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = wybór
     if (other && other !== h && other.owner === ME) { if (Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) showMeeting(st, h, other); else this.selectHero(other); return; }
     if (tx === h.x && ty === h.y) {
@@ -246,7 +248,7 @@ G.screens.adventure = {
   },
   endTurn() {
     const st = G.state; if (this.aiRun || st.heroes.some(h => h.moving || h.anim)) return;
-    const idle = myHeroes(st).filter(h => !h.asleep && heroCanStillMove(st, h));
+    const idle = myHeroes(st).filter(h => !h.asleep && h.garrison == null && heroCanStillMove(st, h));
     if (idle.length) showDialog(`${idle.length > 1 ? 'Niektórzy bohaterowie mogą' : `${idle[0].name} może`} się jeszcze poruszyć. Czy na pewno zakończyć turę?`, [{ label: 'Tak', key: 'enter', action: () => this.doEndTurn({ live: true }) }, { label: 'Nie', key: 'escape' }]);
     else this.doEndTurn({ live: true });
   },
@@ -296,7 +298,7 @@ G.screens.adventure = {
   },
   // Przeciwnik atakuje bohatera albo miasto gracza: walka na ekranie bitwy (gracz po prawej) albo automatyczna
   askDefense(st, a, done) {
-    const t = a.foe.garrison ? a.foe : null, D = t ? heroInTown(st, t) : a.foe; a.shown = true; centerCam(st, a.foe.x, a.foe.y);
+    const t = a.foe.garrison ? a.foe : null, D = t ? townHero(st, t) : a.foe; a.shown = true; centerCam(st, a.foe.x, a.foe.y);
     const who = `${a.h.name} (${ownerName(st, a.h.owner)}) atakuje ${t ? `twoje miasto ${t.name}` : `twojego bohatera: ${heroTitle(D)}`}!`;
     const after = res => this.defenseResult(st, a, D, res, done);
     showDialog(`${who} (siła: twoja ${t ? townPower(st, t) : armyStrength(D)}, wroga ${armyStrength(a.h)})`, [

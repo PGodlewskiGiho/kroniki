@@ -21,7 +21,7 @@ test('gildia IV i V: czary 4. i 5. poziomu, bohater je poznaje', async () => {
   const r = await page.evaluate(() => {
     const st = G.state, t = st.towns[0], h = hero(st);
     for (const id of ['tavern', 'hall2', 'hall3', 'guild1', 'guild2', 'guild3', 'guild4', 'guild5']) { if (!hasB(t, id)) t.built.push(id); const g = /^guild(\d)$/.exec(id); if (g) rollGuildLevel(st, t, +g[1]); }
-    h.spells = []; const learned = visitGuild(st, t, h);
+    h.spells = []; h.skills = [{ id: 'wisdom', lv: 3 }]; const learned = visitGuild(st, t, h);
     return { L: guildLevel(t), n4: t.guild[4].length, n5: t.guild[5].length, lv: learned.map(id => SPELLS[id].level), name: bInfo(BUILD_BY_ID.guild5, t.faction).name };
   });
   assert.equal(r.L, 5);

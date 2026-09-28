@@ -117,7 +117,7 @@ test('porażka: bez miast i bohaterów gra się kończy', async () => {
 
 test('7 dni bez miasta: ostrzeżenia, potem porażka', async () => {
   await newGame(page, { mapSize: 'S', opponents: 1, difficulty: 0 }, 5);
-  await page.evaluate(() => { const st = G.state; captureTown(st, st.towns[0], 1); const h = hero(st); h.x = st.towns[0].x; h.y = st.towns[0].y + 2; });
+  await page.evaluate(() => { const st = G.state, h = hero(st); h.x = st.towns[0].x; h.y = st.towns[0].y + 2; captureTown(st, st.towns[0], 1); });
   const news = await days(6);
   assert.equal(news.filter(n => /Nie masz żadnego miasta/.test(n)).length, 6);
   assert.match(news[0], /w ciągu 7 dni/);

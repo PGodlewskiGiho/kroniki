@@ -57,7 +57,8 @@ const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? play
 const ownerColor = (st, owner) => (st.players[owner] ? colorHex(st.players[owner].color) : NEUTRAL_COLOR);
 // Wybrany bohater gracza-człowieka; null, gdy gracz nie ma już bohaterów (może wtedy nająć nowego w tawernie)
 const hero = st => { const h = st.heroes[st.selHero || 0]; return h && h.owner === ME ? h : st.heroes.find(o => o.owner === ME) || null; };
-const heroAt = (st, x, y) => st.heroes.find(h => h.x === x && h.y === y) || null;
+// Bohater na polu mapy; bohater w garnizonie miasta (h.garrison = id miasta) jest w murach, nie na mapie
+const heroAt = (st, x, y) => st.heroes.find(h => h.x === x && h.y === y && h.garrison == null) || null;
 const heroClass = h => HERO_CLASSES[h.cls] || HERO_CLASSES.knight;
 const heroTitle = h => `${h.name}, ${(h.female ? heroClass(h).nameF : heroClass(h).name).toLowerCase()}`;
 const dateText = st => `Miesiąc ${st.month}, tydzień ${st.week}, dzień ${st.day}`;

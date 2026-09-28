@@ -17,6 +17,10 @@ G.screens.town = {
     this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
     this.btnUp = new Button(596, 392, 44, 28, 'W górę', () => this.onWheel(-1), { icon: iconArrow(-1), tip: 'Przewiń listę budowli w górę.' });
     this.btnDown = new Button(744, 392, 44, 28, 'W dół', () => this.onWheel(1), { icon: iconArrow(1), tip: 'Przewiń listę budowli w dół.' });
+    this.bSwap = new Button(546, 470, 36, 52, 'Zamień', () => { const st = G.state, t = this.town(), e = swapGarrison(st, t); this.sel = null; if (e) return this.say(e); const g = garrisonHero(st, t);
+      this.say(g ? `${g.name} dowodzi garnizonem: brama jest wolna` : 'Bohater wychodzi do bramy'); this.guildVisit(); },
+      { icon: (ctx, cx, cy, col) => { iconArrow(-1)(ctx, cx, cy - 8, col); iconArrow(1)(ctx, cx, cy + 8, col); }, key: 'z',
+        tip: 'Zamień: bohater z bramy wchodzi do garnizonu (przejmuje jego wojsko), a bohater z garnizonu wychodzi do bramy. Brama wolna = można nająć nowego bohatera (klawisz Z).' });
     this.buttons = this.baseButtons;
   },
   showShipyard() {
@@ -29,7 +33,8 @@ G.screens.town = {
   say(m) { this.msg = m; this.msgT = G.time; },
   // Bohater w mieście z gildią poznaje jej czary i odnawia manę
   guildVisit() {
-    const st = G.state, t = this.town(), h = heroInTown(st, t); if (!h) return;
+    const st = G.state, t = this.town(), g = garrisonHero(st, t); if (g && guildLevel(t)) visitGuild(st, t, g);
+    const h = heroInTown(st, t); if (!h) return;
     const sp = specialVisit(st, t, h); if (sp) this.say(sp);
     if (!guildLevel(t)) return;
     const learned = visitGuild(st, t, h); if (learned.length) this.say(`${h.name} poznaje: ${learned.map(id => SPELLS[id].name).join(', ')}`);
@@ -50,7 +55,7 @@ G.screens.town = {
     const who = o => `${o.name} (${(o.female ? HERO_CLASSES[o.cls].nameF : HERO_CLASSES[o.cls].name).toLowerCase()}, ${factionOf(o.fac).name})`;
     if (!avail.length) return showDialog('W tawernie nikt już nie czeka. Nowi chętni pojawią się w przyszłym tygodniu.', [{ label: 'OK', key: 'enter' }]);
     showDialog(`W tawernie czekają: ${avail.map(a => who(a.o)).join(' i ')}. Najem kosztuje ${HERO_COST} złota, a bohater przychodzi z małym oddziałem.`, [
-      ...avail.map(({ o, k }) => ({ label: o.name, action: () => { const r = hireHero(st, t, k); this.say(r.error || `${r.hero.name} dołącza do twojej sprawy`); } })),
+      ...avail.map(({ o, k }) => ({ label: o.name, sub: specName({ ...o, level: 1 }), tip: `Specjalność: ${specText({ ...o, level: 1 })}.`, action: () => { const r = hireHero(st, t, k); this.say(r.error || `${r.hero.name} dołącza do twojej sprawy`); } })),
       { label: 'Wyjdź', key: 'escape' },
     ], { iconH: 96, icon: (ctx, cx, cy) => avail.forEach(({ o }, i) => {
       const x = cx + (i - (avail.length - 1) / 2) * 144 - 36, look = { name: o.name, cls: o.cls, female: o.female, asleep: false };
@@ -89,17 +94,18 @@ G.screens.town = {
   onPointerMove(x, y) { this.hoverSlot = this.slotAt(x, y); },
   // Miejsca armii: [{ a: tablica armii, i: indeks }] garnizonu i bohatera w mieście
   armySlotAt(x, y) {
-    const t = this.town(), hh = heroInTown(G.state, t), g = hitRect(this.garRects, x, y); if (g) return { a: t.garrison, i: g.i };
+    const t = this.town(), hh = heroInTown(G.state, t), gh = garrisonHero(G.state, t), g = hitRect(this.garRects, x, y); if (g) return { a: gh ? gh.army : t.garrison, i: g.i };
     const r = hh && hitRect(this.heroRects, x, y); return r ? { a: hh.army, i: r.i } : null;
   },
   onClick(x, y) {
     if (clickButtons(this.buttons, x, y)) return;
     const st = G.state, t = this.town(), fac = t.faction, row = this.rows.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    const gh0 = garrisonHero(st, t); if (gh0 && x >= 38 && x <= 74 && y >= 449 && y <= 485) return G.go('hero', { heroId: st.heroes.indexOf(gh0), back: { name: 'town', params: { townId: this.townId } } });
     const hh0 = heroInTown(st, t); if (hh0 && x >= 38 && x <= 74 && y >= 505 && y <= 541) return G.go('hero', { heroId: st.heroes.indexOf(hh0), back: { name: 'town', params: { townId: this.townId } } });
     const slot = this.armySlotAt(x, y);
     if (slot) { // zaznacz oddział, potem wskaż miejsce: przeniesienie, połączenie albo zamiana
       if (!this.sel) { if (slot.a[slot.i]) this.sel = slot; return; }
-      const hh = heroInTown(st, t), from = this.sel, heroes = hh ? [hh.army] : []; this.sel = null;
+      const hh = heroInTown(st, t), gh = garrisonHero(st, t), from = this.sel, heroes = [hh, gh].filter(Boolean).map(o => o.army); this.sel = null;
       if (this.split || G.keys.has('shift')) { this.split = false; showSplit(from.a, from.i, slot.a, slot.i, heroes, err => { if (err) this.say(err); }); return; }
       const err = armyMove(from.a, from.i, slot.a, slot.i, heroes); if (err) this.say(err); return;
     }
@@ -151,11 +157,13 @@ G.screens.town = {
         ctx.fillStyle = 'rgba(12,8,3,.82)'; rr(ctx, x, y, w, 22, 3); ctx.fill(); text(ctx, label, x + w / 2, y + 11, { size: 15, align: 'center', color: '#f3e2b0', fam: 'title' }); }
     }
     // garnizon i armia bohatera stojącego w mieście
-    const hh = heroInTown(st, t), selOf = a => (this.sel && this.sel.a === a ? this.sel.i : -1);
-    text(ctx, 'Garnizon', 56, 471, { size: 15, align: 'center', color: '#f0e4c0', fam: 'title' });
-    this.garRects = drawArmyRow(ctx, t.garrison, 100, 446, { sel: selOf(t.garrison) });
-    if (hh) { drawHeroPortrait(ctx, 38, 505, hh, ownerColor(st, hh.owner)); this.heroRects = drawArmyRow(ctx, hh.army, 100, 498, { sel: selOf(hh.army) }); }
-    else { this.heroRects = []; text(ctx, 'Brak bohatera w mieście. Wejdź bohaterem, aby przekazać mu wojsko.', 335, 523, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.55)' }); }
+    // u góry garnizon (z bohaterem w murach: jego armia), u dołu bohater w bramie; między nimi przycisk zamiany jak w Heroes 3
+    const hh = heroInTown(st, t), gh = garrisonHero(st, t), gar = gh ? gh.army : t.garrison, selOf = a => (this.sel && this.sel.a === a ? this.sel.i : -1);
+    if (gh) drawHeroPortrait(ctx, 38, 449, gh, ownerColor(st, gh.owner)); else text(ctx, 'Garnizon', 56, 471, { size: 15, align: 'center', color: '#f0e4c0', fam: 'title' });
+    this.garRects = drawArmyRow(ctx, gar, 100, 446, { sel: selOf(gar), w: 58 });
+    if (hh) { drawHeroPortrait(ctx, 38, 505, hh, ownerColor(st, hh.owner)); this.heroRects = drawArmyRow(ctx, hh.army, 100, 498, { sel: selOf(hh.army), w: 58 }); }
+    else { this.heroRects = []; text(ctx, gh ? 'Brama wolna: możesz nająć bohatera w tawernie.' : 'Brak bohatera w mieście. Wejdź bohaterem, aby przekazać mu wojsko.', 321, 523, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.55)' }); }
+    this.bSwap.disabled = !hh && !gh;
     if (this.sel && !this.sel.a[this.sel.i]) this.sel = null;
     const rb = this.baseButtons[0]; rb.disabled = !dwellingLevels(t).length;
     rb.tip = rb.disabled ? 'Najpierw zbuduj siedlisko jednostek (np. z listy budowli po prawej).' : 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).';
@@ -177,7 +185,7 @@ G.screens.town = {
     if (!list.length) text(ctx, 'Brak dostępnych budowli', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
     const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, ...this.baseButtons.slice(1)] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
-    this.buttons = paged ? [...base, this.btnUp, this.btnDown] : base;
+    this.buttons = [...(paged ? [...base, this.btnUp, this.btnDown] : base), this.bSwap];
     if (paged) {
       this.btnUp.disabled = this.scroll === 0; this.btnDown.disabled = this.scroll >= list.length - N;
       text(ctx, `${this.scroll + 1}–${Math.min(list.length, this.scroll + N)} z ${list.length}`, 692, 406, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });

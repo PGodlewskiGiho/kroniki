@@ -53,6 +53,8 @@ function migrateSave(st) {
     if (!Array.isArray(h.army)) h.army = startingArmy(st.players[h.owner].faction, r); h.army = armyFix(h.army);
     delete h.slowest; initHeroProgress(h); while (h.exp >= expForLevel(h.level + 1)) h.level++;
     h.spells = h.spells.filter(id => SPELLS[id]); h.bag = h.bag.filter(id => ARTIFACTS[id]);
+    const gt = h.garrison != null && st.towns[h.garrison]; if (h.garrison != null && !(gt && gt.owner === h.owner && gt.x === h.x && gt.y === h.y)) delete h.garrison; // garnizon tylko we własnym mieście
+    h.skills = h.skills.filter(s => SKILLS[s.id]); if (MAGE_CLASSES.includes(h.cls) && !heroSkill(h, 'wisdom') && h.skills.length < MAX_SKILLS) h.skills.unshift({ id: 'wisdom', lv: 1 }); // zapisy sprzed Mądrości
     for (const k of Object.keys(h.equip)) if (h.equip[k] && !ARTIFACTS[h.equip[k]]) h.equip[k] = null;
     h.machines = h.machines.filter(id => CREATURES[id]); if (h.boat && st.map.terrain[h.y * st.map.n + h.x] !== TER.WATER) delete h.boat; // łódź tylko na wodzie
   }

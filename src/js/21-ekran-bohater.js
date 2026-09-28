@@ -8,7 +8,18 @@ function iconStat(ctx, id, cx, cy, col) {
   else { ctx.fillRect(-9, -8, 8, 16); ctx.fillRect(1, -8, 8, 16); ctx.fillStyle = 'rgba(255,248,220,.8)'; ctx.fillRect(-7, -5, 4, 1.5); ctx.fillRect(3, -5, 4, 1.5); ctx.fillRect(-7, -1, 4, 1.5); ctx.fillRect(3, -1, 4, 1.5); }
   ctx.restore();
 }
-const BAG_VIEW = 6, SLOT_BOX = 50;
+const BAG_VIEW = 6, SLOT_BOX = 50, SPEC_BOX = { x: 322, y: 30, w: 66, h: 76 };
+// Specjalność bohatera: ramka z obrazkiem (stwór, surowiec, czar albo księga umiejętności) i podpisem
+function drawSpecBox(ctx, h) {
+  const r = SPEC_BOX, sp = heroSpec(h), cx = r.x + r.w / 2, hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
+  ctx.fillStyle = 'rgba(90,55,20,.14)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill(); ctx.strokeStyle = hot ? '#b8862a' : 'rgba(90,55,20,.5)'; ctx.lineWidth = hot ? 1.8 : 1; ctx.stroke();
+  text(ctx, 'Specjalność', cx, r.y + 9, { size: 10, weight: 700, align: 'center', color: '#6a4418' });
+  if (sp.dw) { ctx.save(); rr(ctx, r.x + 3, r.y + 16, r.w - 6, 44, 3); ctx.clip(); drawSprite(ctx, creatureSprite(specUnits(h)[0], 1), cx, r.y + 56, 1.2); ctx.restore(); }
+  else if (sp.res) resIcon(ctx, sp.res, cx, r.y + 38, 30);
+  else if (sp.spell) drawSprite(ctx, spellSprite(sp.spell), cx, r.y + 38, 1.8);
+  else { ctx.save(); ctx.translate(cx, r.y + 38); ctx.fillStyle = '#6a2a2a'; ctx.fillRect(-12, -14, 24, 28); ctx.fillStyle = '#f0e0b0'; ctx.fillRect(-9, -11, 18, 22); ctx.restore(); iconStat(ctx, 'sp', cx, r.y + 38, '#b8862a'); }
+  const nm = specName(h); text(ctx, nm, cx, r.y + 68, { size: nm.length > 11 ? 9 : 11, weight: 700, align: 'center', color: '#3a1e08' });
+}
 G.screens.hero = {
   buttons: [], sel: null, bagPage: 0, armyRects: [], back: null,
   hero() { return G.state.heroes[this.heroId] || hero(G.state); },
@@ -48,7 +59,8 @@ G.screens.hero = {
     if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
-    if (x >= 32 && x <= 330 && y >= 32 && y <= 104) { const f = heroFaction(h); return f ? `${heroTitle(h)}. Cecha frakcji (${factionOf(f).name}) — ${traitText(f)}.` : null; }
+    if (inRect(x, y, SPEC_BOX)) return heroSpec(h) ? `Specjalność: ${specText(h)}.` : null;
+    if (x >= 32 && x <= 310 && y >= 32 && y <= 104) { const f = heroFaction(h); return f ? `${heroTitle(h)}. Cecha frakcji (${factionOf(f).name}) — ${traitText(f)}.` : null; }
     const si = this.skillAt(x, y);
     if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
@@ -68,6 +80,7 @@ G.screens.hero = {
     text(ctx, h.name, 120, 50, { size: 25, color: '#3a1e08', fam: 'title' });
     text(ctx, heroTitle(h).split(', ')[1].replace(/^./, s => s.toUpperCase()), 120, 76, { size: 16, weight: 500, color: '#5a3814' });
     text(ctx, `Poziom ${h.level}`, 120, 98, { size: 16, color: '#3a1e08', fam: 'title' });
+    if (heroSpec(h)) drawSpecBox(ctx, h);
     const e0 = expForLevel(h.level), e1 = expForLevel(h.level + 1), f = clamp((h.exp - e0) / (e1 - e0), 0, 1);
     ctx.fillStyle = 'rgba(90,55,20,.25)'; ctx.fillRect(32, 118, 356, 12); ctx.fillStyle = '#c8962a'; ctx.fillRect(32, 118, 356 * f, 12);
     ctx.strokeStyle = 'rgba(90,55,20,.6)'; ctx.lineWidth = 1; ctx.strokeRect(32.5, 118.5, 355, 11);

@@ -25,12 +25,12 @@ const visit = (id, who = null) => page.evaluate(([id, who]) => {
 test('nowa gra: miejsca na mapie w liczbie zależnej od rozmiaru, na dostępnych polach', async () => {
   const r = await page.evaluate(() => ['S', 'M', 'XL'].map(ms => {
     const st = createNewGame(Object.assign({}, G.settings, { slots: null,  mapSize: ms, opponents: 1 }), 21), n = st.map.n, sites = st.objects.filter(o => o.type === 'site');
-    return { ms, n: sites.length, kinds: new Set(sites.map(o => o.kind)).size, ok: sites.every(o => st.map.terrain[o.y * n + o.x] !== TER.WATER && !st.map.obst[o.y * n + o.x]),
+    return { ms, n: sites.length, kinds: new Set(sites.map(o => o.kind)).size, ok: sites.every(o => (st.map.terrain[o.y * n + o.x] === TER.WATER) === (o.kind === 'wreck') && !st.map.obst[o.y * n + o.x]),
       shrines: sites.filter(o => o.kind === 'shrine').every(o => SPELLS[o.spell]), mills: sites.filter(o => o.kind === 'windmill').every(o => RARE.includes(o.res)) };
   }));
   assert.ok(r[0].n >= 3 && r[0].n < 25, `S: ${r[0].n}`);
   assert.ok(r[1].n > r[0].n * 2, `M: ${r[1].n}`);
-  assert.equal(r[2].kinds, 14); // 13 rodzajów miejsc i obeliski
+  assert.equal(r[2].kinds, 20); // 19 rodzajów miejsc i obeliski
   for (const g of r) { assert.ok(g.ok, g.ms); assert.ok(g.shrines); assert.ok(g.mills); }
 });
 
@@ -138,4 +138,37 @@ test('mapa, dymek i okno z rysunkiem miejsca', async () => {
   await frames(page, 3);
   assert.match((await dialog(page)).msg, /^Wiatrak\. Młynarz oddaje/);
   await pressDialog(page, 'OK');
+});
+
+test('chata wiedźmy uczy umiejętności; więzienie uwalnia bohatera z doświadczeniem', async () => {
+  await newGame(page);
+  const hut = await placeSite('witchHut', { skill: 'navigation' });
+  assert.match(await visit(hut), /Wiedźma uczy: Nawigacja/);
+  assert.equal(await page.evaluate(() => heroSkill(hero(G.state), 'navigation')), 1);
+  assert.match(await visit(hut), /już (tu był|zna)/);
+  const pr = await placeSite('prison'), before = await page.evaluate(() => myHeroes(G.state).length);
+  assert.match(await visit(pr), /wychodzi na wolność/);
+  const r = await page.evaluate(([pr, before]) => { const st = G.state, mine = myHeroes(st), p = mine[mine.length - 1]; return { n: mine.length - before, lvl: p.level, gone: st.objects[pr].dead, modal: !!G.modal }; }, [pr, before]);
+  assert.equal(r.n, 1); assert.ok(r.lvl >= 4, `poziom ${r.lvl}`); assert.ok(r.gone, 'więzienie znika'); assert.equal(r.modal, false, 'bez okien awansu');
+});
+
+test('portal przenosi do pary, siedlisko werbuje i odrasta co tydzień, ołtarz i wrak', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), n = st.map.n, R = human(st).resources; for (const o of st.objects) if (o.type === 'monster') o.dead = true;
+    const free = [...Array(n * n).keys()].filter(i => passableTile(st, i % n, (i / n) | 0) && !st.objAt[i] && !heroAt(st, i % n, (i / n) | 0));
+    const mk = (kind, i, extra = {}) => { const ob = { id: st.objects.length, type: 'site', kind, x: i % n, y: (i / n) | 0, seen: {}, ...extra }; st.objects.push(ob); return ob; };
+    const a = mk('portal', free[10]), b = mk('portal', free[free.length - 10]); a.pair = b.id; b.pair = a.id; rebuildObjIndex(st);
+    h.x = a.x; h.y = a.y; useSite(st, h, a); const moved = h.x === b.x && h.y === b.y;
+    const d = mk('dwelling', free[20], { cid: 'wolf', avail: 5, week: weekIndex(st) }); CREATURES.wolf.cost = CREATURES.wolf.cost || { gold: 100 }; rebuildObjIndex(st);
+    R.gold = 100000; h.army = emptyArmy(); h.army[0] = { cid: 'pikeman', n: 5 }; const k = dwellMax(st, h, d); useSite(st, h, d);
+    const wolves = (h.army.find(s => s && s.cid === 'wolf') || {}).n, left = d.avail; st.dayTotal += 7; dwellRefresh(st, d); const grown = d.avail;
+    h.bag = ['noviceSword', 'mistCloak', 'grail']; const s = mk('sacrifice', free[30]); const sac = useSite(st, h, s);
+    const w = mk('wreck', free[40]), gold0 = R.gold; rebuildObjIndex(st); useSite(st, h, w);
+    return { moved, k, wolves, left, grown, growth: CREATURES.wolf.growth, sacExp: sac.exp, bag: h.bag, wreckGold: R.gold - gold0, wreckGone: w.dead };
+  });
+  assert.ok(r.moved, 'portal');
+  assert.equal(r.k, 5); assert.equal(r.wolves, 5); assert.equal(r.left, 0); assert.equal(r.grown, r.growth);
+  assert.equal(r.sacExp, 800 + 2000); assert.deepEqual(r.bag, ['grail'], 'Graala nie da się poświęcić');
+  assert.ok(r.wreckGold >= 1500); assert.ok(r.wreckGone);
 });

@@ -33,21 +33,62 @@ const SKILLS = {
   estates: { name: 'Majątek', v: [125, 250, 500], desc: v => `+${v} złota dziennie` },
   learning: { name: 'Nauka', v: [5, 10, 15], desc: v => `+${v}% doświadczenia` },
   necromancy: { name: 'Nekromancja', v: [10, 20, 30], desc: v => `po zwycięstwie z ${v}% życia poległych żywych wrogów powstają kościotrupy` },
+  wisdom: { name: 'Mądrość', v: [3, 4, 5], desc: v => `pozwala poznać czary do ${v}. poziomu (bez niej tylko do 2.)` },
+  navigation: { name: 'Nawigacja', v: [50, 100, 150], desc: v => `+${v}% ruchu na wodzie` },
+  artillery: { name: 'Artyleria', v: [50, 75, 100], desc: v => `balista zadaje o ${v}% więcej obrażeń` },
+  firstAid: { name: 'Pierwsza pomoc', v: [50, 75, 100], desc: v => `namiot medyka leczy do ${v} punktów życia` },
+  ballistics: { name: 'Balistyka', v: [85, 95, 100], desc: v => `katapulta trafia w mury w ${v}% strzałów` },
+  resistance: { name: 'Odporność', v: [5, 10, 20], desc: v => `${v}% szans, że czar wroga nie zadziała na oddział` },
+  eagleSight: { name: 'Orle oko', v: [40, 50, 60], desc: v => `${v}% szans na naukę czaru rzuconego przez wroga (do ${v / 10 - 2}. poziomu)` },
 };
+// Magowie zaczynają z Mądrością (jak w oryginale): bez niej bohater zna czary najwyżej 2. poziomu
+const spellCap = h => { const L = heroSkill(h, 'wisdom'); return L ? SKILLS.wisdom.v[L - 1] : 2; };
 // Umiejętności startowe klas; nekromancję mogą poznać tylko klasy Kurhanu
 const CLASS_SKILLS = {
-  knight: [['leadership', 1], ['archery', 1]], cleric: [['intelligence', 1], ['estates', 1]],
-  ranger: [['pathfinding', 1], ['archery', 1]], druid: [['luck', 1], ['mysticism', 1]],
-  deathKnight: [['necromancy', 1], ['offense', 1]], necro: [['necromancy', 1], ['sorcery', 1]],
-  beastmaster: [['armorer', 1], ['pathfinding', 1]], witch: [['mysticism', 1], ['learning', 1]],
-  demoniac: [['offense', 1], ['logistics', 1]], heretic: [['sorcery', 1], ['intelligence', 1]],
-  alchemist: [['armorer', 1], ['estates', 1]], wizard: [['mysticism', 1], ['intelligence', 1]],
-  overlord: [['leadership', 1], ['logistics', 1]], warlock: [['sorcery', 1], ['intelligence', 1]],
+  knight: [['leadership', 1], ['archery', 1]], cleric: [['wisdom', 1], ['intelligence', 1], ['estates', 1]],
+  ranger: [['pathfinding', 1], ['archery', 1]], druid: [['wisdom', 1], ['luck', 1], ['mysticism', 1]],
+  deathKnight: [['necromancy', 1], ['offense', 1]], necro: [['necromancy', 1], ['wisdom', 1], ['sorcery', 1]],
+  beastmaster: [['armorer', 1], ['pathfinding', 1]], witch: [['wisdom', 1], ['mysticism', 1], ['learning', 1]],
+  demoniac: [['offense', 1], ['logistics', 1]], heretic: [['wisdom', 1], ['sorcery', 1], ['intelligence', 1]],
+  alchemist: [['armorer', 1], ['estates', 1]], wizard: [['wisdom', 1], ['mysticism', 1], ['intelligence', 1]],
+  overlord: [['leadership', 1], ['logistics', 1]], warlock: [['wisdom', 1], ['sorcery', 1], ['intelligence', 1]],
   barbarian: [['offense', 1], ['pathfinding', 1]], battleMage: [['offense', 1], ['sorcery', 1]],
 };
 const NECRO_CLASSES = ['deathKnight', 'necro'];
+const MAGE_CLASSES = ['cleric', 'druid', 'necro', 'witch', 'heretic', 'wizard', 'warlock'];
+// Umiejętności, które klasa dostaje przy awansie częściej (jak w oryginale: rycerz rzadko uczy się magii, mag walki)
+const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance'];
+const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting'];
+const CLASS_SKILL_PREF = {
+  knight: ['leadership', 'offense', 'armorer', 'artillery'], cleric: ['wisdom', 'eagleSight', 'mysticism', 'estates'],
+  ranger: ['archery', 'pathfinding', 'luck', 'scouting'], druid: ['wisdom', 'intelligence', 'luck', 'eagleSight'],
+  deathKnight: ['offense', 'armorer', 'resistance', 'necromancy'], necro: ['wisdom', 'intelligence', 'eagleSight', 'necromancy'],
+  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid'], witch: ['wisdom', 'eagleSight', 'navigation', 'intelligence'],
+  demoniac: ['offense', 'artillery', 'ballistics', 'resistance'], heretic: ['wisdom', 'sorcery', 'intelligence', 'learning'],
+  alchemist: ['artillery', 'ballistics', 'wisdom', 'firstAid'], wizard: ['wisdom', 'intelligence', 'eagleSight', 'sorcery'],
+  overlord: ['leadership', 'offense', 'resistance', 'scouting'], warlock: ['wisdom', 'sorcery', 'intelligence', 'eagleSight'],
+  barbarian: ['offense', 'resistance', 'armorer', 'ballistics'], battleMage: ['offense', 'wisdom', 'sorcery', 'artillery'],
+};
+// Waga umiejętności w losowaniu przy awansie: ulubione klasy ×4, magiczne u wojowników i bojowe u magów ×0,5
+const skillWeight = (cls, id) => (CLASS_SKILL_PREF[cls] || []).includes(id) ? 4 : (MAGE_CLASSES.includes(cls) ? MIGHT_SKILLS : MAGIC_SKILLS).includes(id) ? 0.5 : 1;
 // Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
-const AI_SKILL_ORDER = ['offense', 'necromancy', 'leadership', 'armorer', 'archery', 'logistics', 'luck', 'pathfinding', 'estates', 'sorcery', 'intelligence', 'learning', 'mysticism', 'scouting'];
+const AI_SKILL_ORDER = ['offense', 'necromancy', 'wisdom', 'leadership', 'armorer', 'archery', 'logistics', 'resistance', 'luck', 'artillery', 'pathfinding', 'estates', 'sorcery',
+  'intelligence', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'navigation', 'scouting'];
+
+// Specjalności bohaterów (jak w oryginale), rosną z poziomem bohatera:
+// dw: stwory z siedliska tego poziomu (i ulepszone) dostają +5% ataku i obrony za każdy poziom bohatera na poziom stwora, +1 szybkości;
+// res: surowiec dziennie; skill: umiejętność działa o 5% mocniej za poziom (gdy bohater ją zna); spell: czar mocniejszy o 3% za poziom.
+const HERO_SPECS = {
+  'Sir Rolan': { dw: 3 }, Weronika: { spell: 'cure' }, Bernard: { res: 'gold', n: 350 }, Idalia: { dw: 6 }, Kasjan: { skill: 'archery' }, Mirela: { spell: 'magicArrow' },
+  Elandra: { dw: 2 }, Tarwen: { spell: 'lightningBolt' }, Lirien: { res: 'crystal', n: 1 }, Gawen: { dw: 4 },
+  Mortis: { skill: 'necromancy' }, Raga: { spell: 'animateDead' }, 'Sir Kruk': { dw: 1 }, 'Zofia Czarna': { dw: 5 },
+  Borzywoj: { dw: 1 }, Wilga: { skill: 'mysticism' }, Mszar: { res: 'mercury', n: 1 }, Dobrawa: { dw: 6 },
+  Azgar: { dw: 3 }, Kalida: { skill: 'offense' }, Moloch: { spell: 'fireball' }, 'Wiera Popiół': { res: 'sulfur', n: 1 },
+  Ostromir: { spell: 'magicArrow' }, 'Jagna Mróz': { skill: 'intelligence' }, Zbylut: { dw: 2 }, 'Mirosława': { res: 'gems', n: 1 },
+  'Czarnobór': { dw: 7 }, Morana: { spell: 'meteorShower' }, 'Zmorzysław': { skill: 'sorcery' }, Dziwa: { res: 'gold', n: 350 },
+  'Gromisław': { dw: 1 }, 'Wojsława': { dw: 5 }, 'Ognisław': { skill: 'logistics' }, Jarogniewa: { res: 'ore', n: 2 },
+};
+const heroSpec = h => (h && HERO_SPECS[h.name]) || null;
 // Doświadczenie potrzebne do poziomu 2, 3, ... (dalej każdy poziom +20%)
 const LEVEL_EXP = [0, 0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600, 24320];
 const expForLevel = L => (L < LEVEL_EXP.length ? LEVEL_EXP[L] : Math.round(expForLevel(L - 1) * 1.2));

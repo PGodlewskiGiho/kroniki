@@ -41,7 +41,7 @@ test('działanie umiejętności w bitwie: atak, łucznictwo, zbroja, czary, przy
   await newGame(page);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), m = st.objects.find(o => o.type === 'monster');
-    h.army = emptyArmy(); h.army[0] = { cid: 'swordsman', n: 20 }; h.army[1] = { cid: 'archer', n: 20 };
+    h.army = emptyArmy(); h.army[0] = { cid: 'swordsman', n: 20 }; h.army[1] = { cid: 'archer', n: 100 }; // dużo łuczników: kara za odległość nie zaokrągla wyniku
     const roll = (skills, ranged) => { h.skills = skills; const B = createBattle(st, h, m); B.rng = () => 0.5; const a = B.units.find(u => u.side === 0 && (ranged ? u.cid === 'archer' : u.cid === 'swordsman')), t = B.units.find(u => u.side === 1); return damageRoll(B, a, t, ranged); };
     const back = skills => { h.skills = skills; const B = createBattle(st, h, m); B.rng = () => 0.5; const a = B.units.find(u => u.side === 1), t = B.units.find(u => u.side === 0); return damageRoll(B, a, t, false); };
     const B0 = (h.skills = [{ id: 'leadership', lv: 2 }, { id: 'luck', lv: 3 }], createBattle(st, h, m));
@@ -76,7 +76,7 @@ test('propozycja przy awansie: ulepszenie i nowa umiejętność, bez nekromancji
 
 test('awans gracza: okno wyboru umiejętności po kolei dla każdego poziomu, potem dalszy ciąg', async () => {
   await newGame(page);
-  await page.evaluate(() => { const st = G.state, h = hero(st); window.DONE = false; window.OFFERS = [skillOffer(st, h, 2)]; gainExp(st, h, expForLevel(3) - h.exp, () => { window.DONE = true; }); });
+  await page.evaluate(() => { const st = G.state, h = hero(st); window.DONE = false; window.START = h.skills.length; window.OFFERS = [skillOffer(st, h, 2)]; gainExp(st, h, expForLevel(3) - h.exp, () => { window.DONE = true; }); });
   let d = await dialog(page);
   assert.match(d.msg, /osiąga poziom 2!.*Wybierz umiejętność/);
   const want = await page.evaluate(() => OFFERS[0].map(id => SKILLS[id].name));
@@ -90,7 +90,7 @@ test('awans gracza: okno wyboru umiejętności po kolei dla każdego poziomu, po
   await frames(page, 3);
   await pressDialog(page, d.labels[0]);
   assert.equal(await page.evaluate(() => DONE), true);
-  assert.equal(await page.evaluate(() => hero(G.state).skills.length), 3);
+  assert.equal(await page.evaluate(() => hero(G.state).skills.length - START), 1, 'nowa umiejętność + ulepszenie znanej');
 });
 
 test('SI wybiera umiejętności sama, według swojej kolejności', async () => {
@@ -121,7 +121,7 @@ test('ekran bohatera pokazuje umiejętności, zapis je zachowuje', async () => {
   await newGame(page);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st); learnSkill(h, 'logistics'); learnSkill(h, 'logistics');
-    setScreen('hero', {}); const scr = G.screens.hero, rc = scr.skillRect(2), info = scr.rightInfo(rc.x + 5, rc.y + 5), empty = scr.rightInfo(scr.skillRect(7).x + 5, scr.skillRect(7).y + 5);
+    setScreen('hero', {}); const scr = G.screens.hero, rc = scr.skillRect(h.skills.findIndex(s => s.id === 'logistics')), info = scr.rightInfo(rc.x + 5, rc.y + 5), empty = scr.rightInfo(scr.skillRect(7).x + 5, scr.skillRect(7).y + 5);
     const back = deserializeGame(JSON.parse(JSON.stringify(serializeGame(st))));
     return { info, empty, saved: JSON.stringify(back.heroes.find(x => x.id === h.id).skills) === JSON.stringify(h.skills) };
   });
