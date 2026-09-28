@@ -125,6 +125,25 @@ const drawSpriteBox = (ctx, s, x, y, k = 1) => drawSprite(ctx, s, x + s.ax * 2 *
 // Sprite w buforze mapy (bufor ma połowę rozdzielczości, więc 1 piksel grafiki = 1 piksel bufora)
 function blit(b, s, lx, ly) { b.drawImage(s.c, Math.round(lx / 2) * 2 - s.ax * 2, Math.round(ly / 2) * 2 - s.ay * 2, s.c.width * 2, s.c.height * 2); }
 const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+// Warstwa pixel art dla rysunków ruchomych (efekty czarów, sceny okien wyniku): rysunek trafia do bufora o rozdzielczości
+// 1/px (px = ile pikseli ekranu na piksel grafiki; 2 jak mapa i jednostki w bitwie), dostaje ograniczoną paletę z ditheringiem
+// i trzy twarde stopnie krycia (bez miękkich krawędzi), a potem jest powiększany bez wygładzania. add: nakładanie addytywne (światło).
+function pixLayer(key, ctx, x, y, w, h, draw, o = {}) {
+  const px = o.px || 2, bw = Math.ceil(w / px), bh = Math.ceil(h / px), c = pixBuf(key, bw, bh, true), g = c._ctx;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, bw, bh);
+  g.save(); g.setTransform(1 / px, 0, 0, 1 / px, -x / px, -y / px); draw(g); g.restore();
+  crispLayer(c, o.step || 24);
+  ctx.save(); ctx.imageSmoothingEnabled = false; if (o.add) ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(c, x, y, bw * px, bh * px); ctx.restore();
+}
+function crispLayer(c, step) {
+  const g = c._ctx, w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data;
+  for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k += 4) {
+    const a = d[k + 3]; if (!a) continue; const b = BAYER4[(y & 3) * 4 + (x & 3)] / 16, lv = Math.min(2, Math.floor(a / 255 * 2 + b));
+    if (!lv) { d[k + 3] = 0; continue; } d[k + 3] = lv === 2 ? 255 : 150; const o = (b - 0.5) * step;
+    d[k] = clamp(Math.round((d[k] + o) / step) * step, 0, 255); d[k + 1] = clamp(Math.round((d[k + 1] + o) / step) * step, 0, 255); d[k + 2] = clamp(Math.round((d[k + 2] + o) / step) * step, 0, 255);
+  }
+  g.putImageData(img, 0, 0);
+}
 // Ograniczona paleta z ditheringiem (styl pikselowy jak na mapie)
 function pixelQuantize(cv, step = 18) {
   if (!cv || !cv.getContext) return;

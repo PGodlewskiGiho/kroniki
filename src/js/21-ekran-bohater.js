@@ -190,14 +190,21 @@ const BattleFX = {
     if (this.flash) { this.flash.a -= dt * 2.2; if (this.flash.a <= 0) this.flash = null; }
     this.shake = Math.max(0, this.shake - dt * 30);
   },
+  // Efekty jako pixel art: zwykłe (kręgi, kamienie, strzały, iskry) i świetlne (poświaty, pioruny, pociski magii) nakładane addytywnie
   draw(ctx) {
-    for (const g of this.glows) {
+    if (!(this.glows.length + this.rings.length + this.projs.length + this.bolts.length + this.parts.length)) return;
+    pixLayer('fxN', ctx, 0, 0, W, H, g => this.drawLayer(g, false));
+    pixLayer('fxA', ctx, 0, 0, W, H, g => this.drawLayer(g, true), { add: true });
+  },
+  drawLayer(ctx, add) {
+    if (add) for (const g of this.glows) {
       const f = g.t / g.dur, r = g.r * (0.6 + 0.4 * ease(Math.min(1, f * 3))); ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - f;
-      const gr = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, r); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.25, g.col); gr.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(g.x, g.y, r, 0, TAU); ctx.fill(); ctx.restore();
+      for (const [k, col, al] of [[1, g.col, 0.3], [0.62, g.col, 0.75], [0.3, LT(g.col, 0.5), 1], [0.14, '#ffffff', 1]]) { ctx.globalAlpha = (1 - f) * al; circ(ctx, g.x, g.y, r * k, col); } // pierścienie jak w pixel arcie
+      ctx.restore();
     }
-    for (const r of this.rings) { const f = r.t / r.dur; ctx.save(); ctx.globalAlpha = 1 - f; ctx.strokeStyle = r.col; ctx.lineWidth = r.w * (1 - f) + 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r1 * ease(f), r.r1 * ease(f) * 0.45, 0, 0, TAU); ctx.stroke(); ctx.restore(); }
+    if (!add) for (const r of this.rings) { const f = r.t / r.dur; ctx.save(); ctx.globalAlpha = 1 - f; ctx.strokeStyle = r.col; ctx.lineWidth = r.w * (1 - f) + 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r1 * ease(f), r.r1 * ease(f) * 0.45, 0, 0, TAU); ctx.stroke(); ctx.restore(); }
     for (const p of this.projs) {
+      if ((p.kind === 'rock' || p.kind === 'arrow') === add) continue;
       const [x, y] = projPos(p), [nx, ny] = projPos({ ...p, t: Math.min(p.dur, p.t + 0.02) }), ang = Math.atan2(ny - y, nx - x);
       ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
       if (p.kind === 'rock') { circ(ctx, 0, 0, 6, '#6e6a62'); circ(ctx, -1.5, -1.5, 3.5, '#9a948a'); }
@@ -206,13 +213,13 @@ const BattleFX = {
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, TAU); ctx.fill(); fillPoly(ctx, [[0, -r * 0.6], [-r * 2.2, 0], [0, r * 0.6]], p.col); }
       ctx.restore();
     }
-    for (const b of this.bolts) {
+    if (add) for (const b of this.bolts) {
       const f = b.t / b.dur, flick = Math.random() < 0.8 ? 1 : 0.3; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - f) * flick;
       for (const [w, col] of [[9, b.col], [3, '#ffffff']]) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.globalAlpha *= w > 5 ? 0.45 : 1; ctx.beginPath(); b.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); ctx.globalAlpha = (1 - f) * flick; }
       ctx.restore();
     }
     for (const p of this.parts) {
-      const a = clamp(p.life / p.max, 0, 1), s = Math.max(1, Math.round(p.size * (p.glow ? 0.6 + a * 0.6 : 1)));
+      if (p.glow !== add) continue; const a = clamp(p.life / p.max, 0, 1), s = Math.max(1, Math.round(p.size * (p.glow ? 0.6 + a * 0.6 : 1)));
       ctx.save(); if (p.glow) ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a; ctx.fillStyle = p.col;
       ctx.fillRect(Math.round(p.x / 2) * 2 - s / 2, Math.round(p.y / 2) * 2 - s / 2, s, s); ctx.restore();
     }

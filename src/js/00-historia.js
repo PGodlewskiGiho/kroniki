@@ -124,6 +124,9 @@
    Kronika tygodnia (20b): ogłoszenie astrologów z rysunkiem na początku tygodnia (st.weekNews, p.seenWeek, chronicleIconOpts),
    nowe tygodnie Żniw (+HARVEST drewna i rudy) i Magii (pełna mana), Kronika tawerny (showChronicle: ranking graczy jak Gildia
    Złodziei, rubryki CHRONICLE_ROWS odkrywane liczbą własnych tawern).
+   Pixel art efektów: pixLayer/crispLayer (bufor 1/px rozdzielczości, paleta z ditheringiem, 3 stopnie krycia) dla czarów
+   w bitwie (BattleFX: warstwa zwykła i świetlna, poświaty jako pierścienie), czarów na mapie, sceny okna wyniku bitwy
+   i ekranu końca gry (tło miasta w skali 1,5, piksel = 3 px ekranu); ikony czarów w gildii jako sprite'y.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
