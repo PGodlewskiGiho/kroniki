@@ -13,7 +13,15 @@ function build() {
   const js = files.map(f => { const s = fs.readFileSync(path.join(dir, f), 'utf8'); return s.endsWith('\n') ? s : s + '\n'; }).join('');
   const shell = fs.readFileSync(path.join(SRC, 'szablon.html'), 'utf8');
   if (!shell.includes('@@SKRYPT@@\n')) throw new Error('src/szablon.html: brak linii @@SKRYPT@@');
-  return shell.replace('@@SKRYPT@@\n', () => js);
+  // Czcionki z src/czcionki (np. pikselowa) wbudowane w plik jako @font-face z danymi base64: gra działa bez internetu.
+  // Plik „nazwa-rodziny__zakres.woff2”: rodzina z myślnikami zamiast spacji, zakres = latin albo latin-ext.
+  const RANGES = { latin: 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD',
+    'latin-ext': 'U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF' };
+  const fdir = path.join(SRC, 'czcionki'), faces = fs.existsSync(fdir) ? fs.readdirSync(fdir).filter(f => f.endsWith('.woff2')).sort().map(f => {
+    const [fam, range] = f.replace('.woff2', '').split('__'), data = fs.readFileSync(path.join(fdir, f)).toString('base64');
+    return `@font-face{font-family:'${fam.replace(/-/g, ' ')}';font-style:normal;font-weight:400 800;font-display:block;src:url(data:font/woff2;base64,${data}) format('woff2');unicode-range:${RANGES[range]}}`;
+  }).join('\n') : '';
+  return shell.replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => js);
 }
 
 const arg = process.argv[2];

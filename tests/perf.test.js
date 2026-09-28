@@ -51,7 +51,7 @@ test('jakość grafiki: niska 0,5, wysoka jak ekran; ustawienie w menu', async (
     return out;
   });
   assert.equal(r.low, 0.5); assert.ok(r.high);
-  assert.deepEqual(r.labels, ['Automatyczna', 'Wysoka', 'Niska', 'OK']);
+  assert.deepEqual(r.labels, ['Automatyczna', 'Wysoka', 'Niska', 'Czcionka: klasyczna', 'OK']);
 });
 
 test('mgła w kawałkach: odkrycie pola odświeża tylko potrzebny kawałek', async () => {

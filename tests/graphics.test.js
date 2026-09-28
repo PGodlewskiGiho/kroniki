@@ -47,3 +47,13 @@ test('interfejs w pixel arcie: pergamin, kamień i przyciski w buforze 1:2 z twa
   assert.deepEqual(r.alphas.filter(a => ![0, 150, 255].includes(a)), [], 'tylko 3 stopnie krycia');
   assert.ok(r.axis, 'róg rr to schodki (same odcinki poziome i pionowe)');
 });
+
+test('czcionka pikselowa wbudowana w plik gry (także polskie znaki) i przełącznik w ustawieniach grafiki', async () => {
+  const r = await page.evaluate(async () => {
+    await document.fonts.load(`16px ${FONT_PIXEL}`, 'Aąęśćżźółń'); const S = G.settings, f0 = S.font;
+    const ok = document.fonts.check(`16px ${FONT_PIXEL}`, 'ąęśćżźółń'), classic = font(16);
+    showGfxSettings(); G.modal.buttons.find(b => /Czcionka/.test(b.label)).action(); const pixel = font(16), label = G.modal.buttons.find(b => /Czcionka/.test(b.label)).label; G.modal = null;
+    S.font = f0; Layers.cache = {}; return { ok, classic, pixel, label };
+  });
+  assert.ok(r.ok, 'czcionka załadowana z pliku gry'); assert.match(r.classic, /Cinzel/); assert.match(r.pixel, /Pixelify/); assert.equal(r.label, 'Czcionka: piksele');
+});

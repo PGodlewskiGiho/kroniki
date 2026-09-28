@@ -128,7 +128,7 @@ function showDialog(msg, opts, extra = {}) {
 function askText(msg, initial, done, max = 16) {
   const inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = max; inp.value = initial || '';
   Object.assign(inp.style, { position: 'fixed', zIndex: 10, boxSizing: 'border-box', textAlign: 'center', border: '2px solid #6a4a1e', borderRadius: '4px',
-    background: '#f4e6c4', color: '#2a1606', fontFamily: 'Georgia, serif', outline: 'none', padding: '0 6px' });
+    background: '#f4e6c4', color: '#2a1606', fontFamily: pixelFont() ? FONT_PIXEL : 'Georgia, serif', outline: 'none', padding: '0 6px' });
   document.body.appendChild(inp);
   const close = () => inp.remove(), ok = () => { const v = inp.value.trim().slice(0, max); close(); done(v); };
   showDialog(msg, [{ label: 'OK', action: ok }, { label: 'Anuluj', action: close }], { iconH: 50, icon: (ctx, cx, cy) => {
