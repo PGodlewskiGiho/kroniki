@@ -158,6 +158,9 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    Ognista tarcza, Źródło życia; księga czarów z zakładkami szkół i stronami.
    Wymagania budowli: lista budowania pokazuje też zablokowane (kłódka, „Wymaga: …” z pośrednimi, missingReqs/buildList),
    najechanie zaznacza w scenie miejsce budowli i brakujących budowli, opis mówi, co budowla odblokowuje (unlocksOf).
+   Interfejs w pixel arcie: pergamin, kamień (cegły paintBricks), tła przycisków (paintButton, stany n/h/s/d) i duże złote napisy
+   malowane w buforze 1:2 (uiLayer + crispLayer, drawUi bez wygładzania); rr ze schodkowymi rogami; rogi i przerywniki z pikseli
+   (pixDiamond); napisy i ikony przycisków z twardym cieniem zamiast poświaty.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
@@ -1134,10 +1137,25 @@ const FONT_BODY = "'Cormorant Garamond', Georgia, 'Times New Roman', serif";
 function font(size, weight = 700, fam = 'title', italic = false) {
   return `${italic ? 'italic ' : ''}${weight} ${size}px ${fam === 'title' ? FONT_TITLE : FONT_BODY}`;
 }
+// Prostokąt z rogami: przy promieniu od 2 px róg jest schodkowy (stopnie po 2 px jak w pixel arcie), mniejsze zaokrąglenia zostają łukiem
 function rr(ctx, x, y, w, h, r) {
-  ctx.beginPath(); ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  r = Math.min(r, w / 2, h / 2);
+  if (r < 2) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); return; }
+  const S = rrStairs(r), R = S.slice().reverse();
+  ctx.beginPath(); ctx.moveTo(x + S[0][0], y);
+  for (const [dx, dy] of S) ctx.lineTo(x + w - dx, y + dy);
+  for (const [dx, dy] of R) ctx.lineTo(x + w - dx, y + h - dy);
+  for (const [dx, dy] of S) ctx.lineTo(x + dx, y + h - dy);
+  for (const [dx, dy] of R) ctx.lineTo(x + dx, y + dy);
+  ctx.closePath();
+}
+// Schodki rogu o promieniu r: [wcięcie, wysokość] od górnej krawędzi w dół (kroki po 2 px)
+const _stairs = {};
+function rrStairs(r) {
+  const k = Math.round(r * 2) / 2; if (_stairs[k]) return _stairs[k];
+  const u = 2, n = Math.max(1, Math.round(k / u)), out = [];
+  for (let i = 0; i < n; i++) { const yy = i * u, d = k - Math.sqrt(Math.max(0, k * k - (k - yy - u / 2) ** 2)), ix = Math.max(0, Math.round(d / u) * u); out.push([ix, yy], [ix, yy + u]); }
+  return (_stairs[k] = out);
 }
 function text(ctx, str, x, y, o = {}) {
   ctx.font = font(o.size || 16, o.weight || 700, o.fam || 'body', o.italic);
@@ -1149,7 +1167,15 @@ function wrapText(ctx, str, maxW) {
   for (const w of str.split(' ')) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
   if (cur) lines.push(cur); return lines;
 }
+// Złoty napis (tytuły): duże napisy w pixel arcie — malowane raz w buforze o połowie rozdzielczości (uiLayer) i powiększane bez wygładzania
 function goldText(ctx, str, x, y, size, align = 'center') {
+  if (size < 22 || typeof uiLayer !== 'function') return goldTextPaint(ctx, str, x, y, size, align);
+  ctx.save(); ctx.font = font(size, 700, 'title'); const tw = ctx.measureText(str).width; ctx.restore();
+  const pad = Math.ceil(size * 0.3), w = Math.ceil(tw) + pad * 2, h = Math.ceil(size * 1.5);
+  const L = uiLayer(`gold_${size}_${str}`, w, h, c => goldTextPaint(c, str, w / 2, h / 2, size, 'center'));
+  drawUi(ctx, L, (align === 'center' ? x - w / 2 : align === 'left' ? x - pad : x - w + pad), y - h / 2);
+}
+function goldTextPaint(ctx, str, x, y, size, align = 'center') {
   ctx.save(); ctx.font = font(size, 700, 'title'); ctx.textAlign = align; ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, size / 7); ctx.strokeStyle = '#1a0e04'; ctx.strokeText(str, x, y);
   const g = ctx.createLinearGradient(0, y - size / 2, 0, y + size / 2);
@@ -1286,64 +1312,79 @@ function pixelQuantize(cv, step = 18) {
 
 // ==================== INTERFEJS: RAMKI, PRZYCISKI, OKNA =================================
 // Kamień, pergamin, przyciski, okna dialogowe, dymki, ikony przycisków.
+// --- pixel art interfejsu ---
+// Pergamin, kamień i tła przycisków malujemy w buforze o połowie rozdzielczości (1 piksel grafiki = 2 px ekranu), z paletą
+// i ditheringiem (crispLayer: twarde krawędzie, 3 stopnie krycia), i powiększamy bez wygładzania — tak jak mapę, sceny i jednostki.
+const UI_PX = 2;
+function uiLayer(key, w, h, paint) {
+  return Layers.get('ui_' + key, w, h, c => { c.imageSmoothingEnabled = false; paint(c, w, h); c.canvas._ctx = c; crispLayer(c.canvas, 12); }, 1 / UI_PX);
+}
+function drawUi(ctx, c, x, y) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(c, Math.round(x), Math.round(y), c.width * UI_PX, c.height * UI_PX); ctx.restore(); }
+// Romb z pikseli (ozdoba rogów i przerywników): rzędy po 2 px
+function pixDiamond(ctx, cx, cy, col, n = 3) {
+  cx = Math.round(cx / 2) * 2; cy = Math.round(cy / 2) * 2; ctx.fillStyle = col;
+  for (let i = -n + 1; i < n; i++) { const hw = (n - Math.abs(i)) * 2; ctx.fillRect(cx - hw, cy + i * 2 - 1, hw * 2, 2); }
+}
 function drawCorners(ctx, x, y, w, h) {
-  ctx.fillStyle = '#d4a847';
-  for (const [cx, cy] of [[x + 7, y + 7], [x + w - 7, y + 7], [x + 7, y + h - 7], [x + w - 7, y + h - 7]]) {
-    ctx.beginPath(); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx + 6, cy); ctx.lineTo(cx, cy + 6); ctx.lineTo(cx - 6, cy); ctx.closePath(); ctx.fill();
+  for (const [cx, cy] of [[x + 7, y + 7], [x + w - 7, y + 7], [x + 7, y + h - 7], [x + w - 7, y + h - 7]]) { pixDiamond(ctx, cx, cy, '#6a4a14', 4); pixDiamond(ctx, cx, cy - 1, '#e0b44c', 3); pixDiamond(ctx, cx - 1, cy - 2, '#fff0b0', 1); }
+}
+// Cegły kamiennego tła: każda w nieco innym odcieniu, jaśniejsza krawędź u góry, cień u dołu, fuga 2 px
+function paintBricks(c, w, h, seed = 1) {
+  const r = mulberry32(seed * 7919 + Math.round(w) * 31 + Math.round(h)); c.fillStyle = '#28231e'; c.fillRect(0, 0, w, h);
+  for (let yy = 0, row = 0; yy < h; yy += 20, row++) for (let xx = row % 2 ? -22 : 0; xx < w; xx += 44) {
+    const t = r(), k = yy / Math.max(1, h), v = Math.round(74 + t * 10 - k * 26);
+    c.fillStyle = `rgb(${v + 6},${v},${v - 8})`; c.fillRect(xx + 2, yy + 2, 42, 18);
+    c.fillStyle = 'rgba(255,238,200,.08)'; c.fillRect(xx + 2, yy + 2, 42, 2); c.fillRect(xx + 2, yy + 2, 2, 18);
+    c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(xx + 2, yy + 18, 42, 2); c.fillRect(xx + 42, yy + 2, 2, 18);
+    for (let k2 = 0; k2 < 3; k2++) { c.fillStyle = r() < 0.5 ? 'rgba(0,0,0,.22)' : 'rgba(255,240,210,.08)'; c.fillRect(xx + 6 + Math.floor(r() * 16) * 2, yy + 6 + Math.floor(r() * 5) * 2, 2 + (r() < 0.3 ? 2 : 0), 2); }
   }
 }
 function drawStone(ctx, x, y, w, h) {
-  ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,.55)'; rr(ctx, x + 4, y + 6, w, h, 6); ctx.fill();
-  const g = ctx.createLinearGradient(x, y, x, y + h); g.addColorStop(0, '#5b5349'); g.addColorStop(1, '#2d2823');
-  rr(ctx, x, y, w, h, 6); ctx.fillStyle = g; ctx.fill(); ctx.fillStyle = noise(ctx); ctx.fill();
-  ctx.save(); rr(ctx, x, y, w, h, 6); ctx.clip();
-  ctx.strokeStyle = 'rgba(0,0,0,.28)'; ctx.lineWidth = 1;
-  for (let yy = y + 20, row = 0; yy < y + h; yy += 20, row++) {
-    ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke();
-    for (let xx = x + (row % 2 ? 22 : 0); xx < x + w; xx += 44) { ctx.beginPath(); ctx.moveTo(xx, yy - 20); ctx.lineTo(xx, yy); ctx.stroke(); }
-  }
-  ctx.restore();
-  ctx.lineWidth = 3; ctx.strokeStyle = '#15110d'; rr(ctx, x, y, w, h, 6); ctx.stroke();
-  ctx.lineWidth = 1.5; ctx.strokeStyle = '#b8913f'; rr(ctx, x + 6, y + 6, w - 12, h - 12, 4); ctx.stroke();
+  drawUi(ctx, uiLayer(`stonebox_${w}x${h}`, w + 8, h + 10, c => {
+    c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, 4, 6, w, h, 6); c.fill();
+    c.save(); rr(c, 0, 0, w, h, 6); c.clip(); paintBricks(c, w, h, 3); c.restore();
+    c.lineWidth = 4; c.strokeStyle = '#15110d'; rr(c, 0, 0, w, h, 6); c.stroke();
+    c.lineWidth = 2; c.strokeStyle = '#b8913f'; rr(c, 6, 6, w - 12, h - 12, 4); c.stroke();
+  }), x, y);
   drawCorners(ctx, x, y, w, h);
-  ctx.restore();
 }
-// Pergamin (tło okien i paneli): gotowy obraz danego rozmiaru z pamięci (Layers), bo gradient, szum i przycinanie co klatkę kosztują
-function drawParchment(ctx, x, y, w, h) { drawLayer(ctx, Layers.get(`parch_${w}x${h}`, w + 16, h + 16, c => paintParchment(c, 4, 4, w, h)), x - 4, y - 4); }
+// Pergamin (tło okien i paneli): pixel art z pamięci (uiLayer): jasny środek, przypalone brzegi w ditheringu, włókna papieru
+function drawParchment(ctx, x, y, w, h) { drawUi(ctx, uiLayer(`parch_${w}x${h}`, w + 16, h + 16, c => paintParchment(c, 4, 4, w, h)), x - 4, y - 4); drawCorners(ctx, x, y, w, h); }
 function paintParchment(ctx, x, y, w, h) {
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,.6)'; rr(ctx, x + 5, y + 7, w, h, 8); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.6)'; rr(ctx, x + 6, y + 8, w, h, 8); ctx.fill();
   rr(ctx, x, y, w, h, 8); ctx.fillStyle = '#d8bf88'; ctx.fill();
   ctx.save(); ctx.clip();
   const rg = ctx.createRadialGradient(x + w / 2, y + h / 2, Math.min(w, h) * 0.2, x + w / 2, y + h / 2, Math.max(w, h) * 0.72);
-  rg.addColorStop(0, 'rgba(255,246,214,.35)'); rg.addColorStop(1, 'rgba(92,56,20,.55)');
-  ctx.fillStyle = rg; ctx.fillRect(x, y, w, h); ctx.fillStyle = noise(ctx); ctx.fillRect(x, y, w, h);
+  rg.addColorStop(0, 'rgba(255,246,214,.4)'); rg.addColorStop(1, 'rgba(92,56,20,.6)');
+  ctx.fillStyle = rg; ctx.fillRect(x, y, w, h);
+  const r = mulberry32(Math.round(w) * 131 + Math.round(h)); // włókna i plamki papieru
+  for (let i = 0; i < w * h / 900; i++) { ctx.fillStyle = r() < 0.6 ? 'rgba(120,80,30,.22)' : 'rgba(255,250,225,.3)'; ctx.fillRect(x + Math.floor(r() * w / 2) * 2, y + Math.floor(r() * h / 2) * 2, 2 + Math.floor(r() * 4) * 2, 2); }
   ctx.restore();
   ctx.lineWidth = 4; ctx.strokeStyle = '#3a2410'; rr(ctx, x, y, w, h, 8); ctx.stroke();
-  ctx.lineWidth = 1.5; ctx.strokeStyle = '#a07a32'; rr(ctx, x + 8, y + 8, w - 16, h - 16, 5); ctx.stroke();
-  drawCorners(ctx, x, y, w, h);
+  ctx.lineWidth = 2; ctx.strokeStyle = '#a07a32'; rr(ctx, x + 8, y + 8, w - 16, h - 16, 4); ctx.stroke();
   ctx.restore();
 }
 function divider(ctx, x1, x2, y) {
-  ctx.strokeStyle = 'rgba(90,55,20,.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
-  const cx = (x1 + x2) / 2; ctx.fillStyle = '#8a5a1e';
-  ctx.beginPath(); ctx.moveTo(cx, y - 4); ctx.lineTo(cx + 6, y); ctx.lineTo(cx, y + 4); ctx.lineTo(cx - 6, y); ctx.closePath(); ctx.fill();
+  y = Math.round(y / 2) * 2; ctx.fillStyle = 'rgba(90,55,20,.55)'; ctx.fillRect(Math.round(x1), y - 1, Math.round(x2 - x1), 2);
+  pixDiamond(ctx, (x1 + x2) / 2, y, '#8a5a1e', 3);
 }
-// Kamienne tło z fugami. Rysowanie setek kresek co klatkę było najdroższą częścią kilku ekranów,
-// dlatego gotowy obraz danego rozmiaru trzymamy w pamięci (Layers) i tylko go wklejamy.
-function stoneFill(c, x, y, w, h) { drawLayer(c, Layers.get(`stone_${w}x${h}`, w, h, paintStone), x, y); }
-function paintStone(c, w, h) {
-  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#554d44'); g.addColorStop(1, '#2b2621');
-  c.fillStyle = g; c.fillRect(0, 0, w, h); c.fillStyle = noise(c); c.fillRect(0, 0, w, h);
-  c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 1; c.beginPath();
-  for (let yy = 20, row = 0; yy < h; yy += 20, row++) {
-    c.moveTo(0, yy); c.lineTo(w, yy);
-    for (let xx = row % 2 ? 22 : 0; xx < w; xx += 44) { c.moveTo(xx, yy - 20); c.lineTo(xx, yy); }
-  }
-  c.stroke();
+// Kamienne tło z cegieł w pixel arcie; gotowy obraz danego rozmiaru z pamięci (uiLayer)
+function stoneFill(c, x, y, w, h) { drawUi(c, uiLayer(`stone_${w}x${h}`, w, h, paintStone), x, y); }
+function paintStone(c, w, h) { paintBricks(c, w, h); const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.3)'); c.fillStyle = g; c.fillRect(0, 0, w, h); }
+function goldFrame(c, x, y, w, h) { c.fillStyle = '#000'; c.fillRect(x - 4, y - 4, w + 8, h + 8); c.strokeStyle = '#b8913f'; c.lineWidth = 2; c.strokeRect(x - 5, y - 5, w + 10, h + 10); }
+// Tło przycisku w pixel arcie: dwa pasy koloru (jaśniejszy u góry), fazka, czarny obrys, złota ramka; stan: n, h (najechany), s (wybrany), d (wyłączony)
+const BTN_COLS = { n: ['#62431f', '#46301a', '#2c1c0c', '#b8913f'], h: ['#7e5a2e', '#5a3e1e', '#3a2610', '#ffd970'], s: ['#a2442a', '#7a2c18', '#4c160a', '#ffd970'], d: ['#4e4a44', '#3a3733', '#2a2724', '#6d665c'] };
+function paintButton(c, w, h, st) {
+  const [top, mid, low, rim] = BTN_COLS[st];
+  c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, 2, 4, w, h, 4); c.fill();
+  c.save(); rr(c, 0, 0, w, h, 4); c.clip();
+  c.fillStyle = top; c.fillRect(0, 0, w, h); c.fillStyle = mid; c.fillRect(0, Math.round(h * 0.45 / 2) * 2, w, h); c.fillStyle = low; c.fillRect(0, h - 6, w, 6);
+  c.fillStyle = 'rgba(255,226,160,.28)'; c.fillRect(4, 2, w - 8, 2);
+  c.restore();
+  c.lineWidth = 2; c.strokeStyle = '#120a03'; rr(c, 1, 1, w - 2, h - 2, 4); c.stroke();
+  c.strokeStyle = rim; rr(c, 4, 4, w - 8, h - 8, 2); c.stroke();
 }
-function goldFrame(c, x, y, w, h) { c.fillStyle = '#000'; c.fillRect(x - 3, y - 3, w + 6, h + 6); c.strokeStyle = '#b8913f'; c.lineWidth = 1.5; c.strokeRect(x - 4.5, y - 4.5, w + 9, h + 9); }
 class Button {
   constructor(x, y, w, h, label, action, o = {}) {
     Object.assign(this, { x, y, w, h, label, action, key: o.key || null, size: o.size || 18, disabled: !!o.disabled,
@@ -1352,34 +1393,22 @@ class Button {
   hit(px, py) { return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h; }
   isSel() { return typeof this.selected === 'function' ? this.selected() : !!this.selected; }
   draw(ctx) {
-    const hover = G.hover === this, pressed = hover && G.mouse.down, sel = this.isSel();
-    const { x, w, h } = this, y = this.y + (pressed ? 1 : 0);
+    const hover = G.hover === this, pressed = hover && G.mouse.down, sel = this.isSel(), st = this.disabled ? 'd' : sel ? 's' : hover ? 'h' : 'n';
+    const { x, w, h } = this, y = this.y + (pressed ? 2 : 0);
     ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,.5)'; rr(ctx, x + 2, this.y + 3, w, h, 4); ctx.fill();
-    let c1 = '#4f3519', c2 = '#26170a';
-    if (this.disabled) { c1 = '#4a4640'; c2 = '#2a2724'; } else if (sel) { c1 = '#8e3a1c'; c2 = '#44150a'; } else if (hover) { c1 = '#71502a'; c2 = '#36210f'; }
-    const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, c1); g.addColorStop(1, c2);
-    rr(ctx, x, y, w, h, 4); ctx.fillStyle = g; ctx.fill(); ctx.fillStyle = noise(ctx); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,220,150,.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 4, y + 2.5); ctx.lineTo(x + w - 4, y + 2.5); ctx.stroke();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#120a03'; rr(ctx, x, y, w, h, 4); ctx.stroke();
-    ctx.lineWidth = 1.2; ctx.strokeStyle = this.disabled ? '#6d665c' : (hover || sel ? '#ffd970' : '#b8913f'); rr(ctx, x + 3, y + 3, w - 6, h - 6, 3); ctx.stroke();
+    drawUi(ctx, uiLayer(`btn_${w}x${h}_${st}`, w + 4, h + 6, c => paintButton(c, w, h, st)), x, y);
+    const col = this.disabled ? '#8d857a' : (hover ? '#fff3c4' : '#ecd08a');
     let cx = x + w / 2;
     if (this.swatch) {
       ctx.fillStyle = typeof this.swatch === 'function' ? this.swatch() : this.swatch; ctx.fillRect(x + 10, y + h / 2 - 8, 16, 16);
-      ctx.lineWidth = 1.5; ctx.strokeStyle = '#e0b24a'; ctx.strokeRect(x + 10, y + h / 2 - 8, 16, 16); cx = x + (w + 26) / 2;
+      ctx.lineWidth = 2; ctx.strokeStyle = '#e0b24a'; ctx.strokeRect(x + 10, y + h / 2 - 8, 16, 16); cx = x + (w + 26) / 2;
     }
-    if (this.icon) {
-      if (hover) { ctx.shadowColor = 'rgba(255,200,90,.7)'; ctx.shadowBlur = 8; }
-      this.icon(ctx, cx, y + h / 2, this.disabled ? '#8d857a' : (hover ? '#fff3c4' : '#ecd08a'));
-      ctx.shadowBlur = 0; ctx.restore(); return;
-    }
+    if (this.icon) { this.icon(ctx, cx + 2, y + h / 2 + 2, '#120a03'); this.icon(ctx, cx, y + h / 2, col); ctx.restore(); return; } // twardy cień zamiast poświaty
     let fs = this.size; const maxW = w - (this.swatch ? 40 : 14);
     ctx.font = font(fs, 700, 'title'); while (fs > 9 && ctx.measureText(this.label).width > maxW) { fs--; ctx.font = font(fs, 700, 'title'); }
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (hover) { ctx.shadowColor = 'rgba(255,200,90,.7)'; ctx.shadowBlur = 10; }
-    ctx.fillStyle = this.disabled ? '#8d857a' : (hover ? '#fff3c4' : '#ecd08a');
-    ctx.fillText(this.label, cx, this.sub ? y + h / 2 - 7 : y + h / 2 + 1);
-    ctx.shadowBlur = 0;
+    const ly = this.sub ? y + h / 2 - 7 : y + h / 2 + 1;
+    ctx.fillStyle = '#120a03'; ctx.fillText(this.label, cx + 2, ly + 2); ctx.fillStyle = col; ctx.fillText(this.label, cx, ly);
     if (this.sub) { ctx.font = font(13, 500, 'body', true); ctx.fillStyle = this.disabled ? '#7a746a' : '#d4bd90'; ctx.fillText(this.sub, cx, y + h / 2 + 11); }
     ctx.restore();
   }

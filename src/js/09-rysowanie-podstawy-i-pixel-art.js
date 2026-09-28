@@ -5,10 +5,25 @@ const FONT_BODY = "'Cormorant Garamond', Georgia, 'Times New Roman', serif";
 function font(size, weight = 700, fam = 'title', italic = false) {
   return `${italic ? 'italic ' : ''}${weight} ${size}px ${fam === 'title' ? FONT_TITLE : FONT_BODY}`;
 }
+// Prostokąt z rogami: przy promieniu od 2 px róg jest schodkowy (stopnie po 2 px jak w pixel arcie), mniejsze zaokrąglenia zostają łukiem
 function rr(ctx, x, y, w, h, r) {
-  ctx.beginPath(); ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  r = Math.min(r, w / 2, h / 2);
+  if (r < 2) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); return; }
+  const S = rrStairs(r), R = S.slice().reverse();
+  ctx.beginPath(); ctx.moveTo(x + S[0][0], y);
+  for (const [dx, dy] of S) ctx.lineTo(x + w - dx, y + dy);
+  for (const [dx, dy] of R) ctx.lineTo(x + w - dx, y + h - dy);
+  for (const [dx, dy] of S) ctx.lineTo(x + dx, y + h - dy);
+  for (const [dx, dy] of R) ctx.lineTo(x + dx, y + dy);
+  ctx.closePath();
+}
+// Schodki rogu o promieniu r: [wcięcie, wysokość] od górnej krawędzi w dół (kroki po 2 px)
+const _stairs = {};
+function rrStairs(r) {
+  const k = Math.round(r * 2) / 2; if (_stairs[k]) return _stairs[k];
+  const u = 2, n = Math.max(1, Math.round(k / u)), out = [];
+  for (let i = 0; i < n; i++) { const yy = i * u, d = k - Math.sqrt(Math.max(0, k * k - (k - yy - u / 2) ** 2)), ix = Math.max(0, Math.round(d / u) * u); out.push([ix, yy], [ix, yy + u]); }
+  return (_stairs[k] = out);
 }
 function text(ctx, str, x, y, o = {}) {
   ctx.font = font(o.size || 16, o.weight || 700, o.fam || 'body', o.italic);
@@ -20,7 +35,15 @@ function wrapText(ctx, str, maxW) {
   for (const w of str.split(' ')) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
   if (cur) lines.push(cur); return lines;
 }
+// Złoty napis (tytuły): duże napisy w pixel arcie — malowane raz w buforze o połowie rozdzielczości (uiLayer) i powiększane bez wygładzania
 function goldText(ctx, str, x, y, size, align = 'center') {
+  if (size < 22 || typeof uiLayer !== 'function') return goldTextPaint(ctx, str, x, y, size, align);
+  ctx.save(); ctx.font = font(size, 700, 'title'); const tw = ctx.measureText(str).width; ctx.restore();
+  const pad = Math.ceil(size * 0.3), w = Math.ceil(tw) + pad * 2, h = Math.ceil(size * 1.5);
+  const L = uiLayer(`gold_${size}_${str}`, w, h, c => goldTextPaint(c, str, w / 2, h / 2, size, 'center'));
+  drawUi(ctx, L, (align === 'center' ? x - w / 2 : align === 'left' ? x - pad : x - w + pad), y - h / 2);
+}
+function goldTextPaint(ctx, str, x, y, size, align = 'center') {
   ctx.save(); ctx.font = font(size, 700, 'title'); ctx.textAlign = align; ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, size / 7); ctx.strokeStyle = '#1a0e04'; ctx.strokeText(str, x, y);
   const g = ctx.createLinearGradient(0, y - size / 2, 0, y + size / 2);
