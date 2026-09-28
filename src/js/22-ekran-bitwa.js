@@ -328,6 +328,11 @@ G.screens.battle = {
       ctx.strokeStyle = '#e0b24a'; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, 25, 13);
       text(ctx, s, bx + 13, by + 8, { size: 11, align: 'center', color: '#fff8e0', fam: 'body' });
       Object.keys(u.buffs).forEach((k, i) => { ctx.fillStyle = BAD_BUFFS.includes(k) ? '#b060e0' : '#ffe08a'; ctx.fillRect(bx + i * 6, by - 6, 4, 4); });
+      if (CREATURES[u.cid].shots && !endlessShots(u)) { // strzały: pod liczebnością, szare, gdy się skończyły
+        const ax = bx + 2, ay = by + 15, c2 = u.shots ? '#e8e0c8' : '#7a7468'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(ax - 1, ay, 24, 10);
+        ctx.fillStyle = c2; ctx.fillRect(ax + 1, ay + 4, 7, 1); ctx.fillRect(ax + 6, ay + 3, 2, 3); ctx.fillRect(ax, ay + 3, 1, 3);
+        text(ctx, String(u.shots), ax + 16, ay + 5, { size: 9, align: 'center', color: c2, fam: 'body' });
+      }
     }
     BattleFX.draw(ctx);
     for (const f of this.floats) {
@@ -347,7 +352,7 @@ G.screens.battle = {
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
     if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(heroStat(sideHero(B, this.me) || B.h, 'sp'))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
-    else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
+    else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots}${shotPenaltyText(B, u0, pv.target)})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';
     let tfs = 15; ctx.font = font(tfs, 700, 'body'); while (tfs > 11 && ctx.measureText(tip).width > 440) { tfs--; ctx.font = font(tfs, 700, 'body'); }
     text(ctx, tip, 20, 508, { size: tfs, weight: 700, color: '#ffd970' });

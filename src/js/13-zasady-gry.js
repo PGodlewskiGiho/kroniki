@@ -71,6 +71,13 @@ function rebuildObjIndex(st) {
   }
 }
 function objectAt(st, i) { const o = st.objAt[i]; return o ? st.objects[o - 1] : null; }
+// Budowla wielopolowa (miasto, kopalnia, skarbiec) pod kursorem: jej pola albo wieże i dachy rysowane do 2 pól nad nimi
+// (kliknięcie w zamek prowadzi do bramy, a nie za miasto)
+function drawnObjectAt(st, tx, ty) {
+  const n = st.map.n, own = objectAt(st, ty * n + tx); if (own) return own.blocks ? own : null;
+  for (let k = 1; k <= 2 && ty + k < n; k++) { const ob = objectAt(st, (ty + k) * n + tx); if (ob) return ob.blocks && (ob.type === 'town' || k === 1) ? ob : null; }
+  return null;
+}
 function removeObject(st, ob) { ob.dead = true; rebuildObjIndex(st); }
 // Obiekty i strefy strażników można tylko "odwiedzić" jako cel ścieżki, nie przejść przez nie.
 // Inny bohater zajmuje pole: można na nie tylko wejść jako cel (wrogi bohater = bitwa).

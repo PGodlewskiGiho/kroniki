@@ -312,6 +312,7 @@ const ABILITIES = {
   noRetal: { name: 'Bez odwetu', desc: 'wróg nie kontratakuje' },
   unlimitedRetal: { name: 'Czujność', desc: 'kontratakuje każdy atak w rundzie' },
   noMeleePenalty: { name: 'Walka wręcz', desc: 'strzelec bez kary w walce wręcz' },
+  sharpshooter: { name: 'Strzelec wyborowy', desc: 'bez kar za odległość i przeszkody przy strzale' },
   jousting: { name: 'Szarża', desc: '+5% obrażeń za każde pole rozpędu przed atakiem' },
   breath: { name: 'Zionięcie', desc: 'rani też oddział stojący za celem' },
   lifeDrain: { name: 'Wysysanie życia', desc: 'leczy się i wskrzesza poległych o zadane obrażenia' },
@@ -357,7 +358,7 @@ Object.assign(CREATURES, {
   dryad: mkU('Driada', 'Driady', 'driad', 1, 3, 3, 1, 3, 8, 6, 14, 60, { gold: 50 }, { faction: 'sylvan', up: 'nymph', look: { kind: 'hum', skin: '#b8d890', cloth: '#5a9a4a', size: 0.9, weapon: 'none', robe: true, longHair: '#4a8a3a', hair: '#5aa04a' } }),
   nymph: mkU('Nimfa', 'Nimfy', 'nimf', 1, 4, 4, 2, 3, 9, 7, 14, 85, { gold: 65 }, { faction: 'sylvan', look: { kind: 'hum', skin: '#c8e8a0', cloth: '#6aaa5a', size: 0.92, weapon: 'none', robe: true, longHair: '#8ac86a', hair: '#9ad87a', halo: '#c8f0a0' } }),
   elfArcher: mkU('Elfi łucznik', 'Elfi łucznicy', 'elfich łuczników', 2, 7, 4, 2, 4, 12, 6, 8, 190, { gold: 150 }, { shots: 16, faction: 'sylvan', shots: 12, up: 'elfSharp', look: { kind: 'hum', skin: '#e8d0a8', cloth: '#3a7a3a', size: 1, weapon: 'bow', ears: true, hair: '#e8d890', longHair: '#e8d890' } }),
-  elfSharp: mkU('Elfi strzelec', 'Elfi strzelcy', 'elfich strzelców', 2, 8, 5, 3, 4, 14, 7, 8, 260, { gold: 210 }, { abil: ['doubleShot'], shots: 24, faction: 'sylvan', shots: 24, look: { kind: 'hum', skin: '#e8d0a8', cloth: '#2a6a4a', size: 1.02, weapon: 'bow', ears: true, helm: 'hood', hoodCol: '#1a4a3a', cape: '#2a5a3a' } }),
+  elfSharp: mkU('Elfi strzelec', 'Elfi strzelcy', 'elfich strzelców', 2, 8, 5, 3, 4, 14, 7, 8, 260, { gold: 210 }, { abil: ['doubleShot', 'sharpshooter'], shots: 24, faction: 'sylvan', shots: 24, look: { kind: 'hum', skin: '#e8d0a8', cloth: '#2a6a4a', size: 1.02, weapon: 'bow', ears: true, helm: 'hood', hoodCol: '#1a4a3a', cape: '#2a5a3a' } }),
   centaur: mkU('Centaur', 'Centaury', 'centaurów', 3, 8, 6, 3, 6, 22, 8, 7, 300, { gold: 200 }, { shots: 8, faction: 'sylvan', up: 'centaurChief', look: { kind: 'centaur', fur: '#8a5a30', skin: '#d8a878', hair: '#4a2a14' } }),
   centaurChief: mkU('Wódz centaurów', 'Wodzowie centaurów', 'wodzów centaurów', 3, 9, 7, 4, 6, 25, 9, 7, 380, { gold: 250 }, { abil: ['noMeleePenalty'], shots: 12, faction: 'sylvan', look: { kind: 'centaur', fur: '#a86a36', skin: '#d8a878', hair: '#2a1a0a', helm: 'cap', helmCol: '#6a4a2a', size: 1.06 } }),
   treant: mkU('Drzewiec', 'Drzewce', 'drzewców', 4, 9, 12, 8, 12, 55, 3, 4, 520, { gold: 350 }, { abil: ['regen'], faction: 'sylvan', up: 'elderTreant', look: { kind: 'treant', fur: '#6a4a2a', leaves: '#4a8a3a', size: 1.3 } }),
@@ -3612,6 +3613,13 @@ function rebuildObjIndex(st) {
   }
 }
 function objectAt(st, i) { const o = st.objAt[i]; return o ? st.objects[o - 1] : null; }
+// Budowla wielopolowa (miasto, kopalnia, skarbiec) pod kursorem: jej pola albo wieże i dachy rysowane do 2 pól nad nimi
+// (kliknięcie w zamek prowadzi do bramy, a nie za miasto)
+function drawnObjectAt(st, tx, ty) {
+  const n = st.map.n, own = objectAt(st, ty * n + tx); if (own) return own.blocks ? own : null;
+  for (let k = 1; k <= 2 && ty + k < n; k++) { const ob = objectAt(st, (ty + k) * n + tx); if (ob) return ob.blocks && (ob.type === 'town' || k === 1) ? ob : null; }
+  return null;
+}
 function removeObject(st, ob) { ob.dead = true; rebuildObjIndex(st); }
 // Obiekty i strefy strażników można tylko "odwiedzić" jako cel ścieżki, nie przejść przez nie.
 // Inny bohater zajmuje pole: można na nie tylko wejść jako cel (wrogi bohater = bitwa).
@@ -4331,6 +4339,22 @@ const canShoot = (B, u) => endlessShots(u) || u.shots > 0 && !alive(B, 1 - u.sid
 const toCube = (x, y) => { const q = x - (y - (y & 1)) / 2; return [q, y, -q - y]; };
 const fromCube = (q, r) => [q + (r - (r & 1)) / 2, r];
 const hexDistance = (a, b) => { const [q1, r1, s1] = toCube(a.x, a.y), [q2, r2, s2] = toCube(b.x, b.y); return Math.max(Math.abs(q1 - q2), Math.abs(r1 - r2), Math.abs(s1 - s2)); };
+// Kary strzału (jak w oryginale): cel dalej niż SHOT_RANGE pól albo drzewo lub skała na torze lotu = połowa obrażeń (każda osobno).
+// Bez kar strzelają machiny i wyborowi strzelcy (sharpshooter).
+const SHOT_RANGE = 7;
+const noShotPenalty = a => isMachine(a) || hasAb(a, 'sharpshooter');
+const farShot = (a, t) => !noShotPenalty(a) && hexDistance(a, t) > SHOT_RANGE;
+function cubeRound(q, r) {
+  const s = -q - r; let rq = Math.round(q), rr = Math.round(r); const rs = Math.round(s), dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s);
+  if (dq > dr && dq > ds) rq = -rr - rs; else if (dr > ds) rr = -rq - rs; return [rq, rr];
+}
+// Pola na prostej od strzelca do celu (bez obu końców): przeszkoda na którymkolwiek z nich zasłania cel
+function shotBlocked(B, a, t) {
+  if (noShotPenalty(a)) return false; const [q1, r1] = toCube(a.x, a.y), [q2, r2] = toCube(t.x, t.y), N = hexDistance(a, t);
+  for (let i = 1; i < N; i++) { const [q, r] = cubeRound(q1 + (q2 - q1) * i / N + 1e-6, r1 + (r2 - r1) * i / N + 2e-6), [x, y] = fromCube(q, r); if (B.obst.has(hexKey(x, y))) return true; }
+  return false;
+}
+const shotPenaltyText = (B, a, t) => { const p = [farShot(a, t) && 'daleko', shotBlocked(B, a, t) && 'przeszkoda'].filter(Boolean); return p.length ? `; kara: ${p.join(' i ')}, połowa obrażeń${p.length > 1 ? ' dwa razy' : ''}` : ''; };
 // Pole za celem na przedłużeniu linii atakujący → cel (dla zionięcia)
 function hexBehind(a, t) {
   const [q1, r1] = toCube(a.x, a.y), [q2, r2] = toCube(t.x, t.y), [x, y] = fromCube(2 * q2 - q1, 2 * r2 - r1);
@@ -4380,6 +4404,7 @@ function damageRoll(B, a, t, ranged, moved = 0) {
   if (!ranged && hasAb(a, 'jousting')) mult *= 1 + 0.05 * moved;
   // strzał atakującego zza muru w obrońcę za murem: połowa obrażeń, dopóki ten fragment muru stoi
   if (ranged && B.walls && a.side === 0 && a.x < SIEGE_X && t.x > SIEGE_X) { const w = wallAt(B, SIEGE_X, t.y); if (w && w.hp > 0) mult *= 0.5; }
+  if (ranged && farShot(a, t)) mult *= 0.5; if (ranged && shotBlocked(B, a, t)) mult *= 0.5; // odległość i przeszkody na torze lotu
   // umiejętności bohaterów: Atak / Łucznictwo napastnika, Zbroja obrońcy
   mult *= (1 + skillVal(sideHero(B, a.side), ranged ? 'archery' : 'offense') / 100) * (1 - skillVal(sideHero(B, t.side), 'armorer') / 100);
   return Math.max(1, Math.floor(base * mult));
@@ -9311,7 +9336,7 @@ G.screens.adventure = {
       if (!human(st).explored[i]) return 'Nieodkryty teren. Wyślij tam bohatera, żeby zobaczyć, co się kryje.';
       const hh = heroAt(st, tx, ty);
       if (hh) return `${heroTitle(hh)}. Punkty ruchu: ${hh.mp} z ${heroMaxMP(hh)}. Doświadczenie: ${hh.exp}.`;
-      const ob = objectAt(st, i);
+      const ob = objectAt(st, i) || drawnObjectAt(st, tx, ty);
       if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid]; return `${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}.`; }
       if (ob && ob.type === 'town') {
         const t = st.towns[ob.townId];
@@ -9352,7 +9377,7 @@ G.screens.adventure = {
     if (h.moving || h.anim) { h.stop = true; return; }
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
     // kliknięcie w budynek miasta albo kopalni oznacza jego wejście
-    const ob = objectAt(st, ty * n + tx); if (ob && ob.blocks && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
+    const ob = drawnObjectAt(st, tx, ty); if (ob && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
     const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = wybór
     if (other && other !== h && other.owner === ME) { if (Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) showMeeting(st, h, other); else this.selectHero(other); return; }
     if (tx === h.x && ty === h.y) {
@@ -10178,6 +10203,11 @@ G.screens.battle = {
       ctx.strokeStyle = '#e0b24a'; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, 25, 13);
       text(ctx, s, bx + 13, by + 8, { size: 11, align: 'center', color: '#fff8e0', fam: 'body' });
       Object.keys(u.buffs).forEach((k, i) => { ctx.fillStyle = BAD_BUFFS.includes(k) ? '#b060e0' : '#ffe08a'; ctx.fillRect(bx + i * 6, by - 6, 4, 4); });
+      if (CREATURES[u.cid].shots && !endlessShots(u)) { // strzały: pod liczebnością, szare, gdy się skończyły
+        const ax = bx + 2, ay = by + 15, c2 = u.shots ? '#e8e0c8' : '#7a7468'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(ax - 1, ay, 24, 10);
+        ctx.fillStyle = c2; ctx.fillRect(ax + 1, ay + 4, 7, 1); ctx.fillRect(ax + 6, ay + 3, 2, 3); ctx.fillRect(ax, ay + 3, 1, 3);
+        text(ctx, String(u.shots), ax + 16, ay + 5, { size: 9, align: 'center', color: c2, fam: 'body' });
+      }
     }
     BattleFX.draw(ctx);
     for (const f of this.floats) {
@@ -10197,7 +10227,7 @@ G.screens.battle = {
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
     if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(heroStat(sideHero(B, this.me) || B.h, 'sp'))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
-    else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
+    else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots}${shotPenaltyText(B, u0, pv.target)})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';
     let tfs = 15; ctx.font = font(tfs, 700, 'body'); while (tfs > 11 && ctx.measureText(tip).width > 440) { tfs--; ctx.font = font(tfs, 700, 'body'); }
     text(ctx, tip, 20, 508, { size: tfs, weight: 700, color: '#ffd970' });

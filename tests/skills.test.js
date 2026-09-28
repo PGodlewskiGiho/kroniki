@@ -41,7 +41,7 @@ test('działanie umiejętności w bitwie: atak, łucznictwo, zbroja, czary, przy
   await newGame(page);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), m = st.objects.find(o => o.type === 'monster');
-    h.army = emptyArmy(); h.army[0] = { cid: 'swordsman', n: 20 }; h.army[1] = { cid: 'archer', n: 20 };
+    h.army = emptyArmy(); h.army[0] = { cid: 'swordsman', n: 20 }; h.army[1] = { cid: 'archer', n: 100 }; // dużo łuczników: kara za odległość nie zaokrągla wyniku
     const roll = (skills, ranged) => { h.skills = skills; const B = createBattle(st, h, m); B.rng = () => 0.5; const a = B.units.find(u => u.side === 0 && (ranged ? u.cid === 'archer' : u.cid === 'swordsman')), t = B.units.find(u => u.side === 1); return damageRoll(B, a, t, ranged); };
     const back = skills => { h.skills = skills; const B = createBattle(st, h, m); B.rng = () => 0.5; const a = B.units.find(u => u.side === 1), t = B.units.find(u => u.side === 0); return damageRoll(B, a, t, false); };
     const B0 = (h.skills = [{ id: 'leadership', lv: 2 }, { id: 'luck', lv: 3 }], createBattle(st, h, m));

@@ -140,6 +140,22 @@ const canShoot = (B, u) => endlessShots(u) || u.shots > 0 && !alive(B, 1 - u.sid
 const toCube = (x, y) => { const q = x - (y - (y & 1)) / 2; return [q, y, -q - y]; };
 const fromCube = (q, r) => [q + (r - (r & 1)) / 2, r];
 const hexDistance = (a, b) => { const [q1, r1, s1] = toCube(a.x, a.y), [q2, r2, s2] = toCube(b.x, b.y); return Math.max(Math.abs(q1 - q2), Math.abs(r1 - r2), Math.abs(s1 - s2)); };
+// Kary strzału (jak w oryginale): cel dalej niż SHOT_RANGE pól albo drzewo lub skała na torze lotu = połowa obrażeń (każda osobno).
+// Bez kar strzelają machiny i wyborowi strzelcy (sharpshooter).
+const SHOT_RANGE = 7;
+const noShotPenalty = a => isMachine(a) || hasAb(a, 'sharpshooter');
+const farShot = (a, t) => !noShotPenalty(a) && hexDistance(a, t) > SHOT_RANGE;
+function cubeRound(q, r) {
+  const s = -q - r; let rq = Math.round(q), rr = Math.round(r); const rs = Math.round(s), dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s);
+  if (dq > dr && dq > ds) rq = -rr - rs; else if (dr > ds) rr = -rq - rs; return [rq, rr];
+}
+// Pola na prostej od strzelca do celu (bez obu końców): przeszkoda na którymkolwiek z nich zasłania cel
+function shotBlocked(B, a, t) {
+  if (noShotPenalty(a)) return false; const [q1, r1] = toCube(a.x, a.y), [q2, r2] = toCube(t.x, t.y), N = hexDistance(a, t);
+  for (let i = 1; i < N; i++) { const [q, r] = cubeRound(q1 + (q2 - q1) * i / N + 1e-6, r1 + (r2 - r1) * i / N + 2e-6), [x, y] = fromCube(q, r); if (B.obst.has(hexKey(x, y))) return true; }
+  return false;
+}
+const shotPenaltyText = (B, a, t) => { const p = [farShot(a, t) && 'daleko', shotBlocked(B, a, t) && 'przeszkoda'].filter(Boolean); return p.length ? `; kara: ${p.join(' i ')}, połowa obrażeń${p.length > 1 ? ' dwa razy' : ''}` : ''; };
 // Pole za celem na przedłużeniu linii atakujący → cel (dla zionięcia)
 function hexBehind(a, t) {
   const [q1, r1] = toCube(a.x, a.y), [q2, r2] = toCube(t.x, t.y), [x, y] = fromCube(2 * q2 - q1, 2 * r2 - r1);
@@ -189,6 +205,7 @@ function damageRoll(B, a, t, ranged, moved = 0) {
   if (!ranged && hasAb(a, 'jousting')) mult *= 1 + 0.05 * moved;
   // strzał atakującego zza muru w obrońcę za murem: połowa obrażeń, dopóki ten fragment muru stoi
   if (ranged && B.walls && a.side === 0 && a.x < SIEGE_X && t.x > SIEGE_X) { const w = wallAt(B, SIEGE_X, t.y); if (w && w.hp > 0) mult *= 0.5; }
+  if (ranged && farShot(a, t)) mult *= 0.5; if (ranged && shotBlocked(B, a, t)) mult *= 0.5; // odległość i przeszkody na torze lotu
   // umiejętności bohaterów: Atak / Łucznictwo napastnika, Zbroja obrońcy
   mult *= (1 + skillVal(sideHero(B, a.side), ranged ? 'archery' : 'offense') / 100) * (1 - skillVal(sideHero(B, t.side), 'armorer') / 100);
   return Math.max(1, Math.floor(base * mult));

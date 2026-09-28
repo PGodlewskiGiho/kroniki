@@ -191,7 +191,7 @@ G.screens.adventure = {
       if (!human(st).explored[i]) return 'Nieodkryty teren. Wyślij tam bohatera, żeby zobaczyć, co się kryje.';
       const hh = heroAt(st, tx, ty);
       if (hh) return `${heroTitle(hh)}. Punkty ruchu: ${hh.mp} z ${heroMaxMP(hh)}. Doświadczenie: ${hh.exp}.`;
-      const ob = objectAt(st, i);
+      const ob = objectAt(st, i) || drawnObjectAt(st, tx, ty);
       if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid]; return `${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}.`; }
       if (ob && ob.type === 'town') {
         const t = st.towns[ob.townId];
@@ -232,7 +232,7 @@ G.screens.adventure = {
     if (h.moving || h.anim) { h.stop = true; return; }
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
     // kliknięcie w budynek miasta albo kopalni oznacza jego wejście
-    const ob = objectAt(st, ty * n + tx); if (ob && ob.blocks && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
+    const ob = drawnObjectAt(st, tx, ty); if (ob && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
     const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = wybór
     if (other && other !== h && other.owner === ME) { if (Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) showMeeting(st, h, other); else this.selectHero(other); return; }
     if (tx === h.x && ty === h.y) {
