@@ -127,6 +127,8 @@
    Pixel art efektów: pixLayer/crispLayer (bufor 1/px rozdzielczości, paleta z ditheringiem, 3 stopnie krycia) dla czarów
    w bitwie (BattleFX: warstwa zwykła i świetlna, poświaty jako pierścienie), czarów na mapie, sceny okna wyniku bitwy
    i ekranu końca gry (tło miasta w skali 1,5, piksel = 3 px ekranu); ikony czarów w gildii jako sprite'y.
+   Płynność: miasto, menu i bitwa w 60 klatkach (smoothFps, przy niskiej jakości 30), mapa w spoczynku 30; efekty miasta (dym,
+   ptaki, śnieg, żar) rysowane prosto na ekranie w pełnej rozdzielczości, bufor sceny z efektami tylko dla okna gildii.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.

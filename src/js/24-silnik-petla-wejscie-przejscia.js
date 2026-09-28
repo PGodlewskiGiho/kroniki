@@ -114,6 +114,8 @@ function drawBackdrop(ctx) {
 // Klatkę rysujemy tylko wtedy, gdy trzeba: ekran podaje, ilu klatek na sekundę potrzebuje (screen.fps: liczba albo funkcja,
 // domyślnie 4 dla ekranów bez animacji), a wejście (mysz, klawisze) i każda zmiana okna, dymka czy podświetlenia wymusza klatkę od razu.
 // Na słabym komputerze to połowa sukcesu: nieruchomy ekran prawie nie zużywa procesora.
+// Ekrany z ciągłą animacją: pełna płynność, przy niskiej jakości grafiki połowa klatek (słaby komputer)
+function smoothFps(n = 60) { return G.settings.quality === 'low' ? n / 2 : n; }
 function screenFps() { const f = G.screen && G.screen.fps; return typeof f === 'function' ? f.call(G.screen) : (f || 4); }
 function frame(ts) {
   const t = ts / 1000, raw = G.last ? t - G.last : 0, dt = Math.min(0.05, Math.max(0, raw)); G.last = t;
