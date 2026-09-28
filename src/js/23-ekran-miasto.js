@@ -18,9 +18,15 @@ G.screens.town = {
     this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
     this.btnUp = new Button(596, 392, 44, 28, 'W górę', () => this.onWheel(-1), { icon: iconArrow(-1), tip: 'Przewiń listę budowli w górę.' });
     this.btnDown = new Button(744, 392, 44, 28, 'W dół', () => this.onWheel(1), { icon: iconArrow(1), tip: 'Przewiń listę budowli w dół.' });
-    this.bSwap = new Button(546, 470, 36, 52, 'Zamień', () => { const st = G.state, t = this.town(), e = swapGarrison(st, t); this.sel = null; if (e) return this.say(e); const g = garrisonHero(st, t);
+    // szybkie przekazanie armii między garnizonem a bohaterem w bramie; bohater zatrzymuje jednego stwora
+    const give = up => { const st = G.state, t = this.town(), hh = heroInTown(st, t), gh = garrisonHero(st, t); if (!hh) return this.say('Brak bohatera w bramie');
+      const gar = gh ? gh.army : t.garrison, n = up ? giveArmy(hh.army, gar, true) : giveArmy(gar, hh.army, !!gh); this.sel = null;
+      this.say(n ? (up ? `Garnizon przejmuje ${n} ${n === 1 ? 'stwora' : 'stworów'}` : `${hh.name} przejmuje ${n} ${n === 1 ? 'stwora' : 'stworów'}`) : 'Nie ma czego przekazać albo brak miejsca'); };
+    this.bGiveUp = new Button(546, 446, 36, 30, 'Do garnizonu', () => give(true), { icon: iconArrow(-1), key: 'arrowup', tip: 'Cała armia bohatera z bramy przechodzi do garnizonu; bohater zatrzymuje jednego stwora (klawisz ↑).' });
+    this.bGiveDown = new Button(546, 518, 36, 30, 'Do bohatera', () => give(false), { icon: iconArrow(1), key: 'arrowdown', tip: 'Cały garnizon przechodzi do armii bohatera w bramie (klawisz ↓).' });
+    this.bSwap = new Button(546, 480, 36, 34, 'Zamień', () => { const st = G.state, t = this.town(), e = swapGarrison(st, t); this.sel = null; if (e) return this.say(e); const g = garrisonHero(st, t);
       this.say(g ? `${g.name} dowodzi garnizonem: brama jest wolna` : 'Bohater wychodzi do bramy'); this.guildVisit(); },
-      { icon: (ctx, cx, cy, col) => { iconArrow(-1)(ctx, cx, cy - 8, col); iconArrow(1)(ctx, cx, cy + 8, col); }, key: 'z',
+      { icon: (ctx, cx, cy, col) => { iconArrow(-1)(ctx, cx, cy - 6, col); iconArrow(1)(ctx, cx, cy + 6, col); }, key: 'z',
         tip: 'Zamień: bohater z bramy wchodzi do garnizonu (przejmuje jego wojsko), a bohater z garnizonu wychodzi do bramy. Brama wolna = można nająć nowego bohatera (klawisz Z).' });
     this.buttons = this.baseButtons;
   },
@@ -172,7 +178,7 @@ G.screens.town = {
     this.garRects = drawArmyRow(ctx, gar, 100, 446, { sel: selOf(gar), w: 58 });
     if (hh) { drawHeroPortrait(ctx, 38, 505, hh, ownerColor(st, hh.owner)); this.heroRects = drawArmyRow(ctx, hh.army, 100, 498, { sel: selOf(hh.army), w: 58 }); }
     else { this.heroRects = []; text(ctx, gh ? 'Brama wolna: możesz nająć bohatera w tawernie.' : 'Brak bohatera w mieście. Wejdź bohaterem, aby przekazać mu wojsko.', 321, 523, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.55)' }); }
-    this.bSwap.disabled = !hh && !gh;
+    this.bSwap.disabled = !hh && !gh; this.bGiveUp.disabled = this.bGiveDown.disabled = !hh;
     if (this.sel && !this.sel.a[this.sel.i]) this.sel = null;
     const rb = this.baseButtons[0]; rb.disabled = !dwellingLevels(t).length;
     rb.tip = rb.disabled ? 'Najpierw zbuduj siedlisko jednostek (np. z listy budowli po prawej).' : 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).';
@@ -205,7 +211,7 @@ G.screens.town = {
     if (!list.length) text(ctx, 'Wszystko zbudowane', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
     const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, ...this.baseButtons.slice(1)] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
-    this.buttons = [...(paged ? [...base, this.btnUp, this.btnDown] : base), this.bSwap];
+    this.buttons = [...(paged ? [...base, this.btnUp, this.btnDown] : base), this.bSwap, this.bGiveUp, this.bGiveDown];
     if (paged) {
       this.btnUp.disabled = this.scroll === 0; this.btnDown.disabled = this.scroll >= list.length - N;
       text(ctx, `${this.scroll + 1}–${Math.min(list.length, this.scroll + N)} z ${list.length}`, 692, 406, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });

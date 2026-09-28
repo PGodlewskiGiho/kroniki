@@ -928,10 +928,13 @@ function showMeeting(st, a, b, onMsg) {
   let splitMode = false; // „Dziel”: następne wskazanie miejsca otwiera okno podziału (to samo daje Shift+klik)
   const bClose = new Button(x + w / 2 + 5, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const bSplit = new Button(x + w / 2 - 135, y + hh - 54, 130, 40, 'Dziel', () => { splitMode = !splitMode; say(splitMode ? 'Wybierz oddział, a potem miejsce: przeniesiesz tylko część jednostek.' : ''); }, { key: 'd', size: 17, selected: () => splitMode, tip: 'Podział oddziału: przenieś tylko część jednostek (albo Shift+klik na miejscu docelowym).' });
+  const give = (k, K) => { const n = giveArmy(armies[k], armies[K], true); sel = null; say(n ? `${heroes[k].name} przekazuje ${n} ${n === 1 ? 'stwora' : 'stworów'} (zostaje jeden).` : 'Nie ma czego przekazać albo brak miejsca.'); };
+  const bGive = [0, 1].map(k => new Button(k ? x + w - 184 : x + 24, y + hh - 54, 160, 40, `Wszystko → ${heroes[1 - k].name}`, () => give(k, 1 - k),
+    { size: 13, key: k ? 'arrowup' : 'arrowdown', tip: `${heroes[k].name} oddaje całą armię bohaterowi ${heroes[1 - k].name}, zostawiając sobie jednego stwora z najsłabszego oddziału (klawisz ${k ? '↑' : '↓'}).` }));
   const armyAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(armyRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   const bagAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(bagRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   G.modal = {
-    buttons: [bSplit, bClose], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
+    buttons: [bSplit, bClose, ...bGive], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
     onClick(px, py) {
       const s = armyAt(px, py), g = bagAt(px, py);
       if (s) {
@@ -960,7 +963,7 @@ function showMeeting(st, a, b, onMsg) {
         text(ctx, h.bag.length ? 'Plecak:' : 'Plecak pusty', x + 24, ry + 92, { size: 13, weight: 500, color: '#5a3814' });
         bagRects[k] = h.bag.slice(0, 12).map((id, i) => { const bx = x + 90 + i * 46; drawSprite(ctx, artSprite(id), bx + 20, ry + 92, 1); return { x: bx, y: ry + 72, w: 40, h: 40, i }; });
       });
-      bSplit.draw(ctx); bClose.draw(ctx);
+      bSplit.draw(ctx); bClose.draw(ctx); bGive.forEach(b => b.draw(ctx));
     },
   };
 }

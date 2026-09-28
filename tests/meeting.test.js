@@ -66,3 +66,17 @@ test('wymiana artefaktów z plecaka i okno rysuje się bez błędów', async () 
   await page.evaluate(() => G.modal.buttons.find(b => b.label === 'Zamknij').action());
   assert.equal(await page.evaluate(() => G.modal), null);
 });
+
+test('szybkie przekazanie: cała armia przechodzi, zostaje jeden stwór z najsłabszego oddziału; w mieście garnizon ↔ brama', async () => {
+  await twoHeroes();
+  const r = await page.evaluate(() => {
+    const st = G.state, [a, b] = myHeroes(st); a.army = emptyArmy(); a.army[0] = { cid: 'pikeman', n: 10 }; a.army[1] = { cid: 'griffin', n: 3 }; b.army = emptyArmy(); b.army[0] = { cid: 'griffin', n: 2 };
+    showMeeting(st, a, b); G.modal.buttons.find(x => x.label === `Wszystko → ${b.name}`).action(); G.modal = null;
+    const left = armyStacks(a.army), got = armyStacks(b.army).map(s => `${s.cid}:${s.n}`).sort();
+    const t = st.towns[0]; a.x = t.x; a.y = t.y; t.garrison = emptyArmy(); t.garrison[3] = { cid: 'archer', n: 7 }; setScreen('town', { townId: t.id }); G.modal = null;
+    const s = G.screens.town; s.draw(G.ctx); s.bGiveDown.action(); const down = armyStacks(t.garrison).length, hasArch = a.army.some(x => x && x.cid === 'archer' && x.n === 7);
+    s.bGiveUp.action(); return { left: left.map(x => `${x.cid}:${x.n}`), got, down, hasArch, keep: armySize(a.army), gar: armySize(t.garrison) };
+  });
+  assert.deepEqual(r.left, ['pikeman:1'], 'zostaje jeden pikinier (najsłabszy)'); assert.deepEqual(r.got, ['griffin:5', 'pikeman:9']);
+  assert.equal(r.down, 0); assert.ok(r.hasArch); assert.equal(r.keep, 1, 'bohater w bramie zatrzymuje jednego'); assert.equal(r.gar, 7);
+});

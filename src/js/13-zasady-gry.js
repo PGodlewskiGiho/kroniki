@@ -504,6 +504,19 @@ function armyMove(fromA, i, toA, j, heroArmies = []) {
   if (!d) { toA[j] = s; fromA[i] = null; } else if (d.cid === s.cid) { d.n += s.n; fromA[i] = null; } else { toA[j] = s; fromA[i] = d; }
   return null;
 }
+// Szybkie przekazanie: wszystkie oddziały z fromA do toA (łączą się z takimi samymi albo trafiają na wolne miejsca).
+// keepOne: armia bohatera zatrzymuje jednego stwora z najsłabszego oddziału. Zwraca liczbę przeniesionych stworów.
+function giveArmy(fromA, toA, keepOne) {
+  const idx = fromA.map((s, i) => (s ? i : -1)).filter(i => i >= 0); if (!idx.length) return 0;
+  const keep = keepOne ? idx.reduce((a, b) => (CREATURES[fromA[b].cid].value < CREATURES[fromA[a].cid].value ? b : a)) : -1; let moved = 0;
+  for (const i of idx) {
+    const s = fromA[i], n = s.n - (i === keep ? 1 : 0); if (n <= 0) continue;
+    const j = toA.findIndex(d => d && d.cid === s.cid), k = j >= 0 ? j : toA.findIndex(d => !d); if (k < 0) continue; // brak miejsca: zostaje
+    if (toA[k]) toA[k].n += n; else toA[k] = { cid: s.cid, n };
+    if (n === s.n) fromA[i] = null; else s.n -= n; moved += n;
+  }
+  return moved;
+}
 // Podział oddziału: n jednostek z fromA[i] na wolne miejsce albo do takiego samego oddziału toA[j].
 // Wszystkie jednostki = zwykłe przeniesienie (armyMove). Zwraca błąd albo null.
 function splitLimit(fromA, i, toA, j, heroArmies = []) {

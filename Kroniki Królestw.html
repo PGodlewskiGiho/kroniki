@@ -2485,10 +2485,13 @@ function showMeeting(st, a, b, onMsg) {
   let splitMode = false; // „Dziel”: następne wskazanie miejsca otwiera okno podziału (to samo daje Shift+klik)
   const bClose = new Button(x + w / 2 + 5, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const bSplit = new Button(x + w / 2 - 135, y + hh - 54, 130, 40, 'Dziel', () => { splitMode = !splitMode; say(splitMode ? 'Wybierz oddział, a potem miejsce: przeniesiesz tylko część jednostek.' : ''); }, { key: 'd', size: 17, selected: () => splitMode, tip: 'Podział oddziału: przenieś tylko część jednostek (albo Shift+klik na miejscu docelowym).' });
+  const give = (k, K) => { const n = giveArmy(armies[k], armies[K], true); sel = null; say(n ? `${heroes[k].name} przekazuje ${n} ${n === 1 ? 'stwora' : 'stworów'} (zostaje jeden).` : 'Nie ma czego przekazać albo brak miejsca.'); };
+  const bGive = [0, 1].map(k => new Button(k ? x + w - 184 : x + 24, y + hh - 54, 160, 40, `Wszystko → ${heroes[1 - k].name}`, () => give(k, 1 - k),
+    { size: 13, key: k ? 'arrowup' : 'arrowdown', tip: `${heroes[k].name} oddaje całą armię bohaterowi ${heroes[1 - k].name}, zostawiając sobie jednego stwora z najsłabszego oddziału (klawisz ${k ? '↑' : '↓'}).` }));
   const armyAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(armyRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   const bagAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(bagRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   G.modal = {
-    buttons: [bSplit, bClose], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
+    buttons: [bSplit, bClose, ...bGive], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
     onClick(px, py) {
       const s = armyAt(px, py), g = bagAt(px, py);
       if (s) {
@@ -2517,7 +2520,7 @@ function showMeeting(st, a, b, onMsg) {
         text(ctx, h.bag.length ? 'Plecak:' : 'Plecak pusty', x + 24, ry + 92, { size: 13, weight: 500, color: '#5a3814' });
         bagRects[k] = h.bag.slice(0, 12).map((id, i) => { const bx = x + 90 + i * 46; drawSprite(ctx, artSprite(id), bx + 20, ry + 92, 1); return { x: bx, y: ry + 72, w: 40, h: 40, i }; });
       });
-      bSplit.draw(ctx); bClose.draw(ctx);
+      bSplit.draw(ctx); bClose.draw(ctx); bGive.forEach(b => b.draw(ctx));
     },
   };
 }
@@ -4257,6 +4260,19 @@ function armyMove(fromA, i, toA, j, heroArmies = []) {
   if (leaves && fromA !== toA && heroArmies.includes(fromA) && armyStacks(fromA).length === 1) return 'Bohater musi mieć co najmniej jeden oddział';
   if (!d) { toA[j] = s; fromA[i] = null; } else if (d.cid === s.cid) { d.n += s.n; fromA[i] = null; } else { toA[j] = s; fromA[i] = d; }
   return null;
+}
+// Szybkie przekazanie: wszystkie oddziały z fromA do toA (łączą się z takimi samymi albo trafiają na wolne miejsca).
+// keepOne: armia bohatera zatrzymuje jednego stwora z najsłabszego oddziału. Zwraca liczbę przeniesionych stworów.
+function giveArmy(fromA, toA, keepOne) {
+  const idx = fromA.map((s, i) => (s ? i : -1)).filter(i => i >= 0); if (!idx.length) return 0;
+  const keep = keepOne ? idx.reduce((a, b) => (CREATURES[fromA[b].cid].value < CREATURES[fromA[a].cid].value ? b : a)) : -1; let moved = 0;
+  for (const i of idx) {
+    const s = fromA[i], n = s.n - (i === keep ? 1 : 0); if (n <= 0) continue;
+    const j = toA.findIndex(d => d && d.cid === s.cid), k = j >= 0 ? j : toA.findIndex(d => !d); if (k < 0) continue; // brak miejsca: zostaje
+    if (toA[k]) toA[k].n += n; else toA[k] = { cid: s.cid, n };
+    if (n === s.n) fromA[i] = null; else s.n -= n; moved += n;
+  }
+  return moved;
 }
 // Podział oddziału: n jednostek z fromA[i] na wolne miejsce albo do takiego samego oddziału toA[j].
 // Wszystkie jednostki = zwykłe przeniesienie (armyMove). Zwraca błąd albo null.
@@ -10989,9 +11005,15 @@ G.screens.town = {
     this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
     this.btnUp = new Button(596, 392, 44, 28, 'W górę', () => this.onWheel(-1), { icon: iconArrow(-1), tip: 'Przewiń listę budowli w górę.' });
     this.btnDown = new Button(744, 392, 44, 28, 'W dół', () => this.onWheel(1), { icon: iconArrow(1), tip: 'Przewiń listę budowli w dół.' });
-    this.bSwap = new Button(546, 470, 36, 52, 'Zamień', () => { const st = G.state, t = this.town(), e = swapGarrison(st, t); this.sel = null; if (e) return this.say(e); const g = garrisonHero(st, t);
+    // szybkie przekazanie armii między garnizonem a bohaterem w bramie; bohater zatrzymuje jednego stwora
+    const give = up => { const st = G.state, t = this.town(), hh = heroInTown(st, t), gh = garrisonHero(st, t); if (!hh) return this.say('Brak bohatera w bramie');
+      const gar = gh ? gh.army : t.garrison, n = up ? giveArmy(hh.army, gar, true) : giveArmy(gar, hh.army, !!gh); this.sel = null;
+      this.say(n ? (up ? `Garnizon przejmuje ${n} ${n === 1 ? 'stwora' : 'stworów'}` : `${hh.name} przejmuje ${n} ${n === 1 ? 'stwora' : 'stworów'}`) : 'Nie ma czego przekazać albo brak miejsca'); };
+    this.bGiveUp = new Button(546, 446, 36, 30, 'Do garnizonu', () => give(true), { icon: iconArrow(-1), key: 'arrowup', tip: 'Cała armia bohatera z bramy przechodzi do garnizonu; bohater zatrzymuje jednego stwora (klawisz ↑).' });
+    this.bGiveDown = new Button(546, 518, 36, 30, 'Do bohatera', () => give(false), { icon: iconArrow(1), key: 'arrowdown', tip: 'Cały garnizon przechodzi do armii bohatera w bramie (klawisz ↓).' });
+    this.bSwap = new Button(546, 480, 36, 34, 'Zamień', () => { const st = G.state, t = this.town(), e = swapGarrison(st, t); this.sel = null; if (e) return this.say(e); const g = garrisonHero(st, t);
       this.say(g ? `${g.name} dowodzi garnizonem: brama jest wolna` : 'Bohater wychodzi do bramy'); this.guildVisit(); },
-      { icon: (ctx, cx, cy, col) => { iconArrow(-1)(ctx, cx, cy - 8, col); iconArrow(1)(ctx, cx, cy + 8, col); }, key: 'z',
+      { icon: (ctx, cx, cy, col) => { iconArrow(-1)(ctx, cx, cy - 6, col); iconArrow(1)(ctx, cx, cy + 6, col); }, key: 'z',
         tip: 'Zamień: bohater z bramy wchodzi do garnizonu (przejmuje jego wojsko), a bohater z garnizonu wychodzi do bramy. Brama wolna = można nająć nowego bohatera (klawisz Z).' });
     this.buttons = this.baseButtons;
   },
@@ -11143,7 +11165,7 @@ G.screens.town = {
     this.garRects = drawArmyRow(ctx, gar, 100, 446, { sel: selOf(gar), w: 58 });
     if (hh) { drawHeroPortrait(ctx, 38, 505, hh, ownerColor(st, hh.owner)); this.heroRects = drawArmyRow(ctx, hh.army, 100, 498, { sel: selOf(hh.army), w: 58 }); }
     else { this.heroRects = []; text(ctx, gh ? 'Brama wolna: możesz nająć bohatera w tawernie.' : 'Brak bohatera w mieście. Wejdź bohaterem, aby przekazać mu wojsko.', 321, 523, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.55)' }); }
-    this.bSwap.disabled = !hh && !gh;
+    this.bSwap.disabled = !hh && !gh; this.bGiveUp.disabled = this.bGiveDown.disabled = !hh;
     if (this.sel && !this.sel.a[this.sel.i]) this.sel = null;
     const rb = this.baseButtons[0]; rb.disabled = !dwellingLevels(t).length;
     rb.tip = rb.disabled ? 'Najpierw zbuduj siedlisko jednostek (np. z listy budowli po prawej).' : 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).';
@@ -11176,7 +11198,7 @@ G.screens.town = {
     if (!list.length) text(ctx, 'Wszystko zbudowane', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
     const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, ...this.baseButtons.slice(1)] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
-    this.buttons = [...(paged ? [...base, this.btnUp, this.btnDown] : base), this.bSwap];
+    this.buttons = [...(paged ? [...base, this.btnUp, this.btnDown] : base), this.bSwap, this.bGiveUp, this.bGiveDown];
     if (paged) {
       this.btnUp.disabled = this.scroll === 0; this.btnDown.disabled = this.scroll >= list.length - N;
       text(ctx, `${this.scroll + 1}–${Math.min(list.length, this.scroll + N)} z ${list.length}`, 692, 406, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
