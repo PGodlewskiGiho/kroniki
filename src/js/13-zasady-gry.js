@@ -194,7 +194,7 @@ function bankLootText(kind) {
 function startBankAssault(st, h, ob) {
   const B = BANKS[ob.kind];
   offerBattle(st, h, ob, `${B.name}: ${B.desc}. Załoga: ${bankGuardText(ob)}. Łup: ${bankLootText(ob.kind)}.`, bankPower(ob),
-    (ctx, cx, cy) => { const sp = bankSprite(ob.kind, false), k = Math.min(1.1, 40 / sp.c.height); drawSpriteBox(ctx, sp, cx - sp.c.width * k, cy - sp.c.height * k, k); });
+    (ctx, cx, cy) => { const sp = bankSprite(ob.kind, false), H2 = sp.c.height * sp.u / 2, k = Math.min(1.1, 40 / H2); drawSpriteBox(ctx, sp, cx - sp.c.width * sp.u / 2 * k, cy - H2 * k, k); });
 }
 // Łup ze skarbca dla zwycięzcy (człowieka albo SI); zwraca opis do okna wyniku
 function lootBank(st, h, ob) {

@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const { openGame, newGame, frames } = require('./harness');
 
 let browser, page, errors;
+const PXD_TEST = 2; // drobny piksel: sprite'y mają 2 razy więcej pikseli niż dawniej
 test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
@@ -31,11 +32,11 @@ test('mury: jeden sprite zamku, nowy rysunek po trafieniu i wyłomie', async () 
     setScreen('battle', { battle: B });
     return { again, hit: s1 !== s0, down: s2 !== s1 && s2 !== s0, w: s0.c.width };
   });
-  assert.deepEqual(r, { again: true, hit: true, down: true, w: 80 });
+  assert.deepEqual(r, { again: true, hit: true, down: true, w: 80 * PXD_TEST });
   await frames(page, 4);
 });
 
-test('interfejs w pixel arcie: pergamin, kamień i przyciski w buforze 1:2 z twardymi krawędziami, rogi schodkowe', async () => {
+test('interfejs w pixel arcie: pergamin, kamień i przyciski w buforze pikseli grafiki z twardymi krawędziami, rogi schodkowe', async () => {
   const r = await page.evaluate(() => {
     const b = new Button(0, 0, 120, 40, 'Test', null); const c = document.createElement('canvas').getContext('2d'); b.draw(c);
     const L = [uiLayer('btn_120x40_n', 124, 46, cc => paintButton(cc, 120, 40, 'n')), uiLayer('parch_200x100', 216, 116, cc => paintParchment(cc, 4, 4, 200, 100))];
@@ -43,7 +44,7 @@ test('interfejs w pixel arcie: pergamin, kamień i przyciski w buforze 1:2 z twa
     const p = []; const rec = { beginPath() {}, moveTo(x, y) { p.push([x, y]); }, lineTo(x, y) { p.push([x, y]); }, closePath() {} }; rr(rec, 0, 0, 40, 20, 6);
     return { w: L[0].width, alphas: [...alphas].sort((a, b) => a - b), axis: p.every(([x, y], i) => { const [x2, y2] = p[(i + 1) % p.length]; return x === x2 || y === y2; }) };
   });
-  assert.equal(r.w, 62, 'bufor przycisku ma połowę szerokości');
+  assert.equal(r.w, 124, 'drobny piksel: bufor przycisku 1:1 (przy niskiej jakości 1:2)');
   assert.deepEqual(r.alphas.filter(a => ![0, 150, 255].includes(a)), [], 'tylko 3 stopnie krycia');
   assert.ok(r.axis, 'róg rr to schodki (same odcinki poziome i pionowe)');
 });
@@ -105,7 +106,17 @@ test('mur z cegieł ma detale i malowidła; zakryte kawałki mapy zagadki pokazu
     const st = G.state; if (!st.grail) return { alpha, skip: true };
     const a = puzzleCover(st, 512, 384); st.players[ME].faction = st.players[ME].faction === 'inferno' ? 'haven' : 'inferno'; const b = puzzleCover(st, 512, 384);
     showPuzzle(st); G.modal.draw(G.ctx); G.modal = null;
-    return { alpha, diff: a !== b && a.width === 256 };
+    return { alpha, diff: a !== b && a.width === 512 / PIX };
   });
   assert.ok(r.alpha > 50, `malowidła: ${r.alpha}`); if (!r.skip) assert.ok(r.diff, 'obraz zależy od frakcji');
+});
+
+test('drobny piksel: przy niskiej jakości grafika wraca do grubego piksela i odwrotnie, bez błędów rysowania', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const w = s => s.c.width; setPixelSize(2); const a = w(battleSprite('pikeman', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx);
+    setPixelSize(1); const b = w(battleSprite('pikeman', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx);
+    return { a, b, u: battleSprite('pikeman', 1, 'idle', 0).u, world: PixBufs.world.width, view: VIEW.w };
+  });
+  assert.equal(r.b, r.a * 2); assert.equal(r.u, 1); assert.equal(r.world, r.view, 'bufor mapy: 1 piksel grafiki = 1 px logiczny');
 });

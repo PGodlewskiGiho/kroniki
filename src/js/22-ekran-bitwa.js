@@ -17,18 +17,19 @@ function hexAt(px, py) {
 const PAVE_X = 572; // bruk dziedzińca od tej kolumny pikseli (px logiczne) w prawo
 // Tło bitwy w stylu mapy: teren z palety TERRAINS, piksele 2×2, ta sama korekcja barw
 function paintBattleBg(c, terr, fac) {
-  const w = W / 2, h = H / 2, off = document.createElement('canvas'); off.width = w; off.height = h;
-  const g = off.getContext('2d'), img = g.createImageData(w, h), P = TPAL[terr].map(gradeRgb), sky = [[40, 44, 62], [70, 72, 92]];
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const o = (y * w + x) * 4; let col;
+  // D = gęstość pikseli: teren liczony w drobnych pikselach (fx, fy), wzory w dawnych pikselach (x, y = połowa px logicznych)
+  const D = PXD, w = W / 2, h = H / 2, fw = w * D, fh = h * D, off = document.createElement('canvas'); off.width = fw; off.height = fh;
+  const g = off.getContext('2d'), img = g.createImageData(fw, fh), P = TPAL[terr].map(gradeRgb), sky = [[40, 44, 62], [70, 72, 92]];
+  for (let fy = 0; fy < fh; fy++) for (let fx = 0; fx < fw; fx++) {
+    const o = (fy * fw + fx) * 4, x = Math.floor(fx / D), y = Math.floor(fy / D), xs = fx / D, ys = fy / D; let col;
     if (y < 22) col = sky[(y + (x & 1)) % 11 < 6 ? 0 : 1];
     else if (fac && x * 2 > PAVE_X + Math.round(vnoise2(0, y / 4, 3) * 6)) { // bruk dziedzińca za murem
       const pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, row = Math.floor(y / 5), cx = x + (row % 2) * 4, edge = y % 5 === 0 || cx % 8 === 0, k = thash(Math.floor(cx / 8), row, 7) % 3;
       col = edge ? pv[1].map(v => v * 0.8) : k === 0 ? pv[1] : k === 1 ? pv[0] : pv[0].map((v, i) => (v + pv[1][i]) / 2);
-    } else { const n = vnoise2(x / 9, y / 6, 17) * 0.7 + vnoise2(x / 3, y / 3, 5) * 0.3 + (BAYER4[(y & 3) * 4 + (x & 3)] / 16 - 0.5) * 0.18; col = P[n < 0.32 ? 0 : n < 0.62 ? 1 : n < 0.8 ? 2 : 3]; }
+    } else { const n = vnoise2(xs / 9, ys / 6, 17) * 0.7 + vnoise2(xs / 3, ys / 3, 5) * 0.3 + (BAYER4[(fy & 3) * 4 + (fx & 3)] / 16 - 0.5) * 0.18; col = P[n < 0.32 ? 0 : n < 0.62 ? 1 : n < 0.8 ? 2 : 3]; }
     img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
   }
-  g.putImageData(img, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = false; c.drawImage(off, 0, 0, W, H);
+  g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = false; c.drawImage(off, 0, 0, W, H);
   c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1;
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { hexPath(c, x, y, 1); c.stroke(); }
   stoneFill(c, 0, 490, W, 110); c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, W, 38);

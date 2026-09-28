@@ -3,11 +3,10 @@
 // --- pixel art interfejsu ---
 // Pergamin, kamień i tła przycisków malujemy w buforze o połowie rozdzielczości (1 piksel grafiki = 2 px ekranu), z paletą
 // i ditheringiem (crispLayer: twarde krawędzie, 3 stopnie krycia), i powiększamy bez wygładzania — tak jak mapę, sceny i jednostki.
-const UI_PX = 2;
 function uiLayer(key, w, h, paint) {
-  return Layers.get('ui_' + key, w, h, c => { c.imageSmoothingEnabled = false; paint(c, w, h); c.canvas._ctx = c; crispLayer(c.canvas, 12); }, 1 / UI_PX);
+  return Layers.get('ui_' + key, w, h, c => { c.imageSmoothingEnabled = false; paint(c, w, h); c.canvas._ctx = c; crispLayer(c.canvas, 12); }, 1 / PIX);
 }
-function drawUi(ctx, c, x, y) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(c, Math.round(x), Math.round(y), c.width * UI_PX, c.height * UI_PX); ctx.restore(); }
+function drawUi(ctx, c, x, y) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(c, Math.round(x), Math.round(y), c.width / c._s, c.height / c._s); ctx.restore(); }
 // Romb z pikseli (ozdoba rogów i przerywników): rzędy po 2 px
 function pixDiamond(ctx, cx, cy, col, n = 3) {
   cx = Math.round(cx / 2) * 2; cy = Math.round(cy / 2) * 2; ctx.fillStyle = col;

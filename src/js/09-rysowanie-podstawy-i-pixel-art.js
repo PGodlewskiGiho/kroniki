@@ -91,6 +91,14 @@ function shadowAt(g, x, y, w) { g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); 
 // Mapa to pixel art: AP = pikseli grafiki na pole (połowa T), OUTLINE = kolor obrysu sprite'ów.
 // Ramki, przyciski i tekst interfejsu są gładkie; obiekty gry wszędzie są sprite'ami (patrz GRAFIKA OBIEKTÓW).
 const AP = 16, OUTLINE = [24, 16, 10];
+// Rozmiar piksela grafiki w px logicznych: 1 (drobny, ostry pixel art) albo 2 (dawny, grubszy; niska jakość grafiki).
+// PXD = gęstość względem dawnej grafiki (ile pikseli na dawny piksel). Zmiana czyści wszystkie gotowe obrazy (setPixelSize).
+let PIX = 1, PXD = 2;
+const PIX_CLEAR = []; // funkcje czyszczące pamięci podręczne obrazów (rejestrują je moduły grafiki)
+function setPixelSize(p) {
+  if (p === PIX) return; PIX = p; PXD = 2 / p; SPR.clear(); Layers.cache = {}; for (const f of PIX_CLEAR) f();
+  if (typeof MapRender !== 'undefined' && MapRender.map) MapRender.reset(MapRender.map, MapRender.explored);
+}
 const PixBufs = {};
 function pixBuf(key, w, h, read) {
   let c = PixBufs[key];
@@ -134,30 +142,32 @@ const SPR = new Map();
 // Sprite = rysunek wektorowy zamieniony raz na pixel art i zapamiętany pod kluczem.
 // w, h, ax, ay: rozmiar i punkt zaczepienia w pikselach grafiki; draw() rysuje w jednostkach mapy wokół (0,0).
 // sc: ile pikseli grafiki na jednostkę mapy (0.5 = standard mapy; mniejsze = miniatura tego samego rysunku).
+// Płótno ma PXD razy więcej pikseli (drobny piksel); s.u = ile px logicznych zajmuje piksel płótna przy k = 1.
 function sprite(key, w, h, ax, ay, draw, outline = OUTLINE, sc = 0.5) {
   let s = SPR.get(key); if (s) return s;
+  const D = PXD; w = Math.ceil(w * D); h = Math.ceil(h * D); ax *= D; ay *= D;
   const c = document.createElement('canvas'); c.width = w; c.height = h; c._ctx = c.getContext('2d', { willReadFrequently: true });
-  c._ctx.setTransform(sc, 0, 0, sc, ax, ay); const colors = []; draw(recordingCtx(c._ctx, colors)); crispify(c, colors, outline);
+  c._ctx.setTransform(sc * D, 0, 0, sc * D, ax, ay); const colors = []; draw(recordingCtx(c._ctx, colors)); crispify(c, colors, outline);
   // gotowy sprite w zwykłym płótnie: robocze (willReadFrequently) Chrome trzyma w pamięci procesora, a takie kopiuje się wolniej
   const p = document.createElement('canvas'); p.width = w; p.height = h; p._ctx = p.getContext('2d'); p._ctx.drawImage(c, 0, 0);
-  s = { c: p, ax, ay }; SPR.set(key, s); return s;
+  s = { c: p, ax, ay, u: 2 / D }; SPR.set(key, s); return s;
 }
 // Sprite w interfejsie: (x, y) = punkt zaczepienia w px logicznych; k = 1 to rozmiar jak na mapie
 // (1 piksel grafiki = 2 px logiczne), k = 2 dwa razy większy itd.
 function drawSprite(ctx, s, x, y, k = 1) {
-  const f = 2 * k; ctx.save(); ctx.imageSmoothingEnabled = false;
+  const f = (s.u || 2) * k; ctx.save(); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(s.c, x - s.ax * f, y - s.ay * f, s.c.width * f, s.c.height * f); ctx.restore();
 }
 // To samo, ale (x, y) = lewy górny róg sprite'a
-const drawSpriteBox = (ctx, s, x, y, k = 1) => drawSprite(ctx, s, x + s.ax * 2 * k, y + s.ay * 2 * k, k);
-// Sprite w buforze mapy (bufor ma połowę rozdzielczości, więc 1 piksel grafiki = 1 piksel bufora)
-function blit(b, s, lx, ly) { b.drawImage(s.c, Math.round(lx / 2) * 2 - s.ax * 2, Math.round(ly / 2) * 2 - s.ay * 2, s.c.width * 2, s.c.height * 2); }
+const drawSpriteBox = (ctx, s, x, y, k = 1) => drawSprite(ctx, s, x + s.ax * (s.u || 2) * k, y + s.ay * (s.u || 2) * k, k);
+// Sprite w buforze mapy (bufor ma rozdzielczość pikseli grafiki, więc 1 piksel sprite'a = 1 piksel bufora)
+function blit(b, s, lx, ly) { const u = s.u || 2; b.drawImage(s.c, Math.round(lx / u) * u - s.ax * u, Math.round(ly / u) * u - s.ay * u, s.c.width * u, s.c.height * u); }
 const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 // Warstwa pixel art dla rysunków ruchomych (efekty czarów, sceny okien wyniku): rysunek trafia do bufora o rozdzielczości
 // 1/px (px = ile pikseli ekranu na piksel grafiki; 2 jak mapa i jednostki w bitwie), dostaje ograniczoną paletę z ditheringiem
 // i trzy twarde stopnie krycia (bez miękkich krawędzi), a potem jest powiększany bez wygładzania. add: nakładanie addytywne (światło).
 function pixLayer(key, ctx, x, y, w, h, draw, o = {}) {
-  const px = o.px || 2, bw = Math.ceil(w / px), bh = Math.ceil(h / px), c = pixBuf(key, bw, bh, true), g = c._ctx;
+  const px = o.px || PIX, bw = Math.ceil(w / px), bh = Math.ceil(h / px), c = pixBuf(key, bw, bh, true), g = c._ctx;
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, bw, bh);
   g.save(); g.setTransform(1 / px, 0, 0, 1 / px, -x / px, -y / px); draw(g); g.restore();
   crispLayer(c, o.step || 24);

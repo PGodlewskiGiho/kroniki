@@ -16,8 +16,8 @@ function puzzleOrder(st) {
 }
 // Obraz wycinka mapy (teren i stałe obiekty, bez bohaterów i potworów, bez mgły) w połowie rozdzielczości, z krzyżykiem
 function puzzleImage(st) {
-  const [x0, y0] = puzzleOrigin(st), c = document.createElement('canvas'); c.width = PUZZLE_W * T / 2; c.height = PUZZLE_H * T / 2;
-  const b = c.getContext('2d'), CP = CHUNK * T; b.imageSmoothingEnabled = false; b.setTransform(0.5, 0, 0, 0.5, 0, 0);
+  const [x0, y0] = puzzleOrigin(st), c = document.createElement('canvas'); c.width = PUZZLE_W * T / PIX; c.height = PUZZLE_H * T / PIX;
+  const b = c.getContext('2d'), CP = CHUNK * T; b.imageSmoothingEnabled = false; b.setTransform(1 / PIX, 0, 0, 1 / PIX, 0, 0);
   for (let cy = Math.floor(y0 / CHUNK); cy <= Math.floor((y0 + PUZZLE_H - 1) / CHUNK); cy++) for (let cx = Math.floor(x0 / CHUNK); cx <= Math.floor((x0 + PUZZLE_W - 1) / CHUNK); cx++)
     b.drawImage(MapRender.get(cx, cy), (cx * CHUNK - x0) * T, (cy * CHUNK - y0) * T, CP, CP);
   const ox = -x0 * T, oy = -y0 * T;
@@ -40,11 +40,11 @@ const PUZZLE_ART = {
   inferno: { sky: ['#200808', '#c83a1a'], sun: '#ffc060', ground: '#3a2020', far: '#5a2a1e' }, academy: { sky: ['#4a78b0', '#d8e8f8'], sun: '#ffffff', ground: '#d8e0e8', far: '#8aa0c0' },
   dungeon: { sky: ['#0e0a1a', '#4a2a6a'], sun: '#c8a0ff', ground: '#4a4040', far: '#2e2440', moon: true }, stronghold: { sky: ['#b85a2a', '#f0c070'], sun: '#fff0c0', ground: '#c8a060', far: '#a86a3a' },
 };
-let PUZZLE_COVER = null;
+let PUZZLE_COVER = null; PIX_CLEAR.push(() => { PUZZLE_COVER = null; });
 function puzzleCover(st, w, h) {
   const fac = (st.players[ME] || {}).faction || 'haven', key = `${fac}_${st.seed}_${w}x${h}`; if (PUZZLE_COVER && PUZZLE_COVER.key === key) return PUZZLE_COVER.c;
-  const A = PUZZLE_ART[fac] || PUZZLE_ART.haven, cw = Math.round(w / 2), ch = Math.round(h / 2), c = document.createElement('canvas'); c.width = cw; c.height = ch;
-  const g = c.getContext('2d'), r = mulberry32(st.seed * 31 + 7), hor = Math.round(ch * 0.58);
+  const A = PUZZLE_ART[fac] || PUZZLE_ART.haven, cw = Math.round(w / 2), ch = Math.round(h / 2), c = document.createElement('canvas'); c.width = Math.round(w / PIX); c.height = Math.round(h / PIX);
+  const g = c.getContext('2d'); g.setTransform(2 / PIX, 0, 0, 2 / PIX, 0, 0); const r = mulberry32(st.seed * 31 + 7), hor = Math.round(ch * 0.58);
   let gr = g.createLinearGradient(0, 0, 0, hor); gr.addColorStop(0, A.sky[0]); gr.addColorStop(1, A.sky[1]); g.fillStyle = gr; g.fillRect(0, 0, cw, hor);
   const sx = cw * (0.62 + r() * 0.22), sy = ch * 0.2; for (const [rad, a] of [[34, 0.12], [24, 0.2], [16, 1]]) { g.globalAlpha = a; g.fillStyle = A.sun; g.beginPath(); g.arc(sx, sy, rad, 0, TAU); g.fill(); }
   g.globalAlpha = 1; if (A.moon) { g.fillStyle = gr; g.beginPath(); g.arc(sx + 7, sy - 4, 14, 0, TAU); g.fill(); } // sierp: wycięcie kolorem nieba
@@ -58,7 +58,7 @@ function puzzleCover(st, w, h) {
   g.fillStyle = 'rgba(0,0,0,.14)'; for (let i = 0; i < cw * ch / 90; i++) g.fillRect(Math.floor(r() * cw), hor + 10 + Math.floor(r() * (ch - hor)), 2, 1); // źdźbła i kamyki
   g.fillStyle = shadeHex(A.ground, 0.25); g.beginPath(); g.moveTo(cw / 2 - 30, ch); g.bezierCurveTo(cw / 2 - 40, ch * 0.85, cw / 2 + 14, ch * 0.8, cw / 2 - 2, hor + 26); // droga
   g.lineTo(cw / 2 + 6, hor + 26); g.bezierCurveTo(cw / 2 + 26, ch * 0.8, cw / 2 - 12, ch * 0.85, cw / 2 + 30, ch); g.fill();
-  const ts = townSprite(fac, 3), tk = 2; g.imageSmoothingEnabled = false; g.drawImage(ts.c, cw / 2 - ts.c.width * tk / 2 + 10, hor + 30 - ts.c.height * tk + 16, ts.c.width * tk, ts.c.height * tk);
+  const ts = townSprite(fac, 3), tk = 2; g.imageSmoothingEnabled = false; const tw = ts.c.width * ts.u / 2 * tk, th = ts.c.height * ts.u / 2 * tk; g.drawImage(ts.c, cw / 2 - tw / 2 + 10, hor + 30 - th + 16, tw, th);
   for (let i = 0; i < 14; i++) { // kępy drzew po bokach
     const side = i % 2 ? 1 : -1, x = cw / 2 + side * (cw * 0.26 + r() * cw * 0.22), y = hor + 18 + r() * (ch - hor - 30), s2 = 5 + r() * 5, dk = shadeHex(A.ground, -0.3);
     g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(x, y + s2, s2, s2 * 0.35, 0, 0, TAU); g.fill();

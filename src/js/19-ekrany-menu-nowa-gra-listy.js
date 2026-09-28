@@ -99,23 +99,23 @@ function menuRider(b, t) {
   const y = v * v * v * p0[1] + 3 * v * v * u * p1[1] + 3 * v * u * u * p2[1] + u * u * u * p3[1];
   const s = heroSprite({ cls: 'knight', dir: 1, anim: {} }, colorHex(G.settings.color)), k = 0.45 + 0.75 * u;
   b.save(); b.globalAlpha = clamp(u * 8, 0, 1) * clamp((1 - u) * 6, 0, 1);
-  b.drawImage(s.c, x - s.ax * 2 * k, y - s.ay * 2 * k, s.c.width * 2 * k, s.c.height * 2 * k); b.restore();
+  b.drawImage(s.c, x - s.ax * s.u * k, y - s.ay * s.u * k, s.c.width * s.u * k, s.c.height * s.u * k); b.restore();
 }
 // Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize, wypalona raz w nieruchomym niebie i lądzie)
 // i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
 // Scenę przeliczamy raz na klatkę (kilka ułamków milisekundy), a przy ponownym rysowaniu tej samej klatki wklejamy gotową
 function drawMenuScene(ctx) {
-  const pb = pixBuf('menuScene', VW / 2, VH / 2);
+  const pb = pixBuf('menuScene', VW / PIX, VH / PIX);
   if (pb._t !== G.time) { paintMenuScene(pb); pb._t = G.time; }
   viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
 }
 function paintMenuScene(pb) {
   const t = G.time, b = pb._ctx, span = VW + 300;
   const layer = paint => c => { c.translate(OX, OY); paint(c); pixelQuantize(c.canvas, 14); };
-  b.setTransform(0.5, 0, 0, 0.5, OX / 2, OY / 2); b.imageSmoothingEnabled = false;
-  b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 0.5), -OX, -OY, VW, VH);
+  b.setTransform(1 / PIX, 0, 0, 1 / PIX, OX / PIX, OY / PIX); b.imageSmoothingEnabled = false;
+  b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 1 / PIX), -OX, -OY, VW, VH);
   for (const c of CLOUDS) drawCloud(b, ((c.x * span / 1100 + t * c.v) % span) - 150 - OX, c.y, c.s, c.a);
-  b.drawImage(Layers.get(`menuLand_${VW}x${VH}`, VW, VH, layer(paintLand), 0.5), -OX, -OY, VW, VH);
+  b.drawImage(Layers.get(`menuLand_${VW}x${VH}`, VW, VH, layer(paintLand), 1 / PIX), -OX, -OY, VW, VH);
   for (const [x, y, w, h, p] of CASTLE_WINDOWS) {
     const f = clamp(0.55 + 0.35 * Math.sin(t * 2.3 + p) + 0.1 * Math.sin(t * 7.1 + p * 3), 0.15, 1);
     b.fillStyle = `rgba(255,170,70,${(f * 0.18).toFixed(3)})`; b.fillRect(x - 2, y - 2, w + 4, h + 4);

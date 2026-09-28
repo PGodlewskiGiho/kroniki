@@ -1245,6 +1245,14 @@ function shadowAt(g, x, y, w) { g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); 
 // Mapa to pixel art: AP = pikseli grafiki na pole (połowa T), OUTLINE = kolor obrysu sprite'ów.
 // Ramki, przyciski i tekst interfejsu są gładkie; obiekty gry wszędzie są sprite'ami (patrz GRAFIKA OBIEKTÓW).
 const AP = 16, OUTLINE = [24, 16, 10];
+// Rozmiar piksela grafiki w px logicznych: 1 (drobny, ostry pixel art) albo 2 (dawny, grubszy; niska jakość grafiki).
+// PXD = gęstość względem dawnej grafiki (ile pikseli na dawny piksel). Zmiana czyści wszystkie gotowe obrazy (setPixelSize).
+let PIX = 1, PXD = 2;
+const PIX_CLEAR = []; // funkcje czyszczące pamięci podręczne obrazów (rejestrują je moduły grafiki)
+function setPixelSize(p) {
+  if (p === PIX) return; PIX = p; PXD = 2 / p; SPR.clear(); Layers.cache = {}; for (const f of PIX_CLEAR) f();
+  if (typeof MapRender !== 'undefined' && MapRender.map) MapRender.reset(MapRender.map, MapRender.explored);
+}
 const PixBufs = {};
 function pixBuf(key, w, h, read) {
   let c = PixBufs[key];
@@ -1288,30 +1296,32 @@ const SPR = new Map();
 // Sprite = rysunek wektorowy zamieniony raz na pixel art i zapamiętany pod kluczem.
 // w, h, ax, ay: rozmiar i punkt zaczepienia w pikselach grafiki; draw() rysuje w jednostkach mapy wokół (0,0).
 // sc: ile pikseli grafiki na jednostkę mapy (0.5 = standard mapy; mniejsze = miniatura tego samego rysunku).
+// Płótno ma PXD razy więcej pikseli (drobny piksel); s.u = ile px logicznych zajmuje piksel płótna przy k = 1.
 function sprite(key, w, h, ax, ay, draw, outline = OUTLINE, sc = 0.5) {
   let s = SPR.get(key); if (s) return s;
+  const D = PXD; w = Math.ceil(w * D); h = Math.ceil(h * D); ax *= D; ay *= D;
   const c = document.createElement('canvas'); c.width = w; c.height = h; c._ctx = c.getContext('2d', { willReadFrequently: true });
-  c._ctx.setTransform(sc, 0, 0, sc, ax, ay); const colors = []; draw(recordingCtx(c._ctx, colors)); crispify(c, colors, outline);
+  c._ctx.setTransform(sc * D, 0, 0, sc * D, ax, ay); const colors = []; draw(recordingCtx(c._ctx, colors)); crispify(c, colors, outline);
   // gotowy sprite w zwykłym płótnie: robocze (willReadFrequently) Chrome trzyma w pamięci procesora, a takie kopiuje się wolniej
   const p = document.createElement('canvas'); p.width = w; p.height = h; p._ctx = p.getContext('2d'); p._ctx.drawImage(c, 0, 0);
-  s = { c: p, ax, ay }; SPR.set(key, s); return s;
+  s = { c: p, ax, ay, u: 2 / D }; SPR.set(key, s); return s;
 }
 // Sprite w interfejsie: (x, y) = punkt zaczepienia w px logicznych; k = 1 to rozmiar jak na mapie
 // (1 piksel grafiki = 2 px logiczne), k = 2 dwa razy większy itd.
 function drawSprite(ctx, s, x, y, k = 1) {
-  const f = 2 * k; ctx.save(); ctx.imageSmoothingEnabled = false;
+  const f = (s.u || 2) * k; ctx.save(); ctx.imageSmoothingEnabled = false;
   ctx.drawImage(s.c, x - s.ax * f, y - s.ay * f, s.c.width * f, s.c.height * f); ctx.restore();
 }
 // To samo, ale (x, y) = lewy górny róg sprite'a
-const drawSpriteBox = (ctx, s, x, y, k = 1) => drawSprite(ctx, s, x + s.ax * 2 * k, y + s.ay * 2 * k, k);
-// Sprite w buforze mapy (bufor ma połowę rozdzielczości, więc 1 piksel grafiki = 1 piksel bufora)
-function blit(b, s, lx, ly) { b.drawImage(s.c, Math.round(lx / 2) * 2 - s.ax * 2, Math.round(ly / 2) * 2 - s.ay * 2, s.c.width * 2, s.c.height * 2); }
+const drawSpriteBox = (ctx, s, x, y, k = 1) => drawSprite(ctx, s, x + s.ax * (s.u || 2) * k, y + s.ay * (s.u || 2) * k, k);
+// Sprite w buforze mapy (bufor ma rozdzielczość pikseli grafiki, więc 1 piksel sprite'a = 1 piksel bufora)
+function blit(b, s, lx, ly) { const u = s.u || 2; b.drawImage(s.c, Math.round(lx / u) * u - s.ax * u, Math.round(ly / u) * u - s.ay * u, s.c.width * u, s.c.height * u); }
 const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 // Warstwa pixel art dla rysunków ruchomych (efekty czarów, sceny okien wyniku): rysunek trafia do bufora o rozdzielczości
 // 1/px (px = ile pikseli ekranu na piksel grafiki; 2 jak mapa i jednostki w bitwie), dostaje ograniczoną paletę z ditheringiem
 // i trzy twarde stopnie krycia (bez miękkich krawędzi), a potem jest powiększany bez wygładzania. add: nakładanie addytywne (światło).
 function pixLayer(key, ctx, x, y, w, h, draw, o = {}) {
-  const px = o.px || 2, bw = Math.ceil(w / px), bh = Math.ceil(h / px), c = pixBuf(key, bw, bh, true), g = c._ctx;
+  const px = o.px || PIX, bw = Math.ceil(w / px), bh = Math.ceil(h / px), c = pixBuf(key, bw, bh, true), g = c._ctx;
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, bw, bh);
   g.save(); g.setTransform(1 / px, 0, 0, 1 / px, -x / px, -y / px); draw(g); g.restore();
   crispLayer(c, o.step || 24);
@@ -1342,11 +1352,10 @@ function pixelQuantize(cv, step = 18) {
 // --- pixel art interfejsu ---
 // Pergamin, kamień i tła przycisków malujemy w buforze o połowie rozdzielczości (1 piksel grafiki = 2 px ekranu), z paletą
 // i ditheringiem (crispLayer: twarde krawędzie, 3 stopnie krycia), i powiększamy bez wygładzania — tak jak mapę, sceny i jednostki.
-const UI_PX = 2;
 function uiLayer(key, w, h, paint) {
-  return Layers.get('ui_' + key, w, h, c => { c.imageSmoothingEnabled = false; paint(c, w, h); c.canvas._ctx = c; crispLayer(c.canvas, 12); }, 1 / UI_PX);
+  return Layers.get('ui_' + key, w, h, c => { c.imageSmoothingEnabled = false; paint(c, w, h); c.canvas._ctx = c; crispLayer(c.canvas, 12); }, 1 / PIX);
 }
-function drawUi(ctx, c, x, y) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(c, Math.round(x), Math.round(y), c.width * UI_PX, c.height * UI_PX); ctx.restore(); }
+function drawUi(ctx, c, x, y) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(c, Math.round(x), Math.round(y), c.width / c._s, c.height / c._s); ctx.restore(); }
 // Romb z pikseli (ozdoba rogów i przerywników): rzędy po 2 px
 function pixDiamond(ctx, cx, cy, col, n = 3) {
   cx = Math.round(cx / 2) * 2; cy = Math.round(cy / 2) * 2; ctx.fillStyle = col;
@@ -1885,7 +1894,8 @@ function drawHumanoid(ctx, L, P = {}) {
     const lift = walking ? Math.max(0, (back ? -1 : 1) * Math.cos(ph)) * 2 : 0, fx = x0 + off, fy = -lift;
     const kx = (x0 + fx) / 2 + 1.3, ky = (hipY + fy) / 2 - 0.5, c = back ? DK(legCol, 0.25) : legCol;
     limb(ctx, x0, hipY, kx, ky, bony ? 1.3 : 2.9, c); limb(ctx, kx, ky, fx, fy - 1.3, bony ? 1.2 : 2.6, c);
-    if (!bony) { ctx.fillStyle = back ? DK(boot, 0.25) : boot; rr(ctx, fx - 1.7, fy - 2.6, 4.4, 2.6, 0.8); ctx.fill(); }
+    if (!bony) { ctx.fillStyle = back ? DK(boot, 0.25) : boot; rr(ctx, fx - 1.7, fy - 2.6, 4.4, 2.6, 0.8); ctx.fill();
+      limb(ctx, fx - 1.5, fy - 0.3, fx + 2.5, fy - 0.3, 0.5, DK(boot, 0.45)); if (!back) { limb(ctx, fx - 0.6, fy - 2.2, fx + 1.6, fy - 2.2, 0.45, LT(boot, 0.3)); limb(ctx, kx - 0.4, ky - 0.6, kx + 0.8, ky + 0.8, 0.5, LT(c, 0.25)); } } // podeszwa, blik, kolano
   };
   if (L.mounted) { limb(ctx, 1, hipY, 3.5, hipY + 5, 2.6, legCol); ctx.fillStyle = boot; rr(ctx, 2, hipY + 4, 4, 2.4, 0.8); ctx.fill(); }
   else if (!L.robe && !L.serpent) leg(-1.8, -sw * 3.6, true);
@@ -1906,7 +1916,7 @@ function drawHumanoid(ctx, L, P = {}) {
     fillPoly(ctx, [[0, 0], [-8, -14], [-15, -18], [-13, -11], [-17, -9], [-12, -5], [-15, -2], [-6, 2]], DK(L.wings, 0.12));
     fillPoly(ctx, [[0, 0], [-7, -12], [-11, -12], [-6, -4]], LT(L.wings, 0.1)); ctx.restore();
   }
-  if (L.cape) { const cw = walking ? sw * 1.5 : Math.sin(t * 1.8) * 0.6; fillPoly(ctx, [[-4, shY], [2, shY], [-3, hipY + 7], [-10 + cw, hipY + 6]], DK(L.cape, 0.15)); }
+  if (L.cape) { const cw = walking ? sw * 1.5 : Math.sin(t * 1.8) * 0.6; fillPoly(ctx, [[-4, shY], [2, shY], [-3, hipY + 7], [-10 + cw, hipY + 6]], DK(L.cape, 0.15)); limb(ctx, -3.6, shY + 1, -9.4 + cw, hipY + 5.6, 0.5, LT(L.cape, 0.2)); limb(ctx, -10 + cw, hipY + 6, -3, hipY + 7, 0.6, '#e0b24a'); }
   // tylne ramię (+ tarcza)
   const shoulder2 = [-3.2, shY + 1.2], backA = walking ? -sw * 0.5 : (P.atk != null && style === 'bow' ? 1.2 : -0.15);
   const pullX = style === 'bow' && P.atk != null ? 3.4 - arm.pull * 4 : null;
@@ -1915,7 +1925,9 @@ function drawHumanoid(ctx, L, P = {}) {
   const sleeve = bony ? sk : L.armor ? DK(met, 0.15) : DK(cl, 0.2);
   limb(ctx, ...shoulder2, ...e2, bony ? 1.2 : 2.4, DK(sleeve, 0.15)); limb(ctx, ...e2, ...h2, bony ? 1.1 : 2.1, DK(sleeve, 0.15)); circ(ctx, h2[0], h2[1], bony ? 0.9 : 1.2, DK(sk, 0.2));
   if (L.shield) { fillPoly(ctx, [[h2[0] - 4.5, h2[1] - 6], [h2[0] + 1.5, h2[1] - 6], [h2[0] + 1.5, h2[1] + 1], [h2[0] - 1.5, h2[1] + 5], [h2[0] - 4.5, h2[1] + 1]], L.shield);
-    limb(ctx, h2[0] - 1.5, h2[1] - 5.5, h2[0] - 1.5, h2[1] + 4, 1, L.shieldMark || LT(L.shield, 0.35)); }
+    limb(ctx, h2[0] - 1.5, h2[1] - 5.5, h2[0] - 1.5, h2[1] + 4, 1, L.shieldMark || LT(L.shield, 0.35));
+    ctx.strokeStyle = DK(L.shield, 0.4); ctx.lineWidth = 0.5; ctx.beginPath(); [[h2[0] - 4.5, h2[1] - 6], [h2[0] + 1.5, h2[1] - 6], [h2[0] + 1.5, h2[1] + 1], [h2[0] - 1.5, h2[1] + 5], [h2[0] - 4.5, h2[1] + 1]].forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.stroke();
+    circ(ctx, h2[0] - 1.5, h2[1] - 1, 0.9, '#d8c890'); circ(ctx, h2[0] - 1.8, h2[1] - 1.3, 0.35, '#fff8e0'); } // obrzeże i guz tarczy
   // tułów
   if (bony) {
     limb(ctx, 0, hipY, 0.4, shY + 1, 1.4, sk);
@@ -1926,6 +1938,11 @@ function drawHumanoid(ctx, L, P = {}) {
     fillPoly(ctx, [[-5, shY], [5, shY], [wB, bottom], [-wB, bottom]], cl);
     fillPoly(ctx, [[-5, shY], [-1, shY], [-1.5, bottom], [-wB, bottom]], DK(cl, 0.22));
     fillPoly(ctx, [[2.2, shY + 0.5], [4.6, shY + 0.5], [4.1, shY + 6], [2.6, shY + 6]], LT(cl));
+    if (!L.armor) { // kołnierz, szew i fałdy materiału
+      fillPoly(ctx, [[-1.6, shY], [2.6, shY], [0.6, shY + 2.2]], DK(cl, 0.35)); limb(ctx, 0.6, shY + 2.4, 0.4, bottom - 1, 0.4, DK(cl, 0.32));
+      limb(ctx, -3, shY + 4, -2.4, bottom - 1.5, 0.45, DK(cl, 0.38)); limb(ctx, 3.2, shY + 7, 3.6, bottom - 1.5, 0.45, DK(cl, 0.12));
+      if (L.robe) { limb(ctx, -3.5, hipY, -4.8, bottom - 1, 0.45, DK(cl, 0.4)); limb(ctx, 2.4, hipY, 3.4, bottom - 1, 0.45, DK(cl, 0.2)); }
+    }
     if (L.robe && !L.flame) { limb(ctx, -5.5, bottom - 0.5, 5.5, bottom - 0.5, 1, DK(cl, 0.4)); }
     if (L.flame) for (let i = 0; i < 5; i++) { // języki ognia zamiast nóg
       const fx0 = -5 + i * 2.5, fl = Math.sin(t * 9 + i * 1.9) * 1.6;
@@ -1935,9 +1952,11 @@ function drawHumanoid(ctx, L, P = {}) {
       fillPoly(ctx, [[-4.3, shY + 0.6], [4.3, shY + 0.6], [3.7, hipY - 1.6], [-3.7, hipY - 1.6]], met);
       fillPoly(ctx, [[-4.3, shY + 0.6], [-0.6, shY + 0.6], [-0.9, hipY - 1.6], [-3.7, hipY - 1.6]], DK(met, 0.22));
       limb(ctx, 2.6, shY + 1.8, 2.3, hipY - 3, 0.8, LT(met, 0.4));
+      const pl = DK(met, 0.38); limb(ctx, -4, shY + 4.6, 4, shY + 4.6, 0.45, pl); limb(ctx, -3.8, shY + 8, 3.8, shY + 8, 0.45, pl); // płyty napierśnika i nity
+      for (const [rx, ry] of [[-3.2, shY + 1.6], [3.4, shY + 1.6], [-3, shY + 5.6], [3.2, shY + 5.6]]) circ(ctx, rx, ry, 0.4, LT(met, 0.5));
       if (L.tabard) { fillPoly(ctx, [[-1.6, shY + 1], [1.6, shY + 1], [1.9, hipY + 3], [-1.9, hipY + 3]], L.tabard); if (L.cross) { limb(ctx, 0, shY + 2.5, 0, hipY, 0.9, L.cross); limb(ctx, -1.4, shY + 4.5, 1.4, shY + 4.5, 0.9, L.cross); } }
     }
-    ctx.fillStyle = lea; ctx.fillRect(-4.6, hipY - 1.8, 9.2, 1.8); ctx.fillStyle = '#c8a050'; ctx.fillRect(0.6, hipY - 1.8, 1.4, 1.8);
+    ctx.fillStyle = lea; ctx.fillRect(-4.6, hipY - 1.8, 9.2, 1.8); ctx.fillStyle = '#c8a050'; ctx.fillRect(0.6, hipY - 1.8, 1.4, 1.8); ctx.fillStyle = DK(lea, 0.4); ctx.fillRect(1, hipY - 1.3, 0.6, 0.8); ctx.fillStyle = '#f0d890'; ctx.fillRect(0.6, hipY - 1.8, 1.4, 0.45);
   }
   // głowa
   const hx = 0.6, hy = hdY;
@@ -1950,9 +1969,13 @@ function drawHumanoid(ctx, L, P = {}) {
     circ(ctx, hx, hy, 3.9, sk); fillPoly(ctx, [[hx - 3.9, hy], [hx - 1, hy - 3.8], [hx - 1, hy + 3.9], [hx - 3, hy + 2.5]], DK(sk, 0.2));
     if (L.ears) fillPoly(ctx, [[hx - 1.5, hy - 1], [hx - 6.5, hy - 4.5], [hx - 2.5, hy + 1.5]], sk);
     if (L.cyclops) { circ(ctx, hx + 2, hy - 1, 1.5, '#f0ead8'); circ(ctx, hx + 2.5, hy - 1, 0.8, L.eyes || '#3a2a1a'); limb(ctx, hx + 0.2, hy - 3, hx + 3.6, hy - 2.8, 0.7, DK(sk, 0.4)); }
-    else { ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1, 1.3, 1.3); }
+    else { // oko z białkiem i źrenicą, brew, nos, usta, rumieniec
+      ctx.fillStyle = L.eyes ? L.eyes : '#f4ecd8'; ctx.fillRect(hx + 1.4, hy - 1, 1.7, 1.1); ctx.fillStyle = L.eyes ? LT(L.eyes, 0.5) : '#1a1a1a'; ctx.fillRect(hx + 2.3, hy - 1, 0.8, 1.1);
+      limb(ctx, hx + 1.2, hy - 1.9, hx + 3.2, hy - 1.7, 0.5, DK(L.hair || sk, 0.45)); limb(ctx, hx + 3.5, hy - 0.6, hx + 4.1, hy + 0.9, 0.5, DK(sk, 0.25));
+      limb(ctx, hx + 2, hy + 2.2, hx + 3.3, hy + 2, 0.45, DK(sk, 0.42)); circ(ctx, hx + 1.4, hy + 0.9, 0.6, LT(sk, 0.18)); }
     if (L.beard) fillPoly(ctx, [[hx - 1, hy + 1.5], [hx + 4, hy + 1.2], [hx + 2.5, hy + 6], [hx - 0.5, hy + 4.5]], L.beard);
-    if (L.hair && !L.helm) fillPoly(ctx, [[hx - 4.1, hy + 1], [hx - 3.4, hy - 3.2], [hx + 0.5, hy - 4.6], [hx + 3.6, hy - 2.6], [hx + 1, hy - 2.2], [hx - 1.2, hy + 1.8]], L.hair);
+    if (L.hair && !L.helm) { fillPoly(ctx, [[hx - 4.1, hy + 1], [hx - 3.4, hy - 3.2], [hx + 0.5, hy - 4.6], [hx + 3.6, hy - 2.6], [hx + 1, hy - 2.2], [hx - 1.2, hy + 1.8]], L.hair);
+      limb(ctx, hx - 2.8, hy - 2.6, hx - 0.4, hy - 3.8, 0.45, LT(L.hair, 0.3)); limb(ctx, hx - 3, hy - 0.5, hx - 1.8, hy - 2.2, 0.45, DK(L.hair, 0.3)); } // pasma włosów
     if (L.snout) { fillPoly(ctx, [[hx + 2, hy - 1], [hx + 7.5, hy + 0.2], [hx + 7.2, hy + 2.8], [hx + 2.2, hy + 3.4]], sk); fillPoly(ctx, [[hx + 2.2, hy + 2.2], [hx + 7.2, hy + 2], [hx + 7, hy + 2.8], [hx + 2.2, hy + 3.4]], DK(sk, 0.25)); ctx.fillStyle = '#1a1210'; ctx.fillRect(hx + 6.4, hy + 0.2, 1, 1); ctx.fillStyle = L.eyes || '#1a1a1a'; ctx.fillRect(hx + 1.6, hy - 1.6, 1.3, 1.3); }
     if (L.tusks) { ctx.fillStyle = '#f0ead8'; ctx.fillRect(hx + (L.snout ? 5 : 2.4), hy + (L.snout ? 2.6 : 1.8), 0.9, 1.6); }
   }
@@ -1962,6 +1985,7 @@ function drawHumanoid(ctx, L, P = {}) {
     const hc = L.helmCol || met;
     ctx.fillStyle = hc; ctx.beginPath(); ctx.arc(hx, hy - 0.4, 4.4, Math.PI * 0.95, Math.PI * 2.05); ctx.fill();
     fillPoly(ctx, [[hx - 4.4, hy - 0.4], [hx - 1, hy - 4.4], [hx - 1, hy - 0.4]], DK(hc, 0.2)); limb(ctx, hx + 0.5, hy - 4.2, hx + 3, hy - 3, 0.7, LT(hc, 0.4));
+    limb(ctx, hx - 4.3, hy - 0.5, hx + 4.3, hy - 0.5, 0.55, DK(hc, 0.4)); limb(ctx, hx - 0.2, hy - 4.3, hx - 0.2, hy - 0.8, 0.45, DK(hc, 0.3)); // obręcz i grzebień hełmu
     if (hm === 'greathelm') { fillPoly(ctx, [[hx - 4.4, hy - 0.6], [hx + 4.4, hy - 0.6], [hx + 4.2, hy + 4], [hx - 4.2, hy + 4]], hc); ctx.fillStyle = '#1a1a22'; ctx.fillRect(hx + 0.8, hy, 3.4, 1); }
     else { ctx.fillStyle = hc; ctx.fillRect(hx + 2.2, hy - 1, 1, 3); }
     if (hm === 'horn') { fillPoly(ctx, [[hx - 2, hy - 3.5], [hx - 5, hy - 8.5], [hx - 3.8, hy - 3.2]], '#e8e0cc'); fillPoly(ctx, [[hx + 2, hy - 3.8], [hx + 4, hy - 9], [hx + 3.4, hy - 3]], '#d8d0bc'); }
@@ -1999,6 +2023,7 @@ function quadLegs(ctx, xs, top, len, col, P, w) {
     const kx = x + swing * 0.4 + 0.8, ky = top + len * 0.5 - lift * 0.5;
     limb(ctx, x, top, kx, ky, w, c); limb(ctx, kx, ky, x + swing, -lift, w * 0.85, c);
     ctx.fillStyle = far ? '#1a140e' : '#2a2018'; ctx.fillRect(x + swing - w * 0.55, -lift - 1.2, w * 1.2, 1.4);
+    if (!far) { limb(ctx, x + 0.5, top + 1, kx + 0.4, ky, w * 0.25, LT(col, 0.18)); ctx.fillStyle = '#5a4a3a'; ctx.fillRect(x + swing - w * 0.55, -lift - 0.3, w * 1.2, 0.4); } // blik mięśnia, kopyto
   });
 }
 function horse(c, x, b, dir, col = '#7a4a26', mane = '#2a1a0e', P = {}, o = {}) {
@@ -2015,7 +2040,9 @@ function horse(c, x, b, dir, col = '#7a4a26', mane = '#2a1a0e', P = {}, o = {}) 
     fillPoly(c, [[6, -15], [11.5, -26], [16.5, -24.5], [12.5, -11]], col); fillPoly(c, [[6, -15], [11.5, -26], [10.5, -14]], dk);
     fillPoly(c, [[11.5, -27.5], [18, -25.5], [23, -20.5], [22.5, -18], [17.5, -18.5], [13.5, -22]], col);
     fillPoly(c, [[17.5, -18.5], [22.5, -18], [23, -20.5]], dk); fillPoly(c, [[13, -27], [14, -31], [15.8, -26.8]], col);
-    circ(c, 17, -23.6, 0.9, '#140c06'); circ(c, 21.6, -19.6, 0.6, '#140c06');
+    circ(c, 17, -23.6, 0.9, '#140c06'); circ(c, 21.6, -19.6, 0.6, '#140c06'); circ(c, 16.7, -23.9, 0.3, '#f0e8d8');
+    limb(c, 14, -25.5, 22.4, -19.4, 0.5, '#3a2414'); limb(c, 14.2, -21, 17.5, -19, 0.5, '#3a2414'); limb(c, 17.5, -19.2, 9, -15.5, 0.45, '#5a3a1e'); // uzda i wodze
+    limb(c, 9.5, -17, 12.5, -24, 0.5, LT(mane, 0.25)); limb(c, 8, -14, 11, -21, 0.45, DK(mane, 0.3)); // pasma grzywy
     fillPoly(c, [[7, -16], [11, -27], [13.5, -27.5], [10, -17.5], [8.5, -12.5]], mane);
   }
   const legs2 = [[-6, Math.PI, false], [9, 0, false]]; quadLegs(c, legs2, -9, 9, col, P, 2.6);
@@ -2338,7 +2365,7 @@ function drawTownMap(ctx, x0, y0, fac = 'haven', lvl = 1) {
 function townFlagPoints(fac, lvl) {
   const s = townSprite(fac, lvl), key = fac + lvl; if (TOWN_FLAGS[key] && TOWN_FLAGS[key].length) return TOWN_FLAGS[key];
   const d = s.c._ctx.getImageData(0, 0, s.c.width, s.c.height).data, W = s.c.width; let top = null; // bez masztu: najwyższy punkt środka rysunku
-  for (let y = 0; y < s.c.height && !top; y++) for (let x = Math.floor(W * 0.3); x < W * 0.7; x++) if (d[(y * W + x) * 4 + 3] > 0) { top = [(x - s.ax) * 2, (y - s.ay) * 2 + 20]; break; }
+  for (let y = 0; y < s.c.height && !top; y++) for (let x = Math.floor(W * 0.3); x < W * 0.7; x++) if (d[(y * W + x) * 4 + 3] > 0) { top = [(x - s.ax) * s.u, (y - s.ay) * s.u + 20]; break; }
   return (TOWN_FLAGS[key] = [top || [48, -16]]);
 }
 
@@ -2397,7 +2424,7 @@ function tintSprite(s, col) {
   s.tints = s.tints || {}; if (s.tints[col]) return s.tints[col];
   const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; const g = c.getContext('2d');
   g.drawImage(s.c, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height);
-  return (s.tints[col] = { c, ax: s.ax, ay: s.ay });
+  return (s.tints[col] = { c, ax: s.ax, ay: s.ay, u: s.u });
 }
 function heroSprite(h, col) {
   const moving = !!h.anim, fr = Math.floor(G.time * (moving ? 12 : 4)) % 4, tk = moving ? fr * TAU / 88 : fr * TAU / 20;
@@ -4062,7 +4089,7 @@ function bankLootText(kind) {
 function startBankAssault(st, h, ob) {
   const B = BANKS[ob.kind];
   offerBattle(st, h, ob, `${B.name}: ${B.desc}. Załoga: ${bankGuardText(ob)}. Łup: ${bankLootText(ob.kind)}.`, bankPower(ob),
-    (ctx, cx, cy) => { const sp = bankSprite(ob.kind, false), k = Math.min(1.1, 40 / sp.c.height); drawSpriteBox(ctx, sp, cx - sp.c.width * k, cy - sp.c.height * k, k); });
+    (ctx, cx, cy) => { const sp = bankSprite(ob.kind, false), H2 = sp.c.height * sp.u / 2, k = Math.min(1.1, 40 / H2); drawSpriteBox(ctx, sp, cx - sp.c.width * sp.u / 2 * k, cy - H2 * k, k); });
 }
 // Łup ze skarbca dla zwycięzcy (człowieka albo SI); zwraca opis do okna wyniku
 function lootBank(st, h, ob) {
@@ -5879,7 +5906,7 @@ function landColor(t, ax, ay, hh) {
   switch (t) {
     case TER.GRASS: if (hh < 0.02) col = P[3]; else if (hh < 0.035) col = P[0]; else if (hh > 0.997) col = PC.flY; else if (hh > 0.994) col = PC.flW; break;
     case TER.DIRT: if (hh < 0.03) col = P[3]; else if (hh > 0.985) col = P[2]; break;
-    case TER.SAND: if (((ay + Math.floor(vnoise2(ax / 9, ay / 9, 5) * 8)) % 6) === 0 && hh < 0.6) col = P[2]; else if (hh < 0.025) col = P[3]; break;
+    case TER.SAND: if (((Math.floor(ay) + Math.floor(vnoise2(ax / 9, ay / 9, 5) * 8)) % 6) === 0 && hh < 0.6) col = P[2]; else if (hh < 0.025) col = P[3]; break;
     case TER.SNOW: if (hh < 0.015) col = P[3]; else if (hh > 0.99) col = PC.white; break;
     case TER.SWAMP: { const pv = vnoise2(ax / 4, ay / 4, 41); if (pv > 0.7) col = P[3]; else if (pv > 0.66) col = PC.rim; else if (hh < 0.02) col = PC.reed; break; }
     case TER.ROUGH: if (hh < 0.035) col = P[3]; else if (hh > 0.985) col = P[2]; break;
@@ -5900,64 +5927,66 @@ function seasonLand(col, t, ax, ay, hh, S) {
 }
 function renderChunkPixel(map, cx, cy) {
   const SN = MapRender.season || 0;
-  const n = map.n, S = CHUNK * AP, M = 5, R = S + 2 * M, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
+  // D = gęstość pikseli (PXD): teren liczony w drobnych pikselach, współrzędne tekstur (ax, ay) w dawnych pikselach grafiki
+  const D = PXD, n = map.n, S = CHUNK * AP, SF = S * D, M = 5, MF = M * D, R = SF + 2 * MF, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
   for (let y = 0; y < R; y++) for (let x = 0; x < R; x++) {
-    const ax = bx + x - M, ay = by + y - M, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
+    const ax = bx + (x - MF) / D, ay = by + (y - MF) / D, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
     tid[y * R + x] = map.terrain[clamp(Math.floor((ay + jy) / AP), 0, n - 1) * n + clamp(Math.floor((ax + jx) / AP), 0, n - 1)];
   }
-  const TT = (x, y) => tid[(y + M) * R + x + M], rd = map.road, at = (x, y) => (x >= 0 && y >= 0 && x < n && y < n) ? rd[y * n + x] : 0;
+  const TT = (x, y) => tid[(y + MF) * R + x + MF], TO = (x, y) => TT(Math.floor(x * D), Math.floor(y * D)), rd = map.road, at = (x, y) => (x >= 0 && y >= 0 && x < n && y < n) ? rd[y * n + x] : 0;
   const segs = [], x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1;
   for (let y = y0; y <= y0 + CHUNK + 1; y++) for (let x = x0; x <= x0 + CHUNK + 1; x++) {
     const t = at(x, y); if (!t) continue; const px = x * AP + 8 - bx, py = y * AP + 8 - by; let any = false;
     for (let d = 0; d < 8; d++) { const dx = DX8[d], dy = DY8[d]; if (!at(x + dx, y + dy) || (dx && dy && (at(x + dx, y) || at(x, y + dy)))) continue; segs.push([px, py, px + dx * 8, py + dy * 8, t]); any = true; }
     if (!any) segs.push([px, py, px, py, t]);
   }
-  const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), img = g.createImageData(S, S), d = img.data;
-  const wm = new Uint8Array(S * S); let wet = false; // maska wody: 1 = głębia (fale), 2 = pas przy brzegu (piana)
-  for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
-    const k = (py * S + px) * 4, ax = bx + px, ay = by + py; let col;
+  const c = document.createElement('canvas'); c.width = c.height = SF; const g = c.getContext('2d'), img = g.createImageData(SF, SF), d = img.data;
+  const wm = new Uint8Array(SF * SF); let wet = false; // maska wody: 1 = głębia (fale), 2 = pas przy brzegu (piana)
+  for (let fy = 0; fy < SF; fy++) for (let fx = 0; fx < SF; fx++) {
+    const k = (fy * SF + fx) * 4, px = fx / D, py = fy / D, ax = bx + px, ay = by + py, ia = Math.floor(ax), ja = Math.floor(ay), wi = fy * SF + fx; let col;
     if (ax >= lim || ay >= lim) col = PC.void;
     else {
-      const t = TT(px, py), hh = thash(ax, ay, 77) / 4294967296;
+      const t = TT(fx, fy), hh = thash(bx * D + fx, by * D + fy, 77) / 4294967296; // drobny szum: plamki w drobnych pikselach
       if (t === TER.WATER) {
-        let near = 9; for (const r of RING) if (TT(px + r[0], py + r[1]) !== TER.WATER) { near = r[2]; break; }
-        wm[py * S + px] = near <= 2 ? 2 : 1; wet = true;
-        if (SN === 3 && near <= 4) { wm[py * S + px] = 0; col = near === 1 ? SNOWC[2] : (thash(ax >> 1, ay >> 2, 81) % 23 === 0) ? [150, 186, 214] : near <= 2 ? [206, 226, 240] : [184, 212, 232]; } // zimą lód przy brzegu
+        let near = 9; for (const r of RING) if (TT(fx + r[0] * D, fy + r[1] * D) !== TER.WATER) { near = r[2]; break; }
+        wm[wi] = near <= 2 ? 2 : 1; wet = true;
+        if (SN === 3 && near <= 4) { wm[wi] = 0; col = near === 1 ? SNOWC[2] : (thash(ax >> 1, ay >> 2, 81) % 23 === 0) ? [150, 186, 214] : near <= 2 ? [206, 226, 240] : [184, 212, 232]; } // zimą lód przy brzegu
         else if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
         else { const P = TPAL[0]; col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; }
       } else {
         col = seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN);
-        const below = TT(px, py + 1); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
+        const below = TT(fx, fy + D); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
       }
       if (segs.length) {
         let best = 99, bt = 0;
-        for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5, py + 0.5, s); if (dd < best) { best = dd; bt = s[4]; } }
-        if (best <= 4.3) wm[py * S + px] = 0;
-        if (best <= 3.3) col = SN === 3 ? mixRgb(roadColor(bt, ax, ay, hh), SNOWC[0], 0.3) : roadColor(bt, ax, ay, hh); else if (best <= 4.3) col = PC.edge;
+        for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5 / D, py + 0.5 / D, s); if (dd < best) { best = dd; bt = s[4]; } }
+        if (best <= 4.3) wm[wi] = 0;
+        if (best <= 3.3) col = SN === 3 ? mixRgb(roadColor(bt, ia, ja, hh), SNOWC[0], 0.3) : roadColor(bt, ia, ja, hh); else if (best <= 4.3) col = PC.edge;
       }
     }
     d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2]; d[k + 3] = 255;
   }
-  g.putImageData(img, 0, 0);
+  g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); // sprite'y ozdób i przeszkód w dawnych jednostkach
+  const put = (gg, sp, x, y) => gg.drawImage(sp.c, x - sp.ax / D, y - sp.ay / D, sp.c.width / D, sp.c.height / D);
   // ozdoby: pola bez przeszkody, drogi i obiektu; teren sprawdzany w miejscu ozdoby (brzegi terenu są poszarpane)
   const oa = G.state && G.state.map === map ? G.state.objAt : null;
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x0 + CHUNK + 1); x++) {
     const i = y * n + x, h = thash(x, y, map.seed + 5); if (map.obst[i] || rd[i] || (oa && oa[i]) || h % 100 >= 22) continue;
     const lx = x * AP + 8 - bx + ((h >>> 8) % 9) - 4, ly = y * AP + 8 - by + ((h >>> 12) % 7) - 3, t = map.terrain[i];
-    if (t === TER.WATER || lx < -M || ly < -M || lx >= S + M || ly >= S + M || TT(lx, ly) !== t) continue;
-    const s = decorSprite(t, (h >>> 16) % 4, SN); g.drawImage(s.c, lx - s.ax, ly - s.ay);
+    if (t === TER.WATER || lx < -M || ly < -M || lx >= S + M || ly >= S + M || TO(lx, ly) !== t) continue;
+    const s = decorSprite(t, (h >>> 16) % 4, SN); put(g, s, lx, ly);
   }
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
     const o = map.obst[y * n + x]; if (!o) continue;
     const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
-    g.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
+    put(g, s, x * AP + 8 - bx, y * AP + 8 - by);
   }
-  gradeCanvas(c, bx, by);
+  gradeCanvas(c, bx * D, by * D);
   if (wet) { // maski do animacji wody (WaterFx); przeszkody stojące nad wodą (drzewa, góry przy brzegu) ją zasłaniają
-    const mk = v => { const m = document.createElement('canvas'); m.width = m.height = S; const mg = m.getContext('2d'), mi = mg.createImageData(S, S);
-      for (let i = 0; i < S * S; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out';
+    const mk = v => { const m = document.createElement('canvas'); m.width = m.height = SF; const mg = m.getContext('2d'), mi = mg.createImageData(SF, SF);
+      for (let i = 0; i < SF * SF; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out'; mg.setTransform(D, 0, 0, D, 0, 0);
       for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
-        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); mg.drawImage(s.c, x * AP + 8 - bx - s.ax, y * AP + 8 - by - s.ay);
+        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); put(mg, s, x * AP + 8 - bx, y * AP + 8 - by);
       }
       return m; };
     c._deep = mk(1); c._shore = mk(2);
@@ -5982,8 +6011,8 @@ const WaterFx = {
     const g = tmp.getContext('2d'), pat = g.createPattern(this.pattern(), 'repeat');
     const layer = (ox, oy, a) => { g.save(); g.globalAlpha = a; g.translate(ox, oy); g.fillStyle = pat; g.fillRect(-ox, -oy, S, S); g.restore(); };
     g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S);
-    layer(Math.floor(t * 4) - wx, Math.floor(t * 1.5) - wy, 0.5 + 0.2 * Math.sin(t * 1.3));
-    layer(-Math.floor(t * 3) - wx + 21, Math.floor(t * 2) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
+    const D = PXD; layer(Math.floor(t * 4 * D) - wx, Math.floor(t * 1.5 * D) - wy, 0.5 + 0.2 * Math.sin(t * 1.3)); // prędkość w dawnych pikselach
+    layer(-Math.floor(t * 3 * D) - wx + 21, Math.floor(t * 2 * D) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
     g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0);
     b.drawImage(tmp, dx, dy, size, size);
     g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = this.foam || (this.foam = `rgb(${gradeRgb(hexRgb('#eef8fc')).map(Math.round).join(',')})`); g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
@@ -6104,13 +6133,13 @@ function drawPathPixel(b, st, h, ox, oy) {
 // Mgła wojny w kawałkach 8×8 pól (jak teren): kółka nad nieodkrytymi polami, progowanie alfy na twardą krawędź
 // z ditheringiem w szachownicę. Kawałek przelicza się tylko wtedy, gdy zmieni się odkrycie pól w nim i wokół niego.
 function fogChunk(ex, n, cx, cy) {
-  const S = CHUNK * AP, x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1, x1 = x0 + CHUNK + 1, y1 = y0 + CHUNK + 1; let sig = 0, any = false;
+  const S = CHUNK * AP * PXD, x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1, x1 = x0 + CHUNK + 1, y1 = y0 + CHUNK + 1; let sig = 0, any = false;
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (!ex[y * n + x]) { sig = (sig * 31 + y * n + x) | 0; any = true; }
   const key = cx + ',' + cy, old = MapRender.fog.get(key); if (old && old._sig === sig) return old.c;
   let c = null;
   if (any) {
     const w = pixBuf('fogWork', S, S, true), f = w._ctx, ox = -cx * CHUNK * T, oy = -cy * CHUNK * T; f.setTransform(1, 0, 0, 1, 0, 0); f.clearRect(0, 0, S, S);
-    f.setTransform(0.5, 0, 0, 0.5, 0, 0);
+    f.setTransform(1 / PIX, 0, 0, 1 / PIX, 0, 0);
     for (const [alpha, extra] of [[0.45, 7], [1, 0]]) {
       f.fillStyle = `rgba(0,0,0,${alpha})`; f.beginPath();
       for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) {
@@ -6132,7 +6161,7 @@ function drawFogPixel(b, st, ox, oy, c0, c1, r0, r1) {
   for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) { const f = fogChunk(ex, n, cx, cy); if (f) b.drawImage(f, ox + cx * CP, oy + cy * CP, CP, CP); }
 }
 function drawWorldPixel(b, st) {
-  const map = st.map, n = map.n, CP = CHUNK * T, camX = Math.round(st.cam.x / 2) * 2, camY = Math.round(st.cam.y / 2) * 2, nC = Math.ceil(n / CHUNK);
+  const map = st.map, n = map.n, CP = CHUNK * T, camX = Math.round(st.cam.x / PIX) * PIX, camY = Math.round(st.cam.y / PIX) * PIX, nC = Math.ceil(n / CHUNK);
   b.fillStyle = '#000'; b.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
   const c0 = Math.max(0, Math.floor(camX / CP)), c1 = Math.min(nC - 1, Math.floor((camX + VIEW.w - 1) / CP));
   const r0 = Math.max(0, Math.floor(camY / CP)), r1 = Math.min(nC - 1, Math.floor((camY + VIEW.h - 1) / CP));
@@ -6174,7 +6203,7 @@ function drawWorldPixel(b, st) {
   drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, VIEW)) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
-    b.fillStyle = 'rgba(255,240,190,.55)'; b.fillRect(x, y, T, 2); b.fillRect(x, y + T - 2, T, 2); b.fillRect(x, y + 2, 2, T - 4); b.fillRect(x + T - 2, y + 2, 2, T - 4);
+    b.fillStyle = 'rgba(255,240,190,.55)'; const q = PIX; b.fillRect(x, y, T, q); b.fillRect(x, y + T - q, T, q); b.fillRect(x, y + q, q, T - 2 * q); b.fillRect(x + T - q, y + q, q, T - 2 * q);
   }
 }
 // Korekcja barw mapy (przyciemnienie i odbarwienie jak gradeRgb) oraz paleta z ditheringiem są wypalone raz: w kawałkach
@@ -6190,7 +6219,7 @@ function gradeCanvas(c, ox = 0, oy = 0, step = 18) {
   g.putImageData(img, 0, 0); return c;
 }
 function gradedSprite(s) {
-  if (!s._g) { const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; c.getContext('2d').drawImage(s.c, 0, 0); s._g = { c: gradeCanvas(c), ax: s.ax, ay: s.ay }; }
+  if (!s._g) { const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; c.getContext('2d').drawImage(s.c, 0, 0); s._g = { c: gradeCanvas(c), ax: s.ax, ay: s.ay, u: s.u }; }
   return s._g;
 }
 const blitG = (b, s, x, y) => blit(b, gradedSprite(s), x, y);
@@ -6211,11 +6240,11 @@ function mapLight(w, h) {
 function drawMapView(ctx, st, scr) {
   MapRender.setSeason(seasonIdx(st));
   {
-    const wb = pixBuf('world', VIEW.w / 2, VIEW.h / 2), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
-    b.setTransform(0.5, 0, 0, 0.5, -VIEW.x * 0.5, -VIEW.y * 0.5); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / 2, VIEW.h / 2), 0, 0); b.restore();
+    const wb = pixBuf('world', VIEW.w / PIX, VIEW.h / PIX), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
+    b.setTransform(1 / PIX, 0, 0, 1 / PIX, -VIEW.x / PIX, -VIEW.y / PIX); b.imageSmoothingEnabled = false; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(VIEW.w / PIX, VIEW.h / PIX), 0, 0); b.restore();
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(wb, VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.restore();
   }
-  const ox = VIEW.x - Math.round(st.cam.x / 2) * 2, oy = VIEW.y - Math.round(st.cam.y / 2) * 2; // to samo zaokrąglenie co w drawWorldPixel
+  const ox = VIEW.x - Math.round(st.cam.x / PIX) * PIX, oy = VIEW.y - Math.round(st.cam.y / PIX) * PIX; // to samo zaokrąglenie co w drawWorldPixel
   ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.clip();
   scr.floats = (scr.floats || []).filter(f => G.time - f.t < 1.6);
   for (const f of scr.floats) {
@@ -6826,7 +6855,8 @@ const PJ_BASE = { hor: 94, d: 282 };
 function usePJ(L) { const p = (L && L.pj) || PJ_BASE; PJ.hor = p.hor; PJ.d = p.d; }
 function proj(X, Z, e = 0) { const s = 1 / Z; return [PJ.cx + X * s, PJ.hor + PJ.d * s - e * s, s]; }
 const hazeAt = Z => clamp((Z - 1.05) * 0.36, 0, 0.45);
-const TOWN_ART_SCALE = 0.5;
+let TOWN_ART_SCALE = 1 / PIX; // pikseli sceny na px logiczny (drobny piksel: 1, niska jakość: 0,5)
+PIX_CLEAR.push(() => { TOWN_ART_SCALE = 1 / PIX; });
 // Rysuje obiekt jako pikselowy sprite w skali perspektywy (twarde krawędzie, obrys, mgła oddalenia)
 function drawObj(dst, draw, box, anchor, sx, sy, sc, haze, hazeCol, fx, flip) { // flip: odbicie w poziomie (to samo miasto, inne ustawienie budowli)
   const [bx0, by0, bw, bh] = box, R = TOWN_ART_SCALE * sc, cw = Math.ceil(bw * R) + 2, ch = Math.ceil(bh * R) + 2;
@@ -9553,23 +9583,23 @@ function menuRider(b, t) {
   const y = v * v * v * p0[1] + 3 * v * v * u * p1[1] + 3 * v * u * u * p2[1] + u * u * u * p3[1];
   const s = heroSprite({ cls: 'knight', dir: 1, anim: {} }, colorHex(G.settings.color)), k = 0.45 + 0.75 * u;
   b.save(); b.globalAlpha = clamp(u * 8, 0, 1) * clamp((1 - u) * 6, 0, 1);
-  b.drawImage(s.c, x - s.ax * 2 * k, y - s.ay * 2 * k, s.c.width * 2 * k, s.c.height * 2 * k); b.restore();
+  b.drawImage(s.c, x - s.ax * s.u * k, y - s.ay * s.u * k, s.c.width * s.u * k, s.c.height * s.u * k); b.restore();
 }
 // Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize, wypalona raz w nieruchomym niebie i lądzie)
 // i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
 // Scenę przeliczamy raz na klatkę (kilka ułamków milisekundy), a przy ponownym rysowaniu tej samej klatki wklejamy gotową
 function drawMenuScene(ctx) {
-  const pb = pixBuf('menuScene', VW / 2, VH / 2);
+  const pb = pixBuf('menuScene', VW / PIX, VH / PIX);
   if (pb._t !== G.time) { paintMenuScene(pb); pb._t = G.time; }
   viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
 }
 function paintMenuScene(pb) {
   const t = G.time, b = pb._ctx, span = VW + 300;
   const layer = paint => c => { c.translate(OX, OY); paint(c); pixelQuantize(c.canvas, 14); };
-  b.setTransform(0.5, 0, 0, 0.5, OX / 2, OY / 2); b.imageSmoothingEnabled = false;
-  b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 0.5), -OX, -OY, VW, VH);
+  b.setTransform(1 / PIX, 0, 0, 1 / PIX, OX / PIX, OY / PIX); b.imageSmoothingEnabled = false;
+  b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 1 / PIX), -OX, -OY, VW, VH);
   for (const c of CLOUDS) drawCloud(b, ((c.x * span / 1100 + t * c.v) % span) - 150 - OX, c.y, c.s, c.a);
-  b.drawImage(Layers.get(`menuLand_${VW}x${VH}`, VW, VH, layer(paintLand), 0.5), -OX, -OY, VW, VH);
+  b.drawImage(Layers.get(`menuLand_${VW}x${VH}`, VW, VH, layer(paintLand), 1 / PIX), -OX, -OY, VW, VH);
   for (const [x, y, w, h, p] of CASTLE_WINDOWS) {
     const f = clamp(0.55 + 0.35 * Math.sin(t * 2.3 + p) + 0.1 * Math.sin(t * 7.1 + p * 3), 0.15, 1);
     b.fillStyle = `rgba(255,170,70,${(f * 0.18).toFixed(3)})`; b.fillRect(x - 2, y - 2, w + 4, h + 4);
@@ -10247,8 +10277,8 @@ function puzzleOrder(st) {
 }
 // Obraz wycinka mapy (teren i stałe obiekty, bez bohaterów i potworów, bez mgły) w połowie rozdzielczości, z krzyżykiem
 function puzzleImage(st) {
-  const [x0, y0] = puzzleOrigin(st), c = document.createElement('canvas'); c.width = PUZZLE_W * T / 2; c.height = PUZZLE_H * T / 2;
-  const b = c.getContext('2d'), CP = CHUNK * T; b.imageSmoothingEnabled = false; b.setTransform(0.5, 0, 0, 0.5, 0, 0);
+  const [x0, y0] = puzzleOrigin(st), c = document.createElement('canvas'); c.width = PUZZLE_W * T / PIX; c.height = PUZZLE_H * T / PIX;
+  const b = c.getContext('2d'), CP = CHUNK * T; b.imageSmoothingEnabled = false; b.setTransform(1 / PIX, 0, 0, 1 / PIX, 0, 0);
   for (let cy = Math.floor(y0 / CHUNK); cy <= Math.floor((y0 + PUZZLE_H - 1) / CHUNK); cy++) for (let cx = Math.floor(x0 / CHUNK); cx <= Math.floor((x0 + PUZZLE_W - 1) / CHUNK); cx++)
     b.drawImage(MapRender.get(cx, cy), (cx * CHUNK - x0) * T, (cy * CHUNK - y0) * T, CP, CP);
   const ox = -x0 * T, oy = -y0 * T;
@@ -10271,11 +10301,11 @@ const PUZZLE_ART = {
   inferno: { sky: ['#200808', '#c83a1a'], sun: '#ffc060', ground: '#3a2020', far: '#5a2a1e' }, academy: { sky: ['#4a78b0', '#d8e8f8'], sun: '#ffffff', ground: '#d8e0e8', far: '#8aa0c0' },
   dungeon: { sky: ['#0e0a1a', '#4a2a6a'], sun: '#c8a0ff', ground: '#4a4040', far: '#2e2440', moon: true }, stronghold: { sky: ['#b85a2a', '#f0c070'], sun: '#fff0c0', ground: '#c8a060', far: '#a86a3a' },
 };
-let PUZZLE_COVER = null;
+let PUZZLE_COVER = null; PIX_CLEAR.push(() => { PUZZLE_COVER = null; });
 function puzzleCover(st, w, h) {
   const fac = (st.players[ME] || {}).faction || 'haven', key = `${fac}_${st.seed}_${w}x${h}`; if (PUZZLE_COVER && PUZZLE_COVER.key === key) return PUZZLE_COVER.c;
-  const A = PUZZLE_ART[fac] || PUZZLE_ART.haven, cw = Math.round(w / 2), ch = Math.round(h / 2), c = document.createElement('canvas'); c.width = cw; c.height = ch;
-  const g = c.getContext('2d'), r = mulberry32(st.seed * 31 + 7), hor = Math.round(ch * 0.58);
+  const A = PUZZLE_ART[fac] || PUZZLE_ART.haven, cw = Math.round(w / 2), ch = Math.round(h / 2), c = document.createElement('canvas'); c.width = Math.round(w / PIX); c.height = Math.round(h / PIX);
+  const g = c.getContext('2d'); g.setTransform(2 / PIX, 0, 0, 2 / PIX, 0, 0); const r = mulberry32(st.seed * 31 + 7), hor = Math.round(ch * 0.58);
   let gr = g.createLinearGradient(0, 0, 0, hor); gr.addColorStop(0, A.sky[0]); gr.addColorStop(1, A.sky[1]); g.fillStyle = gr; g.fillRect(0, 0, cw, hor);
   const sx = cw * (0.62 + r() * 0.22), sy = ch * 0.2; for (const [rad, a] of [[34, 0.12], [24, 0.2], [16, 1]]) { g.globalAlpha = a; g.fillStyle = A.sun; g.beginPath(); g.arc(sx, sy, rad, 0, TAU); g.fill(); }
   g.globalAlpha = 1; if (A.moon) { g.fillStyle = gr; g.beginPath(); g.arc(sx + 7, sy - 4, 14, 0, TAU); g.fill(); } // sierp: wycięcie kolorem nieba
@@ -10289,7 +10319,7 @@ function puzzleCover(st, w, h) {
   g.fillStyle = 'rgba(0,0,0,.14)'; for (let i = 0; i < cw * ch / 90; i++) g.fillRect(Math.floor(r() * cw), hor + 10 + Math.floor(r() * (ch - hor)), 2, 1); // źdźbła i kamyki
   g.fillStyle = shadeHex(A.ground, 0.25); g.beginPath(); g.moveTo(cw / 2 - 30, ch); g.bezierCurveTo(cw / 2 - 40, ch * 0.85, cw / 2 + 14, ch * 0.8, cw / 2 - 2, hor + 26); // droga
   g.lineTo(cw / 2 + 6, hor + 26); g.bezierCurveTo(cw / 2 + 26, ch * 0.8, cw / 2 - 12, ch * 0.85, cw / 2 + 30, ch); g.fill();
-  const ts = townSprite(fac, 3), tk = 2; g.imageSmoothingEnabled = false; g.drawImage(ts.c, cw / 2 - ts.c.width * tk / 2 + 10, hor + 30 - ts.c.height * tk + 16, ts.c.width * tk, ts.c.height * tk);
+  const ts = townSprite(fac, 3), tk = 2; g.imageSmoothingEnabled = false; const tw = ts.c.width * ts.u / 2 * tk, th = ts.c.height * ts.u / 2 * tk; g.drawImage(ts.c, cw / 2 - tw / 2 + 10, hor + 30 - th + 16, tw, th);
   for (let i = 0; i < 14; i++) { // kępy drzew po bokach
     const side = i % 2 ? 1 : -1, x = cw / 2 + side * (cw * 0.26 + r() * cw * 0.22), y = hor + 18 + r() * (ch - hor - 30), s2 = 5 + r() * 5, dk = shadeHex(A.ground, -0.3);
     g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(x, y + s2, s2, s2 * 0.35, 0, 0, TAU); g.fill();
@@ -10705,18 +10735,19 @@ function hexAt(px, py) {
 const PAVE_X = 572; // bruk dziedzińca od tej kolumny pikseli (px logiczne) w prawo
 // Tło bitwy w stylu mapy: teren z palety TERRAINS, piksele 2×2, ta sama korekcja barw
 function paintBattleBg(c, terr, fac) {
-  const w = W / 2, h = H / 2, off = document.createElement('canvas'); off.width = w; off.height = h;
-  const g = off.getContext('2d'), img = g.createImageData(w, h), P = TPAL[terr].map(gradeRgb), sky = [[40, 44, 62], [70, 72, 92]];
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const o = (y * w + x) * 4; let col;
+  // D = gęstość pikseli: teren liczony w drobnych pikselach (fx, fy), wzory w dawnych pikselach (x, y = połowa px logicznych)
+  const D = PXD, w = W / 2, h = H / 2, fw = w * D, fh = h * D, off = document.createElement('canvas'); off.width = fw; off.height = fh;
+  const g = off.getContext('2d'), img = g.createImageData(fw, fh), P = TPAL[terr].map(gradeRgb), sky = [[40, 44, 62], [70, 72, 92]];
+  for (let fy = 0; fy < fh; fy++) for (let fx = 0; fx < fw; fx++) {
+    const o = (fy * fw + fx) * 4, x = Math.floor(fx / D), y = Math.floor(fy / D), xs = fx / D, ys = fy / D; let col;
     if (y < 22) col = sky[(y + (x & 1)) % 11 < 6 ? 0 : 1];
     else if (fac && x * 2 > PAVE_X + Math.round(vnoise2(0, y / 4, 3) * 6)) { // bruk dziedzińca za murem
       const pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, row = Math.floor(y / 5), cx = x + (row % 2) * 4, edge = y % 5 === 0 || cx % 8 === 0, k = thash(Math.floor(cx / 8), row, 7) % 3;
       col = edge ? pv[1].map(v => v * 0.8) : k === 0 ? pv[1] : k === 1 ? pv[0] : pv[0].map((v, i) => (v + pv[1][i]) / 2);
-    } else { const n = vnoise2(x / 9, y / 6, 17) * 0.7 + vnoise2(x / 3, y / 3, 5) * 0.3 + (BAYER4[(y & 3) * 4 + (x & 3)] / 16 - 0.5) * 0.18; col = P[n < 0.32 ? 0 : n < 0.62 ? 1 : n < 0.8 ? 2 : 3]; }
+    } else { const n = vnoise2(xs / 9, ys / 6, 17) * 0.7 + vnoise2(xs / 3, ys / 3, 5) * 0.3 + (BAYER4[(fy & 3) * 4 + (fx & 3)] / 16 - 0.5) * 0.18; col = P[n < 0.32 ? 0 : n < 0.62 ? 1 : n < 0.8 ? 2 : 3]; }
     img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
   }
-  g.putImageData(img, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = false; c.drawImage(off, 0, 0, W, H);
+  g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = false; c.drawImage(off, 0, 0, W, H);
   c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1;
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { hexPath(c, x, y, 1); c.stroke(); }
   stoneFill(c, 0, 490, W, 110); c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, W, 38);
@@ -11835,7 +11866,7 @@ function drawPerfInfo(ctx) {
 }
 function showGfxSettings(back) {
   const S = G.settings, cur = (QUALITIES.find(q => q.id === S.quality) || QUALITIES[0]).name;
-  const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); resize(); showGfxSettings(back); };
+  const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); setPixelSize(id === 'low' ? 2 : 1); resize(); showGfxSettings(back); };
   const fontBtn = { label: pixelFont() ? 'Czcionka: piksele' : 'Czcionka: klasyczna', sub: 'zmień', tip: 'Czcionka interfejsu: pikselowa (pasuje do grafiki) albo klasyczna szeryfowa.',
     action: () => { S.font = pixelFont() ? 'classic' : 'pixel'; saveSettings(); Layers.cache = {}; showGfxSettings(back); } };
   const wxBtn = { label: weatherOn() ? 'Pogoda: tak' : 'Pogoda: nie', sub: 'zmień', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
@@ -11845,6 +11876,7 @@ function showGfxSettings(back) {
 }
 function init() {
   loadSettings();
+  setPixelSize(G.settings.quality === 'low' ? 2 : 1); // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
   G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: false }); // nieprzezroczyste płótno: przeglądarka nie miesza go z tłem strony
   resize(); window.addEventListener('resize', resize); bindInput();
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)
