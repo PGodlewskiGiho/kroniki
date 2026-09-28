@@ -133,6 +133,10 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    z dwóch (skillOffer: ulepszenie + nowa), SI wybiera wg AI_SKILL_ORDER. Działanie: skillVal() w ruchu, widzeniu,
    manie, dochodzie, koszcie terenu (baseCost z bohaterem), obrażeniach (damageRoll, spellDamage), morale,
    szczęściu, doświadczeniu i nekromancji (raiseDead po zwycięstwie).
+   Rozwój jak w Heroes 3: specjalności (HERO_SPECS: stwory dw z premią rosnącą z poziomem, surowiec, umiejętność +5%/poz.,
+   czar +3%/poz.; specBonus/u.spec w bitwie, ramka na ekranie bohatera i w tawernie), 7 nowych umiejętności (Mądrość = czary
+   powyżej 2. poziomu, spellCap; Nawigacja, Artyleria, Pierwsza pomoc, Balistyka, Odporność, Orle oko) i wagi klas przy awansie
+   (CLASS_SKILL_PREF, skillWeight). Magowie zaczynają z Mądrością; stare zapisy dostają ją w migrateSave.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
@@ -746,21 +750,62 @@ const SKILLS = {
   estates: { name: 'Majątek', v: [125, 250, 500], desc: v => `+${v} złota dziennie` },
   learning: { name: 'Nauka', v: [5, 10, 15], desc: v => `+${v}% doświadczenia` },
   necromancy: { name: 'Nekromancja', v: [10, 20, 30], desc: v => `po zwycięstwie z ${v}% życia poległych żywych wrogów powstają kościotrupy` },
+  wisdom: { name: 'Mądrość', v: [3, 4, 5], desc: v => `pozwala poznać czary do ${v}. poziomu (bez niej tylko do 2.)` },
+  navigation: { name: 'Nawigacja', v: [50, 100, 150], desc: v => `+${v}% ruchu na wodzie` },
+  artillery: { name: 'Artyleria', v: [50, 75, 100], desc: v => `balista zadaje o ${v}% więcej obrażeń` },
+  firstAid: { name: 'Pierwsza pomoc', v: [50, 75, 100], desc: v => `namiot medyka leczy do ${v} punktów życia` },
+  ballistics: { name: 'Balistyka', v: [85, 95, 100], desc: v => `katapulta trafia w mury w ${v}% strzałów` },
+  resistance: { name: 'Odporność', v: [5, 10, 20], desc: v => `${v}% szans, że czar wroga nie zadziała na oddział` },
+  eagleSight: { name: 'Orle oko', v: [40, 50, 60], desc: v => `${v}% szans na naukę czaru rzuconego przez wroga (do ${v / 10 - 2}. poziomu)` },
 };
+// Magowie zaczynają z Mądrością (jak w oryginale): bez niej bohater zna czary najwyżej 2. poziomu
+const spellCap = h => { const L = heroSkill(h, 'wisdom'); return L ? SKILLS.wisdom.v[L - 1] : 2; };
 // Umiejętności startowe klas; nekromancję mogą poznać tylko klasy Kurhanu
 const CLASS_SKILLS = {
-  knight: [['leadership', 1], ['archery', 1]], cleric: [['intelligence', 1], ['estates', 1]],
-  ranger: [['pathfinding', 1], ['archery', 1]], druid: [['luck', 1], ['mysticism', 1]],
-  deathKnight: [['necromancy', 1], ['offense', 1]], necro: [['necromancy', 1], ['sorcery', 1]],
-  beastmaster: [['armorer', 1], ['pathfinding', 1]], witch: [['mysticism', 1], ['learning', 1]],
-  demoniac: [['offense', 1], ['logistics', 1]], heretic: [['sorcery', 1], ['intelligence', 1]],
-  alchemist: [['armorer', 1], ['estates', 1]], wizard: [['mysticism', 1], ['intelligence', 1]],
-  overlord: [['leadership', 1], ['logistics', 1]], warlock: [['sorcery', 1], ['intelligence', 1]],
+  knight: [['leadership', 1], ['archery', 1]], cleric: [['wisdom', 1], ['intelligence', 1], ['estates', 1]],
+  ranger: [['pathfinding', 1], ['archery', 1]], druid: [['wisdom', 1], ['luck', 1], ['mysticism', 1]],
+  deathKnight: [['necromancy', 1], ['offense', 1]], necro: [['necromancy', 1], ['wisdom', 1], ['sorcery', 1]],
+  beastmaster: [['armorer', 1], ['pathfinding', 1]], witch: [['wisdom', 1], ['mysticism', 1], ['learning', 1]],
+  demoniac: [['offense', 1], ['logistics', 1]], heretic: [['wisdom', 1], ['sorcery', 1], ['intelligence', 1]],
+  alchemist: [['armorer', 1], ['estates', 1]], wizard: [['wisdom', 1], ['mysticism', 1], ['intelligence', 1]],
+  overlord: [['leadership', 1], ['logistics', 1]], warlock: [['wisdom', 1], ['sorcery', 1], ['intelligence', 1]],
   barbarian: [['offense', 1], ['pathfinding', 1]], battleMage: [['offense', 1], ['sorcery', 1]],
 };
 const NECRO_CLASSES = ['deathKnight', 'necro'];
+const MAGE_CLASSES = ['cleric', 'druid', 'necro', 'witch', 'heretic', 'wizard', 'warlock'];
+// Umiejętności, które klasa dostaje przy awansie częściej (jak w oryginale: rycerz rzadko uczy się magii, mag walki)
+const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance'];
+const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting'];
+const CLASS_SKILL_PREF = {
+  knight: ['leadership', 'offense', 'armorer', 'artillery'], cleric: ['wisdom', 'eagleSight', 'mysticism', 'estates'],
+  ranger: ['archery', 'pathfinding', 'luck', 'scouting'], druid: ['wisdom', 'intelligence', 'luck', 'eagleSight'],
+  deathKnight: ['offense', 'armorer', 'resistance', 'necromancy'], necro: ['wisdom', 'intelligence', 'eagleSight', 'necromancy'],
+  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid'], witch: ['wisdom', 'eagleSight', 'navigation', 'intelligence'],
+  demoniac: ['offense', 'artillery', 'ballistics', 'resistance'], heretic: ['wisdom', 'sorcery', 'intelligence', 'learning'],
+  alchemist: ['artillery', 'ballistics', 'wisdom', 'firstAid'], wizard: ['wisdom', 'intelligence', 'eagleSight', 'sorcery'],
+  overlord: ['leadership', 'offense', 'resistance', 'scouting'], warlock: ['wisdom', 'sorcery', 'intelligence', 'eagleSight'],
+  barbarian: ['offense', 'resistance', 'armorer', 'ballistics'], battleMage: ['offense', 'wisdom', 'sorcery', 'artillery'],
+};
+// Waga umiejętności w losowaniu przy awansie: ulubione klasy ×4, magiczne u wojowników i bojowe u magów ×0,5
+const skillWeight = (cls, id) => (CLASS_SKILL_PREF[cls] || []).includes(id) ? 4 : (MAGE_CLASSES.includes(cls) ? MIGHT_SKILLS : MAGIC_SKILLS).includes(id) ? 0.5 : 1;
 // Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
-const AI_SKILL_ORDER = ['offense', 'necromancy', 'leadership', 'armorer', 'archery', 'logistics', 'luck', 'pathfinding', 'estates', 'sorcery', 'intelligence', 'learning', 'mysticism', 'scouting'];
+const AI_SKILL_ORDER = ['offense', 'necromancy', 'wisdom', 'leadership', 'armorer', 'archery', 'logistics', 'resistance', 'luck', 'artillery', 'pathfinding', 'estates', 'sorcery',
+  'intelligence', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'navigation', 'scouting'];
+
+// Specjalności bohaterów (jak w oryginale), rosną z poziomem bohatera:
+// dw: stwory z siedliska tego poziomu (i ulepszone) dostają +5% ataku i obrony za każdy poziom bohatera na poziom stwora, +1 szybkości;
+// res: surowiec dziennie; skill: umiejętność działa o 5% mocniej za poziom (gdy bohater ją zna); spell: czar mocniejszy o 3% za poziom.
+const HERO_SPECS = {
+  'Sir Rolan': { dw: 3 }, Weronika: { spell: 'cure' }, Bernard: { res: 'gold', n: 350 }, Idalia: { dw: 6 }, Kasjan: { skill: 'archery' }, Mirela: { spell: 'magicArrow' },
+  Elandra: { dw: 2 }, Tarwen: { spell: 'lightningBolt' }, Lirien: { res: 'crystal', n: 1 }, Gawen: { dw: 4 },
+  Mortis: { skill: 'necromancy' }, Raga: { spell: 'animateDead' }, 'Sir Kruk': { dw: 1 }, 'Zofia Czarna': { dw: 5 },
+  Borzywoj: { dw: 1 }, Wilga: { skill: 'mysticism' }, Mszar: { res: 'mercury', n: 1 }, Dobrawa: { dw: 6 },
+  Azgar: { dw: 3 }, Kalida: { skill: 'offense' }, Moloch: { spell: 'fireball' }, 'Wiera Popiół': { res: 'sulfur', n: 1 },
+  Ostromir: { spell: 'magicArrow' }, 'Jagna Mróz': { skill: 'intelligence' }, Zbylut: { dw: 2 }, 'Mirosława': { res: 'gems', n: 1 },
+  'Czarnobór': { dw: 7 }, Morana: { spell: 'meteorShower' }, 'Zmorzysław': { skill: 'sorcery' }, Dziwa: { res: 'gold', n: 350 },
+  'Gromisław': { dw: 1 }, 'Wojsława': { dw: 5 }, 'Ognisław': { skill: 'logistics' }, Jarogniewa: { res: 'ore', n: 2 },
+};
+const heroSpec = h => (h && HERO_SPECS[h.name]) || null;
 // Doświadczenie potrzebne do poziomu 2, 3, ... (dalej każdy poziom +20%)
 const LEVEL_EXP = [0, 0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600, 24320];
 const expForLevel = L => (L < LEVEL_EXP.length ? LEVEL_EXP[L] : Math.round(expForLevel(L - 1) * 1.2));
@@ -3547,6 +3592,7 @@ function buyBoat(st, t) {
 function baseCost(map, i, j, h) {
   if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
   const t = map.terrain[i]; let c = TERRAINS[t].cost || 100; const pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
+  if (t === TER.WATER && h && skillVal(h, 'navigation')) return Math.round(c / (1 + skillVal(h, 'navigation') / 100)); // Nawigacja
   if (h && ((heroTrait(h, 'fortress') && (t === TER.SWAMP || t === TER.ROUGH)) || (heroTrait(h, 'academy') && t === TER.SNOW))) c = 100; // cechy frakcji
   return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
 }
@@ -3720,14 +3766,33 @@ function initHeroProgress(h) {
 }
 // --- umiejętności drugorzędne ---
 const heroSkill = (h, id) => { const s = h && h.skills && h.skills.find(s => s.id === id); return s ? s.lv : 0; };
-const skillVal = (h, id) => { const L = heroSkill(h, id); return L ? SKILLS[id].v[L - 1] : 0; };
+const skillVal = (h, id) => { const L = heroSkill(h, id); if (!L) return 0; const sp = heroSpec(h), v = SKILLS[id].v[L - 1]; return sp && sp.skill === id ? Math.round(v * (1 + 0.05 * h.level)) : v; };
+// --- specjalności bohaterów (HERO_SPECS) ---
+// Stwory specjalności: oba stwory z siedliska danego poziomu w rodzimej frakcji bohatera
+const specUnits = h => { const sp = heroSpec(h), F = sp && sp.dw && factionOf(heroFaction(h)); return F ? [F.dw['dw' + sp.dw][1], F.dw['dw' + sp.dw + 'u'][1]] : []; };
+// Premia dla oddziału stworów specjalności: +5% ataku i obrony za każdy poziom bohatera na poziom stwora (co najmniej +1), +1 szybkości
+function specBonus(h, cid) {
+  if (!specUnits(h).includes(cid)) return null; const c = CREATURES[cid], k = 0.05 * h.level / c.level;
+  return { att: Math.max(1, Math.round(c.att * k)), def: Math.max(1, Math.round(c.def * k)), spd: 1 };
+}
+const specSpellMul = (h, id) => { const sp = heroSpec(h); return sp && sp.spell === id ? 1 + 0.03 * h.level : 1; };
+function specText(h) {
+  const sp = heroSpec(h); if (!sp) return '';
+  if (sp.dw) { const [a, b] = specUnits(h), bo = specBonus(h, a); return `${CREATURES[a].plural} i ${CREATURES[b].plural.toLowerCase()}: +${bo.att} do ataku, +${bo.def} do obrony, +1 do szybkości (rośnie z poziomem)`; }
+  if (sp.res) return `+${sp.n} ${sp.res === 'gold' ? 'złota' : resName(sp.res).toLowerCase()} dziennie`;
+  if (sp.skill) return `${SKILLS[sp.skill].name}: działa o ${5 * h.level}% mocniej (5% za poziom)`;
+  return `${SPELLS[sp.spell].name}: o ${3 * h.level}% mocniejszy (3% za poziom)`;
+}
+const specName = h => { const sp = heroSpec(h); return !sp ? '' : sp.dw ? CREATURES[specUnits(h)[0]].plural : sp.res ? resName(sp.res) : sp.skill ? SKILLS[sp.skill].name : SPELLS[sp.spell].name; };
 const skillText = (id, L) => `${SKILLS[id].name} (${SKILL_LEVELS[L]}): ${SKILLS[id].desc(SKILLS[id].v[L - 1])}`;
 // Propozycja przy awansie na poziom L (jak w oryginale): ulepszenie znanej umiejętności i nowa umiejętność;
 // gdy którejś grupy brak, obie z drugiej. Losowanie powtarzalne (ziarno gry, bohater, poziom).
+// Nowe umiejętności losowane z wagami klasy (skillWeight): ulubione częściej, obce rzadziej.
 function skillOffer(st, h, L) {
   const up = (h.skills || []).filter(s => s.lv < 3).map(s => s.id);
   const fresh = (h.skills || []).length < MAX_SKILLS ? Object.keys(SKILLS).filter(id => !heroSkill(h, id) && (id !== 'necromancy' || NECRO_CLASSES.includes(h.cls))) : [];
-  const r = mulberry32(thash(h.id, L, st.seed) ^ 0x5a1d), pick = a => (a.length ? a.splice(Math.floor(r() * a.length), 1)[0] : null);
+  const r = mulberry32(thash(h.id, L, st.seed) ^ 0x5a1d);
+  const pick = a => { if (!a.length) return null; const w = a.map(id => skillWeight(h.cls, id)); let x = r() * w.reduce((s, v) => s + v, 0), i = 0; while (i < a.length - 1 && (x -= w[i]) >= 0) i++; return a.splice(i, 1)[0]; };
   return [pick(up) || pick(fresh), pick(fresh) || pick(up)].filter(Boolean);
 }
 function learnSkill(h, id) {
@@ -3798,7 +3863,7 @@ const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild
 function visitGuild(st, t, h) {
   const L = guildLevel(t); if (!L) return [];
   const learned = [];
-  for (let k = 1; k <= L; k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); }
+  for (let k = 1; k <= Math.min(L, spellCap(h)); k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); } // wyżej tylko z Mądrością
   h.mana = Math.max(h.mana, heroMaxMana(h)); return learned;
 }
 // Czary na mapie przygody. Zwraca tekst błędu albo null.
@@ -3949,7 +4014,7 @@ function dailyIncomeAll(st, owner = ME) {
     inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; }
     if (autumn) { inc.wood += 1; inc.ore += 1; } if (t.faction === 'inferno') inc.sulfur += 1; // jesienne zbiory, cecha Inferna
   }
-  for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates');
+  for (const h of st.heroes) if (h.owner === owner) { inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates'); const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; } // specjalność: surowiec
   return inc;
 }
 const dailyIncome = (st, res) => dailyIncomeAll(st)[res];
@@ -4095,6 +4160,7 @@ function useSite(st, h, ob) {
   switch (ob.kind) {
     case 'shrine': {
       const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
+      if (sp.level > spellCap(h)) return { text: `Kapliczka uczy czaru „${sp.name}” (poziom ${sp.level}), ale ${h.name} go nie pojmuje: potrzebna Mądrość (${SKILL_LEVELS[sp.level - 2]}).` };
       mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(heroStat(h, 'sp'))}.` };
     }
     case 'well': {
@@ -4206,7 +4272,7 @@ function actCatapult(B, u) {
   u.acted = true;
   const segs = [...B.walls.values()].filter(w => w.kind !== 'tower' && w.hp > 0);
   if (!segs.length) { B.log.push('Katapulta: mury już leżą w gruzach.'); return; }
-  const gate = segs.find(w => w.kind === 'gate'), w = gate && B.rng() < 0.5 ? gate : segs[Math.floor(B.rng() * segs.length)], hit = B.rng() < 0.75;
+  const gate = segs.find(w => w.kind === 'gate'), w = gate && B.rng() < 0.5 ? gate : segs[Math.floor(B.rng() * segs.length)], hit = B.rng() < (skillVal(sideHero(B, u.side), 'ballistics') || 75) / 100; // Balistyka
   if (hit) w.hp--;
   const what = w.kind === 'gate' ? 'brama' : 'mur';
   B.log.push(hit ? (w.hp <= 0 ? `Katapulta: ${what} ${w.kind === 'gate' ? 'rozbita' : 'runął'}!` : `Katapulta trafia: ${what} słabnie.`) : 'Katapulta chybia.');
@@ -4222,6 +4288,7 @@ function createBattle(st, h, foe) {
   placeSide(B, 1, D.stacks);
   if (D.town) setupSiege(B, D.town);
   placeMachines(B, 0, h); placeMachines(B, 1, D.hero);
+  for (const u of B.units) { const sb = specBonus(B.sides[u.side].hero, u.cid); if (sb) u.spec = sb; } // specjalność bohatera
   B.morale = [sideMorale(B, 0), sideMorale(B, 1)]; B.luck = [sideLuck(B, 0), sideLuck(B, 1)];
   // przeszkody ze środka pola: te same drzewa i skały co na mapie przygody (typ + wariant rysunku)
   const cnt = 3 + Math.floor(B.rng() * 4);
@@ -4306,7 +4373,7 @@ const humanSide = (B, side) => { const o = B.sides[side].owner; return o === ME 
 function damageRoll(B, a, t, ranged, moved = 0) {
   const ca = CREATURES[a.cid], ct = CREATURES[t.cid];
   let base = a.n * (a.buffs.bless ? ca.dmax : ca.dmin + B.rng() * (ca.dmax - ca.dmin));
-  if (a.cid === 'ballista') base *= sideAtt(B, a.side) + 1; // balista: podstawa × (atak bohatera + 1)
+  if (a.cid === 'ballista') base *= (sideAtt(B, a.side) + 1) * (1 + skillVal(sideHero(B, a.side), 'artillery') / 100); // balista: podstawa × (atak bohatera + 1), Artyleria
   const A = unitAtt(a) + sideAtt(B, a.side), D = unitDef(t) + sideDef(B, t.side) + (t.defending ? Math.ceil(ct.def * 0.2) + 1 : 0);
   let mult = A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
   if (!ranged && ca.shots > 0 && !hasAb(a, 'noMeleePenalty')) mult *= 0.5;
@@ -4369,7 +4436,8 @@ function actFirstAid(B, u) {
   u.acted = true;
   const hurt = alive(B, u.side).filter(v => !isMachine(v) && v.hp < CREATURES[v.cid].hp);
   if (!hurt.length) { B.log.push('Namiot medyka: nikt nie potrzebuje pomocy.'); return; }
-  const v = hurt.reduce((a, b) => (CREATURES[b.cid].hp - b.hp > CREATURES[a.cid].hp - a.hp ? b : a)), amt = Math.min(CREATURES[v.cid].hp - v.hp, 1 + Math.floor(B.rng() * 25));
+  const most = skillVal(sideHero(B, u.side), 'firstAid') || 25; // Pierwsza pomoc: do 50/75/100 zamiast 25
+  const v = hurt.reduce((a, b) => (CREATURES[b.cid].hp - b.hp > CREATURES[a.cid].hp - a.hp ? b : a)), amt = Math.min(CREATURES[v.cid].hp - v.hp, 1 + Math.floor(B.rng() * most));
   v.hp += amt; B.log.push(`Namiot medyka leczy: ${CREATURES[v.cid].plural.toLowerCase()} (+${amt}).`);
   if (B.fx) B.fx.push({ kind: 'heal', u: v, amount: amt });
 }
@@ -4455,9 +4523,9 @@ function nextActive(B) {
   }
 }
 // --- czary w bitwie: bohater rzuca jeden czar na rundę, zanim ruszy oddział ---
-const unitAtt = u => CREATURES[u.cid].att + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
-const unitDef = u => CREATURES[u.cid].def + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
-const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
+const unitAtt = u => CREATURES[u.cid].att + (u.spec ? u.spec.att : 0) + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
+const unitDef = u => CREATURES[u.cid].def + (u.spec ? u.spec.def : 0) + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
+const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.spec ? u.spec.spd : 0) + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
 const battleSpells = h => (h.spells || []).filter(id => SPELLS[id].kind === 'battle');
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
@@ -4475,31 +4543,42 @@ function spellTargetOk(B, id, u) {
   return t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : t === 'livingAlly' ? livingAlly(u, s) : false;
 }
 // Obrażenia czaru z Czarnoksięstwem bohatera
-const spellDamage = (h, S, sp) => Math.floor(S.dmg(sp) * (1 + skillVal(h, 'sorcery') / 100));
+const spellDamage = (h, S, sp) => Math.floor(S.dmg(sp) * (1 + skillVal(h, 'sorcery') / 100) * specSpellMul(h, spellId(S)));
+const spellId = S => Object.keys(SPELLS).find(id => SPELLS[id] === S);
+// Odporność bohatera strony oddziału: szansa, że wrogi czar go nie tknie (sprawdzana osobno dla każdego oddziału)
+const resists = (B, v, s) => { const r = v.side !== s ? skillVal(sideHero(B, v.side), 'resistance') : 0; return r > 0 && B.rng() * 100 < r; };
 // Pola trafione czarem (kula ognia: pole + sąsiedzi; armagedon: każdy oddział; czary armii: wszyscy swoi)
 function spellArea(id, x, y, B) {
   const t = SPELLS[id].target;
   if (MASS_TARGETS.includes(t)) return B ? B.units.filter(u => !u.dead && targetable(u) && (t === 'all' || u.side === casterSide(B))).map(u => [u.x, u.y]) : [];
   return t === 'hex' ? [[x, y], ...hexNeighbors(x, y)] : [[x, y]];
 }
+// Orle oko: bohater strony przeciwnej może nauczyć się rzuconego czaru (do poziomu wg umiejętności)
+function learnBySight(B, s, id) {
+  const o = sideHero(B, 1 - s), v = skillVal(o, 'eagleSight'); if (!v || knows(o, id) || SPELLS[id].level > v / 10 - 2) return;
+  if (B.rng() * 100 < v) { o.spells.push(id); B.log.push(`${o.name} podpatruje czar „${SPELLS[id].name}” (Orle oko).`); }
+}
 function castBattle(B, id, x, y) {
   const s = casterSide(B), h = sideHero(B, s), S = SPELLS[id], sp = heroStat(h, 'sp'), tu = spellUnitAt(B, id, x, y);
   const area = spellArea(id, x, y, B);
   h.mana -= S.cost; B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
   if (B.fx) B.fx.push({ kind: 'spell', id, x, y, area });
+  learnBySight(B, s, id);
   if (S.dmg) for (const [ax, ay] of area) {
-    const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue; const d = spellDamage(h, S, sp), k = applyDamage(v, d);
+    const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue;
+    if (resists(B, v, s)) { B.log.push(`${CREATURES[v.cid].plural}: odporność, czar nie działa.`); continue; }
+    const d = spellDamage(h, S, sp), k = applyDamage(v, d);
     B.log.push(`${CREATURES[v.cid].plural}: ${d} obrażeń${k ? `, tracą ${k}` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: v, dmg: d, killed: k });
   }
   if (S.heal && tu) {
     if (tu.dead) { tu.dead = false; tu.n = 1; tu.hp = 0; tu.dieT = null; } // ożywienie poległego oddziału
-    const back = S.raise ? healUnit(tu, S.heal(sp)) : (tu.hp = Math.min(CREATURES[tu.cid].hp, tu.hp + S.heal(sp)), 0);
+    const amt = Math.floor(S.heal(sp) * specSpellMul(h, id)), back = S.raise ? healUnit(tu, amt) : (tu.hp = Math.min(CREATURES[tu.cid].hp, tu.hp + amt), 0);
     if (!S.raise || id === 'resurrection') for (const b of BAD_BUFFS) delete tu.buffs[b];
-    if (back) B.log.push(`Wraca do walki: ${back}.`); if (B.fx) B.fx.push({ kind: 'heal', u: tu, amount: S.heal(sp) });
+    if (back) B.log.push(`Wraca do walki: ${back}.`); if (B.fx) B.fx.push({ kind: 'heal', u: tu, amount: amt });
   }
   if (S.buff) {
     const targets = MASS_TARGETS.includes(S.target) ? area.map(([ax, ay]) => unitAt(B, ax, ay)).filter(Boolean) : tu ? [tu] : [];
-    for (const u of targets) { u.buffs[S.buff] = SPELL_ROUNDS(sp); if (B.fx) B.fx.push({ kind: 'heal', u, amount: 0, label: SPELLS[id].name }); }
+    for (const u of targets) { if (resists(B, u, s)) { B.log.push(`${CREATURES[u.cid].plural}: odporność, czar nie działa.`); continue; } u.buffs[S.buff] = SPELL_ROUNDS(sp); if (B.fx) B.fx.push({ kind: 'heal', u, amount: 0, label: SPELLS[id].name }); }
   }
 }
 // SI bohatera (tryb Auto i walka automatyczna): czar zadający najwięcej wartości, jeśli jakiś się opłaca
@@ -4922,6 +5001,7 @@ function migrateSave(st) {
     if (!Array.isArray(h.army)) h.army = startingArmy(st.players[h.owner].faction, r); h.army = armyFix(h.army);
     delete h.slowest; initHeroProgress(h); while (h.exp >= expForLevel(h.level + 1)) h.level++;
     h.spells = h.spells.filter(id => SPELLS[id]); h.bag = h.bag.filter(id => ARTIFACTS[id]);
+    h.skills = h.skills.filter(s => SKILLS[s.id]); if (MAGE_CLASSES.includes(h.cls) && !heroSkill(h, 'wisdom') && h.skills.length < MAX_SKILLS) h.skills.unshift({ id: 'wisdom', lv: 1 }); // zapisy sprzed Mądrości
     for (const k of Object.keys(h.equip)) if (h.equip[k] && !ARTIFACTS[h.equip[k]]) h.equip[k] = null;
     h.machines = h.machines.filter(id => CREATURES[id]); if (h.boat && st.map.terrain[h.y * st.map.n + h.x] !== TER.WATER) delete h.boat; // łódź tylko na wodzie
   }
@@ -9544,7 +9624,18 @@ function iconStat(ctx, id, cx, cy, col) {
   else { ctx.fillRect(-9, -8, 8, 16); ctx.fillRect(1, -8, 8, 16); ctx.fillStyle = 'rgba(255,248,220,.8)'; ctx.fillRect(-7, -5, 4, 1.5); ctx.fillRect(3, -5, 4, 1.5); ctx.fillRect(-7, -1, 4, 1.5); ctx.fillRect(3, -1, 4, 1.5); }
   ctx.restore();
 }
-const BAG_VIEW = 6, SLOT_BOX = 50;
+const BAG_VIEW = 6, SLOT_BOX = 50, SPEC_BOX = { x: 322, y: 30, w: 66, h: 76 };
+// Specjalność bohatera: ramka z obrazkiem (stwór, surowiec, czar albo księga umiejętności) i podpisem
+function drawSpecBox(ctx, h) {
+  const r = SPEC_BOX, sp = heroSpec(h), cx = r.x + r.w / 2, hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
+  ctx.fillStyle = 'rgba(90,55,20,.14)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill(); ctx.strokeStyle = hot ? '#b8862a' : 'rgba(90,55,20,.5)'; ctx.lineWidth = hot ? 1.8 : 1; ctx.stroke();
+  text(ctx, 'Specjalność', cx, r.y + 9, { size: 10, weight: 700, align: 'center', color: '#6a4418' });
+  if (sp.dw) { ctx.save(); rr(ctx, r.x + 3, r.y + 16, r.w - 6, 44, 3); ctx.clip(); drawSprite(ctx, creatureSprite(specUnits(h)[0], 1), cx, r.y + 56, 1.2); ctx.restore(); }
+  else if (sp.res) resIcon(ctx, sp.res, cx, r.y + 38, 30);
+  else if (sp.spell) drawSprite(ctx, spellSprite(sp.spell), cx, r.y + 38, 1.8);
+  else { ctx.save(); ctx.translate(cx, r.y + 38); ctx.fillStyle = '#6a2a2a'; ctx.fillRect(-12, -14, 24, 28); ctx.fillStyle = '#f0e0b0'; ctx.fillRect(-9, -11, 18, 22); ctx.restore(); iconStat(ctx, 'sp', cx, r.y + 38, '#b8862a'); }
+  const nm = specName(h); text(ctx, nm, cx, r.y + 68, { size: nm.length > 11 ? 9 : 11, weight: 700, align: 'center', color: '#3a1e08' });
+}
 G.screens.hero = {
   buttons: [], sel: null, bagPage: 0, armyRects: [], back: null,
   hero() { return G.state.heroes[this.heroId] || hero(G.state); },
@@ -9584,7 +9675,8 @@ G.screens.hero = {
     if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
-    if (x >= 32 && x <= 330 && y >= 32 && y <= 104) { const f = heroFaction(h); return f ? `${heroTitle(h)}. Cecha frakcji (${factionOf(f).name}) — ${traitText(f)}.` : null; }
+    if (inRect(x, y, SPEC_BOX)) return heroSpec(h) ? `Specjalność: ${specText(h)}.` : null;
+    if (x >= 32 && x <= 310 && y >= 32 && y <= 104) { const f = heroFaction(h); return f ? `${heroTitle(h)}. Cecha frakcji (${factionOf(f).name}) — ${traitText(f)}.` : null; }
     const si = this.skillAt(x, y);
     if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
@@ -9604,6 +9696,7 @@ G.screens.hero = {
     text(ctx, h.name, 120, 50, { size: 25, color: '#3a1e08', fam: 'title' });
     text(ctx, heroTitle(h).split(', ')[1].replace(/^./, s => s.toUpperCase()), 120, 76, { size: 16, weight: 500, color: '#5a3814' });
     text(ctx, `Poziom ${h.level}`, 120, 98, { size: 16, color: '#3a1e08', fam: 'title' });
+    if (heroSpec(h)) drawSpecBox(ctx, h);
     const e0 = expForLevel(h.level), e1 = expForLevel(h.level + 1), f = clamp((h.exp - e0) / (e1 - e0), 0, 1);
     ctx.fillStyle = 'rgba(90,55,20,.25)'; ctx.fillRect(32, 118, 356, 12); ctx.fillStyle = '#c8962a'; ctx.fillRect(32, 118, 356 * f, 12);
     ctx.strokeStyle = 'rgba(90,55,20,.6)'; ctx.lineWidth = 1; ctx.strokeRect(32.5, 118.5, 355, 11);
@@ -10344,7 +10437,7 @@ G.screens.town = {
     const who = o => `${o.name} (${(o.female ? HERO_CLASSES[o.cls].nameF : HERO_CLASSES[o.cls].name).toLowerCase()}, ${factionOf(o.fac).name})`;
     if (!avail.length) return showDialog('W tawernie nikt już nie czeka. Nowi chętni pojawią się w przyszłym tygodniu.', [{ label: 'OK', key: 'enter' }]);
     showDialog(`W tawernie czekają: ${avail.map(a => who(a.o)).join(' i ')}. Najem kosztuje ${HERO_COST} złota, a bohater przychodzi z małym oddziałem.`, [
-      ...avail.map(({ o, k }) => ({ label: o.name, action: () => { const r = hireHero(st, t, k); this.say(r.error || `${r.hero.name} dołącza do twojej sprawy`); } })),
+      ...avail.map(({ o, k }) => ({ label: o.name, sub: specName({ ...o, level: 1 }), tip: `Specjalność: ${specText({ ...o, level: 1 })}.`, action: () => { const r = hireHero(st, t, k); this.say(r.error || `${r.hero.name} dołącza do twojej sprawy`); } })),
       { label: 'Wyjdź', key: 'escape' },
     ], { iconH: 96, icon: (ctx, cx, cy) => avail.forEach(({ o }, i) => {
       const x = cx + (i - (avail.length - 1) / 2) * 144 - 36, look = { name: o.name, cls: o.cls, female: o.female, asleep: false };

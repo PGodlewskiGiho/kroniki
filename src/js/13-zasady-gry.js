@@ -51,6 +51,7 @@ function buyBoat(st, t) {
 function baseCost(map, i, j, h) {
   if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
   const t = map.terrain[i]; let c = TERRAINS[t].cost || 100; const pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
+  if (t === TER.WATER && h && skillVal(h, 'navigation')) return Math.round(c / (1 + skillVal(h, 'navigation') / 100)); // Nawigacja
   if (h && ((heroTrait(h, 'fortress') && (t === TER.SWAMP || t === TER.ROUGH)) || (heroTrait(h, 'academy') && t === TER.SNOW))) c = 100; // cechy frakcji
   return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
 }
@@ -224,14 +225,33 @@ function initHeroProgress(h) {
 }
 // --- umiejętności drugorzędne ---
 const heroSkill = (h, id) => { const s = h && h.skills && h.skills.find(s => s.id === id); return s ? s.lv : 0; };
-const skillVal = (h, id) => { const L = heroSkill(h, id); return L ? SKILLS[id].v[L - 1] : 0; };
+const skillVal = (h, id) => { const L = heroSkill(h, id); if (!L) return 0; const sp = heroSpec(h), v = SKILLS[id].v[L - 1]; return sp && sp.skill === id ? Math.round(v * (1 + 0.05 * h.level)) : v; };
+// --- specjalności bohaterów (HERO_SPECS) ---
+// Stwory specjalności: oba stwory z siedliska danego poziomu w rodzimej frakcji bohatera
+const specUnits = h => { const sp = heroSpec(h), F = sp && sp.dw && factionOf(heroFaction(h)); return F ? [F.dw['dw' + sp.dw][1], F.dw['dw' + sp.dw + 'u'][1]] : []; };
+// Premia dla oddziału stworów specjalności: +5% ataku i obrony za każdy poziom bohatera na poziom stwora (co najmniej +1), +1 szybkości
+function specBonus(h, cid) {
+  if (!specUnits(h).includes(cid)) return null; const c = CREATURES[cid], k = 0.05 * h.level / c.level;
+  return { att: Math.max(1, Math.round(c.att * k)), def: Math.max(1, Math.round(c.def * k)), spd: 1 };
+}
+const specSpellMul = (h, id) => { const sp = heroSpec(h); return sp && sp.spell === id ? 1 + 0.03 * h.level : 1; };
+function specText(h) {
+  const sp = heroSpec(h); if (!sp) return '';
+  if (sp.dw) { const [a, b] = specUnits(h), bo = specBonus(h, a); return `${CREATURES[a].plural} i ${CREATURES[b].plural.toLowerCase()}: +${bo.att} do ataku, +${bo.def} do obrony, +1 do szybkości (rośnie z poziomem)`; }
+  if (sp.res) return `+${sp.n} ${sp.res === 'gold' ? 'złota' : resName(sp.res).toLowerCase()} dziennie`;
+  if (sp.skill) return `${SKILLS[sp.skill].name}: działa o ${5 * h.level}% mocniej (5% za poziom)`;
+  return `${SPELLS[sp.spell].name}: o ${3 * h.level}% mocniejszy (3% za poziom)`;
+}
+const specName = h => { const sp = heroSpec(h); return !sp ? '' : sp.dw ? CREATURES[specUnits(h)[0]].plural : sp.res ? resName(sp.res) : sp.skill ? SKILLS[sp.skill].name : SPELLS[sp.spell].name; };
 const skillText = (id, L) => `${SKILLS[id].name} (${SKILL_LEVELS[L]}): ${SKILLS[id].desc(SKILLS[id].v[L - 1])}`;
 // Propozycja przy awansie na poziom L (jak w oryginale): ulepszenie znanej umiejętności i nowa umiejętność;
 // gdy którejś grupy brak, obie z drugiej. Losowanie powtarzalne (ziarno gry, bohater, poziom).
+// Nowe umiejętności losowane z wagami klasy (skillWeight): ulubione częściej, obce rzadziej.
 function skillOffer(st, h, L) {
   const up = (h.skills || []).filter(s => s.lv < 3).map(s => s.id);
   const fresh = (h.skills || []).length < MAX_SKILLS ? Object.keys(SKILLS).filter(id => !heroSkill(h, id) && (id !== 'necromancy' || NECRO_CLASSES.includes(h.cls))) : [];
-  const r = mulberry32(thash(h.id, L, st.seed) ^ 0x5a1d), pick = a => (a.length ? a.splice(Math.floor(r() * a.length), 1)[0] : null);
+  const r = mulberry32(thash(h.id, L, st.seed) ^ 0x5a1d);
+  const pick = a => { if (!a.length) return null; const w = a.map(id => skillWeight(h.cls, id)); let x = r() * w.reduce((s, v) => s + v, 0), i = 0; while (i < a.length - 1 && (x -= w[i]) >= 0) i++; return a.splice(i, 1)[0]; };
   return [pick(up) || pick(fresh), pick(fresh) || pick(up)].filter(Boolean);
 }
 function learnSkill(h, id) {
@@ -302,7 +322,7 @@ const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild
 function visitGuild(st, t, h) {
   const L = guildLevel(t); if (!L) return [];
   const learned = [];
-  for (let k = 1; k <= L; k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); }
+  for (let k = 1; k <= Math.min(L, spellCap(h)); k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); } // wyżej tylko z Mądrością
   h.mana = Math.max(h.mana, heroMaxMana(h)); return learned;
 }
 // Czary na mapie przygody. Zwraca tekst błędu albo null.
@@ -453,7 +473,7 @@ function dailyIncomeAll(st, owner = ME) {
     inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; }
     if (autumn) { inc.wood += 1; inc.ore += 1; } if (t.faction === 'inferno') inc.sulfur += 1; // jesienne zbiory, cecha Inferna
   }
-  for (const h of st.heroes) if (h.owner === owner) inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates');
+  for (const h of st.heroes) if (h.owner === owner) { inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates'); const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; } // specjalność: surowiec
   return inc;
 }
 const dailyIncome = (st, res) => dailyIncomeAll(st)[res];
@@ -599,6 +619,7 @@ function useSite(st, h, ob) {
   switch (ob.kind) {
     case 'shrine': {
       const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
+      if (sp.level > spellCap(h)) return { text: `Kapliczka uczy czaru „${sp.name}” (poziom ${sp.level}), ale ${h.name} go nie pojmuje: potrzebna Mądrość (${SKILL_LEVELS[sp.level - 2]}).` };
       mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(heroStat(h, 'sp'))}.` };
     }
     case 'well': {
