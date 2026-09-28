@@ -168,6 +168,41 @@ function drawSite(ctx, kind, f) {
       poly([[-2.5, -34], [2.5, -34], [0, -40]], '#c8c0ae'); const a = 0.55 + 0.45 * Math.sin(t); ctx.fillStyle = `rgba(250,210,110,${a.toFixed(2)})`;
       for (const [ry, rw] of [[-28, 2.4], [-22, 3], [-16, 2.4], [-10, 3.2]]) ctx.fillRect(-rw / 2 - 0.5, ry, rw, 1.4); break;
     }
+    case 'witchHut': { // chata na kurzych nóżkach: krzywy dach z mchu, dym z komina, zielone okno
+      limb(ctx, -6, 0, -4, -8, 1.4, '#c89a4a'); limb(ctx, 6, 0, 4, -8, 1.4, '#c89a4a'); limb(ctx, -9, 0, -3, 0, 1, '#c89a4a'); limb(ctx, 3, 0, 9, 0, 1, '#c89a4a');
+      box(-10, -20, 20, 12, '#6a4a2a'); for (let k = 1; k < 3; k++) box(-10, -20 + k * 4, 20, 0.8, '#4a3018');
+      poly([[-13, -20], [-2, -32], [2, -30], [13, -20]], '#4a5a2a'); poly([[0, -31], [2, -30], [13, -20], [3, -20]], '#3a4a22');
+      box(5, -34, 3, 8, '#5a4a3a'); const a = 0.5 + 0.5 * Math.sin(t); box(-6, -17, 5, 5, `rgba(140,230,90,${(0.6 + 0.4 * a).toFixed(2)})`);
+      circ(ctx, 6.5 + a * 2, -37 - a * 3, 2 + a, 'rgba(200,200,190,.5)'); box(1, -16, 4, 8, '#2a1a0e'); break;
+    }
+    case 'prison': { // kamienna wieża z kratą, w środku postać
+      stone(-12, -22, 24, 22, '#6a6a72'); for (let k = 0; k < 3; k++) box(-12, -18 + k * 6, 24, 0.8, '#4a4a52');
+      for (const bx of [-12, -6, 0, 6]) box(bx + 0.5, -26, 4, 4, '#7a7a84');
+      box(-6, -16, 12, 16, '#1a1620'); circ(ctx, 0, -9, 2.2, '#d8b090'); box(-2, -7, 4, 6, '#7a3a2a');
+      for (const gx of [-5, -2, 1, 4]) box(gx, -16, 1.2, 16, '#a8a8b0'); box(-6, -11, 12, 1.2, '#a8a8b0'); break;
+    }
+    case 'portal': { // kamienny łuk z wirującą niebieską taflą
+      stone(-13, -30, 5, 30, '#7a7480'); stone(8, -30, 5, 30, '#7a7480'); poly([[-13, -30], [0, -38], [13, -30], [8, -30], [0, -34], [-8, -30]], '#8a8490');
+      const g = ctx.createRadialGradient(0, -15, 1, 0, -15, 12); g.addColorStop(0, '#e8f6ff'); g.addColorStop(0.5, '#5aa8ff'); g.addColorStop(1, '#1a3a8a');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, -15, 8, 14, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(230,246,255,.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(0, -15, 5, 9, t, 0.3, 2.6); ctx.stroke(); ctx.beginPath(); ctx.ellipse(0, -15, 3, 5, -t, 3.4, 5.6); ctx.stroke(); break;
+    }
+    case 'dwelling': { // obóz najemników: dwa namioty w pasy, sztandar i ognisko
+      poly([[-16, 0], [-8, -18], [0, 0]], '#c8b080'); for (const sx of [-12, -8, -4]) limb(ctx, sx, -1, -8, -17, 0.8, '#8a3a2a');
+      poly([[1, 0], [9, -15], [17, 0]], '#b8a070'); for (const sx of [5, 9, 13]) limb(ctx, sx, -1, 9, -14, 0.8, '#3a5a8a'); box(-10, -6, 4, 6, '#3a2a1a'); box(7, -5, 4, 5, '#3a2a1a');
+      limb(ctx, 0, 0, 0, -30, 1.8, '#4a3018'); const w = Math.sin(t) * 1.5; poly([[0, -30], [9, -28 + w], [9, -21 + w], [0, -23]], '#c8962a'); circ(ctx, 4.5, -25.5 + w / 2, 1.6, '#6a2a1a'); break;
+    }
+    case 'sacrifice': { // czarny ołtarz z krwawym płomieniem i czaszkami
+      stone(-13, -6, 26, 6, '#3a3238'); stone(-10, -14, 20, 8, '#4a4048'); box(-10, -14, 20, 1.4, '#8a2a2a');
+      const f2 = 0.5 + 0.5 * Math.sin(t); poly([[-5, -14], [0, -28 - f2 * 3], [5, -14]], '#c82a1a'); poly([[-2.5, -14], [0, -21 - f2 * 2], [2.5, -14]], '#ffb040');
+      for (const sx of [-8, 7]) { circ(ctx, sx, -3, 2, '#e8e0cc'); box(sx - 1.2, -3.5, 1, 1, '#1a1010'); box(sx + 0.2, -3.5, 1, 1, '#1a1010'); } break;
+    }
+    case 'wreck': { // wrak na wodzie: przechylony kadłub, złamany maszt, skrzynia w pianie
+      ctx.fillStyle = 'rgba(200,230,255,.35)'; ctx.beginPath(); ctx.ellipse(0, -2, 16, 4, 0, 0, TAU); ctx.fill();
+      poly([[-15, -4], [-11, -12], [9, -14], [14, -6], [8, -1], [-10, 0]], '#5a3a1e'); poly([[-11, -12], [9, -14], [8, -11], [-10, -9]], '#7a5230');
+      for (const px of [-6, 0, 6]) box(px, -12, 1, 10, '#3a2412'); limb(ctx, -2, -11, 4, -30, 1.6, '#4a3018'); poly([[4, -30], [12, -24], [3, -22]], '#d8d0b8');
+      box(10 + Math.sin(t) * 1, -5, 5, 4, '#8a5a2a'); box(10 + Math.sin(t) * 1, -5, 5, 1, '#e0b24a'); break;
+    }
     case 'lookout': {
       poly([[-6, 0], [-4, -30], [4, -30], [6, 0]], '#9a948a'); poly([[1, -30], [4, -30], [6, 0], [2, 0]], '#7a746a');
       box(-8, -34, 16, 4, '#8a8478'); for (const bx of [-8, -3, 2, 6]) box(bx, -37, 2.4, 3, '#8a8478');
@@ -712,7 +747,7 @@ const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0
 const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
 // Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki
-const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1, obelisk: 1 };
+const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1, obelisk: 1, witchHut: 1, portal: 1, dwelling: 1, sacrifice: 1, wreck: 1 };
 const siteSprite = (k, i = 0) => sprite(`site_${k}_${i}`, 26, 26, 13, 24, p => drawSite(p, k, i / 4));
 const siteFrame = (ob) => (SITE_ANIM[ob.kind] ? Math.floor(G.time * 5 + ob.id) % 4 : 0);
 const mineSprite = k => sprite(`mine_${k}`, 36, 38, 2, 4, p => drawMine(p, { kind: k }, 0, 0, 0, null));

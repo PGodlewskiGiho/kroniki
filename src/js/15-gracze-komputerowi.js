@@ -157,6 +157,9 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'shrine' && h.spells.includes(ob.spell)) return 0;
   if (ob.kind === 'well' && h.mana >= heroMaxMana(h) * 0.6) return 0;
   if ((ob.kind === 'temple' || ob.kind === 'fountain') && h.boost && h.boost[ob.kind === 'temple' ? 'morale' : 'luck']) return 0;
+  if (ob.kind === 'witchHut' && (heroSkill(h, ob.skill) || h.skills.length >= MAX_SKILLS)) return 0;
+  if (ob.kind === 'prison' && st.heroes.filter(o => o.owner === h.owner).length >= MAX_HEROES) return 0;
+  if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
   return S.ai;
 }
 // Wejście na pole celu (tak jak visitObject u człowieka, ale bez okien)

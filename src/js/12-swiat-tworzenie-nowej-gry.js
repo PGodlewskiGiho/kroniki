@@ -196,8 +196,23 @@ function placeObjects(st) {
       const o = { type: 'site', kind, x: p[0], y: p[1], seen: {} };
       if (kind === 'shrine') { const L = d01(p[0], p[1]) > 0.5 ? 2 : 1, pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L); o.spell = pool[Math.floor(rng() * pool.length)]; }
       if (kind === 'windmill') o.res = RARE[Math.floor(rng() * RARE.length)];
-      add(o, [p[1] * n + p[0]]); if (S.guard) guard(o, 0);
+      if (kind === 'witchHut') { const pool = Object.keys(SKILLS).filter(id => id !== 'necromancy'); o.skill = pool[Math.floor(rng() * pool.length)]; }
+      if (kind === 'dwelling') { const lv = 2 + Math.floor(rng() * 3), pool = NEUTRALS_BY_LEVEL[lv].filter(c => CREATURES[c].cost); o.cid = pool[Math.floor(rng() * pool.length)]; o.avail = CREATURES[o.cid].growth; o.week = 0; }
+      add(o, [p[1] * n + p[0]]); if (S.guard) guard(o, kind === 'prison' ? 1 : 0);
     }
+  }
+  // portale w parach: oba końce daleko od siebie (skrót przez mapę); wraki na wodzie z dala od brzegu
+  const size = (MAP_SIZES.find(m => m.n === n) || MAP_SIZES[1]).id;
+  for (let k = 0; k < (PORTAL_PAIRS[size] || 1); k++) {
+    const a = pick((x, y) => dStart(x, y) >= 5); if (!a) continue; const b = pick((x, y) => dStart(x, y) >= 5 && Math.hypot(x - a[0], y - a[1]) >= n * 0.4); if (!b) continue;
+    const pa = add({ type: 'site', kind: 'portal', x: a[0], y: a[1], seen: {} }, [a[1] * n + a[0]]), pb = add({ type: 'site', kind: 'portal', x: b[0], y: b[1], seen: {} }, [b[1] * n + b[0]]);
+    pa.pair = pb.id; pb.pair = pa.id;
+  }
+  const water = map.terrain.reduce((s, t) => s + (t === TER.WATER ? 1 : 0), 0);
+  for (let k = Math.floor(water / WRECK_PER), tries = 0; k > 0 && tries < 4000; tries++) {
+    const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x; if (map.terrain[i] !== TER.WATER || occ[i]) continue;
+    let wet = 0; for (let d = 0; d < 8; d++) if (map.terrain[(y + DY8[d]) * n + x + DX8[d]] === TER.WATER) wet++; if (wet < 7) continue;
+    add({ type: 'site', kind: 'wreck', x, y, seen: {} }, [i]); k--;
   }
   return objs;
 }

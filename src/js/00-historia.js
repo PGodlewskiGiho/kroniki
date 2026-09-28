@@ -114,6 +114,11 @@
    czar +3%/poz.; specBonus/u.spec w bitwie, ramka na ekranie bohatera i w tawernie), 7 nowych umiejętności (Mądrość = czary
    powyżej 2. poziomu, spellCap; Nawigacja, Artyleria, Pierwsza pomoc, Balistyka, Odporność, Orle oko) i wagi klas przy awansie
    (CLASS_SKILL_PREF, skillWeight). Magowie zaczynają z Mądrością; stare zapisy dostają ją w migrateSave.
+   Nowe miejsca na mapie: chata wiedźmy (uczy umiejętności ob.skill), więzienie (freePrisoner: bohater z doświadczeniem,
+   awans bez okien gainExp(..., silent)), portale w parach (ob.pair, PORTAL_PAIRS), siedlisko najemników (dwellRefresh/
+   dwellMax/dwellHire, okno showDwelling), ołtarz ofiarny (artefakty z plecaka za SACRIFICE_EXP) i wraki na wodzie.
+   Użycia 'free' (bez limitu) i 'once' (obiekt znika). Strzał: kary za odległość (SHOT_RANGE) i przeszkody (shotBlocked),
+   bez kar machiny i sharpshooter; licznik strzał przy oddziale. Kliknięcie w wieże miasta na mapie: drawnObjectAt.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
