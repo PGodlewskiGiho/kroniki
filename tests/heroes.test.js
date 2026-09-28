@@ -75,7 +75,7 @@ test('najem: warunki (tawerna, złoto, wolna brama, limit bohaterów)', async ()
   assert.match(r.limit, /najwyżej 8/);
 });
 
-test('okno tawerny w mieście: najem przez kliknięcie budowli', async () => {
+test('okno tawerny w mieście: podgląd kandydata na ekranie bohatera, najem z podglądu', async () => {
   await withTavern();
   await page.evaluate(() => setScreen('town', { townId: 0 }));
   await frames(page, 5);
@@ -84,8 +84,12 @@ test('okno tawerny w mieście: najem przez kliknięcie budowli', async () => {
   assert.match(d.msg, /W tawernie czekają/);
   assert.equal(d.labels.length, 4); // dwóch chętnych, Kronika, Wyjdź
   await frames(page, 3);
-  await pressDialog(page, d.labels[0]);
-  const r = await page.evaluate(() => ({ heroes: myHeroes(G.state).length, msg: G.screens.town.msg, inTown: !!heroInTown(G.state, G.state.towns[0]) }));
+  await pressDialog(page, d.labels[0]); await page.waitForFunction(() => G.screenName === 'hero'); // podgląd kandydata na ekranie bohatera
+  const pv = await page.evaluate(() => { const s = G.screens.hero; return { screen: G.screenName, preview: !!s.preview, heroes: myHeroes(G.state).length, army: armySize(s.hero().army) }; });
+  assert.deepEqual([pv.screen, pv.preview, pv.heroes], ['hero', true, 1], 'podgląd nie dodaje bohatera'); assert.ok(pv.army > 0);
+  await page.evaluate(() => G.screens.hero.bHire.action()); await page.waitForFunction(() => G.screenName === 'town');
+  const r = await page.evaluate(() => ({ heroes: myHeroes(G.state).length, msg: G.screens.town.msg, inTown: !!heroInTown(G.state, G.state.towns[0]), army: armySize(heroInTown(G.state, G.state.towns[0]).army) }));
+  assert.equal(r.army, pv.army, 'najęty bohater ma tę samą armię co w podglądzie');
   assert.equal(r.heroes, 2);
   assert.match(r.msg, /dołącza do twojej sprawy/);
   assert.ok(r.inTown);
@@ -146,27 +150,27 @@ test('wejście na wrogiego bohatera zaczyna bitwę', async () => {
   assert.equal(await page.evaluate(() => G.state.heroes.filter(h => h.owner === 1).length), 0);
 });
 
-test('porażka przy zajętej bramie: bohater idzie do innego miasta albo odchodzi', async () => {
+test('porażka i ucieczka jak w Heroes 3: uciekinier od razu w swojej tawernie, pokonany po tygodniu u wszystkich; armia tylko u 2 pierwszych', async () => {
   await withTavern();
   const r = await page.evaluate(() => {
-    const st = G.state, t0 = st.towns[0], a = hero(st), b = hireHero(st, t0, 0).hero; // b stoi w bramie t0
+    const st = G.state, t0 = st.towns[0], a = hero(st); a.x = t0.x + 1; a.y = t0.y + 2; a.level = 5; a.bag = ['noviceSword'];
     const m = st.objects.filter(o => o.type === 'monster' && !o.dead).sort((x, y) => y.count * CREATURES[y.cid].value - x.count * CREATURES[x.cid].value)[0];
-    a.army = emptyArmy(); a.army[0] = { cid: 'dryad', n: 1 };
-    const res1 = resolveBattle(simulateBattle(createBattle(st, a, m)), false); // jedyne miasto zajęte → a odchodzi
-    const t1 = st.towns[1]; captureTown(st, t1, ME);
-    b.army = emptyArmy(); b.army[0] = { cid: 'dryad', n: 1 }; b.x = t0.x + 1; b.y = t0.y + 2;
-    const c = hireHero(st, t0, 1).hero; // teraz c w bramie t0, brama t1 wolna
-    const res2 = resolveBattle(simulateBattle(createBattle(st, b, m)), false);
-    return { r1: [res1.outcome, !!res1.heroLost, st.heroes.includes(a)], r2: [res2.outcome, res2.home, b.x === t1.x && b.y === t1.y], c: !!c, sel: !!hero(st) && hero(st).owner === ME };
+    const first = tavernOffer(st, ME).map(o => !!o.weak), b = hireHero(st, t0, 0).hero, second = tavernOffer(st, ME)[0].weak; // po najęciu: następny kandydat bez armii
+    b.x = t0.x + 2; b.y = t0.y + 3;
+    // ucieczka a: znika z mapy, od razu w tawernie gracza, z poziomem i artefaktem, bez armii
+    a.army = emptyArmy(); a.army[0] = { cid: 'dryad', n: 5 }; const f = resolveBattle(createBattle(st, a, m), true);
+    const off = tavernOffer(st, ME)[1], back = hireHero(st, t0, 1).hero;
+    // porażka b: znika, trafia do puli wszystkich dopiero po tygodniu
+    b.army = emptyArmy(); b.army[0] = { cid: 'dryad', n: 1 }; const l = resolveBattle(simulateBattle(createBattle(st, b, m)), false), ent = st.retired.find(q => q.hero.name === b.name);
+    return { first, second, fled: f.outcome, gone: !st.heroes.includes(a), off: off && off.name === a.name, back: [back.name === a.name, back.level, back.bag.includes('noviceSword'), armySize(back.army)],
+      lose: l.outcome, bGone: !st.heroes.includes(b), wait: ent && [ent.owner, ent.from - st.dayTotal], sel: !!hero(st) && hero(st).owner === ME };
   });
-  assert.deepEqual(r.r1, ['lose', true, false]);
-  assert.equal(r.r2[0], 'lose');
-  assert.ok(r.r2[2], 'b trafia do wolnego miasta');
-  assert.ok(r.c);
-  assert.ok(r.sel, 'wybrany jest któryś z bohaterów gracza');
+  assert.deepEqual(r.first, [false, false], 'dwaj kandydaci tygodnia z armią'); assert.equal(r.second, true, 'następny bez armii');
+  assert.equal(r.fled, 'fled'); assert.ok(r.gone); assert.ok(r.off, 'uciekinier w tawernie'); assert.deepEqual(r.back, [true, 5, true, 1]);
+  assert.equal(r.lose, 'lose'); assert.ok(r.bGone); assert.deepEqual(r.wait, [-1, 7]); assert.ok(r.sel);
 });
 
-test('lista w panelu przewija się i pokazuje wybranego bohatera', async () => {
+test('lista w panelu przewija się i pokazuje wybranego bohatera; zakładki bohaterów i miast', async () => {
   await withTavern();
   const r = await page.evaluate(() => {
     const st = G.state, t = st.towns[0], scr = G.screens.adventure;
@@ -174,10 +178,13 @@ test('lista w panelu przewija się i pokazuje wybranego bohatera', async () => {
     scr.enter({}); G.modal = null; const items = panelItems(st).length, last = myHeroes(st).at(-1);
     scr.selectHero(last); const visible = panelRows(st, scr.listScroll).some(r => r.hero === last), s1 = scr.listScroll;
     G.mouse.x = LIST.x + 20; G.mouse.y = LIST.y + 20; scr.onWheel(-1); scr.onWheel(-1); scr.onWheel(-1); const s2 = scr.listScroll;
-    for (let k = 0; k < 10; k++) scr.onWheel(1);
-    return { items, visible, s1, s2, max: scr.listScroll };
+    for (let k = 0; k < 10; k++) scr.onWheel(1); const max = scr.listScroll;
+    scr.tabTowns.action(); const towns = panelItems(st).every(r => r.town) && panelItems(st).length === myTowns(st).length;
+    t.builtToday = true; const tip = scr.rightInfo(LIST.x + 60, panelRows(st, 0)[0].y + 10); scr.selectHero(last); const back = listTab();
+    return { items, visible, s1, s2, max, towns, tip, back };
   });
-  assert.ok(r.items >= 5);
+  assert.ok(r.towns, 'zakładka miast'); assert.match(r.tip, /dziś już zbudowano/); assert.equal(r.back, 'heroes', 'wybór bohatera wraca do zakładki bohaterów');
+  assert.ok(r.items >= 4, 'zakładka bohaterów: sami bohaterowie');
   assert.ok(r.visible);
   assert.ok(r.s1 > 0);
   assert.equal(r.s2, 0);

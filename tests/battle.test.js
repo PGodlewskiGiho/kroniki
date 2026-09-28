@@ -126,7 +126,7 @@ test('bohater obrońców rzuca czary w bitwie', async () => {
   const r = await page.evaluate(() => {
     const st = G.state, me = TX.me(), foe = TX.foe();
     me.army = TX.army([['pikeman', 60]]); me.spells = []; me.mana = 0; // piki: 10 pż, więc strzała na pewno kogoś zabije i SI uzna czar za opłacalny
-    foe.army = TX.army([['boneWarrior', 40]]); foe.spells = ['magicArrow']; foe.mana = heroMaxMana(foe) + 20; foe.stats.kn = 5;
+    foe.army = TX.army([['boneWarrior', 40]]); foe.spells = ['magicArrow']; foe.book = true; foe.mana = heroMaxMana(foe) + 20; foe.stats.kn = 5;
     const m0 = foe.mana, B = simulateBattle(createBattle(st, me, foe));
     return { spent: m0 - foe.mana, cast: B.log.some(l => l.startsWith(`${foe.name} rzuca`)), myMana: me.mana };
   });

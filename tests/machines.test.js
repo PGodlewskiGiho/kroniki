@@ -97,7 +97,7 @@ test('zniszczona machina przepada, ocalała zostaje; po porażce bohater traci w
     const win = resolveBattle(simulateBattle(B), false).outcome, after = [...h.machines];
     h.army = emptyArmy(); h.army[0] = { cid: 'pikeman', n: 1 }; const m2 = st.objects.find(o => o.type === 'monster' && !o.dead); m2.cid = 'ogre'; m2.count = 30;
     const lose = resolveBattle(simulateBattle(createBattle(st, h, m2)), false).outcome;
-    return { win, after, lose, left: h.machines };
+    const back = (st.retired || []).find(q => q.hero.name === h.name); return { win, after, lose, left: back ? back.hero.machines : ['?'] };
   });
   assert.equal(r.win, 'win');
   assert.deepEqual(r.after, ['ballista', 'ammoCart']);

@@ -355,7 +355,7 @@ function layoutAdventure() {
   const dx = VW - W, dy = VH - H;
   VIEW.w = 576 + dx; VIEW.h = 552 + dy; MINI.x = 624 + dx;
   LIST.x = 600 + dx; LIST.h = 186 + dy; INFOBOX.x = 600 + dx; INFOBOX.y = 456 + dy;
-  LIST_ROWS = Math.floor((LIST.h - 6) / LIST_ROW_H);
+  LIST_ROWS = Math.floor((LIST.h - 28) / LIST_ROW_H); // nad wierszami pasek zakładek (bohaterowie / miasta)
 }
 function camClamp(st) { const m = st.map.n * T; st.cam.x = clamp(st.cam.x, -T, m - VIEW.w + T); st.cam.y = clamp(st.cam.y, -T, m - VIEW.h + T); }
 function centerCam(st, tx, ty) { st.cam = { x: tx * T + T / 2 - VIEW.w / 2, y: ty * T + T / 2 - VIEW.h / 2 }; camClamp(st); }

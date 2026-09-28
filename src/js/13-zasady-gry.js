@@ -112,7 +112,7 @@ function heroStep(st, h) {
   const halt = () => { h.moving = false; h.path = null; h.dest = null; };
   if (ob && ob.type === 'monster') { halt(); h.prev = null; startEncounter(st, h, ob); return false; }
   const other = heroAt(st, nx, ny); // bohater w bramie miasta broni się razem z miastem (startTownAssault)
-  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } return false; }
+  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } else if (playerOf(st, h.owner).human && !G.screens.adventure.aiRun) showMeeting(st, h, other); return false; } // własny: spotkanie po dojściu
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
@@ -348,9 +348,21 @@ function rollGuildLevel(st, t, L) {
 }
 const guildOffer = (t, L) => (GUILD_OFFER[L] || 1) + (t.faction === 'academy' && hasB(t, 'special') ? 1 : 0); // Biblioteka Akademii
 const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild' + L)) return L; return 0; };
+// Księga czarów (jak w Heroes 3): magowie zaczynają z nią, wojownicy kupują ją w mieście z gildią magów. Bez księgi bohater
+// nie poznaje czarów (gildia, kapliczka, Orle oko) i nie może ich rzucać. Bohaterowie z dawnych zapisów mają ją (book !== false).
+const SPELLBOOK_COST = 500;
+const hasBook = h => !!h && h.book !== false;
+function buyBook(st, t, h) {
+  if (hasBook(h)) return `${h.name} ma już księgę czarów`; if (!guildLevel(t)) return 'Księgę czarów sprzedaje gildia magów';
+  const R = playerOf(st, h.owner).resources; if (R.gold < SPELLBOOK_COST) return `Księga czarów kosztuje ${SPELLBOOK_COST} złota`;
+  R.gold -= SPELLBOOK_COST; h.book = true; return null;
+}
 // Bohater w mieście z gildią: poznaje jej czary i odzyskuje całą manę. Zwraca nowo poznane czary.
+// Komputer bez księgi kupuje ją sam, gdy go stać (z zapasem na wojsko).
 function visitGuild(st, t, h) {
   const L = guildLevel(t); if (!L) return [];
+  if (!hasBook(h) && !playerOf(st, h.owner).human && playerOf(st, h.owner).resources.gold >= SPELLBOOK_COST * 3) buyBook(st, t, h);
+  if (!hasBook(h)) { h.mana = Math.max(h.mana, heroMaxMana(h)); return []; }
   const learned = [];
   for (let k = 1; k <= Math.min(L, spellCap(h)); k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); } // wyżej tylko z Mądrością
   h.mana = Math.max(h.mana, heroMaxMana(h)); return learned;
@@ -391,6 +403,8 @@ function armyAdd(a, cid, n) {
 }
 const armyHasRoom = (a, cid) => a.some(x => x && x.cid === cid) || a.includes(null);
 // Armia startowa bohatera: jednostki z dwóch najniższych siedlisk jego frakcji
+// Bohater bez armii startowej (późniejsi kandydaci w tygodniu, powracający uciekinierzy): jeden stwór 1. poziomu
+function weakArmy(fac) { const a = emptyArmy(); a[0] = { cid: factionOf(fac).dw.dw1[1], n: 1 }; return a; }
 function startingArmy(fac, r) {
   const F = factionOf(fac), a = emptyArmy();
   a[0] = { cid: F.dw.dw1[1], n: 14 + Math.floor(r() * 11) };
@@ -495,6 +509,18 @@ function recruit(st, t, L, cid, n) {
   const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id] * n;
   armyAdd(dest, cid, n); t.avail[L] -= n; return null;
 }
+// Szybki werbunek (jak „Kup wszystko” w Heroes 3): od najwyższego poziomu w dół kupuje najlepszą formę stwora z siedliska,
+// ile jest dostępnych, na ile starczy zasobów i miejsca. Zwraca { n: liczba stworów, text: podsumowanie }.
+function recruitAll(st, t) {
+  const F = factionOf(t.faction), got = [];
+  for (const L of [...DW_LEVELS].reverse()) {
+    if (!hasB(t, 'dw' + L) || !(t.avail[L] > 0)) continue;
+    const cid = F.dw['dw' + L + (hasB(t, 'dw' + L + 'u') ? 'u' : '')][1], n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), t.owner));
+    if (n > 0 && !recruit(st, t, L, cid, n)) got.push(`${CREATURES[cid].plural.toLowerCase()} ${n}`);
+  }
+  const n = got.reduce((s, g) => s + +g.split(' ').pop(), 0);
+  return { n, text: got.length ? `Zwerbowano: ${got.join(', ')}` : 'Nie ma kogo zwerbować (brak stworów, zasobów albo miejsca)' };
+}
 // Przesunięcie między dwoma miejscami (garnizon ↔ bohater): pusty cel = przeniesienie, ten sam typ = połączenie,
 // inny typ = zamiana. Bohater musi zachować co najmniej jeden oddział. Zwraca błąd albo null.
 function armyMove(fromA, i, toA, j, heroArmies = []) {
@@ -503,6 +529,19 @@ function armyMove(fromA, i, toA, j, heroArmies = []) {
   if (leaves && fromA !== toA && heroArmies.includes(fromA) && armyStacks(fromA).length === 1) return 'Bohater musi mieć co najmniej jeden oddział';
   if (!d) { toA[j] = s; fromA[i] = null; } else if (d.cid === s.cid) { d.n += s.n; fromA[i] = null; } else { toA[j] = s; fromA[i] = d; }
   return null;
+}
+// Szybkie przekazanie: wszystkie oddziały z fromA do toA (łączą się z takimi samymi albo trafiają na wolne miejsca).
+// keepOne: armia bohatera zatrzymuje jednego stwora z najsłabszego oddziału. Zwraca liczbę przeniesionych stworów.
+function giveArmy(fromA, toA, keepOne) {
+  const idx = fromA.map((s, i) => (s ? i : -1)).filter(i => i >= 0); if (!idx.length) return 0;
+  const keep = keepOne ? idx.reduce((a, b) => (CREATURES[fromA[b].cid].value < CREATURES[fromA[a].cid].value ? b : a)) : -1; let moved = 0;
+  for (const i of idx) {
+    const s = fromA[i], n = s.n - (i === keep ? 1 : 0); if (n <= 0) continue;
+    const j = toA.findIndex(d => d && d.cid === s.cid), k = j >= 0 ? j : toA.findIndex(d => !d); if (k < 0) continue; // brak miejsca: zostaje
+    if (toA[k]) toA[k].n += n; else toA[k] = { cid: s.cid, n };
+    if (n === s.n) fromA[i] = null; else s.n -= n; moved += n;
+  }
+  return moved;
 }
 // Podział oddziału: n jednostek z fromA[i] na wolne miejsce albo do takiego samego oddziału toA[j].
 // Wszystkie jednostki = zwykłe przeniesienie (armyMove). Zwraca błąd albo null.
@@ -668,20 +707,32 @@ const HERO_COST = 2500, MAX_HEROES = 8;
 const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
 // Oferta tawerny gracza na bieżący tydzień (wspólna dla wszystkich jego miast): dwóch chętnych,
 // pierwszy z frakcji gracza, drugi z innej. Imiona nie powtarzają się z bohaterami na mapie.
+// Tawerna: dwaj kandydaci tygodnia (z pełną armią startową); po najęciu na miejsce wchodzi nowy, ale już z jednym stworem (weak).
+// Pula to bohaterowie frakcji i ci, którzy odeszli z mapy (st.retired): uciekinier od razu u swojego gracza, pokonani po tygodniu u wszystkich.
 function tavernOffer(st, owner) {
-  const p = playerOf(st, owner), wk = weekIndex(st);
+  const p = playerOf(st, owner), wk = weekIndex(st), ret = st.retired || [];
   if (!p.tavern || p.tavern.week !== wk) p.tavern = { week: wk, hired: 0, offers: [null, null] };
-  const tv = p.tavern, taken = new Set([...st.heroes.map(h => h.name), ...tv.offers.filter(Boolean).map(o => o.name)]);
+  const tv = p.tavern, open = r => r.from <= st.dayTotal && (r.owner === owner || r.owner < 0), card = (r, weak) => ({ name: r.hero.name, cls: r.hero.cls, female: !!r.hero.female, fac: heroFaction(r.hero) || p.faction, retired: true, weak, level: r.hero.level });
+  const mine = ret.find(r => r.owner === owner && open(r) && !tv.offers.some(o => o && o.name === r.hero.name));
+  if (mine) tv.offers[1] = card(mine, true); // uciekinier czeka od razu (zastępuje drugiego kandydata)
+  const taken = new Set([...st.heroes.map(h => h.name), ...tv.offers.filter(Boolean).map(o => o.name), ...ret.map(r => r.hero.name)]);
   const r = mulberry32(st.seed ^ (wk * 7717) ^ (owner * 131) ^ (tv.hired * 977));
   tv.offers.forEach((o, k) => {
     if (o) return;
     const facs = FACTIONS.map(f => f.id).filter(f => (k === 0) === (f === p.faction));
-    const pool = facs.flatMap(fac => factionOf(fac).heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac }))).filter(c => !taken.has(c.name));
-    if (pool.length) { tv.offers[k] = pool[Math.floor(r() * pool.length)]; taken.add(tv.offers[k].name); }
+    const pool = [...facs.flatMap(fac => factionOf(fac).heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac }))).filter(c => !taken.has(c.name)),
+      ...ret.filter(q => q.owner < 0 && open(q) && facs.includes(heroFaction(q.hero)) && !tv.offers.some(x => x && x.name === q.hero.name)).map(q => card(q, true))];
+    if (pool.length) { tv.offers[k] = { ...pool[Math.floor(r() * pool.length)] }; if (tv.hired > 0) tv.offers[k].weak = true; taken.add(tv.offers[k].name); }
   });
   return tv.offers;
 }
-// Najem k-tego chętnego w mieście t. Zwraca { hero } albo { error }.
+// Bohater z tawerny: nowy (createHero) albo powracający z st.retired (z poziomem i umiejętnościami, bez armii)
+function tavernHero(st, owner, x, y, o) {
+  if (!o.retired) return createHero(st, owner, x, y, o);
+  const i = (st.retired || []).findIndex(r => r.hero.name === o.name), h = { ...st.retired[i].hero };
+  st.retired.splice(i, 1); h.id = st.heroes.reduce((m, q) => Math.max(m, q.id + 1), 0); h.owner = owner; h.x = x; h.y = y;
+  h.army = weakArmy(heroFaction(h) || playerOf(st, owner).faction); h.mp = heroMaxMP(h); h.mana = heroMaxMana(h); st.heroes.push(h); return h;
+}
 function hireHero(st, t, k) {
   const owner = t.owner, P = playerOf(st, owner), o = tavernOffer(st, owner)[k];
   if (!hasB(t, 'tavern')) return { error: 'W mieście nie ma tawerny' };
@@ -690,7 +741,7 @@ function hireHero(st, t, k) {
   if (!o) return { error: 'Nikt więcej nie czeka w tawernie' };
   if (P.resources.gold < HERO_COST) return { error: `Najem kosztuje ${HERO_COST} złota` };
   P.resources.gold -= HERO_COST; P.tavern.offers[k] = null; P.tavern.hired++;
-  const h = createHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner);
+  const h = tavernHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner);
   return { hero: h };
 }
 
@@ -759,6 +810,7 @@ function useSite(st, h, ob) {
   switch (ob.kind) {
     case 'shrine': {
       const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
+      if (!hasBook(h)) return { text: `Kapliczka uczy czaru „${sp.name}”, ale ${h.name} nie ma księgi czarów. Kupisz ją w mieście z gildią magów (${SPELLBOOK_COST} złota).` };
       if (sp.level > spellCap(h)) return { text: `Kapliczka uczy czaru „${sp.name}” (poziom ${sp.level}), ale ${h.name} go nie pojmuje: potrzebna Mądrość (${SKILL_LEVELS[sp.level - 2]}).` };
       mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(heroStat(h, 'sp'))}.` };
     }

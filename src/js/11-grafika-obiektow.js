@@ -847,7 +847,7 @@ function showRecruit(st, t, L, onDone, backToList) {
   const bMax = new Button(x + 330, qy, 80, 30, 'Maks', () => set(maxN()), { size: 14, key: 'm' });
   const bBuy = new Button(x + (backToList ? 30 : 90), y + hh - 56, 130, 40, 'Rekrutuj', () => {
     const err = recruit(st, t, L, cid, n); if (err) { onDone(err); return; }
-    G.modal = null; onDone(`Zwerbowano: ${CREATURES[cid].name} × ${n}`);
+    if (backToList) backToList(); else G.modal = null; onDone(`Zwerbowano: ${CREATURES[cid].name} × ${n}`); // z listy: wraca do listy siedlisk
   }, { key: 'enter', size: 17 });
   const bClose = new Button(x + (backToList ? 300 : 240), y + hh - 56, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const btns = [...(units.length > 1 ? unitBtns : []), bMinus, bPlus, bMax, bBuy, bClose];
@@ -928,10 +928,13 @@ function showMeeting(st, a, b, onMsg) {
   let splitMode = false; // „Dziel”: następne wskazanie miejsca otwiera okno podziału (to samo daje Shift+klik)
   const bClose = new Button(x + w / 2 + 5, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const bSplit = new Button(x + w / 2 - 135, y + hh - 54, 130, 40, 'Dziel', () => { splitMode = !splitMode; say(splitMode ? 'Wybierz oddział, a potem miejsce: przeniesiesz tylko część jednostek.' : ''); }, { key: 'd', size: 17, selected: () => splitMode, tip: 'Podział oddziału: przenieś tylko część jednostek (albo Shift+klik na miejscu docelowym).' });
+  const give = (k, K) => { const n = giveArmy(armies[k], armies[K], true); sel = null; say(n ? `${heroes[k].name} przekazuje ${n} ${n === 1 ? 'stwora' : 'stworów'} (zostaje jeden).` : 'Nie ma czego przekazać albo brak miejsca.'); };
+  const bGive = [0, 1].map(k => new Button(k ? x + w - 184 : x + 24, y + hh - 54, 160, 40, `Wszystko → ${heroes[1 - k].name}`, () => give(k, 1 - k),
+    { size: 13, key: k ? 'arrowup' : 'arrowdown', tip: `${heroes[k].name} oddaje całą armię bohaterowi ${heroes[1 - k].name}, zostawiając sobie jednego stwora z najsłabszego oddziału (klawisz ${k ? '↑' : '↓'}).` }));
   const armyAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(armyRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   const bagAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(bagRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   G.modal = {
-    buttons: [bSplit, bClose], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
+    buttons: [bSplit, bClose, ...bGive], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
     onClick(px, py) {
       const s = armyAt(px, py), g = bagAt(px, py);
       if (s) {
@@ -960,7 +963,7 @@ function showMeeting(st, a, b, onMsg) {
         text(ctx, h.bag.length ? 'Plecak:' : 'Plecak pusty', x + 24, ry + 92, { size: 13, weight: 500, color: '#5a3814' });
         bagRects[k] = h.bag.slice(0, 12).map((id, i) => { const bx = x + 90 + i * 46; drawSprite(ctx, artSprite(id), bx + 20, ry + 92, 1); return { x: bx, y: ry + 72, w: 40, h: 40, i }; });
       });
-      bSplit.draw(ctx); bClose.draw(ctx);
+      bSplit.draw(ctx); bClose.draw(ctx); bGive.forEach(b => b.draw(ctx));
     },
   };
 }
@@ -998,9 +1001,12 @@ function showRecruitList(st, t, onDone) {
   const btns = [];
   for (const L of DW_LEVELS) if (hasB(t, 'dw' + L)) { const { x, y } = card(L); { const cid = F.dw['dw' + L + (hasB(t, 'dw' + L + 'u') ? 'u' : '')][1]; btns.push(new Button(x + 36, y + ch - 32, cw - 72, 26, 'Werbuj', () => showRecruit(st, t, L, onDone, back), { size: 14, key: String(L), tip: `Werbunek z siedliska poziomu ${L} (klawisz ${L}). Koszt: ${costTxt(unitCost(cid))} za stwora.` })); } }
   const close = new Button(x0 + 3 * (cw + gap) + 30, y0 + ch + gap + ch - 50, cw - 60, 38, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
+  let note = '';
+  const all = new Button(x0 + 3 * (cw + gap) + 14, y0 + ch + gap + ch - 96, cw - 28, 38, 'Werbuj wszystko', () => { const r = recruitAll(st, t); note = r.text; onDone(r.text); },
+    { size: 15, key: 'w', tip: 'Szybki werbunek: od najsilniejszych stworów w dół kupuje wszystkie dostępne, na ile starczy zasobów i miejsca (klawisz W).' });
   const growMul = hasB(t, 'castle') ? 'Zamek: przyrost ×2' : hasB(t, 'citadel') ? 'Cytadela: przyrost ×1,5' : hasB(t, 'fort') ? 'Fort: przyrost zwykły' : 'Bez fortu: przyrost zwykły';
   G.modal = {
-    buttons: [...btns, close], overview: true,
+    buttons: [...btns, all, close], overview: true,
     draw(ctx) {
       dimScreen(ctx, 0.6); drawParchment(ctx, 6, 8, W - 12, H - 16);
       text(ctx, `Stwory miasta ${t.name} (${F.name})`, W / 2, 42, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
@@ -1027,7 +1033,9 @@ function showRecruitList(st, t, onDone) {
       ctx.fillStyle = 'rgba(90,55,20,.1)'; rr(ctx, sx, sy, cw, ch, 5); ctx.fill();
       text(ctx, 'Przyrost co tydzień', sx + cw / 2, sy + 24, { size: 14, align: 'center', color: '#3a1e08', fam: 'title' });
       wrapText(ctx, `${growMul}. Siedlisk: ${dwellingLevels(t).length} z 7. Koszt stwora pokazuje dymek przycisku Werbuj.`, cw - 16).forEach((l, i) => text(ctx, l, sx + cw / 2, sy + 50 + i * 16, { size: 12, weight: 500, align: 'center', color: '#5a3814' }));
-      btns.forEach(b => { b.disabled = false; b.draw(ctx); }); close.draw(ctx);
+      if (note) wrapText(ctx, note, cw - 16).slice(0, 4).forEach((l, i) => text(ctx, l, sx + cw / 2, sy + 118 + i * 15, { size: 12, weight: 600, align: 'center', color: '#2a4a14' }));
+      all.disabled = !DW_LEVELS.some(L => hasB(t, 'dw' + L) && (t.avail[L] || 0) > 0);
+      btns.forEach(b => { b.disabled = false; b.draw(ctx); }); all.draw(ctx); close.draw(ctx);
     },
   };
 }

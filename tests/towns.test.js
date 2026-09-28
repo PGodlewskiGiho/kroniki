@@ -73,15 +73,15 @@ test('odwrót sprzed miasta cofa bohatera i nic nie zmienia', async () => {
   assert.deepEqual(r, { owner: -1, at: [0, 1] });
 });
 
-test('przegrane oblężenie: bohater wraca do domu, garnizon zostaje osłabiony', async () => {
+test('przegrane oblężenie: bohater znika z mapy, garnizon zostaje osłabiony', async () => {
   await newGame(page, { mapSize: 'M' }, 21);
   const before = await page.evaluate(() => armySize(G.state.towns[1].garrison));
   await walkIntoTown(1, [['pikeman', 2]]);
   await pressDialog(page, 'Automatycznie');
   assert.match((await dialog(page)).msg, /Porażka/);
-  const r = await page.evaluate(() => { const st = G.state, t = st.towns[1], h = hero(st); return { owner: t.owner, garrison: armySize(t.garrison), home: h.x === st.towns[0].x && h.y === st.towns[0].y }; });
+  const r = await page.evaluate(() => { const st = G.state, t = st.towns[1]; return { owner: t.owner, garrison: armySize(t.garrison), home: myHeroes(st).length === 0 && (st.retired || []).length === 1 }; });
   assert.equal(r.owner, -1);
-  assert.ok(r.home);
+  assert.ok(r.home, 'pokonany bohater w puli tawern');
   assert.ok(r.garrison > 0 && r.garrison <= before);
 });
 
@@ -135,4 +135,19 @@ test('lista budowania pokazuje zablokowane budowle z brakującymi wymaganiami (t
   assert.ok(r.okFirst && r.lockedAfter, 'najpierw dostępne, potem zablokowane');
   assert.deepEqual(r.miss.slice().sort(), ['dw1', 'dw2', 'fort'], 'dw4 wymaga fortu i siedliska 2. poziomu (a to siedliska 1.)');
   assert.match(r.tip, /Wymaga \(w tej kolejności\):/); assert.ok(r.unlock); assert.equal(r.built, 1, 'klik w zablokowaną nie buduje');
+});
+
+test('werbunek z listy wraca do listy; „Werbuj wszystko” kupuje od najsilniejszych, na ile starczy', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const st = G.state, t = st.towns.find(t => t.owner === ME), R = human(st).resources; for (const h of st.heroes) if (h.x === t.x && h.y === t.y) h.x += 1;
+    t.built = ['hall1', 'fort', 'dw1', 'dw2', 'dw3', 'dw3u']; t.garrison = emptyArmy(); t.avail = { 1: 20, 2: 10, 3: 5 }; setScreen('town', { townId: t.id }); G.modal = null;
+    showRecruitList(st, t, () => {}); G.modal.buttons.find(b => b.label === 'Werbuj').action(); G.modal.buttons.find(b => b.label === 'Rekrutuj').action();
+    const back = !!(G.modal && G.modal.overview);
+    const F = factionOf(t.faction), up3 = F.dw.dw3u[1], c3 = unitCost(up3).gold; R.gold = c3 * 5 + 10; // stać tylko na 5 ulepszonych stworów 3. poziomu
+    const res = recruitAll(st, t); G.modal = null;
+    return { back, n3: armyStacks(t.garrison).find(s => s.cid === up3)?.n, avail3: t.avail[3], text: res.text, gold: R.gold };
+  });
+  assert.ok(r.back, 'po werbunku z listy wraca lista'); assert.equal(r.n3, 5, 'najpierw najsilniejsi (ulepszeni)'); assert.equal(r.avail3, 0);
+  assert.ok(r.gold < 60, `reszta złota wydana na słabszych: ${r.gold}`); assert.match(r.text, /Zwerbowano/);
 });

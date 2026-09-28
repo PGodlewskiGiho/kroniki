@@ -372,7 +372,7 @@ function nextActive(B) {
 const unitAtt = u => CREATURES[u.cid].att + (u.spec ? u.spec.att : 0) + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
 const unitDef = u => CREATURES[u.cid].def + (u.spec ? u.spec.def : 0) + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
 const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.spec ? u.spec.spd : 0) + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
-const battleSpells = h => (h.spells || []).filter(id => SPELLS[id].kind === 'battle');
+const battleSpells = h => (hasBook(h) ? h.spells || [] : []).filter(id => SPELLS[id].kind === 'battle'); // bez księgi nie ma czarów
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
 const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => spellCost(h, id) <= h.mana)); };
@@ -415,7 +415,7 @@ function spellArea(id, x, y, B) {
 const hitMul = (S, i) => (S.chain ? Math.pow(0.5, i) : 1);
 // Orle oko: bohater strony przeciwnej może nauczyć się rzuconego czaru (do poziomu wg umiejętności)
 function learnBySight(B, s, id) {
-  const o = sideHero(B, 1 - s), v = skillVal(o, 'eagleSight'); if (!v || knows(o, id) || SPELLS[id].level > v / 10 - 2) return;
+  const o = sideHero(B, 1 - s), v = skillVal(o, 'eagleSight'); if (!v || !hasBook(o) || knows(o, id) || SPELLS[id].level > v / 10 - 2) return;
   if (B.rng() * 100 < v) { o.spells.push(id); B.log.push(`${o.name} podpatruje czar „${SPELLS[id].name}” (Orle oko).`); }
 }
 function castBattle(B, id, x, y) {
@@ -489,9 +489,25 @@ function removeHero(st, h) {
   st.heroes.splice(i, 1);
   const keep = sel !== h ? sel : myHeroes(st)[0]; st.selHero = Math.max(0, st.heroes.indexOf(keep));
 }
+// Bohater, który przegrał albo uciekł, znika z mapy i czeka w tawernach jak w Heroes 3 (st.retired): uciekinier od razu
+// u swojego gracza, pokonany po RETIRE_DAYS dniach w puli wszystkich graczy (także przeciwników). Zachowuje poziom,
+// umiejętności i czary; armię traci (wraca z jednym stworem), a artefakty pokonanego przejmuje zwycięski bohater (lootHero).
+const RETIRE_DAYS = 7;
+function retireHero(st, h, fled, keepArts = fled) {
+  removeHero(st, h);
+  const keep = { ...h, army: emptyArmy(), machines: [], path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null, garrison: null, boat: false, asleep: false, boost: undefined };
+  if (!keepArts) { keep.equip = emptyEquip(); keep.bag = []; }
+  st.retired = (st.retired || []).filter(r => r.hero.name !== h.name);
+  st.retired.push({ hero: keep, owner: fled ? h.owner : -1, from: st.dayTotal + (fled ? 0 : RETIRE_DAYS) });
+}
+// Artefakty pokonanego (założone i z plecaka) trafiają do plecaka zwycięzcy; zwraca ich liczbę
+function lootHero(winner, loser) {
+  const ids = [...Object.values(loser.equip || {}).filter(Boolean), ...(loser.bag || [])];
+  winner.bag.push(...ids); loser.equip = emptyEquip(); loser.bag = []; return ids.length;
+}
 // Zmiana właściciela miasta (i jego obiektu na mapie)
 function captureTown(st, t, owner) {
-  for (const o of st.heroes.filter(o => o.x === t.x && o.y === t.y && o.owner !== owner)) removeHero(st, o); // bohaterowie poprzedniego właściciela w murach i bramie
+  for (const o of st.heroes.filter(o => o.x === t.x && o.y === t.y && o.owner !== owner)) retireHero(st, o, false, true); // bohaterowie poprzedniego właściciela w murach i bramie
   t.owner = owner; if (owner >= 0) reveal(st, t.x, t.y, HERO_SIGHT, owner);
   for (const ob of st.objects) if (ob.type === 'town' && ob.townId === t.id) ob.owner = owner;
   MapRender.miniDirty = true;
@@ -518,18 +534,13 @@ function resolveBattle(B, fled) {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);
     if (D.bank) res.bankText = lootBank(st, h, D.bank);
-    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) { D.hero.bag.splice(D.hero.bag.indexOf('grail'), 1); h.bag.push('grail'); res.grail = true; } removeHero(st, D.hero); }
+    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) res.grail = true; res.loot = lootHero(h, D.hero); retireHero(st, D.hero, false); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
   } else {
-    if (D.hero && outcome === 'lose' && hasGrail(h)) { h.bag.splice(h.bag.indexOf('grail'), 1); D.hero.bag.push('grail'); res.grailLost = true; } // Graal przechodzi na zwycięzcę
+    if (D.hero && outcome === 'lose' && hasGrail(h)) res.grailLost = true; // Graal przechodzi na zwycięzcę razem z artefaktami
     if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); res.foeRaised = raiseDead(B, 1); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie
-    if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
-    else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
-      const towns = st.towns.filter(t => t.owner === h.owner), t = towns.find(t => !heroAt(st, t.x, t.y)) || (towns.length && st.heroes.filter(o => o.owner === h.owner).length === 1 ? towns[0] : null);
-      h.army = emptyArmy(); h.machines = []; h.mp = 0; res.home = t ? t.name : null;
-      if (t) { h.x = t.x; h.y = t.y; reveal(st, h.x, h.y, heroSight(h), h.owner); }
-      else if (towns.length) { removeHero(st, h); res.heroLost = true; }
-    }
+    if (outcome === 'fled') { res.fledHero = true; retireHero(st, h, true); } // ucieczka: bez armii do własnej tawerny
+    else { if (D.hero) res.foeLoot = lootHero(D.hero, h); res.heroLost = true; retireHero(st, h, false, !D.hero); } // porażka: artefakty dla zwycięzcy, bohater po tygodniu w tawernach
   }
   h.prev = null; h.path = null; h.dest = null; rebuildObjIndex(st);
   return res;

@@ -26,14 +26,18 @@ const click = (what, k, i) => page.evaluate(([what, k, i]) => {
   G.modal.onClick(x, y);
 }, [what, k, i]);
 
-test('kliknięcie sąsiedniego własnego bohatera otwiera spotkanie, dalekiego — wybiera go', async () => {
+test('kliknięcie sąsiedniego własnego bohatera otwiera spotkanie, dalekiego — ścieżka do niego i spotkanie po dojściu', async () => {
   await twoHeroes();
   const r = await page.evaluate(() => {
-    const st = G.state, scr = G.screens.adventure, [a, b] = myHeroes(st); scr.tileClick(b.x, b.y);
+    const st = G.state, scr = G.screens.adventure, [a, b] = myHeroes(st), n = st.map.n; scr.tileClick(b.x, b.y);
     const meeting = !!(G.modal && G.modal.meeting); G.modal = null;
-    b.x += 3; scr.selectHero(a); scr.tileClick(b.x, b.y); const sel = hero(st) === b; b.x -= 3; return { meeting, sel };
+    const far = [[3, 0], [-3, 0], [0, 3], [3, 3], [-3, 3]].map(([dx, dy]) => [a.x + dx, a.y + dy]).find(([x, y]) => passableTile(st, x, y) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && !st.guard[y * n + x]);
+    const [bx, by] = [b.x, b.y]; b.x = far[0]; b.y = far[1]; scr.selectHero(a); a.mp = 5000; scr.tileClick(b.x, b.y);
+    const still = hero(st) === a, path = !!a.path; let k = 0; while (a.path && k++ < 20) { heroStep(st, a); a.anim = null; }
+    const met = !!(G.modal && G.modal.meeting), near = Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) === 1; G.modal = null; b.x = bx; b.y = by;
+    return { meeting, still, path, met, near };
   });
-  assert.deepEqual(r, { meeting: true, sel: true });
+  assert.deepEqual(r, { meeting: true, still: true, path: true, met: true, near: true });
 });
 
 test('wymiana oddziałów: przeniesienie, połączenie, ostatni oddział zostaje', async () => {
@@ -61,4 +65,18 @@ test('wymiana artefaktów z plecaka i okno rysuje się bez błędów', async () 
   await frames(page, 3);
   await page.evaluate(() => G.modal.buttons.find(b => b.label === 'Zamknij').action());
   assert.equal(await page.evaluate(() => G.modal), null);
+});
+
+test('szybkie przekazanie: cała armia przechodzi, zostaje jeden stwór z najsłabszego oddziału; w mieście garnizon ↔ brama', async () => {
+  await twoHeroes();
+  const r = await page.evaluate(() => {
+    const st = G.state, [a, b] = myHeroes(st); a.army = emptyArmy(); a.army[0] = { cid: 'pikeman', n: 10 }; a.army[1] = { cid: 'griffin', n: 3 }; b.army = emptyArmy(); b.army[0] = { cid: 'griffin', n: 2 };
+    showMeeting(st, a, b); G.modal.buttons.find(x => x.label === `Wszystko → ${b.name}`).action(); G.modal = null;
+    const left = armyStacks(a.army), got = armyStacks(b.army).map(s => `${s.cid}:${s.n}`).sort();
+    const t = st.towns[0]; a.x = t.x; a.y = t.y; t.garrison = emptyArmy(); t.garrison[3] = { cid: 'archer', n: 7 }; setScreen('town', { townId: t.id }); G.modal = null;
+    const s = G.screens.town; s.draw(G.ctx); s.bGiveDown.action(); const down = armyStacks(t.garrison).length, hasArch = a.army.some(x => x && x.cid === 'archer' && x.n === 7);
+    s.bGiveUp.action(); return { left: left.map(x => `${x.cid}:${x.n}`), got, down, hasArch, keep: armySize(a.army), gar: armySize(t.garrison) };
+  });
+  assert.deepEqual(r.left, ['pikeman:1'], 'zostaje jeden pikinier (najsłabszy)'); assert.deepEqual(r.got, ['griffin:5', 'pikeman:9']);
+  assert.equal(r.down, 0); assert.ok(r.hasArch); assert.equal(r.keep, 1, 'bohater w bramie zatrzymuje jednego'); assert.equal(r.gar, 7);
 });

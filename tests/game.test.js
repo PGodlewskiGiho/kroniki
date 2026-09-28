@@ -165,7 +165,7 @@ test('bitwy automatyczne kończą się, są powtarzalne i zapisują wynik', asyn
   assert.ok(r.armyUntouched, 'symulacja nie zmienia armii przed resolveBattle');
 });
 
-test('wygrana usuwa potwora i daje doświadczenie, porażka odsyła bohatera do miasta', async () => {
+test('wygrana usuwa potwora i daje doświadczenie, porażka: bohater znika i po tygodniu czeka w tawernach', async () => {
   await newGame(page, {}, 77);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), t = st.towns[0], mons = st.objects.filter(o => o.type === 'monster');
@@ -177,17 +177,17 @@ test('wygrana usuwa potwora i daje doświadczenie, porażka odsyła bohatera do 
     const strong = mons.filter(o => !o.dead).reduce((a, b) => a.count * CREATURES[a.cid].value >= b.count * CREATURES[b.cid].value ? a : b);
     h.army = emptyArmy(); h.army[0] = { cid: dwellingUnits(t, 1)[0], n: 1 }; h.x = strong.x - 1; h.y = strong.y;
     const lose = resolveBattle(simulateBattle(createBattle(st, h, strong)), false);
+    const back = (st.retired || []).find(q => q.hero.name === h.name);
     return { win: win.outcome, exp: win.exp, weakDead: !!weak.dead, lose: lose.outcome, strongAlive: !strong.dead && strong.count > 0,
-      home: h.x === t.x && h.y === t.y, army: armySize(h.army), mp: h.mp };
+      gone: !st.heroes.includes(h), pool: !!back && back.owner === -1 && back.from === st.dayTotal + 7, army: back ? armySize(back.hero.army) : -1, level: back && back.hero.level === h.level };
   });
   assert.equal(r.win, 'win');
   assert.ok(r.exp > 0);
   assert.ok(r.weakDead);
   assert.equal(r.lose, 'lose');
   assert.ok(r.strongAlive);
-  assert.ok(r.home, 'po porażce bohater wraca do miasta');
-  assert.equal(r.army, 0);
-  assert.equal(r.mp, 0);
+  assert.ok(r.gone, 'po porażce bohater znika z mapy'); assert.ok(r.pool, 'za tydzień w puli tawern wszystkich graczy');
+  assert.equal(r.army, 0); assert.ok(r.level, 'zachowuje poziom');
 });
 
 test('ekrany rysują się bez błędów', async () => {

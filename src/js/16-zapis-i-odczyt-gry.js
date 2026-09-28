@@ -21,7 +21,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null, caravans: st.caravans || [] },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null, caravans: st.caravans || [], retired: st.retired || [] },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -40,6 +40,7 @@ function deserializeGame(d) {
 // (usunięte stwory, budowle, artefakty, miejsca), znika zamiast psuć rozgrywkę. Kolejne kroki w kolejności powstawania gry.
 function migrateSave(st) {
   const r = mulberry32(st.seed), cr = s => (s && CREATURES[s.cid] && s.n > 0 ? s : null), armyFix = a => Array.from({ length: ARMY_SLOTS }, (_, i) => cr(a && a[i]));
+  st.retired = (st.retired || []).filter(r => r && r.hero && r.hero.name && HERO_CLASSES[r.hero.cls]); // bohaterowie czekający w tawernach
   st.caravans = (st.caravans || []).filter(c => st.towns[c.from] && st.towns[c.to]).map(c => ({ ...c, army: c.army.filter(s => s && CREATURES[s.cid] && s.n > 0) })).filter(c => c.army.length); // karawany
   if (!(st.settings.difficulty >= 0 && st.settings.difficulty < DIFFICULTIES.length)) st.settings.difficulty = 1;
   // gracze: znane frakcje i kolory, komplet surowców

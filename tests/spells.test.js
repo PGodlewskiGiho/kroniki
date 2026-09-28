@@ -21,7 +21,7 @@ test('gildia IV i V: czary 4. i 5. poziomu, bohater je poznaje', async () => {
   const r = await page.evaluate(() => {
     const st = G.state, t = st.towns[0], h = hero(st);
     for (const id of ['tavern', 'hall2', 'hall3', 'guild1', 'guild2', 'guild3', 'guild4', 'guild5']) { if (!hasB(t, id)) t.built.push(id); const g = /^guild(\d)$/.exec(id); if (g) rollGuildLevel(st, t, +g[1]); }
-    h.spells = []; h.skills = [{ id: 'wisdom', lv: 3 }]; const learned = visitGuild(st, t, h);
+    h.book = true; h.spells = []; h.skills = [{ id: 'wisdom', lv: 3 }]; const learned = visitGuild(st, t, h);
     return { L: guildLevel(t), n4: t.guild[4].length, n5: t.guild[5].length, lv: learned.map(id => SPELLS[id].level), name: bInfo(BUILD_BY_ID.guild5, t.faction).name };
   });
   assert.equal(r.L, 5);
@@ -63,7 +63,7 @@ test('SI rzuca deszcz meteorów; księga z wieloma czarami i ekran bitwy bez bł
   await newGame(page, { mapSize: 'M' }, 8);
   await battle([['archer', 20]], [['pikeman', 60]]);
   const r = await page.evaluate(() => {
-    const B = __B, h = hero(G.state); h.spells = ['meteorShower'];
+    const B = __B, h = hero(G.state); h.book = true; h.spells = ['meteorShower'];
     const cast = aiHeroCast(B); h.spells = Object.keys(SPELLS); h.mana = 999; B.cast[0] = false;
     setScreen('battle', { battle: B }); showSpellbook(h, 'battle', () => {});
     return { cast };
@@ -72,4 +72,19 @@ test('SI rzuca deszcz meteorów; księga z wieloma czarami i ekran bitwy bez bł
   await page.evaluate(() => { G.modal = null; });
   await frames(page, 30);
   assert.ok(r.cast);
+});
+
+test('księga czarów: wojownik zaczyna bez niej (nie uczy się i nie rzuca), kupuje ją w gildii; mag ma ją od razu', async () => {
+  await newGame(page, { mapSize: 'M' }, 8);
+  const r = await page.evaluate(() => {
+    const st = G.state, t = st.towns[0], h = hero(st); for (const id of ['guild1']) if (!hasB(t, id)) { t.built.push(id); rollGuildLevel(st, t, 1); }
+    h.cls = 'knight'; h.book = false; h.spells = ['magicArrow']; h.x = t.x; h.y = t.y;
+    const learned0 = visitGuild(st, t, h).length, cast0 = battleSpells(h).length;
+    setScreen('town', { townId: t.id }); const offered = !!(G.modal && /księgi czarów/.test(G.modal.msg || '')); G.modal = null;
+    const gold0 = human(st).resources.gold, err = buyBook(st, t, h), learned1 = visitGuild(st, t, h).length;
+    const mage = previewHero(st, ME, { name: 'Test', cls: 'wizard', female: false, fac: 'academy' });
+    return { learned0, cast0, offered, err, paid: gold0 - human(st).resources.gold, learned1, cast1: battleSpells(h).length, mage: hasBook(mage) };
+  });
+  assert.deepEqual([r.learned0, r.cast0], [0, 0], 'bez księgi nic'); assert.ok(r.offered, 'gildia proponuje księgę');
+  assert.equal(r.err, null); assert.equal(r.paid, 500); assert.ok(r.learned1 > 0 && r.cast1 > 0); assert.ok(r.mage);
 });

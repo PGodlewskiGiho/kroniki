@@ -144,6 +144,12 @@
    CARAVAN_MP dziennie), dołączają do garnizonu, zawracają, gdy cel przepadł; wóz na mapie, okno w mieście (klawisz K).
    Mapa bez szarpnięć: kawałki terenu malują się w tle (MapRender.warm, requestIdleCallback, od najbliższych widoku po całą mapę),
    w klatce tylko zastępczy rysunek; pamięć na całą mapę; mapa w spoczynku 60 klatek; auto-jakość wraca po ~10 s płynnej gry.
+   Etap A (wygoda i zasady): panel mapy w zakładkach bohaterowie/miasta, młotek przy mieście (czy dziś budowano); klik na dalekiego
+   własnego bohatera = ścieżka i spotkanie po dojściu; szybkie przekazanie armii (giveArmy: zostaje jeden stwór najsłabszego oddziału)
+   w spotkaniu i w mieście; werbunek z listy wraca do listy, „Werbuj wszystko” (recruitAll, od najsilniejszych); podgląd kandydata
+   z tawerny na ekranie bohatera (previewHero) i najem z podglądu; ucieczka/porażka jak w H3 (retireHero, st.retired: uciekinier od razu
+   w swojej tawernie, pokonany po tygodniu u wszystkich, łup artefaktów lootHero), pełna armia tylko dla dwóch kandydatów tygodnia
+   (weak/weakArmy); księga czarów (hasBook, buyBook za SPELLBOOK_COST w gildii; wojownicy zaczynają bez niej).
    Czcionka pikselowa: Jersey 10 (OFL, czytelne cyfry) wbudowana przez build.js z src/czcionki; ustawienie Grafika → Czcionka (piksele/klasyczna).
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,

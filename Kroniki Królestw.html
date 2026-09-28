@@ -170,6 +170,12 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    CARAVAN_MP dziennie), dołączają do garnizonu, zawracają, gdy cel przepadł; wóz na mapie, okno w mieście (klawisz K).
    Mapa bez szarpnięć: kawałki terenu malują się w tle (MapRender.warm, requestIdleCallback, od najbliższych widoku po całą mapę),
    w klatce tylko zastępczy rysunek; pamięć na całą mapę; mapa w spoczynku 60 klatek; auto-jakość wraca po ~10 s płynnej gry.
+   Etap A (wygoda i zasady): panel mapy w zakładkach bohaterowie/miasta, młotek przy mieście (czy dziś budowano); klik na dalekiego
+   własnego bohatera = ścieżka i spotkanie po dojściu; szybkie przekazanie armii (giveArmy: zostaje jeden stwór najsłabszego oddziału)
+   w spotkaniu i w mieście; werbunek z listy wraca do listy, „Werbuj wszystko” (recruitAll, od najsilniejszych); podgląd kandydata
+   z tawerny na ekranie bohatera (previewHero) i najem z podglądu; ucieczka/porażka jak w H3 (retireHero, st.retired: uciekinier od razu
+   w swojej tawernie, pokonany po tygodniu u wszystkich, łup artefaktów lootHero), pełna armia tylko dla dwóch kandydatów tygodnia
+   (weak/weakArmy); księga czarów (hasBook, buyBook za SPELLBOOK_COST w gildii; wojownicy zaczynają bez niej).
    Czcionka pikselowa: Jersey 10 (OFL, czytelne cyfry) wbudowana przez build.js z src/czcionki; ustawienie Grafika → Czcionka (piksele/klasyczna).
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
@@ -2404,7 +2410,7 @@ function showRecruit(st, t, L, onDone, backToList) {
   const bMax = new Button(x + 330, qy, 80, 30, 'Maks', () => set(maxN()), { size: 14, key: 'm' });
   const bBuy = new Button(x + (backToList ? 30 : 90), y + hh - 56, 130, 40, 'Rekrutuj', () => {
     const err = recruit(st, t, L, cid, n); if (err) { onDone(err); return; }
-    G.modal = null; onDone(`Zwerbowano: ${CREATURES[cid].name} × ${n}`);
+    if (backToList) backToList(); else G.modal = null; onDone(`Zwerbowano: ${CREATURES[cid].name} × ${n}`); // z listy: wraca do listy siedlisk
   }, { key: 'enter', size: 17 });
   const bClose = new Button(x + (backToList ? 300 : 240), y + hh - 56, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const btns = [...(units.length > 1 ? unitBtns : []), bMinus, bPlus, bMax, bBuy, bClose];
@@ -2485,10 +2491,13 @@ function showMeeting(st, a, b, onMsg) {
   let splitMode = false; // „Dziel”: następne wskazanie miejsca otwiera okno podziału (to samo daje Shift+klik)
   const bClose = new Button(x + w / 2 + 5, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const bSplit = new Button(x + w / 2 - 135, y + hh - 54, 130, 40, 'Dziel', () => { splitMode = !splitMode; say(splitMode ? 'Wybierz oddział, a potem miejsce: przeniesiesz tylko część jednostek.' : ''); }, { key: 'd', size: 17, selected: () => splitMode, tip: 'Podział oddziału: przenieś tylko część jednostek (albo Shift+klik na miejscu docelowym).' });
+  const give = (k, K) => { const n = giveArmy(armies[k], armies[K], true); sel = null; say(n ? `${heroes[k].name} przekazuje ${n} ${n === 1 ? 'stwora' : 'stworów'} (zostaje jeden).` : 'Nie ma czego przekazać albo brak miejsca.'); };
+  const bGive = [0, 1].map(k => new Button(k ? x + w - 184 : x + 24, y + hh - 54, 160, 40, `Wszystko → ${heroes[1 - k].name}`, () => give(k, 1 - k),
+    { size: 13, key: k ? 'arrowup' : 'arrowdown', tip: `${heroes[k].name} oddaje całą armię bohaterowi ${heroes[1 - k].name}, zostawiając sobie jednego stwora z najsłabszego oddziału (klawisz ${k ? '↑' : '↓'}).` }));
   const armyAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(armyRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   const bagAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(bagRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   G.modal = {
-    buttons: [bSplit, bClose], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
+    buttons: [bSplit, bClose, ...bGive], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
     onClick(px, py) {
       const s = armyAt(px, py), g = bagAt(px, py);
       if (s) {
@@ -2517,7 +2526,7 @@ function showMeeting(st, a, b, onMsg) {
         text(ctx, h.bag.length ? 'Plecak:' : 'Plecak pusty', x + 24, ry + 92, { size: 13, weight: 500, color: '#5a3814' });
         bagRects[k] = h.bag.slice(0, 12).map((id, i) => { const bx = x + 90 + i * 46; drawSprite(ctx, artSprite(id), bx + 20, ry + 92, 1); return { x: bx, y: ry + 72, w: 40, h: 40, i }; });
       });
-      bSplit.draw(ctx); bClose.draw(ctx);
+      bSplit.draw(ctx); bClose.draw(ctx); bGive.forEach(b => b.draw(ctx));
     },
   };
 }
@@ -2555,9 +2564,12 @@ function showRecruitList(st, t, onDone) {
   const btns = [];
   for (const L of DW_LEVELS) if (hasB(t, 'dw' + L)) { const { x, y } = card(L); { const cid = F.dw['dw' + L + (hasB(t, 'dw' + L + 'u') ? 'u' : '')][1]; btns.push(new Button(x + 36, y + ch - 32, cw - 72, 26, 'Werbuj', () => showRecruit(st, t, L, onDone, back), { size: 14, key: String(L), tip: `Werbunek z siedliska poziomu ${L} (klawisz ${L}). Koszt: ${costTxt(unitCost(cid))} za stwora.` })); } }
   const close = new Button(x0 + 3 * (cw + gap) + 30, y0 + ch + gap + ch - 50, cw - 60, 38, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
+  let note = '';
+  const all = new Button(x0 + 3 * (cw + gap) + 14, y0 + ch + gap + ch - 96, cw - 28, 38, 'Werbuj wszystko', () => { const r = recruitAll(st, t); note = r.text; onDone(r.text); },
+    { size: 15, key: 'w', tip: 'Szybki werbunek: od najsilniejszych stworów w dół kupuje wszystkie dostępne, na ile starczy zasobów i miejsca (klawisz W).' });
   const growMul = hasB(t, 'castle') ? 'Zamek: przyrost ×2' : hasB(t, 'citadel') ? 'Cytadela: przyrost ×1,5' : hasB(t, 'fort') ? 'Fort: przyrost zwykły' : 'Bez fortu: przyrost zwykły';
   G.modal = {
-    buttons: [...btns, close], overview: true,
+    buttons: [...btns, all, close], overview: true,
     draw(ctx) {
       dimScreen(ctx, 0.6); drawParchment(ctx, 6, 8, W - 12, H - 16);
       text(ctx, `Stwory miasta ${t.name} (${F.name})`, W / 2, 42, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
@@ -2584,7 +2596,9 @@ function showRecruitList(st, t, onDone) {
       ctx.fillStyle = 'rgba(90,55,20,.1)'; rr(ctx, sx, sy, cw, ch, 5); ctx.fill();
       text(ctx, 'Przyrost co tydzień', sx + cw / 2, sy + 24, { size: 14, align: 'center', color: '#3a1e08', fam: 'title' });
       wrapText(ctx, `${growMul}. Siedlisk: ${dwellingLevels(t).length} z 7. Koszt stwora pokazuje dymek przycisku Werbuj.`, cw - 16).forEach((l, i) => text(ctx, l, sx + cw / 2, sy + 50 + i * 16, { size: 12, weight: 500, align: 'center', color: '#5a3814' }));
-      btns.forEach(b => { b.disabled = false; b.draw(ctx); }); close.draw(ctx);
+      if (note) wrapText(ctx, note, cw - 16).slice(0, 4).forEach((l, i) => text(ctx, l, sx + cw / 2, sy + 118 + i * 15, { size: 12, weight: 600, align: 'center', color: '#2a4a14' }));
+      all.disabled = !DW_LEVELS.some(L => hasB(t, 'dw' + L) && (t.avail[L] || 0) > 0);
+      btns.forEach(b => { b.disabled = false; b.draw(ctx); }); all.draw(ctx); close.draw(ctx);
     },
   };
 }
@@ -3712,9 +3726,14 @@ function createHero(st, owner, x, y, pick = null) {
   const pool = factionOf(st.players[owner].faction).heroes, r = mulberry32(st.seed ^ 0x1234 ^ (id * 977));
   const P = pick || (([name, cls, female]) => ({ name, cls, female: !!female, fac: st.players[owner].faction }))(pool[Math.floor(r() * pool.length)]);
   const { name, cls, female } = P;
-  const h = { id, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: startingArmy(P.fac, r),
+  const h = { id, owner, name, cls, female: !!female, x, y, dir: 1, sight: HERO_SIGHT, exp: 0, asleep: false, army: P.weak ? weakArmy(P.fac) : startingArmy(P.fac, r),
     path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null };
-  initHeroProgress(h); h.mp = heroMaxMP(h); st.heroes.push(h); return h;
+  initHeroProgress(h); h.book = MAGE_CLASSES.includes(cls) || !!CLASS_SPELLS[cls]; h.mp = heroMaxMP(h); st.heroes.push(h); return h; // wojownicy bez księgi czarów
+}
+// Podgląd kandydata z tawerny: ten sam bohater, którego dałby najem (ta sama armia i umiejętności), ale bez dopisania do gry
+function previewHero(st, owner, pick) {
+  if (pick.retired) { const r = (st.retired || []).find(q => q.hero.name === pick.name), h = { ...r.hero, owner, army: weakArmy(heroFaction(r.hero) || playerOf(st, owner).faction), preview: true }; h.mp = heroMaxMP(h); return h; }
+  const h = createHero(st, owner, -1, -1, pick); st.heroes.pop(); h.preview = true; return h;
 }
 // Cały świat powstaje tutaj, zanim pokaże się jakikolwiek ekran. Stan (st) nie zawiera nic z grafiki,
 // dlatego da się go później zapisać i wczytać (krok 14).
@@ -3866,7 +3885,7 @@ function heroStep(st, h) {
   const halt = () => { h.moving = false; h.path = null; h.dest = null; };
   if (ob && ob.type === 'monster') { halt(); h.prev = null; startEncounter(st, h, ob); return false; }
   const other = heroAt(st, nx, ny); // bohater w bramie miasta broni się razem z miastem (startTownAssault)
-  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } return false; }
+  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } else if (playerOf(st, h.owner).human && !G.screens.adventure.aiRun) showMeeting(st, h, other); return false; } // własny: spotkanie po dojściu
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
@@ -4102,9 +4121,21 @@ function rollGuildLevel(st, t, L) {
 }
 const guildOffer = (t, L) => (GUILD_OFFER[L] || 1) + (t.faction === 'academy' && hasB(t, 'special') ? 1 : 0); // Biblioteka Akademii
 const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild' + L)) return L; return 0; };
+// Księga czarów (jak w Heroes 3): magowie zaczynają z nią, wojownicy kupują ją w mieście z gildią magów. Bez księgi bohater
+// nie poznaje czarów (gildia, kapliczka, Orle oko) i nie może ich rzucać. Bohaterowie z dawnych zapisów mają ją (book !== false).
+const SPELLBOOK_COST = 500;
+const hasBook = h => !!h && h.book !== false;
+function buyBook(st, t, h) {
+  if (hasBook(h)) return `${h.name} ma już księgę czarów`; if (!guildLevel(t)) return 'Księgę czarów sprzedaje gildia magów';
+  const R = playerOf(st, h.owner).resources; if (R.gold < SPELLBOOK_COST) return `Księga czarów kosztuje ${SPELLBOOK_COST} złota`;
+  R.gold -= SPELLBOOK_COST; h.book = true; return null;
+}
 // Bohater w mieście z gildią: poznaje jej czary i odzyskuje całą manę. Zwraca nowo poznane czary.
+// Komputer bez księgi kupuje ją sam, gdy go stać (z zapasem na wojsko).
 function visitGuild(st, t, h) {
   const L = guildLevel(t); if (!L) return [];
+  if (!hasBook(h) && !playerOf(st, h.owner).human && playerOf(st, h.owner).resources.gold >= SPELLBOOK_COST * 3) buyBook(st, t, h);
+  if (!hasBook(h)) { h.mana = Math.max(h.mana, heroMaxMana(h)); return []; }
   const learned = [];
   for (let k = 1; k <= Math.min(L, spellCap(h)); k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); } // wyżej tylko z Mądrością
   h.mana = Math.max(h.mana, heroMaxMana(h)); return learned;
@@ -4145,6 +4176,8 @@ function armyAdd(a, cid, n) {
 }
 const armyHasRoom = (a, cid) => a.some(x => x && x.cid === cid) || a.includes(null);
 // Armia startowa bohatera: jednostki z dwóch najniższych siedlisk jego frakcji
+// Bohater bez armii startowej (późniejsi kandydaci w tygodniu, powracający uciekinierzy): jeden stwór 1. poziomu
+function weakArmy(fac) { const a = emptyArmy(); a[0] = { cid: factionOf(fac).dw.dw1[1], n: 1 }; return a; }
 function startingArmy(fac, r) {
   const F = factionOf(fac), a = emptyArmy();
   a[0] = { cid: F.dw.dw1[1], n: 14 + Math.floor(r() * 11) };
@@ -4249,6 +4282,18 @@ function recruit(st, t, L, cid, n) {
   const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id] * n;
   armyAdd(dest, cid, n); t.avail[L] -= n; return null;
 }
+// Szybki werbunek (jak „Kup wszystko” w Heroes 3): od najwyższego poziomu w dół kupuje najlepszą formę stwora z siedliska,
+// ile jest dostępnych, na ile starczy zasobów i miejsca. Zwraca { n: liczba stworów, text: podsumowanie }.
+function recruitAll(st, t) {
+  const F = factionOf(t.faction), got = [];
+  for (const L of [...DW_LEVELS].reverse()) {
+    if (!hasB(t, 'dw' + L) || !(t.avail[L] > 0)) continue;
+    const cid = F.dw['dw' + L + (hasB(t, 'dw' + L + 'u') ? 'u' : '')][1], n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), t.owner));
+    if (n > 0 && !recruit(st, t, L, cid, n)) got.push(`${CREATURES[cid].plural.toLowerCase()} ${n}`);
+  }
+  const n = got.reduce((s, g) => s + +g.split(' ').pop(), 0);
+  return { n, text: got.length ? `Zwerbowano: ${got.join(', ')}` : 'Nie ma kogo zwerbować (brak stworów, zasobów albo miejsca)' };
+}
 // Przesunięcie między dwoma miejscami (garnizon ↔ bohater): pusty cel = przeniesienie, ten sam typ = połączenie,
 // inny typ = zamiana. Bohater musi zachować co najmniej jeden oddział. Zwraca błąd albo null.
 function armyMove(fromA, i, toA, j, heroArmies = []) {
@@ -4257,6 +4302,19 @@ function armyMove(fromA, i, toA, j, heroArmies = []) {
   if (leaves && fromA !== toA && heroArmies.includes(fromA) && armyStacks(fromA).length === 1) return 'Bohater musi mieć co najmniej jeden oddział';
   if (!d) { toA[j] = s; fromA[i] = null; } else if (d.cid === s.cid) { d.n += s.n; fromA[i] = null; } else { toA[j] = s; fromA[i] = d; }
   return null;
+}
+// Szybkie przekazanie: wszystkie oddziały z fromA do toA (łączą się z takimi samymi albo trafiają na wolne miejsca).
+// keepOne: armia bohatera zatrzymuje jednego stwora z najsłabszego oddziału. Zwraca liczbę przeniesionych stworów.
+function giveArmy(fromA, toA, keepOne) {
+  const idx = fromA.map((s, i) => (s ? i : -1)).filter(i => i >= 0); if (!idx.length) return 0;
+  const keep = keepOne ? idx.reduce((a, b) => (CREATURES[fromA[b].cid].value < CREATURES[fromA[a].cid].value ? b : a)) : -1; let moved = 0;
+  for (const i of idx) {
+    const s = fromA[i], n = s.n - (i === keep ? 1 : 0); if (n <= 0) continue;
+    const j = toA.findIndex(d => d && d.cid === s.cid), k = j >= 0 ? j : toA.findIndex(d => !d); if (k < 0) continue; // brak miejsca: zostaje
+    if (toA[k]) toA[k].n += n; else toA[k] = { cid: s.cid, n };
+    if (n === s.n) fromA[i] = null; else s.n -= n; moved += n;
+  }
+  return moved;
 }
 // Podział oddziału: n jednostek z fromA[i] na wolne miejsce albo do takiego samego oddziału toA[j].
 // Wszystkie jednostki = zwykłe przeniesienie (armyMove). Zwraca błąd albo null.
@@ -4422,20 +4480,32 @@ const HERO_COST = 2500, MAX_HEROES = 8;
 const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
 // Oferta tawerny gracza na bieżący tydzień (wspólna dla wszystkich jego miast): dwóch chętnych,
 // pierwszy z frakcji gracza, drugi z innej. Imiona nie powtarzają się z bohaterami na mapie.
+// Tawerna: dwaj kandydaci tygodnia (z pełną armią startową); po najęciu na miejsce wchodzi nowy, ale już z jednym stworem (weak).
+// Pula to bohaterowie frakcji i ci, którzy odeszli z mapy (st.retired): uciekinier od razu u swojego gracza, pokonani po tygodniu u wszystkich.
 function tavernOffer(st, owner) {
-  const p = playerOf(st, owner), wk = weekIndex(st);
+  const p = playerOf(st, owner), wk = weekIndex(st), ret = st.retired || [];
   if (!p.tavern || p.tavern.week !== wk) p.tavern = { week: wk, hired: 0, offers: [null, null] };
-  const tv = p.tavern, taken = new Set([...st.heroes.map(h => h.name), ...tv.offers.filter(Boolean).map(o => o.name)]);
+  const tv = p.tavern, open = r => r.from <= st.dayTotal && (r.owner === owner || r.owner < 0), card = (r, weak) => ({ name: r.hero.name, cls: r.hero.cls, female: !!r.hero.female, fac: heroFaction(r.hero) || p.faction, retired: true, weak, level: r.hero.level });
+  const mine = ret.find(r => r.owner === owner && open(r) && !tv.offers.some(o => o && o.name === r.hero.name));
+  if (mine) tv.offers[1] = card(mine, true); // uciekinier czeka od razu (zastępuje drugiego kandydata)
+  const taken = new Set([...st.heroes.map(h => h.name), ...tv.offers.filter(Boolean).map(o => o.name), ...ret.map(r => r.hero.name)]);
   const r = mulberry32(st.seed ^ (wk * 7717) ^ (owner * 131) ^ (tv.hired * 977));
   tv.offers.forEach((o, k) => {
     if (o) return;
     const facs = FACTIONS.map(f => f.id).filter(f => (k === 0) === (f === p.faction));
-    const pool = facs.flatMap(fac => factionOf(fac).heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac }))).filter(c => !taken.has(c.name));
-    if (pool.length) { tv.offers[k] = pool[Math.floor(r() * pool.length)]; taken.add(tv.offers[k].name); }
+    const pool = [...facs.flatMap(fac => factionOf(fac).heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac }))).filter(c => !taken.has(c.name)),
+      ...ret.filter(q => q.owner < 0 && open(q) && facs.includes(heroFaction(q.hero)) && !tv.offers.some(x => x && x.name === q.hero.name)).map(q => card(q, true))];
+    if (pool.length) { tv.offers[k] = { ...pool[Math.floor(r() * pool.length)] }; if (tv.hired > 0) tv.offers[k].weak = true; taken.add(tv.offers[k].name); }
   });
   return tv.offers;
 }
-// Najem k-tego chętnego w mieście t. Zwraca { hero } albo { error }.
+// Bohater z tawerny: nowy (createHero) albo powracający z st.retired (z poziomem i umiejętnościami, bez armii)
+function tavernHero(st, owner, x, y, o) {
+  if (!o.retired) return createHero(st, owner, x, y, o);
+  const i = (st.retired || []).findIndex(r => r.hero.name === o.name), h = { ...st.retired[i].hero };
+  st.retired.splice(i, 1); h.id = st.heroes.reduce((m, q) => Math.max(m, q.id + 1), 0); h.owner = owner; h.x = x; h.y = y;
+  h.army = weakArmy(heroFaction(h) || playerOf(st, owner).faction); h.mp = heroMaxMP(h); h.mana = heroMaxMana(h); st.heroes.push(h); return h;
+}
 function hireHero(st, t, k) {
   const owner = t.owner, P = playerOf(st, owner), o = tavernOffer(st, owner)[k];
   if (!hasB(t, 'tavern')) return { error: 'W mieście nie ma tawerny' };
@@ -4444,7 +4514,7 @@ function hireHero(st, t, k) {
   if (!o) return { error: 'Nikt więcej nie czeka w tawernie' };
   if (P.resources.gold < HERO_COST) return { error: `Najem kosztuje ${HERO_COST} złota` };
   P.resources.gold -= HERO_COST; P.tavern.offers[k] = null; P.tavern.hired++;
-  const h = createHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner);
+  const h = tavernHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner);
   return { hero: h };
 }
 
@@ -4513,6 +4583,7 @@ function useSite(st, h, ob) {
   switch (ob.kind) {
     case 'shrine': {
       const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
+      if (!hasBook(h)) return { text: `Kapliczka uczy czaru „${sp.name}”, ale ${h.name} nie ma księgi czarów. Kupisz ją w mieście z gildią magów (${SPELLBOOK_COST} złota).` };
       if (sp.level > spellCap(h)) return { text: `Kapliczka uczy czaru „${sp.name}” (poziom ${sp.level}), ale ${h.name} go nie pojmuje: potrzebna Mądrość (${SKILL_LEVELS[sp.level - 2]}).` };
       mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(heroStat(h, 'sp'))}.` };
     }
@@ -4946,7 +5017,7 @@ function nextActive(B) {
 const unitAtt = u => CREATURES[u.cid].att + (u.spec ? u.spec.att : 0) + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
 const unitDef = u => CREATURES[u.cid].def + (u.spec ? u.spec.def : 0) + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
 const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.spec ? u.spec.spd : 0) + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
-const battleSpells = h => (h.spells || []).filter(id => SPELLS[id].kind === 'battle');
+const battleSpells = h => (hasBook(h) ? h.spells || [] : []).filter(id => SPELLS[id].kind === 'battle'); // bez księgi nie ma czarów
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
 const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => spellCost(h, id) <= h.mana)); };
@@ -4989,7 +5060,7 @@ function spellArea(id, x, y, B) {
 const hitMul = (S, i) => (S.chain ? Math.pow(0.5, i) : 1);
 // Orle oko: bohater strony przeciwnej może nauczyć się rzuconego czaru (do poziomu wg umiejętności)
 function learnBySight(B, s, id) {
-  const o = sideHero(B, 1 - s), v = skillVal(o, 'eagleSight'); if (!v || knows(o, id) || SPELLS[id].level > v / 10 - 2) return;
+  const o = sideHero(B, 1 - s), v = skillVal(o, 'eagleSight'); if (!v || !hasBook(o) || knows(o, id) || SPELLS[id].level > v / 10 - 2) return;
   if (B.rng() * 100 < v) { o.spells.push(id); B.log.push(`${o.name} podpatruje czar „${SPELLS[id].name}” (Orle oko).`); }
 }
 function castBattle(B, id, x, y) {
@@ -5063,9 +5134,25 @@ function removeHero(st, h) {
   st.heroes.splice(i, 1);
   const keep = sel !== h ? sel : myHeroes(st)[0]; st.selHero = Math.max(0, st.heroes.indexOf(keep));
 }
+// Bohater, który przegrał albo uciekł, znika z mapy i czeka w tawernach jak w Heroes 3 (st.retired): uciekinier od razu
+// u swojego gracza, pokonany po RETIRE_DAYS dniach w puli wszystkich graczy (także przeciwników). Zachowuje poziom,
+// umiejętności i czary; armię traci (wraca z jednym stworem), a artefakty pokonanego przejmuje zwycięski bohater (lootHero).
+const RETIRE_DAYS = 7;
+function retireHero(st, h, fled, keepArts = fled) {
+  removeHero(st, h);
+  const keep = { ...h, army: emptyArmy(), machines: [], path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null, garrison: null, boat: false, asleep: false, boost: undefined };
+  if (!keepArts) { keep.equip = emptyEquip(); keep.bag = []; }
+  st.retired = (st.retired || []).filter(r => r.hero.name !== h.name);
+  st.retired.push({ hero: keep, owner: fled ? h.owner : -1, from: st.dayTotal + (fled ? 0 : RETIRE_DAYS) });
+}
+// Artefakty pokonanego (założone i z plecaka) trafiają do plecaka zwycięzcy; zwraca ich liczbę
+function lootHero(winner, loser) {
+  const ids = [...Object.values(loser.equip || {}).filter(Boolean), ...(loser.bag || [])];
+  winner.bag.push(...ids); loser.equip = emptyEquip(); loser.bag = []; return ids.length;
+}
 // Zmiana właściciela miasta (i jego obiektu na mapie)
 function captureTown(st, t, owner) {
-  for (const o of st.heroes.filter(o => o.x === t.x && o.y === t.y && o.owner !== owner)) removeHero(st, o); // bohaterowie poprzedniego właściciela w murach i bramie
+  for (const o of st.heroes.filter(o => o.x === t.x && o.y === t.y && o.owner !== owner)) retireHero(st, o, false, true); // bohaterowie poprzedniego właściciela w murach i bramie
   t.owner = owner; if (owner >= 0) reveal(st, t.x, t.y, HERO_SIGHT, owner);
   for (const ob of st.objects) if (ob.type === 'town' && ob.townId === t.id) ob.owner = owner;
   MapRender.miniDirty = true;
@@ -5092,18 +5179,13 @@ function resolveBattle(B, fled) {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0);
     if (D.monster) removeObject(st, D.monster);
     if (D.bank) res.bankText = lootBank(st, h, D.bank);
-    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) { D.hero.bag.splice(D.hero.bag.indexOf('grail'), 1); h.bag.push('grail'); res.grail = true; } removeHero(st, D.hero); }
+    if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) res.grail = true; res.loot = lootHero(h, D.hero); retireHero(st, D.hero, false); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
   } else {
-    if (D.hero && outcome === 'lose' && hasGrail(h)) { h.bag.splice(h.bag.indexOf('grail'), 1); D.hero.bag.push('grail'); res.grailLost = true; } // Graal przechodzi na zwycięzcę
+    if (D.hero && outcome === 'lose' && hasGrail(h)) res.grailLost = true; // Graal przechodzi na zwycięzcę razem z artefaktami
     if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); res.foeRaised = raiseDead(B, 1); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie
-    if (outcome === 'fled') { if (B.prevPos) { h.x = B.prevPos[0]; h.y = B.prevPos[1]; } h.mp = 0; }
-    else { // porażka: bohater uchodzi z życiem do swojego miasta (z wolną bramą), bez armii; gdy takiego nie ma, a gracz ma innych bohaterów, odchodzi
-      const towns = st.towns.filter(t => t.owner === h.owner), t = towns.find(t => !heroAt(st, t.x, t.y)) || (towns.length && st.heroes.filter(o => o.owner === h.owner).length === 1 ? towns[0] : null);
-      h.army = emptyArmy(); h.machines = []; h.mp = 0; res.home = t ? t.name : null;
-      if (t) { h.x = t.x; h.y = t.y; reveal(st, h.x, h.y, heroSight(h), h.owner); }
-      else if (towns.length) { removeHero(st, h); res.heroLost = true; }
-    }
+    if (outcome === 'fled') { res.fledHero = true; retireHero(st, h, true); } // ucieczka: bez armii do własnej tawerny
+    else { if (D.hero) res.foeLoot = lootHero(D.hero, h); res.heroLost = true; retireHero(st, h, false, !D.hero); } // porażka: artefakty dla zwycięzcy, bohater po tygodniu w tawernach
   }
   h.prev = null; h.path = null; h.dest = null; rebuildObjIndex(st);
   return res;
@@ -5412,7 +5494,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null, caravans: st.caravans || [] },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null, caravans: st.caravans || [], retired: st.retired || [] },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -5431,6 +5513,7 @@ function deserializeGame(d) {
 // (usunięte stwory, budowle, artefakty, miejsca), znika zamiast psuć rozgrywkę. Kolejne kroki w kolejności powstawania gry.
 function migrateSave(st) {
   const r = mulberry32(st.seed), cr = s => (s && CREATURES[s.cid] && s.n > 0 ? s : null), armyFix = a => Array.from({ length: ARMY_SLOTS }, (_, i) => cr(a && a[i]));
+  st.retired = (st.retired || []).filter(r => r && r.hero && r.hero.name && HERO_CLASSES[r.hero.cls]); // bohaterowie czekający w tawernach
   st.caravans = (st.caravans || []).filter(c => st.towns[c.from] && st.towns[c.to]).map(c => ({ ...c, army: c.army.filter(s => s && CREATURES[s.cid] && s.n > 0) })).filter(c => c.army.length); // karawany
   if (!(st.settings.difficulty >= 0 && st.settings.difficulty < DIFFICULTIES.length)) st.settings.difficulty = 1;
   // gracze: znane frakcje i kolory, komplet surowców
@@ -5878,7 +5961,7 @@ function layoutAdventure() {
   const dx = VW - W, dy = VH - H;
   VIEW.w = 576 + dx; VIEW.h = 552 + dy; MINI.x = 624 + dx;
   LIST.x = 600 + dx; LIST.h = 186 + dy; INFOBOX.x = 600 + dx; INFOBOX.y = 456 + dy;
-  LIST_ROWS = Math.floor((LIST.h - 6) / LIST_ROW_H);
+  LIST_ROWS = Math.floor((LIST.h - 28) / LIST_ROW_H); // nad wierszami pasek zakładek (bohaterowie / miasta)
 }
 function camClamp(st) { const m = st.map.n * T; st.cam.x = clamp(st.cam.x, -T, m - VIEW.w + T); st.cam.y = clamp(st.cam.y, -T, m - VIEW.h + T); }
 function centerCam(st, tx, ty) { st.cam = { x: tx * T + T / 2 - VIEW.w / 2, y: ty * T + T / 2 - VIEW.h / 2 }; camClamp(st); }
@@ -9624,11 +9707,19 @@ function showKingdom(st) {
 }
 const myHeroes = st => st.heroes.filter(h => h.owner === ME);
 const myTowns = st => st.towns.filter(t => t.owner === ME);
-// Wiersze listy po prawej: najpierw bohaterowie, potem miasta gracza
-// Lista bohaterów i miast w panelu; mieści się LIST_ROWS wierszy, resztę przewija się kółkiem albo przeciągnięciem
-const panelItems = st => [...myHeroes(st).map(h => ({ hero: h })), ...myTowns(st).map(t => ({ town: t }))];
+// Lista w panelu po prawej, w dwóch zakładkach: bohaterowie albo miasta gracza (listTab); mieści się LIST_ROWS wierszy,
+// resztę przewija się kółkiem albo przeciągnięciem. Nad wierszami pasek zakładek (LIST_TABS_H).
+const LIST_TABS_H = 26, listTab = () => (G.screens.adventure.listTab === 'towns' ? 'towns' : 'heroes');
+const panelItems = st => (listTab() === 'towns' ? myTowns(st).map(t => ({ town: t })) : myHeroes(st).map(h => ({ hero: h })));
 function panelRows(st, scroll = 0) {
-  return panelItems(st).map((r, i) => ({ ...r, y: LIST.y + 6 + (i - scroll) * LIST_ROW_H })).filter(r => r.y >= LIST.y && r.y + 44 <= LIST.y + LIST.h);
+  return panelItems(st).map((r, i) => ({ ...r, y: LIST.y + LIST_TABS_H + 2 + (i - scroll) * LIST_ROW_H })).filter(r => r.y >= LIST.y + LIST_TABS_H && r.y + 44 <= LIST.y + LIST.h);
+}
+function setListTab(scr, tab) { if (scr.listTab !== tab) { scr.listTab = tab; scr.listScroll = 0; } }
+// Młotek przy mieście: złoty = można dziś budować, szary i przekreślony = już dziś budowano (jak w Heroes 3)
+function iconHammer(ctx, cx, cy, ok) {
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.6); ctx.fillStyle = ok ? '#8a5a2a' : '#5a5650'; ctx.fillRect(-1.5, -2, 3, 12);
+  ctx.fillStyle = ok ? '#e0b44c' : '#8a8680'; ctx.fillRect(-6, -7, 12, 5); ctx.restore();
+  if (!ok) { ctx.strokeStyle = '#c85040'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - 7, cy + 7); ctx.lineTo(cx + 7, cy - 7); ctx.stroke(); }
 }
 function buildPanelButtons(scr, st) {
   const S = 30, by = 176, bx = LIST.x + 2, mk = (i, icon, label, act, o = {}) => new Button(bx + i * 32, by, S, S, label, act, Object.assign({ icon }, o));
@@ -9643,6 +9734,8 @@ function buildPanelButtons(scr, st) {
     new Button(LIST.x + 2, 212, 30, 40, 'Mapa zagadki', () => showPuzzle(G.state), { icon: iconPuzzle, key: 'p', tip: 'Mapa zagadki: obeliski odsłaniają miejsce, gdzie zakopano Graala (klawisz P).' }),
     new Button(LIST.x + 34, 212, 30, 40, 'Kop', () => digHere(scr, G.state), { icon: iconShovel, key: 'd', tip: 'Kop w poszukiwaniu Graala na polu bohatera. Tylko z pełnymi punktami ruchu; zużywa cały dzień (klawisz D).' }),
     new Button(LIST.x + 66, 212, 126, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
+    scr.tabHeroes = new Button(LIST.x + 4, LIST.y + 3, 92, 22, 'Bohaterowie', () => setListTab(scr, 'heroes'), { size: 12, selected: () => listTab() === 'heroes', tip: 'Lista twoich bohaterów (klawisz B przełącza zakładki).' }),
+    scr.tabTowns = new Button(LIST.x + 100, LIST.y + 3, 92, 22, 'Miasta', () => setListTab(scr, 'towns'), { size: 12, selected: () => listTab() === 'towns', tip: 'Lista twoich miast; młotek: czy dziś można jeszcze budować (klawisz B przełącza zakładki).' }),
   ];
 }
 function panelInfoText(st, scr) {
@@ -9659,10 +9752,13 @@ function panelInfoText(st, scr) {
 function drawPanel(ctx, st, scr) {
   drawMinimap(ctx, st);
   const items = panelItems(st).length; scr.listScroll = clamp(scr.listScroll || 0, 0, Math.max(0, items - LIST_ROWS));
+  if (scr.tabHeroes) { scr.tabHeroes.label = `Bohaterowie (${myHeroes(st).length})`; scr.tabTowns.label = `Miasta (${myTowns(st).length})`; }
+  const LY = LIST.y + LIST_TABS_H, LH = LIST.h - LIST_TABS_H;
   if (items > LIST_ROWS) { // pasek przewijania
-    const bh = LIST.h * LIST_ROWS / items, by = LIST.y + (LIST.h - bh) * scr.listScroll / (items - LIST_ROWS);
-    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(LIST.x + LIST.w - 3, LIST.y, 3, LIST.h); ctx.fillStyle = '#b8913f'; ctx.fillRect(LIST.x + LIST.w - 3, by, 3, bh);
+    const bh = LH * LIST_ROWS / items, by = LY + (LH - bh) * scr.listScroll / (items - LIST_ROWS);
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(LIST.x + LIST.w - 3, LY, 3, LH); ctx.fillStyle = '#b8913f'; ctx.fillRect(LIST.x + LIST.w - 3, by, 3, bh);
   }
+  if (!items) text(ctx, listTab() === 'towns' ? 'Nie masz miast' : 'Nie masz bohaterów', LIST.x + LIST.w / 2, LY + 30, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(236,217,168,.6)' });
   for (const r of panelRows(st, scr.listScroll)) {
     const y = r.y, on = r.hero && r.hero === hero(st);
     ctx.fillStyle = on ? 'rgba(210,160,60,.25)' : 'rgba(0,0,0,.25)'; rr(ctx, LIST.x + 4, y, 188, 44, 3); ctx.fill();
@@ -9681,6 +9777,7 @@ function drawPanel(ctx, st, scr) {
       drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), LIST.x + 6, y + 2, 1);
       text(ctx, t.name, LIST.x + 52, y + 16, { size: 14, color: '#ecd9a8', fam: 'title' });
       text(ctx, `${townGold(t)} złota dziennie`, LIST.x + 52, y + 32, { size: 12, weight: 500, color: '#c8b68a' });
+      iconHammer(ctx, LIST.x + 178, y + 14, !t.builtToday); // czy dziś można jeszcze budować
     }
   }
   text(ctx, `Tydzień ${weekName(st)}`, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 18, { size: 15, align: 'center', color: '#f0e4c0', fam: 'title' });
@@ -9757,10 +9854,10 @@ G.screens.adventure = {
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
   autosave(st) { SaveStore.write('auto', st).catch(() => { if (G.state === st) this.flash('Autozapis się nie udał'); }); },
-  onKey(k) { const h = hero(G.state); if (!h || this.aiRun) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); },
+  onKey(k) { const h = hero(G.state); if (!h || this.aiRun) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
   selectHero(h) {
     const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
-    const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
+    setListTab(this, 'heroes'); const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
   },
   onWheel(d) { if (inRect(G.mouse.x, G.mouse.y, LIST)) this.listScroll = clamp((this.listScroll || 0) + Math.sign(d), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS)); },
   nextHero() {
@@ -9794,11 +9891,13 @@ G.screens.adventure = {
       return tileInfo(st, tx, ty);
     }
     if (inRect(x, y, { x: MINI.x, y: MINI.y, w: MINI.s, h: MINI.s })) return 'Minimapa. Kliknij albo przeciągnij, aby przenieść widok.';
-    if (inRect(x, y, LIST)) return 'Bohaterowie i miasta. Kliknij bohatera, aby go wybrać (ponownie: ekran bohatera, klawisz H), albo miasto, aby do niego wejść. Kółko albo przeciągnięcie przewija listę.';
+    if (inRect(x, y, LIST)) { const r = panelRows(st, this.listScroll).find(r => y >= r.y && y < r.y + 44); if (r && r.town) return `${r.town.name}: ${r.town.builtToday ? 'dziś już zbudowano budowlę' : 'można dziś zbudować budowlę'}. Kliknij, aby wejść do miasta.`; }
+    if (inRect(x, y, LIST)) return 'Bohaterowie i miasta (zakładki u góry). Kliknij bohatera, aby go wybrać (ponownie: ekran bohatera, klawisz H), albo miasto, aby do niego wejść. Kółko albo przeciągnięcie przewija listę.';
     return resourceBarInfo(st, x, y, VH - H);
   },
   spellbook() {
     const st = G.state, h = hero(st); if (!h || h.moving || h.anim) return;
+    if (!hasBook(h)) return this.flash(`${h.name} nie ma księgi czarów. Kupisz ją w mieście z gildią magów (${SPELLBOOK_COST} złota).`);
     showSpellbook(h, 'adv', id => {
       const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); if (err) return;
       this.mapFx = this.mapFx || []; const col = SPELLS[id].col;
@@ -9821,8 +9920,8 @@ G.screens.adventure = {
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
     // kliknięcie w budynek miasta albo kopalni oznacza jego wejście
     const ob = drawnObjectAt(st, tx, ty); if (ob && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
-    const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = wybór
-    if (other && other !== h && other.owner === ME) { if (Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) showMeeting(st, h, other); else this.selectHero(other); return; }
+    const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = ścieżka do niego (spotkanie po dojściu, jak w Heroes 3)
+    if (other && other !== h && other.owner === ME && Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) { showMeeting(st, h, other); return; }
     if (tx === h.x && ty === h.y) {
       const here = objectAt(st, ty * n + tx);
       if (here && here.type === 'town' && here.owner === h.owner) G.go('town', { townId: here.townId }); else this.heroInfo();
@@ -10172,14 +10271,20 @@ function drawSpecBox(ctx, h) {
 }
 G.screens.hero = {
   buttons: [], sel: null, bagPage: 0, armyRects: [], back: null,
-  hero() { return G.state.heroes[this.heroId] || hero(G.state); },
+  hero() { return this.preview || G.state.heroes[this.heroId] || hero(G.state); },
+  // p.preview: kandydat z tawerny (podgląd przed najęciem; p.hire = { townId, k }) — bez zmian w armii i ekwipunku
   enter(p) {
     this.heroId = p.heroId != null ? p.heroId : G.state.heroes.indexOf(hero(G.state)); this.back = p.back || { name: 'adventure', params: {} };
+    this.preview = p.preview || null; this.hire = p.hire || null;
     this.sel = null; this.bagPage = 0; this.armyRects = []; this.msg = null;
     this.bPrev = new Button(432, 446, 44, 28, 'Poprzednie', () => { this.bagPage--; }, { icon: iconArrowSide(-1), tip: 'Poprzednie artefakty w plecaku.' });
     this.bNext = new Button(728, 446, 44, 28, 'Następne', () => { this.bagPage++; }, { icon: iconArrowSide(1), tip: 'Następne artefakty w plecaku.' });
     this.buttons = [new Button(32, 500, 170, 44, 'Wróć', () => this.onBack(), { key: 'escape', size: 18, tip: 'Powrót (klawisz Esc).' }), this.bPrev, this.bNext,
-      new Button(216, 500, 172, 44, 'Księga czarów', () => showSpellbook(this.hero(), 'view', () => {}), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C).' })];
+      new Button(216, 500, 172, 44, 'Księga czarów', () => hasBook(this.hero()) ? showSpellbook(this.hero(), 'view', () => {}) : this.say(`Brak księgi czarów: kupisz ją w gildii magów (${SPELLBOOK_COST} złota).`), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C). Wojownicy muszą najpierw kupić księgę w gildii magów.' })];
+    if (this.preview) this.buttons.splice(3, 1, this.bHire = new Button(216, 500, 172, 44, 'Najmij', () => {
+      const st = G.state, t = st.towns[this.hire.townId], r = hireHero(st, t, this.hire.k); if (r.error) return this.say(r.error);
+      G.go('town', { townId: t.id, msg: `${r.hero.name} dołącza do twojej sprawy` });
+    }, { key: 'enter', size: 17, sub: `${HERO_COST} złota`, tip: `Najmij bohatera za ${HERO_COST} złota; stanie w bramie miasta (klawisz Enter).` }));
   },
   onBack() { G.go(this.back.name, this.back.params); },
   say(m) { this.msg = m; this.msgT = G.time; },
@@ -10191,6 +10296,7 @@ G.screens.hero = {
   statAt(x, y) { if (y < 164 || y > 244) return null; const i = Math.floor((x - 32) / 90); return i >= 0 && i < 4 && x - 32 - i * 90 <= 84 ? PRIMARY[i] : null; },
   onClick(x, y) {
     if (clickButtons(this.buttons, x, y)) return;
+    if (this.preview) return; // podgląd kandydata: tylko oglądanie
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y);
     if (ar) {
       if (!this.sel) { if (h.army[ar.i]) this.sel = ar.i; return; }
@@ -10255,7 +10361,7 @@ G.screens.hero = {
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });
     if (h.machines.length) text(ctx, `Machiny wojenne: ${h.machines.map(id => CREATURES[id].name.toLowerCase()).join(', ')}`, 210, 480, { size: 13, weight: 700, align: 'center', color: '#5a3814' });
-    else text(ctx, 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
+    else text(ctx, this.preview ? `Kandydat z tawerny: podgląd przed najęciem (${HERO_COST} złota).` : 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
     // ekwipunek
     text(ctx, 'Ekwipunek', 602, 38, { size: 20, align: 'center', color: '#f0e4c0', fam: 'title' });
     ctx.fillStyle = 'rgba(240,228,192,.07)'; circ(ctx, 599, 89, 26, 'rgba(240,228,192,.07)'); rr(ctx, 560, 118, 78, 170, 20); ctx.fill(); ctx.fillRect(566, 280, 26, 70); ctx.fillRect(606, 280, 26, 70);
@@ -10802,12 +10908,12 @@ const heroExpText = (h, exp) => (h && exp ? ` Za odwagę ${h.name} otrzymuje ${e
 // Opis wyniku z punktu widzenia atakującego (strona 0); tekst zgodny z dawnymi oknami
 function attackReport(st, h, res) {
   if (res.outcome === 'win') {
-    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
+    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.${res.loot ? ` Zdobyte artefakty: ${res.loot}.` : ''}` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
     return { me: 0, kind: 'win', title: 'Zwycięstwo!', body: `${flavorOf(st, 'win')}${extra}${raisedText(res.raised)}${heroExpText(h, res.exp)}` };
   }
-  if (res.outcome === 'fled') return { me: 0, kind: 'fled', title: 'Odwrót', body: `${h.name} wycofuje się z pola bitwy. ${flavorOf(st, 'fled')} Na dziś koniec marszu.` };
-  const tail = res.heroLost ? `${h.name} opuszcza twoją służbę: wszystkie bramy twoich miast są zajęte.` : `${h.name} ledwie uchodzi z życiem${res.home ? ` do miasta ${res.home}` : ''}. Zwerbuj nowe wojsko, zanim ruszysz dalej.`;
-  return { me: 0, kind: 'lose', title: 'Porażka', body: `${flavorOf(st, 'lose')} Armia została rozbita, a ${tail}` };
+  if (res.outcome === 'fled') return { me: 0, kind: 'fled', title: 'Odwrót', body: `${h.name} ucieka z pola bitwy, a armia się rozprasza. ${flavorOf(st, 'fled')} ${h.female ? 'Czeka' : 'Czeka'} w twojej tawernie: możesz ${h.female ? 'ją' : 'go'} znów nająć (z poziomem, umiejętnościami i artefaktami).` };
+  const tail = `${h.name} ${h.female ? 'znika' : 'znika'} z mapy${res.foeLoot ? ', a artefakty przejmuje zwycięzca' : ''}. Za tydzień ${h.female ? 'pojawi się' : 'pojawi się'} w tawernach — może ${h.female ? 'ją' : 'go'} nająć każdy, także przeciwnik.`;
+  return { me: 0, kind: 'lose', title: 'Porażka', body: `${flavorOf(st, 'lose')} Armia została rozbita. ${tail}` };
 }
 // Opis wyniku obrony (gracz to strona 1)
 function defenseReport(st, a, D, res) {
@@ -10962,8 +11068,10 @@ G.screens.town = {
   LIST_ROWS: 6, // tyle budowli mieści się na liście; resztę przewija się strzałkami albo kółkiem myszy
   town() { return G.state.towns[this.townId]; },
   enter(p) {
-    this.townId = p.townId || 0; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.split = false; this.garRects = []; this.heroRects = [];
+    this.townId = p.townId || 0; this.bookAsked = false; this.hoverSlot = null; this.msg = null; this.scroll = 0; this.sel = null; this.split = false; this.garRects = []; this.heroRects = [];
     this.guildVisit();
+    if (p.msg) this.say(p.msg);
+    if (p.tavern) setTimeout(() => { if (G.screen === this && !G.modal) this.showTavern(); }, 0); // powrót z podglądu bohatera: znów tawerna
     this.baseButtons = [
       new Button(596, 448, 192, 40, 'Rekrutacja', () => showRecruitList(G.state, this.town(), m => this.say(m)), { key: 'r', size: 16, tip: 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).' }),
       new Button(730, 496, 58, 40, 'Mapa', () => G.go('adventure'), { key: 'escape', size: 14, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
@@ -10974,9 +11082,15 @@ G.screens.town = {
     this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
     this.btnUp = new Button(596, 392, 44, 28, 'W górę', () => this.onWheel(-1), { icon: iconArrow(-1), tip: 'Przewiń listę budowli w górę.' });
     this.btnDown = new Button(744, 392, 44, 28, 'W dół', () => this.onWheel(1), { icon: iconArrow(1), tip: 'Przewiń listę budowli w dół.' });
-    this.bSwap = new Button(546, 470, 36, 52, 'Zamień', () => { const st = G.state, t = this.town(), e = swapGarrison(st, t); this.sel = null; if (e) return this.say(e); const g = garrisonHero(st, t);
+    // szybkie przekazanie armii między garnizonem a bohaterem w bramie; bohater zatrzymuje jednego stwora
+    const give = up => { const st = G.state, t = this.town(), hh = heroInTown(st, t), gh = garrisonHero(st, t); if (!hh) return this.say('Brak bohatera w bramie');
+      const gar = gh ? gh.army : t.garrison, n = up ? giveArmy(hh.army, gar, true) : giveArmy(gar, hh.army, !!gh); this.sel = null;
+      this.say(n ? (up ? `Garnizon przejmuje ${n} ${n === 1 ? 'stwora' : 'stworów'}` : `${hh.name} przejmuje ${n} ${n === 1 ? 'stwora' : 'stworów'}`) : 'Nie ma czego przekazać albo brak miejsca'); };
+    this.bGiveUp = new Button(546, 446, 36, 30, 'Do garnizonu', () => give(true), { icon: iconArrow(-1), key: 'arrowup', tip: 'Cała armia bohatera z bramy przechodzi do garnizonu; bohater zatrzymuje jednego stwora (klawisz ↑).' });
+    this.bGiveDown = new Button(546, 518, 36, 30, 'Do bohatera', () => give(false), { icon: iconArrow(1), key: 'arrowdown', tip: 'Cały garnizon przechodzi do armii bohatera w bramie (klawisz ↓).' });
+    this.bSwap = new Button(546, 480, 36, 34, 'Zamień', () => { const st = G.state, t = this.town(), e = swapGarrison(st, t); this.sel = null; if (e) return this.say(e); const g = garrisonHero(st, t);
       this.say(g ? `${g.name} dowodzi garnizonem: brama jest wolna` : 'Bohater wychodzi do bramy'); this.guildVisit(); },
-      { icon: (ctx, cx, cy, col) => { iconArrow(-1)(ctx, cx, cy - 8, col); iconArrow(1)(ctx, cx, cy + 8, col); }, key: 'z',
+      { icon: (ctx, cx, cy, col) => { iconArrow(-1)(ctx, cx, cy - 6, col); iconArrow(1)(ctx, cx, cy + 6, col); }, key: 'z',
         tip: 'Zamień: bohater z bramy wchodzi do garnizonu (przejmuje jego wojsko), a bohater z garnizonu wychodzi do bramy. Brama wolna = można nająć nowego bohatera (klawisz Z).' });
     this.buttons = this.baseButtons;
   },
@@ -10994,7 +11108,14 @@ G.screens.town = {
     const h = heroInTown(st, t); if (!h) return;
     const sp = specialVisit(st, t, h); if (sp) this.say(sp);
     if (!guildLevel(t)) return;
+    if (!hasBook(h) && !this.bookAsked) { this.bookAsked = true; this.offerBook(h); return; } // jak w Heroes 3: gildia proponuje księgę
     const learned = visitGuild(st, t, h); if (learned.length) this.say(`${h.name} poznaje: ${learned.map(id => SPELLS[id].name).join(', ')}`);
+  },
+  offerBook(h) {
+    const st = G.state, t = this.town();
+    showDialog(`${h.name} nie ma księgi czarów, więc nie może poznawać ani rzucać czarów. Gildia magów sprzedaje ją za ${SPELLBOOK_COST} złota.`, [
+      { label: 'Kup księgę', sub: `${SPELLBOOK_COST} złota`, key: 'enter', action: () => { const e = buyBook(st, t, h); this.say(e || `${h.name} ma teraz księgę czarów`); if (!e) this.guildVisit(); } },
+      { label: 'Nie teraz', key: 'escape' }], { bw: 150 });
   },
   // Budowla specjalna: opis, a w Inferno przejście przez Bramę piekieł do innego miasta
   showSpecial() {
@@ -11011,8 +11132,10 @@ G.screens.town = {
     const st = G.state, t = this.town(), offers = tavernOffer(st, t.owner), avail = offers.map((o, k) => o && { o, k }).filter(Boolean);
     const who = o => `${o.name} (${(o.female ? HERO_CLASSES[o.cls].nameF : HERO_CLASSES[o.cls].name).toLowerCase()}, ${factionOf(o.fac).name})`;
     if (!avail.length) return showDialog('W tawernie nikt już nie czeka. Nowi chętni pojawią się w przyszłym tygodniu.', [{ label: 'Kronika', key: 'k', action: () => showChronicle(st) }, { label: 'OK', key: 'enter' }]);
-    showDialog(`W tawernie czekają: ${avail.map(a => who(a.o)).join(' i ')}. Najem kosztuje ${HERO_COST} złota, a bohater przychodzi z małym oddziałem.`, [
-      ...avail.map(({ o, k }) => ({ label: o.name, sub: specName({ ...o, level: 1 }), tip: `Specjalność: ${specText({ ...o, level: 1 })}.`, action: () => { const r = hireHero(st, t, k); this.say(r.error || `${r.hero.name} dołącza do twojej sprawy`); } })),
+    showDialog(`W tawernie czekają: ${avail.map(a => who(a.o)).join(' i ')}. Najem kosztuje ${HERO_COST} złota, a bohater przychodzi z małym oddziałem. Kliknij bohatera, aby go obejrzeć.`, [
+      ...avail.map(({ o, k }) => ({ label: o.name, sub: o.retired ? `poziom ${o.level}, 1 stwór` : o.weak ? `${specName({ ...o, level: 1 })}, 1 stwór` : specName({ ...o, level: 1 }),
+        tip: `${o.retired ? 'Wraca z tułaczki: ma swój poziom i umiejętności, ale nie ma armii. ' : o.weak ? 'Przychodzi bez armii (tylko z jednym stworem). ' : ''}Specjalność: ${specText({ ...o, level: o.level || 1 })}. Kliknij, aby obejrzeć bohatera i go nająć.`,
+        action: () => G.go('hero', { preview: previewHero(st, t.owner, o), hire: { townId: t.id, k }, back: { name: 'town', params: { townId: t.id, tavern: true } } }) })),
       { label: 'Kronika', key: 'k', tip: 'Kronika tawerny: kto prowadzi w królestwie (im więcej masz tawern, tym więcej wiesz).', action: () => showChronicle(st) },
       { label: 'Wyjdź', key: 'escape' },
     ], { iconH: 96, icon: (ctx, cx, cy) => avail.forEach(({ o }, i) => {
@@ -11128,7 +11251,7 @@ G.screens.town = {
     this.garRects = drawArmyRow(ctx, gar, 100, 446, { sel: selOf(gar), w: 58 });
     if (hh) { drawHeroPortrait(ctx, 38, 505, hh, ownerColor(st, hh.owner)); this.heroRects = drawArmyRow(ctx, hh.army, 100, 498, { sel: selOf(hh.army), w: 58 }); }
     else { this.heroRects = []; text(ctx, gh ? 'Brama wolna: możesz nająć bohatera w tawernie.' : 'Brak bohatera w mieście. Wejdź bohaterem, aby przekazać mu wojsko.', 321, 523, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.55)' }); }
-    this.bSwap.disabled = !hh && !gh;
+    this.bSwap.disabled = !hh && !gh; this.bGiveUp.disabled = this.bGiveDown.disabled = !hh;
     if (this.sel && !this.sel.a[this.sel.i]) this.sel = null;
     const rb = this.baseButtons[0]; rb.disabled = !dwellingLevels(t).length;
     rb.tip = rb.disabled ? 'Najpierw zbuduj siedlisko jednostek (np. z listy budowli po prawej).' : 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).';
@@ -11161,7 +11284,7 @@ G.screens.town = {
     if (!list.length) text(ctx, 'Wszystko zbudowane', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
     const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, ...this.baseButtons.slice(1)] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
-    this.buttons = [...(paged ? [...base, this.btnUp, this.btnDown] : base), this.bSwap];
+    this.buttons = [...(paged ? [...base, this.btnUp, this.btnDown] : base), this.bSwap, this.bGiveUp, this.bGiveDown];
     if (paged) {
       this.btnUp.disabled = this.scroll === 0; this.btnDown.disabled = this.scroll >= list.length - N;
       text(ctx, `${this.scroll + 1}–${Math.min(list.length, this.scroll + N)} z ${list.length}`, 692, 406, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
@@ -11252,8 +11375,10 @@ function showGuildView(st, t, scr) {
   const next = BUILDINGS.find(b => /^guild/.test(b.id) && !hasB(t, b.id));
   const close = new Button(GV.x + GV.w - 148, GV.y + GV.h - 48, 128, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
   const up = next && reqMet(t, next) ? new Button(I.x + 8, GV.y + GV.h - 48, 150, 36, 'Rozbuduj', () => { G.modal = null; scr.tryBuild(next); }, { size: 15, tip: `Zbuduj: ${bInfo(next, t.faction).name}.` }) : null;
+  const vh = heroInTown(st, t), book = vh && !hasBook(vh) ? new Button(GV.x + GV.w - 300, GV.y + GV.h - 48, 144, 36, 'Kup księgę', () => { const e = buyBook(st, t, vh); scr.say(e || `${vh.name} ma teraz księgę czarów`); if (!e) { G.modal = null; scr.guildVisit(); } },
+    { size: 14, tip: `Księga czarów dla bohatera ${vh.name}: ${SPELLBOOK_COST} złota. Bez niej nie pozna ani nie rzuci czarów.` }) : null;
   const M = {
-    guild: true, sel: null, rects: [], buttons: up ? [up, close] : [close],
+    guild: true, sel: null, rects: [], buttons: [...(up ? [up] : []), ...(book ? [book] : []), close],
     spAt() { const h = heroInTown(st, t); return h ? heroStat(h, 'sp') : 1; },
     scrollAt(x, y) { const r = this.rects.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); return r ? r.id : null; },
     onClick(x, y) { const id = this.scrollAt(x, y); if (id) this.sel = id; },
