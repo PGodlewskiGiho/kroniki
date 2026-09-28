@@ -251,8 +251,8 @@ G.screens.adventure = {
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
     // kliknięcie w budynek miasta albo kopalni oznacza jego wejście
     const ob = drawnObjectAt(st, tx, ty); if (ob && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
-    const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = wybór
-    if (other && other !== h && other.owner === ME) { if (Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) showMeeting(st, h, other); else this.selectHero(other); return; }
+    const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = ścieżka do niego (spotkanie po dojściu, jak w Heroes 3)
+    if (other && other !== h && other.owner === ME && Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) { showMeeting(st, h, other); return; }
     if (tx === h.x && ty === h.y) {
       const here = objectAt(st, ty * n + tx);
       if (here && here.type === 'town' && here.owner === h.owner) G.go('town', { townId: here.townId }); else this.heroInfo();

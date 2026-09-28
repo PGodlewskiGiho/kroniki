@@ -112,7 +112,7 @@ function heroStep(st, h) {
   const halt = () => { h.moving = false; h.path = null; h.dest = null; };
   if (ob && ob.type === 'monster') { halt(); h.prev = null; startEncounter(st, h, ob); return false; }
   const other = heroAt(st, nx, ny); // bohater w bramie miasta broni się razem z miastem (startTownAssault)
-  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } return false; }
+  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } else if (playerOf(st, h.owner).human && !G.screens.adventure.aiRun) showMeeting(st, h, other); return false; } // własny: spotkanie po dojściu
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));

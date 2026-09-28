@@ -26,14 +26,18 @@ const click = (what, k, i) => page.evaluate(([what, k, i]) => {
   G.modal.onClick(x, y);
 }, [what, k, i]);
 
-test('kliknięcie sąsiedniego własnego bohatera otwiera spotkanie, dalekiego — wybiera go', async () => {
+test('kliknięcie sąsiedniego własnego bohatera otwiera spotkanie, dalekiego — ścieżka do niego i spotkanie po dojściu', async () => {
   await twoHeroes();
   const r = await page.evaluate(() => {
-    const st = G.state, scr = G.screens.adventure, [a, b] = myHeroes(st); scr.tileClick(b.x, b.y);
+    const st = G.state, scr = G.screens.adventure, [a, b] = myHeroes(st), n = st.map.n; scr.tileClick(b.x, b.y);
     const meeting = !!(G.modal && G.modal.meeting); G.modal = null;
-    b.x += 3; scr.selectHero(a); scr.tileClick(b.x, b.y); const sel = hero(st) === b; b.x -= 3; return { meeting, sel };
+    const far = [[3, 0], [-3, 0], [0, 3], [3, 3], [-3, 3]].map(([dx, dy]) => [a.x + dx, a.y + dy]).find(([x, y]) => passableTile(st, x, y) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && !st.guard[y * n + x]);
+    const [bx, by] = [b.x, b.y]; b.x = far[0]; b.y = far[1]; scr.selectHero(a); a.mp = 5000; scr.tileClick(b.x, b.y);
+    const still = hero(st) === a, path = !!a.path; let k = 0; while (a.path && k++ < 20) { heroStep(st, a); a.anim = null; }
+    const met = !!(G.modal && G.modal.meeting), near = Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) === 1; G.modal = null; b.x = bx; b.y = by;
+    return { meeting, still, path, met, near };
   });
-  assert.deepEqual(r, { meeting: true, sel: true });
+  assert.deepEqual(r, { meeting: true, still: true, path: true, met: true, near: true });
 });
 
 test('wymiana oddziałów: przeniesienie, połączenie, ostatni oddział zostaje', async () => {

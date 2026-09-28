@@ -3866,7 +3866,7 @@ function heroStep(st, h) {
   const halt = () => { h.moving = false; h.path = null; h.dest = null; };
   if (ob && ob.type === 'monster') { halt(); h.prev = null; startEncounter(st, h, ob); return false; }
   const other = heroAt(st, nx, ny); // bohater w bramie miasta broni się razem z miastem (startTownAssault)
-  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } return false; }
+  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } else if (playerOf(st, h.owner).human && !G.screens.adventure.aiRun) showMeeting(st, h, other); return false; } // własny: spotkanie po dojściu
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
@@ -9836,8 +9836,8 @@ G.screens.adventure = {
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
     // kliknięcie w budynek miasta albo kopalni oznacza jego wejście
     const ob = drawnObjectAt(st, tx, ty); if (ob && human(st).explored[ty * n + tx]) { tx = ob.x; ty = ob.y; }
-    const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = wybór
-    if (other && other !== h && other.owner === ME) { if (Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) showMeeting(st, h, other); else this.selectHero(other); return; }
+    const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = ścieżka do niego (spotkanie po dojściu, jak w Heroes 3)
+    if (other && other !== h && other.owner === ME && Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) { showMeeting(st, h, other); return; }
     if (tx === h.x && ty === h.y) {
       const here = objectAt(st, ty * n + tx);
       if (here && here.type === 'town' && here.owner === h.owner) G.go('town', { townId: here.townId }); else this.heroInfo();
