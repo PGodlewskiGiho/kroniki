@@ -495,6 +495,18 @@ function recruit(st, t, L, cid, n) {
   const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id] * n;
   armyAdd(dest, cid, n); t.avail[L] -= n; return null;
 }
+// Szybki werbunek (jak „Kup wszystko” w Heroes 3): od najwyższego poziomu w dół kupuje najlepszą formę stwora z siedliska,
+// ile jest dostępnych, na ile starczy zasobów i miejsca. Zwraca { n: liczba stworów, text: podsumowanie }.
+function recruitAll(st, t) {
+  const F = factionOf(t.faction), got = [];
+  for (const L of [...DW_LEVELS].reverse()) {
+    if (!hasB(t, 'dw' + L) || !(t.avail[L] > 0)) continue;
+    const cid = F.dw['dw' + L + (hasB(t, 'dw' + L + 'u') ? 'u' : '')][1], n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), t.owner));
+    if (n > 0 && !recruit(st, t, L, cid, n)) got.push(`${CREATURES[cid].plural.toLowerCase()} ${n}`);
+  }
+  const n = got.reduce((s, g) => s + +g.split(' ').pop(), 0);
+  return { n, text: got.length ? `Zwerbowano: ${got.join(', ')}` : 'Nie ma kogo zwerbować (brak stworów, zasobów albo miejsca)' };
+}
 // Przesunięcie między dwoma miejscami (garnizon ↔ bohater): pusty cel = przeniesienie, ten sam typ = połączenie,
 // inny typ = zamiana. Bohater musi zachować co najmniej jeden oddział. Zwraca błąd albo null.
 function armyMove(fromA, i, toA, j, heroArmies = []) {
