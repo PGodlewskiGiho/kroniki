@@ -160,8 +160,14 @@ function decal(w, h, draw, pos, rot) { // płaski obrazek (herb na tarczy, tabar
 // Model jednostki wg look.kind (humanoid w postacie.js, zwierzęta i potwory w zwierzeta.js); null = brak modelu 3D
 function buildUnit(L, P = {}) {
   const f = { hum: 'humanoid', rider: 'rider', centaur: 'centaur', wolf: 'wolf', unicorn: 'unicorn', bull: 'bull', griffin: 'griffin', bird: 'bird', phoenix: 'phoenix',
-    dragon: 'dragon', hydra: 'hydra', lizard: 'lizard', insect: 'insect', eye: 'eyeBeast', ghost: 'ghost', treant: 'treant' }[L.kind];
+    dragon: 'dragon', hydra: 'hydra', lizard: 'lizard', insect: 'insect', eye: 'eyeBeast', ghost: 'ghost', treant: 'treant',
+    ballista: 'ballista', tent: 'tent', cart: 'cart', catapult: 'catapult', tower: 'tower' }[L.kind];
   const fn = f && typeof globalThis[f] === 'function' ? globalThis[f] : null; return fn ? fn(L, P) : null;
 }
 // Poległy: model przewrócony na plecy (upada do tyłu), leży na ziemi
-function layDead(g, L) { const w = new THREE.Group(); g.rotation.z = 1.42; g.position.y = 0.14 * (L.size || 1); w.add(g); return w; }
+const MACHINE_KINDS = ['ballista', 'tent', 'cart', 'catapult'];
+function layDead(g, L) {
+  const w = new THREE.Group(); w.add(g);
+  if (MACHINE_KINDS.includes(L.kind)) { g.rotation.z = 0.28; g.rotation.x = 0.12; g.position.y = -0.1; return w; } // rozbita machina: przechylona, osiadła
+  g.rotation.z = 1.42; g.position.y = 0.14 * (L.size || 1); return w;
+}

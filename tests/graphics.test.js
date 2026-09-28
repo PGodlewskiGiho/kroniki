@@ -113,9 +113,9 @@ test('mur z cegieł ma detale i malowidła; zakryte kawałki mapy zagadki pokazu
 test('rozmiar piksela: 2 (niska jakość), 1 (drobny) i domyślny, bez błędów rysowania', async () => {
   await newGame(page);
   const r = await page.evaluate(() => {
-    const w = s => s.c.width; setPixelSize(2); const a = w(battleSprite('ballista', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx); // machina: dawny rysunek wektorowy
-    setPixelSize(1); const b = w(battleSprite('ballista', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx);
-    const out = { a, b, u: battleSprite('ballista', 1, 'idle', 0).u, unit: battleSprite('pikeman', 1, 'idle', 0).u, world: PixBufs.world.width, view: VIEW.w }; setPixelSize(PIX_DEFAULT); G.screens.adventure.draw(G.ctx);
+    const w = s => s.c.width; setPixelSize(2); const a = w(battleSprite2D('ballista', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx); // zapasowy rysunek wektorowy
+    setPixelSize(1); const b = w(battleSprite2D('ballista', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx);
+    const out = { a, b, u: battleSprite2D('ballista', 1, 'idle', 0).u, unit: battleSprite('pikeman', 1, 'idle', 0).u, world: PixBufs.world.width, view: VIEW.w }; setPixelSize(PIX_DEFAULT); G.screens.adventure.draw(G.ctx);
     return { ...out, mid: PixBufs.world.width === Math.round(VIEW.w / PIX_DEFAULT) };
   });
   assert.equal(r.b, r.a * 2); assert.equal(r.u, 1); assert.equal(r.unit, 1.3, 'jednostki z arkuszy: stały piksel 1,3'); assert.equal(r.world, r.view, 'bufor mapy: 1 piksel grafiki = 1 px logiczny'); assert.ok(r.mid, 'domyślny piksel PIX_DEFAULT');
@@ -151,14 +151,14 @@ test('kółko myszy przybliża i oddala mapę wokół kursora; pole pod kursorem
   assert.deepEqual(r, { z1: 1.5, z2: 0.75, zMin: 0.5, zMax: 2, key: 0.75, same: true });
 });
 
-test('jednostki z modeli 3D: wbudowane arkusze dają klatki bitwy i mapy, odbicie dla drugiej strony, machiny z dawnego rysunku', async () => {
+test('jednostki z modeli 3D: wbudowane arkusze dają klatki bitwy i mapy, odbicie dla drugiej strony, także machiny', async () => {
   await newGame(page);
   const r = await page.evaluate(() => {
     const ids = Object.keys(UNIT_ART), a = battleSprite('pikeman', 1, 'idle', 0), b = battleSprite('pikeman', -1, 'idle', 0), m = creatureSprite('pikeman', 1, 2);
     const poses = ['idle', 'walk', 'attack', 'hurt', 'dead', 'map'].every(p => UNIT_ART.pikeman.f[p].length === (BATTLE_FRAMES[p] || 4));
-    const mach = battleSprite('ballista', 1, 'idle', 0); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 2); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 1);
-    return { n: ids.length, u: a.u, mu: m.u, mirror: a.c.width === b.c.width && a.ax + b.ax === a.c.width, poses, mach: !UNIT_ART.ballista && mach.u !== 1.3, tall: a.c.height };
+    const mach = [...MACHINES, ...SIEGE_UNITS].every(c => UNIT_ART[c] && battleSprite(c, 1, 'attack', 3).u === 1.3), all = Object.keys(CREATURES).filter(c => !UNIT_ART[c]); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 2); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 1);
+    return { n: ids.length, u: a.u, mu: m.u, mirror: a.c.width === b.c.width && a.ax + b.ax === a.c.width, poses, mach, all, tall: a.c.height };
   });
-  assert.ok(r.n >= 70, `arkuszy: ${r.n}`); assert.equal(r.u, 1.3); assert.equal(r.mu, 1.8); assert.ok(r.mirror, 'odbicie w poziomie'); assert.ok(r.poses); assert.ok(r.mach);
+  assert.ok(r.n >= 70, `arkuszy: ${r.n}`); assert.equal(r.u, 1.3); assert.equal(r.mu, 1.8); assert.ok(r.mirror, 'odbicie w poziomie'); assert.ok(r.poses); assert.ok(r.mach, 'machiny z arkuszy'); assert.deepEqual(r.all, [], 'każda jednostka ma arkusz');
   assert.ok(r.tall > 35 && r.tall < 80, `wysokość klatki: ${r.tall}`);
 });

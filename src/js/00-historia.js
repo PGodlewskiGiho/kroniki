@@ -258,7 +258,8 @@
    postacie.js (humanoid z cech look), zwierzeta.js (czworonogi, skrzydlate, gady, potwory), podglad.js (galeria PNG),
    wypal.js (npm run grafika: arkusze PNG w src/grafika/, opis klatek w jednostki.json i bohaterowie.json). build.js wbudowuje
    je jako UNIT_ART i HERO_ART; 11c-grafika-jednostek.js podaje klatki (battleSprite, creatureSprite, drawCreatureIcon,
-   heroBattleSprite z podmianą koloru-klucza na barwę gracza). Piksel jednostek 1,3 px (bitwa), 1,8 px (mapa). Bez arkusza
-   (machiny) zostaje dawny rysunek wektorowy (battleSprite2D, creatureSprite2D, heroBattleSprite2D).
+   heroBattleSprite z podmianą koloru-klucza na barwę gracza). Piksel jednostek 1,3 px (bitwa), 1,8 px (mapa). Machiny wojenne
+   (balista, namiot medyka, wóz z amunicją, katapulta, strzelec na wieży) mają modele w maszyny.js. Bez arkusza zostaje
+   dawny rysunek wektorowy (battleSprite2D, creatureSprite2D, heroBattleSprite2D).
    ===================================================================================== */
 
