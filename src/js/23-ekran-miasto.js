@@ -278,7 +278,7 @@ function showGuildView(st, t, scr) {
     scrollAt(x, y) { const r = this.rects.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); return r ? r.id : null; },
     onClick(x, y) { const id = this.scrollAt(x, y); if (id) this.sel = id; },
     rightInfo(x, y) {
-      const id = this.scrollAt(x, y); if (id) { const Sp = SPELLS[id]; return `${Sp.name} (poziom ${Sp.level}, ${Sp.cost} many, ${Sp.kind === 'battle' ? 'w bitwie' : 'na mapie'}): ${Sp.desc(this.spAt())}.`; }
+      const id = this.scrollAt(x, y); if (id) { const Sp = SPELLS[id]; return `${Sp.name} (magia ${SCHOOLS[Sp.school].name}, poziom ${Sp.level}, ${Sp.cost} many, ${Sp.kind === 'battle' ? 'w bitwie' : 'na mapie'}): ${Sp.desc(this.spAt())}.`; }
       if (x >= Wn.x && x <= Wn.x + Wn.w && y >= Wn.y && y <= Wn.y + Wn.h) return `Widok z okna gildii na miasto ${t.name}.`;
       return null;
     },

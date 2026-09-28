@@ -17,6 +17,10 @@ const CLASS_GROWTH = {
 };
 // Umiejętności drugorzędne (jak w oryginale): bohater ma ich najwyżej MAX_SKILLS, każdą na poziomie 1–3.
 // v: wartość na poziomach 1–3 (działanie w ZASADY GRY i BITWA: ZASADY), desc: opis dla wartości.
+// Szkoła magii na poziomie v (1–3): koszt −SCHOOL_COST[v]%, obrażenia i leczenie +SCHOOL_POWER[v]%, czary na oddziały +v rund,
+// eksperckie: czar na jeden oddział działa na wszystkie oddziały tej strony (jak w Heroes 3)
+const SCHOOL_COST = [0, 15, 25, 35], SCHOOL_POWER = [0, 10, 20, 30];
+const schoolDesc = v => `czary szkoły tańsze o ${SCHOOL_COST[v]}%, mocniejsze o ${SCHOOL_POWER[v]}%, dłuższe o ${v} ${v === 1 ? 'rundę' : 'rundy'}${v >= 3 ? '; czary na jeden oddział działają na całą armię' : ''}`;
 const MAX_SKILLS = 8, SKILL_LEVELS = ['', 'podstawowe', 'zaawansowane', 'eksperckie'];
 const SKILLS = {
   leadership: { name: 'Przywództwo', v: [1, 2, 3], desc: v => `+${v} do morale armii` },
@@ -39,6 +43,10 @@ const SKILLS = {
   firstAid: { name: 'Pierwsza pomoc', v: [50, 75, 100], desc: v => `namiot medyka leczy do ${v} punktów życia` },
   ballistics: { name: 'Balistyka', v: [85, 95, 100], desc: v => `katapulta trafia w mury w ${v}% strzałów` },
   resistance: { name: 'Odporność', v: [5, 10, 20], desc: v => `${v}% szans, że czar wroga nie zadziała na oddział` },
+  fireMagic: { name: 'Magia Ognia', v: [1, 2, 3], school: 'fire', desc: v => schoolDesc(v) },
+  airMagic: { name: 'Magia Powietrza', v: [1, 2, 3], school: 'air', desc: v => schoolDesc(v) },
+  waterMagic: { name: 'Magia Wody', v: [1, 2, 3], school: 'water', desc: v => schoolDesc(v) },
+  earthMagic: { name: 'Magia Ziemi', v: [1, 2, 3], school: 'earth', desc: v => schoolDesc(v) },
   eagleSight: { name: 'Orle oko', v: [40, 50, 60], desc: v => `${v}% szans na naukę czaru rzuconego przez wroga (do ${v / 10 - 2}. poziomu)` },
 };
 // Magowie zaczynają z Mądrością (jak w oryginale): bez niej bohater zna czary najwyżej 2. poziomu
@@ -58,22 +66,22 @@ const NECRO_CLASSES = ['deathKnight', 'necro'];
 const MAGE_CLASSES = ['cleric', 'druid', 'necro', 'witch', 'heretic', 'wizard', 'warlock'];
 // Umiejętności, które klasa dostaje przy awansie częściej (jak w oryginale: rycerz rzadko uczy się magii, mag walki)
 const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance'];
-const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting'];
+const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting', 'fireMagic', 'airMagic', 'waterMagic', 'earthMagic'];
 const CLASS_SKILL_PREF = {
-  knight: ['leadership', 'offense', 'armorer', 'artillery'], cleric: ['wisdom', 'eagleSight', 'mysticism', 'estates'],
-  ranger: ['archery', 'pathfinding', 'luck', 'scouting'], druid: ['wisdom', 'intelligence', 'luck', 'eagleSight'],
-  deathKnight: ['offense', 'armorer', 'resistance', 'necromancy'], necro: ['wisdom', 'intelligence', 'eagleSight', 'necromancy'],
-  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid'], witch: ['wisdom', 'eagleSight', 'navigation', 'intelligence'],
-  demoniac: ['offense', 'artillery', 'ballistics', 'resistance'], heretic: ['wisdom', 'sorcery', 'intelligence', 'learning'],
-  alchemist: ['artillery', 'ballistics', 'wisdom', 'firstAid'], wizard: ['wisdom', 'intelligence', 'eagleSight', 'sorcery'],
-  overlord: ['leadership', 'offense', 'resistance', 'scouting'], warlock: ['wisdom', 'sorcery', 'intelligence', 'eagleSight'],
-  barbarian: ['offense', 'resistance', 'armorer', 'ballistics'], battleMage: ['offense', 'wisdom', 'sorcery', 'artillery'],
+  knight: ['leadership', 'offense', 'armorer', 'artillery'], cleric: ['wisdom', 'waterMagic', 'mysticism', 'estates'],
+  ranger: ['archery', 'pathfinding', 'luck', 'scouting'], druid: ['wisdom', 'earthMagic', 'waterMagic', 'intelligence'],
+  deathKnight: ['offense', 'armorer', 'resistance', 'necromancy'], necro: ['wisdom', 'earthMagic', 'intelligence', 'necromancy'],
+  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid'], witch: ['wisdom', 'eagleSight', 'waterMagic', 'intelligence'],
+  demoniac: ['offense', 'artillery', 'ballistics', 'resistance'], heretic: ['wisdom', 'fireMagic', 'sorcery', 'intelligence'],
+  alchemist: ['artillery', 'ballistics', 'wisdom', 'earthMagic'], wizard: ['wisdom', 'airMagic', 'intelligence', 'sorcery'],
+  overlord: ['leadership', 'offense', 'resistance', 'scouting'], warlock: ['wisdom', 'fireMagic', 'sorcery', 'intelligence'],
+  barbarian: ['offense', 'resistance', 'armorer', 'ballistics'], battleMage: ['offense', 'wisdom', 'fireMagic', 'artillery'],
 };
 // Waga umiejętności w losowaniu przy awansie: ulubione klasy ×4, magiczne u wojowników i bojowe u magów ×0,5
 const skillWeight = (cls, id) => (CLASS_SKILL_PREF[cls] || []).includes(id) ? 4 : (MAGE_CLASSES.includes(cls) ? MIGHT_SKILLS : MAGIC_SKILLS).includes(id) ? 0.5 : 1;
 // Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
 const AI_SKILL_ORDER = ['offense', 'necromancy', 'wisdom', 'leadership', 'armorer', 'archery', 'logistics', 'resistance', 'luck', 'artillery', 'pathfinding', 'estates', 'sorcery',
-  'intelligence', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'navigation', 'scouting'];
+  'earthMagic', 'fireMagic', 'airMagic', 'waterMagic', 'intelligence', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'navigation', 'scouting'];
 
 // Specjalności bohaterów (jak w oryginale), rosną z poziomem bohatera:
 // dw: stwory z siedliska tego poziomu (i ulepszone) dostają +5% ataku i obrony za każdy poziom bohatera na poziom stwora, +1 szybkości;

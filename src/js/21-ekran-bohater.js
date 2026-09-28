@@ -156,6 +156,12 @@ const SPELL_FX = {
   prayer: { aura: 'fall', col: '#fff0b0', column: true }, resurrection: { aura: 'rise', col: '#fff8d0', column: true },
   implosion: { aura: 'orbit', col: '#c05aff', burst: '#f0c0ff', flash: 0.35, shake: 7 },
   armageddon: { aura: 'fall', col: '#ff4a1a', burst: '#ffd060', flash: 0.6, shake: 12 }, massHaste: { aura: 'wind', col: '#a8f0ff' },
+  shield: { aura: 'orbit', col: '#e0c070' }, fortune: { aura: 'rise', col: '#8af0c0' }, curse: { aura: 'drip', col: '#b04a8a' },
+  airShield: { aura: 'wind', col: '#d0f0ff' }, fireShield: { aura: 'rise', col: '#ff9a3a', column: true },
+  iceBolt: { proj: 'orb', col: '#9ad8ff', burst: '#ffffff', flash: 0.15 },
+  frostRing: { aura: 'fall', col: '#bfe8ff', burst: '#ffffff', flash: 0.3, shake: 4 },
+  chainLightning: { strike: true, chain: true, col: '#e0ecff', burst: '#ffffff', flash: 0.5, shake: 7 },
+  massCure: { aura: 'rise', col: '#7ae8c8', column: true }, deathRipple: { aura: 'drip', col: '#8a9a6a', burst: '#c8d0a0', shake: 6 },
 };
 const BattleFX = {
   reset() { this.parts = []; this.rings = []; this.bolts = []; this.projs = []; this.glows = []; this.flash = null; this.shake = 0; },
