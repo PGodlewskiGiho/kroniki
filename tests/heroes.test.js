@@ -166,7 +166,7 @@ test('porażka przy zajętej bramie: bohater idzie do innego miasta albo odchodz
   assert.ok(r.sel, 'wybrany jest któryś z bohaterów gracza');
 });
 
-test('lista w panelu przewija się i pokazuje wybranego bohatera', async () => {
+test('lista w panelu przewija się i pokazuje wybranego bohatera; zakładki bohaterów i miast', async () => {
   await withTavern();
   const r = await page.evaluate(() => {
     const st = G.state, t = st.towns[0], scr = G.screens.adventure;
@@ -174,10 +174,13 @@ test('lista w panelu przewija się i pokazuje wybranego bohatera', async () => {
     scr.enter({}); G.modal = null; const items = panelItems(st).length, last = myHeroes(st).at(-1);
     scr.selectHero(last); const visible = panelRows(st, scr.listScroll).some(r => r.hero === last), s1 = scr.listScroll;
     G.mouse.x = LIST.x + 20; G.mouse.y = LIST.y + 20; scr.onWheel(-1); scr.onWheel(-1); scr.onWheel(-1); const s2 = scr.listScroll;
-    for (let k = 0; k < 10; k++) scr.onWheel(1);
-    return { items, visible, s1, s2, max: scr.listScroll };
+    for (let k = 0; k < 10; k++) scr.onWheel(1); const max = scr.listScroll;
+    scr.tabTowns.action(); const towns = panelItems(st).every(r => r.town) && panelItems(st).length === myTowns(st).length;
+    t.builtToday = true; const tip = scr.rightInfo(LIST.x + 60, panelRows(st, 0)[0].y + 10); scr.selectHero(last); const back = listTab();
+    return { items, visible, s1, s2, max, towns, tip, back };
   });
-  assert.ok(r.items >= 5);
+  assert.ok(r.towns, 'zakładka miast'); assert.match(r.tip, /dziś już zbudowano/); assert.equal(r.back, 'heroes', 'wybór bohatera wraca do zakładki bohaterów');
+  assert.ok(r.items >= 4, 'zakładka bohaterów: sami bohaterowie');
   assert.ok(r.visible);
   assert.ok(r.s1 > 0);
   assert.equal(r.s2, 0);

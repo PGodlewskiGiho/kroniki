@@ -39,11 +39,19 @@ function showKingdom(st) {
 }
 const myHeroes = st => st.heroes.filter(h => h.owner === ME);
 const myTowns = st => st.towns.filter(t => t.owner === ME);
-// Wiersze listy po prawej: najpierw bohaterowie, potem miasta gracza
-// Lista bohaterów i miast w panelu; mieści się LIST_ROWS wierszy, resztę przewija się kółkiem albo przeciągnięciem
-const panelItems = st => [...myHeroes(st).map(h => ({ hero: h })), ...myTowns(st).map(t => ({ town: t }))];
+// Lista w panelu po prawej, w dwóch zakładkach: bohaterowie albo miasta gracza (listTab); mieści się LIST_ROWS wierszy,
+// resztę przewija się kółkiem albo przeciągnięciem. Nad wierszami pasek zakładek (LIST_TABS_H).
+const LIST_TABS_H = 26, listTab = () => (G.screens.adventure.listTab === 'towns' ? 'towns' : 'heroes');
+const panelItems = st => (listTab() === 'towns' ? myTowns(st).map(t => ({ town: t })) : myHeroes(st).map(h => ({ hero: h })));
 function panelRows(st, scroll = 0) {
-  return panelItems(st).map((r, i) => ({ ...r, y: LIST.y + 6 + (i - scroll) * LIST_ROW_H })).filter(r => r.y >= LIST.y && r.y + 44 <= LIST.y + LIST.h);
+  return panelItems(st).map((r, i) => ({ ...r, y: LIST.y + LIST_TABS_H + 2 + (i - scroll) * LIST_ROW_H })).filter(r => r.y >= LIST.y + LIST_TABS_H && r.y + 44 <= LIST.y + LIST.h);
+}
+function setListTab(scr, tab) { if (scr.listTab !== tab) { scr.listTab = tab; scr.listScroll = 0; } }
+// Młotek przy mieście: złoty = można dziś budować, szary i przekreślony = już dziś budowano (jak w Heroes 3)
+function iconHammer(ctx, cx, cy, ok) {
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.6); ctx.fillStyle = ok ? '#8a5a2a' : '#5a5650'; ctx.fillRect(-1.5, -2, 3, 12);
+  ctx.fillStyle = ok ? '#e0b44c' : '#8a8680'; ctx.fillRect(-6, -7, 12, 5); ctx.restore();
+  if (!ok) { ctx.strokeStyle = '#c85040'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - 7, cy + 7); ctx.lineTo(cx + 7, cy - 7); ctx.stroke(); }
 }
 function buildPanelButtons(scr, st) {
   const S = 30, by = 176, bx = LIST.x + 2, mk = (i, icon, label, act, o = {}) => new Button(bx + i * 32, by, S, S, label, act, Object.assign({ icon }, o));
@@ -58,6 +66,8 @@ function buildPanelButtons(scr, st) {
     new Button(LIST.x + 2, 212, 30, 40, 'Mapa zagadki', () => showPuzzle(G.state), { icon: iconPuzzle, key: 'p', tip: 'Mapa zagadki: obeliski odsłaniają miejsce, gdzie zakopano Graala (klawisz P).' }),
     new Button(LIST.x + 34, 212, 30, 40, 'Kop', () => digHere(scr, G.state), { icon: iconShovel, key: 'd', tip: 'Kop w poszukiwaniu Graala na polu bohatera. Tylko z pełnymi punktami ruchu; zużywa cały dzień (klawisz D).' }),
     new Button(LIST.x + 66, 212, 126, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
+    scr.tabHeroes = new Button(LIST.x + 4, LIST.y + 3, 92, 22, 'Bohaterowie', () => setListTab(scr, 'heroes'), { size: 12, selected: () => listTab() === 'heroes', tip: 'Lista twoich bohaterów (klawisz B przełącza zakładki).' }),
+    scr.tabTowns = new Button(LIST.x + 100, LIST.y + 3, 92, 22, 'Miasta', () => setListTab(scr, 'towns'), { size: 12, selected: () => listTab() === 'towns', tip: 'Lista twoich miast; młotek: czy dziś można jeszcze budować (klawisz B przełącza zakładki).' }),
   ];
 }
 function panelInfoText(st, scr) {
@@ -74,10 +84,13 @@ function panelInfoText(st, scr) {
 function drawPanel(ctx, st, scr) {
   drawMinimap(ctx, st);
   const items = panelItems(st).length; scr.listScroll = clamp(scr.listScroll || 0, 0, Math.max(0, items - LIST_ROWS));
+  if (scr.tabHeroes) { scr.tabHeroes.label = `Bohaterowie (${myHeroes(st).length})`; scr.tabTowns.label = `Miasta (${myTowns(st).length})`; }
+  const LY = LIST.y + LIST_TABS_H, LH = LIST.h - LIST_TABS_H;
   if (items > LIST_ROWS) { // pasek przewijania
-    const bh = LIST.h * LIST_ROWS / items, by = LIST.y + (LIST.h - bh) * scr.listScroll / (items - LIST_ROWS);
-    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(LIST.x + LIST.w - 3, LIST.y, 3, LIST.h); ctx.fillStyle = '#b8913f'; ctx.fillRect(LIST.x + LIST.w - 3, by, 3, bh);
+    const bh = LH * LIST_ROWS / items, by = LY + (LH - bh) * scr.listScroll / (items - LIST_ROWS);
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(LIST.x + LIST.w - 3, LY, 3, LH); ctx.fillStyle = '#b8913f'; ctx.fillRect(LIST.x + LIST.w - 3, by, 3, bh);
   }
+  if (!items) text(ctx, listTab() === 'towns' ? 'Nie masz miast' : 'Nie masz bohaterów', LIST.x + LIST.w / 2, LY + 30, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(236,217,168,.6)' });
   for (const r of panelRows(st, scr.listScroll)) {
     const y = r.y, on = r.hero && r.hero === hero(st);
     ctx.fillStyle = on ? 'rgba(210,160,60,.25)' : 'rgba(0,0,0,.25)'; rr(ctx, LIST.x + 4, y, 188, 44, 3); ctx.fill();
@@ -96,6 +109,7 @@ function drawPanel(ctx, st, scr) {
       drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), LIST.x + 6, y + 2, 1);
       text(ctx, t.name, LIST.x + 52, y + 16, { size: 14, color: '#ecd9a8', fam: 'title' });
       text(ctx, `${townGold(t)} złota dziennie`, LIST.x + 52, y + 32, { size: 12, weight: 500, color: '#c8b68a' });
+      iconHammer(ctx, LIST.x + 178, y + 14, !t.builtToday); // czy dziś można jeszcze budować
     }
   }
   text(ctx, `Tydzień ${weekName(st)}`, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 18, { size: 15, align: 'center', color: '#f0e4c0', fam: 'title' });
@@ -172,10 +186,10 @@ G.screens.adventure = {
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
   autosave(st) { SaveStore.write('auto', st).catch(() => { if (G.state === st) this.flash('Autozapis się nie udał'); }); },
-  onKey(k) { const h = hero(G.state); if (!h || this.aiRun) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); },
+  onKey(k) { const h = hero(G.state); if (!h || this.aiRun) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
   selectHero(h) {
     const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
-    const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
+    setListTab(this, 'heroes'); const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
   },
   onWheel(d) { if (inRect(G.mouse.x, G.mouse.y, LIST)) this.listScroll = clamp((this.listScroll || 0) + Math.sign(d), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS)); },
   nextHero() {
@@ -209,7 +223,8 @@ G.screens.adventure = {
       return tileInfo(st, tx, ty);
     }
     if (inRect(x, y, { x: MINI.x, y: MINI.y, w: MINI.s, h: MINI.s })) return 'Minimapa. Kliknij albo przeciągnij, aby przenieść widok.';
-    if (inRect(x, y, LIST)) return 'Bohaterowie i miasta. Kliknij bohatera, aby go wybrać (ponownie: ekran bohatera, klawisz H), albo miasto, aby do niego wejść. Kółko albo przeciągnięcie przewija listę.';
+    if (inRect(x, y, LIST)) { const r = panelRows(st, this.listScroll).find(r => y >= r.y && y < r.y + 44); if (r && r.town) return `${r.town.name}: ${r.town.builtToday ? 'dziś już zbudowano budowlę' : 'można dziś zbudować budowlę'}. Kliknij, aby wejść do miasta.`; }
+    if (inRect(x, y, LIST)) return 'Bohaterowie i miasta (zakładki u góry). Kliknij bohatera, aby go wybrać (ponownie: ekran bohatera, klawisz H), albo miasto, aby do niego wejść. Kółko albo przeciągnięcie przewija listę.';
     return resourceBarInfo(st, x, y, VH - H);
   },
   spellbook() {
