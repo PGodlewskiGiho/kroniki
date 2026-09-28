@@ -29,12 +29,12 @@ test('nieruchomy ekran bohatera rysuje się rzadko, ruch myszy wymusza klatkę',
   assert.ok(moved >= 15, `przy ruchu: ${moved} klatek`);
 });
 
-test('mapa: w spoczynku ~30 klatek, gdy kamera jedzie – płynnie', async () => {
+test('mapa: w spoczynku płynnie (jak miasto), gdy kamera jedzie – płynnie', async () => {
   await newGame(page, { mapSize: 'M' });
   await page.evaluate(() => { setScreen('adventure', {}); G.modal = null; });
   await noMouse(); await frames(page, 5);
   const idle = await renders(1000);
-  assert.ok(idle >= 20 && idle <= 36, `spoczynek: ${idle}`);
+  assert.ok(idle >= 40, `spoczynek: ${idle}`);
   await page.evaluate(() => { window.__iv = setInterval(() => { G.state.cam.x += 3; }, 8); });
   const busy = await renders(1000);
   await page.evaluate(() => clearInterval(window.__iv));
@@ -73,4 +73,20 @@ test('miasto i menu płynnie (60 klatek), przy niskiej jakości połowa; efekty 
   const town = await renders(1000);
   const r = await page.evaluate(() => { const q = G.settings.quality; G.settings.quality = 'low'; const low = screenFps(); G.settings.quality = q; return { low, fb: !!G.screens.town.fb }; });
   assert.ok(town >= 40, `miasto: ${town}`); assert.equal(r.low, 30); assert.equal(r.fb, false, 'bez okna efekty idą prosto na ekran');
+});
+
+test('teren mapy maluje się w tle aż po całą mapę; przewijanie nie maluje go w klatce; obniżona jakość wraca', async () => {
+  await newGame(page, { mapSize: 'M' });
+  await page.evaluate(() => { setScreen('adventure', {}); G.modal = null; });
+  await noMouse(); await frames(page, 3);
+  await page.waitForFunction(() => MapRender.warmed, null, { timeout: 20000 });
+  const r = await page.evaluate(() => {
+    const nC = Math.ceil(G.state.map.n / CHUNK), full = MapRender.cache.size, g0 = MapRender.lastGen;
+    for (let i = 0; i < 20; i++) { G.state.cam.x += 40; camClamp(G.state); render(); }
+    const S = G.settings, q = S.quality, a = S.autoDpr; S.quality = 'auto'; S.autoDpr = 0.5; Perf.good = 0;
+    for (let k = 0; k < 10 * 60; k++) Perf.sample(1 / 60, 0.002, 60);
+    const up = S.autoDpr; S.quality = q; if (a == null) delete S.autoDpr; else S.autoDpr = a; resize();
+    return { full, need: nC * nC, noGen: MapRender.lastGen === g0, up };
+  });
+  assert.equal(r.full, r.need, 'cała mapa w pamięci'); assert.ok(r.noGen, 'przewijanie bez malowania terenu'); assert.equal(r.up, 0.75, 'jakość wraca o stopień');
 });

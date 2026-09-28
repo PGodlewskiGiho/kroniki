@@ -142,6 +142,8 @@
    WALL_HP wg poziomu (Zamek 4), obrońca walczący wręcz czeka za murami (holdWalls), chyba że ma 1,5× przewagi (wypad).
    Karawany (st.caravans): oddziały garnizonu jadą bez bohatera do innego własnego miasta po drodze lądem (caravanRoute,
    CARAVAN_MP dziennie), dołączają do garnizonu, zawracają, gdy cel przepadł; wóz na mapie, okno w mieście (klawisz K).
+   Mapa bez szarpnięć: kawałki terenu malują się w tle (MapRender.warm, requestIdleCallback, od najbliższych widoku po całą mapę),
+   w klatce tylko zastępczy rysunek; pamięć na całą mapę; mapa w spoczynku 60 klatek; auto-jakość wraca po ~10 s płynnej gry.
    Czcionka pikselowa: Jersey 10 (OFL, czytelne cyfry) wbudowana przez build.js z src/czcionki; ustawienie Grafika → Czcionka (piksele/klasyczna).
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
