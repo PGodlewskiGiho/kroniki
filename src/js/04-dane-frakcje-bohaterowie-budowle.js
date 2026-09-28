@@ -25,7 +25,7 @@ const FACTIONS = [
   {
     id: 'haven', name: 'Przystań', terrain: TER.GRASS,
     desc: 'Królestwo ludzi: pikinierzy, łucznicy, gryfy, miecznicy, mnisi, kawaleria i Strażnicy Światła.',
-    heroes: [['Sir Rolan', 'knight'], ['Weronika', 'cleric', 1], ['Bernard', 'cleric'], ['Idalia', 'knight', 1], ['Kasjan', 'knight'], ['Mirela', 'cleric', 1]],
+    heroes: [['Sir Rolan', 'knight'], ['Weronika', 'cleric', 1], ['Bernard', 'cleric'], ['Idalia', 'knight', 1], ['Kasjan', 'knight'], ['Mirela', 'cleric', 1], ['Ulryk', 'knight'], ['Bogna', 'cleric', 1]],
     towns: ['Jaworzyn', 'Białogród', 'Złote Pole', 'Dębowa Góra', 'Srebrny Bród', 'Wysoka Grań', 'Lipowiec', 'Kamienna Straż'],
     guild: 'Gildia magów', emb: ['spear', 'bow', 'wing', 'sword', 'cross', 'horse', 'sun'],
     dw: {
@@ -38,7 +38,7 @@ const FACTIONS = [
   {
     id: 'sylvan', name: 'Knieja', terrain: TER.GRASS,
     desc: 'Leśne ostępy: driady, elfi łucznicy, centaury, drzewce, jednorożce, feniksy i szmaragdowe smoki.',
-    heroes: [['Elandra', 'ranger', 1], ['Tarwen', 'druid'], ['Lirien', 'druid', 1], ['Gawen', 'ranger']],
+    heroes: [['Elandra', 'ranger', 1], ['Tarwen', 'druid'], ['Lirien', 'druid', 1], ['Gawen', 'ranger'], ['Aelwen', 'ranger', 1], ['Dębosz', 'druid']],
     towns: ['Zielony Gaj', 'Srebrny Liść', 'Cicha Knieja', 'Jasna Polana', 'Szumiący Bór', 'Złota Paproć'],
     guild: 'Krąg druidów', emb: ['leaf', 'bow', 'horse', 'tree', 'horn', 'flame', 'dragon'],
     dw: {
@@ -51,7 +51,7 @@ const FACTIONS = [
   {
     id: 'barrow', name: 'Kurhan', terrain: TER.DIRT,
     desc: 'Ziemie umarłych: kościotrupy, ghule, zjawy, wampiry, nekromanci, Rycerze Zagłady i kościste wywerny.',
-    heroes: [['Mortis', 'necro'], ['Raga', 'necro', 1], ['Sir Kruk', 'deathKnight'], ['Zofia Czarna', 'deathKnight', 1]],
+    heroes: [['Mortis', 'necro'], ['Raga', 'necro', 1], ['Sir Kruk', 'deathKnight'], ['Zofia Czarna', 'deathKnight', 1], ['Wrocisław', 'necro'], ['Grzymisława', 'deathKnight', 1]],
     towns: ['Czarny Kurhan', 'Mglista Krypta', 'Upiorna Dolina', 'Kościeniec', 'Wroni Jar', 'Szary Całun'],
     guild: 'Gildia nekromantów', emb: ['skull', 'grave', 'ghost', 'bat', 'moon', 'horse', 'dragon'],
     dw: {
@@ -64,7 +64,7 @@ const FACTIONS = [
   {
     id: 'fortress', name: 'Twierdza', terrain: TER.SWAMP,
     desc: 'Bagienna warownia: gnolle, jaszczuroludzie, ważki, bazyliszki, gorgony, wywerny i hydry.',
-    heroes: [['Borzywoj', 'beastmaster'], ['Wilga', 'witch', 1], ['Mszar', 'witch'], ['Dobrawa', 'beastmaster', 1]],
+    heroes: [['Borzywoj', 'beastmaster'], ['Wilga', 'witch', 1], ['Mszar', 'witch'], ['Dobrawa', 'beastmaster', 1], ['Skrzek', 'beastmaster'], ['Rusałka', 'witch', 1]],
     towns: ['Mokradła', 'Trzcinowy Gród', 'Czarny Staw', 'Grząski Bród', 'Żabi Kamień', 'Olszowa Warownia', 'Sitowie'],
     guild: 'Chata wiedźmy', emb: ['spear', 'bow', 'wing', 'eye', 'horn', 'dragon', 'skull'],
     dw: {
@@ -77,7 +77,7 @@ const FACTIONS = [
   {
     id: 'inferno', name: 'Inferno', terrain: TER.LAVA,
     desc: 'Piekielne miasto: chochliki, gogi, piekielne ogary, demony, czarty, ifryty i diabły.',
-    heroes: [['Azgar', 'demoniac'], ['Kalida', 'demoniac', 1], ['Moloch', 'heretic'], ['Wiera Popiół', 'heretic', 1]],
+    heroes: [['Azgar', 'demoniac'], ['Kalida', 'demoniac', 1], ['Moloch', 'heretic'], ['Wiera Popiół', 'heretic', 1], ['Belzar', 'demoniac'], ['Żmija', 'heretic', 1]],
     towns: ['Siarkogród', 'Płonąca Brama', 'Popielisko', 'Czerwona Otchłań', 'Żarnowiec', 'Smolna Twierdza', 'Kotlina Dymów'],
     guild: 'Świątynia ognia', emb: ['bat', 'sun', 'horn', 'skull', 'flame', 'sun', 'fork'],
     dw: {
@@ -90,7 +90,7 @@ const FACTIONS = [
   {
     id: 'academy', name: 'Akademia', terrain: TER.SNOW,
     desc: 'Miasto magów w ośnieżonych górach: gremliny, gargulce, golemy, magowie, dżiny, nagi i tytani.',
-    heroes: [['Ostromir', 'wizard'], ['Jagna Mróz', 'wizard', 1], ['Zbylut', 'alchemist'], ['Mirosława', 'alchemist', 1]],
+    heroes: [['Ostromir', 'wizard'], ['Jagna Mróz', 'wizard', 1], ['Zbylut', 'alchemist'], ['Mirosława', 'alchemist', 1], ['Mieszko Kruszec', 'alchemist'], ['Srebrna', 'wizard', 1]],
     towns: ['Szronowa Wieża', 'Białe Iglice', 'Lodowa Przełęcz', 'Mroźny Gród', 'Kryształowe Wzgórze', 'Śnieżna Turnia', 'Zimna Toń'],
     guild: 'Wieża wiedzy', emb: ['anvil', 'wing', 'wall', 'book', 'moon', 'eye', 'sun'],
     dw: {
@@ -103,7 +103,7 @@ const FACTIONS = [
   {
     id: 'dungeon', name: 'Loch', terrain: TER.ROUGH,
     desc: 'Mroczne pieczary: troglodyci, harpie, obserwatorzy, meduzy, minotaury, mantykory i czarne smoki.',
-    heroes: [['Czarnobór', 'overlord'], ['Morana', 'warlock', 1], ['Zmorzysław', 'warlock'], ['Dziwa', 'overlord', 1]],
+    heroes: [['Czarnobór', 'overlord'], ['Morana', 'warlock', 1], ['Zmorzysław', 'warlock'], ['Dziwa', 'overlord', 1], ['Grzmot', 'overlord'], ['Nocna', 'warlock', 1]],
     towns: ['Głęboka Grota', 'Czarna Czeluść', 'Kamienny Labirynt', 'Mroczne Szyby', 'Ślepa Pieczara', 'Echo Skał', 'Zapadlisko'],
     guild: 'Krąg czarnoksiężników', emb: ['spear', 'wing', 'eye', 'bow', 'horn', 'bat', 'dragon'],
     dw: {
@@ -116,7 +116,7 @@ const FACTIONS = [
   {
     id: 'stronghold', name: 'Cytadela', terrain: TER.SAND,
     desc: 'Stepowa warownia barbarzyńców: hobgobliny, wargi, orkowie, tury, roki, cyklopi i behemoty.',
-    heroes: [['Gromisław', 'barbarian'], ['Wojsława', 'barbarian', 1], ['Ognisław', 'battleMage'], ['Jarogniewa', 'battleMage', 1]],
+    heroes: [['Gromisław', 'barbarian'], ['Wojsława', 'barbarian', 1], ['Ognisław', 'battleMage'], ['Jarogniewa', 'battleMage', 1], ['Warg', 'barbarian'], ['Iskra', 'battleMage', 1]],
     towns: ['Kamienny Kieł', 'Suchy Jar', 'Czerwona Wydma', 'Wilcza Skała', 'Sępia Grań', 'Gorące Piaski', 'Obóz Gromu'],
     guild: 'Namiot szamana', emb: ['spear', 'moon', 'axe', 'horn', 'wing', 'eye', 'paw'],
     dw: {

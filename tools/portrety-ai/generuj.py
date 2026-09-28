@@ -18,23 +18,34 @@ def slug(name):
 
 def main():
     data = json.load(open(os.path.join(HERE, 'bohaterowie.json'), encoding='utf-8'))
-    style, neg = data.pop('_styl'), data.pop('_negatyw')
+    global STYLE
+    STYLE, neg = data.pop('_styl'), data.pop('_negatyw')
     names = sys.argv[1].split(',') if len(sys.argv) > 1 and sys.argv[1] else list(data)
     n = int(sys.argv[2]) if len(sys.argv) > 2 else 3
     torch.set_num_threads(os.cpu_count())
-    pipe = StableDiffusionPipeline.from_pretrained(MODEL, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+    # Wzorce stylu (IP-Adapter Plus): katalog obrazów w WZORY; tylko styl (kolory, światło, kadr), twarze tworzy opis
+    WZ = os.environ.get('WZORY'); style = None
+    if WZ:
+        from transformers import CLIPVisionModelWithProjection
+        from PIL import Image
+        enc = CLIPVisionModelWithProjection.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder', torch_dtype=torch.float32)
+        pipe = StableDiffusionPipeline.from_pretrained(MODEL, image_encoder=enc, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+        pipe.load_ip_adapter('h94/IP-Adapter', subfolder='models', weight_name='ip-adapter-plus_sd15.safetensors'); pipe.set_ip_adapter_scale(float(os.environ.get('IPS', 0.6)))
+        files = sorted(os.listdir(WZ)); style = [Image.open(os.path.join(WZ, f)).convert('RGB') for f in files[3::10]]
+    else:
+        pipe = StableDiffusionPipeline.from_pretrained(MODEL, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
     pipe.load_lora_weights('latent-consistency/lcm-lora-sdv1-5'); pipe.fuse_lora()  # LCM: 7 kroków zamiast ~25 (ok. 50 s na obraz bez karty graficznej)
     pipe.scheduler = LCMScheduler.from_config(pipe.scheduler.config)
     pipe.set_progress_bar_config(disable=True)
     for name in names:
         d = data[name]; out = os.path.join(HERE, '.cache', slug(name)); os.makedirs(out, exist_ok=True)
-        prompt = style.format(opis=d['opis'], tlo=d['tlo'])
+        prompt = STYLE.format(opis=d['opis'], tlo=d['tlo'])
         for k in range(n):
             seed = 1000 + k + d.get('seed', 0)
             path = os.path.join(out, f'{seed}.png')
             if os.path.exists(path): continue
             t = time.time()
-            img = pipe(prompt, negative_prompt=neg, num_inference_steps=STEPS, guidance_scale=CFG, width=SIZE, height=SIZE,
+            img = pipe(prompt, negative_prompt=neg, num_inference_steps=STEPS, guidance_scale=CFG, width=SIZE, height=SIZE, **({'ip_adapter_image': [style]} if style else {}),
                        generator=torch.Generator().manual_seed(seed)).images[0]
             img.save(path); print(f'{name} {seed} {time.time() - t:.0f}s', flush=True)
 

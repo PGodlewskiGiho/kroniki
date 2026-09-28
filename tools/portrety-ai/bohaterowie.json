@@ -1,5 +1,5 @@
 {
-  "_styl": "1990s photo of an actor in fantasy costume and makeup as {opis}, head and shoulders portrait, side lighting, vivid saturated colors, {tlo} backdrop out of focus, film grain",
+  "_styl": "hero portrait, {opis}, {tlo}",
   "_negatyw": "cartoon, anime, drawing, text, watermark, frame, border, multiple people, deformed, blurry face, dark background, black background, grey background, muted colors, hands",
   "Sir Rolan": {
     "opis": "an old grizzled human knight, short cropped grey hair, thick full grey beard, scar across his eyebrow, stern frown, wrinkled weathered face, polished steel plate armor with gorget",
@@ -136,5 +136,69 @@
   "Jarogniewa": {
     "opis": "a half-orc woman shaman with light green skin, small tusks, red hair in a bun with feathers, tribal tattoos, intense eyes",
     "tlo": "stormy orange sky"
+  },
+  "Ulryk": {
+    "opis": "a broad-shouldered blond knight in his forties, full blond beard, steel helmet with nose guard, honest stern eyes, steel armor",
+    "tlo": "green hills and blue sky"
+  },
+  "Bogna": {
+    "opis": "a middle-aged woman priestess with brown hair in a bun under a white veil, warm smile, rosy cheeks, cream robes",
+    "tlo": "golden chapel light"
+  },
+  "Aelwen": {
+    "opis": "a young elf woman archer with a golden braid, long pointed ears, hawk feather in her hair, sly smirk, green cloak",
+    "tlo": "autumn forest"
+  },
+  "Dębosz": {
+    "opis": "an old burly druid with a bushy brown beard, wreath of oak leaves, broad nose, kind eyes, bark-brown robes",
+    "tlo": "ancient oak forest"
+  },
+  "Wrocisław": {
+    "opis": "an old necromancer with long grey hair and beard, sunken cheeks, glowing green eyes, black hood",
+    "tlo": "misty graveyard at night"
+  },
+  "Grzymisława": {
+    "opis": "an undead woman knight with long white hair, pale corpse skin, glowing blue eyes, skull-shaped iron helmet",
+    "tlo": "dark stormy sky"
+  },
+  "Skrzek": {
+    "opis": "a gnoll warrior with a spotted hyena head, laughing mouth full of teeth, bone earrings, tribal paint",
+    "tlo": "swamp at sunset"
+  },
+  "Rusałka": {
+    "opis": "a pale water nymph witch with long dark green hair and water lilies, big dark eyes, gentle smile",
+    "tlo": "moonlit swamp lake"
+  },
+  "Belzar": {
+    "opis": "a bald demon knight with dark red skin, big curved horns, glowing orange eyes, black goatee, smirk, black armor",
+    "tlo": "hellfire"
+  },
+  "Żmija": {
+    "opis": "a snake-eyed heretic woman with long black hair, serpent tattoos on her face, glowing yellow eyes, dark red hood",
+    "tlo": "red smoke"
+  },
+  "Mieszko Kruszec": {
+    "opis": "a cheerful dwarf with a long red-brown beard, broad nose, leather headband, soot on cheeks, rune amulet",
+    "tlo": "forge fire and snowy mountains"
+  },
+  "Srebrna": {
+    "opis": "a young sorceress with long silver hair, silver circlet, pale blue eyes, calm face, blue robes with frost patterns",
+    "tlo": "icy blue sky"
+  },
+  "Grzmot": {
+    "opis": "a huge bald warlord with a black beard, massive jaw, scar across his face, curved horns on his helmet, dark armor",
+    "tlo": "cave with lava glow"
+  },
+  "Nocna": {
+    "opis": "a dark elf witch with black hair, grey skin, pointed ears, glowing violet eyes, dark hood, mysterious smirk",
+    "tlo": "dark purple cavern"
+  },
+  "Warg": {
+    "opis": "a scarred orc warrior with grey-green skin, long black hair, small tusks, feather in his hair, angry frown",
+    "tlo": "burning steppe"
+  },
+  "Iskra": {
+    "opis": "a young freckled woman fire mage with curly red hair, leather headband, bright smile, orange robes with sparks",
+    "tlo": "fiery sky"
   }
 }
