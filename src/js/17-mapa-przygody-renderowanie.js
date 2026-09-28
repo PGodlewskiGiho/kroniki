@@ -304,19 +304,39 @@ function buildMinimap(map, ex) {
 // Pamięć podręczna wyrenderowanych fragmentów mapy (8×8 pól)
 const MapRender = {
   map: null, explored: null, season: 0, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
-  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; },
+  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; this.warmed = false; },
   // Pora roku: po zmianie wszystkie kawałki terenu rysują się od nowa
-  setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); } },
+  setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); this.warmed = false; } },
   // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
   get(cx, cy, allow = true) {
     const key = cx + ',' + cy; let c = this.cache.get(key);
     if (c) { this.cache.delete(key); this.cache.set(key, c); return c; }
     if (!allow) return null;
-    c = renderChunkPixel(this.map, cx, cy); this.cache.set(key, c);
-    if (this.cache.size > 160) this.cache.delete(this.cache.keys().next().value);
+    c = renderChunkPixel(this.map, cx, cy); this.cache.set(key, c); this.lastGen = performance.now();
+    const nC = Math.ceil(this.map.n / CHUNK); if (this.cache.size > Math.max(160, nC * nC)) this.cache.delete(this.cache.keys().next().value); // mieści całą mapę (olbrzymia: 324 kawałki, ~21 MB)
     return c;
   },
   has(cx, cy) { return this.cache.has(cx + ',' + cy); },
+  // Kawałki terenu malują się w tle, w wolnych chwilach między klatkami (requestIdleCallback), od najbliższych widoku aż po całą mapę:
+  // przewijanie nie musi ich malować w trakcie klatki (jeden kawałek to 15–45 ms na słabszym komputerze, czyli szarpnięcie obrazu).
+  warm(st) {
+    if (this.warming || this.warmed || !st || st.map !== this.map) return; this.warming = true;
+    const idle = window.requestIdleCallback ? f => window.requestIdleCallback(f, { timeout: 120 }) : f => setTimeout(() => f(null), 16);
+    idle(dl => {
+      this.warming = false; if (!G.state || G.state.map !== this.map) return;
+      const n = this.map.n, nC = Math.ceil(n / CHUNK), CP = CHUNK * T, cam = G.state.cam || { x: 0, y: 0 }, mx = (cam.x + VIEW.w / 2) / CP, my = (cam.y + VIEW.h / 2) / CP, todo = [];
+      for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!this.has(cx, cy)) todo.push([cx, cy, Math.hypot(cx + 0.5 - mx, cy + 0.5 - my)]);
+      if (!todo.length) { this.warmed = true; return; }
+      todo.sort((a, b) => a[2] - b[2]);
+      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(3, dl.timeRemaining() - 2) : 6), vis = Math.hypot(VIEW.w, VIEW.h) / CP / 2 + 1;
+      // tyle kawałków, ile zmieści się w wolnym czasie (wg średniego czasu jednego), ale co najmniej jeden
+      for (const [cx, cy, d] of todo) {
+        const t0 = performance.now(); this.get(cx, cy); const dt = performance.now() - t0; this.avgGen = this.avgGen ? this.avgGen * 0.8 + dt * 0.2 : dt;
+        if (d < vis) G.dirty = true; if (performance.now() + this.avgGen > end) break;
+      }
+      this.warm(G.state);
+    });
+  },
   // Zastępczy kawałek: pola w kolorach minimapy (jeden prostokąt na pole), rysowany, gdy prawdziwy jeszcze nie powstał
   placeholder(b, cx, cy, x, y) {
     const map = this.map, n = map.n, pal = this._pal || (this._pal = TPAL.map(p => `rgb(${gradeRgb(p[1]).map(Math.round).join(',')})`));
@@ -416,16 +436,14 @@ function drawWorldPixel(b, st) {
   const c0 = Math.max(0, Math.floor(camX / CP)), c1 = Math.min(nC - 1, Math.floor((camX + VIEW.w - 1) / CP));
   const r0 = Math.max(0, Math.floor(camY / CP)), r1 = Math.min(nC - 1, Math.floor((camY + VIEW.h - 1) / CP));
   const ox = VIEW.x - camX, oy = VIEW.y - camY;
-  // nowe kawałki terenu: najwyżej ~10 ms na klatkę (na słabym komputerze przewijanie nie szarpie), reszta zastępczo w następnych klatkach;
-  // gdy zostaje czasu, kawałki wokół widoku powstają z wyprzedzeniem
-  const until = performance.now() + 10;
+  // kawałki terenu malują się w tle (MapRender.warm), nie w klatce: brakujący widoczny kawałek na chwilę zastępuje rysunek
+  // w kolorach minimapy, a tło dorysowuje go w najbliższej wolnej chwili (najwyżej po ~0,1 s). Pierwsza klatka widoku maluje wszystko.
+  MapRender.warm(st); const first = !MapRender.cache.size;
   for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
-    const ch = MapRender.get(cx, cy, performance.now() < until), x = ox + cx * CP, y = oy + cy * CP;
+    const ch = MapRender.get(cx, cy, first), x = ox + cx * CP, y = oy + cy * CP;
     if (!ch) { MapRender.placeholder(b, cx, cy, x, y); G.dirty = true; continue; }
     b.drawImage(ch, x, y, CP, CP); WaterFx.draw(b, ch, x, y, CP, cx * ch.width, cy * ch.width);
   }
-  const ahead = performance.now() + 4;
-  for (let cy = Math.max(0, r0 - 1); cy <= Math.min(nC - 1, r1 + 1) && performance.now() < ahead; cy++) for (let cx = Math.max(0, c0 - 1); cx <= Math.min(nC - 1, c1 + 1) && performance.now() < ahead; cx++) if (!MapRender.has(cx, cy)) MapRender.get(cx, cy);
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
   drawHoles(b, st, ox, oy, tx0, ty0, tx1, ty1);
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);

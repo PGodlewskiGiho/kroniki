@@ -141,14 +141,17 @@ function renderDpr() {
 // rysowaniu w skrypcie (> 12 ms), albo dwa razy z rzędu: kopiowanie pikseli na płótno (bez karty graficznej) nie wlicza się w czas
 // skryptu, a pojedyncze przestoje z zewnątrz (karta w tle, zrzut ekranu, generowanie grafiki) nie obniżają jakości.
 const Perf = {
-  late: [], work: [], strikes: 0, fps: 0, ms: 0,
+  late: [], work: [], strikes: 0, good: 0, fps: 0, ms: 0,
   sample(gap, work, fps) {
     if (gap > 0 && gap < 1) { this.fps = this.fps ? this.fps * 0.9 + 0.1 / gap : 1 / gap; this.ms = this.ms ? this.ms * 0.9 + work * 100 : work * 1000; }
-    if (G.settings.quality !== 'auto' || fps < 12 || gap <= 0 || gap > 0.25 || (G.screens.adventure && G.screens.adventure.aiRun)) return;
+    // pomijamy tury komputera i czas, gdy teren mapy maluje się w tle (to chwilowe, nie wina jakości grafiki)
+    if (G.settings.quality !== 'auto' || fps < 12 || gap <= 0 || gap > 0.25 || (G.screens.adventure && G.screens.adventure.aiRun) || (MapRender.map && !MapRender.warmed && G.screen === G.screens.adventure)) return;
     this.late.push(gap - 1 / fps); this.work.push(work); if (this.late.length < 60) return;
-    const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], late = med(this.late) > 0.012, busy = med(this.work) > 0.012; this.late = []; this.work = [];
-    this.strikes = late ? this.strikes + 1 : 0;
-    if (late && (busy || this.strikes >= 2) && G.dpr > 0.5) { G.settings.autoDpr = G.dpr > 1 ? 1 : G.dpr > 0.75 ? 0.75 : 0.5; this.strikes = 0; saveSettings(); resize(); }
+    const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], late = med(this.late) > 0.012, busy = med(this.work) > 0.012, easy = med(this.late) < 0.003 && med(this.work) < 0.006; this.late = []; this.work = [];
+    this.strikes = late ? this.strikes + 1 : 0; this.good = easy ? this.good + 1 : 0;
+    if (late && (busy || this.strikes >= 2) && G.dpr > 0.5) { G.settings.autoDpr = G.dpr > 1 ? 1 : G.dpr > 0.75 ? 0.75 : 0.5; this.strikes = 0; this.good = 0; saveSettings(); resize(); }
+    // i z powrotem: po ~10 s płynnej gry z zapasem jakość rośnie o stopień (obniżka nie zostaje na zawsze)
+    else if (this.good >= 10 && G.settings.autoDpr) { const up = { 0.5: 0.75, 0.75: 1, 1: 2 }[G.settings.autoDpr]; if (up && up <= 1) G.settings.autoDpr = up; else delete G.settings.autoDpr; this.good = 0; saveSettings(); resize(); }
   },
 };
 // Licznik wydajności (klawisz F): klatki na sekundę, czas rysowania w skrypcie, rozmiar płótna i karta graficzna według przeglądarki
