@@ -251,5 +251,7 @@
    pixPainter z K, płynne cieniowanie, portraitFinish: światło konturowe, winieta). Kursory gry (11b-kursory.js: setCursor,
    adventureCursor, battleCursor; G.wantCursor ustawiany co klatkę). Przybliżenie mapy kółkiem i klawiszami +/− (ZOOM, ZOOMS,
    viewW/viewH, setZoom; świat rysowany w widoku wirtualnym i skalowany; fale liczone w grubych pikselach).
+   Etap C, krok 17: magia frakcji (FACTION_MAGIC: najwyższy poziom gildii i wagi szkół przy losowaniu czarów, bAllowed,
+   magicText w opisie frakcji i w gildii). Przystań IV, Twierdza i Cytadela III, reszta V.
    ===================================================================================== */
 

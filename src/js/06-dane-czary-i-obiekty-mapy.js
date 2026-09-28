@@ -50,6 +50,21 @@ const BAD_BUFFS = ['slow', 'weakness', 'curse'];
 // Ile czarów danego poziomu oferuje gildia
 const GUILD_OFFER = { 1: 3, 2: 2, 3: 2, 4: 2, 5: 1 };
 const GUILD_MAX = 5;
+// Magia frakcji (jak w Heroes 3): najwyższy poziom gildii magów i waga szkół przy losowaniu czarów gildii.
+// Przystań kończy na IV, Twierdza i Cytadela (wojownicy) na III; Inferno i Loch ciągną do ognia, Kurhan do ziemi, Akademia do powietrza.
+const FACTION_MAGIC = {
+  haven: { max: 4, w: { fire: 1, air: 3, water: 3, earth: 2 } }, sylvan: { max: 5, w: { fire: 1, air: 2, water: 3, earth: 3 } },
+  barrow: { max: 5, w: { fire: 1, air: 2, water: 2, earth: 4 } }, fortress: { max: 3, w: { fire: 1, air: 2, water: 3, earth: 3 } },
+  inferno: { max: 5, w: { fire: 5, air: 2, water: 1, earth: 2 } }, academy: { max: 5, w: { fire: 2, air: 4, water: 3, earth: 2 } },
+  dungeon: { max: 5, w: { fire: 3, air: 2, water: 1, earth: 3 } }, stronghold: { max: 3, w: { fire: 3, air: 3, water: 1, earth: 2 } },
+};
+const guildMax = fac => (FACTION_MAGIC[fac] || { max: GUILD_MAX }).max;
+const schoolWeight = (fac, sc) => ((FACTION_MAGIC[fac] || {}).w || {})[sc] || 1;
+// Opis magii frakcji: „gildia do poziomu IV, najczęściej magia Powietrza i Wody”
+function magicText(fac) {
+  const w = (FACTION_MAGIC[fac] || {}).w || {}, top = Math.max(...Object.values(w)), best = Object.keys(SCHOOLS).filter(sc => w[sc] === top && top > 1);
+  return `gildia magów do poziomu ${['', 'I', 'II', 'III', 'IV', 'V'][guildMax(fac)]}${best.length ? `, najczęściej magia ${best.map(sc => SCHOOLS[sc].name).join(' i ')}` : ''}`;
+}
 // Czar startowy klas magicznych
 const CLASS_SPELLS = { cleric: ['bless'], druid: ['cure'], necro: ['magicArrow'], witch: ['slow'], heretic: ['magicArrow'], alchemist: ['stoneSkin'], wizard: ['haste'], warlock: ['magicArrow'], battleMage: ['bless'] };
 

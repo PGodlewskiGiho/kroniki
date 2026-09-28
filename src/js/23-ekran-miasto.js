@@ -310,7 +310,7 @@ function drawScroll(ctx, cx, top, id, hot, known) { // zwój z ikoną czaru; hot
 }
 function showGuildView(st, t, scr) {
   const F = factionOf(t.faction), L0 = GUILD_LOOK[t.faction] || GUILD_LOOK.haven, { win: Wn, info: I, sh: S } = GV;
-  const next = BUILDINGS.find(b => /^guild/.test(b.id) && !hasB(t, b.id));
+  const next = BUILDINGS.find(b => /^guild/.test(b.id) && bAllowed(t, b) && !hasB(t, b.id)), GM = guildMax(t.faction);
   const close = new Button(GV.x + GV.w - 148, GV.y + GV.h - 48, 128, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
   const up = next && reqMet(t, next) ? new Button(I.x + 8, GV.y + GV.h - 48, 150, 36, 'Rozbuduj', () => { G.modal = null; scr.tryBuild(next); }, { size: 15, tip: `Zbuduj: ${bInfo(next, t.faction).name}.` }) : null;
   const vh = heroInTown(st, t), book = vh && !hasBook(vh) ? new Button(GV.x + GV.w - 300, GV.y + GV.h - 48, 144, 36, 'Kup księgę', () => { const e = buyBook(st, t, vh); scr.say(e || `${vh.name} ma teraz księgę czarów`); if (!e) { G.modal = null; scr.guildVisit(); } },
@@ -340,14 +340,15 @@ function showGuildView(st, t, scr) {
       for (let row = 0; row < 5; row++) {
         const lvl = 5 - row, y = S.y + row * S.row, built = lvl <= Lv, ids = built ? ((t.guild || {})[lvl] || []) : [], n = GUILD_OFFER[lvl] || 1, slotW = (S.w - 34) / 3;
         text(ctx, ROMAN[lvl], S.x + 13, y + 19, { size: 14, align: 'center', color: built ? '#f3e2b0' : '#8a7a60', fam: 'title' });
-        for (let k = 0; k < n; k++) {
+        for (let k = 0; k < (lvl > GM ? 0 : n); k++) {
           const cx = S.x + 34 + slotW * (k + (3 - n) / 2) + slotW / 2, top = y - 4;
           if (built && ids[k]) { const r = { x: cx - 30, y: top - 6, w: 60, h: 74, id: ids[k] }; this.rects.push(r); const hot = !G.popup && mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h;
             if (this.sel === ids[k]) { ctx.strokeStyle = L0.edge; ctx.lineWidth = 2; rr(ctx, r.x - 2, r.y - 2, r.w + 4, r.h + 4, 6); ctx.stroke(); }
             drawScroll(ctx, cx, top, ids[k], hot, h && knows(h, ids[k])); }
           else { ctx.strokeStyle = 'rgba(200,180,140,.35)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.2; rr(ctx, cx - 24, top + 2, 48, 54, 4); ctx.stroke(); ctx.setLineDash([]); text(ctx, '?', cx, top + 29, { size: 20, align: 'center', color: 'rgba(200,180,140,.4)', fam: 'title' }); }
         }
-        if (!built) { const B = BUILD_BY_ID['guild' + lvl], need = B.req.filter(r => !hasB(t, r)).map(r => bInfo(BUILD_BY_ID[r], t.faction).name), msg = `Nie zbudowano: ${bInfo(B, t.faction).name}${need.length ? ` (wymaga: ${need.join(', ')})` : ''}`;
+        if (!built && lvl > GM) { ctx.fillStyle = 'rgba(0,0,0,.6)'; rr(ctx, S.x + 34, y + 58, S.w - 38, 16, 3); ctx.fill(); text(ctx, `${F.name}: gildia tylko do poziomu ${ROMAN[GM]}`, S.x + 34 + (S.w - 38) / 2, y + 66, { size: 11, weight: 600, align: 'center', color: '#c8a0a0' }); }
+        else if (!built) { const B = BUILD_BY_ID['guild' + lvl], need = B.req.filter(r => !hasB(t, r)).map(r => bInfo(BUILD_BY_ID[r], t.faction).name), msg = `Nie zbudowano: ${bInfo(B, t.faction).name}${need.length ? ` (wymaga: ${need.join(', ')})` : ''}`;
           ctx.font = font(11, 600, 'body'); let m2 = msg; while (ctx.measureText(m2).width > S.w - 40 && m2.length > 10) m2 = m2.slice(0, -2); if (m2 !== msg) m2 = m2.slice(0, -1) + '…';
           ctx.fillStyle = 'rgba(0,0,0,.6)'; rr(ctx, S.x + 34, y + 58, S.w - 38, 16, 3); ctx.fill(); text(ctx, m2, S.x + 34 + (S.w - 38) / 2, y + 66, { size: 11, weight: 600, align: 'center', color: '#e0b890' }); }
       }
@@ -363,8 +364,8 @@ function showGuildView(st, t, scr) {
         text(ctx, h ? (knows(h, this.sel) ? `${h.name} zna ten czar.` : `${h.name} jeszcze go nie zna.`) : 'Bohater pozna go, wchodząc do miasta.', tx, ty + 146, { size: 12, italic: true, weight: 600, color: h && knows(h, this.sel) ? '#8ad080' : '#e0b070' });
       } else {
         const all = []; for (let k = 1; k <= Lv; k++) all.push(...((t.guild || {})[k] || [])); const kn = h ? all.filter(id => knows(h, id)).length : 0;
-        text(ctx, `Poziom gildii: ${Lv} z ${GUILD_MAX}`, tx, ty, { size: 16, color: '#f3e2b0', fam: 'title' });
-        const lines = [h ? `${h.name} zna ${kn} z ${all.length} czarów gildii i ma pełną manę.` : 'W mieście nie ma bohatera. Bohater, który tu wejdzie, pozna wszystkie czary gildii i odnowi manę.',
+        text(ctx, `Poziom gildii: ${Lv} z ${GM}`, tx, ty, { size: 16, color: '#f3e2b0', fam: 'title' });
+        const lines = [h ? `${h.name} zna ${kn} z ${all.length} czarów gildii i ma pełną manę.` : 'W mieście nie ma bohatera. Bohater, który tu wejdzie, pozna wszystkie czary gildii i odnowi manę.', `${F.name}: ${magicText(t.faction)}.`,
           next ? `Następny poziom: ${bInfo(next, t.faction).name}${reqMet(t, next) ? '' : ` (wymaga: ${next.req.filter(r => !hasB(t, r)).map(r => bInfo(BUILD_BY_ID[r], t.faction).name).join(', ')})`}.` : 'Gildia jest w pełni rozbudowana.',
           'Kliknij zwój, aby zobaczyć opis czaru.'];
         ctx.font = font(13, 500, 'body'); let yy = ty + 24; for (const para of lines) for (const l of wrapText(ctx, para, tw)) { text(ctx, l, tx, yy, { size: 13, weight: 500, color: para.startsWith('Kliknij') ? '#c8b88a' : '#ecd9a8' }); yy += 17; }

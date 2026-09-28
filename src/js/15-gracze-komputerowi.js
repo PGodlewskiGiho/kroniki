@@ -37,7 +37,7 @@ function takeableArmy(from, to) {
 function aiManageTown(st, p, t) {
   // pierwsza osiągalna z trzech kolejnych budowli z listy (żeby brak rudy na Fort nie wstrzymał wszystkiego)
   if (!t.builtToday) {
-    const next = AI_BUILD_ORDER.map(id => BUILD_BY_ID[id]).filter(B => !hasB(t, B.id) && reqMet(t, B)).slice(0, 3);
+    const next = AI_BUILD_ORDER.map(id => BUILD_BY_ID[id]).filter(B => !hasB(t, B.id) && bAllowed(t, B) && reqMet(t, B)).slice(0, 3);
     const B = next.find(B => canAfford(st, B.cost, p.id)) || (next[0] && buyMissing(st, p.id, next[0].cost) ? next[0] : null); if (B) buildIn(st, t, B);
   }
   const heroes = st.heroes.filter(h => h.owner === p.id);
