@@ -129,6 +129,10 @@
    i ekranu końca gry (tło miasta w skali 1,5, piksel = 3 px ekranu); ikony czarów w gildii jako sprite'y.
    Płynność: miasto, menu i bitwa w 60 klatkach (smoothFps, przy niskiej jakości 30), mapa w spoczynku 30; efekty miasta (dym,
    ptaki, śnieg, żar) rysowane prosto na ekranie w pełnej rozdzielczości, bufor sceny z efektami tylko dla okna gildii.
+   Szkoły magii (SCHOOLS: Ognia, Powietrza, Wody, Ziemi; umiejętności fireMagic/airMagic/waterMagic/earthMagic): spellCost (zniżka
+   SCHOOL_COST), schoolMul (moc SCHOOL_POWER), +poziom rund czarów na oddziały, ekspert = czar na całą armię (massBuff). Nowe czary:
+   Tarcza, Klątwa, Przywołanie łodzi, Lodowy pocisk, Fortuna, Fala śmierci, Pierścień mrozu, Tarcza powietrza, Łańcuch piorunów,
+   Ognista tarcza, Źródło życia; księga czarów z zakładkami szkół i stronami.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.

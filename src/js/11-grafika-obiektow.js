@@ -1106,40 +1106,69 @@ function drawSpellIcon(c, id) {
     case 'resurrection': c.beginPath(); c.moveTo(0, -8); c.lineTo(-6, -1); c.lineTo(-2, -1); c.lineTo(-2, 7); c.lineTo(2, 7); c.lineTo(2, -1); c.lineTo(6, -1); c.closePath(); c.fill(); break;
     case 'implosion': c.lineWidth = 1.6; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; c.beginPath(); c.moveTo(Math.cos(a) * 8, Math.sin(a) * 8); c.lineTo(Math.cos(a) * 3.5, Math.sin(a) * 3.5); c.stroke(); } c.fillStyle = dk; c.beginPath(); c.arc(0, 0, 2.5, 0, TAU); c.fill(); break;
     case 'armageddon': poly([[-8, 7], [-6, -1], [-3, 3], [0, -8], [3, 3], [6, -1], [8, 7]]); c.fillStyle = '#ffd060'; poly([[-4, 7], [0, -1], [4, 7]]); break;
+    case 'shield': poly([[-6, -7], [6, -7], [6, 0], [0, 8], [-6, 0]]); c.fillStyle = dk; c.fillRect(-1, -5, 2, 10); c.fillRect(-4, -2, 8, 2); break;
+    case 'airShield': c.lineWidth = 1.8; for (const r of [3, 5.5, 8]) { c.beginPath(); c.arc(0, 2, r, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); } break;
+    case 'fireShield': poly([[-6, -7], [6, -7], [6, 0], [0, 8], [-6, 0]]); c.fillStyle = '#ffd060'; poly([[-3, 3], [-2, -3], [0, 0], [2, -4], [3, 3]]); break;
+    case 'fortune': c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 6, Math.PI * 0.25, Math.PI * 1.75); c.stroke(); for (const [x, y] of [[-4, -5], [4, -5], [-5, 3], [5, 3]]) { c.beginPath(); c.arc(x, y, 1.3, 0, TAU); c.fill(); } break;
+    case 'curse': c.beginPath(); c.arc(0, -1, 5.5, 0, TAU); c.fill(); c.fillStyle = dk; c.fillRect(-3.5, -3, 2.5, 2.5); c.fillRect(1, -3, 2.5, 2.5); c.lineWidth = 1.6; c.strokeStyle = col; c.beginPath(); c.moveTo(-7, 7); c.lineTo(7, -7); c.stroke(); break;
+    case 'iceBolt': poly([[0, -8], [3, -1], [1, -1], [1, 8], [-1, 8], [-1, -1], [-3, -1]]); c.fillStyle = '#ffffff'; c.fillRect(-0.5, -5, 1, 4); break;
+    case 'frostRing': c.lineWidth = 2.2; c.beginPath(); c.arc(0, 0, 6.5, 0, TAU); c.stroke(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; c.beginPath(); c.arc(Math.cos(a) * 6.5, Math.sin(a) * 6.5, 1.6, 0, TAU); c.fill(); } break;
+    case 'chainLightning': poly([[-2, -8], [-7, 0], [-3, 0], [-5, 7], [0, -1], [-4, -1]]); poly([[5, -8], [1, -1], [4, -1], [2, 7], [7, -1], [4, -1]]); break;
+    case 'massCure': for (const [dx, dy] of [[-4, 2], [4, 2], [0, -4]]) { c.fillRect(dx - 1.2, dy - 4, 2.4, 8); c.fillRect(dx - 4, dy - 1.2, 8, 2.4); } break;
+    case 'deathRipple': c.lineWidth = 1.8; for (const y of [-4, 0, 4]) { c.beginPath(); c.moveTo(-8, y); for (let x = -8; x <= 8; x += 4) c.quadraticCurveTo(x + 1, y - 3, x + 2, y); c.stroke(); } break;
+    case 'summonBoat': poly([[-8, 1], [8, 1], [5, 6], [-5, 6]]); c.fillRect(-0.8, -8, 1.6, 9); poly([[1, -7], [6, 0], [1, 0]]); break;
     case 'massHaste': for (const dx of [-4, 4]) poly([[dx - 4, 2], [dx + 1, -7], [dx, -1], [dx + 4, -2], [dx - 1, 7], [dx, 1]]); break;
   }
 }
+// Dopisek do opisu czaru: co daje umiejętność szkoły bohatera
+const schoolNote = (h, id) => { const L = spellSchoolLv(h, id); return L ? ` ${SKILLS[SCHOOLS[SPELLS[id].school].skill].name} (${SKILL_LEVELS[L]}): koszt −${SCHOOL_COST[L]}%, moc +${SCHOOL_POWER[L]}%${SPELLS[id].buff ? `, +${L} ${L === 1 ? 'runda' : 'rundy'}` : ''}${massBuffable(id) && L >= 3 ? ', działa na całą armię' : ''}.` : ''; };
+const massBuffable = id => !!(SPELLS[id].buff && (SPELLS[id].target === 'ally' || SPELLS[id].target === 'enemy'));
 const spellSprite = id => sprite(`sp_${id}`, 16, 16, 8, 8, p => drawSpellIcon(p, id));
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
 function showSpellbook(h, mode, onPick) {
-  const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), list = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
-  const cols = list.length > 14 ? 3 : 2, cw = (w - 48) / cols, fs = cols > 2 ? 13 : 15, rh = cols > 2 ? 44 : 50; // przy wielu czarach trzy kolumny
-  const cell = i => ({ x: x + 24 + (i % cols) * cw, y: y + 76 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
-  const usable = id => mode !== 'view' && SPELLS[id].kind === mode && SPELLS[id].cost <= h.mana;
+  // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły
+  const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
+  const cols = 3, cw = (w - 48) / cols, rh = 44, PER = 18, tabs = [null, ...Object.keys(SCHOOLS)];
+  let school = null, page = 0, hover = -1;
+  const side = d => (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 4 * d, cy - 8); ctx.lineTo(cx - 4 * d, cy + 8); ctx.lineTo(cx + 5 * d, cy); ctx.closePath(); ctx.fill(); };
+  const list = () => all.filter(id => !school || SPELLS[id].school === school), pages = () => Math.max(1, Math.ceil(list().length / PER)), shown = () => list().slice(page * PER, page * PER + PER);
+  const cell = i => ({ x: x + 24 + (i % cols) * cw, y: y + 104 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
+  const usable = id => mode !== 'view' && SPELLS[id].kind === mode && spellCost(h, id) <= h.mana;
   const close = new Button(W / 2 - 70, y + hh - 54, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
-  let hover = -1;
+  const prev = new Button(W / 2 - 124, y + hh - 50, 44, 32, 'Poprzednia strona', () => { page = Math.max(0, page - 1); }, { icon: side(-1), key: 'arrowleft', tip: 'Poprzednia strona księgi.' });
+  const next = new Button(W / 2 + 80, y + hh - 50, 44, 32, 'Następna strona', () => { page = Math.min(pages() - 1, page + 1); }, { icon: side(1), key: 'arrowright', tip: 'Następna strona księgi.' });
+  const tabBtns = tabs.map((sc, i) => new Button(x + 24 + i * 108, y + 68, 102, 28, sc ? SCHOOLS[sc].tab : 'Wszystkie', () => { school = sc; page = 0; },
+    { size: 13, selected: () => school === sc, tip: sc ? `Czary magii ${SCHOOLS[sc].name}${heroSkill(h, SCHOOLS[sc].skill) ? ` (${SKILLS[SCHOOLS[sc].skill].name}: ${SKILL_LEVELS[heroSkill(h, SCHOOLS[sc].skill)]})` : ''}.` : 'Wszystkie znane czary.' }));
+  const at = (px, py) => shown().findIndex((id, k) => inRect(px, py, cell(k)));
   G.modal = {
-    buttons: [close],
-    onClick(px, py) { const i = list.findIndex((id, k) => inRect(px, py, cell(k))); if (i >= 0 && usable(list[i])) { G.modal = null; onPick(list[i]); } },
-    rightInfo(px, py) { const i = list.findIndex((id, k) => inRect(px, py, cell(k))); if (i < 0) return null; const S = SPELLS[list[i]]; return `${S.name} (poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${S.cost} many): ${S.desc(sp)}.`; },
+    buttons: [close, prev, next, ...tabBtns],
+    onClick(px, py) { const i = at(px, py), id = shown()[i]; if (i >= 0 && usable(id)) { G.modal = null; onPick(id); } },
+    rightInfo(px, py) { const i = at(px, py); if (i < 0) return null; const id = shown()[i], S = SPELLS[id]; return `${S.name} (magia ${SCHOOLS[S.school].name}, poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${spellCost(h, id)} many): ${S.desc(sp)}.${schoolNote(h, id)}`; },
     draw(ctx) {
-      hover = list.findIndex((id, k) => inRect(G.mouse.x, G.mouse.y, cell(k)));
+      page = Math.min(page, pages() - 1); prev.disabled = page === 0; next.disabled = page >= pages() - 1;
+      const L = shown(); hover = at(G.mouse.x, G.mouse.y);
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
-      text(ctx, 'Księga czarów', W / 2, y + 34, { size: 26, align: 'center', color: '#3a1e08', fam: 'title' });
-      text(ctx, `${h.name} · mana ${h.mana} / ${heroMaxMana(h)} · moc czarów ${sp}`, W / 2, y + 58, { size: 14, weight: 500, align: 'center', color: '#5a3814' });
-      if (!list.length) text(ctx, 'Bohater nie zna jeszcze żadnych czarów. Odwiedź miasto z gildią magów.', W / 2, y + 200, { size: 15, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
-      list.forEach((id, i) => {
+      text(ctx, 'Księga czarów', W / 2, y + 30, { size: 26, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, `${h.name} · mana ${h.mana} / ${heroMaxMana(h)} · moc czarów ${sp}`, W / 2, y + 54, { size: 14, weight: 500, align: 'center', color: '#5a3814' });
+      tabBtns.forEach((b, i) => { b.draw(ctx); if (tabs[i]) { ctx.fillStyle = SCHOOLS[tabs[i]].col; ctx.fillRect(b.x + 6, b.y + b.h - 5, b.w - 12, 2); } });
+      if (!all.length) text(ctx, 'Bohater nie zna jeszcze żadnych czarów. Odwiedź miasto z gildią magów.', W / 2, y + 220, { size: 15, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
+      else if (!L.length) text(ctx, `Bohater nie zna czarów magii ${SCHOOLS[school].name}.`, W / 2, y + 220, { size: 15, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
+      L.forEach((id, i) => {
         const r = cell(i), S = SPELLS[id], ok = usable(id);
         ctx.fillStyle = ok && hover === i ? 'rgba(160,100,30,.3)' : 'rgba(90,55,20,.12)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
+        ctx.fillStyle = SCHOOLS[S.school].col; ctx.fillRect(r.x, r.y + 4, 3, r.h - 8);
         ctx.save(); if (mode !== 'view' && !ok) ctx.globalAlpha = 0.45;
         drawSprite(ctx, spellSprite(id), r.x + 24, r.y + r.h / 2, 1);
+        ctx.font = font(13, 700, 'title'); let fs = 13; while (fs > 10 && ctx.measureText(S.name).width > r.w - 50) { fs--; ctx.font = font(fs, 700, 'title'); }
         text(ctx, S.name, r.x + 46, r.y + r.h / 2 - 7, { size: fs, color: '#2a1606', fam: 'title' });
-        text(ctx, cols > 2 ? `${S.level} poz. · ${S.cost} many` : `${S.level} poz. · ${S.cost} many · ${S.kind === 'battle' ? 'bitwa' : 'mapa'}`, r.x + 46, r.y + r.h / 2 + 11, { size: 12, weight: 500, color: '#5a3814' });
+        const c0 = spellCost(h, id);
+        text(ctx, `${S.level} poz. · ${c0} many${c0 < S.cost ? ' ↓' : ''}`, r.x + 46, r.y + r.h / 2 + 11, { size: 12, weight: 500, color: c0 < S.cost ? '#2a6a1e' : '#5a3814' });
         ctx.restore();
       });
-      const hs = hover >= 0 ? SPELLS[list[hover]] : null;
-      text(ctx, hs ? `${hs.name}: ${hs.desc(sp)}.` : mode === 'view' ? 'Prawy przycisk na czarze: pełny opis.' : `Kliknij czar, aby go rzucić (${mode === 'battle' ? 'jeden na rundę' : 'na mapie'}).`,
+      const hs = hover >= 0 ? L[hover] : null;
+      text(ctx, hs ? `${SPELLS[hs].name}: ${SPELLS[hs].desc(sp)}.` : mode === 'view' ? 'Prawy przycisk na czarze: pełny opis.' : `Kliknij czar, aby go rzucić (${mode === 'battle' ? 'jeden na rundę' : 'na mapie'}).`,
         W / 2, y + hh - 76, { size: 13, italic: true, weight: 500, align: 'center', color: '#6a4418' });
+      if (pages() > 1) { prev.draw(ctx); next.draw(ctx); text(ctx, `strona ${page + 1}/${pages()}`, W / 2 + 170, y + hh - 34, { size: 12, weight: 600, align: 'center', color: '#5a3814' }); }
       close.draw(ctx);
     },
   };

@@ -3,29 +3,50 @@
 // 'hex' (pole i sąsiedzi), 'all' (wszystkie oddziały na polu bitwy), 'allies' (wszyscy swoi), 'none' (czar mapy).
 // sp = moc czarów bohatera; efekty liczą funkcje w polach dmg/heal/rounds, opis w desc(sp).
 const SPELL_ROUNDS = sp => Math.max(1, sp + 1);
-const SPELLS = {
-  magicArrow: { name: 'Magiczna strzała', level: 1, cost: 5, kind: 'battle', target: 'enemy', col: '#8ac0ff', dmg: sp => 10 + 10 * sp, desc: sp => `${10 + 10 * sp} obrażeń jednemu wrogowi` },
-  bless: { name: 'Błogosławieństwo', level: 1, cost: 5, kind: 'battle', target: 'ally', col: '#ffe08a', buff: 'bless', desc: sp => `sojusznik zadaje najwyższe obrażenia przez ${SPELL_ROUNDS(sp)} rund` },
-  stoneSkin: { name: 'Kamienna skóra', level: 1, cost: 5, kind: 'battle', target: 'ally', col: '#b8a888', buff: 'stoneSkin', desc: sp => `+3 do obrony sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
-  haste: { name: 'Przyspieszenie', level: 1, cost: 6, kind: 'battle', target: 'ally', col: '#a8f0ff', buff: 'haste', desc: sp => `+3 do szybkości sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
-  cure: { name: 'Uzdrowienie', level: 1, cost: 6, kind: 'battle', target: 'ally', col: '#8af07a', heal: sp => 10 + 5 * sp, desc: sp => `leczy ${10 + 5 * sp} życia i zdejmuje złe czary` },
-  slow: { name: 'Spowolnienie', level: 1, cost: 6, kind: 'battle', target: 'enemy', col: '#9a8ac8', buff: 'slow', desc: sp => `−3 do szybkości wroga przez ${SPELL_ROUNDS(sp)} rund` },
-  eagleEye: { name: 'Sokole oko', level: 1, cost: 4, kind: 'adv', target: 'none', col: '#f0c040', desc: sp => `odsłania mapę w promieniu ${5 + sp} pól wokół bohatera` },
-  lightningBolt: { name: 'Błyskawica', level: 2, cost: 10, kind: 'battle', target: 'enemy', col: '#c8e0ff', dmg: sp => 25 + 20 * sp, desc: sp => `${25 + 20 * sp} obrażeń jednemu wrogowi` },
-  weakness: { name: 'Osłabienie', level: 2, cost: 8, kind: 'battle', target: 'enemy', col: '#a8a878', buff: 'weakness', desc: sp => `−3 do ataku wroga przez ${SPELL_ROUNDS(sp)} rund` },
-  bloodlust: { name: 'Żądza krwi', level: 2, cost: 7, kind: 'battle', target: 'ally', col: '#ff6a5a', buff: 'bloodlust', desc: sp => `+3 do ataku sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
-  fireball: { name: 'Kula ognia', level: 3, cost: 15, kind: 'battle', target: 'hex', col: '#ff8a2a', dmg: sp => 15 + 10 * sp, desc: sp => `${15 + 10 * sp} obrażeń na polu i wokół niego (także swoim!)` },
-  animateDead: { name: 'Ożywienie umarłych', level: 3, cost: 15, kind: 'battle', target: 'undeadAlly', col: '#a6f0a8', heal: sp => 30 + 50 * sp, raise: true, desc: sp => `przywraca ${30 + 50 * sp} życia nieumarłym, także poległym w tej bitwie` },
-  townPortal: { name: 'Powrót do miasta', level: 3, cost: 16, kind: 'adv', target: 'none', col: '#c8a0ff', desc: () => 'przenosi bohatera do najbliższego własnego miasta (kosztuje 300 punktów ruchu)' },
-  meteorShower: { name: 'Deszcz meteorów', level: 4, cost: 16, kind: 'battle', target: 'hex', col: '#ff6a3a', dmg: sp => 25 + 25 * sp, desc: sp => `${25 + 25 * sp} obrażeń na polu i wokół niego (także swoim!)` },
-  prayer: { name: 'Modlitwa', level: 4, cost: 16, kind: 'battle', target: 'ally', col: '#fff0b0', buff: 'prayer', desc: sp => `+2 do ataku, obrony i szybkości sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
-  resurrection: { name: 'Wskrzeszenie', level: 4, cost: 20, kind: 'battle', target: 'livingAlly', col: '#fff8d0', heal: sp => 40 + 20 * sp, raise: true, desc: sp => `przywraca ${40 + 20 * sp} życia żywym sojusznikom, także poległym w tej bitwie` },
-  implosion: { name: 'Implozja', level: 5, cost: 30, kind: 'battle', target: 'enemy', col: '#c05aff', dmg: sp => 100 + 75 * sp, desc: sp => `${100 + 75 * sp} obrażeń jednemu wrogowi` },
-  armageddon: { name: 'Armagedon', level: 5, cost: 24, kind: 'battle', target: 'all', col: '#ff4a1a', dmg: sp => 30 + 50 * sp, desc: sp => `${30 + 50 * sp} obrażeń każdemu oddziałowi na polu bitwy, także swoim` },
-  massHaste: { name: 'Przyspieszenie armii', level: 5, cost: 20, kind: 'battle', target: 'allies', col: '#a8f0ff', buff: 'haste', desc: sp => `+3 do szybkości wszystkich sojuszników przez ${SPELL_ROUNDS(sp)} rund` },
+// Szkoły magii jak w Heroes 3: umiejętność szkoły (Magia Ognia, Powietrza, Wody, Ziemi) obniża koszt czarów tej szkoły,
+// wzmacnia obrażenia i leczenie, wydłuża czary na oddziały, a na poziomie eksperckim czar na jeden oddział działa na całą armię.
+const SCHOOLS = {
+  fire: { name: 'Ognia', tab: 'Ogień', skill: 'fireMagic', col: '#e8602a' }, air: { name: 'Powietrza', tab: 'Powietrze', skill: 'airMagic', col: '#8ac8ff' },
+  water: { name: 'Wody', tab: 'Woda', skill: 'waterMagic', col: '#4a9ae0' }, earth: { name: 'Ziemi', tab: 'Ziemia', skill: 'earthMagic', col: '#a8864a' },
 };
-const BUFF_NAMES = { bless: 'błogosławieństwo', stoneSkin: 'kamienna skóra', haste: 'przyspieszenie', slow: 'spowolnienie', weakness: 'osłabienie', bloodlust: 'żądza krwi', prayer: 'modlitwa' };
-const BAD_BUFFS = ['slow', 'weakness'];
+// Tarcza i Tarcza powietrza: o tyle % mniej obrażeń; Ognista tarcza: tyle % obrażeń wraca do napastnika; Łańcuch: przeskoki
+const SHIELD_CUT = 30, FIRE_SHIELD = 20, CHAIN_JUMPS = 3;
+const SPELLS = {
+  magicArrow: { name: 'Magiczna strzała', school: 'air', level: 1, cost: 5, kind: 'battle', target: 'enemy', col: '#8ac0ff', dmg: sp => 10 + 10 * sp, desc: sp => `${10 + 10 * sp} obrażeń jednemu wrogowi` },
+  bless: { name: 'Błogosławieństwo', school: 'water', level: 1, cost: 5, kind: 'battle', target: 'ally', col: '#ffe08a', buff: 'bless', desc: sp => `sojusznik zadaje najwyższe obrażenia przez ${SPELL_ROUNDS(sp)} rund` },
+  stoneSkin: { name: 'Kamienna skóra', school: 'earth', level: 1, cost: 5, kind: 'battle', target: 'ally', col: '#b8a888', buff: 'stoneSkin', desc: sp => `+3 do obrony sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  haste: { name: 'Przyspieszenie', school: 'air', level: 1, cost: 6, kind: 'battle', target: 'ally', col: '#a8f0ff', buff: 'haste', desc: sp => `+3 do szybkości sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  cure: { name: 'Uzdrowienie', school: 'water', level: 1, cost: 6, kind: 'battle', target: 'ally', col: '#8af07a', heal: sp => 10 + 5 * sp, desc: sp => `leczy ${10 + 5 * sp} życia i zdejmuje złe czary` },
+  slow: { name: 'Spowolnienie', school: 'earth', level: 1, cost: 6, kind: 'battle', target: 'enemy', col: '#9a8ac8', buff: 'slow', desc: sp => `−3 do szybkości wroga przez ${SPELL_ROUNDS(sp)} rund` },
+  shield: { name: 'Tarcza', school: 'earth', level: 1, cost: 5, kind: 'battle', target: 'ally', col: '#d0b070', buff: 'shield', desc: sp => `sojusznik otrzymuje o ${SHIELD_CUT}% mniej obrażeń w walce wręcz przez ${SPELL_ROUNDS(sp)} rund` },
+  eagleEye: { name: 'Sokole oko', school: 'air', level: 1, cost: 4, kind: 'adv', target: 'none', col: '#f0c040', desc: sp => `odsłania mapę w promieniu ${5 + sp} pól wokół bohatera` },
+  summonBoat: { name: 'Przywołanie łodzi', school: 'water', level: 1, cost: 7, kind: 'adv', target: 'none', col: '#6ab0e8', desc: () => 'łódź pojawia się na wodzie tuż przy bohaterze (bohater musi stać na brzegu)' },
+  lightningBolt: { name: 'Błyskawica', school: 'air', level: 2, cost: 10, kind: 'battle', target: 'enemy', col: '#c8e0ff', dmg: sp => 25 + 20 * sp, desc: sp => `${25 + 20 * sp} obrażeń jednemu wrogowi` },
+  iceBolt: { name: 'Lodowy pocisk', school: 'water', level: 2, cost: 8, kind: 'battle', target: 'enemy', col: '#9ad8ff', dmg: sp => 20 + 20 * sp, desc: sp => `${20 + 20 * sp} obrażeń jednemu wrogowi` },
+  weakness: { name: 'Osłabienie', school: 'water', level: 2, cost: 8, kind: 'battle', target: 'enemy', col: '#a8a878', buff: 'weakness', desc: sp => `−3 do ataku wroga przez ${SPELL_ROUNDS(sp)} rund` },
+  bloodlust: { name: 'Żądza krwi', school: 'fire', level: 2, cost: 7, kind: 'battle', target: 'ally', col: '#ff6a5a', buff: 'bloodlust', desc: sp => `+3 do ataku sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  fortune: { name: 'Fortuna', school: 'air', level: 2, cost: 7, kind: 'battle', target: 'ally', col: '#8af0c0', buff: 'fortune', desc: sp => `+2 do szczęścia sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  deathRipple: { name: 'Fala śmierci', school: 'earth', level: 2, cost: 10, kind: 'battle', target: 'all', spare: 'undead', col: '#8a9a6a', dmg: sp => 5 + 5 * sp, desc: sp => `${5 + 5 * sp} obrażeń każdemu żywemu oddziałowi na polu bitwy (także swoim), nieumarłych oszczędza` },
+  fireball: { name: 'Kula ognia', school: 'fire', level: 3, cost: 15, kind: 'battle', target: 'hex', col: '#ff8a2a', dmg: sp => 15 + 10 * sp, desc: sp => `${15 + 10 * sp} obrażeń na polu i wokół niego (także swoim!)` },
+  frostRing: { name: 'Pierścień mrozu', school: 'water', level: 3, cost: 12, kind: 'battle', target: 'ring', col: '#bfe8ff', dmg: sp => 15 + 10 * sp, desc: sp => `${15 + 10 * sp} obrażeń na polach wokół wskazanego (środek bezpieczny)` },
+  curse: { name: 'Klątwa', school: 'fire', level: 1, cost: 6, kind: 'battle', target: 'enemy', col: '#b04a8a', buff: 'curse', desc: sp => `wróg zadaje najniższe obrażenia przez ${SPELL_ROUNDS(sp)} rund` },
+  airShield: { name: 'Tarcza powietrza', school: 'air', level: 3, cost: 12, kind: 'battle', target: 'ally', col: '#d0f0ff', buff: 'airShield', desc: sp => `sojusznik otrzymuje o ${SHIELD_CUT}% mniej obrażeń od strzał przez ${SPELL_ROUNDS(sp)} rund` },
+  animateDead: { name: 'Ożywienie umarłych', school: 'earth', level: 3, cost: 15, kind: 'battle', target: 'undeadAlly', col: '#a6f0a8', heal: sp => 30 + 50 * sp, raise: true, desc: sp => `przywraca ${30 + 50 * sp} życia nieumarłym, także poległym w tej bitwie` },
+  townPortal: { name: 'Powrót do miasta', school: 'earth', level: 3, cost: 16, kind: 'adv', target: 'none', col: '#c8a0ff', desc: () => 'przenosi bohatera do najbliższego własnego miasta (kosztuje 300 punktów ruchu)' },
+  meteorShower: { name: 'Deszcz meteorów', school: 'earth', level: 4, cost: 16, kind: 'battle', target: 'hex', col: '#ff6a3a', dmg: sp => 25 + 25 * sp, desc: sp => `${25 + 25 * sp} obrażeń na polu i wokół niego (także swoim!)` },
+  chainLightning: { name: 'Łańcuch piorunów', school: 'air', level: 4, cost: 24, kind: 'battle', target: 'enemy', chain: CHAIN_JUMPS, col: '#e0ecff', dmg: sp => 25 + 40 * sp,
+    desc: sp => `${25 + 40 * sp} obrażeń wrogowi, potem przeskakuje na ${CHAIN_JUMPS} najbliższe oddziały (każdy za połowę poprzednich; także swoje!)` },
+  fireShield: { name: 'Ognista tarcza', school: 'fire', level: 4, cost: 16, kind: 'battle', target: 'ally', col: '#ff9a3a', buff: 'fireShield', desc: sp => `kto uderzy sojusznika wręcz, sam dostaje ${FIRE_SHIELD}% zadanych obrażeń (${SPELL_ROUNDS(sp)} rund)` },
+  prayer: { name: 'Modlitwa', school: 'water', level: 4, cost: 16, kind: 'battle', target: 'ally', col: '#fff0b0', buff: 'prayer', desc: sp => `+2 do ataku, obrony i szybkości sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  resurrection: { name: 'Wskrzeszenie', school: 'earth', level: 4, cost: 20, kind: 'battle', target: 'livingAlly', col: '#fff8d0', heal: sp => 40 + 20 * sp, raise: true, desc: sp => `przywraca ${40 + 20 * sp} życia żywym sojusznikom, także poległym w tej bitwie` },
+  implosion: { name: 'Implozja', school: 'earth', level: 5, cost: 30, kind: 'battle', target: 'enemy', col: '#c05aff', dmg: sp => 100 + 75 * sp, desc: sp => `${100 + 75 * sp} obrażeń jednemu wrogowi` },
+  armageddon: { name: 'Armagedon', school: 'fire', level: 5, cost: 24, kind: 'battle', target: 'all', col: '#ff4a1a', dmg: sp => 30 + 50 * sp, desc: sp => `${30 + 50 * sp} obrażeń każdemu oddziałowi na polu bitwy, także swoim` },
+  massHaste: { name: 'Przyspieszenie armii', school: 'air', level: 5, cost: 20, kind: 'battle', target: 'allies', col: '#a8f0ff', buff: 'haste', desc: sp => `+3 do szybkości wszystkich sojuszników przez ${SPELL_ROUNDS(sp)} rund` },
+  massCure: { name: 'Źródło życia', school: 'water', level: 5, cost: 22, kind: 'battle', target: 'allies', col: '#7ae8c8', heal: sp => 20 + 15 * sp, desc: sp => `leczy ${20 + 15 * sp} życia wszystkim sojusznikom i zdejmuje z nich złe czary` },
+};
+const BUFF_NAMES = { bless: 'błogosławieństwo', stoneSkin: 'kamienna skóra', haste: 'przyspieszenie', slow: 'spowolnienie', weakness: 'osłabienie', bloodlust: 'żądza krwi', prayer: 'modlitwa',
+  shield: 'tarcza', fortune: 'fortuna', curse: 'klątwa', airShield: 'tarcza powietrza', fireShield: 'ognista tarcza' };
+const BAD_BUFFS = ['slow', 'weakness', 'curse'];
 // Ile czarów danego poziomu oferuje gildia
 const GUILD_OFFER = { 1: 3, 2: 2, 3: 2, 4: 2, 5: 1 };
 const GUILD_MAX = 5;

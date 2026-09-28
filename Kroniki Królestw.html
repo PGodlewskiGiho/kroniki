@@ -152,6 +152,10 @@ canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none
    i ekranu końca gry (tło miasta w skali 1,5, piksel = 3 px ekranu); ikony czarów w gildii jako sprite'y.
    Płynność: miasto, menu i bitwa w 60 klatkach (smoothFps, przy niskiej jakości 30), mapa w spoczynku 30; efekty miasta (dym,
    ptaki, śnieg, żar) rysowane prosto na ekranie w pełnej rozdzielczości, bufor sceny z efektami tylko dla okna gildii.
+   Szkoły magii (SCHOOLS: Ognia, Powietrza, Wody, Ziemi; umiejętności fireMagic/airMagic/waterMagic/earthMagic): spellCost (zniżka
+   SCHOOL_COST), schoolMul (moc SCHOOL_POWER), +poziom rund czarów na oddziały, ekspert = czar na całą armię (massBuff). Nowe czary:
+   Tarcza, Klątwa, Przywołanie łodzi, Lodowy pocisk, Fortuna, Fala śmierci, Pierścień mrozu, Tarcza powietrza, Łańcuch piorunów,
+   Ognista tarcza, Źródło życia; księga czarów z zakładkami szkół i stronami.
    Grafika po krokach 8–12: portrety bohaterów w pixel arcie (drawHeroPortrait, własny wygląd każdego bohatera
    w HERO_LOOKS), mury oblężenia jako jeden sprite (castleSprite: kurtyna z blankami, brama między basztami,
    okrągłe wieże z gankiem; wyłom to dziura z gruzem), bruk dziedzińca w tle bitwy.
@@ -750,6 +754,10 @@ const CLASS_GROWTH = {
 };
 // Umiejętności drugorzędne (jak w oryginale): bohater ma ich najwyżej MAX_SKILLS, każdą na poziomie 1–3.
 // v: wartość na poziomach 1–3 (działanie w ZASADY GRY i BITWA: ZASADY), desc: opis dla wartości.
+// Szkoła magii na poziomie v (1–3): koszt −SCHOOL_COST[v]%, obrażenia i leczenie +SCHOOL_POWER[v]%, czary na oddziały +v rund,
+// eksperckie: czar na jeden oddział działa na wszystkie oddziały tej strony (jak w Heroes 3)
+const SCHOOL_COST = [0, 15, 25, 35], SCHOOL_POWER = [0, 10, 20, 30];
+const schoolDesc = v => `czary szkoły tańsze o ${SCHOOL_COST[v]}%, mocniejsze o ${SCHOOL_POWER[v]}%, dłuższe o ${v} ${v === 1 ? 'rundę' : 'rundy'}${v >= 3 ? '; czary na jeden oddział działają na całą armię' : ''}`;
 const MAX_SKILLS = 8, SKILL_LEVELS = ['', 'podstawowe', 'zaawansowane', 'eksperckie'];
 const SKILLS = {
   leadership: { name: 'Przywództwo', v: [1, 2, 3], desc: v => `+${v} do morale armii` },
@@ -772,6 +780,10 @@ const SKILLS = {
   firstAid: { name: 'Pierwsza pomoc', v: [50, 75, 100], desc: v => `namiot medyka leczy do ${v} punktów życia` },
   ballistics: { name: 'Balistyka', v: [85, 95, 100], desc: v => `katapulta trafia w mury w ${v}% strzałów` },
   resistance: { name: 'Odporność', v: [5, 10, 20], desc: v => `${v}% szans, że czar wroga nie zadziała na oddział` },
+  fireMagic: { name: 'Magia Ognia', v: [1, 2, 3], school: 'fire', desc: v => schoolDesc(v) },
+  airMagic: { name: 'Magia Powietrza', v: [1, 2, 3], school: 'air', desc: v => schoolDesc(v) },
+  waterMagic: { name: 'Magia Wody', v: [1, 2, 3], school: 'water', desc: v => schoolDesc(v) },
+  earthMagic: { name: 'Magia Ziemi', v: [1, 2, 3], school: 'earth', desc: v => schoolDesc(v) },
   eagleSight: { name: 'Orle oko', v: [40, 50, 60], desc: v => `${v}% szans na naukę czaru rzuconego przez wroga (do ${v / 10 - 2}. poziomu)` },
 };
 // Magowie zaczynają z Mądrością (jak w oryginale): bez niej bohater zna czary najwyżej 2. poziomu
@@ -791,22 +803,22 @@ const NECRO_CLASSES = ['deathKnight', 'necro'];
 const MAGE_CLASSES = ['cleric', 'druid', 'necro', 'witch', 'heretic', 'wizard', 'warlock'];
 // Umiejętności, które klasa dostaje przy awansie częściej (jak w oryginale: rycerz rzadko uczy się magii, mag walki)
 const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance'];
-const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting'];
+const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting', 'fireMagic', 'airMagic', 'waterMagic', 'earthMagic'];
 const CLASS_SKILL_PREF = {
-  knight: ['leadership', 'offense', 'armorer', 'artillery'], cleric: ['wisdom', 'eagleSight', 'mysticism', 'estates'],
-  ranger: ['archery', 'pathfinding', 'luck', 'scouting'], druid: ['wisdom', 'intelligence', 'luck', 'eagleSight'],
-  deathKnight: ['offense', 'armorer', 'resistance', 'necromancy'], necro: ['wisdom', 'intelligence', 'eagleSight', 'necromancy'],
-  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid'], witch: ['wisdom', 'eagleSight', 'navigation', 'intelligence'],
-  demoniac: ['offense', 'artillery', 'ballistics', 'resistance'], heretic: ['wisdom', 'sorcery', 'intelligence', 'learning'],
-  alchemist: ['artillery', 'ballistics', 'wisdom', 'firstAid'], wizard: ['wisdom', 'intelligence', 'eagleSight', 'sorcery'],
-  overlord: ['leadership', 'offense', 'resistance', 'scouting'], warlock: ['wisdom', 'sorcery', 'intelligence', 'eagleSight'],
-  barbarian: ['offense', 'resistance', 'armorer', 'ballistics'], battleMage: ['offense', 'wisdom', 'sorcery', 'artillery'],
+  knight: ['leadership', 'offense', 'armorer', 'artillery'], cleric: ['wisdom', 'waterMagic', 'mysticism', 'estates'],
+  ranger: ['archery', 'pathfinding', 'luck', 'scouting'], druid: ['wisdom', 'earthMagic', 'waterMagic', 'intelligence'],
+  deathKnight: ['offense', 'armorer', 'resistance', 'necromancy'], necro: ['wisdom', 'earthMagic', 'intelligence', 'necromancy'],
+  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid'], witch: ['wisdom', 'eagleSight', 'waterMagic', 'intelligence'],
+  demoniac: ['offense', 'artillery', 'ballistics', 'resistance'], heretic: ['wisdom', 'fireMagic', 'sorcery', 'intelligence'],
+  alchemist: ['artillery', 'ballistics', 'wisdom', 'earthMagic'], wizard: ['wisdom', 'airMagic', 'intelligence', 'sorcery'],
+  overlord: ['leadership', 'offense', 'resistance', 'scouting'], warlock: ['wisdom', 'fireMagic', 'sorcery', 'intelligence'],
+  barbarian: ['offense', 'resistance', 'armorer', 'ballistics'], battleMage: ['offense', 'wisdom', 'fireMagic', 'artillery'],
 };
 // Waga umiejętności w losowaniu przy awansie: ulubione klasy ×4, magiczne u wojowników i bojowe u magów ×0,5
 const skillWeight = (cls, id) => (CLASS_SKILL_PREF[cls] || []).includes(id) ? 4 : (MAGE_CLASSES.includes(cls) ? MIGHT_SKILLS : MAGIC_SKILLS).includes(id) ? 0.5 : 1;
 // Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
 const AI_SKILL_ORDER = ['offense', 'necromancy', 'wisdom', 'leadership', 'armorer', 'archery', 'logistics', 'resistance', 'luck', 'artillery', 'pathfinding', 'estates', 'sorcery',
-  'intelligence', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'navigation', 'scouting'];
+  'earthMagic', 'fireMagic', 'airMagic', 'waterMagic', 'intelligence', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'navigation', 'scouting'];
 
 // Specjalności bohaterów (jak w oryginale), rosną z poziomem bohatera:
 // dw: stwory z siedliska tego poziomu (i ulepszone) dostają +5% ataku i obrony za każdy poziom bohatera na poziom stwora, +1 szybkości;
@@ -878,29 +890,50 @@ const artInfo = id => { const A = ARTIFACTS[id]; return `${A.name} (${RARITY[A.r
 // 'hex' (pole i sąsiedzi), 'all' (wszystkie oddziały na polu bitwy), 'allies' (wszyscy swoi), 'none' (czar mapy).
 // sp = moc czarów bohatera; efekty liczą funkcje w polach dmg/heal/rounds, opis w desc(sp).
 const SPELL_ROUNDS = sp => Math.max(1, sp + 1);
-const SPELLS = {
-  magicArrow: { name: 'Magiczna strzała', level: 1, cost: 5, kind: 'battle', target: 'enemy', col: '#8ac0ff', dmg: sp => 10 + 10 * sp, desc: sp => `${10 + 10 * sp} obrażeń jednemu wrogowi` },
-  bless: { name: 'Błogosławieństwo', level: 1, cost: 5, kind: 'battle', target: 'ally', col: '#ffe08a', buff: 'bless', desc: sp => `sojusznik zadaje najwyższe obrażenia przez ${SPELL_ROUNDS(sp)} rund` },
-  stoneSkin: { name: 'Kamienna skóra', level: 1, cost: 5, kind: 'battle', target: 'ally', col: '#b8a888', buff: 'stoneSkin', desc: sp => `+3 do obrony sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
-  haste: { name: 'Przyspieszenie', level: 1, cost: 6, kind: 'battle', target: 'ally', col: '#a8f0ff', buff: 'haste', desc: sp => `+3 do szybkości sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
-  cure: { name: 'Uzdrowienie', level: 1, cost: 6, kind: 'battle', target: 'ally', col: '#8af07a', heal: sp => 10 + 5 * sp, desc: sp => `leczy ${10 + 5 * sp} życia i zdejmuje złe czary` },
-  slow: { name: 'Spowolnienie', level: 1, cost: 6, kind: 'battle', target: 'enemy', col: '#9a8ac8', buff: 'slow', desc: sp => `−3 do szybkości wroga przez ${SPELL_ROUNDS(sp)} rund` },
-  eagleEye: { name: 'Sokole oko', level: 1, cost: 4, kind: 'adv', target: 'none', col: '#f0c040', desc: sp => `odsłania mapę w promieniu ${5 + sp} pól wokół bohatera` },
-  lightningBolt: { name: 'Błyskawica', level: 2, cost: 10, kind: 'battle', target: 'enemy', col: '#c8e0ff', dmg: sp => 25 + 20 * sp, desc: sp => `${25 + 20 * sp} obrażeń jednemu wrogowi` },
-  weakness: { name: 'Osłabienie', level: 2, cost: 8, kind: 'battle', target: 'enemy', col: '#a8a878', buff: 'weakness', desc: sp => `−3 do ataku wroga przez ${SPELL_ROUNDS(sp)} rund` },
-  bloodlust: { name: 'Żądza krwi', level: 2, cost: 7, kind: 'battle', target: 'ally', col: '#ff6a5a', buff: 'bloodlust', desc: sp => `+3 do ataku sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
-  fireball: { name: 'Kula ognia', level: 3, cost: 15, kind: 'battle', target: 'hex', col: '#ff8a2a', dmg: sp => 15 + 10 * sp, desc: sp => `${15 + 10 * sp} obrażeń na polu i wokół niego (także swoim!)` },
-  animateDead: { name: 'Ożywienie umarłych', level: 3, cost: 15, kind: 'battle', target: 'undeadAlly', col: '#a6f0a8', heal: sp => 30 + 50 * sp, raise: true, desc: sp => `przywraca ${30 + 50 * sp} życia nieumarłym, także poległym w tej bitwie` },
-  townPortal: { name: 'Powrót do miasta', level: 3, cost: 16, kind: 'adv', target: 'none', col: '#c8a0ff', desc: () => 'przenosi bohatera do najbliższego własnego miasta (kosztuje 300 punktów ruchu)' },
-  meteorShower: { name: 'Deszcz meteorów', level: 4, cost: 16, kind: 'battle', target: 'hex', col: '#ff6a3a', dmg: sp => 25 + 25 * sp, desc: sp => `${25 + 25 * sp} obrażeń na polu i wokół niego (także swoim!)` },
-  prayer: { name: 'Modlitwa', level: 4, cost: 16, kind: 'battle', target: 'ally', col: '#fff0b0', buff: 'prayer', desc: sp => `+2 do ataku, obrony i szybkości sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
-  resurrection: { name: 'Wskrzeszenie', level: 4, cost: 20, kind: 'battle', target: 'livingAlly', col: '#fff8d0', heal: sp => 40 + 20 * sp, raise: true, desc: sp => `przywraca ${40 + 20 * sp} życia żywym sojusznikom, także poległym w tej bitwie` },
-  implosion: { name: 'Implozja', level: 5, cost: 30, kind: 'battle', target: 'enemy', col: '#c05aff', dmg: sp => 100 + 75 * sp, desc: sp => `${100 + 75 * sp} obrażeń jednemu wrogowi` },
-  armageddon: { name: 'Armagedon', level: 5, cost: 24, kind: 'battle', target: 'all', col: '#ff4a1a', dmg: sp => 30 + 50 * sp, desc: sp => `${30 + 50 * sp} obrażeń każdemu oddziałowi na polu bitwy, także swoim` },
-  massHaste: { name: 'Przyspieszenie armii', level: 5, cost: 20, kind: 'battle', target: 'allies', col: '#a8f0ff', buff: 'haste', desc: sp => `+3 do szybkości wszystkich sojuszników przez ${SPELL_ROUNDS(sp)} rund` },
+// Szkoły magii jak w Heroes 3: umiejętność szkoły (Magia Ognia, Powietrza, Wody, Ziemi) obniża koszt czarów tej szkoły,
+// wzmacnia obrażenia i leczenie, wydłuża czary na oddziały, a na poziomie eksperckim czar na jeden oddział działa na całą armię.
+const SCHOOLS = {
+  fire: { name: 'Ognia', tab: 'Ogień', skill: 'fireMagic', col: '#e8602a' }, air: { name: 'Powietrza', tab: 'Powietrze', skill: 'airMagic', col: '#8ac8ff' },
+  water: { name: 'Wody', tab: 'Woda', skill: 'waterMagic', col: '#4a9ae0' }, earth: { name: 'Ziemi', tab: 'Ziemia', skill: 'earthMagic', col: '#a8864a' },
 };
-const BUFF_NAMES = { bless: 'błogosławieństwo', stoneSkin: 'kamienna skóra', haste: 'przyspieszenie', slow: 'spowolnienie', weakness: 'osłabienie', bloodlust: 'żądza krwi', prayer: 'modlitwa' };
-const BAD_BUFFS = ['slow', 'weakness'];
+// Tarcza i Tarcza powietrza: o tyle % mniej obrażeń; Ognista tarcza: tyle % obrażeń wraca do napastnika; Łańcuch: przeskoki
+const SHIELD_CUT = 30, FIRE_SHIELD = 20, CHAIN_JUMPS = 3;
+const SPELLS = {
+  magicArrow: { name: 'Magiczna strzała', school: 'air', level: 1, cost: 5, kind: 'battle', target: 'enemy', col: '#8ac0ff', dmg: sp => 10 + 10 * sp, desc: sp => `${10 + 10 * sp} obrażeń jednemu wrogowi` },
+  bless: { name: 'Błogosławieństwo', school: 'water', level: 1, cost: 5, kind: 'battle', target: 'ally', col: '#ffe08a', buff: 'bless', desc: sp => `sojusznik zadaje najwyższe obrażenia przez ${SPELL_ROUNDS(sp)} rund` },
+  stoneSkin: { name: 'Kamienna skóra', school: 'earth', level: 1, cost: 5, kind: 'battle', target: 'ally', col: '#b8a888', buff: 'stoneSkin', desc: sp => `+3 do obrony sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  haste: { name: 'Przyspieszenie', school: 'air', level: 1, cost: 6, kind: 'battle', target: 'ally', col: '#a8f0ff', buff: 'haste', desc: sp => `+3 do szybkości sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  cure: { name: 'Uzdrowienie', school: 'water', level: 1, cost: 6, kind: 'battle', target: 'ally', col: '#8af07a', heal: sp => 10 + 5 * sp, desc: sp => `leczy ${10 + 5 * sp} życia i zdejmuje złe czary` },
+  slow: { name: 'Spowolnienie', school: 'earth', level: 1, cost: 6, kind: 'battle', target: 'enemy', col: '#9a8ac8', buff: 'slow', desc: sp => `−3 do szybkości wroga przez ${SPELL_ROUNDS(sp)} rund` },
+  shield: { name: 'Tarcza', school: 'earth', level: 1, cost: 5, kind: 'battle', target: 'ally', col: '#d0b070', buff: 'shield', desc: sp => `sojusznik otrzymuje o ${SHIELD_CUT}% mniej obrażeń w walce wręcz przez ${SPELL_ROUNDS(sp)} rund` },
+  eagleEye: { name: 'Sokole oko', school: 'air', level: 1, cost: 4, kind: 'adv', target: 'none', col: '#f0c040', desc: sp => `odsłania mapę w promieniu ${5 + sp} pól wokół bohatera` },
+  summonBoat: { name: 'Przywołanie łodzi', school: 'water', level: 1, cost: 7, kind: 'adv', target: 'none', col: '#6ab0e8', desc: () => 'łódź pojawia się na wodzie tuż przy bohaterze (bohater musi stać na brzegu)' },
+  lightningBolt: { name: 'Błyskawica', school: 'air', level: 2, cost: 10, kind: 'battle', target: 'enemy', col: '#c8e0ff', dmg: sp => 25 + 20 * sp, desc: sp => `${25 + 20 * sp} obrażeń jednemu wrogowi` },
+  iceBolt: { name: 'Lodowy pocisk', school: 'water', level: 2, cost: 8, kind: 'battle', target: 'enemy', col: '#9ad8ff', dmg: sp => 20 + 20 * sp, desc: sp => `${20 + 20 * sp} obrażeń jednemu wrogowi` },
+  weakness: { name: 'Osłabienie', school: 'water', level: 2, cost: 8, kind: 'battle', target: 'enemy', col: '#a8a878', buff: 'weakness', desc: sp => `−3 do ataku wroga przez ${SPELL_ROUNDS(sp)} rund` },
+  bloodlust: { name: 'Żądza krwi', school: 'fire', level: 2, cost: 7, kind: 'battle', target: 'ally', col: '#ff6a5a', buff: 'bloodlust', desc: sp => `+3 do ataku sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  fortune: { name: 'Fortuna', school: 'air', level: 2, cost: 7, kind: 'battle', target: 'ally', col: '#8af0c0', buff: 'fortune', desc: sp => `+2 do szczęścia sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  deathRipple: { name: 'Fala śmierci', school: 'earth', level: 2, cost: 10, kind: 'battle', target: 'all', spare: 'undead', col: '#8a9a6a', dmg: sp => 5 + 5 * sp, desc: sp => `${5 + 5 * sp} obrażeń każdemu żywemu oddziałowi na polu bitwy (także swoim), nieumarłych oszczędza` },
+  fireball: { name: 'Kula ognia', school: 'fire', level: 3, cost: 15, kind: 'battle', target: 'hex', col: '#ff8a2a', dmg: sp => 15 + 10 * sp, desc: sp => `${15 + 10 * sp} obrażeń na polu i wokół niego (także swoim!)` },
+  frostRing: { name: 'Pierścień mrozu', school: 'water', level: 3, cost: 12, kind: 'battle', target: 'ring', col: '#bfe8ff', dmg: sp => 15 + 10 * sp, desc: sp => `${15 + 10 * sp} obrażeń na polach wokół wskazanego (środek bezpieczny)` },
+  curse: { name: 'Klątwa', school: 'fire', level: 1, cost: 6, kind: 'battle', target: 'enemy', col: '#b04a8a', buff: 'curse', desc: sp => `wróg zadaje najniższe obrażenia przez ${SPELL_ROUNDS(sp)} rund` },
+  airShield: { name: 'Tarcza powietrza', school: 'air', level: 3, cost: 12, kind: 'battle', target: 'ally', col: '#d0f0ff', buff: 'airShield', desc: sp => `sojusznik otrzymuje o ${SHIELD_CUT}% mniej obrażeń od strzał przez ${SPELL_ROUNDS(sp)} rund` },
+  animateDead: { name: 'Ożywienie umarłych', school: 'earth', level: 3, cost: 15, kind: 'battle', target: 'undeadAlly', col: '#a6f0a8', heal: sp => 30 + 50 * sp, raise: true, desc: sp => `przywraca ${30 + 50 * sp} życia nieumarłym, także poległym w tej bitwie` },
+  townPortal: { name: 'Powrót do miasta', school: 'earth', level: 3, cost: 16, kind: 'adv', target: 'none', col: '#c8a0ff', desc: () => 'przenosi bohatera do najbliższego własnego miasta (kosztuje 300 punktów ruchu)' },
+  meteorShower: { name: 'Deszcz meteorów', school: 'earth', level: 4, cost: 16, kind: 'battle', target: 'hex', col: '#ff6a3a', dmg: sp => 25 + 25 * sp, desc: sp => `${25 + 25 * sp} obrażeń na polu i wokół niego (także swoim!)` },
+  chainLightning: { name: 'Łańcuch piorunów', school: 'air', level: 4, cost: 24, kind: 'battle', target: 'enemy', chain: CHAIN_JUMPS, col: '#e0ecff', dmg: sp => 25 + 40 * sp,
+    desc: sp => `${25 + 40 * sp} obrażeń wrogowi, potem przeskakuje na ${CHAIN_JUMPS} najbliższe oddziały (każdy za połowę poprzednich; także swoje!)` },
+  fireShield: { name: 'Ognista tarcza', school: 'fire', level: 4, cost: 16, kind: 'battle', target: 'ally', col: '#ff9a3a', buff: 'fireShield', desc: sp => `kto uderzy sojusznika wręcz, sam dostaje ${FIRE_SHIELD}% zadanych obrażeń (${SPELL_ROUNDS(sp)} rund)` },
+  prayer: { name: 'Modlitwa', school: 'water', level: 4, cost: 16, kind: 'battle', target: 'ally', col: '#fff0b0', buff: 'prayer', desc: sp => `+2 do ataku, obrony i szybkości sojusznika przez ${SPELL_ROUNDS(sp)} rund` },
+  resurrection: { name: 'Wskrzeszenie', school: 'earth', level: 4, cost: 20, kind: 'battle', target: 'livingAlly', col: '#fff8d0', heal: sp => 40 + 20 * sp, raise: true, desc: sp => `przywraca ${40 + 20 * sp} życia żywym sojusznikom, także poległym w tej bitwie` },
+  implosion: { name: 'Implozja', school: 'earth', level: 5, cost: 30, kind: 'battle', target: 'enemy', col: '#c05aff', dmg: sp => 100 + 75 * sp, desc: sp => `${100 + 75 * sp} obrażeń jednemu wrogowi` },
+  armageddon: { name: 'Armagedon', school: 'fire', level: 5, cost: 24, kind: 'battle', target: 'all', col: '#ff4a1a', dmg: sp => 30 + 50 * sp, desc: sp => `${30 + 50 * sp} obrażeń każdemu oddziałowi na polu bitwy, także swoim` },
+  massHaste: { name: 'Przyspieszenie armii', school: 'air', level: 5, cost: 20, kind: 'battle', target: 'allies', col: '#a8f0ff', buff: 'haste', desc: sp => `+3 do szybkości wszystkich sojuszników przez ${SPELL_ROUNDS(sp)} rund` },
+  massCure: { name: 'Źródło życia', school: 'water', level: 5, cost: 22, kind: 'battle', target: 'allies', col: '#7ae8c8', heal: sp => 20 + 15 * sp, desc: sp => `leczy ${20 + 15 * sp} życia wszystkim sojusznikom i zdejmuje z nich złe czary` },
+};
+const BUFF_NAMES = { bless: 'błogosławieństwo', stoneSkin: 'kamienna skóra', haste: 'przyspieszenie', slow: 'spowolnienie', weakness: 'osłabienie', bloodlust: 'żądza krwi', prayer: 'modlitwa',
+  shield: 'tarcza', fortune: 'fortuna', curse: 'klątwa', airShield: 'tarcza powietrza', fireShield: 'ognista tarcza' };
+const BAD_BUFFS = ['slow', 'weakness', 'curse'];
 // Ile czarów danego poziomu oferuje gildia
 const GUILD_OFFER = { 1: 3, 2: 2, 3: 2, 4: 2, 5: 1 };
 const GUILD_MAX = 5;
@@ -2583,40 +2616,69 @@ function drawSpellIcon(c, id) {
     case 'resurrection': c.beginPath(); c.moveTo(0, -8); c.lineTo(-6, -1); c.lineTo(-2, -1); c.lineTo(-2, 7); c.lineTo(2, 7); c.lineTo(2, -1); c.lineTo(6, -1); c.closePath(); c.fill(); break;
     case 'implosion': c.lineWidth = 1.6; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; c.beginPath(); c.moveTo(Math.cos(a) * 8, Math.sin(a) * 8); c.lineTo(Math.cos(a) * 3.5, Math.sin(a) * 3.5); c.stroke(); } c.fillStyle = dk; c.beginPath(); c.arc(0, 0, 2.5, 0, TAU); c.fill(); break;
     case 'armageddon': poly([[-8, 7], [-6, -1], [-3, 3], [0, -8], [3, 3], [6, -1], [8, 7]]); c.fillStyle = '#ffd060'; poly([[-4, 7], [0, -1], [4, 7]]); break;
+    case 'shield': poly([[-6, -7], [6, -7], [6, 0], [0, 8], [-6, 0]]); c.fillStyle = dk; c.fillRect(-1, -5, 2, 10); c.fillRect(-4, -2, 8, 2); break;
+    case 'airShield': c.lineWidth = 1.8; for (const r of [3, 5.5, 8]) { c.beginPath(); c.arc(0, 2, r, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); } break;
+    case 'fireShield': poly([[-6, -7], [6, -7], [6, 0], [0, 8], [-6, 0]]); c.fillStyle = '#ffd060'; poly([[-3, 3], [-2, -3], [0, 0], [2, -4], [3, 3]]); break;
+    case 'fortune': c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 6, Math.PI * 0.25, Math.PI * 1.75); c.stroke(); for (const [x, y] of [[-4, -5], [4, -5], [-5, 3], [5, 3]]) { c.beginPath(); c.arc(x, y, 1.3, 0, TAU); c.fill(); } break;
+    case 'curse': c.beginPath(); c.arc(0, -1, 5.5, 0, TAU); c.fill(); c.fillStyle = dk; c.fillRect(-3.5, -3, 2.5, 2.5); c.fillRect(1, -3, 2.5, 2.5); c.lineWidth = 1.6; c.strokeStyle = col; c.beginPath(); c.moveTo(-7, 7); c.lineTo(7, -7); c.stroke(); break;
+    case 'iceBolt': poly([[0, -8], [3, -1], [1, -1], [1, 8], [-1, 8], [-1, -1], [-3, -1]]); c.fillStyle = '#ffffff'; c.fillRect(-0.5, -5, 1, 4); break;
+    case 'frostRing': c.lineWidth = 2.2; c.beginPath(); c.arc(0, 0, 6.5, 0, TAU); c.stroke(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; c.beginPath(); c.arc(Math.cos(a) * 6.5, Math.sin(a) * 6.5, 1.6, 0, TAU); c.fill(); } break;
+    case 'chainLightning': poly([[-2, -8], [-7, 0], [-3, 0], [-5, 7], [0, -1], [-4, -1]]); poly([[5, -8], [1, -1], [4, -1], [2, 7], [7, -1], [4, -1]]); break;
+    case 'massCure': for (const [dx, dy] of [[-4, 2], [4, 2], [0, -4]]) { c.fillRect(dx - 1.2, dy - 4, 2.4, 8); c.fillRect(dx - 4, dy - 1.2, 8, 2.4); } break;
+    case 'deathRipple': c.lineWidth = 1.8; for (const y of [-4, 0, 4]) { c.beginPath(); c.moveTo(-8, y); for (let x = -8; x <= 8; x += 4) c.quadraticCurveTo(x + 1, y - 3, x + 2, y); c.stroke(); } break;
+    case 'summonBoat': poly([[-8, 1], [8, 1], [5, 6], [-5, 6]]); c.fillRect(-0.8, -8, 1.6, 9); poly([[1, -7], [6, 0], [1, 0]]); break;
     case 'massHaste': for (const dx of [-4, 4]) poly([[dx - 4, 2], [dx + 1, -7], [dx, -1], [dx + 4, -2], [dx - 1, 7], [dx, 1]]); break;
   }
 }
+// Dopisek do opisu czaru: co daje umiejętność szkoły bohatera
+const schoolNote = (h, id) => { const L = spellSchoolLv(h, id); return L ? ` ${SKILLS[SCHOOLS[SPELLS[id].school].skill].name} (${SKILL_LEVELS[L]}): koszt −${SCHOOL_COST[L]}%, moc +${SCHOOL_POWER[L]}%${SPELLS[id].buff ? `, +${L} ${L === 1 ? 'runda' : 'rundy'}` : ''}${massBuffable(id) && L >= 3 ? ', działa na całą armię' : ''}.` : ''; };
+const massBuffable = id => !!(SPELLS[id].buff && (SPELLS[id].target === 'ally' || SPELLS[id].target === 'enemy'));
 const spellSprite = id => sprite(`sp_${id}`, 16, 16, 8, 8, p => drawSpellIcon(p, id));
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
 function showSpellbook(h, mode, onPick) {
-  const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), list = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
-  const cols = list.length > 14 ? 3 : 2, cw = (w - 48) / cols, fs = cols > 2 ? 13 : 15, rh = cols > 2 ? 44 : 50; // przy wielu czarach trzy kolumny
-  const cell = i => ({ x: x + 24 + (i % cols) * cw, y: y + 76 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
-  const usable = id => mode !== 'view' && SPELLS[id].kind === mode && SPELLS[id].cost <= h.mana;
+  // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły
+  const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
+  const cols = 3, cw = (w - 48) / cols, rh = 44, PER = 18, tabs = [null, ...Object.keys(SCHOOLS)];
+  let school = null, page = 0, hover = -1;
+  const side = d => (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 4 * d, cy - 8); ctx.lineTo(cx - 4 * d, cy + 8); ctx.lineTo(cx + 5 * d, cy); ctx.closePath(); ctx.fill(); };
+  const list = () => all.filter(id => !school || SPELLS[id].school === school), pages = () => Math.max(1, Math.ceil(list().length / PER)), shown = () => list().slice(page * PER, page * PER + PER);
+  const cell = i => ({ x: x + 24 + (i % cols) * cw, y: y + 104 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
+  const usable = id => mode !== 'view' && SPELLS[id].kind === mode && spellCost(h, id) <= h.mana;
   const close = new Button(W / 2 - 70, y + hh - 54, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
-  let hover = -1;
+  const prev = new Button(W / 2 - 124, y + hh - 50, 44, 32, 'Poprzednia strona', () => { page = Math.max(0, page - 1); }, { icon: side(-1), key: 'arrowleft', tip: 'Poprzednia strona księgi.' });
+  const next = new Button(W / 2 + 80, y + hh - 50, 44, 32, 'Następna strona', () => { page = Math.min(pages() - 1, page + 1); }, { icon: side(1), key: 'arrowright', tip: 'Następna strona księgi.' });
+  const tabBtns = tabs.map((sc, i) => new Button(x + 24 + i * 108, y + 68, 102, 28, sc ? SCHOOLS[sc].tab : 'Wszystkie', () => { school = sc; page = 0; },
+    { size: 13, selected: () => school === sc, tip: sc ? `Czary magii ${SCHOOLS[sc].name}${heroSkill(h, SCHOOLS[sc].skill) ? ` (${SKILLS[SCHOOLS[sc].skill].name}: ${SKILL_LEVELS[heroSkill(h, SCHOOLS[sc].skill)]})` : ''}.` : 'Wszystkie znane czary.' }));
+  const at = (px, py) => shown().findIndex((id, k) => inRect(px, py, cell(k)));
   G.modal = {
-    buttons: [close],
-    onClick(px, py) { const i = list.findIndex((id, k) => inRect(px, py, cell(k))); if (i >= 0 && usable(list[i])) { G.modal = null; onPick(list[i]); } },
-    rightInfo(px, py) { const i = list.findIndex((id, k) => inRect(px, py, cell(k))); if (i < 0) return null; const S = SPELLS[list[i]]; return `${S.name} (poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${S.cost} many): ${S.desc(sp)}.`; },
+    buttons: [close, prev, next, ...tabBtns],
+    onClick(px, py) { const i = at(px, py), id = shown()[i]; if (i >= 0 && usable(id)) { G.modal = null; onPick(id); } },
+    rightInfo(px, py) { const i = at(px, py); if (i < 0) return null; const id = shown()[i], S = SPELLS[id]; return `${S.name} (magia ${SCHOOLS[S.school].name}, poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${spellCost(h, id)} many): ${S.desc(sp)}.${schoolNote(h, id)}`; },
     draw(ctx) {
-      hover = list.findIndex((id, k) => inRect(G.mouse.x, G.mouse.y, cell(k)));
+      page = Math.min(page, pages() - 1); prev.disabled = page === 0; next.disabled = page >= pages() - 1;
+      const L = shown(); hover = at(G.mouse.x, G.mouse.y);
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
-      text(ctx, 'Księga czarów', W / 2, y + 34, { size: 26, align: 'center', color: '#3a1e08', fam: 'title' });
-      text(ctx, `${h.name} · mana ${h.mana} / ${heroMaxMana(h)} · moc czarów ${sp}`, W / 2, y + 58, { size: 14, weight: 500, align: 'center', color: '#5a3814' });
-      if (!list.length) text(ctx, 'Bohater nie zna jeszcze żadnych czarów. Odwiedź miasto z gildią magów.', W / 2, y + 200, { size: 15, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
-      list.forEach((id, i) => {
+      text(ctx, 'Księga czarów', W / 2, y + 30, { size: 26, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, `${h.name} · mana ${h.mana} / ${heroMaxMana(h)} · moc czarów ${sp}`, W / 2, y + 54, { size: 14, weight: 500, align: 'center', color: '#5a3814' });
+      tabBtns.forEach((b, i) => { b.draw(ctx); if (tabs[i]) { ctx.fillStyle = SCHOOLS[tabs[i]].col; ctx.fillRect(b.x + 6, b.y + b.h - 5, b.w - 12, 2); } });
+      if (!all.length) text(ctx, 'Bohater nie zna jeszcze żadnych czarów. Odwiedź miasto z gildią magów.', W / 2, y + 220, { size: 15, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
+      else if (!L.length) text(ctx, `Bohater nie zna czarów magii ${SCHOOLS[school].name}.`, W / 2, y + 220, { size: 15, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
+      L.forEach((id, i) => {
         const r = cell(i), S = SPELLS[id], ok = usable(id);
         ctx.fillStyle = ok && hover === i ? 'rgba(160,100,30,.3)' : 'rgba(90,55,20,.12)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
+        ctx.fillStyle = SCHOOLS[S.school].col; ctx.fillRect(r.x, r.y + 4, 3, r.h - 8);
         ctx.save(); if (mode !== 'view' && !ok) ctx.globalAlpha = 0.45;
         drawSprite(ctx, spellSprite(id), r.x + 24, r.y + r.h / 2, 1);
+        ctx.font = font(13, 700, 'title'); let fs = 13; while (fs > 10 && ctx.measureText(S.name).width > r.w - 50) { fs--; ctx.font = font(fs, 700, 'title'); }
         text(ctx, S.name, r.x + 46, r.y + r.h / 2 - 7, { size: fs, color: '#2a1606', fam: 'title' });
-        text(ctx, cols > 2 ? `${S.level} poz. · ${S.cost} many` : `${S.level} poz. · ${S.cost} many · ${S.kind === 'battle' ? 'bitwa' : 'mapa'}`, r.x + 46, r.y + r.h / 2 + 11, { size: 12, weight: 500, color: '#5a3814' });
+        const c0 = spellCost(h, id);
+        text(ctx, `${S.level} poz. · ${c0} many${c0 < S.cost ? ' ↓' : ''}`, r.x + 46, r.y + r.h / 2 + 11, { size: 12, weight: 500, color: c0 < S.cost ? '#2a6a1e' : '#5a3814' });
         ctx.restore();
       });
-      const hs = hover >= 0 ? SPELLS[list[hover]] : null;
-      text(ctx, hs ? `${hs.name}: ${hs.desc(sp)}.` : mode === 'view' ? 'Prawy przycisk na czarze: pełny opis.' : `Kliknij czar, aby go rzucić (${mode === 'battle' ? 'jeden na rundę' : 'na mapie'}).`,
+      const hs = hover >= 0 ? L[hover] : null;
+      text(ctx, hs ? `${SPELLS[hs].name}: ${SPELLS[hs].desc(sp)}.` : mode === 'view' ? 'Prawy przycisk na czarze: pełny opis.' : `Kliknij czar, aby go rzucić (${mode === 'battle' ? 'jeden na rundę' : 'na mapie'}).`,
         W / 2, y + hh - 76, { size: 13, italic: true, weight: 500, align: 'center', color: '#6a4418' });
+      if (pages() > 1) { prev.draw(ctx); next.draw(ctx); text(ctx, `strona ${page + 1}/${pages()}`, W / 2 + 170, y + hh - 34, { size: 12, weight: 600, align: 'center', color: '#5a3814' }); }
       close.draw(ctx);
     },
   };
@@ -3684,6 +3746,12 @@ function buyBoat(st, t) {
   const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (BOAT_COST[r.id]) R[r.id] -= BOAT_COST[r.id];
   addBoat(st, p.x, p.y); return null;
 }
+// Przywołanie łodzi: wolne pole wody obok bohatera (najpierw w linii prostej)
+function boatSpot(st, h) {
+  const map = st.map, n = map.n;
+  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], i = y * n + x; if (x >= 0 && y >= 0 && x < n && y < n && map.terrain[i] === TER.WATER && !st.objAt[i] && !heroAt(st, x, y)) return { x, y }; }
+  return null;
+}
 // Koszt kroku liczony wg terenu, z którego bohater wychodzi; droga działa, gdy oba pola mają drogę.
 // Znajdowanie drogi (h) zmniejsza narzut trudnego terenu ponad 100.
 function baseCost(map, i, j, h) {
@@ -3883,6 +3951,10 @@ function initHeroProgress(h) {
 }
 // --- umiejętności drugorzędne ---
 const heroSkill = (h, id) => { const s = h && h.skills && h.skills.find(s => s.id === id); return s ? s.lv : 0; };
+// Szkoły magii: poziom umiejętności szkoły czaru u bohatera, koszt many po zniżce, mnożnik obrażeń i leczenia
+const spellSchoolLv = (h, id) => { const S = SPELLS[id]; return S && S.school ? heroSkill(h, SCHOOLS[S.school].skill) : 0; };
+const spellCost = (h, id) => Math.max(1, Math.round(SPELLS[id].cost * (1 - SCHOOL_COST[spellSchoolLv(h, id)] / 100)));
+const schoolMul = (h, id) => 1 + SCHOOL_POWER[spellSchoolLv(h, id)] / 100;
 const skillVal = (h, id) => { const L = heroSkill(h, id); if (!L) return 0; const sp = heroSpec(h), v = SKILLS[id].v[L - 1]; return sp && sp.skill === id ? Math.round(v * (1 + 0.05 * h.level)) : v; };
 // --- specjalności bohaterów (HERO_SPECS) ---
 // Stwory specjalności: oba stwory z siedliska danego poziomu w rodzimej frakcji bohatera
@@ -3986,8 +4058,13 @@ function visitGuild(st, t, h) {
 // Czary na mapie przygody. Zwraca tekst błędu albo null.
 function castAdventure(st, h, id) {
   const S = SPELLS[id], sp = heroStat(h, 'sp');
-  if (h.mana < S.cost) return 'Za mało many';
+  if (h.mana < spellCost(h, id)) return 'Za mało many';
   if (id === 'eagleEye') { reveal(st, h.x, h.y, 5 + sp); }
+  else if (id === 'summonBoat') {
+    if (h.boat) return 'Bohater już płynie łodzią';
+    const p = boatSpot(st, h); if (!p) return 'Przy bohaterze nie ma wolnej wody';
+    addBoat(st, p.x, p.y);
+  }
   else if (id === 'townPortal') {
     if (h.mp < 300) return 'Za mało punktów ruchu (potrzeba 300)';
     const t = st.towns.filter(t => t.owner === h.owner && !heroAt(st, t.x, t.y)).sort((a, b) => Math.hypot(a.x - h.x, a.y - h.y) - Math.hypot(b.x - h.x, b.y - h.y))[0];
@@ -3995,7 +4072,7 @@ function castAdventure(st, h, id) {
     if (h.boat) { h.boat = false; addBoat(st, h.x, h.y); } // łódź zostaje na wodzie
     h.x = t.x; h.y = t.y; h.mp -= 300; h.path = null; h.dest = null; reveal(st, h.x, h.y, heroSight(h)); centerCam(st, h.x, h.y);
   }
-  h.mana -= S.cost; return null;
+  h.mana -= spellCost(h, id); return null;
 }
 
 // --- armie: 7 miejsc, każde null albo { cid, n } (bohater: h.army, miasto: t.garrison) ---
@@ -4503,7 +4580,7 @@ function sideMorale(B, side) { const S = B.sides[side]; return S.monster || S.ba
 const sideLuck = (B, side) => heroLuck(B.sides[side].hero);
 // Nieumarli nie znają strachu ani zapału: morale zawsze 0
 const unitMorale = (B, u) => (hasAb(u, 'undead') || isMachine(u) || !B.morale ? 0 : B.morale[u.side]);
-const unitLuck = (B, u) => (B.luck ? B.luck[u.side] : 0);
+const unitLuck = (B, u) => (B.luck ? B.luck[u.side] : 0) + (u.buffs && u.buffs.fortune ? 2 : 0); // Fortuna: +2
 const signed = v => (v > 0 ? `+${v}` : String(v));
 const alive = (B, side) => B.units.filter(u => !u.dead && (side == null || u.side === side));
 // Oddziały, od których zależy wynik: strona bez nich przegrywa, nawet jeśli zostały jej machiny
@@ -4575,7 +4652,7 @@ const humanSide = (B, side) => { const o = B.sides[side].owner; return o === ME 
 // moved = liczba pól rozpędu (szarża), ranged = strzał; strzelec wręcz bije za połowę, chyba że ma „Walkę wręcz”.
 function damageRoll(B, a, t, ranged, moved = 0) {
   const ca = CREATURES[a.cid], ct = CREATURES[t.cid];
-  let base = a.n * (a.buffs.bless ? ca.dmax : ca.dmin + B.rng() * (ca.dmax - ca.dmin));
+  let base = a.n * (a.buffs.bless ? ca.dmax : a.buffs.curse ? ca.dmin : ca.dmin + B.rng() * (ca.dmax - ca.dmin)); // Klątwa: najniższe obrażenia
   if (a.cid === 'ballista') base *= (sideAtt(B, a.side) + 1) * (1 + skillVal(sideHero(B, a.side), 'artillery') / 100); // balista: podstawa × (atak bohatera + 1), Artyleria
   const A = unitAtt(a) + sideAtt(B, a.side), D = unitDef(t) + sideDef(B, t.side) + (t.defending ? Math.ceil(ct.def * 0.2) + 1 : 0);
   let mult = A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
@@ -4583,6 +4660,7 @@ function damageRoll(B, a, t, ranged, moved = 0) {
   if (!ranged && hasAb(a, 'jousting')) mult *= 1 + 0.05 * moved;
   // strzał atakującego zza muru w obrońcę za murem: połowa obrażeń, dopóki ten fragment muru stoi
   if (ranged && B.walls && a.side === 0 && a.x < SIEGE_X && t.x > SIEGE_X) { const w = wallAt(B, SIEGE_X, t.y); if (w && w.hp > 0) mult *= 0.5; }
+  if (t.buffs[ranged ? 'airShield' : 'shield']) mult *= 1 - SHIELD_CUT / 100; // Tarcza (wręcz) i Tarcza powietrza (strzały)
   if (ranged && farShot(a, t)) mult *= 0.5; if (ranged && shotBlocked(B, a, t)) mult *= 0.5; // odległość i przeszkody na torze lotu
   // umiejętności bohaterów: Atak / Łucznictwo napastnika, Zbroja obrońcy
   mult *= (1 + skillVal(sideHero(B, a.side), ranged ? 'archery' : 'offense') / 100) * (1 - skillVal(sideHero(B, t.side), 'armorer') / 100);
@@ -4606,6 +4684,10 @@ function strike(B, a, t, ranged, moved = 0) {
   const killed = applyDamage(t, dmg);
   B.log.push(`${CREATURES[a.cid].plural} (${a.n}) zadają ${dmg} obrażeń${killed ? `. ${CREATURES[t.cid].plural} tracą ${killed}` : ''}.`);
   if (B.fx) B.fx.push({ kind: ranged ? 'shot' : 'hit', a, tg: t, dmg, killed });
+  if (!ranged && t.buffs.fireShield && !a.dead) { // Ognista tarcza: część obrażeń wraca do napastnika
+    const back = Math.max(1, Math.floor(dmg * FIRE_SHIELD / 100)), k = applyDamage(a, back);
+    B.log.push(`Ognista tarcza parzy: ${CREATURES[a.cid].plural.toLowerCase()} (${back}${k ? `, tracą ${k}` : ''}).`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: a, dmg: back, killed: k });
+  }
   if (hasAb(a, 'lifeDrain') && !hasAb(t, 'undead')) {
     const back = healUnit(a, dmg); if (back) B.log.push(`${CREATURES[a.cid].plural} wysysają życie: wraca ${back}.`);
     if (B.fx) B.fx.push({ kind: 'heal', u: a, amount: dmg });
@@ -4733,7 +4815,7 @@ const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.s
 const battleSpells = h => (h.spells || []).filter(id => SPELLS[id].kind === 'battle');
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
-const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => SPELLS[id].cost <= h.mana)); };
+const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => spellCost(h, id) <= h.mana)); };
 // Czary bez celu: działają na całe pole (armagedon) albo na wszystkich swoich (przyspieszenie armii)
 const MASS_TARGETS = ['all', 'allies'];
 // Żywy (nie nieumarły, nie machina) oddział rzucającego, także poległy: cel wskrzeszenia
@@ -4742,21 +4824,35 @@ const livingAlly = (u, s) => u.side === s && !hasAb(u, 'undead') && !isMachine(u
 const spellUnitAt = (B, id, x, y) => unitAt(B, x, y) || (SPELLS[id].raise && B.units.find(u => u.dead && u.x === x && u.y === y)) || null;
 // Czy cel pasuje do czaru (u = oddział albo null dla czaru na pole); „swoi” = strona rzucającego
 function spellTargetOk(B, id, u) {
-  const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex' || MASS_TARGETS.includes(t)) return true; if (u && !targetable(u)) return false;
+  const t = SPELLS[id].target, s = casterSide(B); if (t === 'hex' || t === 'ring' || MASS_TARGETS.includes(t)) return true; if (u && !targetable(u)) return false;
   if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead') || t === 'livingAlly' && livingAlly(u, s))) return false;
   return t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : t === 'livingAlly' ? livingAlly(u, s) : false;
 }
 // Obrażenia czaru z Czarnoksięstwem bohatera
-const spellDamage = (h, S, sp) => Math.floor(S.dmg(sp) * (1 + skillVal(h, 'sorcery') / 100) * specSpellMul(h, spellId(S)));
+const spellDamage = (h, S, sp) => Math.floor(S.dmg(sp) * (1 + skillVal(h, 'sorcery') / 100) * specSpellMul(h, spellId(S)) * schoolMul(h, spellId(S)));
 const spellId = S => Object.keys(SPELLS).find(id => SPELLS[id] === S);
 // Odporność bohatera strony oddziału: szansa, że wrogi czar go nie tknie (sprawdzana osobno dla każdego oddziału)
 const resists = (B, v, s) => { const r = v.side !== s ? skillVal(sideHero(B, v.side), 'resistance') : 0; return r > 0 && B.rng() * 100 < r; };
-// Pola trafione czarem (kula ognia: pole + sąsiedzi; armagedon: każdy oddział; czary armii: wszyscy swoi)
+// Czar na jeden oddział rzucony przez eksperta szkoły działa na wszystkie oddziały tej strony (jak w Heroes 3)
+const massBuff = (B, id) => { const S = SPELLS[id]; return !!(B && S.buff && (S.target === 'ally' || S.target === 'enemy') && spellSchoolLv(sideHero(B, casterSide(B)), id) >= 3); };
+// Pola trafione czarem (kula ognia: pole + sąsiedzi; pierścień mrozu: same sąsiedzi; armagedon: każdy oddział; czary armii: wszyscy swoi;
+// łańcuch piorunów: cel, potem kolejno najbliższy jeszcze nietrafiony oddział; czar eksperta: cała strona)
 function spellArea(id, x, y, B) {
-  const t = SPELLS[id].target;
-  if (MASS_TARGETS.includes(t)) return B ? B.units.filter(u => !u.dead && targetable(u) && (t === 'all' || u.side === casterSide(B))).map(u => [u.x, u.y]) : [];
-  return t === 'hex' ? [[x, y], ...hexNeighbors(x, y)] : [[x, y]];
+  const S = SPELLS[id], t = S.target;
+  if (MASS_TARGETS.includes(t)) return B ? B.units.filter(u => !u.dead && targetable(u) && (t === 'all' || u.side === casterSide(B)) && !(S.spare && hasAb(u, S.spare))).map(u => [u.x, u.y]) : []; // Fala śmierci oszczędza nieumarłych
+  if (massBuff(B, id)) { const u0 = unitAt(B, x, y); return u0 ? B.units.filter(u => !u.dead && targetable(u) && u.side === u0.side).map(u => [u.x, u.y]) : [[x, y]]; }
+  if (S.chain && B) {
+    const out = [[x, y]]; let cur = { x, y };
+    for (let i = 0; i < S.chain; i++) {
+      const next = B.units.filter(u => !u.dead && targetable(u) && !out.some(([ax, ay]) => ax === u.x && ay === u.y)).sort((a, b) => hexDistance(cur, a) - hexDistance(cur, b))[0];
+      if (!next) break; out.push([next.x, next.y]); cur = next;
+    }
+    return out;
+  }
+  return t === 'hex' ? [[x, y], ...hexNeighbors(x, y)] : t === 'ring' ? hexNeighbors(x, y) : [[x, y]];
 }
+// Mnożnik obrażeń i-tego trafienia (łańcuch: każdy przeskok za połowę)
+const hitMul = (S, i) => (S.chain ? Math.pow(0.5, i) : 1);
 // Orle oko: bohater strony przeciwnej może nauczyć się rzuconego czaru (do poziomu wg umiejętności)
 function learnBySight(B, s, id) {
   const o = sideHero(B, 1 - s), v = skillVal(o, 'eagleSight'); if (!v || knows(o, id) || SPELLS[id].level > v / 10 - 2) return;
@@ -4765,24 +4861,29 @@ function learnBySight(B, s, id) {
 function castBattle(B, id, x, y) {
   const s = casterSide(B), h = sideHero(B, s), S = SPELLS[id], sp = heroStat(h, 'sp'), tu = spellUnitAt(B, id, x, y);
   const area = spellArea(id, x, y, B);
-  h.mana -= S.cost; B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
+  h.mana -= spellCost(h, id); B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
   if (B.fx) B.fx.push({ kind: 'spell', id, x, y, area });
   learnBySight(B, s, id);
-  if (S.dmg) for (const [ax, ay] of area) {
-    const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue;
-    if (resists(B, v, s)) { B.log.push(`${CREATURES[v.cid].plural}: odporność, czar nie działa.`); continue; }
-    const d = spellDamage(h, S, sp), k = applyDamage(v, d);
+  if (S.dmg) area.forEach(([ax, ay], i) => {
+    const v = unitAt(B, ax, ay); if (!v || !targetable(v)) return;
+    if (resists(B, v, s)) { B.log.push(`${CREATURES[v.cid].plural}: odporność, czar nie działa.`); return; }
+    const d = Math.max(1, Math.floor(spellDamage(h, S, sp) * hitMul(S, i))), k = applyDamage(v, d);
     B.log.push(`${CREATURES[v.cid].plural}: ${d} obrażeń${k ? `, tracą ${k}` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: v, dmg: d, killed: k });
+  });
+  if (S.heal && MASS_TARGETS.includes(S.target)) for (const [ax, ay] of area) { // Źródło życia: leczy wszystkich swoich
+    const u = unitAt(B, ax, ay); if (!u || isMachine(u)) continue; const amt = Math.floor(S.heal(sp) * specSpellMul(h, id) * schoolMul(h, id));
+    u.hp = Math.min(CREATURES[u.cid].hp, u.hp + amt); for (const b of BAD_BUFFS) delete u.buffs[b]; if (B.fx) B.fx.push({ kind: 'heal', u, amount: amt });
   }
-  if (S.heal && tu) {
+  else if (S.heal && tu) {
     if (tu.dead) { tu.dead = false; tu.n = 1; tu.hp = 0; tu.dieT = null; } // ożywienie poległego oddziału
-    const amt = Math.floor(S.heal(sp) * specSpellMul(h, id)), back = S.raise ? healUnit(tu, amt) : (tu.hp = Math.min(CREATURES[tu.cid].hp, tu.hp + amt), 0);
+    const amt = Math.floor(S.heal(sp) * specSpellMul(h, id) * schoolMul(h, id)), back = S.raise ? healUnit(tu, amt) : (tu.hp = Math.min(CREATURES[tu.cid].hp, tu.hp + amt), 0);
     if (!S.raise || id === 'resurrection') for (const b of BAD_BUFFS) delete tu.buffs[b];
     if (back) B.log.push(`Wraca do walki: ${back}.`); if (B.fx) B.fx.push({ kind: 'heal', u: tu, amount: amt });
   }
   if (S.buff) {
-    const targets = MASS_TARGETS.includes(S.target) ? area.map(([ax, ay]) => unitAt(B, ax, ay)).filter(Boolean) : tu ? [tu] : [];
-    for (const u of targets) { if (resists(B, u, s)) { B.log.push(`${CREATURES[u.cid].plural}: odporność, czar nie działa.`); continue; } u.buffs[S.buff] = SPELL_ROUNDS(sp); if (B.fx) B.fx.push({ kind: 'heal', u, amount: 0, label: SPELLS[id].name }); }
+    const targets = MASS_TARGETS.includes(S.target) || massBuff(B, id) ? area.map(([ax, ay]) => unitAt(B, ax, ay)).filter(Boolean) : tu ? [tu] : [];
+    if (targets.length > 1 && !MASS_TARGETS.includes(S.target)) B.log.push(`Ekspert magii ${SCHOOLS[S.school].name}: czar działa na całą armię.`);
+    for (const u of targets) { if (u.side !== s && resists(B, u, s)) { B.log.push(`${CREATURES[u.cid].plural}: odporność, czar nie działa.`); continue; } u.buffs[S.buff] = SPELL_ROUNDS(sp) + spellSchoolLv(h, id); if (B.fx) B.fx.push({ kind: 'heal', u, amount: 0, label: SPELLS[id].name }); }
   }
 }
 // SI bohatera (tryb Auto i walka automatyczna): czar zadający najwięcej wartości, jeśli jakiś się opłaca
@@ -4790,12 +4891,12 @@ function aiHeroCast(B) {
   if (!canCastNow(B)) return false;
   const s = casterSide(B), h = sideHero(B, s), sp = heroStat(h, 'sp'); let best = null;
   for (const id of battleSpells(h)) {
-    const S = SPELLS[id]; if (!S.dmg || S.cost > h.mana) continue;
-    const cells = S.target === 'hex' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : MASS_TARGETS.includes(S.target) ? [[0, 0]] : alive(B, 1 - s).filter(targetable).map(u => [u.x, u.y]);
+    const S = SPELLS[id]; if (!S.dmg || spellCost(h, id) > h.mana) continue;
+    const cells = S.target === 'hex' || S.target === 'ring' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : MASS_TARGETS.includes(S.target) ? [[0, 0]] : alive(B, 1 - s).filter(targetable).map(u => [u.x, u.y]);
     for (const [x, y] of cells) {
       let val = 0;
-      for (const [ax, ay] of spellArea(id, x, y, B)) {
-        const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = spellDamage(h, S, sp);
+      for (const [i, [ax, ay]] of spellArea(id, x, y, B).entries()) {
+        const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = Math.floor(spellDamage(h, S, sp) * hitMul(S, i));
         const k = d >= pool ? v.n : v.n - Math.ceil((pool - d) / hp); val += (v.side !== s ? 1 : -1.5) * k * CREATURES[v.cid].value;
       }
       if (val > 0 && (!best || val > best.val)) best = { val, id, x, y };
@@ -10050,6 +10151,12 @@ const SPELL_FX = {
   prayer: { aura: 'fall', col: '#fff0b0', column: true }, resurrection: { aura: 'rise', col: '#fff8d0', column: true },
   implosion: { aura: 'orbit', col: '#c05aff', burst: '#f0c0ff', flash: 0.35, shake: 7 },
   armageddon: { aura: 'fall', col: '#ff4a1a', burst: '#ffd060', flash: 0.6, shake: 12 }, massHaste: { aura: 'wind', col: '#a8f0ff' },
+  shield: { aura: 'orbit', col: '#e0c070' }, fortune: { aura: 'rise', col: '#8af0c0' }, curse: { aura: 'drip', col: '#b04a8a' },
+  airShield: { aura: 'wind', col: '#d0f0ff' }, fireShield: { aura: 'rise', col: '#ff9a3a', column: true },
+  iceBolt: { proj: 'orb', col: '#9ad8ff', burst: '#ffffff', flash: 0.15 },
+  frostRing: { aura: 'fall', col: '#bfe8ff', burst: '#ffffff', flash: 0.3, shake: 4 },
+  chainLightning: { strike: true, chain: true, col: '#e0ecff', burst: '#ffffff', flash: 0.5, shake: 7 },
+  massCure: { aura: 'rise', col: '#7ae8c8', column: true }, deathRipple: { aura: 'drip', col: '#8a9a6a', burst: '#c8d0a0', shake: 6 },
 };
 const BattleFX = {
   reset() { this.parts = []; this.rings = []; this.bolts = []; this.projs = []; this.glows = []; this.flash = null; this.shake = 0; },
@@ -10353,7 +10460,8 @@ G.screens.battle = {
         p.launched = true; BattleFX.ring(24, 19, S.col || '#ffffff', 26, 0.5, 2);
         if (S.proj) { p.pr = BattleFX.proj(S.proj, 40, 34, aim[0], aim[1], 0.5 * p.sp, S.col, 40); p.hitAt = p.pr.dur; }
         else if (S.meteor) { for (let i = 0; i < 3; i++) p.pr = BattleFX.proj('fireball', tx - 140 + i * 50, -30 - i * 20, aim[0] + (i - 1) * 14, aim[1], (0.4 + i * 0.08) * p.sp, S.col); p.hitAt = p.pr.dur; }
-        else if (S.strike) { BattleFX.bolt(tx + (Math.random() - 0.5) * 60, 0, aim[0], aim[1], S.col); BattleFX.bolt(tx + (Math.random() - 0.5) * 80, 0, aim[0], aim[1], S.col); p.hitAt = 0.05; }
+        else if (S.strike) { BattleFX.bolt(tx + (Math.random() - 0.5) * 60, 0, aim[0], aim[1], S.col); BattleFX.bolt(tx + (Math.random() - 0.5) * 80, 0, aim[0], aim[1], S.col); p.hitAt = 0.05;
+          if (S.chain && p.area) for (let i = 1; i < p.area.length; i++) { const [x0, y0] = hexCenter(...p.area[i - 1]), [x1, y1] = hexCenter(...p.area[i]); BattleFX.bolt(x0, y0 - 16, x1, y1 - 16, S.col); BattleFX.glow(x1, y1 - 16, 40, S.col, 0.4); } } // łańcuch: piorun skacze od celu do celu
         else { for (const [ax, ay] of p.area || spellArea(p.id, p.x, p.y, this.B)) { const [cx, cy] = hexCenter(ax, ay); spellAura(cx, cy, S); } p.hitAt = 0.3; }
       }
       if (!p.landed && p.t >= p.hitAt) {
@@ -10959,7 +11067,7 @@ function showGuildView(st, t, scr) {
     scrollAt(x, y) { const r = this.rects.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); return r ? r.id : null; },
     onClick(x, y) { const id = this.scrollAt(x, y); if (id) this.sel = id; },
     rightInfo(x, y) {
-      const id = this.scrollAt(x, y); if (id) { const Sp = SPELLS[id]; return `${Sp.name} (poziom ${Sp.level}, ${Sp.cost} many, ${Sp.kind === 'battle' ? 'w bitwie' : 'na mapie'}): ${Sp.desc(this.spAt())}.`; }
+      const id = this.scrollAt(x, y); if (id) { const Sp = SPELLS[id]; return `${Sp.name} (magia ${SCHOOLS[Sp.school].name}, poziom ${Sp.level}, ${Sp.cost} many, ${Sp.kind === 'battle' ? 'w bitwie' : 'na mapie'}): ${Sp.desc(this.spAt())}.`; }
       if (x >= Wn.x && x <= Wn.x + Wn.w && y >= Wn.y && y <= Wn.y + Wn.h) return `Widok z okna gildii na miasto ${t.name}.`;
       return null;
     },

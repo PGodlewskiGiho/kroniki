@@ -46,6 +46,12 @@ function buyBoat(st, t) {
   const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (BOAT_COST[r.id]) R[r.id] -= BOAT_COST[r.id];
   addBoat(st, p.x, p.y); return null;
 }
+// Przywołanie łodzi: wolne pole wody obok bohatera (najpierw w linii prostej)
+function boatSpot(st, h) {
+  const map = st.map, n = map.n;
+  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], i = y * n + x; if (x >= 0 && y >= 0 && x < n && y < n && map.terrain[i] === TER.WATER && !st.objAt[i] && !heroAt(st, x, y)) return { x, y }; }
+  return null;
+}
 // Koszt kroku liczony wg terenu, z którego bohater wychodzi; droga działa, gdy oba pola mają drogę.
 // Znajdowanie drogi (h) zmniejsza narzut trudnego terenu ponad 100.
 function baseCost(map, i, j, h) {
@@ -245,6 +251,10 @@ function initHeroProgress(h) {
 }
 // --- umiejętności drugorzędne ---
 const heroSkill = (h, id) => { const s = h && h.skills && h.skills.find(s => s.id === id); return s ? s.lv : 0; };
+// Szkoły magii: poziom umiejętności szkoły czaru u bohatera, koszt many po zniżce, mnożnik obrażeń i leczenia
+const spellSchoolLv = (h, id) => { const S = SPELLS[id]; return S && S.school ? heroSkill(h, SCHOOLS[S.school].skill) : 0; };
+const spellCost = (h, id) => Math.max(1, Math.round(SPELLS[id].cost * (1 - SCHOOL_COST[spellSchoolLv(h, id)] / 100)));
+const schoolMul = (h, id) => 1 + SCHOOL_POWER[spellSchoolLv(h, id)] / 100;
 const skillVal = (h, id) => { const L = heroSkill(h, id); if (!L) return 0; const sp = heroSpec(h), v = SKILLS[id].v[L - 1]; return sp && sp.skill === id ? Math.round(v * (1 + 0.05 * h.level)) : v; };
 // --- specjalności bohaterów (HERO_SPECS) ---
 // Stwory specjalności: oba stwory z siedliska danego poziomu w rodzimej frakcji bohatera
@@ -348,8 +358,13 @@ function visitGuild(st, t, h) {
 // Czary na mapie przygody. Zwraca tekst błędu albo null.
 function castAdventure(st, h, id) {
   const S = SPELLS[id], sp = heroStat(h, 'sp');
-  if (h.mana < S.cost) return 'Za mało many';
+  if (h.mana < spellCost(h, id)) return 'Za mało many';
   if (id === 'eagleEye') { reveal(st, h.x, h.y, 5 + sp); }
+  else if (id === 'summonBoat') {
+    if (h.boat) return 'Bohater już płynie łodzią';
+    const p = boatSpot(st, h); if (!p) return 'Przy bohaterze nie ma wolnej wody';
+    addBoat(st, p.x, p.y);
+  }
   else if (id === 'townPortal') {
     if (h.mp < 300) return 'Za mało punktów ruchu (potrzeba 300)';
     const t = st.towns.filter(t => t.owner === h.owner && !heroAt(st, t.x, t.y)).sort((a, b) => Math.hypot(a.x - h.x, a.y - h.y) - Math.hypot(b.x - h.x, b.y - h.y))[0];
@@ -357,7 +372,7 @@ function castAdventure(st, h, id) {
     if (h.boat) { h.boat = false; addBoat(st, h.x, h.y); } // łódź zostaje na wodzie
     h.x = t.x; h.y = t.y; h.mp -= 300; h.path = null; h.dest = null; reveal(st, h.x, h.y, heroSight(h)); centerCam(st, h.x, h.y);
   }
-  h.mana -= S.cost; return null;
+  h.mana -= spellCost(h, id); return null;
 }
 
 // --- armie: 7 miejsc, każde null albo { cid, n } (bohater: h.army, miasto: t.garrison) ---
