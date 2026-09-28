@@ -431,10 +431,12 @@ function drawWorldPixel(b, st) {
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
   for (const h of st.heroes) { if (h.garrison != null) continue; const [hx, hy] = heroDrawPos(h); list.push({ y: hy + 0.5, hero: h, hx, hy }); }
+  for (const c of st.caravans || []) { if (c.owner !== ME) continue; const [cx, cy] = caravanPos(st, c); if (cx >= tx0 && cx <= tx1 && cy >= ty0 && cy <= ty1) list.push({ y: cy + 0.4, caravan: c, cx, cy }); } // własne karawany w drodze
   list.sort((a, c) => a.y - c.y);
   const shadow = (w, x, y) => { b.globalAlpha = 0.3; blitG(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
   for (const it of list) {
     if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16; shadow(14, x, y + 13); blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
+    if (it.caravan) { const x = ox + it.cx * T + 16, y = oy + it.cy * T + 16; shadow(12, x, y + 10); blitG(b, caravanSprite(ownerColor(st, it.caravan.owner), Math.floor(G.time * 3) % 2), x, y + 8); continue; }
     const ob = it.ob, px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
     if (ob.type === 'monster') { shadow(10, px, py + 10); blitG(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
     else if (ob.type === 'res') { shadow(10, px, py + 9); blitG(b, resSprite(ob.res), px, py + 2); }

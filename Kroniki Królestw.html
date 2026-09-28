@@ -2285,6 +2285,13 @@ const obstacleSprite = (o, t, v, season = 0) => sprite(`ob${o}_${t}_${v}_${seaso
 const decorSprite = (t, v, season = 0) => sprite(`dec${t}_${v}_${season}`, 12, 10, 6, 7, p => { SEASON_DRAW = season; drawDecor(p, t, v); SEASON_DRAW = 0; }, null);
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
+// Karawana na mapie: kryty wóz z koniem i chorągiewką koloru gracza (fr: klatka kół)
+const caravanSprite = (col, fr) => sprite(`caravan_${col}_${fr}`, 26, 22, 13, 18, p => {
+  p.fillStyle = '#6a4424'; p.fillRect(-3, 4, 14, 5); p.fillStyle = '#e8dcc0'; p.beginPath(); p.moveTo(-3, 4); p.quadraticCurveTo(4, -6, 11, 4); p.closePath(); p.fill();
+  p.fillStyle = '#c8b690'; p.fillRect(-2, 1, 12, 2); p.fillStyle = col; p.fillRect(4, -9, 1.5, 6); p.fillRect(5.5, -9, 4, 3);
+  for (const wx of [0, 8]) { p.fillStyle = '#3a2410'; p.beginPath(); p.arc(wx, 10, 2.6, 0, TAU); p.fill(); p.fillStyle = '#a07a4a'; p.fillRect(wx - 0.5 + (fr ? 1 : 0), 8, 1, 4); }
+  p.fillStyle = '#8a5a30'; p.fillRect(-11, 1, 7, 4); p.fillRect(-12, -2, 3, 4); p.fillRect(-10, 5, 1.5, 5); p.fillRect(-6, 5, 1.5, 5); p.fillStyle = '#5a3a1a'; p.fillRect(-4, 4, 2, 1);
+});
 const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
 // Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki
@@ -4299,6 +4306,55 @@ function buildIn(st, t, B) {
   if (B.id === 'special' && t.faction === 'academy') for (let L = 1; L <= guildLevel(t); L++) rollGuildLevel(st, t, L); // Biblioteka: czar więcej na każdym poziomie
   const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1], st); // nowe siedlisko od razu daje przyrost
 }
+// --- karawany (jak w HotA): oddziały z garnizonu jadą bez bohatera do innego własnego miasta; CARAVAN_SPEED pól dziennie ---
+// Po dotarciu dołączają do garnizonu (albo armii bohatera, który nim dowodzi). Gdy miasto celu przepadło, karawana zawraca;
+// gdy nie ma już dokąd wrócić, przepada. Brak miejsca w garnizonie: czeka do następnego dnia.
+const CARAVAN_MP = 1200; // punktów ruchu dziennie (bohater bez premii ma ~1500)
+// Droga karawany: po lądzie jak bohater (teren i drogi), bez zatrzymywania się na obiektach; bez drogi lądem — prosto (statkiem)
+function caravanRoute(st, a, b) {
+  const map = st.map, n = map.n, p = findPath(n, a.x, a.y, b.x, b.y, (j, i) => (map.terrain[j] !== TER.WATER && !map.obst[j]) || j === b.y * n + b.x ? baseCost(map, i, j, null) : Infinity, 50);
+  if (!p) return { route: null, cost: Math.hypot(a.x - b.x, a.y - b.y) * 100 };
+  let cost = 0; for (let k = 1; k < p.length; k++) cost += baseCost(map, p[k - 1], p[k], null) * (p[k] % n !== p[k - 1] % n && ((p[k] / n) | 0) !== ((p[k - 1] / n) | 0) ? 1.414 : 1);
+  return { route: p, cost };
+}
+const caravanDays = (a, b, st = G.state) => Math.max(1, Math.ceil(caravanRoute(st, a, b).cost / CARAVAN_MP));
+const caravanSrc = (st, t) => { const gh = garrisonHero(st, t); return gh ? gh.army : t.garrison; };
+function sendCaravan(st, from, to, slots) {
+  if (!to || to === from || to.owner !== from.owner) return 'Wybierz inne własne miasto';
+  const src = caravanSrc(st, from), pick = [...new Set(slots)].filter(i => src[i]);
+  if (!pick.length) return 'Wybierz oddziały do wysłania';
+  if (garrisonHero(st, from) && armyStacks(src).length <= pick.length) return 'Bohater w garnizonie musi zatrzymać co najmniej jeden oddział';
+  const army = pick.map(i => ({ ...src[i] })); for (const i of pick) src[i] = null;
+  const R = caravanRoute(st, from, to), days = Math.max(1, Math.ceil(R.cost / CARAVAN_MP)); st.caravans = st.caravans || [];
+  st.caravans.push({ owner: from.owner, from: from.id, to: to.id, army, start: st.dayTotal, arrive: st.dayTotal + days, route: R.route });
+  return null;
+}
+// Dołącz oddziały do armii (ten sam stwór albo wolne miejsce); zwraca to, co się nie zmieściło
+function mergeInto(dst, army) {
+  const left = [];
+  for (const s of army) { const i = dst.findIndex(x => x && x.cid === s.cid), j = i >= 0 ? i : dst.findIndex(x => !x); if (j < 0) { left.push(s); continue; } if (dst[j]) dst[j].n += s.n; else dst[j] = { ...s }; }
+  return left;
+}
+function caravanArrivals(st) {
+  for (const c of [...(st.caravans || [])]) {
+    if (c.arrive > st.dayTotal) continue;
+    const to = st.towns[c.to], from = st.towns[c.from], drop = () => { st.caravans = st.caravans.filter(x => x !== c); };
+    if (to.owner !== c.owner) {
+      if (from.owner === c.owner && c.from !== c.to) { tell(st, c.owner, `Miasto ${to.name} przepadło: karawana zawraca do miasta ${from.name}.`); const R = caravanRoute(st, to, from); Object.assign(c, { to: from.id, from: to.id, start: st.dayTotal, arrive: st.dayTotal + Math.max(1, Math.ceil(R.cost / CARAVAN_MP)), route: R.route }); }
+      else { tell(st, c.owner, 'Karawana nie ma dokąd wrócić i rozprasza się.'); drop(); }
+      continue;
+    }
+    c.army = mergeInto(caravanSrc(st, to), c.army);
+    if (c.army.length) { c.arrive = st.dayTotal + 1; tell(st, c.owner, `Karawana czeka pod miastem ${to.name}: w garnizonie brak miejsca.`); }
+    else { drop(); tell(st, c.owner, `Karawana dotarła do miasta ${to.name}.`); }
+  }
+}
+// Pozycja karawany na mapie: punkt drogi wg upływu dni (bez drogi lądem: na prostej między miastami)
+function caravanPos(st, c) {
+  const a = st.towns[c.from], b = st.towns[c.to], f = clamp((st.dayTotal - c.start) / Math.max(1, c.arrive - c.start), 0, 1), n = st.map.n;
+  if (c.route && c.route.length > 1) { const i = c.route[Math.min(c.route.length - 1, Math.max(1, Math.round(f * (c.route.length - 1))))]; return [i % n, (i / n) | 0]; }
+  return [Math.round(a.x + (b.x - a.x) * f), Math.round(a.y + (b.y - a.y) * f)];
+}
 // --- budowle specjalne frakcji (FACTION_SPECIAL) ---------------------------------------------
 const STABLE_MP = 400;
 // Bohater w mieście z budowlą specjalną: stajnie, wir many, klatka wodzów, sala Walhalli. Zwraca opis albo null.
@@ -5272,7 +5328,7 @@ function advanceDay(st) {
     if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
     if (t) { const m = specialVisit(st, t, h); if (m && h.owner !== ME) h.mp = heroMaxMP(h); } // budowla specjalna (stajnie, wir many, klatka, Walhalla)
   }
-  collectIncome(st);
+  collectIncome(st); caravanArrivals(st);
   for (const t of st.towns) t.builtToday = false;
   if (newWeek) st.weekNews = { wk: st.month * 10 + st.week, month: newMonth, text: startWeek(st, newMonth) }; // ludzie zobaczą ogłoszenie astrologów (KRONIKA TYGODNIA)
   dailyTownCheck(st); rebuildObjIndex(st); MapRender.miniDirty = true;
@@ -5340,7 +5396,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null, caravans: st.caravans || [] },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -5359,6 +5415,7 @@ function deserializeGame(d) {
 // (usunięte stwory, budowle, artefakty, miejsca), znika zamiast psuć rozgrywkę. Kolejne kroki w kolejności powstawania gry.
 function migrateSave(st) {
   const r = mulberry32(st.seed), cr = s => (s && CREATURES[s.cid] && s.n > 0 ? s : null), armyFix = a => Array.from({ length: ARMY_SLOTS }, (_, i) => cr(a && a[i]));
+  st.caravans = (st.caravans || []).filter(c => st.towns[c.from] && st.towns[c.to]).map(c => ({ ...c, army: c.army.filter(s => s && CREATURES[s.cid] && s.n > 0) })).filter(c => c.army.length); // karawany
   if (!(st.settings.difficulty >= 0 && st.settings.difficulty < DIFFICULTIES.length)) st.settings.difficulty = 1;
   // gracze: znane frakcje i kolory, komplet surowców
   const used = new Set();
@@ -5881,10 +5938,12 @@ function drawWorldPixel(b, st) {
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
   for (const h of st.heroes) { if (h.garrison != null) continue; const [hx, hy] = heroDrawPos(h); list.push({ y: hy + 0.5, hero: h, hx, hy }); }
+  for (const c of st.caravans || []) { if (c.owner !== ME) continue; const [cx, cy] = caravanPos(st, c); if (cx >= tx0 && cx <= tx1 && cy >= ty0 && cy <= ty1) list.push({ y: cy + 0.4, caravan: c, cx, cy }); } // własne karawany w drodze
   list.sort((a, c) => a.y - c.y);
   const shadow = (w, x, y) => { b.globalAlpha = 0.3; blitG(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
   for (const it of list) {
     if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16; shadow(14, x, y + 13); blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
+    if (it.caravan) { const x = ox + it.cx * T + 16, y = oy + it.cy * T + 16; shadow(12, x, y + 10); blitG(b, caravanSprite(ownerColor(st, it.caravan.owner), Math.floor(G.time * 3) % 2), x, y + 8); continue; }
     const ob = it.ob, px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
     if (ob.type === 'monster') { shadow(10, px, py + 10); blitG(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
     else if (ob.type === 'res') { shadow(10, px, py + 9); blitG(b, resSprite(ob.res), px, py + 2); }
@@ -10873,8 +10932,9 @@ G.screens.town = {
     this.guildVisit();
     this.baseButtons = [
       new Button(596, 448, 192, 40, 'Rekrutacja', () => showRecruitList(G.state, this.town(), m => this.say(m)), { key: 'r', size: 16, tip: 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).' }),
-      new Button(694, 496, 94, 40, 'Na mapę', () => G.go('adventure'), { key: 'escape', size: 14, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
-      new Button(596, 496, 94, 40, 'Dziel', () => { this.split = !this.split; this.say(this.split ? 'Wybierz oddział i miejsce' : 'Przenoszenie całych oddziałów'); }, { key: 'd', size: 14, selected: () => this.split, tip: 'Podział oddziału: przenieś tylko część jednostek (klawisz D albo Shift+klik na miejscu docelowym).' }),
+      new Button(730, 496, 58, 40, 'Mapa', () => G.go('adventure'), { key: 'escape', size: 14, tip: 'Wraca na mapę przygody (klawisz Esc).' }),
+      new Button(658, 496, 68, 40, 'Karawana', () => showCaravan(G.state, this.town(), m => this.say(m)), { key: 'k', size: 12, tip: 'Karawana: wyślij oddziały z garnizonu do innego własnego miasta, bez bohatera (klawisz K).' }),
+      new Button(596, 496, 58, 40, 'Dziel', () => { this.split = !this.split; this.say(this.split ? 'Wybierz oddział i miejsce' : 'Przenoszenie całych oddziałów'); }, { key: 'd', size: 14, selected: () => this.split, tip: 'Podział oddziału: przenieś tylko część jednostek (klawisz D albo Shift+klik na miejscu docelowym).' }),
     ];
     this.bRecruitHalf = new Button(596, 448, 94, 40, 'Rekrutacja', this.baseButtons[0].action, { key: 'r', size: 14, tip: this.baseButtons[0].tip });
     this.bShip = new Button(694, 448, 94, 40, 'Łódź', () => this.showShipyard(), { key: 's', size: 14, tip: 'Stocznia: kup łódź (1000 złota i 10 drewna); pojawi się na wodzie przy mieście.' });
@@ -11217,6 +11277,33 @@ function showGuildView(st, t, scr) {
   };
   G.modal = M;
 }
+// Okno karawany: zaznacz oddziały garnizonu (klik), wybierz miasto celu (liczba dni podróży) i wyślij; niżej karawany w drodze
+function showCaravan(st, t, say) {
+  const own = st.towns.filter(x => x.owner === t.owner && x !== t), x = 130, y = 70, w = 540, h = 440, sel = new Set(); let dest = own.length === 1 ? own[0] : null, rects = [];
+  const cancel = new Button(x + w - 164, y + h - 56, 140, 38, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
+  const send = new Button(x + 24, y + h - 56, 170, 38, 'Wyślij', () => { const e = sendCaravan(st, t, dest, [...sel]); if (e) return say(e); G.modal = null; const c = st.caravans[st.caravans.length - 1], dd = c.arrive - c.start; say(`Karawana wyrusza do miasta ${dest.name} (${dd} ${dd === 1 ? 'dzień' : 'dni'})`); }, { key: 'enter', size: 16 });
+  const destBtns = own.slice(0, 6).map((d, i, _, dd = caravanDays(t, d, st)) => new Button(x + 24 + (i % 3) * 166, y + 176 + Math.floor(i / 3) * 50, 158, 42, d.name, () => { dest = d; },
+    { size: 14, sub: `${dd} ${dd === 1 ? 'dzień' : 'dni'} drogi`, selected: () => dest === d, tip: `Karawana do miasta ${d.name}.` }));
+  G.modal = {
+    caravan: true, buttons: [send, cancel, ...destBtns],
+    onClick(px, py) { const r = hitRect(rects, px, py); if (r && caravanSrc(st, t)[r.i]) { if (sel.has(r.i)) sel.delete(r.i); else sel.add(r.i); } },
+    pick(i) { sel.add(i); }, choose(d) { dest = d; }, // do testów
+    draw(ctx) {
+      dimScreen(ctx, 0.55); drawParchment(ctx, x, y, w, h);
+      text(ctx, `Karawana z miasta ${t.name}`, W / 2, y + 30, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, 'Kliknij oddziały do wysłania:', x + 24, y + 62, { size: 14, weight: 600, color: '#5a3814' });
+      rects = drawArmyRow(ctx, caravanSrc(st, t), x + 24, y + 76, { w: 64, h: 54, gap: 6, light: true });
+      for (const r of rects) if (sel.has(r.i)) { ctx.strokeStyle = '#2a8a3a'; ctx.lineWidth = 3; rr(ctx, r.x - 1, r.y - 1, r.w + 2, r.h + 2, 4); ctx.stroke(); }
+      text(ctx, own.length ? 'Dokąd:' : 'Nie masz innego miasta, do którego mogłaby pojechać karawana.', x + 24, y + 158, { size: 14, weight: 600, color: '#5a3814' });
+      const road = (st.caravans || []).filter(c => c.owner === t.owner && (c.from === t.id || c.to === t.id));
+      text(ctx, road.length ? 'W drodze:' : '', x + 24, y + 290, { size: 14, weight: 600, color: '#5a3814' });
+      road.slice(0, 3).forEach((c, i) => { const n = c.army.reduce((a, s) => a + s.n, 0), left = Math.max(0, c.arrive - st.dayTotal);
+        text(ctx, `${c.to === t.id ? `z miasta ${st.towns[c.from].name}` : `do miasta ${st.towns[c.to].name}`}: ${n} ${n === 1 ? 'stwór' : 'stworów'}, dotrze za ${left} ${left === 1 ? 'dzień' : 'dni'}`, x + 36, y + 312 + i * 20, { size: 14, weight: 500, color: '#2a1606' }); });
+      send.disabled = !sel.size || !dest; [send, cancel, ...destBtns].forEach(b => b.draw(ctx));
+    },
+  };
+}
+
 // ==================== SILNIK: pętla, wejście, przejścia =================================
 // Nie zawiera logiki gry. Ekran to obiekt z metodami enter/draw/update/onClick/... (patrz nagłówek).
 function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; G.dirty = true; if (G.screen.enter) G.screen.enter(params || {}); }
