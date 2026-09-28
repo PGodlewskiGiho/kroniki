@@ -245,11 +245,21 @@
    (heroBattleSprite w narożniku, heroSpot; czar wylatuje z jego ręki), mur z cegieł z wyszczerbieniami, pęknięciami, mchem
    i wyblakłymi malowidłami (paintBricks), obraz frakcji na zakrytych kawałkach mapy zagadki (puzzleCover), pogoda na mapie
    (weatherOf: losowana codziennie wg pory roku, drawWeather: deszcz, burza, mgła, śnieżyca, cienie chmur; wyłącznik w ustawieniach).
-   Etap B2: drobny piksel w całej grafice (PIX = px logicznych na piksel grafiki: 1, przy niskiej jakości 2; PXD = gęstość
+   Etap B2: drobny piksel w całej grafice (PIX = px logicznych na piksel grafiki: PIX_DEFAULT 1,8, przy niskiej jakości 2; PXD = gęstość
    względem dawnej grafiki; sprite ma s.u, setPixelSize czyści pamięci obrazów przez PIX_CLEAR). Teren mapy, tło bitwy, sceny
    miast, interfejs i menu w drobnych pikselach; jednostki z detalami (twarz, szwy, nity, uzda). Portrety 72×72 (siatka 36,
    pixPainter z K, płynne cieniowanie, portraitFinish: światło konturowe, winieta). Kursory gry (11b-kursory.js: setCursor,
    adventureCursor, battleCursor; G.wantCursor ustawiany co klatkę). Przybliżenie mapy kółkiem i klawiszami +/− (ZOOM, ZOOMS,
    viewW/viewH, setZoom; świat rysowany w widoku wirtualnym i skalowany; fale liczone w grubych pikselach).
+   Etap C, krok 17: magia frakcji (FACTION_MAGIC: najwyższy poziom gildii i wagi szkół przy losowaniu czarów, bAllowed,
+   magicText w opisie frakcji i w gildii). Przystań IV, Twierdza i Cytadela III, reszta V.
+   Krok 25: grafiki jednostek z modeli 3D. Narzędzie tools/grafika3d (three.js w Chromium z Playwrighta, nie trafia do gry):
+   modele.js (render: światło, cienie, odbicia, AO, kontur wewnętrzny, pixel art; tekstury rysowane kodem; bryły),
+   postacie.js (humanoid z cech look), zwierzeta.js (czworonogi, skrzydlate, gady, potwory), podglad.js (galeria PNG),
+   wypal.js (npm run grafika: arkusze PNG w src/grafika/, opis klatek w jednostki.json i bohaterowie.json). build.js wbudowuje
+   je jako UNIT_ART i HERO_ART; 11c-grafika-jednostek.js podaje klatki (battleSprite, creatureSprite, drawCreatureIcon,
+   heroBattleSprite z podmianą koloru-klucza na barwę gracza). Piksel jednostek 1,3 px (bitwa), 1,8 px (mapa). Machiny wojenne
+   (balista, namiot medyka, wóz z amunicją, katapulta, strzelec na wieży) mają modele w maszyny.js. Bez arkusza zostaje
+   dawny rysunek wektorowy (battleSprite2D, creatureSprite2D, heroBattleSprite2D).
    ===================================================================================== */
 

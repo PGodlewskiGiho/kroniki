@@ -103,3 +103,25 @@ test('przywołanie łodzi na brzegu; księga czarów pokazuje szkołę i koszt p
   assert.equal(r.err, null); assert.equal(r.added, 1); assert.equal(r.mana, 50 - 6);
   assert.match(r.tip, /magia (Wody|Powietrza)/);
 });
+
+test('gildie frakcji: różny najwyższy poziom i różne szkoły magii (Inferno ogień, Kurhan ziemia)', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const st = G.state, t = st.towns.find(t => t.owner === ME), out = {};
+    for (const fac of ['haven', 'stronghold', 'sylvan']) {
+      t.faction = fac; t.built = ['hall1', 'hall2', 'hall3', 'tavern', 'guild1', 'guild2', 'guild3'];
+      out[fac] = { list: buildList(t).map(x => x.B.id).filter(id => /^guild/.test(id)), max: guildMax(fac) };
+    }
+    const share = (fac, sc) => { let n = 0, k = 0; for (let i = 0; i < 300; i++) { const tt = { id: i, faction: fac, built: [] }; for (const L of [1, 2, 3]) { rollGuildLevel(st, tt, L); for (const id of tt.guild[L]) { k++; if (SPELLS[id].school === sc) n++; } } } return n / k; };
+    out.fire = [share('inferno', 'fire'), share('haven', 'fire')]; out.earth = [share('barrow', 'earth'), share('stronghold', 'earth')];
+    t.faction = 'haven'; t.built = ['hall1', 'tavern', 'guild1', 'guild2', 'guild3', 'guild4']; showGuildView(st, t, G.screens.town); G.modal.draw(G.ctx); G.modal = null;
+    out.text = magicText('inferno'); out.noDup = (() => { const tt = { id: 3, faction: 'academy', built: [] }; rollGuildLevel(st, tt, 1); return new Set(tt.guild[1]).size === tt.guild[1].length; })();
+    return out;
+  });
+  assert.deepEqual(r.haven.list, ['guild4'], 'Przystań: gildia do IV');
+  assert.deepEqual(r.stronghold.list, [], 'Cytadela: gildia do III');
+  assert.deepEqual(r.sylvan.list, ['guild4', 'guild5']);
+  assert.ok(r.fire[0] > r.fire[1] * 1.8, `ogień: Inferno ${r.fire[0]} vs Przystań ${r.fire[1]}`);
+  assert.ok(r.earth[0] > r.earth[1] * 1.3, `ziemia: Kurhan ${r.earth[0]} vs Cytadela ${r.earth[1]}`);
+  assert.match(r.text, /poziomu V, najczęściej magia Ognia/); assert.ok(r.noDup);
+});

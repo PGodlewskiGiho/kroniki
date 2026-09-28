@@ -200,12 +200,12 @@ function seasonLand(col, t, ax, ay, hh, S) {
 function renderChunkPixel(map, cx, cy) {
   const SN = MapRender.season || 0;
   // D = gęstość pikseli (PXD): teren liczony w drobnych pikselach, współrzędne tekstur (ax, ay) w dawnych pikselach grafiki
-  const D = PXD, n = map.n, S = CHUNK * AP, SF = S * D, M = 5, MF = M * D, R = SF + 2 * MF, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
+  const n = map.n, S = CHUNK * AP, SF = Math.round(S * PXD), D = SF / S, M = 5, MF = Math.round(M * D), R = SF + 2 * MF, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
   for (let y = 0; y < R; y++) for (let x = 0; x < R; x++) {
     const ax = bx + (x - MF) / D, ay = by + (y - MF) / D, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
     tid[y * R + x] = map.terrain[clamp(Math.floor((ay + jy) / AP), 0, n - 1) * n + clamp(Math.floor((ax + jx) / AP), 0, n - 1)];
   }
-  const TT = (x, y) => tid[(y + MF) * R + x + MF], TO = (x, y) => TT(Math.floor(x * D), Math.floor(y * D)), rd = map.road, at = (x, y) => (x >= 0 && y >= 0 && x < n && y < n) ? rd[y * n + x] : 0;
+  const TT = (x, y) => tid[(Math.round(y) + MF) * R + Math.round(x) + MF], TO = (x, y) => TT(Math.floor(x * D), Math.floor(y * D)), rd = map.road, at = (x, y) => (x >= 0 && y >= 0 && x < n && y < n) ? rd[y * n + x] : 0;
   const segs = [], x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1;
   for (let y = y0; y <= y0 + CHUNK + 1; y++) for (let x = x0; x <= x0 + CHUNK + 1; x++) {
     const t = at(x, y); if (!t) continue; const px = x * AP + 8 - bx, py = y * AP + 8 - by; let any = false;
@@ -253,7 +253,7 @@ function renderChunkPixel(map, cx, cy) {
     const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     put(g, s, x * AP + 8 - bx, y * AP + 8 - by);
   }
-  gradeCanvas(c, bx * D, by * D);
+  gradeCanvas(c, Math.round(bx * D), Math.round(by * D));
   if (wet) { // maski do animacji wody (WaterFx); przeszkody stojące nad wodą (drzewa, góry przy brzegu) ją zasłaniają
     const mk = v => { const m = document.createElement('canvas'); m.width = m.height = SF; const mg = m.getContext('2d'), mi = mg.createImageData(SF, SF);
       for (let i = 0; i < SF * SF; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out'; mg.setTransform(D, 0, 0, D, 0, 0);
@@ -414,7 +414,7 @@ function drawPathPixel(b, st, h, ox, oy) {
 // Mgła wojny w kawałkach 8×8 pól (jak teren): kółka nad nieodkrytymi polami, progowanie alfy na twardą krawędź
 // z ditheringiem w szachownicę. Kawałek przelicza się tylko wtedy, gdy zmieni się odkrycie pól w nim i wokół niego.
 function fogChunk(ex, n, cx, cy) {
-  const S = CHUNK * AP * PXD, x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1, x1 = x0 + CHUNK + 1, y1 = y0 + CHUNK + 1; let sig = 0, any = false;
+  const S = Math.round(CHUNK * AP * PXD), x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1, x1 = x0 + CHUNK + 1, y1 = y0 + CHUNK + 1; let sig = 0, any = false;
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (!ex[y * n + x]) { sig = (sig * 31 + y * n + x) | 0; any = true; }
   const key = cx + ',' + cy, old = MapRender.fog.get(key); if (old && old._sig === sig) return old.c;
   let c = null;

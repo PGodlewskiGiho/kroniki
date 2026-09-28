@@ -776,11 +776,11 @@ const SITE_ANIM = { windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1, o
 const siteSprite = (k, i = 0) => sprite(`site_${k}_${i}`, 26, 26, 13, 24, p => drawSite(p, k, i / 4));
 const siteFrame = (ob) => (SITE_ANIM[ob.kind] ? Math.floor(G.time * 5 + ob.id) % 4 : 0);
 const mineSprite = k => sprite(`mine_${k}`, 36, 38, 2, 4, p => drawMine(p, { kind: k }, 0, 0, 0, null));
-const creatureSprite = (cid, dir, i = 0) => sprite(`cr_${cid}_${dir}_${i}`, 30, 32, 15, 27, p => drawCreature(p, cid, 0, 0, 1, dir, i * TAU / 4 / 2.4));
+const creatureSprite2D = (cid, dir, i = 0) => sprite(`cr_${cid}_${dir}_${i}`, 30, 32, 15, 27, p => drawCreature(p, cid, 0, 0, 1, dir, i * TAU / 4 / 2.4));
 // Sprite bitewny: ta sama postać w podwójnej rozdzielczości (1 piksel = 1 jednostka), w pozie i klatce animacji.
 // Na ekranie rysowany z k = 1, czyli z tą samą wielkością piksela co mapa (2 px logiczne).
 const BATTLE_FRAMES = { idle: 4, walk: 6, attack: 7, hurt: 1, dead: 1 };
-function battleSprite(cid, dir, pose, i = 0) {
+function battleSprite2D(cid, dir, pose, i = 0) { // rysunek wektorowy (zapas, gdy brak wypalonej grafiki jednostki)
   return sprite(`bs_${cid}_${dir}_${pose}_${i}`, 76, 88, 38, 72, p => {
     const n = BATTLE_FRAMES[pose];
     const P = pose === 'idle' ? { t: i / n * TAU / 2.4 } : pose === 'walk' ? { t: i * 0.2, walk: i / n } : pose === 'attack' ? { t: 0, atk: i / (n - 1) } : pose === 'hurt' ? { t: 0, hurt: true } : { t: 0 };
@@ -801,7 +801,7 @@ function heroBattleLook(h, col) {
   return { kind: 'rider', horse: L.horse, mane: L.mane, skin: L.skin, cloth: col, weapon: mage ? 'staff' : 'sword', helm: L.hood ? 'hood' : 'helm', hoodCol: L.hood, helmCol: L.helm,
     armor: !L.hood, cape: col, barding: shadeHex(col, -0.15), trim: '#e0b24a' };
 }
-const heroBattleSprite = (h, col, dir, i, cast) => sprite(`bh_${h.cls}_${col}_${dir}_${cast ? 1 : 0}_${i}`, 76, 88, 38, 72, p => {
+const heroBattleSprite2D = (h, col, dir, i, cast) => sprite(`bh_${h.cls}_${col}_${dir}_${cast ? 1 : 0}_${i}`, 76, 88, 38, 72, p => {
   const n = cast ? BATTLE_FRAMES.attack : BATTLE_FRAMES.idle, P = cast ? { t: 0, atk: i / (n - 1) } : { t: i / n * TAU / 2.4 };
   p.save(); p.scale(dir, 1); limb(p, -12, -20, -12, -62, 1.6, '#5a3a1e'); const wv = Math.sin(P.t * 2) * 1.5; // chorągiew za plecami
   fillPoly(p, [[-12, -61], [3, -59 + wv], [0, -54 + wv], [3, -49 + wv], [-12, -50]], col); limb(p, -12, -61, 3, -59 + wv, 0.8, '#e0b24a'); circ(p, -12, -63, 1.4, '#e0b24a'); p.restore();
@@ -854,7 +854,7 @@ function drawArmyRow(ctx, army, x, y, o = {}) {
     ctx.fillStyle = o.light ? 'rgba(90,55,20,.14)' : 'rgba(0,0,0,.35)'; rr(ctx, sx, y, w, h, 3); ctx.fill();
     const sel = o.sel === i; ctx.strokeStyle = sel ? '#ffd970' : (o.light ? 'rgba(90,55,20,.45)' : '#6a5a3a'); ctx.lineWidth = sel ? 2.4 : 1; ctx.stroke();
     if (!s) return;
-    ctx.save(); rr(ctx, sx + 1, y + 1, w - 2, h - 2, 3); ctx.clip(); drawSprite(ctx, creatureSprite(s.cid, 1), sx + w / 2, y + h - 7, 1); ctx.restore();
+    ctx.save(); rr(ctx, sx + 1, y + 1, w - 2, h - 2, 3); ctx.clip(); drawCreatureIcon(ctx, s.cid, sx + w / 2, y + h - 7, 1); ctx.restore();
     const n = String(s.n); ctx.save(); ctx.font = font(13, 700, 'body'); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
     ctx.lineWidth = 3; ctx.strokeStyle = '#120a03'; ctx.strokeText(n, sx + w - 4, y + h - 4); ctx.fillStyle = '#f3e2b0'; ctx.fillText(n, sx + w - 4, y + h - 4); ctx.restore();
   });
@@ -892,7 +892,7 @@ function showRecruit(st, t, L, onDone, backToList) {
       text(ctx, F.dw['dw' + L + (cid === units[0] ? '' : 'u')][0], W / 2, y + 32, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
       if (units.length === 1) text(ctx, c.name, W / 2, y + 68, { size: 17, align: 'center', color: '#5a3814', fam: 'title' });
       ctx.fillStyle = 'rgba(90,55,20,.12)'; rr(ctx, x + 24, y + 100, 110, 140, 4); ctx.fill();
-      drawSprite(ctx, creatureSprite(cid, 1), x + 79, y + 218, 2);
+      drawCreatureIcon(ctx, cid, x + 79, y + 218, 2);
       const sx = x + 152;
       [`Poziom ${c.level} · szybkość ${c.spd}`, `Atak ${c.att} · obrona ${c.def}`, `Obrażenia ${c.dmin}–${c.dmax} · życie ${c.hp}`, `Przyrost: ${weeklyGrowth(t, L)} na tydzień`]
         .forEach((l, i) => text(ctx, l, sx, y + 112 + i * 24, { size: 15, weight: 500, color: '#2a1606' }));
@@ -1013,7 +1013,7 @@ function showSplit(fromA, i, toA, j, heroArmies, done) {
     draw(ctx) {
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, `Podział oddziału: ${c.plural.toLowerCase()}`, W / 2, y + 36, { size: 20, align: 'center', color: '#3a1e08', fam: 'title' });
-      drawSprite(ctx, creatureSprite(s.cid, 1), W / 2, y + 128, 2);
+      drawCreatureIcon(ctx, s.cid, W / 2, y + 128, 2);
       text(ctx, `Zostaje: ${s.n - n}`, x + 90, y + 90, { size: 20, align: 'center', color: '#3a1e08', fam: 'title' });
       text(ctx, `Przenosisz: ${n}`, x + w - 90, y + 90, { size: 20, align: 'center', color: '#8a3a1a', fam: 'title' });
       if (have) text(ctx, `(tam już ${have})`, x + w - 90, y + 114, { size: 13, align: 'center', italic: true, weight: 500, color: '#5a3814' });
@@ -1046,7 +1046,7 @@ function showRecruitList(st, t, onDone) {
         ctx.strokeStyle = built ? 'rgba(120,80,30,.55)' : 'rgba(80,60,40,.3)'; ctx.lineWidth = 1.5; ctx.stroke();
         text(ctx, `${L}. ${F.dw['dw' + L + (up ? 'u' : '')][0]}`, x + cw / 2, y + 18, { size: 13, align: 'center', color: built ? '#3a1e08' : '#6a5a48', fam: 'title' });
         ctx.save(); rr(ctx, x + 6, y + 26, cw - 12, 96, 4); ctx.clip(); ctx.fillStyle = built ? 'rgba(255,240,200,.35)' : 'rgba(0,0,0,.08)'; ctx.fillRect(x + 6, y + 26, cw - 12, 96);
-        if (!built) ctx.globalAlpha = 0.35; drawSprite(ctx, creatureSprite(cid, 1), x + cw / 2, y + 114, C.level >= 6 ? 1.6 : 2); ctx.restore();
+        if (!built) ctx.globalAlpha = 0.35; drawCreatureIcon(ctx, cid, x + cw / 2, y + 114, C.level >= 6 ? 1.6 : 2); ctx.restore();
         text(ctx, up ? C.name : C.name + (built ? '' : ''), x + cw / 2, y + 138, { size: 15, align: 'center', color: '#2a1606', fam: 'title' });
         const ab = (C.abil || []).map(a => ABILITIES[a].name).join(', '); if (ab) text(ctx, ab, x + cw / 2, y + 152, { size: 10, weight: 600, align: 'center', color: '#6a3a8a' });
         const stats = [['Atak', C.att], ['Obrona', C.def], ['Obraż.', C.dmin === C.dmax ? C.dmin : `${C.dmin}–${C.dmax}`], ['Zdrowie', C.hp], ['Szybkość', C.spd], [C.shots ? 'Strzały' : 'Przyrost', C.shots ? C.shots : `+${weeklyGrowth(t, L, st)}`]];

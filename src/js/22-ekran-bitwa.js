@@ -18,7 +18,7 @@ const PAVE_X = 572; // bruk dziedzińca od tej kolumny pikseli (px logiczne) w p
 // Tło bitwy w stylu mapy: teren z palety TERRAINS, piksele 2×2, ta sama korekcja barw
 function paintBattleBg(c, terr, fac) {
   // D = gęstość pikseli: teren liczony w drobnych pikselach (fx, fy), wzory w dawnych pikselach (x, y = połowa px logicznych)
-  const D = PXD, w = W / 2, h = H / 2, fw = w * D, fh = h * D, off = document.createElement('canvas'); off.width = fw; off.height = fh;
+  const w = W / 2, h = H / 2, fw = Math.round(w * PXD), fh = Math.round(h * PXD), D = fw / w, off = document.createElement('canvas'); off.width = fw; off.height = fh;
   const g = off.getContext('2d'), img = g.createImageData(fw, fh), P = TPAL[terr].map(gradeRgb), sky = [[40, 44, 62], [70, 72, 92]];
   for (let fy = 0; fy < fh; fy++) for (let fx = 0; fx < fw; fx++) {
     const o = (fy * fw + fx) * 4, x = Math.floor(fx / D), y = Math.floor(fy / D), xs = fx / D, ys = fy / D; let col;

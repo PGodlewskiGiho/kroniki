@@ -128,7 +128,7 @@ function showDwelling(st, h, ob) {
   const k = dwellMax(st, h, ob), c = CREATURES[ob.cid];
   const msg = `${SITES.dwelling.name}: ${c.plural.toLowerCase()} (poziom ${c.level}). Czeka ${ob.avail}, koszt ${costText(c.cost)} za jednego. ${k ? `Stać cię na ${k}.` : ob.avail ? 'Brakuje ci surowców.' : 'W tym tygodniu nikt już nie czeka.'}`;
   showDialog(msg, [...(k ? [{ label: `Zwerbuj ${k}`, key: 'enter', action: () => { const e = dwellHire(st, h, ob, k); if (e) G.screens.adventure.flash(e); } }] : []), { label: 'Wyjdź', key: 'escape' }],
-    { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, creatureSprite(ob.cid, 1), cx, cy + 26, 2) });
+    { iconH: 70, icon: (ctx, cx, cy) => drawCreatureIcon(ctx, ob.cid, cx, cy + 26, 2) });
 }
 function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); }
 function visitObject(st, h, ob) {
@@ -180,7 +180,7 @@ function startEncounter(st, h, m) {
   if (m.dead) return; const c = CREATURES[m.cid];
   // h.prev jest puste, gdy bohater sam wszedł na potwora; ustawione, gdy wszedł w strefę strażnika
   const who = h.prev ? `${qtyName(m.count)} ${c.gen} atakuje twojego bohatera!` : `${h.name} atakuje: ${qtyName(m.count).toLowerCase()} ${c.gen}.`;
-  offerBattle(st, h, m, who, m.count * c.value, (ctx, cx, cy) => drawSprite(ctx, creatureSprite(m.cid, 1), cx, cy + 34, 2));
+  offerBattle(st, h, m, who, m.count * c.value, (ctx, cx, cy) => drawCreatureIcon(ctx, m.cid, cx, cy + 34, 2));
 }
 // Skarbiec: opis załogi i łupu, potem zwykłe okno przed bitwą (odwrót cofa bohatera o pole)
 const bankPower = ob => ob.guards.reduce((s, [cid, n]) => s + n * CREATURES[cid].value, 0);
@@ -342,12 +342,17 @@ const heroMaxMana = h => Math.floor(10 * heroStat(h, 'kn') * (1 + skillVal(h, 'i
 const knows = (h, id) => (h.spells || []).includes(id);
 // Czary gildii losowane raz, gdy powstaje dany poziom (deterministycznie z ziarna gry i miasta)
 function rollGuildLevel(st, t, L) {
-  const pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L), r = mulberry32(st.seed ^ (t.id * 7777) ^ (L * 131));
-  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  if (!t.guild) t.guild = {}; t.guild[L] = pool.slice(0, guildOffer(t, L));
+  const pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L), r = mulberry32(st.seed ^ (t.id * 7777) ^ (L * 131)), out = [];
+  while (pool.length && out.length < guildOffer(t, L)) { // losowanie bez powtórzeń z wagami szkół magii frakcji
+    const w = pool.map(id => schoolWeight(t.faction, SPELLS[id].school)); let x = r() * w.reduce((a, b) => a + b, 0), i = 0;
+    while (i < pool.length - 1 && (x -= w[i]) >= 0) i++; out.push(pool.splice(i, 1)[0]);
+  }
+  if (!t.guild) t.guild = {}; t.guild[L] = out;
 }
 const guildOffer = (t, L) => (GUILD_OFFER[L] || 1) + (t.faction === 'academy' && hasB(t, 'special') ? 1 : 0); // Biblioteka Akademii
 const guildLevel = t => { for (let L = GUILD_MAX; L > 0; L--) if (hasB(t, 'guild' + L)) return L; return 0; };
+// Czy frakcja miasta może postawić budowlę (gildia magów tylko do poziomu frakcji)
+const bAllowed = (t, B) => { const m = /^guild(\d)$/.exec(B.id); return !m || +m[1] <= guildMax(t.faction); };
 // Księga czarów (jak w Heroes 3): magowie zaczynają z nią, wojownicy kupują ją w mieście z gildią magów. Bez księgi bohater
 // nie poznaje czarów (gildia, kapliczka, Orle oko) i nie może ich rzucać. Bohaterowie z dawnych zapisów mają ją (book !== false).
 const SPELLBOOK_COST = 500;
@@ -579,7 +584,7 @@ const hasB = (t, id) => t.built.includes(id);
 const canAfford = (st, cost, owner = ME) => RESOURCES.every(r => (playerOf(st, owner).resources[r.id] || 0) >= (cost[r.id] || 0));
 const reqMet = (t, B) => B.req.every(r => hasB(t, r));
 function townGold(t) { let g = 0; for (const id of ['hall1', 'hall2', 'hall3', 'hall4']) if (hasB(t, id)) g = BUILD_BY_ID[id].gold; return g + (hasB(t, 'grail') ? GRAIL_GOLD : 0); }
-function availableBuildings(t, st = G.state) { return BUILDINGS.filter(B => !B.grail && !hasB(t, B.id) && reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t)))); }
+function availableBuildings(t, st = G.state) { return BUILDINGS.filter(B => !B.grail && bAllowed(t, B) && !hasB(t, B.id) && reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t)))); }
 // Wymagania jak w Heroes 3: wszystkie brakujące budowle na drodze do B (także pośrednie), w kolejności, w jakiej trzeba je stawiać
 function missingReqs(t, B, seen = new Set()) {
   const out = [];
@@ -587,17 +592,17 @@ function missingReqs(t, B, seen = new Set()) {
   return out;
 }
 // Budowle, które B bezpośrednio odblokowuje (jeszcze niepostawione)
-const unlocksOf = (t, B) => BUILDINGS.filter(X => !X.grail && !hasB(t, X.id) && X.req.includes(B.id));
+const unlocksOf = (t, B) => BUILDINGS.filter(X => !X.grail && bAllowed(t, X) && !hasB(t, X.id) && X.req.includes(B.id));
 // Lista budowania: najpierw dostępne, potem zablokowane (najbliższe odblokowania najpierw)
 function buildList(t, st = G.state) {
   const ok = availableBuildings(t, st).map(B => ({ B, locked: false }));
-  const lk = BUILDINGS.filter(B => !B.grail && !hasB(t, B.id) && !reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t))))
+  const lk = BUILDINGS.filter(B => !B.grail && bAllowed(t, B) && !hasB(t, B.id) && !reqMet(t, B) && (B.id !== 'shipyard' || (st && townCoastal(st, t))))
     .map(B => ({ B, locked: true, miss: missingReqs(t, B) })).sort((a, b) => a.miss.length - b.miss.length);
   return [...ok, ...lk];
 }
 const reqNames = (ids, fac) => ids.map(id => bInfo(BUILD_BY_ID[id], fac).name).join(', ');
 // Następna budowla do postawienia na miejscu (działka w scenie); budowli Graala nie da się kupić, więc nie ma działki
-const slotNext = (t, slot) => BUILDINGS.find(B => B.slot === slot && !B.grail && !hasB(t, B.id));
+const slotNext = (t, slot) => BUILDINGS.find(B => B.slot === slot && !B.grail && bAllowed(t, B) && !hasB(t, B.id));
 function slotBuilding(t, slot) { let best = null; for (const B of BUILDINGS) if (B.slot === slot && hasB(t, B.id)) best = B; return best; }
 function buildIn(st, t, B) {
   const R = playerOf(st, t.owner).resources;

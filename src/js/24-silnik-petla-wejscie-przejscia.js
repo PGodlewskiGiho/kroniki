@@ -170,7 +170,7 @@ function drawPerfInfo(ctx) {
 }
 function showGfxSettings(back) {
   const S = G.settings, cur = (QUALITIES.find(q => q.id === S.quality) || QUALITIES[0]).name;
-  const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); setPixelSize(id === 'low' ? 2 : 1); resize(); showGfxSettings(back); };
+  const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); setPixelSize(id === 'low' ? 2 : PIX_DEFAULT); resize(); showGfxSettings(back); };
   const fontBtn = { label: pixelFont() ? 'Czcionka: piksele' : 'Czcionka: klasyczna', sub: 'zmień', tip: 'Czcionka interfejsu: pikselowa (pasuje do grafiki) albo klasyczna szeryfowa.',
     action: () => { S.font = pixelFont() ? 'classic' : 'pixel'; saveSettings(); Layers.cache = {}; showGfxSettings(back); } };
   const wxBtn = { label: weatherOn() ? 'Pogoda: tak' : 'Pogoda: nie', sub: 'zmień', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
@@ -179,8 +179,8 @@ function showGfxSettings(back) {
     [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), fontBtn, wxBtn, { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 100 });
 }
 function init() {
-  loadSettings();
-  setPixelSize(G.settings.quality === 'low' ? 2 : 1); ZOOM = ZOOMS.includes(G.settings.zoom) ? G.settings.zoom : 1; // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
+  loadSettings(); loadUnitArt(); // arkusze jednostek dekodują się w tle (do tego czasu dawne rysunki)
+  setPixelSize(G.settings.quality === 'low' ? 2 : PIX_DEFAULT); ZOOM = ZOOMS.includes(G.settings.zoom) ? G.settings.zoom : 1; // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
   G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: false }); // nieprzezroczyste płótno: przeglądarka nie miesza go z tłem strony
   resize(); window.addEventListener('resize', resize); bindInput();
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)

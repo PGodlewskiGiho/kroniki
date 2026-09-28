@@ -5,9 +5,13 @@
   "scripts": {
     "build": "node build.js",
     "watch": "node build.js --watch",
+    "grafika": "node tools/grafika3d/wypal.js",
+    "podglad": "node tools/grafika3d/podglad.js",
     "test": "node build.js --check && node --test tests/*.test.js"
   },
   "devDependencies": {
-    "playwright": "^1.56.1"
+    "esbuild": "^0.28.2",
+    "playwright": "^1.56.1",
+    "three": "^0.186.1"
   }
 }

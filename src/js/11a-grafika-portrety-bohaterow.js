@@ -5,7 +5,7 @@
 // (fryzura, zarost, nakrycie głowy, wyraz twarzy, znaki szczególne, tło); pozostałe cechy i bohaterowie
 // spoza listy dostają wygląd losowany z imienia (ten sam bohater wygląda zawsze tak samo).
 // Peleryna ma kolor gracza. Na ekranie 1 piksel = 1 px logiczny (k = 1) albo 2 px, jak piksel mapy (k = 2).
-const PORTRAIT_N = 36, PORTRAIT_K = () => PXD; // siatka rysunku 36×36, płótno PORTRAIT_K razy gęstsze
+const PORTRAIT_N = 36, PORTRAIT_K = () => (PXD > 1 ? 2 : 1); // siatka rysunku 36×36, płótno PORTRAIT_K razy gęstsze
 const PORTRAITS = new Map(); PIX_CLEAR.push(() => PORTRAITS.clear());
 const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058',
   beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e', alchemist: '#5a5e70', wizard: '#2e3a6a',
