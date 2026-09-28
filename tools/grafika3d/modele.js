@@ -38,7 +38,7 @@ const G3 = {
     const mid = document.createElement('canvas'); mid.width = w * 2; mid.height = h * 2; const mg = mid.getContext('2d'); mg.imageSmoothingQuality = 'high'; mg.drawImage(r.domElement, 0, 0, w * 2, h * 2);
     const edges = this.edgePass(w, h); this.scene.remove(group);
     const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high'; g.drawImage(mid, 0, 0, w, h);
-    inkLines(out, edges); pixelize(out, o.step || 10); return out;
+    inkLines(out, edges); pixelize(out, o.step || 10); disposeGroup(group); return out;
   },
   edgePass(w, h) {
     const r = this.r, s = this.scene; r.setSize(w, h, false); r.toneMapping = THREE.NoToneMapping; r.outputColorSpace = THREE.LinearSRGBColorSpace; const env = s.environment; s.environment = null;
@@ -46,6 +46,11 @@ const G3 = {
     const n = grab(this.nMat), d = grab(this.dMat); s.overrideMaterial = null; s.environment = env; r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace; return { n, d };
   },
 };
+// Zwalnia bryły po renderze (model powstaje od nowa dla każdej klatki); wspólne materiały z pamięci MATS zostają
+function disposeGroup(g) {
+  const shared = new Set(MATS.values());
+  g.traverse(m => { if (!m.isMesh) return; m.geometry.dispose(); if (!shared.has(m.material)) { if (m.material.map && !m.material.map._shared) m.material.map.dispose(); m.material.dispose(); } });
+}
 // Kontur wewnętrzny: skok głębi (linia po dalszej stronie) albo ostry załom powierzchni
 function inkLines(c, E) {
   const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data, N = E.n, D = E.d, mark = new Uint8Array(w * h);
@@ -108,7 +113,7 @@ function mat(col, kind = 'cloth', rep = 1) {
   if (kind === 'glow') { m.emissive = new THREE.Color(col); m.emissiveIntensity = 1.6; }
   if (kind === 'gem') { m.emissive = new THREE.Color(col); m.emissiveIntensity = 0.5; }
   if (kind === 'fire') { m.emissive = new THREE.Color(col); m.emissiveIntensity = 0.55; } // ogień: świeci, ale zachowuje barwę
-  if (K[2]) { const tx = tex(K[2]).clone(); tx.needsUpdate = true; tx.repeat.set(rep, rep); m.map = tx; m.bumpMap = tx; m.bumpScale = K[3]; }
+  if (K[2]) { const tx = tex(K[2]).clone(); tx._shared = true; tx.needsUpdate = true; tx.repeat.set(rep, rep); m.map = tx; m.bumpMap = tx; m.bumpScale = K[3]; }
   MATS.set(key, m); return m;
 }
 const col3 = c => new THREE.Color(c);

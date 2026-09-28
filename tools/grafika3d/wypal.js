@@ -16,8 +16,10 @@ const WORKERS = +(process.env.WORKERS || 3);
 
 async function bakeGroup(ids, done) {
   if (!ids.length) return;
-  const { browser, page } = await openStudio({ width: 400, height: 300 });
+  let st = null, n = 0;
   for (const id of ids) {
+    if (!st || n++ % 6 === 0) { if (st) await st.browser.close(); st = await openStudio({ width: 400, height: 300 }); } // świeża przeglądarka co kilka jednostek (pamięć karty programowej)
+    const page = st.page;
     const r = await page.evaluate(([id, KB, KM, UB, UM]) => {
       const L = CREATURES[id].look, s = Math.max(1, L.size || 1), F = BATTLE_FRAMES, frames = [];
       if (!buildUnit(L, {})) return null;
@@ -46,7 +48,7 @@ async function bakeGroup(ids, done) {
     }, [id, KB, KM, UB, UM]);
     done(id, r); process.stdout.write(r ? '.' : '-');
   }
-  await browser.close();
+  if (st) await st.browser.close();
 }
 
 // Bohaterowie w bitwie: jeździec z chorągwią dla każdej klasy; części w barwie gracza w kolorze-kluczu (magenta), który gra
