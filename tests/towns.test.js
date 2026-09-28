@@ -121,3 +121,18 @@ test('mapa i dymki pokazują miasta niezależne bez błędów', async () => {
   assert.match(r.tip, /Miasto niezależne\. Siła obrońców \d+/);
   await frames(page, 10);
 });
+
+test('lista budowania pokazuje zablokowane budowle z brakującymi wymaganiami (także pośrednimi) i co budowla odblokowuje', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const t = G.state.towns.find(t => t.owner === ME); t.built = ['hall1']; setScreen('town', { townId: t.id }); G.modal = null;
+    const L = buildList(t), first = L.findIndex(x => x.locked), dw4 = L.find(x => x.B.id === 'dw4');
+    const s = G.screens.town; s.scroll = L.indexOf(dw4); s.draw(document.querySelector('canvas').getContext('2d'));
+    const row = s.rows.find(x => x.B.id === 'dw4'); s.onClick(row.x + 10, row.y + 10); const msg = G.modal && G.modal.msg; G.modal = null;
+    return { okFirst: L.slice(0, first).every(x => !x.locked), lockedAfter: L.slice(first).every(x => x.locked), miss: dw4.miss, tip: s.rightInfo(row.x + 10, row.y + 10),
+      unlock: unlocksOf(t, BUILD_BY_ID.fort).map(B => B.id).includes('citadel'), built: t.built.length, msg };
+  });
+  assert.ok(r.okFirst && r.lockedAfter, 'najpierw dostępne, potem zablokowane');
+  assert.deepEqual(r.miss.slice().sort(), ['dw1', 'dw2', 'fort'], 'dw4 wymaga fortu i siedliska 2. poziomu (a to siedliska 1.)');
+  assert.match(r.tip, /Wymaga \(w tej kolejności\):/); assert.ok(r.unlock); assert.equal(r.built, 1, 'klik w zablokowaną nie buduje');
+});
