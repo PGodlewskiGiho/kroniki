@@ -53,7 +53,10 @@ function placeMachines(B, side, h) {
 }
 // --- oblężenie: mur z bramą w kolumnie SIEGE_X (Fort i wyżej), wieże strzelnicze (Cytadela: jedna, Zamek: dwie)
 // i katapulta atakującego, która co rundę rzuca głazem w mur. Brama przepuszcza tylko obrońców; lotnicy przelatują.
-const SIEGE_X = 9, GATE_Y = 4;
+// Fosa (od Cytadeli) w kolumnie MOAT_X przed murem, z mostem w rzędzie bramy: napastnik, który do niej wejdzie, kończy ruch
+// i dostaje obrażenia (MOAT_DMG wg poziomu fortyfikacji); lotnicy ją przelatują.
+const SIEGE_X = 9, GATE_Y = 4, MOAT_X = SIEGE_X - 1, MOAT_DMG = [0, 0, 40, 70], WALL_HP = [0, 2, 3, 4];
+const moatAt = (B, x, y) => !!(B.moat && x === MOAT_X && y !== GATE_Y);
 const wallAt = (B, x, y) => (B.walls ? B.walls.get(hexKey(x, y)) : null);
 const walled = (B, x, y, side) => { const w = wallAt(B, x, y); return !!w && w.hp > 0 && (w.kind !== 'gate' || side !== 1); };
 const targetable = u => u.cid !== 'arrowTower'; // wież nie da się zaatakować
@@ -67,8 +70,8 @@ function freeSpot(B, side, rows) {
 }
 function setupSiege(B, t) {
   const L = townLevel(t); if (!L) return;
-  const hp = L >= 2 ? 3 : 2, towers = L >= 3 ? [0, BROWS - 1] : L >= 2 ? [0] : [];
-  B.walls = new Map(); B.siege = { level: L };
+  const hp = WALL_HP[L], towers = L >= 3 ? [0, BROWS - 1] : L >= 2 ? [0] : [];
+  B.walls = new Map(); B.siege = { level: L }; if (MOAT_DMG[L]) B.moat = { dmg: MOAT_DMG[L] };
   for (let y = 0; y < BROWS; y++) {
     const tower = towers.includes(y);
     B.walls.set(hexKey(SIEGE_X, y), { x: SIEGE_X, y, kind: tower ? 'tower' : y === GATE_Y ? 'gate' : 'wall', hp: tower ? Infinity : hp, max: hp });
@@ -174,6 +177,7 @@ function battleDist(B, u, limit = Infinity) {
   const q = [[u.x, u.y]];
   while (q.length) {
     const [x, y] = q.shift(), d = dist.get(hexKey(x, y)); if (d >= limit) continue;
+    if (d > 0 && u.side === 0 && moatAt(B, x, y)) continue; // z fosy dalej już nie (ruch kończy się w wodzie)
     for (const [nx, ny] of hexNeighbors(x, y)) {
       const k = hexKey(nx, ny); if (dist.has(k) || !isFree(B, nx, ny, u.side)) continue;
       dist.set(k, d + 1); prev.set(k, hexKey(x, y)); q.push([nx, ny]);
@@ -249,6 +253,10 @@ function actMoveAttack(B, u, path, target) {
   if (path.length) {
     const [x, y] = path[path.length - 1]; moved = hexDistance(u, { x, y });
     if (B.fx) B.fx.push({ kind: 'move', u, path: [[u.x, u.y], ...path], fly: hasAb(u, 'fly') }); u.x = x; u.y = y;
+    if (u.side === 0 && !hasAb(u, 'fly') && moatAt(B, x, y)) { // fosa rani napastnika
+      const k = applyDamage(u, B.moat.dmg); B.log.push(`Fosa: ${CREATURES[u.cid].plural.toLowerCase()} tracą ${B.moat.dmg} życia${k ? ` (giną: ${k})` : ''}.`);
+      if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: u, dmg: B.moat.dmg, killed: k }); if (u.dead) return;
+    }
   }
   if (!target) return;
   strike(B, u, target, false, moved);
@@ -288,6 +296,12 @@ function tradeValue(B, u, e, ranged, moved) {
   }
   B.rng = saved; return gain - loss;
 }
+// Obrońca oblężonego miasta trzyma się za murami (jak w Heroes 3), chyba że jego armia jest dużo silniejsza (wypad)
+function holdWalls(B, u, reach) {
+  if (u.side !== 1 || !B.walls || reach.fly) return false;
+  const power = side => alive(B, side).filter(v => !isMachine(v) && v.src !== 'siege').reduce((s, v) => s + v.n * CREATURES[v.cid].value, 0);
+  return power(1) < power(0) * 1.5;
+}
 // Sztuczna inteligencja: wybiera najlepszą wymianę (strzał albo atak z dostępnego pola),
 // a gdy nikogo nie sięgnie, zbliża się do najcenniejszego celu. Strzelców wroga ceni wyżej.
 function aiAct(B, u) {
@@ -299,16 +313,17 @@ function aiAct(B, u) {
     const t = foes.reduce((a, b) => (tradeValue(B, u, b, true, 0) > tradeValue(B, u, a, true, 0) ? b : a));
     actShoot(B, u, t); return;
   }
-  const spd = unitSpd(u), reach = battleDist(B, u, spd); let best = null;
+  const spd = unitSpd(u), reach = battleDist(B, u, spd), hold = holdWalls(B, u, reach); let best = null;
   for (const e of foes) for (const [nx, ny] of [[u.x, u.y], ...hexNeighbors(e.x, e.y)]) {
     if (!hexAdjacent({ x: nx, y: ny }, e)) continue; const d = reach.dist.get(hexKey(nx, ny)); if (d == null) continue;
+    if (hold && nx < SIEGE_X) continue; // obrońca bije tylko zza muru (z bramy, wyłomu albo ze środka)
     const score = tradeValue(B, u, e, false, d) - d * 0.01; if (!best || score > best.score) best = { score, e, nx, ny };
   }
   // strzelec z sąsiadem obok: bije wręcz tylko, gdy to się opłaca; inaczej broni się
   if (best && (best.score > 0 || u.shots === 0 || foes.every(e => !e.shots))) { actMoveAttack(B, u, pathTo(reach, u, best.nx, best.ny), best.e); return; }
   if (best) { actDefend(B, u); return; }
   // nikt w zasięgu: strzelcy czekają na miejscu, reszta idzie w stronę najcenniejszego wroga
-  if (u.shots > 0) { actDefend(B, u); return; }
+  if (u.shots > 0 || hold) { actDefend(B, u); return; } // obrońca czeka za murami, aż napastnik podejdzie
   const target = foes.reduce((a, b) => (b.n * CREATURES[b.cid].value > a.n * CREATURES[a.cid].value ? b : a));
   const far = battleDist(B, u, reach.fly ? spd : Infinity); let goal = null;
   if (reach.fly) { for (const k of far.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS), d = hexDistance({ x, y }, target); if (!goal || d < goal.d) goal = { d, nx: x, ny: y }; } }

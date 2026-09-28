@@ -306,6 +306,7 @@ G.screens.battle = {
       const pulse = 0.55 + 0.45 * Math.sin(G.time * 6); ctx.strokeStyle = `rgba(255,217,112,${0.35 * pulse})`; ctx.lineWidth = 2; hexPath(ctx, u0.x, u0.y, 2); ctx.stroke();
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,90,${0.18 + 0.12 * pulse})`; ctx.beginPath(); ctx.ellipse(u0.px, u0.py + 14, 24, 9, 0, 0, TAU); ctx.fill(); ctx.restore();
     }
+    if (B.moat) drawMoat(ctx, B); // fosa przed murem
     // polegli leżą pod żywymi
     for (const u of B.units) if (u.dead && u.dieT != null && G.time - u.dieT > 0.45) drawSprite(ctx, corpseSprite(u.cid, u.side === 0 ? 1 : -1), u.px, u.py + 14, 1);
     // oddziały i przeszkody (od góry ekranu w dół, żeby niższe zasłaniały wyższe)
@@ -370,3 +371,14 @@ function battleAftermath(st, h, res) {
   advFloat(`+${res.exp} dośw.`, h.x, h.y);
   gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank') visitObject(st, h, here); });
 }
+// Fosa oblężonego miasta: ciemna woda na polach przed murem, połyskujące piksele fal, most w rzędzie bramy
+function drawMoat(ctx, B) {
+  for (let y = 0; y < BROWS; y++) {
+    if (!moatAt(B, MOAT_X, y)) continue; const [cx, cy] = hexCenter(MOAT_X, y);
+    ctx.fillStyle = '#16303e'; hexPath(ctx, MOAT_X, y, 0); ctx.fill(); ctx.fillStyle = '#1f4a5e'; hexPath(ctx, MOAT_X, y, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(160,210,230,.55)';
+    for (let i = 0; i < 4; i++) { const ph = (G.time * 0.6 + i * 0.27 + y * 0.13) % 1, px = Math.round((cx - 16 + ((i * 11 + y * 7) % 30)) / 2) * 2, py = Math.round((cy - 10 + i * 6) / 2) * 2; if (ph < 0.6) ctx.fillRect(px + Math.round(ph * 4) * 2, py, 6, 2); }
+    ctx.strokeStyle = 'rgba(8,16,22,.8)'; ctx.lineWidth = 2; hexPath(ctx, MOAT_X, y, 1); ctx.stroke();
+  }
+}
+
