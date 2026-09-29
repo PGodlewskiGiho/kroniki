@@ -82,11 +82,13 @@ function horse(L, P, o = {}) {
   }
   return { root, q };
 }
-// Jeździec: koń w siodle z humanoidem (nogi zgięte na boki)
+// Jeździec: koń w siodle z humanoidem (nogi zgięte na boki). Koń w skali człowieka (HORSE_K): jeździec pełnej wielkości
+// siedzi wyżej niż piechur, a koń ma kłąb mniej więcej na wysokości ramion człowieka.
+const HORSE_K = 1.35;
 function rider(L, P = {}) {
-  const { root, q } = horse(L, P, { saddle: L.barding ? DK(L.barding, 0.3) : '#5a2a1a' });
-  const man = humanoid({ ...L, mounted: true, size: 0.92, shield: L.shield, cape: L.cape }, { t: P.t, atk: P.atk, hurt: P.hurt });
-  man.position.set(0.02, q.r * 0.75 - (0.1 + 0.69 * buildOf(L).legL) * 0.92, 0); q.body.add(man); // biodra jeźdźca w siodle
+  const { root: hr, q } = horse(L, P, { saddle: L.barding ? DK(L.barding, 0.3) : '#5a2a1a' }), root = new THREE.Group(); hr.scale.setScalar(HORSE_K); root.add(hr);
+  const man = humanoid({ ...L, mounted: true, size: 1, shield: L.shield, cape: L.cape }, { t: P.t, atk: P.atk, hurt: P.hurt });
+  man.scale.multiplyScalar(1 / HORSE_K); man.position.set(0.02, q.r * 0.75 - (0.1 + 0.69 * buildOf(L).legL) / HORSE_K, 0); q.body.add(man); // biodra jeźdźca w siodle
   if (L.size && !L.banner) root.scale.setScalar(L.size);
   if (L.banner) { // chorągiew bohatera za siodłem
     const wv = Math.sin((P.t || 0) * 2) * 0.04, pole = joint(q.body, [-0.28, q.r * 0.6, -0.16], 0.12);
@@ -101,9 +103,10 @@ function centaur(L, P = {}) {
   q.tail.add(tube([[0, 0, 0], [-0.12, -0.1, 0], [-0.2, -0.4, 0], [-0.18, -0.6, 0]], 0.05, 0.025, L.hair || DK(col, 0.5), 'hair'));
   const man = humanoid({ skin: L.skin, cloth: L.cloth || '#6a4424', hair: L.hair, helm: L.helm, helmCol: L.helmCol, weapon: 'bow', size: 0.95, noLegs: true, quiver: '#6a4424' }, { t: P.t, atk: P.atk, hurt: P.hurt });
   man.position.set(q.len * 0.4, q.r * 0.2 - 0.79 * 0.95, 0); q.body.add(man); // tors człowieka w miejscu końskiej szyi
+  if (L.size) root.scale.setScalar(L.size);
   return root;
 }
-function unicorn(L, P = {}) { return horse({ horse: L.fur, mane: L.mane || '#c8c0e0' }, P, { horn: '#f0d890' }).root; }
+function unicorn(L, P = {}) { const r = horse({ horse: L.fur, mane: L.mane || '#c8c0e0' }, P, { horn: '#f0d890' }).root; r.scale.setScalar(HORSE_K * (L.size || 1)); return r; }
 
 // Wilk i jego odmiany: ogniste ogary (flame), trójgłowy pies (heads), mantykora (mane + wings + stinger), behemot (horns, duży)
 function canineHead(neck, L, P, col, o = {}) {
@@ -142,6 +145,11 @@ function wolf(L, P = {}) {
   else q.tail.add(tube([[0, 0, 0], [-0.2, -0.05, 0], [-0.35, -0.2, 0], [-0.45, -0.25, 0]], fire ? 0.035 : 0.07, 0.025, fire ? L.flame : col, fire ? 'fire' : 'fur'));
   if (L.wings) { const wl = joint(q.body, [q.len * 0.26, q.r * 0.85, 0]), fl = wingFlap(P, 0.3); // skrzydła z łopatek, nie z zadu
     for (const z of [-1, 1]) { const w = joint(wl, [0, 0, 0.14 * z]); w.rotation.set((fl + (z < 0 ? 0.12 : 0)) * z, -0.3 * z, P.fly != null ? -0.35 : -0.2); w.scale.setScalar(0.95); membraneWing(w, L.wings, DK(L.wings, 0.45), 1, true, 1.2); } }
+  if (L.rider) { // jeździec wargów: goblin w siodle na grzbiecie
+    const rs = 0.7, man = humanoid({ build: 'slim', ...L.rider, mounted: true, size: rs }, { t: P.t, atk: P.atk, hurt: P.hurt });
+    q.body.add(mesh(new THREE.CylinderGeometry(q.r * 1.02, q.r * 1.02, 0.34, 16, 1, true, -Math.PI / 2, Math.PI), L.rider.leather || '#3a1a0a', 'leather', [0.02, 0.02, 0], [Math.PI / 2, 0, 0]));
+    man.position.set(0.0, q.r * 0.8 - (0.1 + 0.69 * buildOf(L.rider).legL) * rs, 0); q.body.add(man);
+  }
   if (L.size) root.scale.setScalar(L.size);
   return root;
 }
