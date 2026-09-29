@@ -172,5 +172,5 @@ test('jednostki z modeli 3D: wbudowane arkusze dają klatki bitwy i mapy, odbici
     return { n: ids.length, u: a.u, mu: m.u, mirror: a.c.width === b.c.width && a.ax + b.ax === a.c.width, poses, mach, all, tall: a.c.height };
   });
   assert.ok(r.n >= 70, `arkuszy: ${r.n}`); assert.equal(r.u, 0.9); assert.equal(r.mu, 1.8); assert.ok(r.mirror, 'odbicie w poziomie'); assert.ok(r.poses); assert.ok(r.mach, 'machiny z arkuszy'); assert.deepEqual(r.all, [], 'każda jednostka ma arkusz');
-  assert.ok(r.tall > 35 && r.tall < 80, `wysokość klatki: ${r.tall}`);
+  assert.ok(r.tall * r.u > 35 && r.tall * r.u < 90, `wysokość klatki na ekranie: ${r.tall * r.u}`); // piksele arkusza × rozmiar piksela
 });
