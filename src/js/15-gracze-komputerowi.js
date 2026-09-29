@@ -4,7 +4,8 @@
 // z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Jak zawodowi gracze H3: jeden główny bohater (aiMain)
 // walczy i rośnie, pomocnicy (do limitu bohaterów) zbierają mapę i dowożą mu armię (aiFeed); nikt nie wchodzi pod silniejszego wroga (aiDanger). Wieści ważne dla człowieka trafiają do jego skrzynki (tell), zobaczy je na początku swojej tury.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
-  'castle', 'smith', 'special', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u', 'guild4', 'guild5'];
+  'castle', 'smith', 'special', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u',
+  'dw3x', 'dw4x', 'dw5x', 'dw1x', 'dw2x', 'dw6x', 'dw7x', 'guild4', 'guild5'];
 // Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
 function buyMissing(st, owner, cost) {
   if (!marketCount(st, owner)) return false;
@@ -89,8 +90,9 @@ function aiManageTown(st, p, t) {
   }
   for (let L = 7; L >= 1; L--) {
     if (!hasB(t, 'dw' + L) || !t.avail[L]) continue;
-    const cid = dwellingUnits(t, L).at(-1), n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), p.id));
-    if (n > 0) recruit(st, t, L, cid, n);
+    for (const cid of dwellingUnits(t, L).reverse()) { // najwyższy stopień, na który stać (jeden oddział na poziom)
+      const n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), p.id)); if (n > 0) { recruit(st, t, L, cid, n); break; }
+    }
   }
   const h = heroInTown(st, t); if (!h) return;
   armyTransfer(t.garrison, h.army);

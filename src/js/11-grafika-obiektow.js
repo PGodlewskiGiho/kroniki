@@ -871,7 +871,7 @@ function showRecruit(st, t, L, onDone, backToList) {
   const maxN = () => Math.min(t.avail[L] || 0, maxAffordable(st, unitCost(cid)));
   let n = Math.min(1, maxN());
   const set = v => { n = clamp(v, 0, maxN()); };
-  const unitBtns = units.map((u, k) => new Button(x + w / 2 - units.length * 76 + k * 152 + 4, y + 52, 144, 32, CREATURES[u].name, () => { cid = u; set(n); }, { selected: () => cid === u, size: 15 }));
+  const bw = units.length > 2 ? 142 : 144, unitBtns = units.map((u, k) => new Button(x + w / 2 - units.length * (bw + 8) / 2 + k * (bw + 8) + 4, y + 52, bw, 32, CREATURES[u].name, () => { cid = u; set(n); }, { selected: () => cid === u, size: units.length > 2 ? 13 : 15 }));
   const qy = y + 262;
   const bMinus = new Button(x + 150, qy, 36, 30, 'Mniej', () => set(n - 1), { icon: iconMinus, key: '-' });
   const bPlus = new Button(x + 284, qy, 36, 30, 'Więcej', () => set(n + 1), { icon: iconPlus, key: '+' });
@@ -890,7 +890,7 @@ function showRecruit(st, t, L, onDone, backToList) {
       const c = CREATURES[cid], cost = unitCost(cid), total = {}; for (const r of RESOURCES) if (cost[r.id]) total[r.id] = cost[r.id] * n;
       bBuy.disabled = n <= 0; bMinus.disabled = n <= 0; bPlus.disabled = bMax.disabled = n >= maxN();
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
-      text(ctx, F.dw['dw' + L + (cid === units[0] ? '' : 'u')][0], W / 2, y + 32, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, F.dw['dw' + L + DW_TIERS[units.indexOf(cid)]][0], W / 2, y + 32, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
       if (units.length === 1) text(ctx, c.name, W / 2, y + 68, { size: 17, align: 'center', color: '#5a3814', fam: 'title' });
       ctx.fillStyle = 'rgba(90,55,20,.12)'; rr(ctx, x + 24, y + 100, 110, 140, 4); ctx.fill();
       drawCreatureIcon(ctx, cid, x + 79, y + 218, 2);
@@ -1030,7 +1030,7 @@ function showRecruitList(st, t, onDone) {
   const resNm = { gold: 'zł', wood: 'drewna', ore: 'rudy', mercury: 'rtęci', sulfur: 'siarki', crystal: 'kryształu', gems: 'klejnotów' };
   const costTxt = c => Object.entries(c).filter(([, v]) => v).map(([k, v]) => `${v} ${resNm[k] || k}`).join(', ');
   const btns = [];
-  for (const L of DW_LEVELS) if (hasB(t, 'dw' + L)) { const { x, y } = card(L); { const cid = F.dw['dw' + L + (hasB(t, 'dw' + L + 'u') ? 'u' : '')][1]; btns.push(new Button(x + 36, y + ch - 32, cw - 72, 26, 'Werbuj', () => showRecruit(st, t, L, onDone, back), { size: 14, key: String(L), tip: `Werbunek z siedliska poziomu ${L} (klawisz ${L}). Koszt: ${costTxt(unitCost(cid))} za stwora.` })); } }
+  for (const L of DW_LEVELS) if (hasB(t, 'dw' + L)) { const { x, y } = card(L); { const cid = F.dw[dwTop(t, L)][1]; btns.push(new Button(x + 36, y + ch - 32, cw - 72, 26, 'Werbuj', () => showRecruit(st, t, L, onDone, back), { size: 14, key: String(L), tip: `Werbunek z siedliska poziomu ${L} (klawisz ${L}). Koszt: ${costTxt(unitCost(cid))} za stwora.` })); } }
   const close = new Button(x0 + 3 * (cw + gap) + 30, y0 + ch + gap + ch - 50, cw - 60, 38, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
   let note = '';
   const all = new Button(x0 + 3 * (cw + gap) + 14, y0 + ch + gap + ch - 96, cw - 28, 38, 'Werbuj wszystko', () => { const r = recruitAll(st, t); note = r.text; onDone(r.text); },
@@ -1042,13 +1042,13 @@ function showRecruitList(st, t, onDone) {
       dimScreen(ctx, 0.6); drawParchment(ctx, 6, 8, W - 12, H - 16);
       text(ctx, `Stwory miasta ${t.name} (${F.name})`, W / 2, 42, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
       for (const L of DW_LEVELS) {
-        const { x, y } = card(L), built = hasB(t, 'dw' + L), up = hasB(t, 'dw' + L + 'u'), cid = F.dw['dw' + L + (up ? 'u' : '')][1], C = CREATURES[cid];
+        const { x, y } = card(L), built = hasB(t, 'dw' + L), top = dwTop(t, L), cid = F.dw[top][1], C = CREATURES[cid];
         ctx.fillStyle = built ? 'rgba(90,55,20,.14)' : 'rgba(40,30,20,.10)'; rr(ctx, x, y, cw, ch, 5); ctx.fill();
         ctx.strokeStyle = built ? 'rgba(120,80,30,.55)' : 'rgba(80,60,40,.3)'; ctx.lineWidth = 1.5; ctx.stroke();
-        text(ctx, `${L}. ${F.dw['dw' + L + (up ? 'u' : '')][0]}`, x + cw / 2, y + 18, { size: 13, align: 'center', color: built ? '#3a1e08' : '#6a5a48', fam: 'title' });
+        text(ctx, `${L}. ${F.dw[top][0]}`, x + cw / 2, y + 18, { size: 13, align: 'center', color: built ? '#3a1e08' : '#6a5a48', fam: 'title' });
         ctx.save(); rr(ctx, x + 6, y + 26, cw - 12, 96, 4); ctx.clip(); ctx.fillStyle = built ? 'rgba(255,240,200,.35)' : 'rgba(0,0,0,.08)'; ctx.fillRect(x + 6, y + 26, cw - 12, 96);
         if (!built) ctx.globalAlpha = 0.35; drawCreatureIcon(ctx, cid, x + cw / 2, y + 114, C.level >= 6 ? 1.6 : 2); ctx.restore();
-        text(ctx, up ? C.name : C.name + (built ? '' : ''), x + cw / 2, y + 138, { size: 15, align: 'center', color: '#2a1606', fam: 'title' });
+        text(ctx, C.name, x + cw / 2, y + 138, { size: 15, align: 'center', color: '#2a1606', fam: 'title' });
         const ab = (C.abil || []).map(a => ABILITIES[a].name).join(', '); if (ab) text(ctx, ab, x + cw / 2, y + 152, { size: 10, weight: 600, align: 'center', color: '#6a3a8a' });
         const stats = [['Atak', C.att], ['Obrona', C.def], ['Obraż.', C.dmin === C.dmax ? C.dmin : `${C.dmin}–${C.dmax}`], ['Zdrowie', C.hp], ['Szybkość', C.spd], [C.shots ? 'Strzały' : 'Przyrost', C.shots ? C.shots : `+${weeklyGrowth(t, L, st)}`]];
         stats.forEach(([k, v], i) => { const sx = x + 10 + (i % 2) * (cw / 2), sy = y + 170 + Math.floor(i / 2) * 16; text(ctx, `${k}:`, sx, sy, { size: 12, weight: 500, color: '#5a3814' }); text(ctx, String(v), sx + cw / 2 - 16, sy, { size: 12, weight: 700, color: '#2a1606', align: 'right' }); });

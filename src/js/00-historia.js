@@ -293,5 +293,11 @@
    Animacje: ataki z zamachem i ciosem (wind/hit w quadBody, wypad z krokiem, przysiad, pazury, dęba, wdech smoka, kąsanie
    hydry po kolei), strzelcy naciągają łuk bez wypadu (centaur strzela z miejsca); więcej klatek (BATTLE_FRAMES 6/8/8/10)
    i szybsze tempo w 22. tools/grafika3d/klatki.js: pasek klatek jednej pozy.
+   Krok 19b: trzeci stopień jednostek. Elitarne siedliska dwLx (BUILDINGS, po dwLu, to samo miejsce w scenie; w scenie jak
+   ulepszone plus dwa maszty z proporcami – eliteArt), F.dw.dwLx = [nazwa, jednostka]. 56 jednostek elitarnych (elite() w 03:
+   look jednostki ulepszonej + zmiany, tier: 3), ok. 35% silniejszych od ulepszonych, każda z nową zdolnością: nowe
+   maxDamage (Mistrzostwo), armorPierce (Przebicie, ARMOR_PIERCE% obrony), deathBlow (Cios śmiertelny, DEATH_BLOW% szans).
+   Pula siedliska wspólna dla trzech stopni (dwellingUnits, dwTop = najwyższy zbudowany, DW_TIERS); specjalność bohatera
+   obejmuje wszystkie stopnie; SI werbuje najwyższy stopień, na który ją stać (jeden oddział na poziom).
    ===================================================================================== */
 

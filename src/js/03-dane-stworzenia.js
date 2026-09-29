@@ -4,6 +4,7 @@
 // Postać: weapon (spear/halberd/lance/sword/axe/club/bow/staff/none), helm (helm/greathelm/horn/hood/cap/crown/skull), armor, cape,
 // shield, robe, hair, longHair, beard, ears, tusks, wings, halo, bony, hunch, claws, eyes, orb, glow.
 // abil: zdolności bitewne (opisy w ABILITIES, działanie w BITWA: ZASADY)
+const ARMOR_PIERCE = 40, DEATH_BLOW = 20; // Przebicie: % pomijanej obrony celu; Cios śmiertelny: % szans na podwójne obrażenia
 const ABILITIES = {
   fly: { name: 'Lot', desc: 'przelatuje nad przeszkodami i oddziałami' },
   doubleStrike: { name: 'Podwójny atak', desc: 'w walce wręcz uderza dwa razy' },
@@ -18,6 +19,9 @@ const ABILITIES = {
   regen: { name: 'Regeneracja', desc: 'na początku rundy leczy rany pierwszego stwora' },
   undead: { name: 'Nieumarły', desc: 'odporny na wysysanie życia; ważne też przy czarach' },
   machine: { name: 'Machina', desc: 'stoi w miejscu, działa sama, nie kontratakuje i nie zna morale' },
+  maxDamage: { name: 'Mistrzostwo', desc: 'zawsze zadaje najwyższe obrażenia' },
+  armorPierce: { name: 'Przebicie', desc: `pomija ${ARMOR_PIERCE}% obrony celu` },
+  deathBlow: { name: 'Cios śmiertelny', desc: `${DEATH_BLOW}% szans na podwójne obrażenia` },
 };
 // Stworzenia neutralne (statystyki własne, w duchu oryginału).
 const CREATURES = {
@@ -202,4 +206,132 @@ Object.assign(CREATURES, {
   behemoth: mkU('Behemot', 'Behemoty', 'behemotów', 7, 17, 17, 30, 50, 200, 6, 1, 3600, { gold: 1500 }, { faction: 'stronghold', up: 'ancientBehemoth', look: { kind: 'wolf', fur: '#b89a6a', horns: '#e8e0cc', stripes: '#8a6a44', eyes: '#ff4a2a', size: 1.75, hornType: 'bull', beast: 'behemoth' } }),
   ancientBehemoth: mkU('Pradawny behemot', 'Pradawne behemoty', 'pradawnych behemotów', 7, 19, 19, 30, 50, 320, 9, 1, 6400, { gold: 3000, crystal: 1 }, { abil: ['unlimitedRetal'], faction: 'stronghold', look: { kind: 'wolf', fur: '#8a6a4a', horns: '#f0d890', stripes: '#4a3420', mane: '#5a3a24', eyes: '#ffd040', size: 1.9, hornType: 'long', beast: 'behemoth' } }),
 });
+// Trzeci stopień: jednostki elitarne z elitarnych siedlisk (dwLx), wyraźnie silniejsze od ulepszonych (statystyki,
+// nowa zdolność, bogatszy wygląd). Wygląd = look jednostki ulepszonej + zmiany; przyrost i pula siedliska wspólne.
+// elite(z, id, [nazwa, mn., dop., bier. = dop.], [atak, obrona, obr. min, obr. max, życie, szybkość, wartość], koszt, zdolności, look, inne)
+function elite(from, id, [name, plural, gen, acc = gen], [att, def, dmin, dmax, hp, spd, value], cost, abil, look, o = {}) {
+  const c = CREATURES[from];
+  CREATURES[id] = { name, plural, gen, acc, faction: c.faction, level: c.level, att, def, dmin, dmax, hp, spd, growth: c.growth, value, shots: c.shots, cost, tier: 3,
+    ...(abil.includes('fly') ? { fly: true } : {}), abil, ...o, look: { ...c.look, ...look } };
+}
+// Przystań
+elite('halberdier', 'guardsman', ['Gwardzista', 'Gwardziści', 'gwardzistów'], [7, 9, 2, 4, 14, 6, 165], { gold: 100 }, ['unlimitedRetal'],
+  { cloth: '#2a4a8a', helm: 'greathelm', helmCol: '#d8dee8', metal: '#d8dee8', plume: '#e0b24a', tabard: '#2a4a8a', cross: '#e0b24a', cape: '#1e3a6a', shield: '#2a4a8a', shieldMark: '#e0b24a', shieldShape: 'tower', pauldrons: 'spiked', size: 1.04 });
+elite('marksman', 'arbalester', ['Arbaletnik', 'Arbaletnicy', 'arbaletników'], [8, 5, 4, 6, 13, 7, 265], { gold: 200 }, ['doubleShot', 'sharpshooter'],
+  { cloth: '#3a5a2a', helm: 'sallet', helmCol: '#c8ced8', metal: '#c8ced8', armor: 'plate', pauldrons: true, pavise: '#3a5a8a', trim: '#e0b24a', cape: null, size: 1.05 });
+elite('royalGriffin', 'imperialGriffin', ['Gryf cesarski', 'Gryfy cesarskie', 'gryfów cesarskich', 'gryfy cesarskie'], [11, 11, 4, 8, 32, 11, 620], { gold: 320 }, ['fly', 'unlimitedRetal', 'deathBlow'],
+  { fur: '#e0b85a', barding: '#2a4a8a', trim: '#e0b24a', crest: '#c83a2a', helmet: '#e0c050', size: 1.34 }, { retal: 9 });
+elite('crusader', 'templar', ['Templariusz', 'Templariusze', 'templariuszy'], [14, 15, 8, 12, 44, 7, 820], { gold: 540 }, ['doubleStrike', 'maxDamage'],
+  { weapon: 'greatsword', dual: false, cloth: '#e8e0d0', metal: '#d8dce4', helmCol: '#d8dce4', tabard: '#e8e0d0', cross: '#b02a1a', cape: '#a83a2a', crownSpikes: '#e0b24a', hilt: '#e0b24a', glow: '#fff4d0', size: 1.14 });
+elite('priest', 'inquisitor', ['Inkwizytor', 'Inkwizytorzy', 'inkwizytorów'], [15, 12, 12, 15, 50, 8, 1000], { gold: 600, mercury: 1 }, ['noMeleePenalty', 'sharpshooter'],
+  { cloth: '#e8e0d0', cape: '#8a1a1a', collar: true, book: '#6a1a1a', orb: '#fff0a0', helmCol: '#f0ead8', trim: '#e0b24a', armor: 'breast', metal: '#e0c870', size: 1.0 });
+elite('champion', 'paladin', ['Paladyn', 'Paladyni', 'paladynów'], [19, 19, 22, 28, 120, 10, 2800], { gold: 1600, crystal: 1 }, ['jousting', 'unlimitedRetal'],
+  { horse: '#e8e0d0', cloth: '#2a4a8a', barding: '#2a4a8a', horseArmor: '#d8dce4', trim: '#e0b24a', pennon: '#e0b24a', halo: '#fff0a0', shield: '#2a4a8a', shieldMark: '#e0b24a', shieldShape: 'heater', size: 1.16 });
+elite('dawnbringer', 'seraph', ['Serafin', 'Serafini', 'serafinów'], [26, 26, 50, 60, 260, 20, 8800], { gold: 7000, gems: 8 }, ['fly', 'doubleStrike', 'unlimitedRetal'],
+  { wingPairs: 3, wingSpan: 1.3, helm: 'circlet', crownCol: '#ffd060', cape: '#e0c060', glow: '#fff4c0', flame: null, size: 1.72 });
+// Knieja
+elite('nymph', 'rusalka', ['Rusałka', 'Rusałki', 'rusałek', 'rusałki'], [5, 5, 2, 4, 11, 9, 115], { gold: 85 }, ['fly', 'noRetal'],
+  { weapon: 'staff', staffTop: 'orb', orb: '#e8ffb0', flowerCrown: '#f0a0c0', wingPairs: 2, wingSpan: 1.5, longHair: '#6aa85a', size: 0.96 });
+elite('elfSharp', 'elfHunter', ['Elfi łowca', 'Elfi łowcy', 'elfich łowców'], [10, 6, 3, 5, 16, 8, 360], { gold: 280 }, ['doubleShot', 'sharpshooter', 'deathBlow'],
+  { helm: null, hair: '#c8a060', longHair: '#c8a060', antlers: '#e8dcc0', cape: '#5a3a1e', pauldrons: true, metal: '#8a6a3a', armor: 'breast', size: 1.06 });
+elite('centaurChief', 'centaurKhan', ['Chan centaurów', 'Chanowie centaurów', 'chanów centaurów'], [11, 9, 5, 8, 30, 10, 530], { gold: 330 }, ['noMeleePenalty', 'doubleShot'],
+  { fur: '#8a5a2e', hair: '#d8d0c0', beard: '#d8d0c0', helm: 'horn', helmCol: '#8a7a5a', armor: 'brig', cloth: '#2a5a3a', cape: '#2a5a3a', barding: '#2a5a3a', trim: '#e0b24a', size: 1.42 }, { shots: 16 });
+elite('elderTreant', 'treantKing', ['Król drzewców', 'Królowie drzewców', 'królów drzewców'], [12, 17, 10, 16, 80, 5, 880], { gold: 560 }, ['regen', 'unlimitedRetal'],
+  { fur: '#4a3220', leaves: '#2e6a3a', antlers: true, moss: '#5a7a3a', vines: '#4a7a3a', blossom: '#f0d8e8', eyes: '#c0ff90', size: 1.4 });
+elite('silverUnicorn', 'starUnicorn', ['Gwiezdny jednorożec', 'Gwiezdne jednorożce', 'gwiezdnych jednorożców', 'gwiezdne jednorożce'], [18, 16, 16, 22, 95, 10, 1950], { gold: 1250, gems: 1 }, ['unlimitedRetal', 'deathBlow'],
+  { fur: '#eef0f6', mane: '#f0d890', hornCol: '#ffe070', eyes: '#a0e8ff', wings: '#ffffff', stars: '#fff0a0', size: 1.1 });
+elite('sunPhoenix', 'celestialPhoenix', ['Niebiański feniks', 'Niebiańskie feniksy', 'niebiańskich feniksów', 'niebiańskie feniksy'], [22, 18, 24, 30, 130, 16, 3150], { gold: 2100, mercury: 3 }, ['fly', 'breath', 'regen'],
+  { palette: 'sun', size: 1.38 });
+elite('jadeDragon', 'forestDragon', ['Smok puszczy', 'Smoki puszczy', 'smoków puszczy'], [27, 27, 45, 60, 300, 16, 8400], { gold: 5500, crystal: 3 }, ['fly', 'breath', 'maxDamage'],
+  { fur: '#3aa87a', horn: '#e8d890', leaves: '#3a8a3a', blossom: '#f0d8e8', whiskers: '#e8d890', wing: '#2e8a5a', size: 1.32 });
+// Kurhany
+elite('boneGuard', 'boneLegionary', ['Kościany legionista', 'Kościani legioniści', 'kościanych legionistów'], [8, 8, 2, 4, 9, 6, 150], { gold: 105 }, ['undead', 'unlimitedRetal'],
+  { weapon: 'sword', shield: '#3a3440', shieldMark: '#8af0b8', shieldShape: 'tower', helm: 'helm', helmCol: '#6a6a72', plume: '#6a1a2a', cape: '#3a3440', pauldrons: 'spiked', size: 1.03 });
+elite('plagueGhoul', 'devourer', ['Pożeracz', 'Pożeracze', 'pożeraczy'], [8, 8, 3, 5, 26, 6, 235], { gold: 180 }, ['undead', 'lifeDrain'],
+  { build: 'brute', hunch: 0.4, bigClaws: true, arms: 4, armSpread: true, backSpikes: '#d8d0c0', skulls: '#e8e0cc', size: 1.2 });
+elite('banshee', 'zmora', ['Zmora', 'Zmory', 'zmór', 'zmory'], [10, 9, 4, 7, 26, 9, 520], { gold: 330 }, ['undead', 'fly', 'noRetal', 'deathBlow'],
+  { fur: '#b0b4d0', scythe: true, wisps: '#8af0b8', size: 1.3 });
+elite('vampireLord', 'nosferatu', ['Nosferatu', 'Nosferatu', 'nosferatu'], [14, 12, 6, 10, 50, 10, 1050], { gold: 650 }, ['undead', 'fly', 'noRetal', 'lifeDrain', 'unlimitedRetal'],
+  { wings: '#2a1a2a', helm: null, hair: null, bigEars: true, claws: true, build: 'lanky', hunch: 0.15, size: 1.12 });
+elite('archNecro', 'lich', ['Licz', 'Licze', 'liczów'], [17, 13, 13, 18, 50, 8, 1400], { gold: 800, mercury: 1 }, ['undead', 'noMeleePenalty', 'sharpshooter'],
+  { bony: true, skin: '#e8e2cc', helm: 'crown', crownCol: '#b0a060', hover: true, book: '#2a1a3a', collar: true, size: 1.1 });
+elite('dreadLord', 'abyssKnight', ['Rycerz Otchłani', 'Rycerze Otchłani', 'rycerzy Otchłani'], [21, 21, 18, 34, 145, 10, 3200], { gold: 2000, mercury: 2 }, ['undead', 'jousting', 'lifeDrain', 'armorPierce'],
+  { horseWings: 'bone', weapon: 'glaive', size: 1.26 });
+elite('ghostWyvern', 'boneDragon', ['Kościany smok', 'Kościane smoki', 'kościanych smoków', 'kościane smoki'], [24, 21, 35, 60, 260, 15, 6400], { gold: 4200, mercury: 3 }, ['undead', 'fly', 'breath', 'deathBlow'],
+  { fur: '#d8d0bc', eyes: '#8af0b8', soulFire: '#8af0b8', form: '', size: 1.28 });
+// Twierdza (bagna)
+elite('gnollMarauder', 'gnollBerserker', ['Gnoll berserker', 'Gnolle berserkerzy', 'gnolli berserkerów'], [7, 7, 2, 4, 10, 6, 130], { gold: 95 }, ['doubleStrike'],
+  { dual: true, shield: null, helm: null, build: 'stocky', armor: null, bare: true, skulls: '#e8e0cc', backSpikes: '#e8e0cc', pauldrons: 'spiked', size: 1.1 });
+elite('lizardWarrior', 'lizardSlayer', ['Jaszczur zabójca', 'Jaszczury zabójcy', 'jaszczurów zabójców'], [8, 9, 3, 5, 19, 6, 275], { gold: 190 }, ['noMeleePenalty', 'sharpshooter'],
+  { helm: null, frill: '#c86a2a', armor: 'breast', metal: '#8a7a4a', skulls: '#e8e0cc', pauldrons: 'spiked', cape: '#3a4a2a', size: 1.04 });
+elite('venomFly', 'queenFly', ['Królowa ważek', 'Królowe ważek', 'królowych ważek', 'królowe ważek'], [10, 12, 3, 6, 25, 15, 430], { gold: 320 }, ['fly', 'noRetal', 'deathBlow'],
+  { wingPairs: 3, stinger: '#c83a1a', curl: true, crown: '#e0b040', size: 2.0 });
+elite('greatBasilisk', 'royalBasilisk', ['Bazyliszek królewski', 'Bazyliszki królewskie', 'bazyliszków królewskich', 'bazyliszki królewskie'], [15, 15, 8, 12, 50, 8, 960], { gold: 540 }, ['noRetal', 'deathBlow'],
+  { frill: '#8a3a1a', sail: '#8a3a1a', crown: '#e0b040', size: 1.52 });
+elite('mightyGorgon', 'bronzeGorgon', ['Spiżowa gorgona', 'Spiżowe gorgony', 'spiżowych gorgon', 'spiżowe gorgony'], [14, 17, 14, 20, 95, 7, 1320], { gold: 800, mercury: 1 }, ['breath', 'armorPierce'],
+  { plate: '#9a7a3a', spikes: '#c8a050', size: 1.52 });
+elite('wyvernKing', 'stormWyvern', ['Wywern burzy', 'Wywerny burzy', 'wywernów burzy', 'wywerny burzy'], [17, 17, 20, 26, 100, 13, 2100], { gold: 1450, sulfur: 1 }, ['fly', 'noRetal', 'deathBlow'],
+  { bolts: '#e8f4ff', mane: '#6a4a1a', size: 0.98 });
+elite('chaosHydra', 'primeHydra', ['Pradawna hydra', 'Pradawne hydry', 'pradawnych hydr', 'pradawne hydry'], [21, 23, 30, 50, 290, 8, 7500], { gold: 4600, sulfur: 3 }, ['noRetal', 'regen', 'breath', 'unlimitedRetal'],
+  { heads: 9, horns: '#e0c060', frill: '#9a6aaa', size: 1.32 });
+// Inferno
+elite('familiar', 'bies', ['Bies', 'Biesy', 'biesów', 'biesy'], [6, 5, 2, 3, 8, 8, 105], { gold: 80 }, ['deathBlow'],
+  { weapon: 'trident', wingSpan: 0.85, hornType: 'long', size: 0.8 });
+elite('magog', 'firebrand', ['Podpalacz', 'Podpalacze', 'podpalaczy'], [9, 6, 3, 6, 20, 7, 350], { gold: 240 }, ['noMeleePenalty', 'armorPierce'],
+  { flameHair: '#ffb040', horns: '#1a1010', hornType: 'long', hornScale: 1.4, flameMantle: '#ff8a30', handFire: '#ffb040', skulls: '#e8e0cc', size: 1.12 });
+elite('cerberus', 'abyssCerberus', ['Cerber Otchłani', 'Cerbery Otchłani', 'cerberów Otchłani', 'cerbery Otchłani'], [12, 10, 3, 9, 38, 10, 610], { gold: 320 }, ['noRetal', 'breath'],
+  { horns: '#1a1010', collar: '#2a1a14', blaze: '#e8d8c0', size: 1.34 });
+elite('hornedDemon', 'doomDemon', ['Demon zagłady', 'Demony zagłady', 'demonów zagłady', 'demony zagłady'], [15, 14, 8, 12, 55, 7, 840], { gold: 420 }, ['deathBlow'],
+  { weapon: 'labrys', wings: '#5a1810', wingSpan: 1.1, armor: 'breast', size: 1.32 });
+elite('pitLord', 'archFiend', ['Arcyczart', 'Arcyczarty', 'arcyczartów', 'arcyczarty'], [16, 15, 15, 20, 72, 8, 1750], { gold: 950, mercury: 1 }, ['lifeDrain', 'deathBlow'],
+  { arms: 4, armSpread: true, extraWeapon: 'mace', hornScale: 1.3, flameMantle: '#ff6a1a', crownSpikes: '#3a2a2a', helm: null, size: 1.5 });
+elite('efreetSultan', 'flameLord', ['Pan płomieni', 'Panowie płomieni', 'panów płomieni'], [19, 17, 20, 28, 120, 15, 3300], { gold: 1500, sulfur: 2 }, ['fly', 'unlimitedRetal', 'breath'],
+  { arms: 4, wings: '#ff9a30', wingType: 'fire', wingSpan: 1.2, crownSpikes: '#ffd060', size: 1.9 });
+elite('archDevil', 'hellLord', ['Władca Piekieł', 'Władcy Piekieł', 'władców Piekieł'], [28, 27, 35, 45, 260, 19, 9900], { gold: 6500, mercury: 4 }, ['fly', 'noRetal', 'deathBlow'],
+  { helm: null, crownSpikes: '#ffd060', flameHair: '#ff6a1a', flameMantle: '#ff6a1a', hornScale: 1.4, offWeapon: 'sword', offGlow: '#ff8a30', wingPairs: 2, wingSpan: 1.8, size: 2.0 });
+// Akademia
+elite('masterGremlin', 'gremlinEngineer', ['Gremlin inżynier', 'Gremliny inżynierowie', 'gremlinów inżynierów'], [6, 5, 2, 3, 6, 6, 110], { gold: 70 }, ['noMeleePenalty'],
+  { weapon: 'crossbow', helm: 'kettle', helmCol: '#a0a4b0', pack: '#c8a040', size: 0.8 }, { shots: 12 });
+elite('obsidianGargoyle', 'runeGargoyle', ['Gargulec runiczny', 'Gargulce runiczne', 'gargulców runicznych', 'gargulce runiczne'], [9, 10, 3, 4, 22, 10, 310], { gold: 225 }, ['fly', 'unlimitedRetal'],
+  { backSpikes: '#60c8ff', spikes: '#60c8ff', flameMantle: '#60c8ff', hornType: 'long', hornScale: 1.5, build: 'brute', wingSpan: 1.3, size: 1.0 });
+elite('ironGolem', 'mithrilGolem', ['Golem mithrilowy', 'Golemy mithrilowe', 'golemów mithrilowych', 'golemy mithrilowe'], [11, 13, 5, 7, 45, 6, 560], { gold: 290 }, ['unlimitedRetal'],
+  { metal: '#b8c4d0', core: '#80e0ff', crystals: '#a0e8ff', size: 1.5 });
+elite('archMage', 'battleMage', ['Mag bitewny', 'Magowie bitewni', 'magów bitewnych'], [14, 11, 9, 11, 36, 8, 930], { gold: 600 }, ['noMeleePenalty', 'sharpshooter'],
+  { offWeapon: 'sword', offGlow: '#e0a0ff', armor: 'breast', metal: '#c8ccd4', pauldrons: true, robe: false, size: 1.06 });
+elite('masterGenie', 'genieLord', ['Dżin władca', 'Dżiny władcy', 'dżinów władców', 'dżiny władców'], [16, 15, 16, 20, 52, 12, 1300], { gold: 800, gems: 1 }, ['fly', 'deathBlow'],
+  { arms: 4, armSpread: true, extraWeapon: 'scimitar', crownSpikes: '#ffd060', size: 1.44 });
+elite('nagaQueen', 'nagaEmpress', ['Naga cesarzowa', 'Nagi cesarzowe', 'nag cesarzowych', 'nagi cesarzowe'], [19, 16, 32, 36, 130, 8, 3600], { gold: 2100, gems: 2 }, ['noRetal', 'unlimitedRetal'],
+  { cobraHood: '#3a6a8a', armSpread: true, helm: 'circlet', size: 1.58 });
+elite('titan', 'stormTitan', ['Tytan burzy', 'Tytani burzy', 'tytanów burzy'], [28, 28, 50, 65, 360, 13, 9600], { gold: 6500, gems: 4 }, ['noMeleePenalty', 'sharpshooter'],
+  { weapon: 'spear', glow: '#c0e8ff', crownSpikes: '#e0c060', helm: 'circlet', wings: '#f0f4ff', wingSpan: 1.1, size: 2.7 });
+// Loch
+elite('infernalTroglodyte', 'shadowTroglodyte', ['Troglodyta cienia', 'Troglodyci cienia', 'troglodytów cienia'], [7, 6, 2, 4, 10, 6, 140], { gold: 100 }, ['deathBlow'],
+  { weapon: 'trident', shieldShape: 'tower', cape: '#3a1a2a', backSpikes: '#3a2a20', size: 0.98 });
+elite('harpyHag', 'fury', ['Furia', 'Furie', 'furii', 'furie'], [10, 8, 2, 5, 20, 11, 370], { gold: 240 }, ['fly', 'noRetal', 'doubleStrike'],
+  { weapon: 'dagger', dual: true, snakes: '#5a6a4a', wingSpan: 1.45, size: 1.04 });
+elite('evilEye', 'doomEye', ['Oko zagłady', 'Oczy zagłady', 'oczu zagłady', 'oczy zagłady'], [12, 10, 4, 7, 32, 8, 560], { gold: 370 }, ['noMeleePenalty', 'sharpshooter'],
+  { stalks: 12, spikes: '#e8d8c0', tentacles: true, size: 1.4 });
+elite('medusaQueen', 'archMedusa', ['Arcymeduza', 'Arcymeduzy', 'arcymeduz', 'arcymeduzy'], [13, 12, 7, 10, 42, 7, 880], { gold: 440 }, ['noMeleePenalty', 'deathBlow'],
+  { helm: null, crownSpikes: '#c8a050', cobraHood: '#8a6a3a', cape: '#4a2a4a', size: 1.24 }, { shots: 16 });
+elite('minotaurKing', 'minotaurLord', ['Minotaur władca', 'Minotaury władcy', 'minotaurów władców'], [18, 18, 14, 22, 75, 9, 1580], { gold: 760, sulfur: 1 }, ['unlimitedRetal', 'deathBlow'],
+  { dual: true, armor: 'plate', hornScale: 1.6, pauldrons: 'spiked', crownSpikes: '#c8a050', skulls: '#e8e0cc', size: 1.66 });
+elite('scorpicore', 'chimera', ['Chimera', 'Chimery', 'chimer', 'chimery'], [19, 19, 17, 24, 115, 13, 2450], { gold: 1400, sulfur: 1 }, ['fly', 'noRetal', 'breath'],
+  { goatHead: '#6a4a3a', horns: '#e0d0b0', snakeTail: '#5a6a3a', size: 1.6 });
+elite('blackDragon', 'shadowDragon', ['Smok cienia', 'Smoki cienia', 'smoków cienia', 'smoki cienia'], [29, 29, 45, 55, 360, 17, 11000], { gold: 5500, sulfur: 3 }, ['fly', 'breath', 'armorPierce'],
+  { bolts: '#b060ff', mane: '#3a3048', eyes: '#d080ff', size: 1.32 });
+// Cytadela
+elite('hobgoblinRaider', 'hobgoblinSlasher', ['Hobgoblin rębacz', 'Hobgobliny rębacze', 'hobgoblinów rębaczy', 'hobgobliny rębacze'], [8, 5, 2, 4, 9, 8, 135], { gold: 75 }, ['doubleStrike'],
+  { dual: true, shield: null, helm: 'horn', armor: 'breast', skulls: '#e8e0cc', size: 0.8 });
+elite('wargRider', 'wargChief', ['Wilczy herszt', 'Wilczy hersztowie', 'wilczych hersztów'], [10, 8, 3, 6, 21, 10, 340], { gold: 190 }, ['doubleStrike', 'deathBlow'],
+  { horns: '#e0d0b0', plates: '#6a6258', size: 1.26, collar: '#3a2a1a', rider: { skin: '#c8843a', cloth: '#8a2a1a', leather: '#3a1a0a', weapon: 'axe', ears: true, tusks: true, helm: 'horn', helmCol: '#6a6258', armor: 'brig', cape: '#8a2a1a', backBanner: '#8a2a1a' } });
+elite('orcChief', 'orcWarlord', ['Orczy watażka', 'Orczy watażkowie', 'orczych watażków'], [11, 8, 4, 6, 28, 6, 390], { gold: 220 }, ['noMeleePenalty', 'doubleShot'],
+  { backBanner: '#8a2a1a', crownSpikes: '#9a948a', helm: null, mohawk: '#1a1a10', size: 1.1 });
+elite('warAurochs', 'ramAurochs', ['Tur taranowy', 'Tury taranowe', 'turów taranowych', 'tury taranowe'], [16, 14, 10, 15, 68, 9, 1000], { gold: 500 }, ['jousting', 'armorPierce'],
+  { ram: true, size: 1.32 });
+elite('thunderbird', 'tempestBird', ['Ptak nawałnicy', 'Ptaki nawałnicy', 'ptaków nawałnicy', 'ptaki nawałnicy'], [17, 14, 13, 19, 90, 14, 1650], { gold: 950, crystal: 1 }, ['fly', 'noRetal', 'deathBlow'],
+  { wingPairs: 2, stormCrown: '#e8f4ff', orb: '#c0e8ff', size: 1.1 });
+elite('cyclopsKing', 'elderCyclops', ['Pradawny cyklop', 'Pradawni cyklopi', 'pradawnych cyklopów'], [20, 17, 18, 28, 105, 9, 2250], { gold: 1450, crystal: 1 }, ['noMeleePenalty', 'sharpshooter'],
+  { boulder: '#8a8478', helm: null, crownSpikes: '#8a7a5a', beard: '#8a7a6a', armor: 'plate', skulls: '#e8e0cc', size: 2.0 });
+elite('ancientBehemoth', 'primalBehemoth', ['Pierwotny behemot', 'Pierwotne behemoty', 'pierwotnych behemotów', 'pierwotne behemoty'], [23, 22, 35, 55, 400, 11, 8900], { gold: 4500, crystal: 3 }, ['unlimitedRetal', 'armorPierce'],
+  { plates: '#d8ccb0', hornPairs: 2, tusks: '#f0e8d8', size: 2.0 });
 fillNeutrals();
