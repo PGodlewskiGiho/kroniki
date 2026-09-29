@@ -14,10 +14,10 @@ const portraitArt = h => { const im = PORTRAIT_IMG[h.name]; return im && im._ok 
 const unitArt = cid => { const A = typeof UNIT_ART !== 'undefined' && UNIT_ART[cid], im = UNIT_IMG[cid]; return A && im && im._ok ? A : null; };
 const unitArtReady = () => (typeof UNIT_ART === 'undefined' || Object.keys(UNIT_ART).every(cid => UNIT_IMG[cid] && UNIT_IMG[cid]._ok)) && (typeof HERO_ART === 'undefined' || Object.keys(HERO_ART).every(c => HERO_IMG[c] && HERO_IMG[c]._ok))
   && (typeof HERO_PORTRAITS === 'undefined' || Object.keys(HERO_PORTRAITS).every(n => PORTRAIT_IMG[n] && PORTRAIT_IMG[n]._ok));
-// Klatka arkusza jako sprite ({ c, ax, ay, u }); odbicie dla dir = -1
+// Klatka arkusza jako sprite ({ c, ax, ay, u }); odbicie dla dir = -1. Pozy: idle, walk, fly (latające), attack, hurt, dead, map
 function artFrame(cid, pose, i, dir, u) {
   const key = `u3_${cid}_${pose}_${i}_${dir}`; let s = SPR.get(key); if (s) return s;
-  const A = UNIT_ART[cid], fr = (A.f[pose] || A.f.idle)[i % (A.f[pose] || A.f.idle).length], [x, y, w, h, ax, ay] = fr;
+  const A = UNIT_ART[cid], row = A.f[pose] || (pose === 'fly' && A.f.walk) || A.f.idle, [x, y, w, h, ax, ay] = row[i % row.length]; // lot bez własnych klatek: chód
   const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); c._ctx = g;
   if (dir < 0) { g.translate(w, 0); g.scale(-1, 1); } g.drawImage(UNIT_IMG[cid], x, y, w, h, 0, 0, w, h);
   s = { c, ax: dir < 0 ? w - ax : ax, ay, u }; SPR.set(key, s); return s;

@@ -779,8 +779,9 @@ const mineSprite = k => sprite(`mine_${k}`, 36, 38, 2, 4, p => drawMine(p, { kin
 const creatureSprite2D = (cid, dir, i = 0) => sprite(`cr_${cid}_${dir}_${i}`, 30, 32, 15, 27, p => drawCreature(p, cid, 0, 0, 1, dir, i * TAU / 4 / 2.4));
 // Sprite bitewny: ta sama postać w podwójnej rozdzielczości (1 piksel = 1 jednostka), w pozie i klatce animacji.
 // Na ekranie rysowany z k = 1, czyli z tą samą wielkością piksela co mapa (2 px logiczne).
-const BATTLE_FRAMES = { idle: 4, walk: 6, attack: 7, hurt: 1, dead: 1 };
+const BATTLE_FRAMES = { idle: 4, walk: 6, fly: 6, attack: 7, hurt: 1, dead: 1 };
 function battleSprite2D(cid, dir, pose, i = 0) { // rysunek wektorowy (zapas, gdy brak wypalonej grafiki jednostki)
+  if (pose === 'fly') pose = 'walk';
   return sprite(`bs_${cid}_${dir}_${pose}_${i}`, 76, 88, 38, 72, p => {
     const n = BATTLE_FRAMES[pose];
     const P = pose === 'idle' ? { t: i / n * TAU / 2.4 } : pose === 'walk' ? { t: i * 0.2, walk: i / n } : pose === 'attack' ? { t: 0, atk: i / (n - 1) } : pose === 'hurt' ? { t: 0, hurt: true } : { t: 0 };

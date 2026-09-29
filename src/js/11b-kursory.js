@@ -55,16 +55,22 @@ function cursorHorse(c, col, mane) {
   circ(c, 19, 9.5, 1.3, '#1a0e06'); circ(c, 26, 15, 0.9, '#1a0e06'); limb(c, 14, 7, 12, 14, 0.8, LT(col, 0.35));
 }
 let CURSOR_CSS = {}; PIX_CLEAR.push(() => { CURSOR_CSS = {}; G._cursor = null; });
+// Miecz obrócony w stronę ciosu: 'attack0'…'attack11' co 30° (0 = w prawo, zgodnie z ruchem wskazówek zegara na ekranie)
+function cursorDef(kind) {
+  const m = /^attack(\d+)$/.exec(kind); if (!m) return CURSORS[kind] || CURSORS.arrow;
+  const a = +m[1] * Math.PI / 6 + Math.PI / 4; // narysowany miecz celuje w górę i w prawo (−45°)
+  return { hot: [16, 16], fb: 'crosshair', draw(c) { c.translate(16, 16); c.rotate(a); c.translate(-16, -16); CURSORS.attack.draw(c); } };
+}
 function cursorCss(kind) {
   if (CURSOR_CSS[kind]) return CURSOR_CSS[kind];
-  const C = CURSORS[kind] || CURSORS.arrow, s = sprite(`cursor_${kind}`, 16, 16, 0, 0, C.draw, OUTLINE, 0.5);
+  const C = cursorDef(kind), s = sprite(`cursor_${kind}`, 16, 16, 0, 0, C.draw, OUTLINE, 0.5);
   const cv = document.createElement('canvas'); cv.width = cv.height = 32; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(s.c, 0, 0, 32, 32);
   return (CURSOR_CSS[kind] = `url(${cv.toDataURL()}) ${C.hot[0]} ${C.hot[1]}, ${C.fb}`);
 }
 // Ustawia kursor (tylko gdy się zmienił: podmiana obrazu kursora co klatkę kosztowałaby przeglądarkę)
 function setCursor(kind) {
   if (!G.canvas || G._cursor === kind) return; G._cursor = kind;
-  try { G.canvas.style.cursor = cursorCss(kind); } catch (e) { G.canvas.style.cursor = (CURSORS[kind] || CURSORS.arrow).fb; }
+  try { G.canvas.style.cursor = cursorCss(kind); } catch (e) { G.canvas.style.cursor = cursorDef(kind).fb; }
 }
 // Mapa przygody: co pokazuje kursor nad polem (x, y) dla wybranego bohatera
 function adventureCursor(st, x, y) {
@@ -84,5 +90,9 @@ function pathCostMp(st, h) { let c = 0, px = h.x, py = h.y; for (const [x, y] of
 function battleCursor(scr) {
   const p = scr.preview, u = scr.B && scr.B.active; if (!p) return scr.casting ? 'no' : 'arrow';
   if (p.kind === 'move') return u && hasAb(u, 'fly') ? 'fly' : 'move';
+  if (p.kind === 'attack') { // miecz wskazuje kierunek ciosu: od pola, z którego oddział uderzy, do celu
+    const [fx, fy] = hexCenter(...p.from), a = Math.atan2(p.target.py - fy, p.target.px - fx);
+    return 'attack' + ((Math.round(a / (Math.PI / 6)) + 12) % 12);
+  }
   return { attack: 'attack', shoot: 'shoot', cast: 'spell', nocast: 'no', far: 'no', info: 'arrow' }[p.kind] || 'arrow';
 }

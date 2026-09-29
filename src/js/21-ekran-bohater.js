@@ -204,6 +204,14 @@ const BattleFX = {
         g: o.g || 0, life, max: life, col: Array.isArray(o.col) ? o.col[i % o.col.length] : o.col, size: o.size || 3, glow: !!o.glow, drag: o.drag || 0 });
     }
   },
+  // Strumień ognia (zionięcie): kłęby lecą od paszczy do celu, rosną i stygną od białożółtego przez barwę ognia do dymu
+  flame(x0, y0, x1, y1, col) {
+    const a = Math.atan2(y1 - y0, x1 - x0), dist = Math.hypot(x1 - x0, y1 - y0);
+    for (let i = 0; i < 4; i++) {
+      const aa = a + (Math.random() - 0.5) * 0.22, v = dist / 0.32 * (0.75 + Math.random() * 0.45), life = 0.3 + Math.random() * 0.16;
+      this.parts.push({ x: x0 + (Math.random() - 0.5) * 4, y: y0 + (Math.random() - 0.5) * 4, vx: Math.cos(aa) * v, vy: Math.sin(aa) * v, g: -60, life, max: life, col, size: 3, grow: 13 + Math.random() * 7, fire: true, glow: true, drag: 2.2 });
+    }
+  },
   ring(x, y, col, r1 = 40, dur = 0.5, w = 3) { this.rings.push({ x, y, col, r1, dur, w, t: 0 }); },
   bolt(x0, y0, x1, y1, col) {
     const pts = [[x0, y0]]; const n = 9;
@@ -257,6 +265,7 @@ const BattleFX = {
       ctx.restore();
     }
     for (const p of this.parts) {
+      if (p.fire) { drawFlamePuff(ctx, p, add); continue; }
       if (p.glow !== add) continue; const a = clamp(p.life / p.max, 0, 1), s = Math.max(1, Math.round(p.size * (p.glow ? 0.6 + a * 0.6 : 1)));
       ctx.save(); if (p.glow) ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a; ctx.fillStyle = p.col;
       ctx.fillRect(Math.round(p.x / 2) * 2 - s / 2, Math.round(p.y / 2) * 2 - s / 2, s, s); ctx.restore();
@@ -264,6 +273,18 @@ const BattleFX = {
   },
   drawFlash(ctx) { if (this.flash) { ctx.save(); ctx.globalAlpha = clamp(this.flash.a, 0, 1) * 0.6; ctx.fillStyle = this.flash.col; ctx.fillRect(0, 38, W, 452); ctx.restore(); } },
 };
+// Kłąb ognia: rdzeń białożółty, potem barwa płomienia i jego ciemniejszy brzeg (światło addytywne); pod koniec życia dym
+function drawFlamePuff(ctx, p, add) {
+  const age = 1 - clamp(p.life / p.max, 0, 1), r = p.size + p.grow * Math.sqrt(age), x = Math.round(p.x / 2) * 2, y = Math.round(p.y / 2) * 2;
+  ctx.save();
+  if (add) {
+    ctx.globalCompositeOperation = 'lighter'; const heat = 1 - age, col = p.col;
+    ctx.globalAlpha = 0.5 * heat; circ(ctx, x, y, r, DK(col, 0.25));
+    ctx.globalAlpha = 0.8 * heat; circ(ctx, x, y, r * 0.68, age < 0.5 ? LT(col, 0.25) : col);
+    if (age < 0.45) { ctx.globalAlpha = 1 - age * 2; circ(ctx, x, y, r * 0.36, '#fff4c8'); }
+  } else if (age > 0.55) { ctx.globalAlpha = (age - 0.55) * 0.9; circ(ctx, x, y - (age - 0.55) * 20, r * 0.8, '#2e2622'); } // dym nad końcem strumienia
+  ctx.restore();
+}
 function projPos(p) { const f = clamp(p.t / p.dur, 0, 1); return [lerp(p.x0, p.x1, f), lerp(p.y0, p.y1, f) - (p.kind === 'arrow' ? 4 * f * (1 - f) : Math.sin(f * Math.PI)) * p.arc]; } // strzała: parabola balistyczna
 // Aura czaru wokół oddziału (cząsteczki zależne od rodzaju)
 function spellAura(x, y, fx) {

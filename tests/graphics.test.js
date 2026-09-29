@@ -142,10 +142,12 @@ test('kursor zmienia się wg celu: mapa (ruch, atak, odwiedziny, zakaz), przycis
     const out = { monster: at(m.x, m.y), res: res ? at(res.x, res.y) : 'visit', free: free ? at(...free) : 'move', wall: at(...wall) };
     out.css = cursorCss('attack').startsWith('url(data:image/png'); setCursor('attack'); out.set = G.canvas.style.cursor.includes('url(');
     const B = createBattle(st, h, m), scr = G.screens.battle; setScreen('battle', { battle: B }); scr.phase = 'input';
-    scr.preview = { kind: 'attack' }; out.bAtt = battleCursor(scr); scr.preview = { kind: 'shoot' }; out.bShoot = battleCursor(scr); scr.preview = { kind: 'far' }; out.bFar = battleCursor(scr);
+    const tg = (x, y) => { const [px, py] = hexCenter(x, y); return { px, py }; }; // miecz obraca się w stronę ciosu
+    scr.preview = { kind: 'attack', from: [3, 4], target: tg(4, 4) }; out.bAtt = battleCursor(scr); scr.preview.target = tg(2, 4); out.bAttL = battleCursor(scr);
+    scr.preview.target = tg(3, 5); out.bAttD = battleCursor(scr); out.rot = cursorCss(out.bAttD).startsWith('url(data:image/png') && cursorCss(out.bAttD) !== cursorCss(out.bAtt); scr.preview = { kind: 'shoot' }; out.bShoot = battleCursor(scr); scr.preview = { kind: 'far' }; out.bFar = battleCursor(scr);
     return out;
   });
-  assert.deepEqual(r, { monster: 'attack', res: 'visit', free: 'move', wall: 'no', css: true, set: true, bAtt: 'attack', bShoot: 'shoot', bFar: 'no' });
+  assert.deepEqual(r, { monster: 'attack', res: 'visit', free: 'move', wall: 'no', css: true, set: true, bAtt: 'attack0', bAttL: 'attack6', bAttD: 'attack2', rot: true, bShoot: 'shoot', bFar: 'no' });
 });
 
 test('kółko myszy przybliża i oddala mapę wokół kursora; pole pod kursorem zostaje to samo', async () => {

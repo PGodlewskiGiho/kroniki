@@ -4,6 +4,14 @@ const HEX = { w: 54, h: 62, row: 46, x0: 36, y0: 52 };
 // Miejsce bohatera strony (x, y stóp, zwrot) i skala jego rysunku
 const HERO_BATTLE_K = 0.9, heroSpot = side => side ? [W - 22, 122, -1] : [22, 122, 1];
 const hexCenter = (x, y) => [HEX.x0 + x * HEX.w + (y & 1 ? HEX.w / 2 : 0) + HEX.w / 2, HEX.y0 + y * HEX.row + HEX.h / 2];
+// Paszcza zionącego stwora (px logiczne) przy zwrocie d: z arkusza (m: punkt paszczy w klatce ataku, wypalony z modelu) albo szacunkowo
+function mouthPos(u, d) {
+  const A = unitArt(u.cid), L = CREATURES[u.cid].look, gy = u.py + 14 - (u.lift || 0);
+  if (A && A.m) return [u.px + d * A.m[0] * A.u, gy + A.m[1] * A.u];
+  const k = 32 * (L.size || 1); return [u.px + d * 0.9 * k, gy - 1.3 * k];
+}
+// Barwa zionięcia: z wyglądu stwora (kwas, lód, blask), domyślnie ogień
+const breathColor = cid => { const L = CREATURES[cid].look; return L.breathCol || L.breath || (L.bony ? '#9af0c8' : '#ff7a1a'); };
 function hexPath(ctx, x, y, inset = 0) {
   const [cx, cy] = hexCenter(x, y), r = HEX.h / 2 - inset, rx = HEX.w / 2 - inset; ctx.beginPath();
   for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; ctx.lineTo(cx + Math.cos(a) * rx / Math.cos(Math.PI / 6), cy + Math.sin(a) * r); }
@@ -97,10 +105,10 @@ G.screens.battle = {
     const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null;
     this.me = B.sides[0].owner === ME ? 0 : 1; this.floats = []; this.preview = null; this.timer = 0; this.ending = null; // strona gracza: 0 gdy atakuje, 1 gdy się broni
     this.terr = B.st.map.terrain[B.h.y * B.st.map.n + B.h.x] || TER.GRASS;
-    for (const u of B.units) { [u.px, u.py] = hexCenter(u.x, u.y); u.anim = null; u.dieT = null; u.flashT = null; }
+    for (const u of B.units) { [u.px, u.py] = hexCenter(u.x, u.y); u.anim = null; u.dieT = null; u.flashT = null; u.face = null; }
     BattleFX.reset(); this.intro = { t: 0, dur: 0.9 };
     // przygotowanie klatek animacji z góry (żeby pierwszy ruch nie przycinał)
-    for (const u of B.units) { const d = u.side === 0 ? 1 : -1; for (const [pose, n] of Object.entries(BATTLE_FRAMES)) for (let i = 0; i < n; i++) battleSprite(u.cid, d, pose, i); }
+    for (const u of B.units) for (const d of [1, -1]) for (const [pose, n] of Object.entries(BATTLE_FRAMES)) for (let i = 0; i < n; i++) battleSprite(u.cid, d, pose, i); // obie strony: oddziały się obracają
     const bx = 470, mk = (i, j, label, act, o) => new Button(bx + i * 108, 500 + j * 46, 100, 38, label, act, Object.assign({ size: 15 }, o));
     this.bWait = mk(0, 0, 'Czekaj', () => this.player(u => actWait(B, u)), { key: 'w', tip: 'Oddział ruszy na końcu tej rundy (klawisz W).' });
     this.bDef = mk(1, 0, 'Obrona', () => this.player(u => actDefend(B, u)), { key: 'd', tip: 'Oddział broni się: wyższa obrona do jego następnego ruchu (klawisz D).' });
@@ -122,6 +130,7 @@ G.screens.battle = {
   },
   nextTurn() {
     const B = this.B, u = nextActive(B); this.preview = null;
+    for (const v of B.units) v.face = null; // po akcji oddziały znów patrzą w stronę wroga
     if (!u) { this.startEnding(); return; }
     this.startTurnFor(u);
   },
@@ -169,12 +178,14 @@ G.screens.battle = {
   // Czasy efektów (w sekundach); walka automatyczna odtwarza się szybciej
   startPlay(fx) {
     const sp = this.B.auto ? 0.55 : 1, S = fx.kind === 'spell' ? SPELL_FX[fx.id] || {} : null;
-    const dur = fx.kind === 'move' ? (fx.fly ? 0.35 + 0.07 * hexDistance({ x: fx.path[0][0], y: fx.path[0][1] }, { x: fx.u.x, y: fx.u.y }) : 0.17 * (fx.path.length - 1))
-      : fx.kind === 'hit' ? (fx.a ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj || S.meteor ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
+    const dur = fx.kind === 'move' ? (fx.fly ? 0.45 + 0.08 * hexDistance({ x: fx.path[0][0], y: fx.path[0][1] }, { x: fx.u.x, y: fx.u.y }) : 0.17 * (fx.path.length - 1))
+      : fx.kind === 'hit' ? (fx.a && !fx.splash ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj || S.meteor ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
-    const now = G.time;
-    if (fx.kind === 'move') fx.u.anim = { pose: 'walk', t0: now, dur: this.play.dur };
-    if (fx.kind === 'hit' && fx.a) { fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur }; }
+    const now = G.time, faceTo = (v, x) => { if (v && Math.abs(x - v.px) > 2) v.face = Math.sign(x - v.px); }; // oddział obraca się w stronę ruchu i celu
+    if (fx.kind === 'move') { fx.u.anim = { pose: fx.fly ? 'fly' : 'walk', t0: now, dur: this.play.dur }; if (fx.fly) faceTo(fx.u, hexCenter(fx.u.x, fx.u.y)[0]); }
+    if (fx.kind === 'hit' && fx.a && !fx.splash) { faceTo(fx.a, fx.tg.px); fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur }; }
+    if (fx.kind === 'shot') faceTo(fx.a, fx.tg.px);
+    if (fx.kind === 'siege') faceTo(fx.a, hexCenter(fx.x, fx.y)[0]);
     if (fx.kind === 'shot' || fx.kind === 'siege') fx.a.anim = { pose: 'attack', t0: now, dur: 0.55 * sp };
   },
   // Trafienie: błysk, odrzut, iskry, liczba obrażeń; zabity oddział przewraca się
@@ -190,11 +201,17 @@ G.screens.battle = {
     const p = this.play, f = clamp(p.t / p.dur, 0, 1);
     if (p.kind === 'move') {
       const u = p.u;
-      if (p.fly) { const [ax, ay] = hexCenter(...p.path[0]), [bx, by] = hexCenter(u.x, u.y), k = ease(f); u.px = lerp(ax, bx, k); u.py = lerp(ay, by, k); u.lift = Math.sin(f * Math.PI) * 30; }
-      else { const seg = f * (p.path.length - 1), i = Math.min(p.path.length - 2, Math.floor(seg)), k = seg - i; const [ax, ay] = hexCenter(...p.path[i]), [bx, by] = hexCenter(...p.path[i + 1]); u.px = ax + (bx - ax) * k; u.py = ay + (by - ay) * k; }
+      if (p.fly) { // start, lot wysoko nad polem i lądowanie
+        const [ax, ay] = hexCenter(...p.path[0]), [bx, by] = hexCenter(u.x, u.y), k = ease(f), top = Math.min(66, 34 + Math.hypot(bx - ax, by - ay) * 0.12);
+        u.px = lerp(ax, bx, k); u.py = lerp(ay, by, k); u.lift = top * Math.min(1, Math.sin(f * Math.PI) * 1.6);
+      } else { const seg = f * (p.path.length - 1), i = Math.min(p.path.length - 2, Math.floor(seg)), k = seg - i; const [ax, ay] = hexCenter(...p.path[i]), [bx, by] = hexCenter(...p.path[i + 1]); u.px = ax + (bx - ax) * k; u.py = ay + (by - ay) * k; if (bx !== ax) u.face = Math.sign(bx - ax); }
       if (Math.random() < 0.35 && !p.fly) BattleFX.emit(u.px, u.py + 14, { n: 1, col: '#9a8a70', spd: 20, up: -15, life: 0.4, size: 3, drag: 2 });
     } else if (p.kind === 'hit') {
-      if (!p.landed && f >= (p.a ? 0.5 : 0)) { p.landed = true; this.impact(p.tg, p.dmg, p.killed); }
+      if (p.a && !p.splash && hasAb(p.a, 'breath') && f > 0.3 && f < 0.78) { // zionięcie: strumień ognia z paszczy przez cel i pole za nim
+        const d = p.a.face || (p.a.side === 0 ? 1 : -1), [mx, my] = mouthPos(p.a, d), bh = hexBehind(p.a, p.tg), [ex, ey] = bh ? hexCenter(...bh) : [p.tg.px + d * 40, p.tg.py];
+        BattleFX.flame(mx, my, ex, ey - 22, breathColor(p.a.cid));
+      }
+      if (!p.landed && f >= (p.a && !p.splash ? 0.5 : 0)) { p.landed = true; this.impact(p.tg, p.dmg, p.killed); }
     } else if (p.kind === 'shot') {
       const LK = CREATURES[p.a.cid].look, orb = LK.weapon === 'staff' || !!LK.orb, col = LK.orb || '#c8e0ff'; // kula: laska albo własny pocisk (kamień gremlina, piorun tytana)
       if (!p.launched && f >= 0.42) {
@@ -250,7 +267,7 @@ G.screens.battle = {
     }
   },
   unitLook(u) {
-    const d = u.side === 0 ? 1 : -1, now = G.time, a = u.anim && now - u.anim.t0 < u.anim.dur ? u.anim : null;
+    const d = u.face || (u.side === 0 ? 1 : -1), now = G.time, a = u.anim && now - u.anim.t0 < u.anim.dur ? u.anim : null;
     let pose = 'idle', i = Math.floor(now * 3.5 + u.id * 1.37) % BATTLE_FRAMES.idle, ox = 0;
     const E = (this.phase === 'over' || this.phase === 'done') && this.ending;
     if (E && u.side === E.winner && !u.dead && !isMachine(u)) { // zwycięzcy podskakują i wymachują bronią
@@ -260,7 +277,7 @@ G.screens.battle = {
     if (this.phase === 'intro' && u.cid !== 'arrowTower') { pose = 'walk'; i = Math.floor(now * 10) % BATTLE_FRAMES.walk; ox = -d * (1 - ease(clamp(this.intro.t / this.intro.dur, 0, 1))) * 110; }
     else if (a) {
       const f = clamp((now - a.t0) / a.dur, 0, 1); pose = a.pose;
-      i = pose === 'walk' ? Math.floor(now * 10) % BATTLE_FRAMES.walk : pose === 'attack' ? Math.min(BATTLE_FRAMES.attack - 1, Math.floor(f * BATTLE_FRAMES.attack)) : 0;
+      i = pose === 'walk' || pose === 'fly' ? Math.floor(now * (pose === 'fly' ? 13 : 10)) % BATTLE_FRAMES[pose] : pose === 'attack' ? Math.min(BATTLE_FRAMES.attack - 1, Math.floor(f * BATTLE_FRAMES.attack)) : 0;
       const p = this.play;
       if (pose === 'attack' && p && p.kind === 'hit' && p.a === u) ox = Math.sign(p.tg.px - u.px || d) * Math.sin(f * Math.PI) * 12;
       if (pose === 'hurt') ox = -d * Math.sin(f * Math.PI) * 5;
