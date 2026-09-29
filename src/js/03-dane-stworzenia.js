@@ -216,13 +216,13 @@ function elite(from, id, [name, plural, gen, acc = gen], [att, def, dmin, dmax, 
 }
 // Przystań
 elite('halberdier', 'guardsman', ['Gwardzista', 'Gwardziści', 'gwardzistów'], [7, 9, 2, 4, 14, 6, 165], { gold: 100 }, ['unlimitedRetal'],
-  { cloth: '#2a4a8a', helm: 'greathelm', helmCol: '#d8dee8', metal: '#d8dee8', plume: '#e0b24a', tabard: '#2a4a8a', cross: '#e0b24a', cape: '#1e3a6a', shield: '#2a4a8a', shieldMark: '#e0b24a', shieldShape: 'tower', pauldrons: 'spiked', size: 1.04 });
+  { cloth: '#2a4a8a', plume: '#e0b24a', tabard: '#2a4a8a', cross: '#e0b24a', shield: '#2a4a8a', shieldMark: '#e0b24a', shieldShape: 'tower', size: 1.0 });
 elite('marksman', 'arbalester', ['Arbaletnik', 'Arbaletnicy', 'arbaletników'], [8, 5, 4, 6, 13, 7, 265], { gold: 200 }, ['doubleShot', 'sharpshooter'],
   { cloth: '#3a5a2a', helm: 'sallet', helmCol: '#c8ced8', metal: '#c8ced8', armor: 'plate', pauldrons: true, pavise: '#3a5a8a', trim: '#e0b24a', cape: null, size: 1.05 });
 elite('royalGriffin', 'imperialGriffin', ['Gryf cesarski', 'Gryfy cesarskie', 'gryfów cesarskich', 'gryfy cesarskie'], [11, 11, 4, 8, 32, 11, 620], { gold: 320 }, ['fly', 'unlimitedRetal', 'deathBlow'],
   { fur: '#e0b85a', barding: '#2a4a8a', trim: '#e0b24a', crest: '#c83a2a', helmet: '#e0c050', size: 1.34 }, { retal: 9 });
 elite('crusader', 'templar', ['Templariusz', 'Templariusze', 'templariuszy'], [14, 15, 8, 12, 44, 7, 820], { gold: 540 }, ['doubleStrike', 'maxDamage'],
-  { weapon: 'greatsword', dual: false, cloth: '#e8e0d0', metal: '#d8dce4', helmCol: '#d8dce4', tabard: '#e8e0d0', cross: '#b02a1a', cape: '#a83a2a', crownSpikes: '#e0b24a', hilt: '#e0b24a', glow: '#fff4d0', size: 1.14 });
+  { weapon: 'greatsword', dual: false, cloth: '#e8e0d0', metal: '#d8dce4', helmCol: '#d8dce4', tabard: '#e8e0d0', cross: '#b02a1a', cape: '#a83a2a', crownSpikes: '#e0b24a', plume: '#f0ece0', hilt: '#e0b24a', glow: '#fff4d0', size: 1.26 });
 elite('priest', 'inquisitor', ['Inkwizytor', 'Inkwizytorzy', 'inkwizytorów'], [15, 12, 12, 15, 50, 8, 1000], { gold: 600, mercury: 1 }, ['noMeleePenalty', 'sharpshooter'],
   { cloth: '#e8e0d0', cape: '#8a1a1a', collar: true, book: '#6a1a1a', orb: '#fff0a0', helmCol: '#f0ead8', trim: '#e0b24a', armor: 'breast', metal: '#e0c870', size: 1.0 });
 elite('champion', 'paladin', ['Paladyn', 'Paladyni', 'paladynów'], [19, 19, 22, 28, 120, 10, 2800], { gold: 1600, crystal: 1 }, ['jousting', 'unlimitedRetal'],
@@ -256,7 +256,7 @@ elite('vampireLord', 'nosferatu', ['Nosferatu', 'Nosferatu', 'nosferatu'], [14, 
 elite('archNecro', 'lich', ['Licz', 'Licze', 'liczów'], [17, 13, 13, 18, 50, 8, 1400], { gold: 800, mercury: 1 }, ['undead', 'noMeleePenalty', 'sharpshooter'],
   { bony: true, skin: '#e8e2cc', helm: 'crown', crownCol: '#b0a060', hover: true, book: '#2a1a3a', collar: true, size: 1.1 });
 elite('dreadLord', 'abyssKnight', ['Rycerz Otchłani', 'Rycerze Otchłani', 'rycerzy Otchłani'], [21, 21, 18, 34, 145, 10, 3200], { gold: 2000, mercury: 2 }, ['undead', 'jousting', 'lifeDrain', 'armorPierce'],
-  { horseWings: 'bone', weapon: 'glaive', size: 1.26 });
+  { weaponSkulls: '#e8e2cc', horseSkulls: '#e8e2cc', horseHorns: '#1a1418', skulls: '#e8e2cc', hornScale: 1.5, spikeCol: '#e8d8b0', build: 'colossus', size: 1.36 });
 elite('ghostWyvern', 'boneDragon', ['Kościany smok', 'Kościane smoki', 'kościanych smoków', 'kościane smoki'], [24, 21, 35, 60, 260, 15, 6400], { gold: 4200, mercury: 3 }, ['undead', 'fly', 'breath', 'deathBlow'],
   { fur: '#d8d0bc', eyes: '#8af0b8', soulFire: '#8af0b8', form: '', size: 1.28 });
 // Twierdza (bagna)

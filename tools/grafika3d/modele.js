@@ -159,6 +159,10 @@ const sph = (r, col, kind, pos, scl, seg = 20) => mesh(new THREE.SphereGeometry(
 const cap = (r, len, col, kind, pos, rot, scl) => mesh(new THREE.CapsuleGeometry(r, len, 6, 16), col, kind, pos, rot, scl);
 const cyl = (r0, r1, len, col, kind, pos, rot, scl, seg = 16) => mesh(new THREE.CylinderGeometry(r1, r0, len, seg), col, kind, pos, rot, scl);
 const cone = (r, len, col, kind, pos, rot, seg = 10) => mesh(new THREE.ConeGeometry(r, len, seg), col, kind, pos, rot);
+// Czaszka (ozdoba broni, zbroi, rzędu): puszka, oczodoły, szczęka z zębami; twarzą w +x
+const skullOn = (parent, pos, s = 1, col = '#e8e2cc', rot = null) => { const g = new THREE.Group(); g.position.set(...pos); if (rot) g.rotation.set(...rot); g.scale.setScalar(s); parent.add(g);
+  g.add(sph(0.05, col, 'bone', [0, 0.01, 0], [1.05, 1, 0.9])); g.add(rbox(0.05, 0.035, 0.06, 0.012, col, 'bone', [0.022, -0.035, 0]));
+  for (const z of [-0.018, 0.018]) g.add(sph(0.013, '#120c0c', 'skin', [0.042, 0.008, z])); g.add(box(0.008, 0.012, 0.03, '#120c0c', 'skin', [0.05, -0.02, 0])); return g; };
 const box = (w, h, d, col, kind, pos, rot) => mesh(new THREE.BoxGeometry(w, h, d), col, kind, pos, rot);
 const torus = (R, r, col, kind, pos, rot, scl, arc = Math.PI * 2) => mesh(new THREE.TorusGeometry(R, r, 8, 24, arc), col, kind, pos, rot, scl);
 function lathe(pts, col, kind, pos, scl, rep, fold) { const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(Math.max(0.001, r), y)), fold ? 48 : 24); if (fold) folds(g, ...fold); return mesh(g, col, kind, pos, null, scl, rep); }

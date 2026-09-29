@@ -356,6 +356,8 @@ function weapon(hold, L, W, A, wind, hit, metal, near = true) {
     const y0 = big ? 0.9 : 0.68; h.add(slab(head, 0.024, blade, bK, [0.01, y0, 0], null, null, 0.6));
     if (big) h.add(slab(head, 0.024, blade, bK, [-0.01, y0, 0], [0, Math.PI, 0], null, 0.6)); else h.add(spike(0.035, 0.12, blade, bK, [-0.07, y0, 0], [0, 0, Math.PI / 2]));
     h.add(spike(0.02, 0.1, blade, bK, [0, y0 + 0.12, 0]));
+    if (L.weaponSkulls) { const sc = L.weaponSkulls; skullOn(h, [0.02, y0, 0], big ? 1.5 : 1.1, sc); skullOn(h, [0.02, y0 + 0.2, 0], 1.1, sc); // czaszki osadzone w głowicy topora
+      h.add(torus(0.035, 0.008, '#3a3430', 'iron', [0, y0 - 0.2, 0], [Math.PI / 2, 0, 0])); for (const [dx, dy] of [[0.05, -0.34], [-0.04, -0.3]]) { h.add(cyl(0.004, 0.004, Math.abs(dy) - 0.2, '#5a5048', 'iron', [dx * 0.5, y0 + (dy - 0.2) / 2, 0])); skullOn(h, [dx, y0 + dy - 0.04, 0], 0.8, sc); } } // czaszki zwisające na łańcuchach
   } else if (W === 'club' || W === 'mace') {
     const h = hold(-0.4 + (A != null ? wind * 1.4 - hit * 1.8 : 0));
     if (W === 'mace') { h.add(cyl(0.02, 0.02, 0.7, '#3a2a1a', 'leather', [0, 0.25, 0])); h.add(sph(0.08, metal, 'iron', [0, 0.62, 0])); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; h.add(spike(0.025, 0.1, metal, 'steel', [Math.cos(a) * 0.08, 0.62 + (i % 2 ? 0.03 : -0.03), Math.sin(a) * 0.08], [Math.sin(a) * 1.57, 0, -Math.cos(a) * 1.57])); } return; }
