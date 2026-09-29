@@ -1,204 +1,401 @@
 {
-  "_styl": "hero portrait, {opis}, {tlo}",
-  "_negatyw": "cartoon, anime, drawing, text, watermark, frame, border, multiple people, deformed, blurry face, dark background, black background, grey background, muted colors, hands",
-  "Sir Rolan": {
-    "opis": "an old grizzled human knight, short cropped grey hair, thick full grey beard, scar across his eyebrow, stern frown, wrinkled weathered face, polished steel plate armor with gorget",
-    "tlo": "stone castle window with daylight"
-  },
-  "Weronika": {
-    "opis": "a young woman priestess, golden blonde braided hair, golden diadem with a blue gem, gentle smile, bright blue eyes, white and gold embroidered robes",
-    "tlo": "blue sky with white clouds"
-  },
-  "Bernard": {
-    "opis": "a jolly elderly bald friar, white fringe of hair, round rosy cheeks, small white goatee, twinkling eyes, simple brown monk robe with rope",
-    "tlo": "warm candlelit chapel"
-  },
-  "Idalia": {
-    "opis": "a young freckled woman knight, auburn hair in a ponytail, steel helmet with white wings, determined fierce look, steel armor",
-    "tlo": "bright sunny sky"
-  },
-  "Kasjan": {
-    "opis": "a swarthy handsome man with black curly hair and a thin mustache, smirking, golden helmet with red plume, gilded breastplate",
-    "tlo": "fiery orange sunset"
-  },
-  "Mirela": {
-    "opis": "a dark-skinned african woman priestess, white silk veil over black hair, small mole on cheek, serene calm face, white and pale blue robes",
-    "tlo": "cathedral stained glass window"
-  },
-  "Elandra": {
-    "opis": "an elf woman ranger with long silver-white hair and long pointed ears, green leaf face paint, narrow green eyes, leather headband, green leather armor",
-    "tlo": "sunlit green forest"
-  },
-  "Tarwen": {
-    "opis": "an ancient elven druid, long brown hair and long beard woven with leaves and twigs, crown of antlers, pointed ears, wise deep-set eyes",
-    "tlo": "misty deep forest"
-  },
-  "Lirien": {
-    "opis": "a young woman druid with curly red hair and a wreath of white flowers, freckles, warm smile, green linen dress",
-    "tlo": "sunny flower meadow"
-  },
-  "Gawen": {
-    "opis": "a young man ranger in a dark green hood, blond stubble, scar on his cheek, narrow suspicious eyes, bow string across his chest",
-    "tlo": "dark forest at night with moonlight"
-  },
-  "Mortis": {
-    "opis": "a lich, bare yellowed skull face with glowing green eyes in dark eye sockets, tattered dark purple hood, crown of bones",
-    "tlo": "dark night graveyard with green mist"
-  },
-  "Raga": {
-    "opis": "a pale vampire woman with long straight black hair, glowing red eyes, dark red lips, slight fangs, dark hooded cowl, tattoo on her forehead",
-    "tlo": "deep crimson fire"
-  },
-  "Sir Kruk": {
-    "opis": "an undead skeleton knight, skull face with glowing blue eyes inside a black horned great helmet, rusted black spiked armor",
-    "tlo": "stormy night sky"
-  },
-  "Zofia Czarna": {
-    "opis": "a pale undead woman knight, short black hair, black spiked iron crown, scar across her face, cold glowing grey eyes, black armor",
-    "tlo": "burning ruins"
-  },
-  "Borzywoj": {
-    "opis": "a gnoll chieftain, hyena head with spotted fur, snarling mouth with sharp teeth, bone necklace, feathers and war paint",
-    "tlo": "murky green swamp"
-  },
-  "Wilga": {
-    "opis": "a swamp witch woman, dark braided hair with small flowers, green tribal tattoos on her face, sly smirk, amber eyes",
-    "tlo": "swamp at night with fireflies"
-  },
-  "Mszar": {
-    "opis": "a lizardman shaman, green scaly reptilian head, yellow slit eyes, spiky crest, feathers and bone ornaments",
-    "tlo": "misty swamp"
-  },
-  "Dobrawa": {
-    "opis": "a tanned woman hunter, black hair in a ponytail with a hawk feather, scar on her cheek, fierce look, leather and fur armor",
-    "tlo": "cloudy sky over marshes"
-  },
-  "Azgar": {
-    "opis": "a red-skinned demon lord with curved black horns, glowing yellow eyes, black goatee, cruel sneer showing fangs, spiked dark armor",
-    "tlo": "roaring hellfire"
-  },
-  "Kalida": {
-    "opis": "a beautiful demoness with long pale golden hair and small dark horns, glowing orange eyes, confident smirk, crimson armor",
-    "tlo": "lava and flames"
-  },
-  "Moloch": {
-    "opis": "an old bald heretic with curled ram horns, glowing red eyes, long grey mustache, occult tattoos on his head, dark red robes",
-    "tlo": "dark red smoke"
-  },
-  "Wiera Popiół": {
-    "opis": "a woman sorceress with ash-grey hair in a bun, glowing ember eyes, soot on her face, dark charcoal robes",
-    "tlo": "glowing embers and ash"
-  },
-  "Ostromir": {
-    "opis": "an old wizard with a long flowing white beard, bushy white eyebrows, long nose, wise piercing eyes, deep blue hood with silver stars",
-    "tlo": "starry night sky"
-  },
-  "Jagna Mróz": {
-    "opis": "a young blonde sorceress with a silver circlet, icy pale blue eyes, frost on her eyelashes, violet fur-trimmed robes",
-    "tlo": "snowy mountains"
-  },
-  "Zbylut": {
-    "opis": "a stout dwarf alchemist with a braided brown beard, hooked nose, brass goggles on his forehead, cunning smirk, leather apron",
-    "tlo": "alchemy workshop with glowing flasks"
-  },
-  "Mirosława": {
-    "opis": "a blue-skinned djinn woman sorceress, black hair in a high topknot, golden earrings and jewelry, glowing cyan eyes, calm proud face",
-    "tlo": "icy blue magical mist"
-  },
-  "Czarnobór": {
-    "opis": "a minotaur warlord, black bull head with long sharp horns, brass ring in its nose, angry red eyes, dark iron armor",
-    "tlo": "dark cave with torchlight"
-  },
-  "Morana": {
-    "opis": "a dark elf sorceress with grey-violet skin, long white hair, pointed ears, glowing purple eyes, silver circlet, mysterious smile",
-    "tlo": "purple cavern glow"
-  },
-  "Zmorzysław": {
-    "opis": "a gaunt old warlock with a long grey beard, sunken cheeks, hooked nose, glowing violet eyes, black cowl",
-    "tlo": "dark dungeon with green candle light"
-  },
-  "Dziwa": {
-    "opis": "a dark elf woman warrior with short black hair, pale grey skin, pointed ears, horned black helmet, scar across her lips, angry glare",
-    "tlo": "fire and smoke"
-  },
-  "Gromisław": {
-    "opis": "a green-skinned orc chieftain with big tusks, black topknot, heavy brow, battle scars, fur and leather armor with bone trophies",
-    "tlo": "desert canyon at sunset"
-  },
-  "Wojsława": {
-    "opis": "a barbarian warrior woman with blonde braids, red war paint across her eyes, leather headband, fierce grin, fur mantle",
-    "tlo": "sand dunes under orange sky"
-  },
-  "Ognisław": {
-    "opis": "an ogre mage with grey-brown skin, bald head with tattoos, small glowing orange eyes, heavy jaw with underbite, fire glowing from below",
-    "tlo": "burning campfire"
-  },
-  "Jarogniewa": {
-    "opis": "a half-orc woman shaman with light green skin, small tusks, red hair in a bun with feathers, tribal tattoos, intense eyes",
-    "tlo": "stormy orange sky"
-  },
-  "Ulryk": {
-    "opis": "a broad-shouldered blond knight in his forties, full blond beard, steel helmet with nose guard, honest stern eyes, steel armor",
-    "tlo": "green hills and blue sky"
-  },
-  "Bogna": {
-    "opis": "a middle-aged woman priestess with brown hair in a bun under a white veil, warm smile, rosy cheeks, cream robes",
-    "tlo": "golden chapel light"
-  },
-  "Aelwen": {
-    "opis": "a young elf woman archer with a golden braid, long pointed ears, hawk feather in her hair, sly smirk, green cloak",
-    "tlo": "autumn forest"
-  },
-  "Dębosz": {
-    "opis": "an old burly druid with a bushy brown beard, wreath of oak leaves, broad nose, kind eyes, bark-brown robes",
-    "tlo": "ancient oak forest"
-  },
-  "Wrocisław": {
-    "opis": "an old necromancer with long grey hair and beard, sunken cheeks, glowing green eyes, black hood",
-    "tlo": "misty graveyard at night"
-  },
-  "Grzymisława": {
-    "opis": "an undead woman knight with long white hair, pale corpse skin, glowing blue eyes, skull-shaped iron helmet",
-    "tlo": "dark stormy sky"
-  },
-  "Skrzek": {
-    "opis": "a gnoll warrior with a spotted hyena head, laughing mouth full of teeth, bone earrings, tribal paint",
-    "tlo": "swamp at sunset"
-  },
-  "Rusałka": {
-    "opis": "a pale water nymph witch with long dark green hair and water lilies, big dark eyes, gentle smile",
-    "tlo": "moonlit swamp lake"
-  },
-  "Belzar": {
-    "opis": "a bald demon knight with dark red skin, big curved horns, glowing orange eyes, black goatee, smirk, black armor",
-    "tlo": "hellfire"
-  },
-  "Żmija": {
-    "opis": "a snake-eyed heretic woman with long black hair, serpent tattoos on her face, glowing yellow eyes, dark red hood",
-    "tlo": "red smoke"
-  },
-  "Mieszko Kruszec": {
-    "opis": "a cheerful dwarf with a long red-brown beard, broad nose, leather headband, soot on cheeks, rune amulet",
-    "tlo": "forge fire and snowy mountains"
-  },
-  "Srebrna": {
-    "opis": "a young sorceress with long silver hair, silver circlet, pale blue eyes, calm face, blue robes with frost patterns",
-    "tlo": "icy blue sky"
-  },
-  "Grzmot": {
-    "opis": "a huge bald warlord with a black beard, massive jaw, scar across his face, curved horns on his helmet, dark armor",
-    "tlo": "cave with lava glow"
-  },
-  "Nocna": {
-    "opis": "a dark elf witch with black hair, grey skin, pointed ears, glowing violet eyes, dark hood, mysterious smirk",
-    "tlo": "dark purple cavern"
-  },
-  "Warg": {
-    "opis": "a scarred orc warrior with grey-green skin, long black hair, small tusks, feather in his hair, angry frown",
-    "tlo": "burning steppe"
-  },
-  "Iskra": {
-    "opis": "a young freckled woman fire mage with curly red hair, leather headband, bright smile, orange robes with sparks",
-    "tlo": "fiery sky"
-  }
+ "_styl": "{opis}, {tlo}, dark medieval fantasy painted portrait, oil over photo, 1990s strategy game hero portrait, gritty, deep shadows, chiaroscuro",
+ "_negatyw": "text, watermark, frame, border, multiple people, deformed, blurry, cartoon, anime, beautiful, airbrushed, bright colors, symmetrical face",
+ "_wzorce": {
+  "knight": [
+   24,
+   41,
+   104,
+   106,
+   128,
+   144,
+   56
+  ],
+  "cleric": [
+   19,
+   1,
+   31,
+   71,
+   102,
+   110,
+   143,
+   0
+  ],
+  "ranger": [
+   4,
+   42,
+   64,
+   68,
+   79,
+   53,
+   103
+  ],
+  "druid": [
+   14,
+   49,
+   50,
+   60,
+   88,
+   122,
+   143
+  ],
+  "necro": [
+   45,
+   114,
+   119,
+   28,
+   67,
+   96,
+   147
+  ],
+  "deathKnight": [
+   6,
+   92,
+   113,
+   114,
+   48,
+   152,
+   96
+  ],
+  "beastmaster": [
+   10,
+   40,
+   90,
+   112,
+   11,
+   12,
+   57
+  ],
+  "witch": [
+   2,
+   55,
+   69,
+   91,
+   80,
+   137
+  ],
+  "demoniac": [
+   13,
+   15,
+   21,
+   22,
+   99,
+   100,
+   108,
+   151
+  ],
+  "heretic": [
+   23,
+   46,
+   87,
+   101,
+   107,
+   153
+  ],
+  "wizard": [
+   3,
+   14,
+   44,
+   102,
+   135,
+   143,
+   5
+  ],
+  "alchemist": [
+   16,
+   39,
+   27,
+   85,
+   132,
+   139,
+   8
+  ],
+  "overlord": [
+   30,
+   36,
+   33,
+   86,
+   59,
+   65,
+   105
+  ],
+  "warlock": [
+   35,
+   47,
+   62,
+   82,
+   97,
+   118,
+   130
+  ],
+  "barbarian": [
+   17,
+   38,
+   61,
+   76,
+   78,
+   116,
+   140,
+   146
+  ],
+  "battleMage": [
+   20,
+   25,
+   34,
+   43,
+   63,
+   98,
+   131
+  ]
+ },
+ "Sir Rolan": {
+  "klasa": "knight",
+  "opis": "65 year old weathered knight, deep wrinkles, broken nose, grey stubble beard, squinting suspicious eyes, dented steel helmet with nose guard, chainmail coif",
+  "tlo": "stormy sky over castle walls"
+ },
+ "Weronika": {
+  "klasa": "cleric",
+  "opis": "young woman priestess, pale oval face, straw blonde braid, gentle tired eyes, thin gold circlet, white wimple",
+  "tlo": "dim cathedral with candles"
+ },
+ "Bernard": {
+  "klasa": "cleric",
+  "opis": "fat 70 year old bald friar, sly half smile, double chin, heavy-lidded eyes, stubble, coarse brown hood",
+  "tlo": "dim chapel with candles"
+ },
+ "Idalia": {
+  "klasa": "knight",
+  "opis": "young woman knight, freckles, auburn hair tied back, fierce narrowed eyes, scar on lip, round steel helmet with white wing",
+  "tlo": "smoke of a battlefield"
+ },
+ "Kasjan": {
+  "klasa": "knight",
+  "opis": "40 year old swarthy knight, black curly hair, thin waxed mustache, arrogant smirk, gilded helmet with red plume",
+  "tlo": "sunset over a burning village"
+ },
+ "Mirela": {
+  "klasa": "cleric",
+  "opis": "dark-skinned african woman priestess, calm wise eyes, high cheekbones, mole on cheek, white veil, silver holy symbol",
+  "tlo": "stained glass window at dusk"
+ },
+ "Elandra": {
+  "klasa": "ranger",
+  "opis": "elf woman ranger, long silver-white hair, long pointed ears, sharp narrow face, green leaf tattoos under eyes, hooded green cloak",
+  "tlo": "dark misty forest"
+ },
+ "Tarwen": {
+  "klasa": "druid",
+  "opis": "ancient elven druid, gaunt face like tree bark, long tangled brown beard with leaves, antler crown, deep-set glowing green eyes",
+  "tlo": "ancient forest at night"
+ },
+ "Lirien": {
+  "klasa": "druid",
+  "opis": "young plump woman druid, round freckled face, wild curly red hair with white flowers, big smile, green shawl",
+  "tlo": "forest glade at dusk"
+ },
+ "Gawen": {
+  "klasa": "ranger",
+  "opis": "young man ranger, hollow cheeks, blond stubble, scar across cheek, cold narrow eyes, dark green hood shadowing his face",
+  "tlo": "moonlit forest"
+ },
+ "Mortis": {
+  "klasa": "necro",
+  "opis": "lich, rotting skull face with scraps of dried skin, empty eye sockets with green glow, jaw hanging open, tattered purple hood, bone crown",
+  "tlo": "graveyard mist"
+ },
+ "Raga": {
+  "klasa": "necro",
+  "opis": "vampire woman, grey corpse-pale skin, sunken cheeks, blood red eyes, black lips, long straight black hair, dark cowl",
+  "tlo": "crimson candlelit crypt"
+ },
+ "Sir Kruk": {
+  "klasa": "deathKnight",
+  "opis": "skeleton knight, cracked skull with glowing blue eyes inside a black horned great helm, rusted black armor",
+  "tlo": "storm and lightning"
+ },
+ "Zofia Czarna": {
+  "klasa": "deathKnight",
+  "opis": "undead woman knight, bloodless grey face, cropped black hair, deep scar across her face, cold white eyes, black spiked iron crown",
+  "tlo": "burning ruins"
+ },
+ "Borzywoj": {
+  "klasa": "beastmaster",
+  "opis": "gnoll chieftain, spotted hyena head, snarling with bared yellow teeth, torn ear, bone necklace, war paint",
+  "tlo": "murky swamp"
+ },
+ "Wilga": {
+  "klasa": "witch",
+  "opis": "swamp witch, sharp thin face, crooked nose, sly smirk, dark braided hair with dried flowers, green tattoos on chin",
+  "tlo": "swamp at night with fireflies"
+ },
+ "Mszar": {
+  "klasa": "witch",
+  "opis": "lizardman shaman, scaly green crocodile snout, yellow slit eyes, spiked crest, feathers and bone charms",
+  "tlo": "misty swamp"
+ },
+ "Dobrawa": {
+  "klasa": "beastmaster",
+  "opis": "skinny 30 year old woman hunter, long narrow face, hooked nose, scowling, messy black ponytail with hawk feather, fur collar",
+  "tlo": "grey marshes"
+ },
+ "Azgar": {
+  "klasa": "demoniac",
+  "opis": "demon lord, dark red skin, heavy brow, curved black horns, glowing yellow eyes, black goatee, cruel sneer with fangs, spiked armor",
+  "tlo": "hellfire"
+ },
+ "Kalida": {
+  "klasa": "demoniac",
+  "opis": "demoness, ash-pale skin, small black horns, glowing orange eyes, platinum hair, cold confident smirk, crimson armor",
+  "tlo": "lava glow"
+ },
+ "Moloch": {
+  "klasa": "heretic",
+  "opis": "old bald heretic, sagging wrinkled face, curled ram horns, glowing red eyes, long grey mustache, occult scars on scalp",
+  "tlo": "dark red smoke"
+ },
+ "Wiera Popiół": {
+  "klasa": "heretic",
+  "opis": "middle aged woman sorceress, ash-grey hair in a bun, soot-stained face, glowing ember eyes, thin cruel lips, charcoal robes",
+  "tlo": "glowing embers"
+ },
+ "Ostromir": {
+  "klasa": "wizard",
+  "opis": "ancient wizard, long nose, bushy white eyebrows, long flowing white beard, piercing grey eyes, deep blue hood",
+  "tlo": "starry night"
+ },
+ "Jagna Mróz": {
+  "klasa": "wizard",
+  "opis": "young sorceress, pale cold face, icy blue eyes, frost on eyelashes, blonde hair, silver circlet, fur-trimmed violet robe",
+  "tlo": "snowy mountains at night"
+ },
+ "Zbylut": {
+  "klasa": "alchemist",
+  "opis": "stout dwarf alchemist, bulbous red nose, braided brown beard, brass goggles on forehead, cunning grin, leather apron",
+  "tlo": "alchemy workshop with glowing flasks"
+ },
+ "Mirosława": {
+  "klasa": "alchemist",
+  "opis": "blue-skinned djinn woman, black hair in a high topknot, gold earrings, glowing cyan eyes, proud stern face",
+  "tlo": "icy blue mist"
+ },
+ "Czarnobór": {
+  "klasa": "overlord",
+  "opis": "minotaur warlord, black bull head, long sharp horns, brass ring in nose, bloodshot red eyes, dark iron armor",
+  "tlo": "torchlit cave"
+ },
+ "Morana": {
+  "klasa": "warlock",
+  "opis": "dark elf sorceress, grey-violet skin, long white hair, pointed ears, glowing purple eyes, silver circlet, faint smile",
+  "tlo": "purple cavern glow"
+ },
+ "Zmorzysław": {
+  "klasa": "warlock",
+  "opis": "gaunt old warlock, skull-like sunken cheeks, hooked nose, long grey beard, glowing violet eyes, black cowl",
+  "tlo": "dungeon with green candles"
+ },
+ "Dziwa": {
+  "klasa": "overlord",
+  "opis": "dark elf woman warrior, pale grey skin, cropped black hair, pointed ears, scar across lips, angry glare, horned black helmet",
+  "tlo": "fire and smoke"
+ },
+ "Gromisław": {
+  "klasa": "barbarian",
+  "opis": "orc chieftain, green skin, big tusks, black topknot, heavy brow ridge, battle scars, bone trophies, fur",
+  "tlo": "desert canyon at sunset"
+ },
+ "Wojsława": {
+  "klasa": "barbarian",
+  "opis": "barbarian woman, weathered tanned face, blonde braids, red war paint across eyes, fierce grin with chipped tooth, fur mantle",
+  "tlo": "dust storm"
+ },
+ "Ognisław": {
+  "klasa": "battleMage",
+  "opis": "ogre mage, grey warty skin, bald tattooed head, tiny glowing orange eyes, huge underbite with tusks",
+  "tlo": "campfire glow"
+ },
+ "Jarogniewa": {
+  "klasa": "battleMage",
+  "opis": "half-orc woman shaman, light green skin, small tusks, red hair in a bun with feathers, tribal tattoos, intense stare",
+  "tlo": "stormy orange sky"
+ },
+ "Ulryk": {
+  "klasa": "knight",
+  "opis": "broad 45 year old knight, square jaw, full blond beard, honest tired eyes, steel kettle helmet, padded gambeson",
+  "tlo": "rainy hills"
+ },
+ "Bogna": {
+  "klasa": "cleric",
+  "opis": "middle aged woman priestess, round kind face, crow's feet, brown hair under a white veil, warm smile",
+  "tlo": "candlelit chapel"
+ },
+ "Aelwen": {
+  "klasa": "ranger",
+  "opis": "young elf woman archer, sharp fox-like face, golden braid, long pointed ears, sly smirk, hawk feather, green cloak",
+  "tlo": "autumn forest"
+ },
+ "Dębosz": {
+  "klasa": "druid",
+  "opis": "burly old druid, weathered ruddy face, bushy brown beard, broad nose, oak leaf wreath, kind squinting eyes",
+  "tlo": "ancient oak forest"
+ },
+ "Wrocisław": {
+  "klasa": "necro",
+  "opis": "old necromancer, grey rotting skin, long greasy grey hair and beard, sunken eyes glowing green, black hood",
+  "tlo": "graveyard at night"
+ },
+ "Grzymisława": {
+  "klasa": "deathKnight",
+  "opis": "undead woman knight, pale corpse skin, long white hair, glowing blue eyes, skull-shaped iron helmet",
+  "tlo": "dark stormy sky"
+ },
+ "Skrzek": {
+  "klasa": "beastmaster",
+  "opis": "gnoll warrior, spotted hyena head, cackling open mouth full of teeth, bone earrings, tribal paint",
+  "tlo": "swamp at sunset"
+ },
+ "Rusałka": {
+  "klasa": "witch",
+  "opis": "pale water nymph witch, long dark green wet hair with water lilies, large black eyes, eerie gentle smile",
+  "tlo": "moonlit swamp lake"
+ },
+ "Belzar": {
+  "klasa": "demoniac",
+  "opis": "bald demon knight, dark red skin, huge curved horns, glowing orange eyes, black goatee, smirk showing fangs, black armor",
+  "tlo": "hellfire"
+ },
+ "Żmija": {
+  "klasa": "heretic",
+  "opis": "heretic woman with snake-like yellow eyes, serpent tattoos on her face, long black hair, forked tongue, dark red hood",
+  "tlo": "red smoke"
+ },
+ "Mieszko Kruszec": {
+  "klasa": "alchemist",
+  "opis": "cheerful dwarf, long red-brown beard, broad nose, leather headband, soot on cheeks, rune amulet",
+  "tlo": "forge fire"
+ },
+ "Srebrna": {
+  "klasa": "wizard",
+  "opis": "young sorceress, long silver hair, silver circlet, pale blue eyes, calm serious face, frosty blue robes",
+  "tlo": "icy blue night sky"
+ },
+ "Grzmot": {
+  "klasa": "overlord",
+  "opis": "huge bald warlord, black beard, massive jaw, scar across face, horned iron helmet, dark armor",
+  "tlo": "cave with lava glow"
+ },
+ "Nocna": {
+  "klasa": "warlock",
+  "opis": "dark elf witch, grey skin, black hair, pointed ears, glowing violet eyes, dark hood, mysterious smirk",
+  "tlo": "dark purple cavern"
+ },
+ "Warg": {
+  "klasa": "barbarian",
+  "opis": "scarred orc warrior, grey-green skin, long black hair, small tusks, feather in hair, angry frown",
+  "tlo": "burning steppe"
+ },
+ "Iskra": {
+  "klasa": "battleMage",
+  "opis": "young woman fire mage, freckles, curly red hair, leather headband, wild grin, orange robes with sparks",
+  "tlo": "fiery sky"
+ }
 }
