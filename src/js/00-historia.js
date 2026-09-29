@@ -258,7 +258,7 @@
    postacie.js (humanoid z cech look), zwierzeta.js (czworonogi, skrzydlate, gady, potwory), podglad.js (galeria PNG),
    wypal.js (npm run grafika: arkusze PNG w src/grafika/, opis klatek w jednostki.json i bohaterowie.json). build.js wbudowuje
    je jako UNIT_ART i HERO_ART; 11c-grafika-jednostek.js podaje klatki (battleSprite, creatureSprite, drawCreatureIcon,
-   heroBattleSprite z podmianą koloru-klucza na barwę gracza). Piksel jednostek 1,3 px (bitwa), 1,8 px (mapa). Machiny wojenne
+   heroBattleSprite z podmianą koloru-klucza na barwę gracza). Piksel jednostek 1,3 px (bitwa; od kroku 27 0,9 px), 1,8 px (mapa). Machiny wojenne
    (balista, namiot medyka, wóz z amunicją, katapulta, strzelec na wieży) mają modele w maszyny.js. Bez arkusza zostaje
    dawny rysunek wektorowy (battleSprite2D, creatureSprite2D, heroBattleSprite2D).
    Krok 18: po 2 nowych bohaterów w każdym zamku; portrety bohaterów z tools/portrety-ai (Stable Diffusion + wzorce stylu
@@ -268,5 +268,10 @@
    Krok 19: 36 nowych artefaktów (w tym części kompletów) i 6 relikwii (ARTIFACTS z parts): komplet części założony naraz
    składa się w relikwię (assembleRelic; człowiek przyciskiem na ekranie bohatera, komputer sam), która zajmuje miejsca części
    (h.locked) i daje więcej niż ich suma; rozkładanie (disassembleRelic), relikwia kupiecka daje też surowce (bonus.res).
+   Krok 27: jednostka w bitwie zwraca się w stronę ruchu i ataku (u.face), kursor miecza obraca się co 30° (attack0–11).
+   Latające (abil fly, także driady i nimfy) mają klatki lotu i lecą łukiem; zianie ogniem to kłęby płomieni (BattleFX.flame)
+   z pyska (meta.m w arkuszu). Modele: ostrzejsze bryły (slab, spike, chunk, loft), budowy ciała (BUILDS), własne sylwetki
+   (behemot, gorgona, tur, ptaki: orzeł/gromu/ognisty, smoki: wywerna, leśny, czarny), mocniejszy światłocień i otoczenie
+   odbić. Gęstość pikseli jednostek w bitwie 0,9 px. tools/grafika3d/galeria.js: wszystkie jednostki na jednym obrazku.
    ===================================================================================== */
 
