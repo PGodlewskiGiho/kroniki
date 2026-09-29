@@ -52,7 +52,7 @@ function humanoid(L, P = {}) {
   const hips = joint(root, [lunge, hipH + bob + hover + (L.flame ? 0.06 : 0) - crouch + hop, 0], -pitch);
   const legCol = bony ? skin : bare || L.legsBare ? skin : DK(cloth, 0.3), legK = bony ? 'bone' : bare || L.legsBare ? skinK : armor === 'plate' ? 'mail' : 'cloth';
   if (!legless) for (const side of [-1, 1]) {
-    const th = joint(hips, [0, -0.03, (L.mounted ? 0.2 : 0.11) * side * B.sh * S]), goat = legSegs.length === 3;
+    const th = joint(hips, [0, -0.03, (L.mounted ? L.mountR || 0.2 * B.sh * S : 0.11 * B.sh * S) * side]), goat = legSegs.length === 3; if (L.mounted && L.mountR) th.rotation.x = 0.12 * side; // jeździec: nogi obejmują grzbiet wierzchowca
     const swing = walking ? sw * side * 0.5 : flying ? -0.5 - side * 0.12 : (side > 0 ? 0.1 : -0.06) + hurt * 0.1;
     const stride = A == null || L.mounted || !melee ? 0 : side > 0 ? hit * 0.6 - wind * 0.12 : -hit * 0.42 + wind * 0.18; // wykrok: przednia noga naprzód, tylna odpycha
     th.rotation.z = L.mounted ? 1.3 : legSegs[0][1] + swing + stride + crouch * 3;
@@ -141,8 +141,18 @@ function humanoid(L, P = {}) {
     if (L.tabard) { const cr = L.cross; spine.add(decal(0.26, 0.62, (g, w, h) => { g.fillStyle = L.tabard; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,.2)'; for (let x = 6; x < w; x += 12) g.fillRect(x, 0, 2, h); if (cr) { g.fillStyle = cr; g.fillRect(w / 2 - 6, 14, 12, h * 0.55); g.fillRect(10, 36, w - 20, 11); } }, [0.25 * S, 0.22, 0], [0, Math.PI / 2, 0])); }
     if (L.quiver) { const q = joint(spine, [-0.22 * S, 0.32, -0.05], -0.35); q.add(cyl(0.065, 0.075, 0.5, L.quiver, 'leather')); q.add(torus(0.07, 0.012, '#c8a050', 'gold', [0, 0.24, 0], [Math.PI / 2, 0, 0])); for (let i = 0; i < 5; i++) { q.add(cyl(0.006, 0.006, 0.14, '#c8a878', 'wood', [0.03 * Math.cos(i * 1.3), 0.32, 0.03 * Math.sin(i * 1.3)])); q.add(cone(0.02, 0.06, i % 2 ? '#e8e0cc' : '#b83a2a', 'cloth', [0.03 * Math.cos(i * 1.3), 0.4, 0.03 * Math.sin(i * 1.3)], null, 4)); } }
     if (L.spikes) for (const z of [-1, 1]) for (let i = 0; i < 3; i++) spine.add(spike(0.03, 0.14, L.spikes === true ? '#e8e0cc' : L.spikes, 'horn', [-0.04 + i * 0.05, 0.64 * tl, 0.26 * S * z * B.sh], [0.3 * z, 0, -0.2]));
+    if (L.flameMantle) { const fm = L.flameMantle; for (const z of [-1, 1]) for (let i = 0; i < 5; i++) spine.add(cone(0.1, 0.46 + (i % 2) * 0.22 + Math.sin(t * 8 + i + z) * 0.04, i % 2 ? fm : LT(fm, 0.25), 'fire', [-0.1 + i * 0.04, 0.64 * tl, (0.16 + i * 0.03) * S * z * B.sh], [0.3 * z, 0, 0.25 - i * 0.08], 6));
+      for (let i = 0; i < 6; i++) spine.add(cone(0.11, 0.56 + (i % 3) * 0.2 + Math.sin(t * 7 + i) * 0.05, i % 2 ? fm : LT(fm, 0.25), 'fire', [-0.16 * S, (0.66 - i * 0.1) * tl, (i % 2 ? 0.07 : -0.07)], [0, 0, 0.9 + i * 0.06], 6)); } // płomienie buchające z barków i pleców
+    if (L.bolts) for (let k = 0; k < 4; k++) { const z = (k % 2 ? 1 : -1) * (0.3 + (k >> 1) * 0.08) * S * B.sh, y0 = (0.1 + k * 0.18) * tl, zz = [[0, 0], [0.08, 0.1], [-0.04, 0.2], [0.07, 0.32], [-0.02, 0.44]]; spine.add(tube(zz.map(([dx, dy]) => [-0.04 + dx, y0 + dy, z + dx * 0.5]), 0.014, 0.006, L.bolts, 'glow')); } // wyładowania wokół postaci
     if (L.backSpikes) { const k = Math.sqrt(B.sh); for (let i = 0; i < 5; i++) spine.add(spike(0.035 * k, (0.17 - i * 0.02) * k, L.backSpikes, 'horn', [-0.17 * S * k, (0.6 - i * 0.12) * tl, 0], [0, 0, 1.2])); // kolce na grzbiecie
       if (B === BUILDS.colossus) for (const z of [-1, 1]) for (let i = 0; i < 3; i++) spine.add(slab([[0, 0], [0.1, 0], [-0.04, 0.26 - i * 0.05]], 0.03, L.backSpikes, 'horn', [-0.05 + i * 0.08, 0.6 * tl, 0.3 * z * B.sh * 0.8], [0.5 * z, 0, -0.3 + i * 0.2])); } // kostne kolce na barkach
+    if (L.skulls) for (let i = 0; i < 3; i++) { const a = -0.9 + i * 0.9, sk = joint(spine, [Math.cos(a) * 0.23 * S, 0.02, Math.sin(a) * 0.23 * S * cz]); sk.add(cyl(0.004, 0.004, 0.1, '#3a2a1a', 'leather', [0, 0.06, 0])); sk.add(sph(0.045, L.skulls, 'bone', [0, -0.02, 0], [1, 1.05, 0.9])); for (const z of [-0.016, 0.016]) sk.add(sph(0.011, '#141010', 'skin', [0.035, -0.015, z])); } // czaszki-trofea u pasa
+    if (L.pavise) { const pv = joint(spine, [-0.25 * S, 0.3 * tl, 0.02], 0.08); pv.add(rbox(0.05, 0.82, 0.52, 0.02, DK(L.pavise, 0.25), 'wood')); pv.add(rbox(0.04, 0.86, 0.56, 0.02, '#8a8478', 'iron', [0.012, 0, 0]));
+      pv.add(decal(0.48, 0.78, (g, w, h) => { g.fillStyle = L.pavise; g.fillRect(0, 0, w, h); g.fillStyle = L.trim || '#e0b24a'; g.fillRect(w / 2 - 5, 10, 10, h - 20); g.fillRect(8, h * 0.3, w - 16, 9); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, 0, 3, h); g.fillRect(w - 3, 0, 3, h); }, [-0.032, 0, 0], [0, -Math.PI / 2, 0])); } // pawęż na plecach kusznika
+    if (L.pack) { const pk = joint(spine, [-0.24 * S, 0.34 * tl, 0]); pk.add(rbox(0.2, 0.34, 0.3, 0.04, '#6a4424', 'leather')); pk.add(cyl(0.035, 0.03, 0.34, L.pack, 'gold', [-0.04, 0.3, 0.08])); pk.add(cyl(0.05, 0.035, 0.05, L.pack, 'gold', [-0.04, 0.48, 0.08]));
+      for (const [y, z, r] of [[0.02, -0.16, 0.08], [-0.1, -0.15, 0.055]]) { pk.add(torus(r, 0.018, L.pack, 'gold', [-0.02, y, z], [0, 0, 0])); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; pk.add(box(0.03, 0.03, 0.02, L.pack, 'gold', [-0.02 + Math.cos(a) * r * 1.25, y + Math.sin(a) * r * 1.25, z], [0, 0, a])); } } } // plecak z kołami zębatymi i kominkiem
+    if (L.backBanner) { const bb = joint(spine, [-0.2 * S, 0.2, 0], 0.06); bb.add(cyl(0.02, 0.02, 1.5, '#4a3018', 'wood', [0, 0.65, 0])); bb.add(sph(0.05, '#e8e0cc', 'bone', [0, 1.43, 0], [1, 1.1, 0.9])); for (const z of [-1, 1]) bb.add(tube([[0, 1.46, 0.03 * z], [0.02, 1.54, 0.1 * z], [0.08, 1.58, 0.12 * z]], 0.018, 0.004, '#e8e0cc', 'horn'));
+      const wv = Math.sin(t * 2) * 0.03; bb.add(sheet([[0, 0], [-0.4, -0.02 + wv], [-0.36, -0.28 + wv], [-0.4, -0.54 + wv], [0, -0.52]], L.backBanner, 'cloth', [-0.01, 1.32, 0])); bb.add(box(0.01, 0.05, 0.05, '#e8e0cc', 'bone', [-0.2, 1.08, 0])); } // sztandar wodza na plecach
     if (L.beads) spine.add(torus(0.13, 0.012, L.beads, 'wood', [0.14, 0.44 * tl, 0], [Math.PI / 2 + 0.9, 0, -0.3], [1, 1.3, 1])); // różaniec
   }
   if (L.cape) {
@@ -150,7 +160,7 @@ function humanoid(L, P = {}) {
     else { const cp = mesh(new THREE.CylinderGeometry(0.2, 0.36, legless ? 1.2 : 0.98, 18, 1, true, Math.PI * 1.5 - 1.2, 2.4), L.cape, 'cloth', [0.02, legless ? -0.02 : 0.08, 0], [0, 0, 0.1 + (walking ? Math.abs(sw) * 0.08 : 0) + (flying ? 0.6 : 0)], [1, 1, 1.25]); cp.material = cp.material.clone(); cp.material.side = THREE.DoubleSide; spine.add(cp);
       if (L.collar) spine.add(mesh(new THREE.CylinderGeometry(0.2, 0.13, 0.22, 14, 1, true, Math.PI * 0.8, Math.PI * 1.4), L.cape, 'cloth', [-0.02, 0.66 * tl, 0], null, [1, 1, 1.25])); } // wysoki kołnierz wampira
   }
-  if (L.wings) wings(spine, L.wings, L.wingType || (bright(L.wings) ? 'feather' : 'bat'), t, flying ? ph : walking ? ph : null, A, L.wingSpan || 1, flying);
+  if (L.wings) for (let p = 0; p < (L.wingPairs || 1); p++) wings(spine, L.wings, L.wingType || (bright(L.wings) ? 'feather' : 'bat'), t, flying ? ph : walking ? ph : null, A, (L.wingSpan || 1) * [1, 0.72, 0.62][p], flying, [[0, 0], [0.12, 0.75], [-0.12, -0.75]][p]); // serafin: trzy pary
   // --- głowa ---
   const hulk = B === BUILDS.brute || B === BUILDS.colossus, col = B === BUILDS.colossus; // głowa nisko, wysunięta, osadzona w karku
   const neck = joint(spine, [0.03 + (hulk ? 0.04 : 0) + (col ? 0.06 : 0), 0.6 * tl - (hulk ? 0.05 : 0) - (col ? 0.06 : 0), 0]); neck.add(cyl(bony ? 0.03 : 0.065 * B.arm ** 0.6, bony ? 0.03 : 0.06, 0.12, skin, bony ? 'bone' : skinK, [0, 0.04, 0]));
@@ -162,7 +172,7 @@ function humanoid(L, P = {}) {
   const pairs = L.arms ? L.arms / 2 : 1;
   for (let pr = 0; pr < pairs; pr++) for (const side of [1, -1]) {
     const near = side === 1, main = pr === 0, sh = joint(spine, [0.0, (0.5 - pr * 0.12) * tl, 0.26 * side * S * B.sh * (1 - pr * 0.08)]);
-    let aSh, aEl; const armed = near || L.dual || !main;
+    let aSh, aEl; const armed = near || L.dual || !main || !!L.offWeapon;
     if (armed && !(style === 'bow' && !near)) {
       const k = main ? 1 : 0.7, off = main ? 0 : (pr * 0.5 + (near ? 0 : 0.3));
       if (style === 'thrust') { aSh = 0.3 + hit * 0.9 - wind * 0.3; aEl = 1.0 - hit * 0.7; }
@@ -173,8 +183,8 @@ function humanoid(L, P = {}) {
       else { aSh = 0.3 + wind * 2.3 + hit * 0.55; aEl = 0.35 + wind * 1.25 - hit * 0.2; } // pazury: zamach nad głowę, cięcie z góry przed siebie
       if (walking && A == null) aSh += -sw * 0.35 * side; if (flying && A == null) aSh += 0.9; aSh += hurt * 0.6;
     } else {
-      aSh = (walking ? sw * 0.35 : 0.1) + (L.shield ? 0.9 : 0) + (style === 'bow' && A != null ? bowRaise(A) * 1.4 - bowRecoil(A) * 0.35 : 0) + (style === 'xbow' ? 1.1 : 0) + (style === 'claw' ? (A == null ? 0 : clawArm(A)) : 0) + hurt * 0.5 + (flying ? 0.7 : 0);
-      aEl = L.shield ? 0.7 : style === 'bow' && A != null ? 0.5 - bowRaise(A) * 0.4 + (A < 0.6 ? bowDraw(A) * 1.1 : bowRecoil(A) * 0.6) : style === 'xbow' ? 0.9 : style === 'claw' && A != null ? 0.5 + clawEl(A) : 0.5;
+      aSh = (walking ? sw * 0.35 : 0.1) + (L.shield || L.book ? 0.9 : L.boulder ? 2.4 + (A == null ? 0 : Math.sin(Math.min(1, A / 0.6) * Math.PI) * 0.6) : 0) + (style === 'bow' && A != null ? bowRaise(A) * 1.4 - bowRecoil(A) * 0.35 : 0) + (style === 'xbow' ? 1.1 : 0) + (style === 'claw' ? (A == null ? 0 : clawArm(A)) : 0) + hurt * 0.5 + (flying ? 0.7 : 0);
+      aEl = L.shield || L.book ? 0.7 : L.boulder ? 0.9 : style === 'bow' && A != null ? 0.5 - bowRaise(A) * 0.4 + (A < 0.6 ? bowDraw(A) * 1.1 : bowRecoil(A) * 0.6) : style === 'xbow' ? 0.9 : style === 'claw' && A != null ? 0.5 + clawEl(A) : 0.5;
     }
     sh.rotation.z = aSh;
     const ar = 0.078 * S * B.arm, uL = 0.29 * B.armL, fL = 0.26 * B.armL, bareArm = bare || L.bareArms || (!armor && !L.robe && !L.sleeves && bare !== false && !!L.claws);
@@ -193,7 +203,10 @@ function humanoid(L, P = {}) {
     el.add(sph(handR, armor === 'plate' && !bony ? metal : skin, armor === 'plate' && !bony ? 'steel' : bony ? 'bone' : skinK, [0.01, -fL - 0.03, 0], [1, 1.1, 0.8]));
     const hand = joint(el, [0, -fL - 0.03, 0]), world = aSh + aEl - lean - pitch;
     const hold = wa => { hand.rotation.z = wa - world; return hand; };
-    if (armed && W !== 'none' && !(style === 'bow' && !near) && !(style === 'xbow' && !near)) weapon(hold, main ? L : { ...L, weapon: L.extraWeapon || W }, main ? W : L.extraWeapon || W, A, wind, hit, metal, near);
+    const W2 = main && !near && L.offWeapon ? L.offWeapon : main ? W : L.extraWeapon || W; // broń tej ręki (druga ręka: offWeapon, dodatkowe ręce: extraWeapon)
+    if (armed && W2 !== 'none' && !(style === 'bow' && !near) && !(style === 'xbow' && !near)) weapon(hold, W2 === W ? L : { ...L, weapon: W2, glow: L.offGlow || L.glow }, W2, A, wind, hit, metal, near);
+    if (!near && main && L.book) { const bk = hold(-0.9), gl = L.orb || '#fff0a0'; bk.add(rbox(0.05, 0.3, 0.22, 0.01, L.book, 'leather', [0.02, 0.06, 0.08])); bk.add(rbox(0.04, 0.28, 0.2, 0.008, '#f0e8d0', 'cloth', [0.05, 0.06, 0.08])); bk.add(box(0.012, 0.06, 0.06, gl, 'glow', [0.075, 0.06, 0.08])); for (const y of [-0.06, 0.18]) bk.add(box(0.056, 0.02, 0.23, '#e0b24a', 'gold', [0.02, y, 0.08])); } // księga
+    if (!near && main && L.boulder) hold(0).add(chunk(0.17, 0.15, 0.16, L.boulder, 'stone', [0, 0.12, 0], null, 7, 12)); // głaz do rzutu
     if (!near && main && L.shield && !L.dual) shield(hold(Math.PI / 2), L, metal);
     if (!near && style === 'bow' && A != null && A < 0.6) { const hh = hold(-Math.PI / 2 + 0.1); hh.add(cyl(0.006, 0.006, 0.7, '#c8a878', 'wood', [0.02, 0.35, 0])); } // strzała na cięciwie
     if (L.bigClaws) for (let i = 0; i < 4; i++) hand.add(slab([[0, 0.02], [0.03, 0], [0.12, -0.14], [0.08, -0.3], [0.0, -0.04]], 0.024, '#f0e8d0', 'horn', [0.02, -0.06, (i - 1.5) * 0.035], [0, (i - 1.5) * 0.15, 0.25])); // szable pazurów behemota
@@ -258,7 +271,8 @@ function headOf(head, L, hr, skin, t, A) {
       : ht === 'long' ? [[-0.02, hr * 0.75, 0.07 * z], [-0.08, hr + 0.14, 0.1 * z], [-0.22, hr + 0.3, 0.1 * z], [-0.4, hr + 0.36, 0.08 * z]]
       : ht === 'small' ? [[0.02, hr * 0.8, 0.06 * z], [0.0, hr + 0.06, 0.08 * z], [-0.05, hr + 0.1, 0.08 * z]]
       : [[-0.02, hr * 0.7, 0.07 * z], [-0.05, hr + 0.07, 0.12 * z], [-0.14, hr + 0.14, 0.13 * z], [-0.2, hr + 0.1, 0.1 * z]];
-    head.add(tube(pts, ht === 'small' ? 0.022 : ht === 'bull' ? 0.045 : 0.038, 0.004, L.horns, 'horn', 2)); } }
+    const hk = L.hornScale || 1, P2 = hk === 1 ? pts : pts.map(([x, y, zz]) => [pts[0][0] + (x - pts[0][0]) * hk, pts[0][1] + (y - pts[0][1]) * hk, pts[0][2] + (zz - pts[0][2]) * hk]);
+    head.add(tube(P2, (ht === 'small' ? 0.022 : ht === 'bull' ? 0.045 : 0.038) * Math.sqrt(hk), 0.004, L.horns, 'horn', 2)); } }
   if (hm === 'helm' || hm === 'horn') { // hełm z nosalem, policzkami i grzebieniem
     head.add(mesh(new THREE.SphereGeometry(hr * 1.12, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), hc, 'steel', [0, 0.015, 0]));
     head.add(torus(hr * 1.1, 0.02, DK(hc, 0.2), 'metal', [0, 0.005, 0], [Math.PI / 2, 0, 0]));
@@ -302,6 +316,14 @@ function headOf(head, L, hr, skin, t, A) {
     for (let i = 0; i < 3; i++) head.add(slab([[0, 0.02], [0.006, 0.006], [0.02, 0], [0.006, -0.006], [0, -0.02], [-0.006, -0.006], [-0.02, 0], [-0.006, 0.006]], 0.005, '#f0e090', 'glow', [hr * 0.5 - i * 0.06, hr + 0.05 + i * 0.1, hr * 0.5], null, null, 0.1)); // gwiazdki
   }
   if (L.crownSpikes) { head.add(torus(hr * 1.08, 0.02, L.crownSpikes, 'iron', [0, hr * 0.95, 0], [Math.PI / 2, 0, 0])); for (let i = 0; i < 7; i++) { const a = -1.4 + i * 0.47; head.add(spike(0.022, 0.14 + (i % 2) * 0.08, L.crownSpikes, 'iron', [Math.cos(a) * hr * 1.05, hr * 1.02, Math.sin(a) * hr * 1.05], [Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25])); } } // żelazna korona z kolców
+  if (L.antlers) for (const z of [-1, 1]) { const a = L.antlers, b = [[-0.02, hr * 0.8, 0.07 * z], [-0.06, hr + 0.12, 0.14 * z], [-0.1, hr + 0.28, 0.2 * z], [-0.2, hr + 0.4, 0.26 * z]]; head.add(tube(b, 0.024, 0.008, a, 'horn'));
+    for (const [k, dx, dy, dz] of [[1, 0.1, 0.1, 0.02], [2, 0.08, 0.12, -0.02], [2, -0.1, 0.1, 0.06], [3, 0.02, 0.12, 0.04]]) head.add(tube([b[k], [b[k][0] + dx, b[k][1] + dy, b[k][2] + dz * z]], 0.014, 0.004, a, 'horn')); } // poroże
+  if (L.frill) { const F = [], n = 9; for (let i = 0; i <= n; i++) { const a = -1.35 + i / n * 2.7, r = 0.26 + (i % 2) * 0.07; F.push([Math.sin(a) * r, Math.cos(a) * r * 0.9]); } F.push([0, -0.05]);
+    head.add(slab(F, 0.012, L.frill, 'skin', [-0.06, 0.0, 0], [0, Math.PI / 2, 0], null, 0.2)); for (let i = 0; i < 7; i++) { const a = -1.2 + i * 0.4; head.add(cyl(0.008, 0.004, 0.26, DK(L.frill, 0.35), 'horn', [-0.055, Math.cos(a) * 0.13, Math.sin(a) * 0.13], [-a, 0, 0])); } } // kryza jaszczura
+  if (L.flowerCrown) for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; head.add(sph(0.026, i % 3 ? L.flowerCrown : '#fff8e8', 'glow', [Math.cos(a) * hr * 0.95, hr * 0.62, Math.sin(a) * hr * 0.95], null, 8)); head.add(sph(0.02, '#4a8a3a', 'fur', [Math.cos(a + 0.35) * hr * 0.97, hr * 0.6, Math.sin(a + 0.35) * hr * 0.97], [1.4, 0.6, 1], 8)); } // wianek
+  if (L.cobraHood) { const C = L.cobraHood, H = [[0, -0.1], [0.2, -0.02], [0.3, 0.16], [0.26, 0.36], [0.12, 0.5], [0, 0.54], [-0.12, 0.5], [-0.26, 0.36], [-0.3, 0.16], [-0.2, -0.02]];
+    head.add(slab(H, 0.02, C, 'scale', [-0.1, -0.12, 0], [0, Math.PI / 2, 0], null, 0.3)); head.add(slab(H.map(([x, y]) => [x * 0.7, y * 0.75 + 0.06]), 0.02, LT(C, 0.35), 'scale', [-0.085, -0.12, 0], [0, Math.PI / 2, 0], null, 0.3));
+    for (const z of [-1, 1]) head.add(sph(0.03, '#101010', 'scale', [-0.075, 0.2, 0.13 * z], [0.5, 1, 1.3])); } // kaptur kobry za głową
   if (L.plume) head.add(tube([[-0.02, hr * 1.12, 0], [-0.12, hr + 0.18, 0], [-0.28, hr + 0.14, 0], [-0.36, hr + 0.0, 0]], 0.05, 0.02, L.plume, 'fur'));
 }
 
@@ -364,6 +386,11 @@ function weapon(hold, L, W, A, wind, hit, metal, near = true) {
 }
 function shield(h, L, metal) {
   const c = L.shield, m = L.shieldMark, shape = L.shieldShape || 'round';
+  if (shape === 'tower') { // wysoka prostokątna tarcza (scutum)
+    h.add(rbox(0.72, 0.05, 0.42, 0.02, DK(c, 0.25), 'wood', [0, 0.02, 0.13], [Math.PI / 2, 0, -Math.PI / 2])); h.add(rbox(0.76, 0.03, 0.46, 0.015, metal, 'steel', [0, 0.02, 0.1], [Math.PI / 2, 0, -Math.PI / 2]));
+    h.add(decal(0.4, 0.7, (g, w, hh) => { g.fillStyle = c; g.fillRect(0, 0, w, hh); if (m) { g.fillStyle = m; g.beginPath(); g.moveTo(w / 2, 10); g.lineTo(w - 10, hh / 2); g.lineTo(w / 2, hh - 10); g.lineTo(10, hh / 2); g.fill(); } g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, hh / 2 - 2, w, 4); }, [0, 0.02, 0.159], [0, 0, -Math.PI / 2]));
+    h.add(sph(0.06, metal, 'steel', [0, 0.02, 0.17], [1, 1, 0.6])); return;
+  }
   if (shape === 'heater') { // trójkątna tarcza rycerska z herbem
     const pts = [[-0.25, 0.3], [0.25, 0.3], [0.25, 0.0], [0, -0.35], [-0.25, 0.0]];
     h.add(slab(pts, 0.04, DK(c, 0.2), 'wood', [0, 0.02, 0.13], [0, 0, -Math.PI / 2])); h.add(slab(pts.map(([x, y]) => [x * 1.06, y * 1.06 - 0.01]), 0.03, metal, 'steel', [0, 0.02, 0.125], [0, 0, -Math.PI / 2])); // okucie
@@ -380,11 +407,11 @@ function shield(h, L, metal) {
 // Skrzydła na plecach: pierzaste (anioły, harpie), błoniaste (demony, gargulce, smoki), owadzie (driady, nimfy) albo peleryna
 // rozpięta jak skrzydła. Skrzydło leży w płaszczyźnie xy (w górę i do tyłu), machnięcie obraca je wokół osi tułowia.
 // flying: szeroki mach w locie; span: rozpiętość
-function wings(spine, col, type, t, ph, A, span = 1, flying = false) {
+function wings(spine, col, type, t, ph, A, span = 1, flying = false, [dy, dz] = [0, 0]) {
   const beat = flying ? Math.sin(ph) : 0, flap = flying ? 0.55 + beat * 0.85 : (ph != null ? Math.sin(ph * 2) * 0.25 : Math.sin(t * 2) * 0.08) + (A != null ? Math.sin(A * Math.PI) * 0.45 : 0);
   for (const z of [-1, 1]) {
-    const root = joint(spine, [-0.12, 0.52, 0.1 * z]); root.rotation.set((0.35 + flap) * z, -0.35 * z, flying ? -0.2 : 0.15); root.scale.setScalar(span);
-    if (type === 'feather') featherFan(root, col, flying ? 1.05 : 0.9, false);
+    const root = joint(spine, [-0.12, 0.52 + dy, 0.1 * z]); root.rotation.set((0.35 + flap + dz) * z, -0.35 * z, (flying ? -0.2 : 0.15) - Math.abs(dz) * 0.3); root.scale.setScalar(span);
+    if (type === 'feather' || type === 'fire') featherFan(root, col, flying ? 1.05 : 0.9, type === 'fire');
     else if (type === 'fairy') for (const [a, l, w] of [[0.5, 0.75, 0.2], [-0.25, 0.55, 0.16]]) { const g = joint(root, [0, 0, 0], a); g.add(slab([[0, 0], [-w, l * 0.3], [-w * 0.8, l * 0.8], [0, l], [w * 0.6, l * 0.7], [w * 0.4, l * 0.25]], 0.006, col, 'gem', [0, 0, 0], null, null, 0.2)); g.add(tube([[0, 0, 0.005], [-0.02, l * 0.5, 0.005], [0, l * 0.95, 0.005]], 0.008, 0.004, DK(col, 0.4), 'gem')); }
     else membraneWing(root, col, type === 'cape' ? col : DK(col, 0.4), type === 'cape' ? 1.1 : 1, type !== 'cape');
   }
@@ -429,14 +456,18 @@ function golem(L, P = {}) {
   spine.add(part(0.46, 0.5, 0.62, [0.02, 0.28, 0])); spine.add(part(0.3, 0.2, 0.7, [0, 0.55, 0])); // pierś i barki
   for (let i = 0; i < 3; i++) spine.add(box(0.01, 0.2 - i * 0.05, 0.015, glow, 'glow', [0.25, 0.3 + i * 0.03, -0.08 + i * 0.08], [0.4 * (i - 1), 0, 0.3 * (i - 1)])); // runy
   rivets(spine, 0.24, 0.48, 0.22, 4); rivets(spine, 0.24, 0.48, -0.22, 4);
+  if (L.core) { spine.add(mesh(new THREE.OctahedronGeometry(0.09), L.core, 'glow', [0.25, 0.32, 0], [0, 0, 0], [0.6, 1.1, 1])); spine.add(torus(0.11, 0.022, LT(col, 0.25), K, [0.24, 0.32, 0], [0, Math.PI / 2, 0])); } // świecący rdzeń w piersi
+  if (L.crystals) for (const z of [-1, 1]) for (let i = 0; i < 3; i++) spine.add(mesh(new THREE.OctahedronGeometry(0.12), L.crystals, 'gem', [-0.06 + i * 0.07, 0.8 + (i === 1 ? 0.08 : 0), 0.3 * z], [0.35 * z, i, (0.3 - i * 0.2) * z], [0.5, 2.8 - i * 0.5, 0.5])); // wysokie kryształy na barkach
   if (G === 'diamond') for (let i = 0; i < 5; i++) spine.add(mesh(new THREE.OctahedronGeometry(0.1), LT(col, 0.3), 'gem', [-0.1 + (i % 2) * 0.1, 0.55 + (i % 3) * 0.05, -0.2 + i * 0.1], [i, i * 2, 0], [0.6, 1.8, 0.6])); // kryształy na barkach
   const head = joint(spine, [0.12, 0.62, 0], -0.2); head.add(part(0.2, 0.18, 0.2, [0.02, 0.06, 0]));
+  if (L.crystals) head.add(mesh(new THREE.OctahedronGeometry(0.08), L.crystals, 'gem', [-0.02, 0.24, 0], [0, 0.5, 0.2], [0.5, 1.9, 0.5])); // kryształowy grzebień
   head.add(box(0.03, 0.022, 0.13, '#0a0a0c', 'stone', [0.12, 0.08, 0])); for (const z of [-0.04, 0.04]) head.add(sph(0.02, glow, 'glow', [0.125, 0.08, z], [0.5, 0.7, 1.4]));
   for (const side of [1, -1]) {
     const sh = joint(spine, [0.02, 0.5, 0.36 * side], 0.25 + wind * 2.6 - hit * 1.7 + (walking ? -sw * 0.3 * side : 0) + hurt * 0.5);
     sh.add(part(0.3, 0.26, 0.3, [0, 0, 0.03 * side])); sh.add(part(0.2, 0.36, 0.2, [0, -0.24, 0]));
     const el = joint(sh, [0, -0.42, 0], 0.35 - hit * 0.3); el.add(part(0.26, 0.38, 0.26, [0.01, -0.18, 0])); el.add(part(0.28, 0.24, 0.26, [0.02, -0.44, 0], null, dk)); // ciężka pięść
     rivets(el, 0.13, -0.08, 0.1 * side, 3);
+    if (L.crystals) for (let i = 0; i < 2; i++) el.add(mesh(new THREE.OctahedronGeometry(0.07), L.crystals, 'gem', [-0.12, -0.12 - i * 0.14, 0.04 * side], [0, 0, 1.2], [0.5, 1.8, 0.5])); // kryształy na przedramionach
   }
   if (L.size) root.scale.setScalar(L.size);
   return root;

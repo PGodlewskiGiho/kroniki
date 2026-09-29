@@ -79,7 +79,7 @@ const FACTIONS = [
       dw5: ['Zagroda gorgon', 'gorgon'], dw5u: ['Żelazna zagroda', 'mightyGorgon'], dw6: ['Gniazdo wywern', 'wyvern'], dw6u: ['Turnia wywern', 'wyvernKing'],
       dw7: ['Bagno hydr', 'hydra'], dw7u: ['Otchłań chaosu', 'chaosHydra'],
       dw1x: ['Krąg berserkerów', 'gnollBerserker'], dw2x: ['Obóz zabójców', 'lizardSlayer'], dw3x: ['Rój królowej', 'queenFly'], dw4x: ['Królewskie leże', 'royalBasilisk'],
-      dw5x: ['Spiżowa zagroda', 'bronzeGorgon'], dw6x: ['Burzowa turnia', 'stormWyvern'], dw7x: ['Pradawne bagno', 'primeHydra'],
+      dw5x: ['Żelazna zagroda', 'armoredGorgon'], dw6x: ['Burzowa turnia', 'stormWyvern'], dw7x: ['Pradawne bagno', 'primeHydra'],
     },
   },
   {
@@ -124,7 +124,7 @@ const FACTIONS = [
       dw5: ['Labirynt', 'minotaur'], dw5u: ['Wielki labirynt', 'minotaurKing'], dw6: ['Jaskinia mantykor', 'manticore'], dw6u: ['Leże skorpikor', 'scorpicore'],
       dw7: ['Smocza pieczara', 'redDragon'], dw7u: ['Czarna pieczara', 'blackDragon'],
       dw1x: ['Nory cienia', 'shadowTroglodyte'], dw2x: ['Gniazdo furii', 'fury'], dw3x: ['Oko Otchłani', 'doomEye'], dw4x: ['Sanktuarium meduz', 'archMedusa'],
-      dw5x: ['Serce labiryntu', 'minotaurLord'], dw6x: ['Leże chimer', 'chimera'], dw7x: ['Pieczara cienia', 'shadowDragon'],
+      dw5x: ['Serce labiryntu', 'minotaurLord'], dw6x: ['Leże mantykor', 'ancientManticore'], dw7x: ['Pieczara cienia', 'shadowDragon'],
     },
   },
   {
