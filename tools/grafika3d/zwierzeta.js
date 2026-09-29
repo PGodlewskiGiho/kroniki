@@ -104,7 +104,7 @@ function rider(L, P = {}) {
 }
 function centaur(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#8a5a30';
-  const q = quadBody(root, { col, len: 0.95, legH: 0.78, r: 0.24 }, P);
+  const q = quadBody(root, { col, len: 0.95, legH: 0.78, r: 0.24 }, { t: P.t, walk: P.walk, fly: P.fly, hurt: P.hurt }); // strzelec: końskie ciało stoi, strzela tors
   q.tail.add(tube([[0, 0, 0], [-0.12, -0.1, 0], [-0.2, -0.4, 0], [-0.18, -0.6, 0]], 0.05, 0.025, L.hair || DK(col, 0.5), 'hair'));
   const man = humanoid({ skin: L.skin, cloth: L.cloth || '#6a4424', hair: L.hair, helm: L.helm, helmCol: L.helmCol, weapon: 'bow', size: 0.95, noLegs: true, quiver: '#6a4424' }, { t: P.t, atk: P.atk, hurt: P.hurt });
   man.position.set(q.len * 0.4, q.r * 0.2 - 0.79 * 0.95, 0); q.body.add(man); // tors człowieka w miejscu końskiej szyi
