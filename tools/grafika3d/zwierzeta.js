@@ -7,10 +7,15 @@
 // ribs (wystające żebra), noFront (bez przednich łap: wywerna), rear (staje dęba przy ataku) }. W locie łapy podkulone.
 // Zwraca stawy szyi i ogona.
 function quadBody(root, o, P) {
-  const t = P.t || 0, walking = P.walk != null, flying = P.fly != null, ph = (walking ? P.walk : flying ? P.fly : 0) * Math.PI * 2, A = P.atk, hit = A != null ? Math.sin(Math.min(1, A) * Math.PI) : 0;
+  const t = P.t || 0, walking = P.walk != null, flying = P.fly != null, ph = (walking ? P.walk : flying ? P.fly : 0) * Math.PI * 2, A = P.atk;
+  // atak: zamach (cofnięcie, przysiad albo stanięcie dęba) do 0,45, szybki cios do 0,62, potem powolny powrót
+  const E = x => x * x * (3 - 2 * x), wind = A == null ? 0 : A < 0.45 ? E(A / 0.45) : A < 0.62 ? 1 - (A - 0.45) / 0.17 : 0;
+  const hit = A == null ? 0 : A < 0.45 ? 0 : A < 0.62 ? E((A - 0.45) / 0.17) : 1 - E((A - 0.62) / 0.38);
   const len = o.len || 1, legH = o.legH || 0.75, r = o.r || 0.24, col = o.col, K = o.kind || 'fur', far = DK(col, 0.22), bulk = o.bulk || 1;
   const bodyY = legH + r * 0.55, bob = walking ? Math.abs(Math.sin(ph * 2)) * 0.03 : flying ? Math.sin(ph) * 0.06 : Math.sin(t * 2) * 0.008;
-  const body = joint(root, [0, bodyY + bob, 0], (o.rear ? hit * 0.4 : -hit * 0.08) - (P.hurt ? 0.1 : 0) + (flying ? 0.1 : 0));
+  // cały tułów: wypad do przodu przy ciosie; koń staje dęba w zamachu, drapieżnik przysiada i skacze
+  const lunge = (hit * 0.3 - wind * 0.1) * len, crouch = o.rear ? 0 : wind * r * 0.4 - hit * r * 0.25, pitch = o.rear ? wind * 0.55 - hit * 0.12 : -wind * 0.1 + hit * 0.14;
+  const body = joint(root, [lunge, bodyY + bob - crouch, 0], pitch - (P.hurt ? 0.1 : 0) + (flying ? 0.1 : 0));
   // tułów z przekrojów: kręgosłup, głęboka klatka, wcięta talia, szerokie łopatki i zad (bez beczki z kul)
   const ch = o.chest || 1.12, ru = o.rump || 1.05, hump = o.hump || 0, wb = 0.8 * Math.sqrt(bulk);
   body.add(loft([[len * 0.68, r * 0.4, r * 0.5, r * 0.42, 0], [len * 0.44, r * wb * ch, r * (0.95 + hump) * ch, r * 1.15 * ch, 0.1], [len * 0.14, r * wb * 0.95, r * (0.92 + hump * 0.4), r * 0.98, 0.08],
@@ -23,10 +28,10 @@ function quadBody(root, o, P) {
     if (o.paws) { // łapa ze szponami: udo, podudzie i śródstopie (tylne zgięte jak u kota), stopa z pazurami
       const seg = front ? [[0.46, -0.08], [0.34, 0.2], [0.2, -0.12]] : [[0.44, 0.5], [0.36, -1.05], [0.2, 0.6]], target = legH + r * 0.35 - r * 0.14;
       let v = 0, acc = 0; for (const [f, a] of seg) { acc += a; v += f * Math.cos(acc); } const Lt = target / v;
-      hip.rotation.z = seg[0][1] + (flying ? (front ? -0.6 : -1.3) + Math.sin(ph + p) * 0.08 : sw - (front && o.rear ? hit * 1.1 : 0) + (front && !o.rear ? hit * 0.3 : 0));
+      hip.rotation.z = seg[0][1] + (flying ? (front ? -0.6 : -1.3) + Math.sin(ph + p) * 0.08 : sw + (front ? hit * 0.85 - wind * 0.25 : -hit * 0.55 + wind * 0.3) - pitch); // przednie łapy sięgają celu, tylne odpychają
       const l0 = seg[0][0] * Lt, l1 = seg[1][0] * Lt, l2 = seg[2][0] * Lt, th = r * (front ? 0.42 : 0.52) * bulk;
       bone(hip, th, r * 0.24, l0, c, K); hip.add(sph(th * 1.1, c, K, [front ? 0.02 : -0.02, -l0 * 0.3, 0], [1, 1.5, 0.8])); // mięsień uda
-      const kn = joint(hip, [0, -l0, 0], seg[1][1] + (flying ? (front ? 1.4 : -0.3) : kb - (front && o.rear ? hit * 1.2 : 0)));
+      const kn = joint(hip, [0, -l0, 0], seg[1][1] + (flying ? (front ? 1.4 : -0.3) : kb + (front ? -hit * 0.3 + wind * 0.2 : -wind * 0.35)));
       bone(kn, r * 0.24, r * 0.17, l1, c, K);
       const an = joint(kn, [0, -l1, 0], seg[2][1] + (flying ? 0.6 : 0)); bone(an, r * 0.17, r * 0.15, l2, c, K);
       const ft = joint(an, [0, -l2, 0], -(seg[0][1] + seg[1][1] + seg[2][1]) - (flying ? 0.5 : 0)); ft.add(sph(r * 0.3, c, K, [r * 0.14, -r * 0.08, 0], [1.5, 0.55, 1.1]));
@@ -34,15 +39,15 @@ function quadBody(root, o, P) {
       if (o.dewclaw) ft.add(spike(0.015, 0.08, o.claw || '#e8e0d0', 'horn', [-r * 0.2, r * 0.05, 0], [0, 0, 2.2]));
       continue;
     }
-    hip.rotation.z = flying ? (front ? -0.5 : -1.1) + Math.sin(ph + p) * 0.08 : sw - (front && o.rear ? hit * 1.1 : 0) + (front && !o.rear ? hit * 0.3 : 0);
+    hip.rotation.z = flying ? (front ? -0.5 : -1.1) + Math.sin(ph + p) * 0.08 : sw - pitch * (front ? 0.3 : 1) + (front ? (o.rear ? wind * 1.2 + hit * 0.3 : hit * 0.45 - wind * 0.15) : -hit * 0.45 + wind * 0.2); // dęba: przednie nogi w górę, potem uderzenie kopytami
     const upL = legH * 0.52, loL = legH * 0.48 - r * 0.2;
     bone(hip, r * (front ? 0.42 : 0.5) * bulk, r * 0.26, upL, c, K);
-    const kn = joint(hip, [0, -upL, 0], flying ? (front ? 1.5 : -0.5) : kb - (front && o.rear ? hit * 1.2 : 0));
+    const kn = joint(hip, [0, -upL, 0], flying ? (front ? 1.5 : -0.5) : kb - (front && o.rear ? wind * 1.7 : 0));
     bone(kn, r * 0.26, r * 0.2, loL + r * 0.15, c, K);
     kn.add(cyl(r * 0.24, r * 0.28, r * 0.35, o.hoofCol || '#2a2018', 'horn', [0, -loL - r * 0.1, 0]));
     if (o.hoofFire) for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; kn.add(cone(0.035, 0.12 + (i % 2) * 0.06, i % 2 ? o.hoofFire : LT(o.hoofFire, 0.4), 'fire', [Math.cos(a) * r * 0.25, -loL - r * 0.05, Math.sin(a) * r * 0.25], [Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3], 5)); } // płonące kopyta
   }
-  return { body, neck: joint(body, [len * 0.5, r * 0.45, 0]), tail: joint(body, [-len * 0.55, r * 0.35, 0]), hit, bodyY, r, len, flying, ph };
+  return { body, neck: joint(body, [len * 0.5, r * 0.45, 0], wind * 0.3 - hit * 0.3), tail: joint(body, [-len * 0.55, r * 0.35, 0], wind * 0.25 - hit * 0.2), hit, wind, bodyY, r, len, flying, ph };
 }
 // Łeb konia z brył (kanciasta czaszka, długi pysk, żuchwa, łuki brwiowe) i szarpana grzywa; koszmar (nightmare): płonąca
 // grzywa, świecące oczy, stalowy naczółek z kolcem. W układzie łba +y biegnie ku chrapom, −x to czoło
@@ -82,11 +87,13 @@ function horse(L, P, o = {}) {
   }
   return { root, q };
 }
-// Jeździec: koń w siodle z humanoidem (nogi zgięte na boki)
+// Jeździec: koń w siodle z humanoidem (nogi zgięte na boki). Koń w skali człowieka (HORSE_K): jeździec pełnej wielkości
+// siedzi wyżej niż piechur, a koń ma kłąb mniej więcej na wysokości ramion człowieka.
+const HORSE_K = 1.35;
 function rider(L, P = {}) {
-  const { root, q } = horse(L, P, { saddle: L.barding ? DK(L.barding, 0.3) : '#5a2a1a' });
-  const man = humanoid({ ...L, mounted: true, size: 0.92, shield: L.shield, cape: L.cape }, { t: P.t, atk: P.atk, hurt: P.hurt });
-  man.position.set(0.02, q.r * 0.75 - (0.1 + 0.69 * buildOf(L).legL) * 0.92, 0); q.body.add(man); // biodra jeźdźca w siodle
+  const { root: hr, q } = horse(L, P, { saddle: L.barding ? DK(L.barding, 0.3) : '#5a2a1a' }), root = new THREE.Group(); hr.scale.setScalar(HORSE_K); root.add(hr);
+  const man = humanoid({ ...L, mounted: true, size: 1, shield: L.shield, cape: L.cape }, { t: P.t, atk: P.atk, hurt: P.hurt });
+  man.scale.multiplyScalar(1 / HORSE_K); man.position.set(0.02, q.r * 0.75 - (0.1 + 0.69 * buildOf(L).legL) / HORSE_K, 0); q.body.add(man); // biodra jeźdźca w siodle
   if (L.size && !L.banner) root.scale.setScalar(L.size);
   if (L.banner) { // chorągiew bohatera za siodłem
     const wv = Math.sin((P.t || 0) * 2) * 0.04, pole = joint(q.body, [-0.28, q.r * 0.6, -0.16], 0.12);
@@ -97,13 +104,14 @@ function rider(L, P = {}) {
 }
 function centaur(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#8a5a30';
-  const q = quadBody(root, { col, len: 0.95, legH: 0.78, r: 0.24 }, P);
+  const q = quadBody(root, { col, len: 0.95, legH: 0.78, r: 0.24 }, { t: P.t, walk: P.walk, fly: P.fly, hurt: P.hurt }); // strzelec: końskie ciało stoi, strzela tors
   q.tail.add(tube([[0, 0, 0], [-0.12, -0.1, 0], [-0.2, -0.4, 0], [-0.18, -0.6, 0]], 0.05, 0.025, L.hair || DK(col, 0.5), 'hair'));
   const man = humanoid({ skin: L.skin, cloth: L.cloth || '#6a4424', hair: L.hair, helm: L.helm, helmCol: L.helmCol, weapon: 'bow', size: 0.95, noLegs: true, quiver: '#6a4424' }, { t: P.t, atk: P.atk, hurt: P.hurt });
   man.position.set(q.len * 0.4, q.r * 0.2 - 0.79 * 0.95, 0); q.body.add(man); // tors człowieka w miejscu końskiej szyi
+  if (L.size) root.scale.setScalar(L.size);
   return root;
 }
-function unicorn(L, P = {}) { return horse({ horse: L.fur, mane: L.mane || '#c8c0e0' }, P, { horn: '#f0d890' }).root; }
+function unicorn(L, P = {}) { const r = horse({ horse: L.fur, mane: L.mane || '#c8c0e0' }, P, { horn: '#f0d890' }).root; r.scale.setScalar(HORSE_K * (L.size || 1)); return r; }
 
 // Wilk i jego odmiany: ogniste ogary (flame), trójgłowy pies (heads), mantykora (mane + wings + stinger), behemot (horns, duży)
 function canineHead(neck, L, P, col, o = {}) {
@@ -142,6 +150,11 @@ function wolf(L, P = {}) {
   else q.tail.add(tube([[0, 0, 0], [-0.2, -0.05, 0], [-0.35, -0.2, 0], [-0.45, -0.25, 0]], fire ? 0.035 : 0.07, 0.025, fire ? L.flame : col, fire ? 'fire' : 'fur'));
   if (L.wings) { const wl = joint(q.body, [q.len * 0.26, q.r * 0.85, 0]), fl = wingFlap(P, 0.3); // skrzydła z łopatek, nie z zadu
     for (const z of [-1, 1]) { const w = joint(wl, [0, 0, 0.14 * z]); w.rotation.set((fl + (z < 0 ? 0.12 : 0)) * z, -0.3 * z, P.fly != null ? -0.35 : -0.2); w.scale.setScalar(0.95); membraneWing(w, L.wings, DK(L.wings, 0.45), 1, true, 1.2); } }
+  if (L.rider) { // jeździec wargów: goblin w siodle na grzbiecie
+    const rs = 0.7, man = humanoid({ build: 'slim', ...L.rider, mounted: true, size: rs }, { t: P.t, atk: P.atk, hurt: P.hurt });
+    q.body.add(mesh(new THREE.CylinderGeometry(q.r * 1.02, q.r * 1.02, 0.34, 16, 1, true, -Math.PI / 2, Math.PI), L.rider.leather || '#3a1a0a', 'leather', [0.02, 0.02, 0], [Math.PI / 2, 0, 0]));
+    man.position.set(0.0, q.r * 0.8 - (0.1 + 0.69 * buildOf(L.rider).legL) * rs, 0); q.body.add(man);
+  }
   if (L.size) root.scale.setScalar(L.size);
   return root;
 }
@@ -215,7 +228,7 @@ function featherWing(parent, z, col, span, flap, K = 'feather') {
   featherFan(w, col, 1, K === 'fire'); return w;
 }
 // Mach skrzydeł: w locie szeroki (w dół poniżej tułowia), w marszu średni, w spoczynku lekkie drganie; przy ataku rozpostarte
-const wingFlap = (P, base = 0.25) => P.fly != null ? 0.5 + Math.sin(P.fly * Math.PI * 2) * 1.0 : P.walk != null ? base + 0.1 + Math.sin(P.walk * Math.PI * 4) * 0.3 : base + Math.sin((P.t || 0) * 2) * 0.08 + (P.atk != null ? Math.sin(P.atk * Math.PI) * 0.5 : 0);
+const wingFlap = (P, base = 0.25) => P.fly != null ? 0.5 + Math.sin(P.fly * Math.PI * 2) * 1.0 : P.walk != null ? base + 0.1 + Math.sin(P.walk * Math.PI * 4) * 0.3 : base + Math.sin((P.t || 0) * 2) * 0.08 + (P.atk != null ? (P.atk < 0.45 ? Math.sin(P.atk / 0.45 * Math.PI / 2) : Math.max(0, 1 - (P.atk - 0.45) / 0.4)) * 0.8 : 0); // atak: skrzydła w górę w zamachu, opadają przy ciosie
 // Gryf: lwie ciało, orla głowa i skrzydła, przednie łapy ze szponami
 function griffin(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#c89a4a', wh = '#f0ece0';
@@ -298,7 +311,7 @@ function dragon(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#3a9a5a', bony = !!L.bony, K = bony ? 'bone' : 'scale', horn = L.horn || '#e8e0c0', F = L.form || '';
   const heavy = F === 'heavy', ser = F === 'serpent', fae = F === 'fae', cry = F === 'crystal', wyv = F === 'wyvern', forest = F === 'forest', black = F === 'black', dark = DK(col, 0.4), hornK = cry ? 'gem' : 'horn';
   const q = quadBody(root, { col, kind: K, len: ser ? 1.8 : heavy ? 1.55 : 1.6, legH: heavy ? 0.66 : 0.74, r: bony ? 0.2 : heavy ? 0.34 : ser ? 0.24 : 0.28, paws: true, chest: heavy ? 1.2 : 1.1, rump: 0.95, belly: bony ? null : LT(col, 0.3), bulk: heavy ? 1.1 : 0.9, noFront: wyv, claw: horn, ribs: bony, dewclaw: true }, P);
-  const fly = q.flying, ph = q.ph, hit = q.hit, t = P.t || 0;
+  const fly = q.flying, ph = q.ph, hit = q.hit, wind = q.wind, t = P.t || 0;
   if (bony) for (let i = 0; i < 6; i++) q.body.add(torus(0.3, 0.025, col, 'bone', [0.35 - i * 0.12, 0, 0], [0, Math.PI / 2, 0], [1, 1.1, 1], Math.PI * 1.4));
   else for (let i = 0; i < 8; i++) q.body.add(rbox(0.13, 0.05, q.r * 1.1, 0.016, LT(col, 0.38), 'horn', [-0.58 + i * 0.16, -q.r * 0.8, 0], [0, 0, 0.04])); // płyty brzucha
   const fin = (parent, x, y, h, c = dark, a = 0.5, w = 0.1) => forest ? parent.add(slab([[-w, 0], [w * 0.8, 0], [w * 0.4, h * 0.5], [-w * 0.1 - h * 0.3, h], [-w * 0.6, h * 0.45]], 0.014, LT(col, 0.15), 'skin', [x, y, 0], [0, 0, a - 0.6])) // leśny: liściaste płetwy
@@ -310,10 +323,10 @@ function dragon(L, P = {}) {
   q.body.scale.y *= heavy ? 0.9 : 0.82; // smukły tułów, nie beczka
   const nl = ser ? 1.35 : heavy ? 0.8 : 1;
   const nk = fly ? [[0, 0, 0], [0.26 * nl, 0.16 * nl, 0], [0.55 * nl, 0.3 * nl, 0], [0.82 * nl, 0.34 * nl, 0]]
-    : [[0, 0, 0], [0.18 * nl, 0.3 * nl, 0], [0.3 * nl + hit * 0.1, 0.62 * nl - hit * 0.25, 0], [0.45 * nl + hit * 0.35, 0.8 * nl - hit * 0.4, 0]];
+    : [[0, 0, 0], [0.18 * nl - wind * 0.06, 0.3 * nl + wind * 0.08, 0], [0.3 * nl + hit * 0.18 - wind * 0.16, 0.62 * nl - hit * 0.3 + wind * 0.2, 0], [0.45 * nl + hit * 0.5 - wind * 0.26, 0.8 * nl - hit * 0.48 + wind * 0.26, 0]]; // zamach: szyja wygięta w tył i w górę (wdech), cios: łeb wyrzucony nisko do przodu
   q.neck.add(tube(nk, heavy ? 0.22 : 0.17, ser ? 0.08 : 0.11, col, K, 2));
   for (let i = 1; i < 4; i++) fin(q.neck, nk[i][0] - 0.06, nk[i][1] + 0.07, ser ? 0.3 : 0.2, dark, 0.3, 0.07); // kolce szyi
-  const head = joint(q.neck, nk[3], (fly ? -0.05 : -0.35) - hit * 0.3), hs = heavy ? 1.5 : fae ? 1.1 : 1.35;
+  const head = joint(q.neck, nk[3], (fly ? -0.05 : -0.35) - hit * 0.35 + wind * 0.35), hs = heavy ? 1.5 : fae ? 1.1 : 1.35;
   head.scale.setScalar(hs);
   head.add(rbox(0.26, 0.15, 0.2, 0.03, col, K, [0.02, 0.01, 0], [0, 0, 0.1])); // czaszka
   head.add(rbox(0.3, 0.09, 0.14, 0.025, col, K, [0.25, -0.02, 0], [0, 0, -0.08])); // pysk
@@ -347,7 +360,7 @@ function dragon(L, P = {}) {
   else q.tail.add(slab([[0, -0.12], [0.08, 0], [0, 0.12], [-0.45, 0]], 0.03, cry ? (L.gem || horn) : dark, hornK, [tip[0] + 0.02, tip[1], tip[2]])); // ostrze ogona
   // skrzydła: postrzępione błony z pazurami (smok baśniowy: skrzydła motyla); w spoczynku uniesione, w locie biją szeroko
   const wl = joint(q.body, [wyv ? 0.4 : 0.22, q.r * 0.82, 0]), W = L.wing || DK(col, 0.12), span = ser ? 2.3 : heavy ? 1.75 : cry ? 1.85 : fae ? 1.3 : bony ? 1.9 : 2.0;
-  const flap = fly ? 0.5 + Math.sin(ph) * 1.0 : P.walk != null ? 0.3 + Math.sin(P.walk * Math.PI * 4) * 0.25 : 0.28 + Math.sin(t * 2) * 0.06 + (P.atk != null ? hit * 0.35 : 0);
+  const flap = fly ? 0.5 + Math.sin(ph) * 1.0 : P.walk != null ? 0.3 + Math.sin(P.walk * Math.PI * 4) * 0.25 : 0.28 + Math.sin(t * 2) * 0.06 + (P.atk != null ? wind * 0.75 + hit * 0.2 : 0); // zamach: skrzydła rozpostarte wysoko
   for (const z of [-1, 1]) {
     const w = joint(wl, [0, 0, 0.18 * z]); w.rotation.set((flap + (z < 0 ? 0.12 : 0)) * z, -0.3 * z, fly ? -0.35 : -0.1); w.scale.setScalar(span);
     if (fae) { for (const [a, rr] of [[0.5, 0.62], [-0.4, 0.46]]) w.add(slab([[0, 0], [-rr * Math.cos(a) * 0.4, rr * 0.9], [-rr * 1.3, rr * Math.sin(a) + 0.2], [-rr * 1.1, rr * Math.sin(a) - 0.25]], 0.01, L.wing || '#e0c0ff', 'gem', [0, 0, 0], null, null, 0.2)); continue; }
@@ -446,13 +459,15 @@ function hydra(L, P = {}) {
   q.tail.add(tube(tl, 0.16, 0.025, col, 'scale', 2)); for (let i = 1; i < 4; i++) q.tail.add(spike(0.03, 0.13 - i * 0.02, dark, 'horn', [tl[i][0], tl[i][1] + 0.11 - i * 0.02, tl[i][2]], [0, 0, 0.6]));
   const front = Math.round((n - 1) * 0.25);
   for (let k = 0; k < n; k++) {
-    const f = k / (n - 1), a = -0.05 + f * 1.95, sw = Math.sin(t * 2 + k * 1.3) * 0.05, lunge = hit * (k % 2 ? 0.55 : 0.25) * (1 - f * 0.5), z = (f - 0.5) * 0.6;
+    // każda głowa kąsa po kolei: cofnięcie (zamach), błyskawiczne wyrzucenie do przodu, powrót; przesunięcie w czasie między głowami
+    const f = k / (n - 1), a = -0.05 + f * 1.95, sw = Math.sin(t * 2 + k * 1.3) * 0.05, z = (f - 0.5) * 0.6, Ak = A == null ? null : Math.min(1, Math.max(0, (A - ((k * 3) % n) / n * 0.25) / 0.75));
+    const hk = Ak == null ? 0 : Ak < 0.4 ? -Math.sin(Ak / 0.4 * Math.PI / 2) * 0.35 : Ak < 0.6 ? -0.35 + (Ak - 0.4) / 0.2 * 1.35 : 1 - (Ak - 0.6) / 0.4, lunge = hk * (k % 2 ? 0.6 : 0.4) * (1 - f * 0.45);
     const L1 = 1.15 + Math.sin(k * 1.7) * 0.12 + (f > 0.6 ? 0.15 : 0), px = Math.cos(a), py = Math.sin(a), nx = -py, ny = px, s = (k % 2 ? 1 : -1) * 0.12; // wachlarz szyj od przodu po górę i tył; S-kształt
     const pts = [[0, 0, z * 0.3], [px * 0.3 + nx * s, py * 0.3 + ny * s + 0.04, z * 0.6], [px * L1 * 0.62 - nx * s + lunge * 0.4, py * L1 * 0.62 - ny * s + sw, z * 0.9], [px * L1 + lunge + 0.08, py * L1 + 0.08 + sw - lunge * 0.3, z]];
     q.neck.add(tube(pts, 0.11, 0.075, col, 'scale', 2));
     for (let i = 1; i < 3; i++) q.neck.add(spike(0.025, 0.1, dark, 'horn', [pts[i][0] - nx * 0.08, pts[i][1] + 0.08, pts[i][2]], [0, 0, a - 0.9])); // kolce na szyi
     const h = joint(q.neck, pts[3], -0.2 + (f - 0.4) * 0.6 - lunge * 0.3 + Math.sin(t * 1.5 + k) * 0.05); h.scale.setScalar(1.2); // głowy rozchylone wachlarzem
-    reptileHead(h, col, { bite: hit * (k % 2 ? 1 : 0.6), eyes: L.eyes || '#f0e040', horns: L.horns });
+    reptileHead(h, col, { bite: Math.max(0, hk), eyes: L.eyes || '#f0e040', horns: L.horns });
     if (k === front) marker(h, 'mouth', [0.4, -0.06, 0]);
   }
   root.scale.setScalar(1.12 * (L.size || 1));

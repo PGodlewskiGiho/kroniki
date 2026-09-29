@@ -261,23 +261,23 @@ G.screens.battle = {
     for (const side of [0, 1]) {
       const h = side ? B.sides[1].hero : B.h; if (!h) continue;
       const [x, y, dir] = heroSpot(side), c = this.heroCast && this.heroCast.side === side && now - this.heroCast.t0 < 0.6 ? this.heroCast : null, win = E && E.winner === side;
-      const nA = BATTLE_FRAMES.attack, i = c ? Math.min(nA - 1, Math.floor((now - c.t0) / 0.6 * nA)) : win ? Math.floor((now * 1.6 % 1) * nA) : Math.floor(now * 3 + side) % BATTLE_FRAMES.idle;
+      const nA = BATTLE_FRAMES.attack, i = c ? Math.min(nA - 1, Math.floor((now - c.t0) / 0.6 * nA)) : win ? Math.floor((now * 1.6 % 1) * nA) : Math.floor(now * 4.5 + side) % BATTLE_FRAMES.idle;
       ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, 14, 4.5, 0, 0, TAU); ctx.fill();
       drawSprite(ctx, heroBattleSprite(h, ownerColor(st, h.owner), dir, i, !!(c || win)), x, y, HERO_BATTLE_K);
     }
   },
   unitLook(u) {
     const d = u.face || (u.side === 0 ? 1 : -1), now = G.time, a = u.anim && now - u.anim.t0 < u.anim.dur ? u.anim : null;
-    let pose = 'idle', i = Math.floor(now * 3.5 + u.id * 1.37) % BATTLE_FRAMES.idle, ox = 0;
+    let pose = 'idle', i = Math.floor(now * 5.2 + u.id * 1.37) % BATTLE_FRAMES.idle, ox = 0;
     const E = (this.phase === 'over' || this.phase === 'done') && this.ending;
     if (E && u.side === E.winner && !u.dead && !isMachine(u)) { // zwycięzcy podskakują i wymachują bronią
       const k = now * 1.6 + u.id * 0.37, hop = Math.abs(Math.sin(k * Math.PI)) * 7 * clamp(E.t * 3, 0, 1);
       return { s: battleSprite(u.cid, d, 'attack', Math.floor((k % 1) * BATTLE_FRAMES.attack)), ox: 0, hop, flash: false };
     }
-    if (this.phase === 'intro' && u.cid !== 'arrowTower') { pose = 'walk'; i = Math.floor(now * 10) % BATTLE_FRAMES.walk; ox = -d * (1 - ease(clamp(this.intro.t / this.intro.dur, 0, 1))) * 110; }
+    if (this.phase === 'intro' && u.cid !== 'arrowTower') { pose = 'walk'; i = Math.floor(now * 13) % BATTLE_FRAMES.walk; ox = -d * (1 - ease(clamp(this.intro.t / this.intro.dur, 0, 1))) * 110; }
     else if (a) {
       const f = clamp((now - a.t0) / a.dur, 0, 1); pose = a.pose;
-      i = pose === 'walk' || pose === 'fly' ? Math.floor(now * (pose === 'fly' ? 13 : 10)) % BATTLE_FRAMES[pose] : pose === 'attack' ? Math.min(BATTLE_FRAMES.attack - 1, Math.floor(f * BATTLE_FRAMES.attack)) : 0;
+      i = pose === 'walk' || pose === 'fly' ? Math.floor(now * (pose === 'fly' ? 17 : 13)) % BATTLE_FRAMES[pose] : pose === 'attack' ? Math.min(BATTLE_FRAMES.attack - 1, Math.floor(f * BATTLE_FRAMES.attack)) : 0;
       const p = this.play;
       if (pose === 'attack' && p && p.kind === 'hit' && p.a === u) ox = Math.sign(p.tg.px - u.px || d) * Math.sin(f * Math.PI) * 12;
       if (pose === 'hurt') ox = -d * Math.sin(f * Math.PI) * 5;

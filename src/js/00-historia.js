@@ -288,5 +288,10 @@
    1 najsłabszą jednostkę, wymiana oddziałów przy braku miejsca). aiDanger: pola w zasięgu dnia marszu silniejszego wroga są
    zakazane (poza ucieczką do miasta i dowozem). tavernOffer usuwa oferty bohaterów najętych przez innych graczy.
    Pomiar (12 gier, 35 dni): siła głównego bohatera SI 27,4 tys. -> 40,9 tys., poziom 4,3 -> 5,7, kopalnie 4,3 -> 4,8.
+   Rozmiary jednostek: koń w skali człowieka (HORSE_K w zwierzeta.js), więc jeździec jest wyższy niż piechur; nowe look.size
+   (silniejsze zwykle większe, czworonogi dłuższe); goblin na wargu. tools/grafika3d/szereg.js: wszystkie w jednej skali.
+   Animacje: ataki z zamachem i ciosem (wind/hit w quadBody, wypad z krokiem, przysiad, pazury, dęba, wdech smoka, kąsanie
+   hydry po kolei), strzelcy naciągają łuk bez wypadu (centaur strzela z miejsca); więcej klatek (BATTLE_FRAMES 6/8/8/10)
+   i szybsze tempo w 22. tools/grafika3d/klatki.js: pasek klatek jednej pozy.
    ===================================================================================== */
 

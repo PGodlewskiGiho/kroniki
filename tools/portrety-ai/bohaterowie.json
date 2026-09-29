@@ -280,8 +280,9 @@
  },
  "Czarnobór": {
   "klasa": "overlord",
-  "opis": "minotaur warlord, black bull head, long sharp horns, brass ring in nose, bloodshot red eyes, dark iron armor",
-  "tlo": "torchlit cave"
+  "opis": "minotaur, black bull head with bovine muzzle and wide nostrils, no human face, long sharp curved horns, brass ring in bull nose, bloodshot red eyes, black fur, dark iron armor",
+  "tlo": "torchlit cave",
+  "seed": 10
  },
  "Morana": {
   "klasa": "warlock",
@@ -380,8 +381,9 @@
  },
  "Grzmot": {
   "klasa": "overlord",
-  "opis": "huge bald warlord, black beard, massive jaw, scar across face, horned iron helmet, dark armor",
-  "tlo": "cave with lava glow"
+  "opis": "huge bald human warlord, weathered human face, thick black beard, massive square jaw, deep scar across face, dark eyes, horned iron helmet pushed back, dark plate armor",
+  "tlo": "cave with lava glow",
+  "seed": 10
  },
  "Nocna": {
   "klasa": "warlock",
