@@ -288,6 +288,7 @@ function headOf(head, L, hr, skin, t, A) {
     head.add(cyl(hr * 1.7, hr * 1.7, 0.02, hc, 'cloth', [0, hr * 0.7, 0], null, null, 20)); head.add(tube([[0, hr * 0.7, 0], [-0.02, hr + 0.18, 0], [-0.08, hr + 0.36, 0], [-0.2, hr + 0.42, 0]], hr * 0.95, 0.01, hc, 'cloth'));
     for (let i = 0; i < 3; i++) head.add(slab([[0, 0.02], [0.006, 0.006], [0.02, 0], [0.006, -0.006], [0, -0.02], [-0.006, -0.006], [-0.02, 0], [-0.006, 0.006]], 0.005, '#f0e090', 'glow', [hr * 0.5 - i * 0.06, hr + 0.05 + i * 0.1, hr * 0.5], null, null, 0.1)); // gwiazdki
   }
+  if (L.crownSpikes) { head.add(torus(hr * 1.08, 0.02, L.crownSpikes, 'iron', [0, hr * 0.95, 0], [Math.PI / 2, 0, 0])); for (let i = 0; i < 7; i++) { const a = -1.4 + i * 0.47; head.add(spike(0.022, 0.14 + (i % 2) * 0.08, L.crownSpikes, 'iron', [Math.cos(a) * hr * 1.05, hr * 1.02, Math.sin(a) * hr * 1.05], [Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25])); } } // żelazna korona z kolców
   if (L.plume) head.add(tube([[-0.02, hr * 1.12, 0], [-0.12, hr + 0.18, 0], [-0.28, hr + 0.14, 0], [-0.36, hr + 0.0, 0]], 0.05, 0.02, L.plume, 'fur'));
 }
 
@@ -385,10 +386,12 @@ function membraneWing(w, col, boneCol, s = 1, claw = true, sc = 1) {
   if (claw) w.add(spike(0.022 * s, 0.13 * s, '#e8e0cc', 'horn', [Wr[0] + 0.03 * s, Wr[1] + 0.06 * s, 0], [0, 0, -0.5]));
 }
 // Pierzaste skrzydło: ramię z lotkami (długie pióra wachlarzem), drugorzędowe i pokrywy
-function featherFan(w, col, s = 1, flame = false) {
+function featherFan(w, col, s = 1, flame = false, jag = false) {
   const K = flame ? 'fire' : 'feather', arm = [[0, 0, 0], [-0.1 * s, 0.4 * s, 0], [0.05 * s, 0.8 * s, 0], [-0.2 * s, 1.1 * s, 0]];
   w.add(tube(arm, 0.042 * s, 0.022 * s, col, K));
-  const feather = (x, y, len, a, c) => w.add(slab([[0, 0], [0.05 * s, len * 0.25], [0.03 * s, len * 0.85], [0, len], [-0.035 * s, len * 0.6], [-0.03 * s, len * 0.2]], 0.01, c, K, [x, y, 0], [0, 0, a], null, 0.2));
+  const shape = (len) => jag ? [[0, 0], [0.05 * s, len * 0.2], [0.005, len * 0.42], [0.06 * s, len * 0.62], [0, len], [-0.035 * s, len * 0.55], [0.01, len * 0.34], [-0.035 * s, len * 0.15]] // postrzępione jak błyskawica
+    : [[0, 0], [0.05 * s, len * 0.25], [0.03 * s, len * 0.85], [0, len], [-0.035 * s, len * 0.6], [-0.03 * s, len * 0.2]];
+  const feather = (x, y, len, a, c) => w.add(slab(shape(len), 0.01, c, K, [x, y, 0], [0, 0, a], null, 0.2));
   for (let i = 0; i < 10; i++) { const f = i / 9, p = f < 0.5 ? [arm[2][0] + (arm[3][0] - arm[2][0]) * f * 2, arm[2][1] + (arm[3][1] - arm[2][1]) * f * 2] : [arm[2][0] - (f - 0.5) * 0.5 * s, arm[2][1] - (f - 0.5) * 0.9 * s];
     feather(p[0], p[1], (0.75 - f * 0.25) * s, 1.5 + f * 1.3, i % 2 ? col : LT(col, 0.12)); } // lotki
   for (let i = 0; i < 7; i++) { const f = i / 6; feather(arm[1][0] + f * 0.12 * s, arm[1][1] - 0.35 * s + f * 0.3 * s, 0.45 * s, 2.5 + f * 0.3, i % 2 ? DK(col, 0.08) : col); } // drugorzędowe
