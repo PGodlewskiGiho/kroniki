@@ -6,7 +6,7 @@ const G = {
   mouse: { x: -1, y: -1, down: false },
   hover: null, downTarget: null, modal: null, keys: new Set(), popup: null, pressTimer: 0, longPress: false,
   fade: { a: 1, target: 0, next: null },
-  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, quality: 'auto', font: 'pixel' }, rs: 1,
+  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, quality: 'auto', font: 'pixel', aiMoves: 'fast' }, rs: 1,
   state: null,
 };
 function loadSettings() {
@@ -21,6 +21,7 @@ function loadSettings() {
   delete S.sfx; delete S.mus; // głośności z czasów, gdy gra miała dźwięk
   if (!['auto', 'high', 'low'].includes(S.quality)) S.quality = 'auto';
   if (!['pixel', 'classic'].includes(S.font)) S.font = 'pixel'; // czcionka: pikselowa (domyślna) albo klasyczna (szeryfowa)
+  if (!AI_MOVES.some(m => m.id === S.aiMoves)) S.aiMoves = 'fast';
   if (!(S.autoDpr >= 0.5 && S.autoDpr <= 2)) delete S.autoDpr;
   S.slots = validSlots(S.slots) || legacySlots(S);
 }
@@ -41,6 +42,9 @@ function legacySlots(S) {
 }
 // Aktywne miejsca do createNewGame. Bez S.slots (testy, stare ustawienia) liczą się kolor, frakcja i liczba rywali.
 const playerSlots = S => (validSlots(S.slots) || legacySlots(S)).filter(o => o.type !== 'off');
+// Ruchy komputera na mapie: czas jednego kroku bohatera (0 = nie pokazujemy, mapa zmienia się od razu)
+const AI_MOVES = [{ id: 'fast', name: 'szybkie', step: 0.045 }, { id: 'normal', name: 'zwykłe', step: STEP_TIME }, { id: 'off', name: 'ukryte', step: 0 }];
+const aiMoves = () => AI_MOVES.find(m => m.id === G.settings.aiMoves) || AI_MOVES[0];
 function saveSettings() { try { localStorage.setItem('kk_settings', JSON.stringify(G.settings)); } catch (e) {} }
 const colorHex = id => (PLAYER_COLORS.find(c => c.id === id) || PLAYER_COLORS[0]).hex;
 // --- skróty do stanu rozgrywki (st = G.state) ---

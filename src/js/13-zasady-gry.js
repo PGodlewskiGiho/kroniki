@@ -63,7 +63,7 @@ function baseCost(map, i, j, h) {
 }
 function stepCost(map, fx, fy, tx, ty, h) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx, h); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
 function heroDrawPos(h) {
-  if (!h.anim) return [h.x, h.y]; const k = clamp(h.anim.t / STEP_TIME, 0, 1);
+  if (!h.anim) return [h.x, h.y]; const k = clamp(h.anim.t / (h.anim.d || STEP_TIME), 0, 1); // d: krótszy krok przy szybkich ruchach komputera
   return [h.anim.fx + (h.x - h.anim.fx) * k, h.anim.fy + (h.y - h.anim.fy) * k];
 }
 function rebuildObjIndex(st) {

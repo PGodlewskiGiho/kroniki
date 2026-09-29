@@ -58,25 +58,45 @@ function aiManageTown(st, p, t) {
 // gracza. Pola z obiektem, strażnikiem albo bohaterem są przystankami: można na nie wejść, ale nie przejść dalej.
 function aiReach(st, h) {
   const map = st.map, n = map.n, N = n * n, ex = playerOf(st, h.owner).explored, dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1), start = h.y * n + h.x;
-  const heap = [[0, start]], push = e => { heap.push(e); let i = heap.length - 1; while (i) { const q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; [heap[q], heap[i]] = [heap[i], heap[q]]; i = q; } };
-  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
-  const stop = i => !!(st.objAt[i] || st.guard[i] || heroAt(st, i % n, (i / n) | 0));
-  dist[start] = 0;
-  while (heap.length) {
-    const [d, i] = pop(); if (d > dist[i]) continue; if (i !== start && stop(i)) continue;
+  // kopiec na tablicach typowanych (klucz = odległość, wartość = pole): bez tworzenia par przy każdym kroku
+  let hk = new Float64Array(1024), hv = new Int32Array(1024), hn = 0;
+  const push = (d, v) => {
+    if (hn === hk.length) { const k2 = new Float64Array(hn * 2), v2 = new Int32Array(hn * 2); k2.set(hk); v2.set(hv); hk = k2; hv = v2; }
+    let i = hn++; while (i) { const q = (i - 1) >> 1; if (hk[q] <= d) break; hk[i] = hk[q]; hv[i] = hv[q]; i = q; } hk[i] = d; hv[i] = v;
+  };
+  const pop = () => { // zdejmuje najmniejszy element (na wierzchu kopca)
+    const d = hk[--hn], v = hv[hn]; let i = 0;
+    for (;;) { const l = 2 * i + 1, r = l + 1; let m = l; if (l >= hn) break; if (r < hn && hk[r] < hk[l]) m = r; if (hk[m] >= d) break; hk[i] = hk[m]; hv[i] = hv[m]; i = m; }
+    hk[i] = d; hv[i] = v;
+  };
+  const heroCell = new Uint8Array(N); for (const o of st.heroes) if (o.garrison == null) heroCell[o.y * n + o.x] = 1;
+  const stop = i => !!(st.objAt[i] || st.guard[i] || heroCell[i]);
+  dist[start] = 0; push(0, start);
+  while (hn) {
+    const d = hk[0], i = hv[0]; pop(); if (d > dist[i]) continue; if (i !== start && stop(i)) continue;
     const x = i % n, y = (i / n) | 0;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX8[k], ny = y + DY8[k]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
       const j = ny * n + nx; if (!ex[j] || map.terrain[j] === TER.WATER || map.obst[j]) continue;
       const ob = objectAt(st, j); if (ob && ob.blocks && j !== ob.y * n + ob.x) continue; // bok miasta/kopalni: tylko przez wejście
-      const nd = d + stepCost(map, x, y, nx, ny, h); if (nd < dist[j]) { dist[j] = nd; prev[j] = i; push([nd, j]); }
+      const nd = d + stepCost(map, x, y, nx, ny, h); if (nd < dist[j]) { dist[j] = nd; prev[j] = i; push(nd, j); }
     }
   }
   return { dist, prev, path(j) { const out = []; while (j !== start && j >= 0) { out.unshift([j % n, (j / n) | 0]); j = prev[j]; } return out; } };
 }
 // Czy walka się opłaca: bitwa jest powtarzalna (to samo ziarno co w prawdziwej walce tego dnia),
 // więc SI rozgrywa ją na próbę i atakuje tylko, gdy wygra, tracąc najwyżej część armii.
+// Wynik próby zależy tylko od dnia oraz stanu obu stron, więc pamiętamy go: bohater, który w jednej turze kilka razy
+// wybiera cel, nie rozgrywa tej samej bitwy od nowa.
+const armySig = a => a.map(x => x ? x.cid + x.n : '-').join();
+const aiFightMemo = new WeakMap();
 function aiWorthFight(st, h, foe) {
+  const key = [st.dayTotal, armySig(h.army), h.mana, h.exp, h.machines.join(), Object.values(h.equip).join(), foe.count, foe.army ? armySig(foe.army) : '', foe.garrison ? armySig(foe.garrison) + (townHero(st, foe) ? armySig(townHero(st, foe).army) : '') : '', foe.mana].join('|');
+  let m = aiFightMemo.get(foe); if (!m) aiFightMemo.set(foe, m = new Map());
+  const k = h.id + '|' + key; if (!m.has(k)) { if (m.size > 64) m.clear(); m.set(k, aiWorthFightSim(st, h, foe)); }
+  return m.get(k);
+}
+function aiWorthFightSim(st, h, foe) {
   const B = simulateBattle(createBattle(st, h, foe)); if (B.over !== 'win') return false;
   const lost = B.units.filter(u => u.side === 0).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].value, 0);
   return lost <= armyPower(h.army) * 0.4;

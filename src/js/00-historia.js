@@ -273,5 +273,9 @@
    z pyska (meta.m w arkuszu). Modele: ostrzejsze bryły (slab, spike, chunk, loft), budowy ciała (BUILDS), własne sylwetki
    (behemot, gorgona, tur, ptaki: orzeł/gromu/ognisty, smoki: wywerna, leśny, czarny), mocniejszy światłocień i otoczenie
    odbić. Gęstość pikseli jednostek w bitwie 0,9 px. tools/grafika3d/galeria.js: wszystkie jednostki na jednym obrazku.
+   Krok 21: szybsza tura komputera. Ustawienie „Ruchy komputera” w menu gry (G.settings.aiMoves, AI_MOVES: szybkie – krok
+   0,045 s, domyślne; zwykłe – STEP_TIME; ukryte – bez animacji); spacja, Enter, Esc albo kliknięcie mapy pomija resztę
+   ruchów (skipAi), okna obrony zostają. updateAi liczy najwyżej ok. 12 ms na klatkę. aiReach na kopcu z tablic typowanych
+   i bez szukania bohatera na każdym polu; próbne bitwy SI zapamiętane (aiFightMemo: dzień + stan obu stron).
    ===================================================================================== */
 
