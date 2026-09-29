@@ -8,6 +8,7 @@ function iconStat(ctx, id, cx, cy, col) {
   else { ctx.fillRect(-9, -8, 8, 16); ctx.fillRect(1, -8, 8, 16); ctx.fillStyle = 'rgba(255,248,220,.8)'; ctx.fillRect(-7, -5, 4, 1.5); ctx.fillRect(3, -5, 4, 1.5); ctx.fillRect(-7, -1, 4, 1.5); ctx.fillRect(3, -1, 4, 1.5); }
   ctx.restore();
 }
+const RELIC_BTN = { x: 668, y: 60, w: 108, h: 22 }; // przycisk „Złóż relikwię” (gdy komplet części jest założony)
 const BAG_VIEW = 6, SLOT_BOX = 50, SPEC_BOX = { x: 322, y: 30, w: 66, h: 76 };
 // Specjalność bohatera: ramka z obrazkiem (stwór, surowiec, czar albo księga umiejętności) i podpisem
 function drawSpecBox(ctx, h) {
@@ -56,13 +57,29 @@ G.screens.hero = {
       armyMove(h.army, from, h.army, ar.i); return;
     }
     this.sel = null;
-    if (e && h.equip[e.id]) { unequip(h, e.id); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(`Zdjęto: ${ARTIFACTS[h.bag[h.bag.length - 1]].name}`); }
+    const fixMp = () => { h.mp = Math.min(h.mp, heroMaxMP(h)); };
+    if (inRect(x, y, RELIC_BTN) && assemblable(h).length) { this.offerRelic(h); return; }
+    if (e && (h.locked || {})[e.id]) this.say(`To miejsce zajmuje relikwia: ${ARTIFACTS[h.locked[e.id]].name}.`);
+    else if (e && h.equip[e.id] && ARTIFACTS[h.equip[e.id]].parts) { const r = h.equip[e.id]; // relikwia: rozłożyć albo zdjąć w całości
+      showDialog(`${ARTIFACTS[r].name}. Co zrobić z relikwią?`, [
+        { label: 'Rozłóż na części', key: 'r', action: () => { disassembleRelic(h, e.id); fixMp(); this.say(`Rozłożono: ${ARTIFACTS[r].name}`); } },
+        { label: 'Zdejmij', key: 'z', action: () => { unequip(h, e.id); fixMp(); this.say(`Zdjęto: ${ARTIFACTS[r].name}`); } },
+        { label: 'Anuluj', key: 'escape', action: () => {} }]); }
+    else if (e && h.equip[e.id]) { unequip(h, e.id); fixMp(); this.say(`Zdjęto: ${ARTIFACTS[h.bag[h.bag.length - 1]].name}`); }
     else if (e) this.say(`Wolne miejsce: ${e.name.toLowerCase()}. Kliknij artefakt w plecaku, aby go założyć.`);
-    else if (bi >= 0 && h.bag[bi]) { const id = h.bag[bi]; equipFromBag(h, bi); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(`Założono: ${ARTIFACTS[id].name}`); }
+    else if (bi >= 0 && h.bag[bi]) { const id = h.bag[bi], err = equipFromBag(h, bi); fixMp(); this.say(err || `Założono: ${ARTIFACTS[id].name}`); if (!err) this.offerRelic(h); }
+  },
+  // Komplet części założony: propozycja złożenia relikwii
+  offerRelic(h) {
+    const r = assemblable(h)[0]; if (!r) return; const A = ARTIFACTS[r];
+    showDialog(`Masz komplet części: ${A.name}! Złożona relikwia daje: ${artBonusText(A.bonus)}. Złożyć ją?`, [
+      { label: 'Złóż relikwię', key: 'enter', action: () => { assembleRelic(h, r); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(`Złożono: ${A.name}`); } },
+      { label: 'Nie teraz', key: 'escape', action: () => {} }], { iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(r), cx, cy, 3) });
   },
   rightInfo(x, y) {
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y), p = this.statAt(x, y);
-    if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id])} Kliknij, aby zdjąć.` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
+    if (e && (h.locked || {})[e.id]) return `Miejsce zajęte przez relikwię: ${artInfo(h.locked[e.id])}`;
+    if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id])} ${ARTIFACTS[h.equip[e.id]].parts ? 'Kliknij, aby rozłożyć albo zdjąć.' : 'Kliknij, aby zdjąć.'}` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
     if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
@@ -121,7 +138,10 @@ G.screens.hero = {
       const id = h.equip[s.id];
       ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(ctx, s.x, s.y, SLOT_BOX, SLOT_BOX, 4); ctx.fill();
       ctx.strokeStyle = hot === s ? '#ffd970' : id ? '#b8913f' : '#5a4a32'; ctx.lineWidth = hot === s ? 2 : 1.2; ctx.stroke();
+      const lk = (h.locked || {})[s.id];
       if (id) drawSprite(ctx, artSprite(id), s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, 1.5);
+      else if (lk) { ctx.globalAlpha = 0.35; drawSprite(ctx, artSprite(lk), s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, 1.5); ctx.globalAlpha = 1; // zajęte przez relikwię
+        ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s.x + 5, s.y + 5); ctx.lineTo(s.x + SLOT_BOX - 5, s.y + SLOT_BOX - 5); ctx.moveTo(s.x + SLOT_BOX - 5, s.y + 5); ctx.lineTo(s.x + 5, s.y + SLOT_BOX - 5); ctx.stroke(); }
       else text(ctx, s.name, s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, { size: 10, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.35)' });
     }
     text(ctx, `Plecak (${h.bag.length})`, 432, 372, { size: 15, color: '#f0e4c0', fam: 'title' });
@@ -146,6 +166,8 @@ G.screens.hero = {
       for (let k = 0; k < 3; k++) { ctx.fillStyle = k < sk.lv ? '#ffd970' : 'rgba(240,228,192,.2)'; ctx.fillRect(r.x + r.w / 2 + 20, r.y + 27 - k * 8, 5, 6); }
       text(ctx, SKILLS[sk.id].name, r.x + r.w / 2, r.y + 44, { size: SKILLS[sk.id].name.length > 13 ? 10 : 11, weight: 700, align: 'center', color: '#f0e4c0' });
     }
+    if (!this.preview && assemblable(h).length) { const r = RELIC_BTN, hot = inRect(G.mouse.x, G.mouse.y, r); ctx.fillStyle = hot ? 'rgba(200,150,40,.55)' : 'rgba(200,150,40,.35)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
+      ctx.strokeStyle = '#ffd970'; ctx.lineWidth = 1.2; ctx.stroke(); text(ctx, 'Złóż relikwię', r.x + r.w / 2, r.y + 15, { size: 12, weight: 700, align: 'center', color: '#fff4c8' }); }
     this.buttons.forEach(b => b.draw(ctx));
     if (this.msg && G.time - this.msgT < 2.5) text(ctx, this.msg, 300, 580, { size: 14, weight: 500, align: 'center', color: '#ffd970' });
   },

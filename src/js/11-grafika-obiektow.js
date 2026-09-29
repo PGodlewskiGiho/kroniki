@@ -1075,7 +1075,31 @@ function drawArtifact(c, id) {
   const A = ARTIFACTS[id], col = A.col, gem = A.gem, dk = shadeHex(col, -0.4), lt = shadeHex(col, 0.35);
   const poly = (pts, f) => { c.fillStyle = f; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); };
   c.lineCap = 'round'; c.lineJoin = 'round';
+  if (A.rarity === 'relic' && A.parts) { circ(c, 0, 0, 11, 'rgba(255,220,120,.28)'); circ(c, 0, 0, 8, 'rgba(255,240,180,.22)'); } // relikwia: poświata
   switch (A.icon) {
+    case 'dagger':
+      poly([[-6, 7], [5, -6], [6, -3], [-4, 9]], col); c.strokeStyle = '#3a2410'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-7, 4); c.lineTo(-3, 9); c.stroke(); c.beginPath(); c.moveTo(-5, 7); c.lineTo(-9, 11); c.stroke(); break;
+    case 'bow':
+      c.strokeStyle = col; c.lineWidth = 2.4; c.beginPath(); c.arc(-4, 0, 11, -1.2, 1.2); c.stroke(); c.strokeStyle = gem; c.lineWidth = 0.8; c.beginPath(); c.moveTo(0.1, -10.2); c.lineTo(0.1, 10.2); c.stroke();
+      c.strokeStyle = '#6a4424'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-9, 0); c.lineTo(9, 0); c.stroke(); poly([[9, -2], [12, 0], [9, 2]], '#b8c0cc'); break;
+    case 'hammer':
+      c.strokeStyle = '#6a4424'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-8, 10); c.lineTo(4, -4); c.stroke();
+      poly([[-1, -9], [9, -1], [5, 3], [-5, -5]], col); poly([[-1, -9], [4, -5], [0, -1], [-5, -5]], lt); circ(c, 2, -3, 1.6, gem); break;
+    case 'staff':
+      c.strokeStyle = col; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-8, 11); c.lineTo(5, -5); c.stroke(); circ(c, 7, -7, 4.5, 'rgba(160,220,255,.35)'); circ(c, 7, -7, 3, gem); circ(c, 6, -8, 1, '#ffffff'); break;
+    case 'fang':
+      c.strokeStyle = '#6a4424'; c.lineWidth = 1.4; c.beginPath(); c.arc(0, -5, 8, Math.PI * 0.1, Math.PI * 0.9, true); c.stroke();
+      poly([[-3, 0], [3, 0], [1, 10], [0, 11]], col); circ(c, 0, 0, 2, gem); break;
+    case 'hood':
+      poly([[-9, 10], [-9, -1], [-5, -8], [0, -10], [5, -8], [9, -1], [9, 10], [5, 10], [5, 0], [0, -4], [-5, 0], [-5, 10]], col); circ(c, 0, 3, 4.5, '#1a1410'); break;
+    case 'feather':
+      poly([[-6, 10], [-3, 2], [2, -6], [7, -10], [5, -3], [0, 5]], col); c.strokeStyle = gem; c.lineWidth = 1; c.beginPath(); c.moveTo(-7, 11); c.lineTo(6, -9); c.stroke(); break;
+    case 'coin':
+      circ(c, 0, 0, 8.5, dk); circ(c, 0, 0, 7.5, col); circ(c, -2, -2, 3, lt); c.fillStyle = gem; c.fillRect(-1, -4, 2, 8); break;
+    case 'banner':
+      c.strokeStyle = '#6a4424'; c.lineWidth = 2; c.beginPath(); c.moveTo(-7, 11); c.lineTo(-7, -10); c.stroke(); poly([[-6, -9], [9, -9], [6, -3], [9, 3], [-6, 3]], col); circ(c, 1, -3, 2.2, gem); break;
+    case 'robe':
+      poly([[-5, -9], [5, -9], [9, 10], [-9, 10]], col); poly([[-2, -9], [2, -9], [1, 10], [-1, 10]], shadeHex(col, 0.25)); circ(c, 0, -6, 2, gem); c.fillStyle = gem; for (const [x, y] of [[-5, 4], [4, 1], [-3, -2], [5, 7]]) c.fillRect(x, y, 1.4, 1.4); break;
     case 'sword':
       poly([[-9, 9], [5, -5], [8, -8], [7, -4], [-7, 10]], col); c.strokeStyle = lt; c.lineWidth = 1; c.beginPath(); c.moveTo(-7, 8); c.lineTo(6, -6); c.stroke();
       c.strokeStyle = '#6a4424'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(-8, 3); c.lineTo(-3, 8); c.stroke();

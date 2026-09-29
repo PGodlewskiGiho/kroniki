@@ -58,6 +58,7 @@ function migrateSave(st) {
     const gt = h.garrison != null && st.towns[h.garrison]; if (h.garrison != null && !(gt && gt.owner === h.owner && gt.x === h.x && gt.y === h.y)) delete h.garrison; // garnizon tylko we własnym mieście
     h.skills = h.skills.filter(s => SKILLS[s.id]); if (MAGE_CLASSES.includes(h.cls) && !heroSkill(h, 'wisdom') && h.skills.length < MAX_SKILLS) h.skills.unshift({ id: 'wisdom', lv: 1 }); // zapisy sprzed Mądrości
     for (const k of Object.keys(h.equip)) if (h.equip[k] && !ARTIFACTS[h.equip[k]]) h.equip[k] = null;
+    for (const k of Object.keys(h.locked)) if (!Object.values(h.equip).includes(h.locked[k])) delete h.locked[k]; // blokada bez relikwii
     h.machines = h.machines.filter(id => CREATURES[id]); if (h.boat && st.map.terrain[h.y * st.map.n + h.x] !== TER.WATER) delete h.boat; // łódź tylko na wodzie
   }
   // miasta: znana frakcja i budowle, garnizon, pula jednostek, gildia magów

@@ -265,5 +265,8 @@
    dla klasy) jako HERO_PORTRAITS. Krok 18b: 13 nowych stworów neutralnych (chłop, niziołek, rozbójnik, mumia, koczownik,
    strzelec wyborowy, złoty i diamentowy golem, zaklinacz, smoki: baśniowy, rdzawy, kryształowy, lazurowy); potwór na mapie
    wybierany tak, by nie był silniejszy niż okolica. Smoki z różnymi sylwetkami (look.form: heavy, crystal, serpent, fae).
+   Krok 19: 36 nowych artefaktów (w tym części kompletów) i 6 relikwii (ARTIFACTS z parts): komplet części założony naraz
+   składa się w relikwię (assembleRelic; człowiek przyciskiem na ekranie bohatera, komputer sam), która zajmuje miejsca części
+   (h.locked) i daje więcej niż ich suma; rozkładanie (disassembleRelic), relikwia kupiecka daje też surowce (bonus.res).
    ===================================================================================== */
 

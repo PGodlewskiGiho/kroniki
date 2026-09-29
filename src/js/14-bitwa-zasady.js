@@ -496,14 +496,14 @@ const RETIRE_DAYS = 7;
 function retireHero(st, h, fled, keepArts = fled) {
   removeHero(st, h);
   const keep = { ...h, army: emptyArmy(), machines: [], path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null, garrison: null, boat: false, asleep: false, boost: undefined };
-  if (!keepArts) { keep.equip = emptyEquip(); keep.bag = []; }
+  if (!keepArts) { keep.equip = emptyEquip(); keep.bag = []; keep.locked = {}; }
   st.retired = (st.retired || []).filter(r => r.hero.name !== h.name);
   st.retired.push({ hero: keep, owner: fled ? h.owner : -1, from: st.dayTotal + (fled ? 0 : RETIRE_DAYS) });
 }
 // Artefakty pokonanego (założone i z plecaka) trafiają do plecaka zwycięzcy; zwraca ich liczbę
 function lootHero(winner, loser) {
   const ids = [...Object.values(loser.equip || {}).filter(Boolean), ...(loser.bag || [])];
-  winner.bag.push(...ids); loser.equip = emptyEquip(); loser.bag = []; return ids.length;
+  winner.bag.push(...ids); loser.equip = emptyEquip(); loser.bag = []; loser.locked = {}; return ids.length;
 }
 // Zmiana właściciela miasta (i jego obiektu na mapie)
 function captureTown(st, t, owner) {

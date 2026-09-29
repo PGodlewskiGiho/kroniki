@@ -295,6 +295,9 @@ const HERO_PORTRAITS = {"Sir Rolan":"iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAIAAADajyQ
    dla klasy) jako HERO_PORTRAITS. Krok 18b: 13 nowych stworów neutralnych (chłop, niziołek, rozbójnik, mumia, koczownik,
    strzelec wyborowy, złoty i diamentowy golem, zaklinacz, smoki: baśniowy, rdzawy, kryształowy, lazurowy); potwór na mapie
    wybierany tak, by nie był silniejszy niż okolica. Smoki z różnymi sylwetkami (look.form: heavy, crystal, serpent, fae).
+   Krok 19: 36 nowych artefaktów (w tym części kompletów) i 6 relikwii (ARTIFACTS z parts): komplet części założony naraz
+   składa się w relikwię (assembleRelic; człowiek przyciskiem na ekranie bohatera, komputer sam), która zajmuje miejsca części
+   (h.locked) i daje więcej niż ich suma; rozkładanie (disassembleRelic), relikwia kupiecka daje też surowce (bonus.res).
    ===================================================================================== */
 
 // ==================== KONFIGURACJA I DANE PODSTAWOWE ====================================
@@ -939,20 +942,68 @@ const ARTIFACTS = {
   sageDiadem: { name: 'Diadem mędrca', kind: 'head', rarity: 'major', bonus: { kn: 3, sp: 1, luck: 1 }, icon: 'crown', col: '#f0c040', gem: '#4aa0e0' },
   runeBook: { name: 'Księga run', kind: 'misc', rarity: 'major', bonus: { sp: 3, kn: 1 }, icon: 'book', col: '#6a2a2a', gem: '#f0c040' },
   hornOfPlenty: { name: 'Mieszek obfitości', kind: 'misc', rarity: 'major', bonus: { gold: 750 }, icon: 'bag', col: '#6a3a6a', gem: '#f0c040' },
+  // --- kolejne artefakty ---
+  bronzeDagger: { name: 'Brązowy sztylet', kind: 'weapon', rarity: 'treasure', bonus: { att: 1, luck: 1 }, icon: 'dagger', col: '#c8904a', gem: '#6a4424' },
+  leatherVest: { name: 'Skórzany kaftan', kind: 'torso', rarity: 'treasure', bonus: { def: 1 }, icon: 'armor', col: '#8a5a30', gem: '#c8a050' },
+  travelCloak: { name: 'Płaszcz podróżny', kind: 'cloak', rarity: 'treasure', bonus: { mp: 150 }, icon: 'cloak', col: '#6a5a3a', gem: '#8a7a5a' },
+  bearClaw: { name: 'Naszyjnik z niedźwiedziego pazura', kind: 'neck', rarity: 'treasure', bonus: { att: 1 }, icon: 'fang', col: '#e8dcc0', gem: '#5a3a1a' },
+  woolHood: { name: 'Wełniany kaptur mnicha', kind: 'head', rarity: 'treasure', bonus: { sp: 1 }, icon: 'hood', col: '#7a5a3a', gem: '#5a3a1a' },
+  owlFeather: { name: 'Sowie pióro', kind: 'misc', rarity: 'treasure', bonus: { kn: 1 }, icon: 'feather', col: '#c8b890', gem: '#6a5a3a' },
+  silverCoin: { name: 'Srebrna moneta', kind: 'misc', rarity: 'treasure', bonus: { gold: 150 }, icon: 'coin', col: '#d8dce4', gem: '#8a8e98' },
+  copperRing: { name: 'Miedziany pierścień', kind: 'ring', rarity: 'treasure', bonus: { def: 1 }, icon: 'ring', col: '#c8784a', gem: '#3aa060' },
+  knightHelm: { name: 'Hełm rycerski', kind: 'head', rarity: 'minor', bonus: { def: 2 }, icon: 'helm', col: '#b8c0cc', gem: '#a8302a' },
+  hunterBow: { name: 'Łuk myśliwego', kind: 'weapon', rarity: 'minor', bonus: { att: 1, luck: 1, sight: 1 }, icon: 'bow', col: '#8a5a2a', gem: '#e8e0c8' },
+  ravenAmulet: { name: 'Krucze oko', kind: 'neck', rarity: 'minor', bonus: { kn: 1, sp: 1 }, icon: 'amulet', col: '#3a3a44', gem: '#a02a2a' },
+  lionCloak: { name: 'Lwia skóra', kind: 'cloak', rarity: 'minor', bonus: { att: 1, morale: 1 }, icon: 'cloak', col: '#c8a050', gem: '#8a5a20' },
+  stoneShield: { name: 'Kamienna tarcza', kind: 'shield', rarity: 'minor', bonus: { def: 2 }, icon: 'shield', col: '#8a8a80', gem: '#5a5a54' },
+  seerRing: { name: 'Pierścień jasnowidza', kind: 'ring', rarity: 'minor', bonus: { sight: 2, kn: 1 }, icon: 'ring', col: '#d8dce4', gem: '#40c0e0' },
+  battleBanner: { name: 'Chorągiew bojowa', kind: 'misc', rarity: 'minor', bonus: { morale: 2 }, icon: 'banner', col: '#a8302a', gem: '#f0c040' },
+  goldenSignet: { name: 'Złoty sygnet kupca', kind: 'ring', rarity: 'minor', bonus: { gold: 250 }, icon: 'ring', col: '#f0c040', gem: '#3a3a44' },
+  titanHelm: { name: 'Hełm tytana', kind: 'head', rarity: 'minor', bonus: { def: 2 }, icon: 'helm', col: '#8aa0b0', gem: '#40c0e0' },
+  titanGreaves: { name: 'Nagolenniki tytana', kind: 'feet', rarity: 'minor', bonus: { def: 1, mp: 200 }, icon: 'boots', col: '#8aa0b0', gem: '#40c0e0' },
+  boneCrown: { name: 'Korona z kości', kind: 'head', rarity: 'minor', bonus: { sp: 2 }, icon: 'crown', col: '#e0d8c0', gem: '#60e0a0' },
+  deathShroud: { name: 'Całun śmierci', kind: 'cloak', rarity: 'minor', bonus: { def: 1, sp: 1 }, icon: 'cloak', col: '#3a3440', gem: '#60e0a0' },
+  vampireFang: { name: 'Kieł wampira', kind: 'neck', rarity: 'minor', bonus: { kn: 2 }, icon: 'fang', col: '#f0e8d0', gem: '#a0202a' },
+  thunderHammer: { name: 'Młot gromu', kind: 'weapon', rarity: 'major', bonus: { att: 5 }, icon: 'hammer', col: '#9aa8c0', gem: '#ffe060' },
+  eclipseShield: { name: 'Tarcza zaćmienia', kind: 'shield', rarity: 'major', bonus: { def: 5 }, icon: 'shield', col: '#2a2a3a', gem: '#f0c040' },
+  courageCrown: { name: 'Korona męstwa', kind: 'head', rarity: 'major', bonus: { att: 2, def: 2, morale: 2 }, icon: 'crown', col: '#f0c040', gem: '#c83a2a' },
+  phoenixAmulet: { name: 'Amulet feniksa', kind: 'neck', rarity: 'major', bonus: { sp: 3, luck: 1 }, icon: 'amulet', col: '#ff8a2a', gem: '#ffe060' },
+  shadowCloak: { name: 'Płaszcz cienia', kind: 'cloak', rarity: 'major', bonus: { def: 3, luck: 2 }, icon: 'cloak', col: '#2a2436', gem: '#8a6ac0' },
+  oathRing: { name: 'Pierścień przysięgi', kind: 'ring', rarity: 'major', bonus: { att: 2, def: 2 }, icon: 'ring', col: '#e0e4ec', gem: '#c83a2a' },
+  leagueBoots: { name: 'Buty siedmiomilowe', kind: 'feet', rarity: 'major', bonus: { mp: 700 }, icon: 'boots', col: '#4a3a2a', gem: '#f0c040' },
+  skyOrb: { name: 'Kula niebios', kind: 'misc', rarity: 'major', bonus: { sp: 2, kn: 2, sight: 2 }, icon: 'orb', col: '#6ab0f0', gem: '#e0e4ec' },
+  dragonScaleShield: { name: 'Tarcza ze smoczej łuski', kind: 'shield', rarity: 'major', bonus: { def: 4 }, icon: 'shield', col: '#3a8a5a', gem: '#e8e0c8' },
+  dragonScaleMail: { name: 'Zbroja ze smoczej łuski', kind: 'torso', rarity: 'major', bonus: { def: 3, att: 1 }, icon: 'armor', col: '#3a8a5a', gem: '#e8e0c8' },
+  dragonBoneHelm: { name: 'Hełm ze smoczej kości', kind: 'head', rarity: 'major', bonus: { att: 2, kn: 1 }, icon: 'helm', col: '#e8e0c8', gem: '#3a8a5a' },
+  starRobe: { name: 'Gwiezdna szata', kind: 'torso', rarity: 'major', bonus: { sp: 2, kn: 2 }, icon: 'robe', col: '#2a3a8a', gem: '#f0e080' },
+  archmageStaff: { name: 'Laska arcymaga', kind: 'weapon', rarity: 'major', bonus: { sp: 3 }, icon: 'staff', col: '#6a4a2a', gem: '#8ad0ff' },
+  titanCuirass: { name: 'Napierśnik tytana', kind: 'torso', rarity: 'major', bonus: { def: 4 }, icon: 'armor', col: '#8aa0b0', gem: '#40c0e0' },
+  titanHammer: { name: 'Młot tytana', kind: 'weapon', rarity: 'major', bonus: { att: 4 }, icon: 'hammer', col: '#8aa0b0', gem: '#40c0e0' },
+  // --- relikwie: składa się je z kompletu części założonych naraz (parts); zajmują wtedy wszystkie ich miejsca ---
+  dragonLordArmor: { name: 'Rynsztunek Smoczego Władcy', kind: 'torso', rarity: 'relic', parts: ['dragonScaleMail', 'dragonfangBlade', 'dragonScaleShield', 'dragonBoneHelm'], bonus: { att: 9, def: 9, morale: 1 }, icon: 'armor', col: '#2a9a5a', gem: '#ffe060' },
+  archmageRegalia: { name: 'Regalia Arcymaga', kind: 'torso', rarity: 'relic', parts: ['starRobe', 'archmageStaff', 'sageDiadem', 'runeBook'], bonus: { sp: 9, kn: 9, luck: 1 }, icon: 'robe', col: '#3a4ab0', gem: '#ffe060' },
+  stormWalker: { name: 'Strój Wędrowca Burz', kind: 'feet', rarity: 'relic', parts: ['windBoots', 'mistCloak', 'scoutRing'], bonus: { mp: 1400, sight: 4, luck: 2 }, icon: 'boots', col: '#4a7ac0', gem: '#e8f0ff' },
+  merchantPrince: { name: 'Skarbiec Kupieckiego Księcia', kind: 'misc', rarity: 'relic', parts: ['merchantPurse', 'hornOfPlenty', 'goldenSignet'], bonus: { gold: 3000, res: { wood: 1, ore: 1, mercury: 1, sulfur: 1, crystal: 1, gems: 1 } }, icon: 'bag', col: '#f0c040', gem: '#c83a2a' },
+  titanArmor: { name: 'Pancerz Tytana', kind: 'torso', rarity: 'relic', parts: ['titanCuirass', 'titanHammer', 'titanHelm', 'titanGreaves'], bonus: { att: 7, def: 12 }, icon: 'armor', col: '#6ab0d0', gem: '#ffffff' },
+  deadKingRegalia: { name: 'Insygnia Króla Umarłych', kind: 'head', rarity: 'relic', parts: ['boneCrown', 'deathShroud', 'vampireFang'], bonus: { sp: 5, kn: 4, def: 3 }, icon: 'crown', col: '#d8d0b8', gem: '#60e0a0' },
   // Graala nie da się założyć (nie ma pasującego miejsca): leży w plecaku, dopóki bohater nie zbuduje go w mieście
   grail: { name: 'Graal', kind: 'grail', rarity: 'relic', bonus: {}, icon: 'grail', col: '#f0c040', gem: '#fff4c0',
     desc: 'Święty kielich. Zanieś go do własnego miasta, aby wznieść tam budowlę Graala (+5000 złota dziennie, +50% przyrostu stworów).' },
 };
-const ARTS_BY_RARITY = rar => Object.keys(ARTIFACTS).filter(id => ARTIFACTS[id].rarity === rar);
+const ARTS_BY_RARITY = rar => Object.keys(ARTIFACTS).filter(id => ARTIFACTS[id].rarity === rar && id !== 'grail' && !ARTIFACTS[id].parts);
+const RELICS = Object.keys(ARTIFACTS).filter(id => ARTIFACTS[id].parts);
+const relicOf = id => RELICS.find(r => ARTIFACTS[r].parts.includes(id)) || null; // relikwia, której częścią jest artefakt
 // Opis premii artefaktu: „+2 do ataku, +200 ruchu”
 function artBonusText(b) {
   const out = [];
   for (const p of PRIMARY) if (b[p.id]) out.push(`+${b[p.id]} do ${p.gen}`);
   if (b.morale) out.push(`${signed(b.morale)} do morale`); if (b.luck) out.push(`${signed(b.luck)} do szczęścia`);
   if (b.mp) out.push(`+${b.mp} punktów ruchu`); if (b.sight) out.push(`+${b.sight} do zasięgu widzenia`); if (b.gold) out.push(`+${b.gold} złota dziennie`);
+  if (b.res) out.push(`dziennie ${Object.entries(b.res).map(([r, n]) => `+${n} ${(RESOURCES.find(x => x.id === r) || { name: r }).name.toLowerCase()}`).join(', ')}`);
   return out.join(', ');
 }
-const artInfo = id => { const A = ARTIFACTS[id]; return `${A.name} (${RARITY[A.rarity]}): ${A.desc || artBonusText(A.bonus) + '.'}`; };
+const artInfo = id => { const A = ARTIFACTS[id], r = relicOf(id);
+  return `${A.name} (${RARITY[A.rarity]}): ${A.desc || artBonusText(A.bonus) + '.'}` + (A.parts ? ` Złożona z: ${A.parts.map(p => ARTIFACTS[p].name).join(', ')}.` : '') + (r ? ` Część relikwii: ${ARTIFACTS[r].name}.` : ''); };
 
 // ==================== DANE: CZARY =======================================================
 // kind: 'battle' (w bitwie, raz na rundę) albo 'adv' (na mapie). target: 'enemy', 'ally', 'undeadAlly', 'livingAlly' (także poległy),
@@ -1056,7 +1107,7 @@ const SITES = {
 // Nowe miejsca: portale w parach (PORTAL_PAIRS wg rozmiaru mapy), wraki na wodzie (jeden na WRECK_PER pól wody),
 // siedlisko: tygodniowy przyrost stworów (DWELL_WEEKS tygodni zapasu), ołtarz: doświadczenie za artefakt wg rzadkości.
 const PORTAL_PAIRS = { S: 1, M: 1, L: 2, XL: 3 }, WRECK_PER = 700, DWELL_WEEKS = 3;
-const SACRIFICE_EXP = { treasure: 800, minor: 2000, major: 4500 };
+const SACRIFICE_EXP = { treasure: 800, minor: 2000, major: 4500, relic: 15000 };
 // Graal (jak w Heroes 3): zakopany na mapie; obeliski odsłaniają kolejne kawałki mapy zagadki (PUZZLE_COLS × PUZZLE_ROWS
 // kawałków, wycinek PUZZLE_W × PUZZLE_H pól wokół Graala). Kopać można z pełnymi punktami ruchu (zużywa wszystkie).
 // Bohater z Graalem wchodzi do własnego miasta i buduje tam budowlę Graala: +GRAIL_GOLD złota dziennie i +50% przyrostu.
@@ -2747,7 +2798,31 @@ function drawArtifact(c, id) {
   const A = ARTIFACTS[id], col = A.col, gem = A.gem, dk = shadeHex(col, -0.4), lt = shadeHex(col, 0.35);
   const poly = (pts, f) => { c.fillStyle = f; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); };
   c.lineCap = 'round'; c.lineJoin = 'round';
+  if (A.rarity === 'relic' && A.parts) { circ(c, 0, 0, 11, 'rgba(255,220,120,.28)'); circ(c, 0, 0, 8, 'rgba(255,240,180,.22)'); } // relikwia: poświata
   switch (A.icon) {
+    case 'dagger':
+      poly([[-6, 7], [5, -6], [6, -3], [-4, 9]], col); c.strokeStyle = '#3a2410'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-7, 4); c.lineTo(-3, 9); c.stroke(); c.beginPath(); c.moveTo(-5, 7); c.lineTo(-9, 11); c.stroke(); break;
+    case 'bow':
+      c.strokeStyle = col; c.lineWidth = 2.4; c.beginPath(); c.arc(-4, 0, 11, -1.2, 1.2); c.stroke(); c.strokeStyle = gem; c.lineWidth = 0.8; c.beginPath(); c.moveTo(0.1, -10.2); c.lineTo(0.1, 10.2); c.stroke();
+      c.strokeStyle = '#6a4424'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-9, 0); c.lineTo(9, 0); c.stroke(); poly([[9, -2], [12, 0], [9, 2]], '#b8c0cc'); break;
+    case 'hammer':
+      c.strokeStyle = '#6a4424'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-8, 10); c.lineTo(4, -4); c.stroke();
+      poly([[-1, -9], [9, -1], [5, 3], [-5, -5]], col); poly([[-1, -9], [4, -5], [0, -1], [-5, -5]], lt); circ(c, 2, -3, 1.6, gem); break;
+    case 'staff':
+      c.strokeStyle = col; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-8, 11); c.lineTo(5, -5); c.stroke(); circ(c, 7, -7, 4.5, 'rgba(160,220,255,.35)'); circ(c, 7, -7, 3, gem); circ(c, 6, -8, 1, '#ffffff'); break;
+    case 'fang':
+      c.strokeStyle = '#6a4424'; c.lineWidth = 1.4; c.beginPath(); c.arc(0, -5, 8, Math.PI * 0.1, Math.PI * 0.9, true); c.stroke();
+      poly([[-3, 0], [3, 0], [1, 10], [0, 11]], col); circ(c, 0, 0, 2, gem); break;
+    case 'hood':
+      poly([[-9, 10], [-9, -1], [-5, -8], [0, -10], [5, -8], [9, -1], [9, 10], [5, 10], [5, 0], [0, -4], [-5, 0], [-5, 10]], col); circ(c, 0, 3, 4.5, '#1a1410'); break;
+    case 'feather':
+      poly([[-6, 10], [-3, 2], [2, -6], [7, -10], [5, -3], [0, 5]], col); c.strokeStyle = gem; c.lineWidth = 1; c.beginPath(); c.moveTo(-7, 11); c.lineTo(6, -9); c.stroke(); break;
+    case 'coin':
+      circ(c, 0, 0, 8.5, dk); circ(c, 0, 0, 7.5, col); circ(c, -2, -2, 3, lt); c.fillStyle = gem; c.fillRect(-1, -4, 2, 8); break;
+    case 'banner':
+      c.strokeStyle = '#6a4424'; c.lineWidth = 2; c.beginPath(); c.moveTo(-7, 11); c.lineTo(-7, -10); c.stroke(); poly([[-6, -9], [9, -9], [6, -3], [9, 3], [-6, 3]], col); circ(c, 1, -3, 2.2, gem); break;
+    case 'robe':
+      poly([[-5, -9], [5, -9], [9, 10], [-9, 10]], col); poly([[-2, -9], [2, -9], [1, 10], [-1, 10]], shadeHex(col, 0.25)); circ(c, 0, -6, 2, gem); c.fillStyle = gem; for (const [x, y] of [[-5, 4], [4, 1], [-3, -2], [5, 7]]) c.fillRect(x, y, 1.4, 1.4); break;
     case 'sword':
       poly([[-9, 9], [5, -5], [8, -8], [7, -4], [-7, 10]], col); c.strokeStyle = lt; c.lineWidth = 1; c.beginPath(); c.moveTo(-7, 8); c.lineTo(6, -6); c.stroke();
       c.strokeStyle = '#6a4424'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(-8, 3); c.lineTo(-3, 8); c.stroke();
@@ -4276,11 +4351,11 @@ function visitObject(st, h, ob) {
     ], { locked: true, iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, chestSprite(), cx, cy + 4, 2) });
   } else if (ob.type === 'art') {
     removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
-    showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}`, [{ label: 'OK', key: 'enter' }],
+    showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}${assemblable(h).length ? ` Masz komplet części relikwii: ${ARTIFACTS[assemblable(h)[0]].name}! Złóż ją na ekranie bohatera.` : ''}`, [{ label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art), cx, cy, 2) });
   } else if (ob.type === 'site' && ob.kind === 'dwelling') showDwelling(st, h, ob);
-  else if (ob.type === 'site' && ob.kind === 'sacrifice' && h.bag.some(id => SACRIFICE_EXP[ARTIFACTS[id].rarity])) {
-    const arts = h.bag.filter(id => SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
+  else if (ob.type === 'site' && ob.kind === 'sacrifice' && h.bag.some(id => id !== 'grail' && SACRIFICE_EXP[ARTIFACTS[id].rarity])) {
+    const arts = h.bag.filter(id => id !== 'grail' && SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
     showDialog(`Ołtarz ofiarny. Złożyć w ofierze wszystkie artefakty z plecaka (${arts.length}: ${arts.map(id => ARTIFACTS[id].name).join(', ')}) za ${exp} doświadczenia? Założonych nie rusza.`, [
       { label: 'Poświęć', key: 'enter', action: () => { const r = useSite(st, h, ob); advFloat(r.float, h.x, h.y); gainExp(st, h, r.exp); } }, { label: 'Nie', key: 'escape' },
     ], { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite('sacrifice'), cx, cy + 30, 1.5) });
@@ -4376,6 +4451,7 @@ function initHeroProgress(h) {
   const g = CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight;
   if (!h.stats) h.stats = Object.fromEntries(PRIMARY.map((p, i) => [p.id, g.base[i]]));
   if (!h.equip) h.equip = emptyEquip();
+  if (!h.locked) h.locked = {}; // miejsca zajęte przez relikwię (miejsce -> relikwia)
   if (!h.bag) h.bag = [];
   if (!h.level) h.level = 1;
   if (!h.spells) h.spells = [...(CLASS_SPELLS[h.cls] || [])];
@@ -4456,19 +4532,52 @@ function gainExp(st, h, amount, then, silent = false) { // silent: awans bez oki
   };
   next(0); return ups.length;
 }
-// Zakłada artefakt z plecaka (indeks) na pasujące miejsce: najpierw wolne, inaczej zamiana z pierwszym pasującym
+// Zakłada artefakt z plecaka (indeks) na pasujące miejsce: najpierw wolne, inaczej zamiana z pierwszym pasującym.
+// Miejsca zajęte przez relikwię (h.locked) są niedostępne. Relikwia zajmuje swoje miejsce i miejsca wszystkich części.
+const freeSlots = (h, kind) => EQUIP_SLOTS.filter(s => s.kind === kind && !(h.locked || {})[s.id]);
 function equipFromBag(h, bi) {
   const id = h.bag[bi]; if (!id) return 'Brak artefaktu';
-  if (!EQUIP_SLOTS.some(s => s.kind === ARTIFACTS[id].kind)) return `${ARTIFACTS[id].name} nie da się założyć`;
-  const slots = EQUIP_SLOTS.filter(s => s.kind === ARTIFACTS[id].kind), free = slots.find(s => !h.equip[s.id]) || slots[0];
-  const old = h.equip[free.id]; h.equip[free.id] = id; h.bag.splice(bi, 1); if (old) h.bag.splice(bi, 0, old);
+  const A = ARTIFACTS[id]; if (!EQUIP_SLOTS.some(s => s.kind === A.kind)) return `${A.name} nie da się założyć`;
+  if (A.parts) return equipRelic(h, bi);
+  const slots = freeSlots(h, A.kind); if (!slots.length) return `Miejsce zajmuje relikwia: ${ARTIFACTS[h.locked[EQUIP_SLOTS.find(s => s.kind === A.kind).id]].name}`;
+  const free = slots.find(s => !h.equip[s.id]) || slots[0];
+  const old = h.equip[free.id]; h.equip[free.id] = id; h.bag.splice(bi, 1); if (old) { if (ARTIFACTS[old].parts) releaseLocks(h, old); h.bag.splice(bi, 0, old); }
   return null;
 }
-function unequip(h, slotId) { const id = h.equip[slotId]; if (id) { h.equip[slotId] = null; h.bag.push(id); } }
-// Nowy artefakt: na wolne pasujące miejsce albo do plecaka. Zwraca true, gdy został założony.
+// Miejsca dla relikwii: główne (jej rodzaj) i po jednym na każdą pozostałą część
+function relicSlots(h, id, prefer = {}) {
+  const A = ARTIFACTS[id], used = new Set(), pick = kind => { const c = EQUIP_SLOTS.filter(s => s.kind === kind && !used.has(s.id)); const s = c.find(s => prefer[s.id]) || c.find(s => !h.equip[s.id]) || c[0]; if (s) used.add(s.id); return s; };
+  const main = pick(A.kind), others = A.parts.filter((p, i) => !(ARTIFACTS[p].kind === A.kind && i === A.parts.findIndex(q => ARTIFACTS[q].kind === A.kind))).map(p => pick(ARTIFACTS[p].kind));
+  return { main, others };
+}
+function releaseLocks(h, relic) { for (const k of Object.keys(h.locked || {})) if (h.locked[k] === relic) delete h.locked[k]; }
+function equipRelic(h, bi) {
+  const id = h.bag[bi], { main, others } = relicSlots(h, id); h.bag.splice(bi, 1);
+  for (const s of [main, ...others]) { const old = h.equip[s.id]; if (old) { if (ARTIFACTS[old].parts) releaseLocks(h, old); h.bag.push(old); } h.equip[s.id] = null; if (h.locked[s.id]) { const r = h.locked[s.id]; for (const [k, v] of Object.entries(h.equip)) if (v === r) { h.equip[k] = null; h.bag.push(r); } releaseLocks(h, r); } }
+  h.equip[main.id] = id; for (const s of others) h.locked[s.id] = id; return null;
+}
+function unequip(h, slotId) { const id = h.equip[slotId]; if (id) { h.equip[slotId] = null; h.bag.push(id); if (ARTIFACTS[id].parts) releaseLocks(h, id); } }
+// Relikwie, które bohater może złożyć (wszystkie części założone)
+const assemblable = h => RELICS.filter(r => ARTIFACTS[r].parts.every(p => Object.values(h.equip).includes(p)));
+function assembleRelic(h, r) {
+  const A = ARTIFACTS[r], prefer = {}; for (const [k, v] of Object.entries(h.equip)) if (A.parts.includes(v)) prefer[k] = 1;
+  if (!A.parts.every(p => Object.values(h.equip).includes(p))) return false;
+  for (const k of Object.keys(prefer)) h.equip[k] = null;
+  const { main, others } = relicSlots(h, r, prefer); h.equip[main.id] = r; for (const s of others) h.locked[s.id] = r; return true;
+}
+// Rozkłada relikwię z miejsca slotId z powrotem na części (na zwolnione miejsca)
+function disassembleRelic(h, slotId) {
+  const r = h.equip[slotId]; if (!r || !ARTIFACTS[r].parts) return false;
+  const spots = [slotId, ...Object.keys(h.locked).filter(k => h.locked[k] === r)]; releaseLocks(h, r); h.equip[slotId] = null;
+  for (const p of ARTIFACTS[r].parts) { const s = spots.find(k => EQUIP_SLOTS.find(e => e.id === k).kind === ARTIFACTS[p].kind && !h.equip[k]); if (s) h.equip[s] = p; else h.bag.push(p); }
+  return true;
+}
+// Nowy artefakt: na wolne pasujące miejsce albo do plecaka. Zwraca true, gdy został założony. Komputer od razu składa relikwie.
 function giveArtifact(h, id) {
-  const s = EQUIP_SLOTS.find(s => s.kind === ARTIFACTS[id].kind && !h.equip[s.id]);
-  if (s) { h.equip[s.id] = id; return true; } h.bag.push(id); return false;
+  const s = !ARTIFACTS[id].parts && freeSlots(h, ARTIFACTS[id].kind).find(s => !h.equip[s.id]);
+  if (s) h.equip[s.id] = id; else h.bag.push(id);
+  const pl = G.state && G.state.players[h.owner]; if (pl && !pl.human) for (const r of assemblable(h)) assembleRelic(h, r);
+  return !!s;
 }
 
 // --- czary: mana, nauka w gildii, czary na mapie -----------------------------------------------
@@ -4707,7 +4816,8 @@ function dailyIncomeAll(st, owner = ME) {
     inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; }
     if (autumn) { inc.wood += 1; inc.ore += 1; } if (t.faction === 'inferno') inc.sulfur += 1; // jesienne zbiory, cecha Inferna
   }
-  for (const h of st.heroes) if (h.owner === owner) { inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates'); const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; } // specjalność: surowiec
+  for (const h of st.heroes) if (h.owner === owner) { inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates'); const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; // specjalność: surowiec
+    for (const id of Object.values(h.equip || {})) if (id && ARTIFACTS[id].bonus.res) for (const [r, n] of Object.entries(ARTIFACTS[id].bonus.res)) inc[r] += n; } // relikwia kupiecka
   return inc;
 }
 const dailyIncome = (st, res) => dailyIncomeAll(st)[res];
@@ -4984,7 +5094,7 @@ function useSite(st, h, ob) {
       return { text: err ? `${c.plural}: nikogo nie zwerbowano.` : `Do armii dołączają: ${c.plural.toLowerCase()} (${k}).` };
     }
     case 'sacrifice': {
-      const arts = h.bag.filter(id => SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
+      const arts = h.bag.filter(id => id !== 'grail' && SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
       if (!arts.length) return { text: 'Na ołtarzu można złożyć artefakty z plecaka, ale plecak jest pusty.' };
       h.bag = h.bag.filter(id => !arts.includes(id)); return { text: `${h.name} składa w ofierze: ${arts.map(id => ARTIFACTS[id].name).join(', ')}. +${exp} doświadczenia.`, float: `+${exp} dośw.`, exp };
     }
@@ -5507,14 +5617,14 @@ const RETIRE_DAYS = 7;
 function retireHero(st, h, fled, keepArts = fled) {
   removeHero(st, h);
   const keep = { ...h, army: emptyArmy(), machines: [], path: null, dest: null, moving: false, stop: false, anim: null, prev: null, pending: null, garrison: null, boat: false, asleep: false, boost: undefined };
-  if (!keepArts) { keep.equip = emptyEquip(); keep.bag = []; }
+  if (!keepArts) { keep.equip = emptyEquip(); keep.bag = []; keep.locked = {}; }
   st.retired = (st.retired || []).filter(r => r.hero.name !== h.name);
   st.retired.push({ hero: keep, owner: fled ? h.owner : -1, from: st.dayTotal + (fled ? 0 : RETIRE_DAYS) });
 }
 // Artefakty pokonanego (założone i z plecaka) trafiają do plecaka zwycięzcy; zwraca ich liczbę
 function lootHero(winner, loser) {
   const ids = [...Object.values(loser.equip || {}).filter(Boolean), ...(loser.bag || [])];
-  winner.bag.push(...ids); loser.equip = emptyEquip(); loser.bag = []; return ids.length;
+  winner.bag.push(...ids); loser.equip = emptyEquip(); loser.bag = []; loser.locked = {}; return ids.length;
 }
 // Zmiana właściciela miasta (i jego obiektu na mapie)
 function captureTown(st, t, owner) {
@@ -5897,6 +6007,7 @@ function migrateSave(st) {
     const gt = h.garrison != null && st.towns[h.garrison]; if (h.garrison != null && !(gt && gt.owner === h.owner && gt.x === h.x && gt.y === h.y)) delete h.garrison; // garnizon tylko we własnym mieście
     h.skills = h.skills.filter(s => SKILLS[s.id]); if (MAGE_CLASSES.includes(h.cls) && !heroSkill(h, 'wisdom') && h.skills.length < MAX_SKILLS) h.skills.unshift({ id: 'wisdom', lv: 1 }); // zapisy sprzed Mądrości
     for (const k of Object.keys(h.equip)) if (h.equip[k] && !ARTIFACTS[h.equip[k]]) h.equip[k] = null;
+    for (const k of Object.keys(h.locked)) if (!Object.values(h.equip).includes(h.locked[k])) delete h.locked[k]; // blokada bez relikwii
     h.machines = h.machines.filter(id => CREATURES[id]); if (h.boat && st.map.terrain[h.y * st.map.n + h.x] !== TER.WATER) delete h.boat; // łódź tylko na wodzie
   }
   // miasta: znana frakcja i budowle, garnizon, pula jednostek, gildia magów
@@ -10735,6 +10846,7 @@ function iconStat(ctx, id, cx, cy, col) {
   else { ctx.fillRect(-9, -8, 8, 16); ctx.fillRect(1, -8, 8, 16); ctx.fillStyle = 'rgba(255,248,220,.8)'; ctx.fillRect(-7, -5, 4, 1.5); ctx.fillRect(3, -5, 4, 1.5); ctx.fillRect(-7, -1, 4, 1.5); ctx.fillRect(3, -1, 4, 1.5); }
   ctx.restore();
 }
+const RELIC_BTN = { x: 668, y: 60, w: 108, h: 22 }; // przycisk „Złóż relikwię” (gdy komplet części jest założony)
 const BAG_VIEW = 6, SLOT_BOX = 50, SPEC_BOX = { x: 322, y: 30, w: 66, h: 76 };
 // Specjalność bohatera: ramka z obrazkiem (stwór, surowiec, czar albo księga umiejętności) i podpisem
 function drawSpecBox(ctx, h) {
@@ -10783,13 +10895,29 @@ G.screens.hero = {
       armyMove(h.army, from, h.army, ar.i); return;
     }
     this.sel = null;
-    if (e && h.equip[e.id]) { unequip(h, e.id); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(`Zdjęto: ${ARTIFACTS[h.bag[h.bag.length - 1]].name}`); }
+    const fixMp = () => { h.mp = Math.min(h.mp, heroMaxMP(h)); };
+    if (inRect(x, y, RELIC_BTN) && assemblable(h).length) { this.offerRelic(h); return; }
+    if (e && (h.locked || {})[e.id]) this.say(`To miejsce zajmuje relikwia: ${ARTIFACTS[h.locked[e.id]].name}.`);
+    else if (e && h.equip[e.id] && ARTIFACTS[h.equip[e.id]].parts) { const r = h.equip[e.id]; // relikwia: rozłożyć albo zdjąć w całości
+      showDialog(`${ARTIFACTS[r].name}. Co zrobić z relikwią?`, [
+        { label: 'Rozłóż na części', key: 'r', action: () => { disassembleRelic(h, e.id); fixMp(); this.say(`Rozłożono: ${ARTIFACTS[r].name}`); } },
+        { label: 'Zdejmij', key: 'z', action: () => { unequip(h, e.id); fixMp(); this.say(`Zdjęto: ${ARTIFACTS[r].name}`); } },
+        { label: 'Anuluj', key: 'escape', action: () => {} }]); }
+    else if (e && h.equip[e.id]) { unequip(h, e.id); fixMp(); this.say(`Zdjęto: ${ARTIFACTS[h.bag[h.bag.length - 1]].name}`); }
     else if (e) this.say(`Wolne miejsce: ${e.name.toLowerCase()}. Kliknij artefakt w plecaku, aby go założyć.`);
-    else if (bi >= 0 && h.bag[bi]) { const id = h.bag[bi]; equipFromBag(h, bi); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(`Założono: ${ARTIFACTS[id].name}`); }
+    else if (bi >= 0 && h.bag[bi]) { const id = h.bag[bi], err = equipFromBag(h, bi); fixMp(); this.say(err || `Założono: ${ARTIFACTS[id].name}`); if (!err) this.offerRelic(h); }
+  },
+  // Komplet części założony: propozycja złożenia relikwii
+  offerRelic(h) {
+    const r = assemblable(h)[0]; if (!r) return; const A = ARTIFACTS[r];
+    showDialog(`Masz komplet części: ${A.name}! Złożona relikwia daje: ${artBonusText(A.bonus)}. Złożyć ją?`, [
+      { label: 'Złóż relikwię', key: 'enter', action: () => { assembleRelic(h, r); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(`Złożono: ${A.name}`); } },
+      { label: 'Nie teraz', key: 'escape', action: () => {} }], { iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(r), cx, cy, 3) });
   },
   rightInfo(x, y) {
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y), p = this.statAt(x, y);
-    if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id])} Kliknij, aby zdjąć.` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
+    if (e && (h.locked || {})[e.id]) return `Miejsce zajęte przez relikwię: ${artInfo(h.locked[e.id])}`;
+    if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id])} ${ARTIFACTS[h.equip[e.id]].parts ? 'Kliknij, aby rozłożyć albo zdjąć.' : 'Kliknij, aby zdjąć.'}` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
     if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
@@ -10848,7 +10976,10 @@ G.screens.hero = {
       const id = h.equip[s.id];
       ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(ctx, s.x, s.y, SLOT_BOX, SLOT_BOX, 4); ctx.fill();
       ctx.strokeStyle = hot === s ? '#ffd970' : id ? '#b8913f' : '#5a4a32'; ctx.lineWidth = hot === s ? 2 : 1.2; ctx.stroke();
+      const lk = (h.locked || {})[s.id];
       if (id) drawSprite(ctx, artSprite(id), s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, 1.5);
+      else if (lk) { ctx.globalAlpha = 0.35; drawSprite(ctx, artSprite(lk), s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, 1.5); ctx.globalAlpha = 1; // zajęte przez relikwię
+        ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s.x + 5, s.y + 5); ctx.lineTo(s.x + SLOT_BOX - 5, s.y + SLOT_BOX - 5); ctx.moveTo(s.x + SLOT_BOX - 5, s.y + 5); ctx.lineTo(s.x + 5, s.y + SLOT_BOX - 5); ctx.stroke(); }
       else text(ctx, s.name, s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, { size: 10, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.35)' });
     }
     text(ctx, `Plecak (${h.bag.length})`, 432, 372, { size: 15, color: '#f0e4c0', fam: 'title' });
@@ -10873,6 +11004,8 @@ G.screens.hero = {
       for (let k = 0; k < 3; k++) { ctx.fillStyle = k < sk.lv ? '#ffd970' : 'rgba(240,228,192,.2)'; ctx.fillRect(r.x + r.w / 2 + 20, r.y + 27 - k * 8, 5, 6); }
       text(ctx, SKILLS[sk.id].name, r.x + r.w / 2, r.y + 44, { size: SKILLS[sk.id].name.length > 13 ? 10 : 11, weight: 700, align: 'center', color: '#f0e4c0' });
     }
+    if (!this.preview && assemblable(h).length) { const r = RELIC_BTN, hot = inRect(G.mouse.x, G.mouse.y, r); ctx.fillStyle = hot ? 'rgba(200,150,40,.55)' : 'rgba(200,150,40,.35)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
+      ctx.strokeStyle = '#ffd970'; ctx.lineWidth = 1.2; ctx.stroke(); text(ctx, 'Złóż relikwię', r.x + r.w / 2, r.y + 15, { size: 12, weight: 700, align: 'center', color: '#fff4c8' }); }
     this.buttons.forEach(b => b.draw(ctx));
     if (this.msg && G.time - this.msgT < 2.5) text(ctx, this.msg, 300, 580, { size: 14, weight: 500, align: 'center', color: '#ffd970' });
   },
