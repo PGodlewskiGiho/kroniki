@@ -71,7 +71,7 @@ function buildPanelButtons(scr, st) {
   ];
 }
 function panelInfoText(st, scr) {
-  if (scr.aiRun) { const p = scr.aiRun.who; return { text: p ? `Tura przeciwnika: ${ownerName(st, p.id)} (${factionOf(p.faction).name})…` : 'Tura przeciwników…', col: '#ffd970' }; }
+  if (scr.aiRun) { const p = scr.aiRun.who; return { text: (p ? `Tura przeciwnika: ${ownerName(st, p.id)} (${factionOf(p.faction).name})…` : 'Tura przeciwników…') + (scr.aiRun.skip || !aiMoves().step ? '' : ' Spacja: pomiń'), col: '#ffd970' }; }
   if (scr.flashMsg && G.time - scr.flashMsg.t < 2.2) return { text: scr.flashMsg.text, col: '#ff9a7a' };
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, VIEW) && !G.modal) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y); return { text: tileInfo(st, tx, ty), col: '#ecd9a8' };
@@ -182,13 +182,16 @@ G.screens.adventure = {
       { label: 'Zapisz', key: 'z', action: () => this.openSaves('save') },
       { label: 'Wczytaj', key: 'w', action: () => this.openSaves('load') },
       { label: 'Grafika', key: 'g', action: () => showGfxSettings(() => this.systemMenu()) },
+      { label: `Ruchy komputera: ${aiMoves().name}`, key: 'k', tip: 'Jak pokazywać ruchy przeciwników na odkrytej mapie: szybko, w zwykłym tempie albo wcale. W trakcie ich tury spacja lub kliknięcie pomija resztę.',
+        action: () => { const i = AI_MOVES.indexOf(aiMoves()); G.settings.aiMoves = AI_MOVES[(i + 1) % AI_MOVES.length].id; saveSettings(); this.systemMenu(); } },
       { label: 'Menu główne', action: () => askToMenu() }]);
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
   autosave(st) { SaveStore.write('auto', st).catch(() => { if (G.state === st) this.flash('Autozapis się nie udał'); }); },
   onKey(k) {
     if ((k === '+' || k === '=' || k === '-') && G.state) { const i = ZOOMS.indexOf(ZOOM); setZoom(G.state, ZOOMS[clamp(i + (k === '-' ? -1 : 1), 0, ZOOMS.length - 1)]); return; } // klawisze +/−: przybliż, oddal
-    const h = hero(G.state); if (!h || this.aiRun) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
+    if (this.aiRun) { if (k === ' ' || k === 'escape' || k === 'enter') this.skipAi(); return; }
+    const h = hero(G.state); if (!h) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
   selectHero(h) {
     const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
     setListTab(this, 'heroes'); const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
@@ -287,27 +290,29 @@ G.screens.adventure = {
     this.startHumanTurn(st, live);
   },
   lockButtons(on) { for (const b of this.buttons) { if (on) { b._was = b.disabled; b.disabled = true; } else if (b._was !== undefined) { b.disabled = b._was; delete b._was; } } },
+  skipAi() { const R = this.aiRun; if (!R || R.skip) return; R.skip = true; if (R.anim) { R.anim.anim = null; R.anim = null; } },
   // Odtwarzanie tury SI: widoczne kroki (na odkrytej mapie) z animacją i kamerą, reszta od razu; atak na gracza czeka na jego decyzję
   updateAi(st, dt) {
     const R = this.aiRun;
     if (R.anim) {
       const h = R.anim; h.anim.t += dt;
-      const [hx, hy] = heroDrawPos(h), k = Math.min(1, dt * 6);
+      const [hx, hy] = heroDrawPos(h), k = Math.min(1, dt * (h.anim.d < STEP_TIME ? 10 : 6));
       st.cam.x += (hx * T + T / 2 - viewW() / 2 - st.cam.x) * k; st.cam.y += (hy * T + T / 2 - viewH() / 2 - st.cam.y) * k; camClamp(st);
-      if (h.anim.t < STEP_TIME) return; h.anim = null; R.anim = null;
+      if (h.anim.t < h.anim.d) return; h.anim = null; R.anim = null;
     }
     if (R.wait || G.modal || G.fade.next) return;
-    const ex = human(st).explored, n = st.map.n;
-    for (let k = 0; k < 2000; k++) {
+    const ex = human(st).explored, n = st.map.n, step = R.skip ? 0 : aiMoves().step;
+    const t0 = performance.now();
+    for (let k = 0; k < 2000 && performance.now() - t0 < 12; k++) { // najwyżej ok. 12 ms na klatkę: mapa nie przycina, gdy komputer myśli
       const r = R.gen.next(R.input); R.input = undefined;
       if (r.done) { this.aiRun = null; this.lockButtons(false); this.nextHuman(st, r.value, true); return; }
       const a = r.value;
       if (a.kind === 'player') { R.who = a.p; continue; }
       if (a.kind === 'day') { this.banner = { text: `Dzień ${st.day}`, t: G.time }; continue; }
       if (a.kind === 'step') { // w hot-seat ruchów komputera nie pokazujemy (mgła każdego gracza jest tajna)
-        if (sharedScreen(st) || !st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
+        if (!step || sharedScreen(st) || !st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
         if (!R.seen.has(a.h)) { R.seen.add(a.h); centerCam(st, a.fx, a.fy); }
-        a.h.anim = { fx: a.fx, fy: a.fy, t: 0 }; R.anim = a.h; return;
+        a.h.anim = { fx: a.fx, fy: a.fy, t: 0, d: step }; R.anim = a.h; return;
       }
       if (a.kind === 'defend') {
         R.wait = true; const ask = () => this.askDefense(st, a, res => { R.input = res; R.wait = false; });
@@ -395,7 +400,7 @@ G.screens.adventure = {
   onPointerUp() { const d = this.drag; this.drag = null; return !!(d && (d.mode === 'mini' || d.moved)); }, // przeciągnięcie listy to nie kliknięcie
   miniJump(x, y) { const st = G.state, n = st.map.n; centerCam(st, clamp((x - MINI.x) / MINI.s * n, 0, n) - 0.5, clamp((y - MINI.y) / MINI.s * n, 0, n) - 0.5); },
   onClick(x, y) {
-    if (this.aiRun) return; // tura przeciwnika: mapę można tylko oglądać
+    if (this.aiRun) { if (inRect(x, y, VIEW)) this.skipAi(); return; } // tura przeciwnika: mapę można tylko oglądać, kliknięcie pomija animację
     if (clickButtons(this.buttons, x, y)) return;
     const st = G.state;
     if (inRect(x, y, LIST)) {

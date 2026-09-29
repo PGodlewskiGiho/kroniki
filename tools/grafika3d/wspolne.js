@@ -15,7 +15,7 @@ async function openStudio(viewport = { width: 1440, height: 900 }) {
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   const game = await browser.newPage(); await game.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   await game.goto(require('url').pathToFileURL(path.join(ROOT, 'Kroniki Królestw.html')).href); await game.waitForFunction(() => typeof CREATURES !== 'undefined');
-  const data = await game.evaluate(() => ({ creatures: Object.fromEntries(Object.entries(CREATURES).map(([id, c]) => [id, { look: c.look, abil: c.abil || [] }])), frames: BATTLE_FRAMES,
+  const data = await game.evaluate(() => ({ creatures: Object.fromEntries(Object.entries(CREATURES).map(([id, c]) => [id, { look: c.look, abil: c.abil || [], name: c.name, faction: c.faction || '', level: c.level }])), frames: BATTLE_FRAMES,
     heroes: Object.fromEntries(Object.entries(HERO_CLASSES).map(([id, c]) => [id, c.look])), mages: MAGE_CLASSES })); await game.close();
   const page = await browser.newPage({ viewport }); const errors = [];
   page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });

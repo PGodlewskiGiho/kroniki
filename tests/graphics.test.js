@@ -128,7 +128,7 @@ test('rozmiar piksela: 2 (niska jakość), 1 (drobny) i domyślny, bez błędów
     const out = { a, b, u: battleSprite2D('ballista', 1, 'idle', 0).u, unit: battleSprite('pikeman', 1, 'idle', 0).u, world: PixBufs.world.width, view: VIEW.w }; setPixelSize(PIX_DEFAULT); G.screens.adventure.draw(G.ctx);
     return { ...out, mid: PixBufs.world.width === Math.round(VIEW.w / PIX_DEFAULT) };
   });
-  assert.equal(r.b, r.a * 2); assert.equal(r.u, 1); assert.equal(r.unit, 1.3, 'jednostki z arkuszy: stały piksel 1,3'); assert.equal(r.world, r.view, 'bufor mapy: 1 piksel grafiki = 1 px logiczny'); assert.ok(r.mid, 'domyślny piksel PIX_DEFAULT');
+  assert.equal(r.b, r.a * 2); assert.equal(r.u, 1); assert.equal(r.unit, 0.9, 'jednostki z arkuszy: stały piksel 0,9'); assert.equal(r.world, r.view, 'bufor mapy: 1 piksel grafiki = 1 px logiczny'); assert.ok(r.mid, 'domyślny piksel PIX_DEFAULT');
 });
 
 test('kursor zmienia się wg celu: mapa (ruch, atak, odwiedziny, zakaz), przyciski, bitwa (miecz, strzała)', async () => {
@@ -142,10 +142,12 @@ test('kursor zmienia się wg celu: mapa (ruch, atak, odwiedziny, zakaz), przycis
     const out = { monster: at(m.x, m.y), res: res ? at(res.x, res.y) : 'visit', free: free ? at(...free) : 'move', wall: at(...wall) };
     out.css = cursorCss('attack').startsWith('url(data:image/png'); setCursor('attack'); out.set = G.canvas.style.cursor.includes('url(');
     const B = createBattle(st, h, m), scr = G.screens.battle; setScreen('battle', { battle: B }); scr.phase = 'input';
-    scr.preview = { kind: 'attack' }; out.bAtt = battleCursor(scr); scr.preview = { kind: 'shoot' }; out.bShoot = battleCursor(scr); scr.preview = { kind: 'far' }; out.bFar = battleCursor(scr);
+    const tg = (x, y) => { const [px, py] = hexCenter(x, y); return { px, py }; }; // miecz obraca się w stronę ciosu
+    scr.preview = { kind: 'attack', from: [3, 4], target: tg(4, 4) }; out.bAtt = battleCursor(scr); scr.preview.target = tg(2, 4); out.bAttL = battleCursor(scr);
+    scr.preview.target = tg(3, 5); out.bAttD = battleCursor(scr); out.rot = cursorCss(out.bAttD).startsWith('url(data:image/png') && cursorCss(out.bAttD) !== cursorCss(out.bAtt); scr.preview = { kind: 'shoot' }; out.bShoot = battleCursor(scr); scr.preview = { kind: 'far' }; out.bFar = battleCursor(scr);
     return out;
   });
-  assert.deepEqual(r, { monster: 'attack', res: 'visit', free: 'move', wall: 'no', css: true, set: true, bAtt: 'attack', bShoot: 'shoot', bFar: 'no' });
+  assert.deepEqual(r, { monster: 'attack', res: 'visit', free: 'move', wall: 'no', css: true, set: true, bAtt: 'attack0', bAttL: 'attack6', bAttD: 'attack2', rot: true, bShoot: 'shoot', bFar: 'no' });
 });
 
 test('kółko myszy przybliża i oddala mapę wokół kursora; pole pod kursorem zostaje to samo', async () => {
@@ -166,9 +168,9 @@ test('jednostki z modeli 3D: wbudowane arkusze dają klatki bitwy i mapy, odbici
   const r = await page.evaluate(() => {
     const ids = Object.keys(UNIT_ART), a = battleSprite('pikeman', 1, 'idle', 0), b = battleSprite('pikeman', -1, 'idle', 0), m = creatureSprite('pikeman', 1, 2);
     const poses = ['idle', 'walk', 'attack', 'hurt', 'dead', 'map'].every(p => UNIT_ART.pikeman.f[p].length === (BATTLE_FRAMES[p] || 4));
-    const mach = [...MACHINES, ...SIEGE_UNITS].every(c => UNIT_ART[c] && battleSprite(c, 1, 'attack', 3).u === 1.3), all = Object.keys(CREATURES).filter(c => !UNIT_ART[c]); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 2); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 1);
+    const mach = [...MACHINES, ...SIEGE_UNITS].every(c => UNIT_ART[c] && battleSprite(c, 1, 'attack', 3).u === 0.9), all = Object.keys(CREATURES).filter(c => !UNIT_ART[c]); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 2); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 1);
     return { n: ids.length, u: a.u, mu: m.u, mirror: a.c.width === b.c.width && a.ax + b.ax === a.c.width, poses, mach, all, tall: a.c.height };
   });
-  assert.ok(r.n >= 70, `arkuszy: ${r.n}`); assert.equal(r.u, 1.3); assert.equal(r.mu, 1.8); assert.ok(r.mirror, 'odbicie w poziomie'); assert.ok(r.poses); assert.ok(r.mach, 'machiny z arkuszy'); assert.deepEqual(r.all, [], 'każda jednostka ma arkusz');
-  assert.ok(r.tall > 35 && r.tall < 80, `wysokość klatki: ${r.tall}`);
+  assert.ok(r.n >= 70, `arkuszy: ${r.n}`); assert.equal(r.u, 0.9); assert.equal(r.mu, 1.8); assert.ok(r.mirror, 'odbicie w poziomie'); assert.ok(r.poses); assert.ok(r.mach, 'machiny z arkuszy'); assert.deepEqual(r.all, [], 'każda jednostka ma arkusz');
+  assert.ok(r.tall * r.u > 35 && r.tall * r.u < 90, `wysokość klatki na ekranie: ${r.tall * r.u}`); // piksele arkusza × rozmiar piksela
 });

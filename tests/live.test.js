@@ -37,6 +37,23 @@ test('tura na żywo daje ten sam wynik co tura natychmiastowa, a ruchy są animo
   assert.ok(animated > 10, `animowanych klatek: ${animated}`);
 });
 
+test('tempo ruchów komputera: szybkie krótsze od zwykłych, ukryte i pominięte bez animacji, wynik ten sam', async () => {
+  const snap = () => page.evaluate(() => { const d = serializeGame(G.state); d.core.cam = null; delete d.core.settings.aiMoves; return JSON.stringify(d); });
+  const run = async (mode, skip) => {
+    await liveGame();
+    await page.evaluate(m => { G.settings.aiMoves = m; G.screens.adventure.doEndTurn({ live: true }); }, mode);
+    if (skip) await page.evaluate(() => { const s = G.screens.adventure; for (let i = 0; i < 50 && !s.aiRun.anim; i++) s.update(0.05); s.onKey(' '); });
+    const r = await driveAi(); assert.equal(r.running, false);
+    await page.evaluate(() => { G.modal = null; });
+    return { animated: r.animated, state: await snap() };
+  };
+  const normal = await run('normal'), fast = await run('fast'), off = await run('off'), skipped = await run('normal', true);
+  await page.evaluate(() => { G.settings.aiMoves = 'fast'; });
+  assert.ok(fast.animated > 0 && fast.animated < normal.animated, `szybkie ${fast.animated}, zwykłe ${normal.animated}`);
+  assert.equal(off.animated, 0); assert.equal(skipped.animated, 0);
+  for (const r of [fast, off, skipped]) assert.equal(r.state, normal.state);
+});
+
 test('w trakcie tury przeciwnika gracz nic nie zmienia, a panel mówi, kto gra', async () => {
   await liveGame();
   const r = await page.evaluate(() => {

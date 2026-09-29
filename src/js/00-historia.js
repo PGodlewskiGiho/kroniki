@@ -258,12 +258,35 @@
    postacie.js (humanoid z cech look), zwierzeta.js (czworonogi, skrzydlate, gady, potwory), podglad.js (galeria PNG),
    wypal.js (npm run grafika: arkusze PNG w src/grafika/, opis klatek w jednostki.json i bohaterowie.json). build.js wbudowuje
    je jako UNIT_ART i HERO_ART; 11c-grafika-jednostek.js podaje klatki (battleSprite, creatureSprite, drawCreatureIcon,
-   heroBattleSprite z podmianą koloru-klucza na barwę gracza). Piksel jednostek 1,3 px (bitwa), 1,8 px (mapa). Machiny wojenne
+   heroBattleSprite z podmianą koloru-klucza na barwę gracza). Piksel jednostek 1,3 px (bitwa; od kroku 27 0,9 px), 1,8 px (mapa). Machiny wojenne
    (balista, namiot medyka, wóz z amunicją, katapulta, strzelec na wieży) mają modele w maszyny.js. Bez arkusza zostaje
    dawny rysunek wektorowy (battleSprite2D, creatureSprite2D, heroBattleSprite2D).
    Krok 18: po 2 nowych bohaterów w każdym zamku; portrety bohaterów z tools/portrety-ai (Stable Diffusion + wzorce stylu
    dla klasy) jako HERO_PORTRAITS. Krok 18b: 13 nowych stworów neutralnych (chłop, niziołek, rozbójnik, mumia, koczownik,
    strzelec wyborowy, złoty i diamentowy golem, zaklinacz, smoki: baśniowy, rdzawy, kryształowy, lazurowy); potwór na mapie
    wybierany tak, by nie był silniejszy niż okolica. Smoki z różnymi sylwetkami (look.form: heavy, crystal, serpent, fae).
+   Krok 19: 36 nowych artefaktów (w tym części kompletów) i 6 relikwii (ARTIFACTS z parts): komplet części założony naraz
+   składa się w relikwię (assembleRelic; człowiek przyciskiem na ekranie bohatera, komputer sam), która zajmuje miejsca części
+   (h.locked) i daje więcej niż ich suma; rozkładanie (disassembleRelic), relikwia kupiecka daje też surowce (bonus.res).
+   Krok 27: jednostka w bitwie zwraca się w stronę ruchu i ataku (u.face), kursor miecza obraca się co 30° (attack0–11).
+   Latające (abil fly, także driady i nimfy) mają klatki lotu i lecą łukiem; zianie ogniem to kłęby płomieni (BattleFX.flame)
+   z pyska (meta.m w arkuszu). Modele: ostrzejsze bryły (slab, spike, chunk, loft), budowy ciała (BUILDS), własne sylwetki
+   (behemot, gorgona, tur, ptaki: orzeł/gromu/ognisty, smoki: wywerna, leśny, czarny), mocniejszy światłocień i otoczenie
+   odbić. Gęstość pikseli jednostek w bitwie 0,9 px. tools/grafika3d/galeria.js: wszystkie jednostki na jednym obrazku.
+   Krok 21: szybsza tura komputera. Ustawienie „Ruchy komputera” w menu gry (G.settings.aiMoves, AI_MOVES: szybkie – krok
+   0,045 s, domyślne; zwykłe – STEP_TIME; ukryte – bez animacji); spacja, Enter, Esc albo kliknięcie mapy pomija resztę
+   ruchów (skipAi), okna obrony zostają. updateAi liczy najwyżej ok. 12 ms na klatkę. aiReach na kopcu z tablic typowanych
+   i bez szukania bohatera na każdym polu; próbne bitwy SI zapamiętane (aiFightMemo: dzień + stan obu stron).
+   Zasady gry (ekran „Zasady…” przy nowej grze, G.screens.rules): RULES w 07 (heroes – limit bohaterów 1–8, truce – rozejm
+   z komputerem, monsters – mnożnik siły potworów, treasure – surowce i skrzynie, reveal – odkryta mapa). G.settings.rules
+   kopiuje się do st.settings.rules; rule(st, id) daje wartość domyślną dla starych zapisów. heroLimit(st) zamiast MAX_HEROES
+   (najem, więzienie, aiMaxHeroes), truceDays(st) w aiPeace.
+   Krok 22: mądrzejsza SI. Najem do limitu (aiMaxHeroes: limit gry, mała mapa 4, średnia 6). Główny bohater (p.mainHero, aiMain:
+   najsilniejszy, zmiana dopiero przy dwukrotnej przewadze) rusza ostatni, walczy ostrożniej (strata do 20% armii) i ceni potwory
+   za doświadczenie. Pomocnicy (aiRole) biją tylko dużo słabszych (×2,5, strata do 15%), nie biorą skarbców, nie zajmują celów
+   innych bohaterów tego gracza (aiClaims) i dowożą głównemu armię z miast oraz artefakty (cel 'feed', aiFeed: zostawiają
+   1 najsłabszą jednostkę, wymiana oddziałów przy braku miejsca). aiDanger: pola w zasięgu dnia marszu silniejszego wroga są
+   zakazane (poza ucieczką do miasta i dowozem). tavernOffer usuwa oferty bohaterów najętych przez innych graczy.
+   Pomiar (12 gier, 35 dni): siła głównego bohatera SI 27,4 tys. -> 40,9 tys., poziom 4,3 -> 5,7, kopalnie 4,3 -> 4,8.
    ===================================================================================== */
 

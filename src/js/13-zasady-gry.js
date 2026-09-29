@@ -63,7 +63,7 @@ function baseCost(map, i, j, h) {
 }
 function stepCost(map, fx, fy, tx, ty, h) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx, h); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
 function heroDrawPos(h) {
-  if (!h.anim) return [h.x, h.y]; const k = clamp(h.anim.t / STEP_TIME, 0, 1);
+  if (!h.anim) return [h.x, h.y]; const k = clamp(h.anim.t / (h.anim.d || STEP_TIME), 0, 1); // d: krótszy krok przy szybkich ruchach komputera
   return [h.anim.fx + (h.x - h.anim.fx) * k, h.anim.fy + (h.y - h.anim.fy) * k];
 }
 function rebuildObjIndex(st) {
@@ -142,11 +142,11 @@ function visitObject(st, h, ob) {
     ], { locked: true, iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, chestSprite(), cx, cy + 4, 2) });
   } else if (ob.type === 'art') {
     removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
-    showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}`, [{ label: 'OK', key: 'enter' }],
+    showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}${assemblable(h).length ? ` Masz komplet części relikwii: ${ARTIFACTS[assemblable(h)[0]].name}! Złóż ją na ekranie bohatera.` : ''}`, [{ label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art), cx, cy, 2) });
   } else if (ob.type === 'site' && ob.kind === 'dwelling') showDwelling(st, h, ob);
-  else if (ob.type === 'site' && ob.kind === 'sacrifice' && h.bag.some(id => SACRIFICE_EXP[ARTIFACTS[id].rarity])) {
-    const arts = h.bag.filter(id => SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
+  else if (ob.type === 'site' && ob.kind === 'sacrifice' && h.bag.some(id => id !== 'grail' && SACRIFICE_EXP[ARTIFACTS[id].rarity])) {
+    const arts = h.bag.filter(id => id !== 'grail' && SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
     showDialog(`Ołtarz ofiarny. Złożyć w ofierze wszystkie artefakty z plecaka (${arts.length}: ${arts.map(id => ARTIFACTS[id].name).join(', ')}) za ${exp} doświadczenia? Założonych nie rusza.`, [
       { label: 'Poświęć', key: 'enter', action: () => { const r = useSite(st, h, ob); advFloat(r.float, h.x, h.y); gainExp(st, h, r.exp); } }, { label: 'Nie', key: 'escape' },
     ], { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite('sacrifice'), cx, cy + 30, 1.5) });
@@ -242,6 +242,7 @@ function initHeroProgress(h) {
   const g = CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight;
   if (!h.stats) h.stats = Object.fromEntries(PRIMARY.map((p, i) => [p.id, g.base[i]]));
   if (!h.equip) h.equip = emptyEquip();
+  if (!h.locked) h.locked = {}; // miejsca zajęte przez relikwię (miejsce -> relikwia)
   if (!h.bag) h.bag = [];
   if (!h.level) h.level = 1;
   if (!h.spells) h.spells = [...(CLASS_SPELLS[h.cls] || [])];
@@ -322,19 +323,52 @@ function gainExp(st, h, amount, then, silent = false) { // silent: awans bez oki
   };
   next(0); return ups.length;
 }
-// Zakłada artefakt z plecaka (indeks) na pasujące miejsce: najpierw wolne, inaczej zamiana z pierwszym pasującym
+// Zakłada artefakt z plecaka (indeks) na pasujące miejsce: najpierw wolne, inaczej zamiana z pierwszym pasującym.
+// Miejsca zajęte przez relikwię (h.locked) są niedostępne. Relikwia zajmuje swoje miejsce i miejsca wszystkich części.
+const freeSlots = (h, kind) => EQUIP_SLOTS.filter(s => s.kind === kind && !(h.locked || {})[s.id]);
 function equipFromBag(h, bi) {
   const id = h.bag[bi]; if (!id) return 'Brak artefaktu';
-  if (!EQUIP_SLOTS.some(s => s.kind === ARTIFACTS[id].kind)) return `${ARTIFACTS[id].name} nie da się założyć`;
-  const slots = EQUIP_SLOTS.filter(s => s.kind === ARTIFACTS[id].kind), free = slots.find(s => !h.equip[s.id]) || slots[0];
-  const old = h.equip[free.id]; h.equip[free.id] = id; h.bag.splice(bi, 1); if (old) h.bag.splice(bi, 0, old);
+  const A = ARTIFACTS[id]; if (!EQUIP_SLOTS.some(s => s.kind === A.kind)) return `${A.name} nie da się założyć`;
+  if (A.parts) return equipRelic(h, bi);
+  const slots = freeSlots(h, A.kind); if (!slots.length) return `Miejsce zajmuje relikwia: ${ARTIFACTS[h.locked[EQUIP_SLOTS.find(s => s.kind === A.kind).id]].name}`;
+  const free = slots.find(s => !h.equip[s.id]) || slots[0];
+  const old = h.equip[free.id]; h.equip[free.id] = id; h.bag.splice(bi, 1); if (old) { if (ARTIFACTS[old].parts) releaseLocks(h, old); h.bag.splice(bi, 0, old); }
   return null;
 }
-function unequip(h, slotId) { const id = h.equip[slotId]; if (id) { h.equip[slotId] = null; h.bag.push(id); } }
-// Nowy artefakt: na wolne pasujące miejsce albo do plecaka. Zwraca true, gdy został założony.
+// Miejsca dla relikwii: główne (jej rodzaj) i po jednym na każdą pozostałą część
+function relicSlots(h, id, prefer = {}) {
+  const A = ARTIFACTS[id], used = new Set(), pick = kind => { const c = EQUIP_SLOTS.filter(s => s.kind === kind && !used.has(s.id)); const s = c.find(s => prefer[s.id]) || c.find(s => !h.equip[s.id]) || c[0]; if (s) used.add(s.id); return s; };
+  const main = pick(A.kind), others = A.parts.filter((p, i) => !(ARTIFACTS[p].kind === A.kind && i === A.parts.findIndex(q => ARTIFACTS[q].kind === A.kind))).map(p => pick(ARTIFACTS[p].kind));
+  return { main, others };
+}
+function releaseLocks(h, relic) { for (const k of Object.keys(h.locked || {})) if (h.locked[k] === relic) delete h.locked[k]; }
+function equipRelic(h, bi) {
+  const id = h.bag[bi], { main, others } = relicSlots(h, id); h.bag.splice(bi, 1);
+  for (const s of [main, ...others]) { const old = h.equip[s.id]; if (old) { if (ARTIFACTS[old].parts) releaseLocks(h, old); h.bag.push(old); } h.equip[s.id] = null; if (h.locked[s.id]) { const r = h.locked[s.id]; for (const [k, v] of Object.entries(h.equip)) if (v === r) { h.equip[k] = null; h.bag.push(r); } releaseLocks(h, r); } }
+  h.equip[main.id] = id; for (const s of others) h.locked[s.id] = id; return null;
+}
+function unequip(h, slotId) { const id = h.equip[slotId]; if (id) { h.equip[slotId] = null; h.bag.push(id); if (ARTIFACTS[id].parts) releaseLocks(h, id); } }
+// Relikwie, które bohater może złożyć (wszystkie części założone)
+const assemblable = h => RELICS.filter(r => ARTIFACTS[r].parts.every(p => Object.values(h.equip).includes(p)));
+function assembleRelic(h, r) {
+  const A = ARTIFACTS[r], prefer = {}; for (const [k, v] of Object.entries(h.equip)) if (A.parts.includes(v)) prefer[k] = 1;
+  if (!A.parts.every(p => Object.values(h.equip).includes(p))) return false;
+  for (const k of Object.keys(prefer)) h.equip[k] = null;
+  const { main, others } = relicSlots(h, r, prefer); h.equip[main.id] = r; for (const s of others) h.locked[s.id] = r; return true;
+}
+// Rozkłada relikwię z miejsca slotId z powrotem na części (na zwolnione miejsca)
+function disassembleRelic(h, slotId) {
+  const r = h.equip[slotId]; if (!r || !ARTIFACTS[r].parts) return false;
+  const spots = [slotId, ...Object.keys(h.locked).filter(k => h.locked[k] === r)]; releaseLocks(h, r); h.equip[slotId] = null;
+  for (const p of ARTIFACTS[r].parts) { const s = spots.find(k => EQUIP_SLOTS.find(e => e.id === k).kind === ARTIFACTS[p].kind && !h.equip[k]); if (s) h.equip[s] = p; else h.bag.push(p); }
+  return true;
+}
+// Nowy artefakt: na wolne pasujące miejsce albo do plecaka. Zwraca true, gdy został założony. Komputer od razu składa relikwie.
 function giveArtifact(h, id) {
-  const s = EQUIP_SLOTS.find(s => s.kind === ARTIFACTS[id].kind && !h.equip[s.id]);
-  if (s) { h.equip[s.id] = id; return true; } h.bag.push(id); return false;
+  const s = !ARTIFACTS[id].parts && freeSlots(h, ARTIFACTS[id].kind).find(s => !h.equip[s.id]);
+  if (s) h.equip[s.id] = id; else h.bag.push(id);
+  const pl = G.state && G.state.players[h.owner]; if (pl && !pl.human) for (const r of assemblable(h)) assembleRelic(h, r);
+  return !!s;
 }
 
 // --- czary: mana, nauka w gildii, czary na mapie -----------------------------------------------
@@ -573,7 +607,8 @@ function dailyIncomeAll(st, owner = ME) {
     inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; }
     if (autumn) { inc.wood += 1; inc.ore += 1; } if (t.faction === 'inferno') inc.sulfur += 1; // jesienne zbiory, cecha Inferna
   }
-  for (const h of st.heroes) if (h.owner === owner) { inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates'); const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; } // specjalność: surowiec
+  for (const h of st.heroes) if (h.owner === owner) { inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates'); const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; // specjalność: surowiec
+    for (const id of Object.values(h.equip || {})) if (id && ARTIFACTS[id].bonus.res) for (const [r, n] of Object.entries(ARTIFACTS[id].bonus.res)) inc[r] += n; } // relikwia kupiecka
   return inc;
 }
 const dailyIncome = (st, res) => dailyIncomeAll(st)[res];
@@ -708,7 +743,7 @@ function trade(st, owner, from, to, lots) {
   const R = playerOf(st, owner).resources; R[from] -= L.give * lots; R[to] += L.get * lots; return null;
 }
 // --- tawerna: najem bohaterów ---------------------------------------------------------------
-const HERO_COST = 2500, MAX_HEROES = 8;
+const HERO_COST = 2500, MAX_HEROES = 8; // MAX_HEROES: górna granica zasady „limit bohaterów” (heroLimit)
 const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
 // Oferta tawerny gracza na bieżący tydzień (wspólna dla wszystkich jego miast): dwóch chętnych,
 // pierwszy z frakcji gracza, drugi z innej. Imiona nie powtarzają się z bohaterami na mapie.
@@ -717,6 +752,8 @@ const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
 function tavernOffer(st, owner) {
   const p = playerOf(st, owner), wk = weekIndex(st), ret = st.retired || [];
   if (!p.tavern || p.tavern.week !== wk) p.tavern = { week: wk, hired: 0, offers: [null, null] };
+  // oferta nieaktualna: tego bohatera najął w międzyczasie ktoś inny (np. drugi gracz z tej samej puli)
+  p.tavern.offers = p.tavern.offers.map(o => (o && (st.heroes.some(h => h.name === o.name) || (o.retired && !ret.some(r => r.hero.name === o.name))) ? null : o));
   const tv = p.tavern, open = r => r.from <= st.dayTotal && (r.owner === owner || r.owner < 0), card = (r, weak) => ({ name: r.hero.name, cls: r.hero.cls, female: !!r.hero.female, fac: heroFaction(r.hero) || p.faction, retired: true, weak, level: r.hero.level });
   const mine = ret.find(r => r.owner === owner && open(r) && !tv.offers.some(o => o && o.name === r.hero.name));
   if (mine) tv.offers[1] = card(mine, true); // uciekinier czeka od razu (zastępuje drugiego kandydata)
@@ -741,7 +778,7 @@ function tavernHero(st, owner, x, y, o) {
 function hireHero(st, t, k) {
   const owner = t.owner, P = playerOf(st, owner), o = tavernOffer(st, owner)[k];
   if (!hasB(t, 'tavern')) return { error: 'W mieście nie ma tawerny' };
-  if (st.heroes.filter(h => h.owner === owner).length >= MAX_HEROES) return { error: `Możesz mieć najwyżej ${MAX_HEROES} bohaterów` };
+  if (st.heroes.filter(h => h.owner === owner).length >= heroLimit(st)) return { error: `Możesz mieć najwyżej ${heroLimit(st)} ${heroLimit(st) === 1 ? 'bohatera' : 'bohaterów'} (limit tej gry)` };
   if (heroAt(st, t.x, t.y)) return { error: 'Brama miasta jest zajęta: najpierw wyprowadź bohatera' };
   if (!o) return { error: 'Nikt więcej nie czeka w tawernie' };
   if (P.resources.gold < HERO_COST) return { error: `Najem kosztuje ${HERO_COST} złota` };
@@ -776,7 +813,7 @@ function dwellHire(st, h, ob, k) {
 }
 // Więzienie: uwolniony bohater (losowy, z doświadczeniem) staje obok. Zwraca nowego bohatera albo tekst przeszkody.
 function freePrisoner(st, h, ob) {
-  if (st.heroes.filter(o => o.owner === h.owner).length >= MAX_HEROES) return `Więzień nie ma dokąd pójść: masz już ${MAX_HEROES} bohaterów.`;
+  if (st.heroes.filter(o => o.owner === h.owner).length >= heroLimit(st)) return `Więzień nie ma dokąd pójść: masz już ${heroLimit(st)} ${heroLimit(st) === 1 ? 'bohatera' : 'bohaterów'} (limit tej gry).`;
   const n = st.map.n, spot = DX8.map((dx, d) => [ob.x + dx, ob.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && !st.guard[y * n + x]);
   if (!spot) return 'Przy więzieniu nie ma wolnego miejsca dla uwolnionego.';
   const taken = new Set(st.heroes.map(o => o.name)), pool = FACTIONS.flatMap(F => F.heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac: F.id }))).filter(c => !taken.has(c.name));
@@ -850,7 +887,7 @@ function useSite(st, h, ob) {
       return { text: err ? `${c.plural}: nikogo nie zwerbowano.` : `Do armii dołączają: ${c.plural.toLowerCase()} (${k}).` };
     }
     case 'sacrifice': {
-      const arts = h.bag.filter(id => SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
+      const arts = h.bag.filter(id => id !== 'grail' && SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
       if (!arts.length) return { text: 'Na ołtarzu można złożyć artefakty z plecaka, ale plecak jest pusty.' };
       h.bag = h.bag.filter(id => !arts.includes(id)); return { text: `${h.name} składa w ofierze: ${arts.map(id => ARTIFACTS[id].name).join(', ')}. +${exp} doświadczenia.`, float: `+${exp} dośw.`, exp };
     }

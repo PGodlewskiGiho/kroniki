@@ -100,7 +100,7 @@ const SITES = {
 // Nowe miejsca: portale w parach (PORTAL_PAIRS wg rozmiaru mapy), wraki na wodzie (jeden na WRECK_PER pól wody),
 // siedlisko: tygodniowy przyrost stworów (DWELL_WEEKS tygodni zapasu), ołtarz: doświadczenie za artefakt wg rzadkości.
 const PORTAL_PAIRS = { S: 1, M: 1, L: 2, XL: 3 }, WRECK_PER = 700, DWELL_WEEKS = 3;
-const SACRIFICE_EXP = { treasure: 800, minor: 2000, major: 4500 };
+const SACRIFICE_EXP = { treasure: 800, minor: 2000, major: 4500, relic: 15000 };
 // Graal (jak w Heroes 3): zakopany na mapie; obeliski odsłaniają kolejne kawałki mapy zagadki (PUZZLE_COLS × PUZZLE_ROWS
 // kawałków, wycinek PUZZLE_W × PUZZLE_H pól wokół Graala). Kopać można z pełnymi punktami ruchu (zużywa wszystkie).
 // Bohater z Graalem wchodzi do własnego miasta i buduje tam budowlę Graala: +GRAIL_GOLD złota dziennie i +50% przyrostu.
