@@ -196,3 +196,44 @@ test('SI nie krąży po garnizony, których nie zmieści: liczy tylko jednostki,
   assert.deepEqual(r.full.filter(Boolean), ['archer'], 'pełna armia: tylko ten sam rodzaj');
   assert.deepEqual(r.part.filter(Boolean), ['archer', 'imp'], 'wolne miejsca: wszystko');
 });
+
+test('SI jak zawodowiec: główny bohater i pomocnicy do limitu, pomocnik oddaje armię i artefakty (zostawia 1 jednostkę)', async () => {
+  await newGame(page, { mapSize: 'L', opponents: 1, rules: { heroes: 5, truce: 28, monsters: 1, treasure: 1, reveal: false } }, 21);
+  await days(21);
+  const r = await page.evaluate(() => {
+    const st = G.state, p = st.players[1], hs = st.heroes.filter(h => h.owner === 1), m = aiMain(st, p);
+    return { n: hs.length, main: m && m.id, mainIsBest: hs.every(h => aiHeroScore(h) <= aiHeroScore(m) * 2), maxH: aiMaxHeroes(st) };
+  });
+  assert.equal(r.maxH, 5);
+  assert.ok(r.n >= 3 && r.n <= 5, `bohaterów SI: ${r.n}`);
+  assert.ok(r.mainIsBest, 'główny bohater jest najsilniejszy');
+  const f = await page.evaluate(() => {
+    const st = G.state, a = createHero(st, 1, 2, 2), b = createHero(st, 1, 3, 2);
+    a.army = emptyArmy(); a.army[0] = { cid: 'pikeman', n: 10 }; a.army[1] = { cid: 'griffin', n: 4 };
+    b.army = emptyArmy(); b.army[0] = { cid: 'pikeman', n: 1 };
+    const art = Object.keys(ARTIFACTS).find(id => !ARTIFACTS[id].parts && ARTIFACTS[id].kind); giveArtifact(a, art);
+    const gain = aiFeed(st, a, b);
+    const res = { gain, left: armyStacks(a.army).map(s => [s.cid, s.n]), got: armyStacks(b.army).map(s => [s.cid, s.n]).sort(), art: Object.values(b.equip).includes(art) || b.bag.includes(art), artLeft: Object.values(a.equip).some(Boolean) };
+    removeHero(st, a); removeHero(st, b); return res;
+  });
+  assert.deepEqual(f.left, [['pikeman', 1]], 'pomocnik zostawia sobie 1 najsłabszą jednostkę');
+  assert.deepEqual(f.got, [['griffin', 4], ['pikeman', 10]]);
+  assert.ok(f.gain > 0 && f.art && !f.artLeft);
+});
+
+test('SI omija pola, do których w jeden dzień dojdzie silniejszy wróg; limit 1 = bez pomocników', async () => {
+  await newGame(page, { mapSize: 'M', opponents: 1 }, 4);
+  const r = await page.evaluate(() => {
+    const st = G.state, ai = st.heroes.find(h => h.owner === 1), me = st.heroes.find(h => h.owner === 0), n = st.map.n;
+    ai.army = emptyArmy(); ai.army[0] = { cid: 'pikeman', n: 1 };
+    me.army = emptyArmy(); me.army[0] = { cid: 'griffin', n: 30 };
+    playerOf(st, 1).explored.fill(1);
+    const D = aiDanger(st, ai), near = D[me.y * n + me.x + 2], far = D[0];
+    const weakMe = (me.army[0].n = 1, ai.army[0].n = 50, aiDanger(st, ai)[me.y * n + me.x + 1]);
+    return { near, far, weakMe };
+  });
+  assert.equal(r.near, 1); assert.equal(r.far, 0); assert.equal(r.weakMe, 0, 'słabszy wróg nie jest zagrożeniem');
+  await newGame(page, { mapSize: 'L', opponents: 1, rules: { heroes: 1 } }, 21);
+  await days(14);
+  assert.equal(await page.evaluate(() => G.state.heroes.filter(h => h.owner === 1).length <= 1), true);
+});

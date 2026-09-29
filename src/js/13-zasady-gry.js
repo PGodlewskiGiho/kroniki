@@ -752,6 +752,8 @@ const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
 function tavernOffer(st, owner) {
   const p = playerOf(st, owner), wk = weekIndex(st), ret = st.retired || [];
   if (!p.tavern || p.tavern.week !== wk) p.tavern = { week: wk, hired: 0, offers: [null, null] };
+  // oferta nieaktualna: tego bohatera najął w międzyczasie ktoś inny (np. drugi gracz z tej samej puli)
+  p.tavern.offers = p.tavern.offers.map(o => (o && (st.heroes.some(h => h.name === o.name) || (o.retired && !ret.some(r => r.hero.name === o.name))) ? null : o));
   const tv = p.tavern, open = r => r.from <= st.dayTotal && (r.owner === owner || r.owner < 0), card = (r, weak) => ({ name: r.hero.name, cls: r.hero.cls, female: !!r.hero.female, fac: heroFaction(r.hero) || p.faction, retired: true, weak, level: r.hero.level });
   const mine = ret.find(r => r.owner === owner && open(r) && !tv.offers.some(o => o && o.name === r.hero.name));
   if (mine) tv.offers[1] = card(mine, true); // uciekinier czeka od razu (zastępuje drugiego kandydata)

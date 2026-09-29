@@ -1,7 +1,8 @@
 // ==================== GRACZE KOMPUTEROWI ================================================
 // Tura przeciwnika dzieje się natychmiast (bez animacji), po turze człowieka, a przed nowym dniem.
 // SI widzi całą mapę. Kolejność: miasta (budowa, werbunek, najem), potem bohaterowie wybierają cele
-// z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Wieści ważne dla człowieka trafiają do jego skrzynki (tell), zobaczy je na początku swojej tury.
+// z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Jak zawodowi gracze H3: jeden główny bohater (aiMain)
+// walczy i rośnie, pomocnicy (do limitu bohaterów) zbierają mapę i dowożą mu armię (aiFeed); nikt nie wchodzi pod silniejszego wroga (aiDanger). Wieści ważne dla człowieka trafiają do jego skrzynki (tell), zobaczy je na początku swojej tury.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
   'castle', 'smith', 'special', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u', 'guild4', 'guild5'];
 // Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
@@ -13,7 +14,48 @@ function buyMissing(st, owner, cost) {
   for (const [r, k, L] of deals) trade(st, owner, 'gold', r, Math.ceil(k / L.get));
   return true;
 }
-const aiMaxHeroes = st => Math.min(heroLimit(st), st.map.n >= 108 ? 3 : 2);
+// Ilu bohaterów najmuje SI: tylu, ile pozwala limit gry, ale na małej mapie mniej (jak zawodowi gracze H3:
+// jeden główny bohater i pomocnicy, którzy zbierają skarby i dowożą mu armię)
+const aiMaxHeroes = st => Math.min(heroLimit(st), st.map.n >= 108 ? 8 : st.map.n >= 72 ? 6 : 4);
+// Główny bohater gracza SI (p.mainHero): najsilniejszy; zmienia się, gdy zginie albo inny stanie się dużo silniejszy
+const aiHeroScore = h => armyStrength(h) + h.level * 1500;
+function aiMain(st, p) {
+  const hs = st.heroes.filter(h => h.owner === p.id); if (!hs.length) return null;
+  const best = hs.reduce((a, h) => (aiHeroScore(h) > aiHeroScore(a) ? h : a)), cur = hs.find(h => h.id === p.mainHero);
+  const m = cur && aiHeroScore(cur) * 2 >= aiHeroScore(best) ? cur : best; p.mainHero = m.id; return m;
+}
+const aiRole = (st, h) => (hasAiMain(st, h) ? 'helper' : 'main');
+const hasAiMain = (st, h) => { const p = playerOf(st, h.owner), m = st.heroes.find(o => o.id === p.mainHero && o.owner === h.owner); return !!m && m !== h; };
+// Pola zagrożone (ucieczka do własnego miasta i dowóz armii głównemu są dozwolone): w zasięgu jednego dnia marszu wrogiego bohatera silniejszego od h (który SI widzi na odkrytej mapie).
+// Bohater SI tam nie idzie: pomocnik z jedną jednostką to darmowe doświadczenie dla wroga, a główny straciłby armię.
+function aiDanger(st, h) {
+  const n = st.map.n, ex = playerOf(st, h.owner).explored, power = armyStrength(h), D = new Uint8Array(n * n);
+  for (const o of st.heroes) {
+    if (o.owner === h.owner || o.garrison != null || !ex[o.y * n + o.x] || armyStrength(o) <= power * 0.8) continue; // rozejm chroni tylko ludzi przed SI, nie odwrotnie
+    const r = Math.ceil(heroMaxMP(o) / 100) + 1;
+    for (let y = Math.max(0, o.y - r); y <= Math.min(n - 1, o.y + r); y++) for (let x = Math.max(0, o.x - r); x <= Math.min(n - 1, o.x + r); x++) D[y * n + x] = 1;
+  }
+  return D;
+}
+// Cele zajęte w tej turze przez innych bohaterów tego samego gracza (pole -> bohater): pomocnicy rozchodzą się po mapie
+const aiClaims = new Map();
+// Pomocnik oddaje głównemu bohaterowi armię (zostawia sobie 1 najsłabszą jednostkę) i artefakty.
+// Gdy w armii głównego brak miejsca, słabszy oddział głównego wraca do pomocnika w zamian za silniejszy.
+function aiFeed(st, h, m) {
+  const val = s => s.n * CREATURES[s.cid].value, stacks = armyStacks(h.army); if (!stacks.length) return 0;
+  const weak = stacks.reduce((a, x) => (CREATURES[x.cid].value < CREATURES[a.cid].value ? x : a)), kept = { cid: weak.cid, n: 1 };
+  weak.n--; if (!weak.n) h.army[h.army.indexOf(weak)] = null;
+  const before = armyPower(m.army);
+  for (let i = 0; i < h.army.length; i++) { // brak miejsca: zamiana z najsłabszym oddziałem głównego
+    const s = h.army[i]; if (!s || m.army.some(x => !x || x.cid === s.cid)) continue;
+    const j = m.army.reduce((b, x, k) => (b < 0 || val(x) < val(m.army[b]) ? k : b), -1); if (j >= 0 && val(m.army[j]) < val(s)) { h.army[i] = m.army[j]; m.army[j] = s; }
+  }
+  armyTransfer(h.army, m.army);
+  const k = h.army.findIndex(x => x && x.cid === kept.cid); if (k >= 0) h.army[k].n++; else { const f = h.army.findIndex(x => !x); if (f >= 0) h.army[f] = kept; }
+  for (const slot of Object.keys(h.equip)) if (h.equip[slot] && !(h.locked || {})[slot]) unequip(h, slot);
+  for (const id of h.bag.splice(0)) { giveArtifact(m, id); if (ARTIFACTS[id].parts) { const bi = m.bag.indexOf(id); if (bi >= 0 && relicSlots(m, id)) equipRelic(m, bi); } }
+  return armyPower(m.army) - before;
+}
 // Rozejm: przez tyle dni SI nie atakuje miast ani bohaterów człowieka (zasada „rozejm”; wg trudności: Łatwy 21, Normalny 14, Trudny 7, wyżej 0)
 const AI_PEACE_DAYS = [21, 14, 7, 0, 0];
 const truceDays = st => { const r = rule(st, 'truce'); return r === 'auto' ? AI_PEACE_DAYS[st.settings.difficulty] : r; };
@@ -42,7 +84,7 @@ function aiManageTown(st, p, t) {
     const B = next.find(B => canAfford(st, B.cost, p.id)) || (next[0] && buyMissing(st, p.id, next[0].cost) ? next[0] : null); if (B) buildIn(st, t, B);
   }
   const heroes = st.heroes.filter(h => h.owner === p.id);
-  if (heroes.length < aiMaxHeroes(st) && hasB(t, 'tavern') && !heroAt(st, t.x, t.y) && p.resources.gold >= HERO_COST + 2000) {
+  if (heroes.length < aiMaxHeroes(st) && hasB(t, 'tavern') && !heroAt(st, t.x, t.y) && p.resources.gold >= HERO_COST + (heroes.length < 2 ? 500 : 1500)) {
     const k = tavernOffer(st, p.id).findIndex(Boolean); if (k >= 0) hireHero(st, t, k);
   }
   for (let L = 7; L >= 1; L--) {
@@ -91,40 +133,48 @@ function aiReach(st, h) {
 // wybiera cel, nie rozgrywa tej samej bitwy od nowa.
 const armySig = a => a.map(x => x ? x.cid + x.n : '-').join();
 const aiFightMemo = new WeakMap();
-function aiWorthFight(st, h, foe) {
+function aiWorthFight(st, h, foe, maxLoss = 0.4) {
   const key = [st.dayTotal, armySig(h.army), h.mana, h.exp, h.machines.join(), Object.values(h.equip).join(), foe.count, foe.army ? armySig(foe.army) : '', foe.garrison ? armySig(foe.garrison) + (townHero(st, foe) ? armySig(townHero(st, foe).army) : '') : '', foe.mana].join('|');
   let m = aiFightMemo.get(foe); if (!m) aiFightMemo.set(foe, m = new Map());
-  const k = h.id + '|' + key; if (!m.has(k)) { if (m.size > 64) m.clear(); m.set(k, aiWorthFightSim(st, h, foe)); }
-  return m.get(k);
+  const k = h.id + '|' + key; if (!m.has(k)) { if (m.size > 64) m.clear(); m.set(k, aiFightLoss(st, h, foe)); }
+  return m.get(k) <= maxLoss;
 }
-function aiWorthFightSim(st, h, foe) {
-  const B = simulateBattle(createBattle(st, h, foe)); if (B.over !== 'win') return false;
+// Jaką część armii bohater straci w próbnej walce (Infinity = przegra)
+function aiFightLoss(st, h, foe) {
+  const B = simulateBattle(createBattle(st, h, foe)); if (B.over !== 'win') return Infinity;
   const lost = B.units.filter(u => u.side === 0).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].value, 0);
-  return lost <= armyPower(h.army) * 0.4;
+  return lost / Math.max(1, armyPower(h.army));
 }
 // Najlepszy cel bohatera: wartość celu maleje z odległością (dzień marszu ≈ połowa wartości).
 // SI zna tylko to, co odkryła (mgła wojny): nieodkryte obiekty, miasta i bohaterowie nie są celami,
 // a gdy w zasięgu nie ma nic lepszego, bohater idzie na zwiad na skraj mgły.
 // Walki (potwory, miasta, bohaterowie) sprawdzamy symulacją dopiero wtedy, gdy są najlepszym kandydatem.
+// Role: główny bohater walczy (potwory, skarbce, miasta, wrodzy bohaterowie), pomocnik zbiera to, co leży bez straży,
+// bije tylko dużo słabszych, przejmuje kopalnie i zanosi głównemu armię z miast; pomocnicy nie biorą celów innych bohaterów.
 function aiPickTarget(st, h, R) {
-  const n = st.map.n, ex = playerOf(st, h.owner).explored, cands = [], start = h.y * n + h.x;
-  const add = (i, value, what, foe) => { if (value > 0 && i !== start && R.dist[i] < Infinity) cands.push({ i, score: value / (1 + R.dist[i] / 1500), what, foe }); };
-  const hasArmy = armySize(h.army) > 0, power = armyStrength(h);
+  const n = st.map.n, ex = playerOf(st, h.owner).explored, cands = [], start = h.y * n + h.x, helper = aiRole(st, h) === 'helper';
+  const danger = aiDanger(st, h);
+  const add = (i, value, what, foe) => { const c = aiClaims.get(i); if (value > 0 && i !== start && R.dist[i] < Infinity && (!danger[i] || what === 'reinforce' || what === 'feed') && (c == null || c === h.id)) cands.push({ i, score: value / (1 + R.dist[i] / 1500), what, foe }); };
+  const hasArmy = armySize(h.army) > 0, power = armyStrength(h), fightK = helper ? 2.5 : 1;
+  if (helper) { // dowóz armii do głównego bohatera: tym cenniejszy, im więcej (i im bliżej)
+    const m = aiMain(st, playerOf(st, h.owner)), give = armyPower(h.army) - Math.min(...armyStacks(h.army).map(x => CREATURES[x.cid].value));
+    if (m && give >= Math.max(250, armyPower(m.army) * 0.08)) add(m.y * n + m.x, give * 2.5 + 1500, 'feed', null);
+  }
   for (const t of st.towns) {
     const i = t.y * n + t.x, occupant = heroAt(st, t.x, t.y);
-    if (t.owner === h.owner) { const take = armyPower(takeableArmy(t.garrison, h.army)); if (!occupant && take > 0) add(i, take * (hasArmy ? 3 : 20), 'reinforce'); continue; }
+    if (t.owner === h.owner) { const take = armyPower(takeableArmy(t.garrison, h.army)); if (!occupant && take > 0) add(i, take * (!hasArmy ? 20 : !helper && take > armyPower(h.army) * 0.3 ? 4 : 3), 'reinforce'); continue; }
     if (!hasArmy || aiPeace(st, t.owner)) continue;
-    const tp = townPower(st, t); if (power > tp * 0.8) add(i, (t.owner >= 0 && playerOf(st, t.owner).human ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
+    const tp = townPower(st, t); if (power > tp * 0.8 * fightK) add(i, (t.owner >= 0 && playerOf(st, t.owner).human ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
   }
   if (hasArmy) {
     for (const ob of st.objects) {
       if (ob.dead) continue; const i = ob.y * n + ob.x;
       if (ob.type === 'monster') {
-        const mp = ob.count * CREATURES[ob.cid].value; if (power <= mp) continue;
+        const mp = ob.count * CREATURES[ob.cid].value; if (power <= mp * fightK) continue;
         let best = -1; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = ob.x + dx, y = ob.y + dy, j = y * n + x; if (x >= 0 && y >= 0 && x < n && y < n && st.guard[j] === ob.id + 1 && (best < 0 || R.dist[j] < R.dist[best])) best = j; }
         // strażnik przy kopalni, artefakcie albo skarbie jest wart tyle co to, czego pilnuje
         const guarded = st.objects.find(o => !o.dead && o !== ob && o.type !== 'monster' && Math.abs(o.x - ob.x) <= 1 && Math.abs(o.y - ob.y) <= 1);
-        if (best >= 0) add(best, 400 + mp * 0.5 + (guarded ? (guarded.type === 'mine' ? 3500 : 1500) : 0), 'monster', ob); continue;
+        if (best >= 0) add(best, (helper ? 400 : 700) + mp * (helper ? 0.3 : 0.8) + (guarded ? (guarded.type === 'mine' ? 3500 : 1500) : 0), 'monster', ob); continue;
       }
       if (st.guard[i]) continue; // najpierw trzeba pokonać strażnika
       if (ob.type === 'res') add(i, ob.res === 'gold' ? ob.amount : ob.amount * (RARE.includes(ob.res) ? 250 : 120), 'res');
@@ -132,14 +182,14 @@ function aiPickTarget(st, h, R) {
       else if (ob.type === 'art') add(i, 2500, 'art');
       else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob); if (v > 0) add(i, v, 'site'); }
       else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
-      else if (ob.type === 'bank' && !ob.cleared && power > bankPower(ob) * 1.3) add(i, 2000 + bankPower(ob) * 0.4, 'bank', ob);
+      else if (ob.type === 'bank' && !ob.cleared && !helper && power > bankPower(ob) * 1.3) add(i, 2000 + bankPower(ob) * 0.4, 'bank', ob);
     }
-    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8) add(o.y * n + o.x, playerOf(st, o.owner).human ? 15000 : 8000, 'hero', o);
+    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8 * fightK) add(o.y * n + o.x, playerOf(st, o.owner).human ? 15000 : 8000, 'hero', o);
     // zwiad: wolne pole na skraju odkrytego terenu, tym cenniejsze, im więcej mgły wokół
     const r = 3, m = n + 1, S = new Int32Array(m * m); let best = -1, bestScore = 0; // sumy prefiksowe nieodkrytych pól
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) S[(y + 1) * m + x + 1] = (ex[y * n + x] ? 0 : 1) + S[y * m + x + 1] + S[(y + 1) * m + x] - S[y * m + x];
     for (let i = 0; i < n * n; i++) {
-      if (R.dist[i] === Infinity || i === start || st.objAt[i] || st.guard[i]) continue;
+      if (R.dist[i] === Infinity || i === start || st.objAt[i] || st.guard[i] || danger[i]) continue;
       const x = i % n, y = (i / n) | 0, x0 = Math.max(0, x - r), y0 = Math.max(0, y - r), x1 = Math.min(n, x + r + 1), y1 = Math.min(n, y + r + 1);
       const fog = S[y1 * m + x1] - S[y0 * m + x1] - S[y1 * m + x0] + S[y0 * m + x0]; if (fog < 4) continue;
       const score = (300 + fog * 40) / (1 + R.dist[i] / 1500); if (score > bestScore) { bestScore = score; best = i; }
@@ -155,7 +205,7 @@ function aiPickTarget(st, h, R) {
   for (const c of cands) {
     if (!c.foe) return c;
     if (sims++ >= 4) continue; // najwyżej kilka prób walki na jeden wybór celu
-    if (aiWorthFight(st, h, c.foe)) return c;
+    if (aiWorthFight(st, h, c.foe, helper ? 0.15 : 0.2)) return c;
   }
   return null;
 }
@@ -212,12 +262,19 @@ function* aiMoveHero(st, h, news) {
   if (G2 && G2.found < 0 && h.x === G2.x && h.y === G2.y && aiKnowsGrail(st, h.owner) && digGrail(st, h).found) tell(st, -1, `${h.name} (${ownerName(st, h.owner)}) wykopuje Graala!`);
   for (let plan = 0; plan < 12 && st.heroes.includes(h); plan++) {
     const R = aiReach(st, h), target = aiPickTarget(st, h, R); if (!target) return;
-    const path = R.path(target.i); if (!path.length) return;
+    aiClaims.set(target.i, h.id);
+    const path = R.path(target.i); if (target.what === 'feed') path.pop(); // do głównego bohatera: staje obok
+    if (target.what === 'feed' && !path.length) { const m = st.heroes.find(o => o.owner === h.owner && o.y * st.map.n + o.x === target.i); if (m) aiFeed(st, h, m); continue; }
+    if (!path.length) return;
     for (const [nx, ny] of path) {
       const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
       reveal(st, nx, ny, heroSight(h), h.owner);
       yield { kind: 'step', h, fx, fy };
+    }
+    if (target.what === 'feed') { // obok głównego bohatera: oddaje armię i artefakty
+      const m = st.heroes.find(o => o.owner === h.owner && o.y * st.map.n + o.x === target.i); h.prev = null;
+      if (m && Math.max(Math.abs(m.x - h.x), Math.abs(m.y - h.y)) <= 1) aiFeed(st, h, m); continue;
     }
     yield* aiVisit(st, h, target.i, news); h.prev = null;
     if (target.what === 'dig') return; // kopać można dopiero jutro, z pełnymi punktami ruchu
@@ -227,7 +284,9 @@ function* aiMoveHero(st, h, news) {
 function* aiTurn(st, p, news) {
   yield { kind: 'player', p };
   for (const t of st.towns.filter(t => t.owner === p.id)) aiManageTown(st, p, t);
-  for (const h of st.heroes.filter(h => h.owner === p.id)) yield* aiMoveHero(st, h, news);
+  aiClaims.clear(); const m = aiMain(st, p); // najpierw pomocnicy (dowiozą armię), na końcu główny bohater
+  for (const h of st.heroes.filter(h => h.owner === p.id && h !== m)) yield* aiMoveHero(st, h, news);
+  if (m && st.heroes.includes(m)) yield* aiMoveHero(st, m, news);
   for (const t of st.towns.filter(t => t.owner === p.id)) { const h = heroInTown(st, t); if (h) armyTransfer(t.garrison, h.army); }
 }
 // Kolejka tur po graczu `from`: komputery po kolei, przy przejściu przez koniec listy nowy dzień ({ kind: 'day' }),

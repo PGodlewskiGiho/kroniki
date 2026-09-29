@@ -281,5 +281,12 @@
    z komputerem, monsters – mnożnik siły potworów, treasure – surowce i skrzynie, reveal – odkryta mapa). G.settings.rules
    kopiuje się do st.settings.rules; rule(st, id) daje wartość domyślną dla starych zapisów. heroLimit(st) zamiast MAX_HEROES
    (najem, więzienie, aiMaxHeroes), truceDays(st) w aiPeace.
+   Krok 22: mądrzejsza SI. Najem do limitu (aiMaxHeroes: limit gry, mała mapa 4, średnia 6). Główny bohater (p.mainHero, aiMain:
+   najsilniejszy, zmiana dopiero przy dwukrotnej przewadze) rusza ostatni, walczy ostrożniej (strata do 20% armii) i ceni potwory
+   za doświadczenie. Pomocnicy (aiRole) biją tylko dużo słabszych (×2,5, strata do 15%), nie biorą skarbców, nie zajmują celów
+   innych bohaterów tego gracza (aiClaims) i dowożą głównemu armię z miast oraz artefakty (cel 'feed', aiFeed: zostawiają
+   1 najsłabszą jednostkę, wymiana oddziałów przy braku miejsca). aiDanger: pola w zasięgu dnia marszu silniejszego wroga są
+   zakazane (poza ucieczką do miasta i dowozem). tavernOffer usuwa oferty bohaterów najętych przez innych graczy.
+   Pomiar (12 gier, 35 dni): siła głównego bohatera SI 27,4 tys. -> 40,9 tys., poziom 4,3 -> 5,7, kopalnie 4,3 -> 4,8.
    ===================================================================================== */
 
