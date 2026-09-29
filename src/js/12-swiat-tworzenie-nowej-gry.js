@@ -134,8 +134,9 @@ function placeObjects(st) {
   // strażnicy cenniejszych rzeczy (boost) są mocniejsi, a poziom trudności mnoży liczebność
   const diff = DIFFICULTIES[st.settings.difficulty].rating / 100;
   const monster = (x, y, boost = 0) => {
-    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), list = NEUTRALS_BY_LEVEL[lvl], cid = list[Math.floor(rng() * list.length)];
+    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), all = NEUTRALS_BY_LEVEL[lvl];
     const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff);
+    const fit = all.filter(c => CREATURES[c].value <= power * 1.3), list = fit.length ? fit : [all.reduce((a, c) => (CREATURES[c].value < CREATURES[a].value ? c : a))], cid = list[Math.floor(rng() * list.length)]; // bez smoka silniejszego niż cała okolica
     return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
   };
   // Obiekt 2×2 (kopalnia, skarbiec): wejście w prawym dolnym polu, pozostałe trzy pola zablokowane, pole przed wejściem wolne

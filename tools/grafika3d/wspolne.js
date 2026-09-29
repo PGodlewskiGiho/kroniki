@@ -25,4 +25,4 @@ async function openStudio(viewport = { width: 1440, height: 900 }) {
   if (errors.length) throw new Error(errors.join('\n'));
   return { browser, page, errors };
 }
-module.exports = { ROOT, CACHE, openStudio };
+module.exports = { ROOT, CACHE, openStudio, threeBundle };

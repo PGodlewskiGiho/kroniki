@@ -51,6 +51,22 @@ const HERO_LOOKS = {
   'Ognisław': { age: 'adult', hair: '#a0602c', style: 'short', beard: 'goatee', head: 'hood', eyes: 'glow', brow: 'angry', mouth: 'neutral', robe: '#7a4a2a', bg: 'fire', flip: true },
   'Gromisław': { age: 'adult', hair: '#7c4c26', style: 'long', beard: 'full', head: 'horned', brow: 'bushy', nose: 'broad', mouth: 'smile', marks: ['scar'], robe: '#7a5030', bg: 'fire', flip: false },
   'Jarogniewa': { hair: '#a0602c', style: 'bun', head: 'feather', brow: 'arched', mouth: 'neutral', marks: ['tattoo'], robe: '#8a3a1a', bg: 'sky', flip: true },
+  'Ulryk': { age: 'adult', hair: '#c89450', style: 'short', beard: 'full', head: 'helm', brow: 'straight', mouth: 'neutral', armor: '#a8b2c4', bg: 'sky', flip: true },
+  'Bogna': { hair: '#5e3e22', style: 'bun', head: 'veil', brow: 'arched', mouth: 'smile', robe: '#e6dcc2', bg: 'window', flip: false },
+  'Aelwen': { hair: '#e2c47e', style: 'braid', head: 'feather', brow: 'thin', eyes: 'narrow', mouth: 'smirk', robe: '#5e4a2a', bg: 'forest', flip: true },
+  'Dębosz': { age: 'old', hair: '#5e3e22', style: 'long', beard: 'full', head: 'wreath', brow: 'bushy', nose: 'broad', robe: '#6e5a34', bg: 'forest', flip: false },
+  'Wrocisław': { age: 'old', hair: '#8e8a86', style: 'long', beard: 'long', head: 'cowl', eyes: 'glow', mouth: 'frown', robe: '#2a2236', bg: 'night', flip: true },
+  'Grzymisława': { hair: '#d8d4cc', style: 'long', head: 'skullhelm', eyes: 'glow', brow: 'angry', armor: '#3e3a48', bg: 'night', flip: false },
+  'Skrzek': { hair: '#5e3e22', style: 'crop', beard: 'stubble', head: 'horned', brow: 'bushy', nose: 'broad', mouth: 'frown', marks: ['paint'], robe: '#6a5030', bg: 'forest', flip: true },
+  'Rusałka': { hair: '#3a6a3a', style: 'long', head: 'flowers', brow: 'thin', eyes: 'wide', mouth: 'smile', robe: '#34503e', bg: 'night', flip: false },
+  'Belzar': { hair: '#241a14', style: 'bald', beard: 'goatee', head: 'horned', eyes: 'glow', brow: 'angry', mouth: 'smirk', armor: '#5a1e1e', bg: 'fire', flip: true },
+  'Żmija': { hair: '#241a14', style: 'long', head: 'cowl', eyes: 'glow', brow: 'arched', mouth: 'smirk', marks: ['tattoo'], robe: '#4a1414', bg: 'fire', flip: false },
+  'Mieszko Kruszec': { age: 'adult', hair: '#7c4c26', style: 'short', beard: 'long', head: 'headband', brow: 'bushy', nose: 'broad', mouth: 'smile', robe: '#6a6a74', bg: 'window', flip: false },
+  'Srebrna': { hair: '#d8d4cc', style: 'long', head: 'circlet', brow: 'thin', eyes: 'wide', mouth: 'neutral', robe: '#3a5a8a', bg: 'sky', flip: true },
+  'Grzmot': { age: 'adult', hair: '#241a14', style: 'bald', beard: 'full', head: 'horned', brow: 'angry', nose: 'broad', mouth: 'frown', marks: ['scar'], armor: '#3a3044', bg: 'fire', flip: true },
+  'Nocna': { hair: '#241a14', style: 'long', head: 'hood', eyes: 'glow', brow: 'thin', mouth: 'smirk', robe: '#1e1a30', bg: 'night', flip: false },
+  'Warg': { age: 'adult', hair: '#241a14', style: 'long', beard: 'stubble', head: 'feather', brow: 'angry', nose: 'broad', mouth: 'frown', marks: ['scar'], robe: '#6a4a2a', bg: 'fire', flip: false },
+  'Iskra': { hair: '#a0602c', style: 'curly', head: 'headband', brow: 'arched', mouth: 'smile', marks: ['freckles'], robe: '#8a3a1a', bg: 'fire', flip: true },
   'Wiera Popiół': { hair: '#8e8a86', style: 'bun', head: 'circlet', eyes: 'glow', brow: 'thin', mouth: 'neutral', marks: ['mole'], robe: '#2a1418', bg: 'fire', flip: false },
 };
 function heroLookSeed(h) { let s = 2166136261; for (const ch of String(h.name || '')) s = Math.imul(s ^ ch.charCodeAt(0), 16777619); return s >>> 0; }
@@ -85,7 +101,7 @@ function heroFace(h) {
   return F;
 }
 function drawHeroPortrait(ctx, x, y, h, col, k = 1) {
-  const s = 36 * k, pc = portraitCanvas(h, col); ctx.save(); ctx.imageSmoothingEnabled = s * G.rs * (G.dpr || 1) < pc.width * 0.9; ctx.drawImage(pc, x, y, s, s); ctx.restore(); // pomniejszony: z wygładzaniem
+  const s = 36 * k, pc = portraitArt(h) || portraitCanvas(h, col); /* obraz z tools/portrety-ai, inaczej rysunek z kodu */ ctx.save(); ctx.imageSmoothingEnabled = s * G.rs * (G.dpr || 1) < pc.width * 0.9; ctx.drawImage(pc, x, y, s, s); ctx.restore(); // pomniejszony: z wygładzaniem
   if (h.asleep) { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x, y, s, s); text(ctx, 'z z', x + s / 2, y + s / 2, { size: 14, align: 'center', color: '#ecd9a8', fam: 'title' }); }
   ctx.lineWidth = 2; ctx.strokeStyle = '#b8913f'; ctx.strokeRect(x, y, s, s);
 }

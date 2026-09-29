@@ -1,3 +1,5 @@
 node_modules/
 test-results/
 tools/grafika3d/.cache/
+tools/portrety-ai/.cache/
+__pycache__/

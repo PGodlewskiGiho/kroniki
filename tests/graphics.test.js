@@ -22,6 +22,16 @@ test('portrety: każdy bohater frakcji wygląda inaczej, ten sam zawsze tak samo
   assert.ok(r.looks, 'każdy bohater frakcji ma własny opis wyglądu');
 });
 
+test('portrety z obrazów (tools/portrety-ai): jeśli są wbudowane, ma je każdy bohater frakcji (72×72); bez nich rysunek z kodu', async () => {
+  const r = await page.evaluate(() => {
+    const all = FACTIONS.flatMap(F => F.heroes.map(([name, cls, f]) => ({ name, cls, female: !!f })));
+    const miss = all.filter(h => !portraitArt(h)).map(h => h.name), im = portraitArt(all[0]);
+    drawHeroPortrait(G.ctx, 10, 10, all[0], '#c8302a', 2); drawHeroPortrait(G.ctx, 10, 10, all[0], '#c8302a', 1);
+    return { any: Object.keys(HERO_PORTRAITS).length > 0, miss, w: im && im.width, h: im && im.height };
+  });
+  if (!r.any) return; assert.deepEqual(r.miss, []); assert.equal(r.w, 72); assert.equal(r.h, 72);
+});
+
 test('mury: jeden sprite zamku, nowy rysunek po trafieniu i wyłomie', async () => {
   await newGame(page, { mapSize: 'M' }, 8);
   const r = await page.evaluate(() => {

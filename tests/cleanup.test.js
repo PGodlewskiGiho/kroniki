@@ -81,3 +81,16 @@ test('skarbiec: zwycięstwo daje łup i zostawia pusty skarbiec; porażka zostaw
   assert.ok(/Łup: 2500 złota/.test(r.text), r.text);
   assert.equal(r.lost, 'lose'); assert.equal(r.utopia, false); assert.ok(r.still);
 });
+
+test('neutralne: nowe stwory (chłopi… smoki) są na mapie, a potwór nie jest silniejszy niż jego okolica', async () => {
+  const r = await page.evaluate(() => {
+    const ids = ['peasant', 'halfling', 'rogue', 'mummy', 'nomad', 'sharpshooter', 'goldGolem', 'faerieDragon', 'enchanter', 'diamondGolem', 'rustDragon', 'crystalDragon', 'azureDragon'];
+    const listed = ids.every(id => Object.values(NEUTRALS_BY_LEVEL).some(l => l.includes(id)) && UNIT_ART[id]);
+    let tooStrong = 0, seen = new Set();
+    for (let s = 1; s <= 6; s++) { const st = createNewGame({ ...G.settings, mapSize: 'L' }, 900 + s), h = st.heroes[0]; for (const o of st.objects) if (o.type === 'monster') { seen.add(o.cid); if (CREATURES[o.cid].value > 20000 && Math.hypot(o.x - h.x, o.y - h.y) < st.map.n / 4) tooStrong++; } }
+    return { listed, tooStrong, newSeen: ids.filter(id => seen.has(id)).length };
+  });
+  assert.ok(r.listed, 'nowe stwory na listach poziomów i z grafiką');
+  assert.equal(r.tooStrong, 0, 'lazurowy smok nie stoi blisko startu');
+  assert.ok(r.newSeen >= 5, `nowe stwory spotykane na mapach: ${r.newSeen}`);
+});

@@ -17,7 +17,7 @@ test('bohaterowie zaczynają z umiejętnościami swojej klasy', async () => {
 test('działanie umiejętności na mapie: ruch, widzenie, mana, złoto, teren, doświadczenie', async () => {
   await newGame(page);
   const r = await page.evaluate(() => {
-    const st = G.state, h = hero(st), n = st.map.n, set = (id, lv) => { h.skills = lv ? [{ id, lv }] : []; };
+    const st = G.state, h = hero(st), n = st.map.n, _ = (h.name = 'Bez Specjalności'), set = (id, lv) => { h.skills = lv ? [{ id, lv }] : []; };
     const out = {}, at = (id, lv, f) => { set(id, 0); const a = f(); set(id, lv); const b = f(); return [a, b]; };
     out.mp = at('logistics', 3, () => heroMaxMP(h));
     out.sight = at('scouting', 2, () => heroSight(h));

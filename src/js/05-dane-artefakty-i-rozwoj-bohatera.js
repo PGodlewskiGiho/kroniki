@@ -95,6 +95,9 @@ const HERO_SPECS = {
   Ostromir: { spell: 'magicArrow' }, 'Jagna Mróz': { skill: 'intelligence' }, Zbylut: { dw: 2 }, 'Mirosława': { res: 'gems', n: 1 },
   'Czarnobór': { dw: 7 }, Morana: { spell: 'meteorShower' }, 'Zmorzysław': { skill: 'sorcery' }, Dziwa: { res: 'gold', n: 350 },
   'Gromisław': { dw: 1 }, 'Wojsława': { dw: 5 }, 'Ognisław': { skill: 'logistics' }, Jarogniewa: { res: 'ore', n: 2 },
+  Ulryk: { dw: 2 }, Bogna: { skill: 'intelligence' }, Aelwen: { skill: 'archery' }, 'Dębosz': { dw: 5 }, 'Wrocisław': { res: 'mercury', n: 1 }, 'Grzymisława': { skill: 'offense' },
+  Skrzek: { dw: 3 }, 'Rusałka': { spell: 'cure' }, Belzar: { dw: 5 }, 'Żmija': { spell: 'fireball' }, 'Mieszko Kruszec': { res: 'ore', n: 2 }, Srebrna: { spell: 'lightningBolt' },
+  Grzmot: { dw: 6 }, Nocna: { skill: 'mysticism' }, Warg: { dw: 2 }, Iskra: { spell: 'fireball' },
 };
 const heroSpec = h => (h && HERO_SPECS[h.name]) || null;
 // Doświadczenie potrzebne do poziomu 2, 3, ... (dalej każdy poziom +20%)
