@@ -192,8 +192,9 @@ G.screens.setup = {
       Object.defineProperty(fa, 'tip', { get: () => { const f = col().faction; return f === 'random' ? 'Frakcja gracza: losowa (kliknij, aby zmienić).' : `${factionOf(f).name}: ${factionOf(f).desc} Cecha: ${traitText(f)}. Magia: ${magicText(f)}. Kliknij, aby zmienić.`; }, set() {} });
       B.push(sw, ty, nm, fa); return { sw, ty, nm, fa };
     });
-    this.bStart = new Button(150, 506, 200, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19 });
-    B.push(this.bStart, new Button(450, 506, 200, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
+    this.bStart = new Button(90, 506, 190, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19 });
+    B.push(this.bStart, new Button(305, 506, 190, 46, 'Zasady…', () => G.go('rules'), { key: 'z', size: 19, sub: rulesSummary(G.settings.rules), tip: 'Limit bohaterów, rozejm z komputerem, siła potworów, skarby i odkryta mapa.' }),
+      new Button(520, 506, 190, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
     this.buttons = B;
   },
   nextColor(i) {
@@ -232,6 +233,35 @@ G.screens.setup = {
     RESOURCES.forEach((r, i) => { const x = 230 + i * 72; resIcon(ctx, r.id, x + 10, 234, 24); text(ctx, String(d.res[r.id]), x + 25, 235, { size: 16 }); });
     const n = this.active(), cap = setupCap(S), hu = S.slots.filter(o => o.type === 'human').length;
     text(ctx, `Gracze: ${n} z ${cap} miejsc na tej mapie${hu > 1 ? ` · hot-seat: ${hu} ludzi` : ''}`, 80, 304, { size: 16, weight: 600, color: n > cap ? '#a02010' : '#3a1e08' });
+    this.buttons.forEach(b => b.draw(ctx));
+  },
+};
+// Zasady gry (RULES): każda w osobnym wierszu, wartość wybierana przyciskiem; zapisują się w ustawieniach i trafiają do nowej gry
+const rulesSummary = r => { const d = RULES.filter(R => r && r[R.id] !== R.def); return d.length ? `zmienione: ${d.length}` : 'domyślne'; };
+G.screens.rules = {
+  fps: smoothFps,
+  backdrop() {},
+  buttons: [],
+  enter() {
+    const S = G.settings, B = []; S.rules = validRules(S.rules);
+    RULES.forEach((R, r) => {
+      const y = 132 + r * 70, bw = R.opts.length > 5 ? 52 : 92, gap = R.opts.length > 5 ? 6 : 8;
+      R.opts.forEach((o, i) => B.push(new Button(250 + i * (bw + gap), y, bw, 40, o.name, () => { S.rules[R.id] = o.v; saveSettings(); }, { size: 14, selected: () => S.rules[R.id] === o.v, tip: R.tip })));
+    });
+    B.push(new Button(150, 506, 200, 46, 'Domyślne', () => { S.rules = validRules(null); saveSettings(); }, { key: 'd', size: 19, tip: 'Przywraca zwykłe zasady (limit 8 bohaterów, rozejm wg trudności, zwykłe potwory i skarby, zakryta mapa).' }),
+      new Button(450, 506, 200, 46, 'OK', () => G.go('setup'), { key: 'enter', size: 19 }));
+    this.buttons = B;
+  },
+  onKey(k) { if (k === 'escape') G.go('setup'); },
+  draw(ctx) {
+    const S = G.settings;
+    dimmedMenuScene(ctx, 0.5); drawParchment(ctx, 40, 22, 720, 556);
+    text(ctx, 'Zasady gry', W / 2, 58, { size: 30, align: 'center', color: '#3a1e08', fam: 'title' });
+    text(ctx, 'Obowiązują wszystkich graczy, także komputer', W / 2, 88, { size: 17, align: 'center', color: '#5a3814', italic: true, weight: 500 });
+    divider(ctx, 80, 720, 102);
+    RULES.forEach((R, r) => text(ctx, R.name, 80, 158 + r * 70, { size: 17, color: '#3a1e08', fam: 'title' }));
+    const hint = { heroes: S.rules.heroes === 8 ? 'jak w H3: wielu bohaterów zbiera skarby i podaje armię głównemu' : S.rules.heroes <= 2 ? 'gra jednym wodzem: każdy bohater na wagę złota' : 'mniej bohaterów, wolniejsze czyszczenie mapy' };
+    text(ctx, hint.heroes, 250, 186, { size: 13, color: '#5a3814', italic: true });
     this.buttons.forEach(b => b.draw(ctx));
   },
 };

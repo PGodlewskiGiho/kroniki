@@ -135,7 +135,7 @@ function placeObjects(st) {
   const diff = DIFFICULTIES[st.settings.difficulty].rating / 100;
   const monster = (x, y, boost = 0) => {
     const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), all = NEUTRALS_BY_LEVEL[lvl];
-    const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff);
+    const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff) * rule(st, 'monsters');
     const fit = all.filter(c => CREATURES[c].value <= power * 1.3), list = fit.length ? fit : [all.reduce((a, c) => (CREATURES[c].value < CREATURES[a].value ? c : a))], cid = list[Math.floor(rng() * list.length)]; // bez smoka silniejszego niż cała okolica
     return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
   };
@@ -159,11 +159,11 @@ function placeObjects(st) {
   for (let k = Math.round(N / 90); k > 0; k--) {
     const p = pick((x, y) => dStart(x, y) >= 2); if (!p) continue; const res = RESOURCES[Math.floor(rng() * 7)].id;
     const amount = res === 'gold' ? 500 + Math.floor(rng() * 6) * 100 : (res === 'wood' || res === 'ore') ? 5 + Math.floor(rng() * 6) : 3 + Math.floor(rng() * 4);
-    add({ type: 'res', res, amount, x: p[0], y: p[1] }, [p[1] * n + p[0]]);
+    add({ type: 'res', res, amount: Math.max(1, Math.round(amount * rule(st, 'treasure') / (res === 'gold' ? 100 : 1)) * (res === 'gold' ? 100 : 1)), x: p[0], y: p[1] }, [p[1] * n + p[0]]);
   }
   for (let k = Math.round(N / 300); k > 0; k--) {
     const p = pick((x, y) => dStart(x, y) >= 3); if (!p) continue; const v = Math.floor(rng() * 3);
-    add({ type: 'chest', gold: 1000 + v * 500, exp: 500 + v * 500, x: p[0], y: p[1] }, [p[1] * n + p[0]]);
+    add({ type: 'chest', gold: Math.round((1000 + v * 500) * rule(st, 'treasure') / 100) * 100, exp: Math.round((500 + v * 500) * rule(st, 'treasure') / 100) * 100, x: p[0], y: p[1] }, [p[1] * n + p[0]]);
   }
   for (let k = Math.round(N / 260); k > 0; k--) { const p = pick((x, y) => dStart(x, y) >= 6); if (p) monster(p[0], p[1]); }
   // artefakty: im dalej od startu, tym rzadsze; każdego pilnuje potwór
@@ -281,7 +281,7 @@ function previewHero(st, owner, pick) {
 // seed podaje się tylko w testach (powtarzalny świat); w grze jest losowy.
 function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   const rng = mulberry32(seed), d = DIFFICULTIES[S.difficulty];
-  const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S }, bonusText: '', selHero: 0, cam: null, players: [], heroes: [], towns: [], objects: [] };
+  const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S, rules: validRules(S.rules) }, bonusText: '', selHero: 0, cam: null, players: [], heroes: [], towns: [], objects: [] };
   const map = st.map = generateMap(MAP_SIZES.find(m => m.id === S.mapSize).n, seed);
   st.objects = placeObjects(st);
   placeGrail(st);
@@ -298,6 +298,7 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
     const t = st.towns.find(t => t.owner === p.id), h = createHero(st, p.id, t.x, t.y);
     if (p.human) p.bonusText = startBonus(st, S.bonus, p, h, rng);
     reveal(st, h.x, h.y, HERO_SIGHT + 1, p.id);
+    if (rule(st, 'reveal')) p.explored.fill(1); // zasada „odkryta mapa”
   }
   st.cur = ME = st.players.find(p => p.human).id; st.bonusText = human(st).bonusText; st.selHero = st.heroes.findIndex(h => h.owner === ME);
   return st;

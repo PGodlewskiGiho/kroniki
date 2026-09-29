@@ -13,10 +13,11 @@ function buyMissing(st, owner, cost) {
   for (const [r, k, L] of deals) trade(st, owner, 'gold', r, Math.ceil(k / L.get));
   return true;
 }
-const aiMaxHeroes = st => (st.map.n >= 108 ? 3 : 2);
-// Rozejm: przez tyle dni SI nie atakuje miast ani bohaterów człowieka (Łatwy 21, Normalny 14, Trudny 7, wyżej 0)
+const aiMaxHeroes = st => Math.min(heroLimit(st), st.map.n >= 108 ? 3 : 2);
+// Rozejm: przez tyle dni SI nie atakuje miast ani bohaterów człowieka (zasada „rozejm”; wg trudności: Łatwy 21, Normalny 14, Trudny 7, wyżej 0)
 const AI_PEACE_DAYS = [21, 14, 7, 0, 0];
-const aiPeace = (st, owner) => owner >= 0 && playerOf(st, owner).human && st.dayTotal <= AI_PEACE_DAYS[st.settings.difficulty];
+const truceDays = st => { const r = rule(st, 'truce'); return r === 'auto' ? AI_PEACE_DAYS[st.settings.difficulty] : r; };
+const aiPeace = (st, owner) => owner >= 0 && playerOf(st, owner).human && st.dayTotal <= truceDays(st);
 // Daily bonus złota SI na wyższych poziomach trudności (Trudny +300, Ekspert +600, Niemożliwy +1000)
 const aiGoldBonus = st => Math.max(0, DIFFICULTIES[st.settings.difficulty].rating - 100) * 10;
 const armyStrength = h => Math.round(armyPower(h.army) * heroFactor(h));
@@ -178,7 +179,7 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'well' && h.mana >= heroMaxMana(h) * 0.6) return 0;
   if ((ob.kind === 'temple' || ob.kind === 'fountain') && h.boost && h.boost[ob.kind === 'temple' ? 'morale' : 'luck']) return 0;
   if (ob.kind === 'witchHut' && (heroSkill(h, ob.skill) || h.skills.length >= MAX_SKILLS)) return 0;
-  if (ob.kind === 'prison' && st.heroes.filter(o => o.owner === h.owner).length >= MAX_HEROES) return 0;
+  if (ob.kind === 'prison' && st.heroes.filter(o => o.owner === h.owner).length >= heroLimit(st)) return 0;
   if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
   return S.ai;
 }

@@ -277,5 +277,9 @@
    0,045 s, domyślne; zwykłe – STEP_TIME; ukryte – bez animacji); spacja, Enter, Esc albo kliknięcie mapy pomija resztę
    ruchów (skipAi), okna obrony zostają. updateAi liczy najwyżej ok. 12 ms na klatkę. aiReach na kopcu z tablic typowanych
    i bez szukania bohatera na każdym polu; próbne bitwy SI zapamiętane (aiFightMemo: dzień + stan obu stron).
+   Zasady gry (ekran „Zasady…” przy nowej grze, G.screens.rules): RULES w 07 (heroes – limit bohaterów 1–8, truce – rozejm
+   z komputerem, monsters – mnożnik siły potworów, treasure – surowce i skrzynie, reveal – odkryta mapa). G.settings.rules
+   kopiuje się do st.settings.rules; rule(st, id) daje wartość domyślną dla starych zapisów. heroLimit(st) zamiast MAX_HEROES
+   (najem, więzienie, aiMaxHeroes), truceDays(st) w aiPeace.
    ===================================================================================== */
 

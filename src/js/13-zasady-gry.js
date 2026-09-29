@@ -743,7 +743,7 @@ function trade(st, owner, from, to, lots) {
   const R = playerOf(st, owner).resources; R[from] -= L.give * lots; R[to] += L.get * lots; return null;
 }
 // --- tawerna: najem bohaterów ---------------------------------------------------------------
-const HERO_COST = 2500, MAX_HEROES = 8;
+const HERO_COST = 2500, MAX_HEROES = 8; // MAX_HEROES: górna granica zasady „limit bohaterów” (heroLimit)
 const weekIndex = st => Math.floor((st.dayTotal - 1) / 7);
 // Oferta tawerny gracza na bieżący tydzień (wspólna dla wszystkich jego miast): dwóch chętnych,
 // pierwszy z frakcji gracza, drugi z innej. Imiona nie powtarzają się z bohaterami na mapie.
@@ -776,7 +776,7 @@ function tavernHero(st, owner, x, y, o) {
 function hireHero(st, t, k) {
   const owner = t.owner, P = playerOf(st, owner), o = tavernOffer(st, owner)[k];
   if (!hasB(t, 'tavern')) return { error: 'W mieście nie ma tawerny' };
-  if (st.heroes.filter(h => h.owner === owner).length >= MAX_HEROES) return { error: `Możesz mieć najwyżej ${MAX_HEROES} bohaterów` };
+  if (st.heroes.filter(h => h.owner === owner).length >= heroLimit(st)) return { error: `Możesz mieć najwyżej ${heroLimit(st)} ${heroLimit(st) === 1 ? 'bohatera' : 'bohaterów'} (limit tej gry)` };
   if (heroAt(st, t.x, t.y)) return { error: 'Brama miasta jest zajęta: najpierw wyprowadź bohatera' };
   if (!o) return { error: 'Nikt więcej nie czeka w tawernie' };
   if (P.resources.gold < HERO_COST) return { error: `Najem kosztuje ${HERO_COST} złota` };
@@ -811,7 +811,7 @@ function dwellHire(st, h, ob, k) {
 }
 // Więzienie: uwolniony bohater (losowy, z doświadczeniem) staje obok. Zwraca nowego bohatera albo tekst przeszkody.
 function freePrisoner(st, h, ob) {
-  if (st.heroes.filter(o => o.owner === h.owner).length >= MAX_HEROES) return `Więzień nie ma dokąd pójść: masz już ${MAX_HEROES} bohaterów.`;
+  if (st.heroes.filter(o => o.owner === h.owner).length >= heroLimit(st)) return `Więzień nie ma dokąd pójść: masz już ${heroLimit(st)} ${heroLimit(st) === 1 ? 'bohatera' : 'bohaterów'} (limit tej gry).`;
   const n = st.map.n, spot = DX8.map((dx, d) => [ob.x + dx, ob.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && !st.guard[y * n + x]);
   if (!spot) return 'Przy więzieniu nie ma wolnego miejsca dla uwolnionego.';
   const taken = new Set(st.heroes.map(o => o.name)), pool = FACTIONS.flatMap(F => F.heroes.map(([name, cls, female]) => ({ name, cls, female: !!female, fac: F.id }))).filter(c => !taken.has(c.name));

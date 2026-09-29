@@ -22,6 +22,7 @@ function loadSettings() {
   if (!['auto', 'high', 'low'].includes(S.quality)) S.quality = 'auto';
   if (!['pixel', 'classic'].includes(S.font)) S.font = 'pixel'; // czcionka: pikselowa (domyślna) albo klasyczna (szeryfowa)
   if (!AI_MOVES.some(m => m.id === S.aiMoves)) S.aiMoves = 'fast';
+  S.rules = validRules(S.rules);
   if (!(S.autoDpr >= 0.5 && S.autoDpr <= 2)) delete S.autoDpr;
   S.slots = validSlots(S.slots) || legacySlots(S);
 }
@@ -42,6 +43,22 @@ function legacySlots(S) {
 }
 // Aktywne miejsca do createNewGame. Bez S.slots (testy, stare ustawienia) liczą się kolor, frakcja i liczba rywali.
 const playerSlots = S => (validSlots(S.slots) || legacySlots(S)).filter(o => o.type !== 'off');
+// Zasady gry (ekran „Zasady” przy nowej grze): trafiają do st.settings.rules; stare zapisy bez nich mają wartości domyślne
+const RULES = [
+  { id: 'heroes', name: 'Limit bohaterów', def: 8, tip: 'Ilu bohaterów może mieć każdy gracz naraz (także komputer). Mało bohaterów: wolniejsza, spokojniejsza gra jednym wodzem.',
+    opts: [1, 2, 3, 4, 5, 6, 7, 8].map(v => ({ v, name: String(v) })) },
+  { id: 'truce', name: 'Rozejm', def: 'auto', tip: 'Przez ile dni komputer nie atakuje miast ani bohaterów ludzi. „Wg trudności”: Łatwy 21, Normalny 14, Trudny 7, wyżej 0.',
+    opts: [{ v: 'auto', name: 'Wg trudności' }, { v: 0, name: 'Brak' }, { v: 7, name: 'Tydzień' }, { v: 14, name: '2 tygodnie' }, { v: 28, name: 'Miesiąc' }] },
+  { id: 'monsters', name: 'Potwory', def: 1, tip: 'Liczebność potworów neutralnych na mapie (strażników kopalni, skarbów i przejść).',
+    opts: [{ v: 0.6, name: 'Słabe' }, { v: 1, name: 'Zwykłe' }, { v: 1.5, name: 'Silne' }, { v: 2.2, name: 'Zabójcze' }] },
+  { id: 'treasure', name: 'Skarby', def: 1, tip: 'Ile dają leżące na mapie surowce i skrzynie.',
+    opts: [{ v: 0.6, name: 'Skąpo' }, { v: 1, name: 'Zwykle' }, { v: 1.6, name: 'Hojnie' }] },
+  { id: 'reveal', name: 'Mapa', def: false, tip: 'Odkryta: wszyscy od początku widzą cały teren i obiekty (bez mgły wojny na starcie).',
+    opts: [{ v: false, name: 'Zakryta' }, { v: true, name: 'Odkryta' }] },
+];
+function validRules(r) { const out = {}; for (const R of RULES) out[R.id] = r && R.opts.some(o => o.v === r[R.id]) ? r[R.id] : R.def; return out; }
+const rule = (st, id) => { const r = st.settings.rules, R = RULES.find(q => q.id === id); return r && R.opts.some(o => o.v === r[id]) ? r[id] : R.def; };
+const heroLimit = st => rule(st, 'heroes');
 // Ruchy komputera na mapie: czas jednego kroku bohatera (0 = nie pokazujemy, mapa zmienia się od razu)
 const AI_MOVES = [{ id: 'fast', name: 'szybkie', step: 0.045 }, { id: 'normal', name: 'zwykłe', step: STEP_TIME }, { id: 'off', name: 'ukryte', step: 0 }];
 const aiMoves = () => AI_MOVES.find(m => m.id === G.settings.aiMoves) || AI_MOVES[0];
