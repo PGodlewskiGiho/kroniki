@@ -28,7 +28,7 @@ async function bakeGroup(ids, done) {
       let mouth = null;
       const add = (pose, i, P, map) => {
         const g0 = buildUnit(L, P), g = pose === 'dead' ? layDead(g0, L) : g0;
-        const c = map ? G3.render(g, Math.round(W * KM / KB) + 4, Math.round(H * KM / KB) + 4, KM, Math.round(AX * KM / KB) + 2, Math.round(AY * KM / KB) + 2) : G3.render(g, W, H, KB, AX, AY, pose === 'attack' && i === 3 ? { probe: 'mouth' } : {});
+        const c = map ? G3.render(g, Math.round(W * KM / KB) + 4, Math.round(H * KM / KB) + 4, KM, Math.round(AX * KM / KB) + 2, Math.round(AY * KM / KB) + 2) : G3.render(g, W, H, KB, AX, AY, pose === 'attack' && i === Math.round(0.55 * (F.attack - 1)) ? { probe: 'mouth' } : {});
         const ax = map ? Math.round(AX * KM / KB) + 2 : AX, ay = map ? Math.round(AY * KM / KB) + 2 : AY;
         if (c._probe) mouth = [Math.round(c._probe[0] - ax), Math.round(c._probe[1] - ay)]; // paszcza w klatce ataku (zionięcie)
         // przycięcie do zajętych pikseli (z marginesem 1 px)

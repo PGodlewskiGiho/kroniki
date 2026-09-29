@@ -20,6 +20,10 @@ const BUILDS = {
 };
 const buildOf = L => BUILDS[L.build] || (L.tusks && L.hunch ? BUILDS.brute : BUILDS.normal);
 
+// Druga łapa w ataku pazurami: ten sam zamach i cięcie co pierwsza, ale chwilę później (dwa ciosy jeden po drugim)
+const atkEnv = A => [A < 0.45 ? A / 0.45 : A < 0.7 ? 1 - (A - 0.45) / 0.25 : 0, A < 0.45 ? 0 : A < 0.7 ? (A - 0.45) / 0.25 : 1 - (A - 0.7) / 0.3];
+const clawArm = A => { const [w, h] = atkEnv(Math.max(0, A - 0.12)); return w * 2.3 + h * 0.55 - 0.2; };
+const clawEl = A => { const [w, h] = atkEnv(Math.max(0, A - 0.12)); return w * 1.1 - h * 0.25; };
 function humanoid(L, P = {}) {
   const root = new THREE.Group(), t = P.t || 0, walking = P.walk != null, flying = P.fly != null;
   const ph = (walking ? P.walk : flying ? P.fly : 0) * Math.PI * 2, sw = walking ? Math.sin(ph) : 0;
@@ -30,24 +34,28 @@ function humanoid(L, P = {}) {
   // przebieg ataku: zamach (0..0,45), cios (0,45..0,7), powrót
   const wind = A == null ? 0 : A < 0.45 ? A / 0.45 : A < 0.7 ? 1 - (A - 0.45) / 0.25 : 0, hit = A == null ? 0 : A < 0.45 ? 0 : A < 0.7 ? (A - 0.45) / 0.25 : 1 - (A - 0.7) / 0.3;
   const hunch = L.hunch === true ? 0.22 : L.hunch || 0, pitch = flying ? 0.55 + Math.sin(ph) * 0.05 : 0;
-  const lean = hunch + (style === 'thrust' || style === 'claw' ? hit * 0.2 : style === 'swing' ? hit * 0.14 - wind * 0.1 : 0) - hurt * 0.3;
+  // całe ciało w ataku: pochylenie, wypad do przodu (lunge, w jednostkach świata), przysiad przed ciosem i skok stworów bez broni
+  const clawK = style === 'claw', lean = hunch + (style === 'thrust' ? hit * 0.3 - wind * 0.08 : clawK ? hit * 0.45 - wind * 0.22 : style === 'swing' ? hit * 0.3 - wind * 0.16 : style === 'cast' ? hit * 0.1 : 0) - hurt * 0.3;
+  const lunge = A == null || L.mounted ? 0 : (style === 'thrust' ? 0.3 : clawK ? 0.42 : style === 'swing' ? 0.2 : style === 'cast' ? 0.06 : 0) * hit - (clawK || style === 'swing' ? 0.06 : 0.03) * wind;
+  const crouch = A == null || L.mounted || legless ? 0 : (clawK ? 0.07 : 0.035) * wind + 0.03 * hit, hop = clawK && A != null && !L.mounted ? Math.sin(Math.min(1, hit * 1.4) * Math.PI) * 0.12 : 0;
   // --- nogi: długości i kąty spoczynkowe; wysokość bioder tak, by stopy stały na ziemi ---
   const LL = B.legL, legSegs = legT === 'goat' || legT === 'beast' || legT === 'talon' ? [[0.3 * LL, 0.5], [0.32 * LL, -1.35], [0.22 * LL, 0.95]] : [[0.35 * LL, 0], [0.34 * LL, 0]];
   let hipH = legSegs.length === 3 ? 0.07 : 0.1, acc = 0; for (const [l, a] of legSegs) { acc += a; hipH += l * Math.cos(acc); }
   if (legless) hipH = 0.79;
   const hover = L.hover ? 0.2 + Math.sin(t * 2.4) * 0.04 : 0;
   const bob = walking ? Math.abs(Math.sin(ph)) * (legless ? 0.015 : 0.035) : flying ? Math.sin(ph) * 0.04 : Math.sin(t * 2.4) * 0.01;
-  const hips = joint(root, [0, hipH + bob + hover + (L.flame ? 0.06 : 0), 0], -pitch);
+  const hips = joint(root, [lunge, hipH + bob + hover + (L.flame ? 0.06 : 0) - crouch + hop, 0], -pitch);
   const legCol = bony ? skin : bare || L.legsBare ? skin : DK(cloth, 0.3), legK = bony ? 'bone' : bare || L.legsBare ? skinK : armor === 'plate' ? 'mail' : 'cloth';
   if (!legless) for (const side of [-1, 1]) {
     const th = joint(hips, [0, -0.03, (L.mounted ? 0.2 : 0.11) * side * B.sh * S]), goat = legSegs.length === 3;
     const swing = walking ? sw * side * 0.5 : flying ? -0.5 - side * 0.12 : (side > 0 ? 0.1 : -0.06) + hurt * 0.1;
-    th.rotation.z = L.mounted ? 1.3 : legSegs[0][1] + swing;
+    const stride = A == null || L.mounted ? 0 : side > 0 ? hit * 0.6 - wind * 0.12 : -hit * 0.42 + wind * 0.18; // wykrok: przednia noga naprzód, tylna odpycha
+    th.rotation.z = L.mounted ? 1.3 : legSegs[0][1] + swing + stride + crouch * 3;
     const tr = 0.1 * S * B.leg, [thL] = legSegs[0];
     if (bony) bone(th, 0.035, 0.03, thL, skin, 'bone');
     else { bone(th, tr, tr * 0.78, thL, legCol, legK); if (bare || goat) th.add(sph(tr * 1.05, legCol, legK, [0.02, -thL * 0.4, 0], [1, 1.6, 0.95])); } // udo z mięśniem
     const kn = joint(th, [0, -thL, 0]); const [shL, shA] = legSegs[1];
-    kn.rotation.z = L.mounted ? -1.4 : shA + (walking ? -Math.max(0, Math.cos(ph) * side) * 0.8 : flying ? -0.7 : 0);
+    kn.rotation.z = L.mounted ? -1.4 : shA + (walking ? -Math.max(0, Math.cos(ph) * side) * 0.8 : flying ? -0.7 : 0) - crouch * 6 - (A != null && side < 0 ? hit * 0.25 : 0);
     if (bony) { kn.add(sph(0.045, skin, 'bone', [0, 0, 0])); bone(kn, 0.03, 0.025, shL, skin, 'bone'); kn.add(cap(0.03, 0.1, skin, 'bone', [0.05, -shL, 0], [0, 0, Math.PI / 2])); continue; }
     if (armor === 'plate' || armor === 'breast') { kn.add(slab([[0, 0.07], [0.07, 0], [0.02, -0.08], [-0.05, -0.02]], 0.16 * B.leg, metal, 'steel', [0.07, 0, 0], [0, 0, 0])); } // nakolannik
     const sr = 0.075 * S * B.leg; bone(kn, sr, sr * 0.8, shL, legCol, legK);
@@ -157,11 +165,11 @@ function humanoid(L, P = {}) {
       else if (style === 'bow') { aSh = A == null ? 0.25 : 1.45; aEl = A == null ? 0.9 : 0.05; }
       else if (style === 'xbow') { aSh = A == null ? 0.5 : 1.3; aEl = A == null ? 1.0 : 0.3; }
       else if (style === 'cast') { aSh = 0.3 + (A == null ? 0 : Math.sin(A * Math.PI) * 1.4); aEl = 0.6 - (A == null ? 0 : Math.sin(A * Math.PI) * 0.4); }
-      else { aSh = 0.3 + hit * 1.3 + wind * 0.4; aEl = 0.8 - hit * 0.6; }
+      else { aSh = 0.3 + wind * 2.3 + hit * 0.55; aEl = 0.35 + wind * 1.25 - hit * 0.2; } // pazury: zamach nad głowę, cięcie z góry przed siebie
       if (walking && A == null) aSh += -sw * 0.35 * side; if (flying && A == null) aSh += 0.9; aSh += hurt * 0.6;
     } else {
-      aSh = (walking ? sw * 0.35 : 0.1) + (L.shield ? 0.9 : 0) + (style === 'bow' && A != null ? 1.4 : 0) + (style === 'xbow' ? 1.1 : 0) + (style === 'claw' ? hit * 1.4 + wind * 0.3 : 0) + hurt * 0.5 + (flying ? 0.7 : 0);
-      aEl = L.shield ? 0.7 : style === 'bow' && A != null ? 0.1 : style === 'xbow' ? 0.9 : 0.5;
+      aSh = (walking ? sw * 0.35 : 0.1) + (L.shield ? 0.9 : 0) + (style === 'bow' && A != null ? 1.4 : 0) + (style === 'xbow' ? 1.1 : 0) + (style === 'claw' ? (A == null ? 0 : clawArm(A)) : 0) + hurt * 0.5 + (flying ? 0.7 : 0);
+      aEl = L.shield ? 0.7 : style === 'bow' && A != null ? 0.1 : style === 'xbow' ? 0.9 : style === 'claw' && A != null ? 0.5 + clawEl(A) : 0.5;
     }
     sh.rotation.z = aSh;
     const ar = 0.078 * S * B.arm, uL = 0.29 * B.armL, fL = 0.26 * B.armL, bareArm = bare || L.bareArms || (!armor && !L.robe && !L.sleeves && bare !== false && !!L.claws);
