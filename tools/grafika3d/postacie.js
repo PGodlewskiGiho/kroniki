@@ -387,7 +387,7 @@ function membraneWing(w, col, boneCol, s = 1, claw = true, sc = 1) {
 // Pierzaste skrzydło: ramię z lotkami (długie pióra wachlarzem), drugorzędowe i pokrywy
 function featherFan(w, col, s = 1, flame = false) {
   const K = flame ? 'fire' : 'feather', arm = [[0, 0, 0], [-0.1 * s, 0.4 * s, 0], [0.05 * s, 0.8 * s, 0], [-0.2 * s, 1.1 * s, 0]];
-  w.add(tube(arm, 0.06 * s, 0.03 * s, col, K));
+  w.add(tube(arm, 0.042 * s, 0.022 * s, col, K));
   const feather = (x, y, len, a, c) => w.add(slab([[0, 0], [0.05 * s, len * 0.25], [0.03 * s, len * 0.85], [0, len], [-0.035 * s, len * 0.6], [-0.03 * s, len * 0.2]], 0.01, c, K, [x, y, 0], [0, 0, a], null, 0.2));
   for (let i = 0; i < 10; i++) { const f = i / 9, p = f < 0.5 ? [arm[2][0] + (arm[3][0] - arm[2][0]) * f * 2, arm[2][1] + (arm[3][1] - arm[2][1]) * f * 2] : [arm[2][0] - (f - 0.5) * 0.5 * s, arm[2][1] - (f - 0.5) * 0.9 * s];
     feather(p[0], p[1], (0.75 - f * 0.25) * s, 1.5 + f * 1.3, i % 2 ? col : LT(col, 0.12)); } // lotki

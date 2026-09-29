@@ -193,7 +193,7 @@ function birdBody(L, P, o) {
   // szyja i głowa: głowa zawsze poziomo, patrzy na wroga
   const nr = -pitch * 0.55, nk = joint(body, [0.38, 0.1, 0], nr); nk.add(tube([[0, 0, 0], [0.06, 0.14, 0], [0.1, 0.26, 0]], 0.11, 0.085, hd, K));
   for (let i = 0; i < 9; i++) { const a = (i / 8 - 0.5) * 2.4; nk.add(slab([[0, 0], [0.04, 0], [-0.06, 0.16]], 0.012, i % 2 ? hd : DK(hd, 0.15), fK, [-0.02, 0.12 + Math.cos(a) * 0.02, Math.sin(a) * 0.09], [0, a * 0.4, 1.9 - nr])); } // kryza piór na karku
-  const head = joint(nk, [0.1, 0.3, 0], -(pitch + nr) - 0.08 - hit * 0.25);
+  const head = joint(nk, [0.1, 0.3, 0], -(pitch + nr) - 0.08 - hit * 0.25); head.scale.setScalar(1.35);
   head.add(rbox(0.21, 0.15, 0.15, 0.04, hd, K, [0, 0.01, 0])); head.add(rbox(0.12, 0.1, 0.13, 0.03, hd, K, [0.07, -0.03, 0]));
   const bk = o.beak || '#e0a030'; head.add(rbox(0.06, 0.06, 0.09, 0.015, LT(bk, 0.2), 'horn', [0.12, 0.0, 0])); // woskówka
   head.add(slab([[0, 0.035], [0.1, 0.04], [0.19, 0.01], [0.24, -0.05], [0.21, -0.11], [0.18, -0.05], [0.09, -0.02], [0, -0.025]], 0.07, bk, 'horn', [0.12, -0.005, 0], null, null, 0.3)); // hakowaty dziób
@@ -202,23 +202,27 @@ function birdBody(L, P, o) {
   const crest = o.crest || DK(col, 0.1); for (let i = 0; i < 5; i++) head.add(slab([[0, 0], [0.04, 0.01], [-0.3 - i * 0.04, 0.06 + i * 0.03], [-0.26 - i * 0.04, 0.02 + i * 0.02]], 0.012, i % 2 ? crest : LT(crest, 0.2), o.flame || o.glow ? (o.flame ? 'fire' : 'glow') : 'feather', [-0.06, 0.06, (i - 2) * 0.02], [0, 0, 0.25 + Math.sin(t * 3 + i) * 0.05])); // pióropusz
   marker(head, 'mouth', [0.3, -0.06, 0]);
   // skrzydła z barków (poza obrotem tułowia): w spoczynku uniesione wysoko jak w herbie
-  const sx = 0.16 * Math.cos(pitch) - 0.16 * Math.sin(pitch), sy = H + 0.16 * Math.sin(pitch) + 0.16 * Math.cos(pitch), wl = joint(root, [sx, sy, 0]);
-  for (const z of [-1, 1]) { const w = featherWing(wl, z, wcol, 1.95, wingFlap(P, 0.12), fK);
+  const sx = 0.05 * Math.cos(pitch) - 0.17 * Math.sin(pitch), sy = H + 0.05 * Math.sin(pitch) + 0.17 * Math.cos(pitch), wl = joint(root, [sx, sy, 0]);
+  for (const z of [-1, 1]) { // w spoczynku skrzydła rozpostarte na boki i odchylone do tyłu, za tułowiem (nie zasłaniają piersi i głowy)
+    const beat = fly ? Math.sin(P.fly * Math.PI * 2) : 0, w = joint(wl, [-0.04, 0, 0.12 * z]);
+    w.rotation.set((fly ? 0.5 + beat * 1.0 : 1.0 + Math.sin(t * 2) * 0.05 + hit * 0.35) * z, (fly ? -0.2 : -0.75) * z, fly ? -0.3 : 0.55); w.scale.setScalar(1.95 * 0.9); featherFan(w, wcol, 1, !!o.flame);
     if (o.bolts) for (const off of [0, 0.2]) w.add(tube([[0.02, 0.15 + off, 0.02], [0.1, 0.35 + off, 0.02], [-0.02, 0.5 + off, 0.02], [0.08, 0.7 + off, 0.02], [-0.05, 0.9 + off, 0.02]], 0.012, 0.004, o.bolts, 'glow')); } // błyskawice
   // ogon: wachlarz długich piór (feniks: smugi ognia)
   for (let i = 0; i < 7; i++) { const a = (i - 3) * 0.12; body.add(slab([[0, 0], [0.05, -0.1], [0.03, -0.7 - Math.abs(i - 3) * -0.05], [0, -0.78], [-0.03, -0.6], [-0.04, -0.1]], 0.012, i % 2 ? wcol : LT(wcol, 0.12), fK, [-0.38, -0.02, a * 0.5], [a, 0, 1.3 + Math.abs(i - 3) * 0.04])); }
   if (o.flame) for (let i = 0; i < 5; i++) body.add(cone(0.05, 0.8 + i * 0.1, i % 2 ? '#ff6a1a' : '#ffc040', 'fire', [-0.7 - i * 0.05, -0.2 - i * 0.05 + Math.sin(t * 5 + i) * 0.03, (i - 2) * 0.08], [0, 0, 1.4 + i * 0.05], 6)); // smugi ognia
   // nogi: pióra na udach, łuskowate skoki, szpony (w locie podkulone)
   for (const z of [-1, 1]) {
-    const lg = joint(root, [-0.02, legH + 0.08 + (fly ? 0.2 : 0), 0.1 * z], fly ? -1.3 : 0.12); lg.add(sph(0.1, col, K, [0.02, -0.06, 0], [1, 1.5, 0.9])); // udo w piórach
-    bone(lg, 0.035, 0.03, legH, o.leg || '#d0a040', 'scale'); const ft = joint(lg, [0, -legH, 0], fly ? 1.3 : -0.12);
-    for (let k = -1; k <= 1; k++) { ft.add(cyl(0.015, 0.018, 0.11, o.leg || '#d0a040', 'scale', [0.06, -0.01, k * 0.04], [0, 0, Math.PI / 2 + 0.2])); ft.add(spike(0.014, 0.07, '#1a1410', 'horn', [0.13, -0.03, k * 0.045], [0, 0, -2.3])); }
-    ft.add(spike(0.014, 0.08, '#1a1410', 'horn', [-0.06, -0.02, 0], [0, 0, 2.2]));
+    const lg = joint(root, [-0.02, legH + 0.08 + (fly ? 0.2 : 0), 0.11 * z], fly ? -1.3 : 0.12); // udo w piórach („spodnie” orła)
+    for (let i = 0; i < 4; i++) lg.add(slab([[0, 0], [0.07, -0.02], [0.03, -0.22], [-0.05, -0.05]], 0.05, i % 2 ? col : DK(col, 0.12), fK, [0.02, 0.02 - i * 0.06, 0], [0, 0, 0.1]));
+    bone(lg, 0.05, 0.042, legH, o.leg || '#d0a040', 'scale'); const ft = joint(lg, [0, -legH, 0], fly ? 1.3 : -0.12);
+    for (let k = -1; k <= 1; k++) { ft.add(cyl(0.02, 0.024, 0.14, o.leg || '#d0a040', 'scale', [0.07, -0.01, k * 0.05], [0, 0, Math.PI / 2 + 0.2])); ft.add(spike(0.02, 0.1, '#1a1410', 'horn', [0.16, -0.035, k * 0.055], [0, 0, -2.3])); } // szpony
+    ft.add(spike(0.02, 0.11, '#1a1410', 'horn', [-0.07, -0.02, 0], [0, 0, 2.2]));
   }
+  if (!fly) { const g = new THREE.Group(); g.add(root); root.rotation.y = -0.45; return g; } // w spoczynku pierś lekko ku widzowi: widać oba skrzydła
   return root;
 }
 function bird(L, P = {}) { const r = birdBody(L, P, { col: L.fur, wing: L.wing, head: L.head, beak: L.beak, kind: 'feather', glow: L.glow, bolts: L.glow, crest: L.crest || (L.glow ? L.glow : null) }); r.scale.setScalar(1.1 * (L.size || 1)); return r; }
-function phoenix(L, P = {}) { const r = birdBody(L, P, { col: '#e8501a', wing: '#f08a20', head: '#f8b030', beak: '#ffe070', kind: 'fire', flame: true, eye: '#fff8c0', crest: '#ffd060', leg: '#e8a040' }); r.scale.setScalar(1.05 * (L.size || 1)); return r; }
+function phoenix(L, P = {}) { const r = birdBody(L, P, { col: '#c02c0c', wing: '#e05a14', head: '#e88a18', beak: '#ffd040', kind: 'fire', flame: true, eye: '#fff8c0', crest: '#ffc020', leg: '#c87020' }); r.scale.setScalar(1.05 * (L.size || 1)); return r; }
 
 // Smok: kanciasta głowa z łukami brwiowymi, kryzą kolców za żuchwą, rogami i zębami; płyty na brzuchu, płetwy kolców
 // na grzbiecie, szyi i ogonie, ostrze na ogonie; ogromne, postrzępione skrzydła z pazurami. W locie łapy podkulone,
@@ -319,12 +323,12 @@ function hydra(L, P = {}) {
   q.tail.add(tube(tl, 0.16, 0.025, col, 'scale', 2)); for (let i = 1; i < 4; i++) q.tail.add(spike(0.03, 0.13 - i * 0.02, dark, 'horn', [tl[i][0], tl[i][1] + 0.11 - i * 0.02, tl[i][2]], [0, 0, 0.6]));
   const front = Math.round((n - 1) * 0.25);
   for (let k = 0; k < n; k++) {
-    const f = k / (n - 1), a = 0.2 + f * 1.3, sw = Math.sin(t * 2 + k * 1.3) * 0.05, lunge = hit * (k % 2 ? 0.55 : 0.25) * (1 - f * 0.5), z = (f - 0.5) * 0.46;
-    const L1 = 1.0 + Math.sin(k * 1.7) * 0.12, px = Math.cos(a), py = Math.sin(a), nx = -py, ny = px, s = (k % 2 ? 1 : -1) * 0.1; // S-kształt: wygięcie w poprzek szyi
+    const f = k / (n - 1), a = -0.05 + f * 1.95, sw = Math.sin(t * 2 + k * 1.3) * 0.05, lunge = hit * (k % 2 ? 0.55 : 0.25) * (1 - f * 0.5), z = (f - 0.5) * 0.6;
+    const L1 = 1.15 + Math.sin(k * 1.7) * 0.12 + (f > 0.6 ? 0.15 : 0), px = Math.cos(a), py = Math.sin(a), nx = -py, ny = px, s = (k % 2 ? 1 : -1) * 0.12; // wachlarz szyj od przodu po górę i tył; S-kształt
     const pts = [[0, 0, z * 0.3], [px * 0.3 + nx * s, py * 0.3 + ny * s + 0.04, z * 0.6], [px * L1 * 0.62 - nx * s + lunge * 0.4, py * L1 * 0.62 - ny * s + sw, z * 0.9], [px * L1 + lunge + 0.08, py * L1 + 0.08 + sw - lunge * 0.3, z]];
     q.neck.add(tube(pts, 0.11, 0.075, col, 'scale', 2));
     for (let i = 1; i < 3; i++) q.neck.add(spike(0.025, 0.1, dark, 'horn', [pts[i][0] - nx * 0.08, pts[i][1] + 0.08, pts[i][2]], [0, 0, a - 0.9])); // kolce na szyi
-    const h = joint(q.neck, pts[3], -0.15 - lunge * 0.3 + Math.sin(t * 1.5 + k) * 0.05); h.scale.setScalar(1.25);
+    const h = joint(q.neck, pts[3], -0.2 + (f - 0.4) * 0.6 - lunge * 0.3 + Math.sin(t * 1.5 + k) * 0.05); h.scale.setScalar(1.2); // głowy rozchylone wachlarzem
     reptileHead(h, col, { bite: hit * (k % 2 ? 1 : 0.6), eyes: L.eyes || '#f0e040', horns: L.horns });
     if (k === front) marker(h, 'mouth', [0.4, -0.06, 0]);
   }
