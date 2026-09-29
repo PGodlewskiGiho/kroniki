@@ -261,5 +261,9 @@
    heroBattleSprite z podmianą koloru-klucza na barwę gracza). Piksel jednostek 1,3 px (bitwa), 1,8 px (mapa). Machiny wojenne
    (balista, namiot medyka, wóz z amunicją, katapulta, strzelec na wieży) mają modele w maszyny.js. Bez arkusza zostaje
    dawny rysunek wektorowy (battleSprite2D, creatureSprite2D, heroBattleSprite2D).
+   Krok 18: po 2 nowych bohaterów w każdym zamku; portrety bohaterów z tools/portrety-ai (Stable Diffusion + wzorce stylu
+   dla klasy) jako HERO_PORTRAITS. Krok 18b: 13 nowych stworów neutralnych (chłop, niziołek, rozbójnik, mumia, koczownik,
+   strzelec wyborowy, złoty i diamentowy golem, zaklinacz, smoki: baśniowy, rdzawy, kryształowy, lazurowy); potwór na mapie
+   wybierany tak, by nie był silniejszy niż okolica. Smoki z różnymi sylwetkami (look.form: heavy, crystal, serpent, fae).
    ===================================================================================== */
 

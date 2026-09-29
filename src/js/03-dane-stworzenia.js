@@ -30,7 +30,7 @@ const CREATURES = {
 };
 // Potwory na mapie: własne stwory neutralne i podstawowe (nieulepszone) jednostki wszystkich frakcji; uzupełnia je
 // fillNeutrals() po wczytaniu wszystkich frakcji (poziomy 6 i 7 to wyłącznie jednostki frakcji).
-const NEUTRALS_BY_LEVEL = { 1: ['goblin', 'skeleton'], 2: ['wolf'], 3: ['orc'], 4: ['troll'], 5: ['ogre'], 6: [], 7: [] };
+const NEUTRALS_BY_LEVEL = { 1: ['goblin', 'skeleton', 'peasant', 'halfling'], 2: ['wolf', 'rogue'], 3: ['orc', 'mummy', 'nomad'], 4: ['troll', 'sharpshooter'], 5: ['ogre', 'goldGolem', 'faerieDragon'], 6: ['enchanter', 'diamondGolem'], 7: ['rustDragon', 'crystalDragon', 'azureDragon'] };
 function fillNeutrals() { for (const [id, c] of Object.entries(CREATURES)) if (c.faction && c.up && !NEUTRALS_BY_LEVEL[c.level].includes(id)) NEUTRALS_BY_LEVEL[c.level].push(id); }
 const QTY = [[1, 'Kilka'], [5, 'Grupa'], [10, 'Oddział'], [20, 'Mnóstwo'], [50, 'Horda'], [100, 'Tłum'], [250, 'Rój'], [500, 'Zatrzęsienie'], [1000, 'Legion']];
 function qtyName(c) { let s = QTY[0][1]; for (const [m, nm] of QTY) if (c >= m) s = nm; return s; }
@@ -53,6 +53,22 @@ Object.assign(CREATURES, {
 });
 const mkU = (name, plural, gen, level, att, def, dmin, dmax, hp, spd, growth, value, cost, extra = {}) =>
   ({ name, plural, gen, acc: gen, level, att, def, dmin, dmax, hp, spd, growth, value, shots: 0, cost, ...extra });
+// Kolejne stworzenia neutralne: od chłopów po legendarne smoki (najsilniejsze tylko tam, gdzie siła potworów na mapie im dorównuje)
+Object.assign(CREATURES, {
+  peasant: mkU('Chłop', 'Chłopi', 'chłopów', 1, 1, 1, 1, 1, 1, 3, 25, 15, { gold: 10 }, { look: { kind: 'hum', skin: '#d8a878', cloth: '#8a7a5a', size: 0.95, weapon: 'spear', helm: 'cap', helmCol: '#6a5a3a' } }),
+  halfling: mkU('Niziołek', 'Niziołki', 'niziołków', 1, 4, 2, 1, 3, 4, 5, 15, 75, { gold: 45 }, { shots: 24, look: { kind: 'hum', skin: '#e8b890', cloth: '#6a8a3a', size: 0.7, weapon: 'bow', hair: '#7a4a26' } }),
+  rogue: mkU('Rozbójnik', 'Rozbójnicy', 'rozbójników', 2, 8, 3, 2, 4, 10, 6, 8, 135, { gold: 100 }, { look: { kind: 'hum', skin: '#c89870', cloth: '#3a3a3a', size: 1, weapon: 'sword', helm: 'hood', hoodCol: '#2a2a2a', cape: '#3a2a2a' } }),
+  mummy: mkU('Mumia', 'Mumie', 'mumii', 3, 7, 7, 3, 5, 30, 5, 7, 270, { gold: 250 }, { abil: ['undead'], look: { kind: 'hum', skin: '#c8b890', cloth: '#b8a880', size: 1.05, weapon: 'none', robe: true, eyes: '#40d0ff', claws: true } }),
+  nomad: mkU('Koczownik', 'Koczownicy', 'koczowników', 3, 9, 8, 2, 6, 30, 7, 7, 345, { gold: 200 }, { look: { kind: 'rider', horse: '#c8a060', mane: '#5a3a1a', skin: '#b07c56', cloth: '#c8b080', weapon: 'sword', helm: 'cap', helmCol: '#e8e0cc' } }),
+  sharpshooter: mkU('Strzelec wyborowy', 'Strzelcy wyborowi', 'strzelców wyborowych', 4, 12, 10, 8, 10, 15, 9, 4, 585, { gold: 400 }, { shots: 32, abil: ['sharpshooter'], look: { kind: 'hum', skin: '#e8d0a8', cloth: '#3a5a3a', size: 1, weapon: 'bow', ears: true, helm: 'hood', hoodCol: '#2a4a2a', cape: '#2a3a2a' } }),
+  goldGolem: mkU('Złoty golem', 'Złote golemy', 'złotych golemów', 5, 11, 12, 8, 10, 50, 5, 3, 600, null, { look: { kind: 'hum', skin: '#d8b040', cloth: '#b89030', size: 1.35, weapon: 'none', armor: true, metal: '#e0c050', eyes: '#fff0a0', hunch: true } }),
+  faerieDragon: mkU('Baśniowy smok', 'Baśniowe smoki', 'baśniowych smoków', 5, 14, 14, 12, 18, 30, 12, 3, 1100, null, { abil: ['fly'], look: { kind: 'dragon', fur: '#8ad0f0', size: 0.7, horn: '#f0e8ff', form: 'fae', wing: '#e0b0ff', eyes: '#ff80ff' } }),
+  enchanter: mkU('Zaklinacz', 'Zaklinacze', 'zaklinaczy', 6, 17, 12, 14, 14, 30, 9, 2, 1210, null, { shots: 32, abil: ['noMeleePenalty'], look: { kind: 'hum', skin: '#d8a878', cloth: '#6a3aa0', size: 1.05, weapon: 'staff', robe: true, helm: 'hood', hoodCol: '#4a2a80', orb: '#c080ff', beard: '#d8d4cc' } }),
+  diamondGolem: mkU('Diamentowy golem', 'Diamentowe golemy', 'diamentowych golemów', 6, 16, 16, 12, 16, 100, 5, 2, 1700, null, { look: { kind: 'hum', skin: '#b8e0f0', cloth: '#90c0e0', size: 1.5, weapon: 'none', armor: true, metal: '#d8f4ff', eyes: '#ffffff', hunch: true } }),
+  rustDragon: mkU('Rdzawy smok', 'Rdzawe smoki', 'rdzawych smoków', 7, 30, 30, 50, 50, 450, 15, 1, 14000, null, { abil: ['fly', 'breath'], look: { kind: 'dragon', fur: '#8a4a2a', size: 1.2, horn: '#2a1a10', form: 'heavy', eyes: '#ff6a20', breathCol: '#c0ff40' } }),
+  crystalDragon: mkU('Kryształowy smok', 'Kryształowe smoki', 'kryształowych smoków', 7, 36, 36, 55, 65, 550, 14, 1, 19000, null, { abil: ['breath'], look: { kind: 'dragon', fur: '#6a5a8a', size: 1.25, horn: '#e0c0ff', form: 'crystal', gem: '#d080ff', eyes: '#ffffff', breathCol: '#e0a0ff' } }),
+  azureDragon: mkU('Lazurowy smok', 'Lazurowe smoki', 'lazurowych smoków', 7, 45, 45, 65, 75, 700, 18, 1, 30000, null, { abil: ['fly', 'breath'], look: { kind: 'dragon', fur: '#1a4aa8', size: 1.35, horn: '#e8e0c0', form: 'serpent', eyes: '#80f0ff', breathCol: '#a0e0ff' } }),
+});
 Object.assign(CREATURES, {
   dryad: mkU('Driada', 'Driady', 'driad', 1, 3, 3, 1, 3, 8, 6, 14, 60, { gold: 50 }, { faction: 'sylvan', up: 'nymph', look: { kind: 'hum', skin: '#b8d890', cloth: '#5a9a4a', size: 0.9, weapon: 'none', robe: true, longHair: '#4a8a3a', hair: '#5aa04a' } }),
   nymph: mkU('Nimfa', 'Nimfy', 'nimf', 1, 4, 4, 2, 3, 9, 7, 14, 85, { gold: 65 }, { faction: 'sylvan', look: { kind: 'hum', skin: '#c8e8a0', cloth: '#6aaa5a', size: 0.92, weapon: 'none', robe: true, longHair: '#8ac86a', hair: '#9ad87a', halo: '#c8f0a0' } }),
