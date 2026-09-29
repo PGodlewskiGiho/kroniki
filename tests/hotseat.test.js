@@ -129,7 +129,9 @@ test('imiona graczy: wpisane na ekranie nowej gry zastępują „gracz <kolor>�
   await frames(page, 2);
   assert.deepEqual(r, { name: 'Ania', input: false, modal: false, p1: 'Ania', p0: 'gracz czerwony', label: 'Ania' });
   await page.evaluate(() => G.screens.setup.slotBtns[1].nm.action());
+  await page.waitForFunction(() => { const inp = document.querySelector('input'); return !!inp && document.activeElement === inp; }, null, { timeout: 3000 }); // na wolnym serwerze CI pole dostaje fokus z opóźnieniem
   await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('input') && !G.modal, null, { timeout: 3000 }).catch(() => {});
   assert.equal(await page.evaluate(() => !!document.querySelector('input') || !!G.modal), false, 'Esc zamyka okno i pole');
   await page.evaluate(s => { Object.assign(G.settings, JSON.parse(s)); }, saved);
 });
