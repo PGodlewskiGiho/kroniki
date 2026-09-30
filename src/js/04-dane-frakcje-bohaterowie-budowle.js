@@ -33,6 +33,8 @@ const FACTIONS = [
       dw3: ['Wieża gryfów', 'griffin'], dw3u: ['Gniazdo królewskie', 'royalGriffin'], dw4: ['Koszary miecznicze', 'swordsman'], dw4u: ['Kaplica krzyżowców', 'crusader'],
       dw5: ['Klasztor', 'monk'], dw5u: ['Katedra', 'priest'], dw6: ['Ujeżdżalnia', 'cavalier'], dw6u: ['Arena czempionów', 'champion'],
       dw7: ['Portal Światła', 'lightGuard'], dw7u: ['Wieża Świtu', 'dawnbringer'],
+      dw1x: ['Koszary gwardii', 'guardsman'], dw2x: ['Arsenał arbaletników', 'arbalester'], dw3x: ['Cesarskie gniazdo', 'imperialGriffin'], dw4x: ['Komandoria templariuszy', 'templar'],
+      dw5x: ['Trybunał', 'inquisitor'], dw6x: ['Zakon paladynów', 'paladin'], dw7x: ['Niebiański chór', 'seraph'],
     },
   },
   {
@@ -46,6 +48,8 @@ const FACTIONS = [
       dw3: ['Zagroda centaurów', 'centaur'], dw3u: ['Obóz wodzów', 'centaurChief'], dw4: ['Stary las', 'treant'], dw4u: ['Pradawny las', 'elderTreant'],
       dw5: ['Polana jednorożców', 'unicorn'], dw5u: ['Srebrna polana', 'silverUnicorn'], dw6: ['Gniazdo feniksa', 'phoenix'], dw6u: ['Słoneczne gniazdo', 'sunPhoenix'],
       dw7: ['Szmaragdowa grota', 'emeraldDragon'], dw7u: ['Nefrytowa grota', 'jadeDragon'],
+      dw1x: ['Jezioro rusałek', 'rusalka'], dw2x: ['Łowiecka strażnica', 'elfHunter'], dw3x: ['Jurta chana', 'centaurKhan'], dw4x: ['Królewski bór', 'treantKing'],
+      dw5x: ['Gwiezdna polana', 'starUnicorn'], dw6x: ['Niebiańskie gniazdo', 'celestialPhoenix'], dw7x: ['Serce puszczy', 'forestDragon'],
     },
   },
   {
@@ -59,6 +63,8 @@ const FACTIONS = [
       dw3: ['Nawiedzona kaplica', 'wraith'], dw3u: ['Wieża zawodzenia', 'banshee'], dw4: ['Krypta', 'vampire'], dw4u: ['Mroczna krypta', 'vampireLord'],
       dw5: ['Wieża nekromanty', 'necromancer'], dw5u: ['Czarna biblioteka', 'archNecro'], dw6: ['Mroczne stajnie', 'doomKnight'], dw6u: ['Stajnie zagłady', 'dreadLord'],
       dw7: ['Kościana grań', 'boneWyvern'], dw7u: ['Upiorna grań', 'ghostWyvern'],
+      dw1x: ['Katakumby legionu', 'boneLegionary'], dw2x: ['Trupiarnia', 'devourer'], dw3x: ['Mglisty kurhan', 'zmora'], dw4x: ['Grobowiec nosferatu', 'nosferatu'],
+      dw5x: ['Nekropolia liczów', 'lich'], dw6x: ['Stajnie Otchłani', 'abyssKnight'], dw7x: ['Smocze cmentarzysko', 'boneDragon'],
     },
   },
   {
@@ -72,6 +78,8 @@ const FACTIONS = [
       dw3: ['Rój ważek', 'dragonfly'], dw3u: ['Gniazdo ważek', 'venomFly'], dw4: ['Jama bazyliszków', 'basilisk'], dw4u: ['Leże bazyliszków', 'greatBasilisk'],
       dw5: ['Zagroda gorgon', 'gorgon'], dw5u: ['Żelazna zagroda', 'mightyGorgon'], dw6: ['Gniazdo wywern', 'wyvern'], dw6u: ['Turnia wywern', 'wyvernKing'],
       dw7: ['Bagno hydr', 'hydra'], dw7u: ['Otchłań chaosu', 'chaosHydra'],
+      dw1x: ['Krąg berserkerów', 'gnollBerserker'], dw2x: ['Obóz zabójców', 'lizardSlayer'], dw3x: ['Rój królowej', 'queenFly'], dw4x: ['Królewskie leże', 'royalBasilisk'],
+      dw5x: ['Żelazna zagroda', 'armoredGorgon'], dw6x: ['Burzowa turnia', 'stormWyvern'], dw7x: ['Pradawne bagno', 'primeHydra'],
     },
   },
   {
@@ -85,6 +93,8 @@ const FACTIONS = [
       dw3: ['Psiarnia', 'hellHound'], dw3u: ['Legowisko cerberów', 'cerberus'], dw4: ['Brama demonów', 'demon'], dw4u: ['Wrota rogatych', 'hornedDemon'],
       dw5: ['Szyb czartów', 'pitFiend'], dw5u: ['Otchłań władców', 'pitLord'], dw6: ['Pałac ifrytów', 'efreet'], dw6u: ['Pałac sułtanów', 'efreetSultan'],
       dw7: ['Wrota piekieł', 'devil'], dw7u: ['Tron ognia', 'archDevil'],
+      dw1x: ['Kocioł biesów', 'bies'], dw2x: ['Płonąca kuźnia', 'firebrand'], dw3x: ['Psiarnia Otchłani', 'abyssCerberus'], dw4x: ['Brama zagłady', 'doomDemon'],
+      dw5x: ['Tron Otchłani', 'archFiend'], dw6x: ['Pałac płomieni', 'flameLord'], dw7x: ['Serce Piekieł', 'hellLord'],
     },
   },
   {
@@ -98,6 +108,8 @@ const FACTIONS = [
       dw3: ['Kuźnia golemów', 'stoneGolem'], dw3u: ['Wielka kuźnia', 'ironGolem'], dw4: ['Wieża magów', 'mage'], dw4u: ['Wieża arcymagów', 'archMage'],
       dw5: ['Ołtarz życzeń', 'genie'], dw5u: ['Złoty ołtarz', 'masterGenie'], dw6: ['Złoty pawilon', 'naga'], dw6u: ['Pałac nag', 'nagaQueen'],
       dw7: ['Chmurna świątynia', 'giant'], dw7u: ['Niebiańska świątynia', 'titan'],
+      dw1x: ['Pracownia inżynierów', 'gremlinEngineer'], dw2x: ['Runiczny parapet', 'runeGargoyle'], dw3x: ['Kuźnia mithrilu', 'mithrilGolem'], dw4x: ['Akademia bitewna', 'battleMage'],
+      dw5x: ['Diamentowy ołtarz', 'genieLord'], dw6x: ['Pałac cesarzowej', 'nagaEmpress'], dw7x: ['Świątynia burzy', 'stormTitan'],
     },
   },
   {
@@ -111,6 +123,8 @@ const FACTIONS = [
       dw3: ['Kolumna oczu', 'beholder'], dw3u: ['Głębia oczu', 'evilEye'], dw4: ['Kaplica ciszy', 'medusa'], dw4u: ['Świątynia meduz', 'medusaQueen'],
       dw5: ['Labirynt', 'minotaur'], dw5u: ['Wielki labirynt', 'minotaurKing'], dw6: ['Jaskinia mantykor', 'manticore'], dw6u: ['Leże skorpikor', 'scorpicore'],
       dw7: ['Smocza pieczara', 'redDragon'], dw7u: ['Czarna pieczara', 'blackDragon'],
+      dw1x: ['Nory cienia', 'shadowTroglodyte'], dw2x: ['Gniazdo furii', 'fury'], dw3x: ['Oko Otchłani', 'doomEye'], dw4x: ['Sanktuarium meduz', 'archMedusa'],
+      dw5x: ['Serce labiryntu', 'minotaurLord'], dw6x: ['Leże mantykor', 'ancientManticore'], dw7x: ['Pieczara cienia', 'shadowDragon'],
     },
   },
   {
@@ -124,6 +138,8 @@ const FACTIONS = [
       dw3: ['Orcza wieża', 'orcAxe'], dw3u: ['Twierdza wodzów', 'orcChief'], dw4: ['Zagroda turów', 'aurochs'], dw4u: ['Bojowe pastwisko', 'warAurochs'],
       dw5: ['Turnia roków', 'roc'], dw5u: ['Gromowa turnia', 'thunderbird'], dw6: ['Jaskinia cyklopów', 'cyclops'], dw6u: ['Królewska pieczara', 'cyclopsKing'],
       dw7: ['Legowisko behemota', 'behemoth'], dw7u: ['Pradawne legowisko', 'ancientBehemoth'],
+      dw1x: ['Obóz rębaczy', 'hobgoblinSlasher'], dw2x: ['Wilcza warownia', 'wargChief'], dw3x: ['Namiot watażki', 'orcWarlord'], dw4x: ['Taranowe pastwisko', 'ramAurochs'],
+      dw5x: ['Turnia nawałnicy', 'tempestBird'], dw6x: ['Pradawna pieczara', 'elderCyclops'], dw7x: ['Pierwotne legowisko', 'primalBehemoth'],
     },
   },
 ];
@@ -178,18 +194,25 @@ const BUILDINGS = [
   { id: 'grail', slot: 15, cost: {}, req: [], grail: true }, // budowla Graala: nie da się jej kupić, wznosi ją bohater z Graalem (buildGrail) // budowla specjalna frakcji: nazwa i działanie w FACTION_SPECIAL
   { id: 'dw1', slot: 10, cost: { gold: 500 }, req: [] },
   { id: 'dw1u', slot: 10, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
+  { id: 'dw1x', slot: 10, cost: { gold: 1500, wood: 10 }, req: ['dw1u', 'hall2'] },
   { id: 'dw2', slot: 11, cost: { gold: 1000, wood: 5 }, req: ['dw1'] },
   { id: 'dw2u', slot: 11, cost: { gold: 1500, wood: 5, ore: 5 }, req: ['dw2'] },
+  { id: 'dw2x', slot: 11, cost: { gold: 2000, wood: 10, ore: 5 }, req: ['dw2u', 'hall2'] },
   { id: 'dw3', slot: 7, cost: { gold: 1000, ore: 5 }, req: ['fort'] },
   { id: 'dw3u', slot: 7, cost: { gold: 1500, ore: 5 }, req: ['dw3', 'citadel'] },
+  { id: 'dw3x', slot: 7, cost: { gold: 2500, ore: 10, crystal: 3 }, req: ['dw3u', 'castle'] },
   { id: 'dw4', slot: 6, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['fort', 'dw2'] },
   { id: 'dw4u', slot: 6, cost: { gold: 2000, wood: 5, ore: 5 }, req: ['dw4', 'smith'] },
+  { id: 'dw4x', slot: 6, cost: { gold: 3000, wood: 10, ore: 10, mercury: 3 }, req: ['dw4u', 'castle'] },
   { id: 'dw5', slot: 5, cost: { gold: 3000, wood: 10, ore: 10 }, req: ['guild1'] },
   { id: 'dw5u', slot: 5, cost: { gold: 2000, mercury: 5 }, req: ['dw5', 'guild2'] },
+  { id: 'dw5x', slot: 5, cost: { gold: 4000, mercury: 5, gems: 5 }, req: ['dw5u', 'hall3'] },
   { id: 'dw6', slot: 4, cost: { gold: 5000, wood: 10, ore: 20 }, req: ['citadel', 'dw4'] },
   { id: 'dw6u', slot: 4, cost: { gold: 3000, ore: 10, crystal: 5 }, req: ['dw6'] },
+  { id: 'dw6x', slot: 4, cost: { gold: 6000, ore: 15, crystal: 10 }, req: ['dw6u', 'hall3'] },
   { id: 'dw7', slot: 3, cost: { gold: 15000, wood: 20, ore: 20, gems: 10 }, req: ['castle', 'dw6'] },
   { id: 'dw7u', slot: 3, cost: { gold: 10000, gems: 10, crystal: 10 }, req: ['dw7', 'guild3'] },
+  { id: 'dw7x', slot: 3, cost: { gold: 20000, mercury: 10, crystal: 15, gems: 15 }, req: ['dw7u', 'hall4'] },
 ];
 const BUILD_BY_ID = Object.fromEntries(BUILDINGS.map(b => [b.id, b]));
 // Budowle specjalne frakcji (jak w Heroes 3), działanie w MIASTO: ZASADY (specialVisit, weeklyTreasury, raiseDead, guildOffer, bramy)
@@ -208,12 +231,12 @@ const FACTION_SPECIAL = {
 const GRAIL_NAMES = { haven: 'Kolos Światłości', sylvan: 'Strażnik Kniei', barrow: 'Więzienie Dusz', fortress: 'Pradawne Źródło',
   inferno: 'Ołtarz Ognia', academy: 'Podniebny Kielich', dungeon: 'Strażnik Głębin', stronghold: 'Pomnik Wodzów' };
 function bInfo(B, fac) {
-  const F = factionOf(fac), m = /^dw(\d)(u?)$/.exec(B.id);
+  const F = factionOf(fac), m = /^dw(\d)([ux]?)$/.exec(B.id);
   if (B.id === 'special') { const S = FACTION_SPECIAL[F.id]; return { name: S.name, emblem: S.emblem, desc: S.desc }; }
   if (B.id === 'grail') return { name: GRAIL_NAMES[F.id] || 'Budowla Graala', emblem: 'crown', desc: `Budowla Graala: +${GRAIL_GOLD} złota dziennie i +50% przyrostu stworów.` };
   if (m) {
     const [name, unit] = F.dw[B.id], c = CREATURES[unit];
-    return { name, unit, emblem: F.emb[+m[1] - 1], desc: `${m[2] ? 'Ulepszone siedlisko' : 'Siedlisko'}: ${c.plural.toLowerCase()} (poziom ${m[1]}).` };
+    return { name, unit, emblem: F.emb[+m[1] - 1], desc: `${m[2] === 'x' ? 'Elitarne siedlisko' : m[2] ? 'Ulepszone siedlisko' : 'Siedlisko'}: ${c.plural.toLowerCase()} (poziom ${m[1]}).` };
   }
   if (B.id.startsWith('guild')) return { name: F.guild + ({ guild1: '', guild2: ' II', guild3: ' III', guild4: ' IV', guild5: ' V' })[B.id], emblem: B.emblem, desc: B.desc };
   return { name: B.name, emblem: B.emblem, desc: B.desc };

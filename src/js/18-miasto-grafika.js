@@ -102,6 +102,15 @@ function signArt(c, A, emblem, x, y, post, faded) {
   drawEmblem(c, emblem, x, y + 14, 12, faded ? 'rgba(240,220,170,.55)' : '#f4e2a8');
 }
 let CUR_FX = null;
+// Elitarne siedlisko (trzeci stopień): przed budowlą dwa wysokie maszty ze złotymi grotami i powiewającymi proporcami
+function eliteArt(c, s, col) {
+  const { x, b, w, h } = s, top = b - Math.max(46, h * 0.72);
+  for (const px of [x - 8, x + w + 8]) {
+    c.fillStyle = '#2a1e12'; c.fillRect(px - 1.5, top, 3, b - top); c.fillStyle = '#e0b840'; c.fillRect(px - 2.5, b - 4, 5, 4); c.fillRect(px - 2, top + 12, 4, 2);
+    c.beginPath(); c.moveTo(px - 3, top); c.lineTo(px, top - 7); c.lineTo(px + 3, top); c.closePath(); c.fill();
+    bannerArt(c, px, top + 6, col);
+  }
+}
 function bannerArt(c, x, y, col) {
   c.strokeStyle = '#3a2a18'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x, y + 20); c.lineTo(x, y - 6); c.stroke();
   if (CUR_FX) { CUR_FX.flags.push([x, y, col]); return; }
@@ -155,7 +164,7 @@ function groupOf(B) {
   if (B.id.startsWith('hall')) return ['hall', +B.id[4]];
   const f = ['fort', 'citadel', 'castle'].indexOf(B.id); if (f >= 0) return ['fort', f + 1];
   if (B.id.startsWith('guild')) return ['guild', +B.id[5]];
-  const m = /^dw(\d)(u?)$/.exec(B.id); if (m) return ['dw' + m[1], m[2] ? 2 : 1];
+  const m = /^dw(\d)([ux]?)$/.exec(B.id); if (m) return ['dw' + m[1], m[2] === 'x' ? 3 : m[2] ? 2 : 1];
   return [B.id, 1];
 }
 // --- drobne elementy rysunków ---
@@ -866,7 +875,8 @@ function paintTownWorld(c, t, col, Wd) {
       if (B) {
         castShadow(c, { x: sx - w / 2, b: sy, w, h }, 1);
         const [grp, tier] = groupOf(B), fn = arts[grp];
-        if (fn) drawObj(c, (g, tf) => fn(g, A, can, tier, col, tf), box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip);
+        const dw = grp.startsWith('dw'); // siedliska: elitarne rysowane jak ulepszone, z masztami przed wejściem
+        if (fn) drawObj(c, (g, tf) => { fn(g, A, can, dw ? Math.min(2, tier) : tier, col, tf); if (dw && tier === 3) eliteArt(g, can, col); }, box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip);
       } // puste miejsce: sama ziemia jak w Heroes 3 (co tu stanie, widać po najechaniu myszą)
     } else if (o.tower) wallTowerArt(c, o.wall, A, o.tower, hzC, fx);
     else if (o.wall) wallSegArt(c, o.wall, A, o.a, o.b, hzC);

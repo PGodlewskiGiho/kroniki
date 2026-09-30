@@ -1,15 +1,16 @@
 // Galeria wszystkich jednostek na jednym obrazku (do oceny modeli przed wypaleniem), w gęstości arkuszy bitewnych.
+//   COLS=7 (liczba kolumn), ZOOM=2 (powiększenie do oglądania detali)
 //   node tools/grafika3d/galeria.js [plik.png] [poza: idle|attack|fly|walk] [lista cid po przecinku]
 // Duże jednostki (smoki) są zmniejszone, żeby zmieściły się w polu; liczba w rogu = skala.
 // Render w partiach, każda w świeżej przeglądarce (programowa karta grafiki traci pamięć po kilkunastu modelach).
 'use strict';
 const path = require('path'), fs = require('fs');
 const { openStudio } = require('./wspolne');
-const CW = 236, CH = 262, COLS = 10;
+const Z = +process.env.ZOOM || 1, CW = 236 * Z, CH = 262 * Z, COLS = +process.env.COLS || 10;
 async function cells(ids, pose) {
   const { browser, page } = await openStudio({ width: 400, height: 300 });
   const r = await page.evaluate(([ids, pose, CW, CH]) => ids.map(id => {
-    const KB = 32 / 0.9, DS = KB / 24.6, C = CREATURES[id], L = C.look, s = Math.max(1, L.size || 1), wide = L.kind === 'dragon' || L.wings || C.abil.includes('fly') ? 1.25 : 1;
+    const KB = 32 / 0.9 * CW / 236, DS = KB / 24.6, C = CREATURES[id], L = C.look, s = Math.max(1, L.size || 1), wide = L.kind === 'dragon' || L.wings || C.abil.includes('fly') ? 1.25 : 1;
     const W = Math.round(150 * s * DS * wide), H = W, AX = Math.round(W * 0.45), AY = H - Math.round(18 * s * DS);
     const P = pose === 'attack' ? { t: 0, atk: 0.5 } : pose === 'fly' ? (C.abil.includes('fly') ? { t: 0, fly: 0.6 } : { t: 0 }) : pose === 'walk' ? { t: 0, walk: 0.25 } : { t: 0 };
     const c = G3.render(buildUnit(L, P), W, H, KB, AX, AY), d = c.getContext('2d').getImageData(0, 0, W, H).data;

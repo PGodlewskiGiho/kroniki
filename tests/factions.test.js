@@ -19,6 +19,7 @@ test('każda frakcja ma komplet danych: siedliska, stwory, bohaterów, grafikę 
         if (A.level !== L || U.level !== L) out.push(`${F.id}: ${a}/${b} ma zły poziom`);
         if (A.up !== b) out.push(`${F.id}: ${a}.up powinno wskazywać ${b}`);
         if (U.value <= A.value) out.push(`${F.id}: ${b} nie jest lepszy od ${a}`);
+        const X = CREATURES[(F.dw['dw' + L + 'x'] || [])[1]]; if (!X || X.faction !== F.id || X.level !== L || X.value <= U.value) out.push(`${F.id}: elitarna jednostka poziomu ${L}`);
       }
       for (const [name, cls] of F.heroes) { if (!HERO_CLASSES[cls] || !CLASS_GROWTH[cls] || !CLASS_SKILLS[cls] || !PORTRAIT_BG[cls]) out.push(`${F.id}: klasa ${cls}`); if (!HERO_LOOKS[name]) out.push(`${F.id}: wygląd ${name}`); }
       if (!TOWN_ART[F.id] || !TOWN_LAYOUTS[F.id] || TOWN_LAYOUTS[F.id].slots.length !== 16 || !BUILD_ART[F.id].special || !FACTION_SPECIAL[F.id]) out.push(`${F.id}: scena miasta`);
@@ -41,7 +42,7 @@ test('stwory Twierdzy, Inferna, Akademii, Lochu i Cytadeli rysują się w każde
     }
     return { n: ids.length, empty };
   });
-  assert.equal(r.n, 70);
+  assert.equal(r.n, 105);
   assert.deepEqual(r.empty, [], 'każdy stwór jest widoczny na mapie');
 });
 

@@ -62,19 +62,26 @@ function horseHead(neck, col, mane, P, o = {}) {
   const eye = o.eyes || '#140c06', eK = o.eyes ? 'glow' : 'skin';
   for (const z of [-1, 1]) { head.add(rbox(0.05, 0.08, 0.03, 0.01, dark, 'fur', [-0.07, 0.07, 0.075 * z], [0, 0, 0.3])); head.add(sph(0.022, eye, eK, [-0.03, 0.08, 0.08 * z], [0.8, 1.3, 0.7])); head.add(sph(0.014, '#0a0604', 'skin', [0.02, 0.45, 0.045 * z]));
     head.add(slab([[0, 0], [0.03, 0.04], [-0.14, 0.02]], 0.02, col, 'fur', [-0.08, -0.02, 0.05 * z], [0.3 * z, 0, 0])); } // uszy
+  if (o.armor && !nm) { head.add(rbox(0.03, 0.36, 0.14, 0.01, o.armor, 'steel', [-0.095, 0.2, 0])); head.add(spike(0.03, 0.14, '#e0c050', 'gold', [-0.14, 0.14, 0], [0, 0, 0.9])); } // naczółek
   if (nm) { head.add(rbox(0.03, 0.34, 0.13, 0.01, o.plate || '#3a3440', 'iron', [-0.095, 0.2, 0])); head.add(spike(0.035, 0.26, '#d8d0c0', 'horn', [-0.16, 0.1, 0], [0, 0, 0.9])); for (const z of [-1, 1]) head.add(spike(0.02, 0.1, o.plate || '#3a3440', 'steel', [-0.08, 0.0, 0.07 * z], [0.6 * z, 0, 1.5])); } // naczółek z kolcami
   else head.add(slab([[0, 0], [0.04, 0.05], [-0.06, 0.12], [-0.02, 0.02]], 0.05, mane, 'hair', [-0.08, 0.0, 0])); // grzywka
   const jaw = joint(head, [0.08, 0.2, 0], -hit * 0.25); jaw.add(rbox(0.05, 0.2, 0.09, 0.02, dark, 'fur', [0, 0.08, 0]));
   if (o.bridle) { head.add(torus(0.09, 0.008, '#3a2414', 'leather', [0.01, 0.3, 0], [Math.PI / 2, 0, 0], [1.1, 1, 0.8])); head.add(torus(0.1, 0.008, '#3a2414', 'leather', [0, 0.1, 0], [Math.PI / 2, 0, 0], [1.1, 1, 0.9])); }
-  if (o.horn) { head.add(tube([[-0.1, 0.05, 0], [-0.2, 0.18, 0], [-0.32, 0.32, 0]], 0.03, 0.004, o.horn, 'horn')); for (let i = 0; i < 4; i++) head.add(torus(0.026 - i * 0.005, 0.005, DK(o.horn, 0.2), 'horn', [-0.13 - i * 0.045, 0.09 + i * 0.055, 0], [0, 0, -0.85], null)); } // spiralny róg
+  if (o.horn) { const k = o.hornL || 1; head.add(tube([[-0.1, 0.05, 0], [-0.1 - 0.1 * k, 0.05 + 0.13 * k, 0], [-0.1 - 0.22 * k, 0.05 + 0.27 * k, 0]], 0.03 * Math.sqrt(k), 0.004, o.horn, o.hornGlow ? 'glow' : 'horn')); for (let i = 0; i < 4 * k; i++) head.add(torus((0.026 - i * 0.005 / k) * Math.sqrt(k), 0.005, DK(o.horn, 0.2), 'horn', [-0.13 - i * 0.045, 0.09 + i * 0.055, 0], [0, 0, -0.85], null)); } // spiralny róg
+  if (o.horns) for (const z of [-1, 1]) head.add(tube([[-0.1, 0.06, 0.06 * z], [-0.2, 0.0, 0.16 * z], [-0.3, 0.1, 0.22 * z], [-0.26, 0.24, 0.2 * z], [-0.16, 0.26, 0.16 * z]], 0.035, 0.006, o.horns, 'horn', 2)); // zakręcone rogi koszmarnego rumaka
+  if (o.longMane) for (let i = 0; i < 7; i++) for (const z of [-1, 1]) neck.add(slab([[0, 0], [0.05, 0], [0.02, -0.34 - (i % 2) * 0.08], [-0.03, -0.3]], 0.02, i % 2 ? mane : LT(mane, 0.1), 'hair', [-0.1, 0.04 + i * 0.08, 0.05 * z], [0.25 * z, 0, 0.25])); // grzywa spływająca po szyi
   return head;
 }
 // Koń (jednorożec, rumak jeźdźca); nightmare: koszmarny rumak w kolczastej zbroi płytowej, z płonącą grzywą, ogonem i kopytami
 function horse(L, P, o = {}) {
   const root = new THREE.Group(), col = L.horse || L.fur || '#7a4a26', mane = L.mane || DK(col, 0.6), nm = !!L.nightmare, plate = L.metal || '#3a3440';
   const q = quadBody(root, { col, len: nm ? 1.15 : 1.05, legH: nm ? 0.86 : 0.8, r: nm ? 0.28 : 0.25, rear: true, bulk: nm ? 1.2 : 1, hump: 0.08, chest: 1.18, hoofFire: nm ? mane : null }, P);
-  horseHead(q.neck, col, mane, P, { bridle: o.saddle, horn: o.horn, nightmare: nm, eyes: nm ? L.eyes || mane : null, plate });
+  horseHead(q.neck, col, mane, P, { bridle: o.saddle, horn: o.horn, hornL: o.hornL, hornGlow: o.hornGlow, longMane: L.longMane, horns: L.horseHorns, nightmare: nm, eyes: nm ? L.eyes || mane : o.eyes || null, plate, armor: L.horseArmor });
+  if (L.horseArmor) { const pc = L.horseArmor; for (const z of [-1, 1]) for (let i = 0; i < 3; i++) { const x = 0.36 - i * 0.32; q.body.add(rbox(0.3, 0.24, 0.035, 0.02, i % 2 ? pc : DK(pc, 0.12), 'steel', [x, -0.05, z * 0.36], [0.1 * z, 0, 0])); if (L.trim) q.body.add(box(0.3, 0.02, 0.04, L.trim, 'gold', [x, 0.07, z * 0.365], [0.1 * z, 0, 0])); }
+    q.body.add(rbox(0.07, 0.34, 0.44, 0.02, pc, 'steel', [q.len * 0.6, -0.04, 0], [0, 0, -0.2])); if (L.trim) q.body.add(torus(0.2, 0.014, L.trim, 'gold', [q.len * 0.63, -0.04, 0], [0, Math.PI / 2, 0], [1, 1, 1.1])); } // zbroja rumaka: płyty na bokach, napierśnik
+  if (L.horseWings) { const wl = joint(q.body, [q.len * 0.28, q.r * 0.85, 0]), fl = wingFlap(P, 0.35); for (const z of [-1, 1]) { if (L.horseWings === 'bone') { const w = joint(wl, [0, 0, 0.14 * z]); w.rotation.set((fl + (z < 0 ? 0.12 : 0)) * z, -0.3 * z, P.fly != null ? -0.35 : -0.1); w.scale.setScalar(1.05); membraneWingBones(w, '#d8d0c0'); } else featherWing(wl, z, L.horseWings, 1.15, fl); } } // skrzydlaty wierzchowiec
   if (nm) for (let i = 0; i < 6; i++) q.tail.add(cone(0.05, 0.35 + (i % 3) * 0.12, i % 2 ? mane : LT(mane, 0.4), 'fire', [-0.08 - i * 0.02, -0.15 - i * 0.05, (i - 2.5) * 0.02], [0, 0, 2.7 - i * 0.08], 6)); // płonący ogon
+  else if (L.longMane) { q.tail.add(tube([[0, 0, 0], [-0.14, -0.08, 0], [-0.24, -0.4, 0], [-0.24, -0.8, 0], [-0.2, -1.02, 0]], 0.08, 0.05, mane, 'hair', 2)); for (const z of [-1, 1]) q.tail.add(tube([[-0.1, -0.1, 0], [-0.22, -0.5, 0.04 * z], [-0.28, -0.98, 0.06 * z]], 0.04, 0.02, LT(mane, 0.1), 'hair')); } // ogon do ziemi
   else q.tail.add(tube([[0, 0, 0], [-0.12, -0.1, 0], [-0.2, -0.4, 0], [-0.18, -0.65, 0]], 0.06, 0.03, mane, 'hair'));
   if (o.saddle) {
     q.body.add(mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.46, 18, 1, true, -Math.PI / 2, Math.PI), o.saddle, 'leather', [0.02, 0.06, 0], [Math.PI / 2, 0, 0], [1, 1, 1.02]));
@@ -83,6 +90,7 @@ function horse(L, P, o = {}) {
   if (nm) { // zbroja rumaka: płyty na bokach i zadzie z kolcami, napierśnik z kolcami, czaprak w barwie jeźdźca
     for (const z of [-1, 1]) for (let i = 0; i < 4; i++) { const x = 0.42 - i * 0.26; q.body.add(rbox(0.24, 0.24, 0.04, 0.02, i % 2 ? plate : DK(plate, 0.15), 'iron', [x, -0.02, z * q.r * 0.82], [0.12 * z, 0, 0])); q.body.add(spike(0.03, 0.16 * (L.spikeCol ? 1.3 : 1), L.spikeCol || '#c8c0b0', L.spikeCol ? 'gold' : 'steel', [x, 0.02, z * q.r * 0.98], [Math.PI / 2 * z, 0, 0])); }
     q.body.add(rbox(0.06, 0.34, 0.4, 0.02, plate, 'iron', [q.len * 0.6, -0.04, 0], [0, 0, -0.2])); for (const z of [-0.12, 0, 0.12]) q.body.add(spike(0.035, 0.22, L.spikeCol || '#c8c0b0', L.spikeCol ? 'gold' : 'steel', [q.len * 0.66, 0.0, z], [0, 0, -Math.PI / 2 + 0.2]));
+    if (L.horseSkulls) { const sc = L.horseSkulls; skullOn(q.body, [q.len * 0.66, 0.08, 0], 1.6, sc); for (const z of [-1, 1]) for (const x of [0.3, -0.22]) skullOn(q.body, [x, 0.02, z * (q.r * 0.98 + 0.04)], 1.3, sc, [0, -Math.PI / 2 * z, 0]); } // czaszki na napierśniku i bokach zbroi
     if (L.barding) { const bd = mesh(new THREE.CylinderGeometry(0.3, 0.36, 0.7, 20, 1, true, -Math.PI * 0.55, Math.PI * 1.1), L.barding, 'cloth', [-0.1, -0.05, 0], [0, 0, Math.PI / 2], [1, 1, 1]); bd.material = bd.material.clone(); bd.material.side = THREE.DoubleSide; q.body.add(bd); }
   }
   return { root, q };
@@ -92,7 +100,7 @@ function horse(L, P, o = {}) {
 const HORSE_K = 1.35;
 function rider(L, P = {}) {
   const { root: hr, q } = horse(L, P, { saddle: L.barding ? DK(L.barding, 0.3) : '#5a2a1a' }), root = new THREE.Group(); hr.scale.setScalar(HORSE_K); root.add(hr);
-  const man = humanoid({ ...L, mounted: true, size: 1, shield: L.shield, cape: L.cape }, { t: P.t, atk: P.atk, hurt: P.hurt });
+  const man = humanoid({ ...L, mounted: true, size: 1, shield: L.shield, cape: L.cape, mountR: (L.nightmare ? 0.38 : L.barding || L.horseArmor ? 0.36 : 0.3) * HORSE_K }, { t: P.t, atk: P.atk, hurt: P.hurt });
   man.scale.multiplyScalar(1 / HORSE_K); man.position.set(0.02, q.r * 0.75 - (0.1 + 0.69 * buildOf(L).legL) / HORSE_K, 0); q.body.add(man); // biodra jeźdźca w siodle
   if (L.size && !L.banner) root.scale.setScalar(L.size);
   if (L.banner) { // chorągiew bohatera za siodłem
@@ -106,12 +114,17 @@ function centaur(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#8a5a30';
   const q = quadBody(root, { col, len: 0.95, legH: 0.78, r: 0.24 }, { t: P.t, walk: P.walk, fly: P.fly, hurt: P.hurt }); // strzelec: końskie ciało stoi, strzela tors
   q.tail.add(tube([[0, 0, 0], [-0.12, -0.1, 0], [-0.2, -0.4, 0], [-0.18, -0.6, 0]], 0.05, 0.025, L.hair || DK(col, 0.5), 'hair'));
-  const man = humanoid({ skin: L.skin, cloth: L.cloth || '#6a4424', hair: L.hair, helm: L.helm, helmCol: L.helmCol, weapon: 'bow', size: 0.95, noLegs: true, quiver: '#6a4424' }, { t: P.t, atk: P.atk, hurt: P.hurt });
+  const man = humanoid({ skin: L.skin, cloth: L.cloth || '#6a4424', hair: L.hair, beard: L.beard, helm: L.helm, helmCol: L.helmCol, armor: L.armor, metal: L.metal, cape: L.cape, weapon: 'bow', size: 0.95, noLegs: true, quiver: '#6a4424' }, { t: P.t, atk: P.atk, hurt: P.hurt });
+  if (L.barding) { const bd = mesh(new THREE.CylinderGeometry(q.r * 1.04, q.r * 1.1, q.len * 0.7, 20, 1, true, -Math.PI * 0.6, Math.PI * 1.2), L.barding, 'cloth', [-0.08, -0.02, 0], [0, 0, Math.PI / 2]); bd.material = bd.material.clone(); bd.material.side = THREE.DoubleSide; q.body.add(bd); if (L.trim) q.body.add(torus(q.r * 1.08, 0.012, L.trim, 'gold', [-0.08 - q.len * 0.35, -0.02, 0], [0, Math.PI / 2, 0], [1, 1, 0.95], Math.PI * 1.2)); }
   man.position.set(q.len * 0.4, q.r * 0.2 - 0.79 * 0.95, 0); q.body.add(man); // tors człowieka w miejscu końskiej szyi
   if (L.size) root.scale.setScalar(L.size);
   return root;
 }
-function unicorn(L, P = {}) { const r = horse({ horse: L.fur, mane: L.mane || '#c8c0e0' }, P, { horn: '#f0d890' }).root; r.scale.setScalar(HORSE_K * (L.size || 1)); return r; }
+function unicorn(L, P = {}) {
+  const { root: r, q } = horse({ horse: L.fur, mane: L.mane || '#c8c0e0', horseWings: L.wings, longMane: L.longMane }, P, { horn: L.hornCol || '#f0d890', eyes: L.eyes, hornL: L.hornL, hornGlow: L.hornGlow });
+  if (L.stars) for (let i = 0; i < 16; i++) { const a = i * 2.4, x = -q.len * 0.45 + (i / 15) * q.len * 0.9; q.body.add(sph(0.018 + (i % 3) * 0.006, L.stars, 'glow', [x, Math.cos(a) * q.r * 0.96, Math.sin(a) * q.r * 0.96])); } // gwiezdny: iskry na sierści
+  r.scale.setScalar(HORSE_K * (L.size || 1)); return r;
+}
 
 // Wilk i jego odmiany: ogniste ogary (flame), trójgłowy pies (heads), mantykora (mane + wings + stinger), behemot (horns, duży)
 function canineHead(neck, L, P, col, o = {}) {
@@ -140,18 +153,25 @@ function wolf(L, P = {}) {
   for (let k = 0; k < heads; k++) {
     const m = heads > 1 ? k - (heads - 1) / 2 : 0, z = m * 0.2, nk = joint(q.neck, [m * 0.05 - Math.abs(m) * 0.04, -m * 0.1, z], -0.65 - m * 0.4);
     nk.add(cap(q.r * 0.6, 0.16, col, 'fur', [0, 0.1, 0], null, [1, 1, 0.8])); const hd = joint(nk, [0.02, 0.22, 0], 0.7); canineHead(hd, L, P, col);
-    if (fire) for (let i = 0; i < 4; i++) nk.add(cone(0.045, 0.22 + (i % 2) * 0.08, i % 2 ? L.flame : LT(L.flame, 0.35), 'fire', [-0.05, 0.08 + i * 0.05, 0], [0, 0, 1.0 + i * 0.12], 6)); // płonąca grzywa
+    if (L.collar) { nk.add(torus(q.r * 0.64, 0.035, L.collar, 'leather', [0, 0.12, 0], [Math.PI / 2, 0, 0], [1, 0.8, 1])); for (let i = 0; i < 8; i++) { const g = new THREE.Group(); g.position.set(0, 0.12, 0); g.rotation.y = -i / 8 * Math.PI * 2; nk.add(g); g.add(spike(0.02, 0.1, '#c8ccd4', 'steel', [q.r * 0.68, 0, 0], [0, 0, -Math.PI / 2])); } } // obroża z kolcami
+    if (fire) for (let i = 0; i < (L.blaze ? 7 : 4); i++) nk.add(cone(0.045 * (L.blaze ? 1.4 : 1), (0.22 + (i % 2) * 0.08) * (L.blaze ? 1.7 : 1), i % 2 ? L.flame : LT(L.flame, 0.35), 'fire', [-0.05, 0.08 + i * 0.05, 0], [0, 0, 1.0 + i * 0.12], 6)); // płonąca grzywa
   }
-  if (ruff) q.neck.add(sph(q.r * (mant ? 1.25 : 0.95), ruff, 'fur', [0.02, 0.12, 0], [1, 1.15, 1.25]));
-  if (ruff && mant) for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; q.neck.add(spike(0.06, 0.2, ruff, 'fur', [0.02 + Math.cos(a) * 0.12, 0.12 + Math.sin(a) * 0.15, Math.sin(a * 1.3) * 0.12], [0, 0, a + 1.57])); } // lwia grzywa
-  if (fire) for (let i = 0; i < 9; i++) q.body.add(cone(0.055, 0.22 + (i % 3) * 0.07 + Math.sin((P.t || 0) * 8 + i) * 0.03, i % 2 ? L.flame : LT(L.flame, 0.3), 'fire', [-q.len * 0.42 + i * q.len * 0.1, q.r * 0.9, 0], [0, 0, 0.55], 6));
+  const mk = L.maneK || 1; if (ruff) q.neck.add(sph(q.r * (mant ? 1.25 : 0.95) * Math.min(mk, 1.08), ruff, 'fur', [0.02, 0.12, 0], [1, 1.15, 1.25]));
+  if (ruff && mant) for (let i = 0; i < (mk > 1 ? 16 : 10); i++) { const a = i / (mk > 1 ? 16 : 10) * Math.PI * 2; q.neck.add(spike(0.06 * mk, 0.2 * mk * (1 + (i % 2) * 0.3 * (mk - 1) * 3), ruff, 'fur', [0.02 + Math.cos(a) * 0.12 * mk, 0.12 + Math.sin(a) * 0.15 * mk, Math.sin(a * 1.3) * 0.12 * mk], [0, 0, a + 1.57])); } // lwia grzywa
+  if (L.backSpikes) for (let i = 0; i < 7; i++) q.body.add(spike(0.035, 0.16 + (i % 2) * 0.06, L.backSpikes, 'horn', [q.len * 0.3 - i * q.len * 0.13, q.r * 0.95, 0], [0, 0, 0.5])); // kolce wzdłuż grzbietu
+  if (fire) { const bz = L.blaze ? 2 : 1; for (let i = 0; i < 9; i++) q.body.add(cone(0.055 * (L.blaze ? 1.5 : 1), (0.22 + (i % 3) * 0.07 + Math.sin((P.t || 0) * 8 + i) * 0.03) * bz, i % 2 ? L.flame : LT(L.flame, 0.3), 'fire', [-q.len * 0.42 + i * q.len * 0.1, q.r * 0.9, 0], [0, 0, 0.55], 6));
+    if (L.blaze) for (let i = 0; i < 6; i++) q.body.add(slab([[-0.05, 0], [0.05, 0], [-0.06, 0.2 + (i % 2) * 0.08]], 0.03, L.blaze, 'horn', [-q.len * 0.36 + i * q.len * 0.14, q.r * 0.95, 0], [0, 0, 0.3])); } // cerber otchłani: kostne kolce w płomieniach
   if (mant) { const sw = Math.sin((P.t || 0) * 2.5) * 0.03 + (P.atk != null ? Math.sin(P.atk * Math.PI) * 0.25 : 0), st = [[0, 0, 0], [-0.3, 0.3, 0], [-0.36, 0.8, 0], [-0.12 + sw, 1.12, 0], [0.18 + sw, 1.12 - sw, 0]]; q.tail.add(tube(st, 0.075, 0.04, DK(col, 0.1), 'scale'));
-    for (let i = 1; i < 4; i++) q.tail.add(torus(0.075 - i * 0.01, 0.016, DK(L.stinger, 0.1), 'horn', st[i], [0, 0, Math.PI / 2])); q.tail.add(sph(0.07, L.stinger, 'horn', st[4], [1.3, 1, 1])); q.tail.add(spike(0.045, 0.24, L.stinger, 'horn', [st[4][0] + 0.12, st[4][1] - 0.06, 0], [0, 0, -2.2])); } // ogon skorpiona nad grzbietem, żądło nad głową
-  else q.tail.add(tube([[0, 0, 0], [-0.2, -0.05, 0], [-0.35, -0.2, 0], [-0.45, -0.25, 0]], fire ? 0.035 : 0.07, 0.025, fire ? L.flame : col, fire ? 'fire' : 'fur'));
+    for (let i = 1; i < 4; i++) q.tail.add(torus(0.075 - i * 0.01, 0.016, DK(L.stinger, 0.1), 'horn', st[i], [0, 0, Math.PI / 2]));
+    if (L.quills) for (let i = 0; i < 9; i++) { const a = -1.2 + i * 0.3; q.tail.add(spike(0.022, 0.2 + (i % 2) * 0.08, L.quills, 'horn', st[4], [0, 0, a])); } // pęk kolców przy żądle (mantykora ciska nimi)
+    if (L.quills) for (let i = 1; i < 4; i++) q.tail.add(spike(0.025, 0.14, L.quills, 'horn', [st[i][0] + 0.06, st[i][1], 0], [0, 0, -0.4 - i * 0.5]));
+    q.tail.add(sph(0.07, L.stinger, 'horn', st[4], [1.3, 1, 1])); q.tail.add(spike(0.045, 0.24, L.stinger, 'horn', [st[4][0] + 0.12, st[4][1] - 0.06, 0], [0, 0, -2.2])); } // ogon skorpiona nad grzbietem, żądło nad głową
+  else { q.tail.add(tube([[0, 0, 0], [-0.2, -0.05, 0], [-0.35, -0.2, 0], [-0.45, -0.25, 0]], fire ? 0.035 : 0.07, 0.025, fire ? L.flame : col, fire ? 'fire' : 'fur')); if (L.blaze) for (let i = 0; i < 4; i++) q.tail.add(cone(0.05, 0.3 + (i % 2) * 0.1, i % 2 ? L.flame : LT(L.flame, 0.3), 'fire', [-0.45, -0.25, 0], [0, 0, 1.9 + i * 0.35], 6)); }
+  if (L.plates) { for (const z of [-1, 1]) for (let i = 0; i < 3; i++) { q.body.add(rbox(0.2, 0.18, 0.03, 0.02, i % 2 ? L.plates : DK(L.plates, 0.15), 'iron', [q.len * 0.32 - i * 0.24, -0.02, z * q.r * 1.04], [0.12 * z, 0, 0])); q.body.add(spike(0.02, 0.09, '#c8ccd4', 'steel', [q.len * 0.32 - i * 0.24, 0.02, z * q.r * 1.12], [Math.PI / 2 * z, 0, 0])); } } // zbroja warga
   if (L.wings) { const wl = joint(q.body, [q.len * 0.26, q.r * 0.85, 0]), fl = wingFlap(P, 0.3); // skrzydła z łopatek, nie z zadu
-    for (const z of [-1, 1]) { const w = joint(wl, [0, 0, 0.14 * z]); w.rotation.set((fl + (z < 0 ? 0.12 : 0)) * z, -0.3 * z, P.fly != null ? -0.35 : -0.2); w.scale.setScalar(0.95); membraneWing(w, L.wings, DK(L.wings, 0.45), 1, true, 1.2); } }
+    for (const z of [-1, 1]) { const w = joint(wl, [0, 0, 0.14 * z]); w.rotation.set((fl + (z < 0 ? 0.12 : 0)) * z, -0.3 * z, P.fly != null ? -0.35 : -0.2); w.scale.setScalar(0.95 * (L.wingK || 1)); membraneWing(w, L.wings, DK(L.wings, 0.45), 1, true, 1.2); } }
   if (L.rider) { // jeździec wargów: goblin w siodle na grzbiecie
-    const rs = 0.7, man = humanoid({ build: 'slim', ...L.rider, mounted: true, size: rs }, { t: P.t, atk: P.atk, hurt: P.hurt });
+    const rs = 0.7, man = humanoid({ build: 'slim', ...L.rider, mounted: true, size: rs, mountR: q.r * 1.12 / rs }, { t: P.t, atk: P.atk, hurt: P.hurt });
     q.body.add(mesh(new THREE.CylinderGeometry(q.r * 1.02, q.r * 1.02, 0.34, 16, 1, true, -Math.PI / 2, Math.PI), L.rider.leather || '#3a1a0a', 'leather', [0.02, 0.02, 0], [Math.PI / 2, 0, 0]));
     man.position.set(0.0, q.r * 0.8 - (0.1 + 0.69 * buildOf(L.rider).legL) * rs, 0); q.body.add(man);
   }
@@ -186,9 +206,14 @@ function aurochs(L, P = {}) {
   for (const z of [-1, 1]) {
     head.add(sph(0.024, L.eyes || '#140c06', L.eyes ? 'glow' : 'skin', [0.22, 0.07, 0.12 * z], [1.2, 0.7, 1])); head.add(rbox(0.1, 0.03, 0.06, 0.01, DK(col, 0.4), 'fur', [0.2, 0.11, 0.12 * z], [0, 0, -0.3]));
     head.add(slab([[0, 0], [0.05, 0.03], [-0.06, 0.14]], 0.02, col, 'fur', [0.02, 0.1, 0.15 * z], [0.9 * z, 0, 0.6])); // ucho
-    const hp = [[0.06, 0.1, 0.1 * z], [0.08, 0.14, 0.3 * z], [0.24, 0.24, 0.42 * z], [0.38, 0.42, 0.36 * z], [0.36, 0.56, 0.26 * z]]; head.add(tube(hp, 0.055, 0.01, horn, 'horn', 2)); // rogi-lira
-    head.add(cone(0.02, 0.1, war ? '#c8ccd4' : '#2a2018', war ? 'steel' : 'horn', hp[4], [0, 0, 0.1], 6)); // ciemne (u bojowego okute) końce rogów
+    const hk = L.hornScale || 1, hp = [[0.06, 0.1, 0.1 * z], [0.08, 0.14, 0.3 * z], [0.24, 0.24, 0.42 * z], [0.38, 0.42, 0.36 * z], [0.36, 0.56, 0.26 * z]].map(([x, y, zz], i) => i ? [0.06 + (x - 0.06) * hk, 0.1 + (y - 0.1) * hk, 0.1 * z + (zz - 0.1 * z) * hk] : [x, y, zz]); head.add(tube(hp, 0.055 * Math.sqrt(hk), 0.01, horn, 'horn', 2)); // rogi-lira
+    head.add(cone(0.02 * hk, 0.1 * hk * (L.ram ? 2 : 1), war ? '#c8ccd4' : '#2a2018', war ? 'steel' : 'horn', hp[4], [0, 0, 0.1], 6)); // ciemne (u bojowego okute) końce rogów
   }
+  if (L.ram) { const M = L.metal || '#8a8478', MD = DK(M, 0.25); // taranowy: żelazny naczółek z kolcami na czole, pancerz karku i piersi
+    head.add(rbox(0.34, 0.3, 0.32, 0.05, M, 'iron', [0.14, 0.06, 0], [0, 0, -0.25])); head.add(rbox(0.24, 0.16, 0.24, 0.04, MD, 'iron', [0.32, -0.04, 0], [0, 0, -0.45]));
+    for (const [y, z] of [[0.2, 0], [0.14, 0.1], [0.14, -0.1], [0.06, 0]]) head.add(spike(0.035, 0.2, '#c8ccd4', 'steel', [0.3, y, z], [0, 0, -1.3]));
+    for (let i = 0; i < 3; i++) q.neck.add(rbox(0.16, 0.08, 0.4, 0.02, i % 2 ? M : MD, 'iron', [0.06 + i * 0.1, 0.2 - i * 0.03, 0], [0, 0, -0.5])); // płyty na karku
+    q.body.add(rbox(0.1, 0.44, 0.5, 0.03, M, 'iron', [q.len * 0.5, -0.05, 0])); for (const z of [-1, 1]) for (let i = 0; i < 4; i++) q.body.add(spike(0.035, 0.24, '#c8ccd4', 'steel', [0.3 - i * 0.22, q.r * 0.35, z * q.r * 1.14], [Math.PI / 2 * z, 0, 0])); }
   if (war) { head.add(rbox(0.04, 0.3, 0.2, 0.012, L.metal || '#8a8478', 'iron', [0.2, 0.12, 0], [0, 0, -1.1])); head.add(spike(0.035, 0.22, '#c8ccd4', 'steel', [0.3, 0.2, 0], [0, 0, -0.9]));
     const bd = mesh(new THREE.CylinderGeometry(q.r * 1.02, q.r * 1.12, q.len * 0.75, 20, 1, true, -Math.PI * 0.6, Math.PI * 1.2), L.barding, 'cloth', [-0.05, -0.02, 0], [0, 0, Math.PI / 2]); bd.material = bd.material.clone(); bd.material.side = THREE.DoubleSide; q.body.add(bd);
     if (L.trim) for (const x of [0.33, -0.43]) q.body.add(torus(q.r * 1.08, 0.015, L.trim, 'gold', [x, -0.02, 0], [0, Math.PI / 2, 0], [1, 1, 0.95], Math.PI * 1.2)); }
@@ -202,18 +227,20 @@ function aurochs(L, P = {}) {
 function gorgon(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#6a7a5a', plate = L.plate || DK(col, 0.1), edge = LT(col, 0.25), horn = L.horn || '#e8e0cc', eye = L.eyes || '#a0ff80';
   const q = quadBody(root, { col, kind: 'scale', len: 1.15, legH: 0.55, r: 0.33, hump: 0.12, chest: 1.18, rump: 1.05, bulk: 1.3, hoofCol: '#1a1a14' }, P), hit = q.hit;
-  for (let row = 0; row < 4; row++) for (let i = 0; i < 8; i++) for (const z of [-1, 1]) { // łuski-płyty w rzędach, każda zachodzi na następną
-    const x = q.len * 0.5 - i * q.len * 0.13 - (row % 2) * 0.06, a = 0.35 + row * 0.33, y = Math.cos(a) * q.r * 0.95, zz = Math.sin(a) * q.r * 0.82 * z;
-    q.body.add(slab([[0, 0.06], [0.05, 0.03], [0.04, -0.05], [-0.12, 0], [0.04, 0.05]], 0.02, i % 2 ? plate : DK(plate, 0.12), 'iron', [x, y, zz], [a * z, 0, 0.05]));
+  const hv = !!L.heavyScales, sk = hv ? 1.45 : 1;
+  for (let row = 0; row < (hv ? 6 : 4); row++) for (let i = 0; i < 8; i++) for (const z of [-1, 1]) { // łuski-płyty w rzędach, każda zachodzi na następną (pancerna: większe, aż po brzuch)
+    const x = q.len * 0.5 - i * q.len * 0.13 - (row % 2) * 0.06, a = 0.35 + row * (hv ? 0.3 : 0.33), y = Math.cos(a) * q.r * 0.95, zz = Math.sin(a) * q.r * 0.82 * z;
+    q.body.add(slab([[0, 0.06 * sk], [0.05 * sk, 0.03 * sk], [0.04 * sk, -0.05 * sk], [-0.12 * sk, 0], [0.04 * sk, 0.05 * sk]], 0.02, i % 2 ? plate : DK(plate, 0.12), 'iron', [x, y, zz], [a * z, 0, 0.05]));
   }
-  for (let i = 0; i < 7; i++) q.body.add(slab([[-0.08, 0], [0.08, 0], [-0.02, 0.14 - Math.abs(i - 3) * 0.015]], 0.035, edge, 'iron', [q.len * 0.4 - i * 0.14, q.r * 0.96, 0], [0, 0, 0.35])); // grzebień płyt na grzbiecie
+  if (hv) for (let i = 0; i < 5; i++) for (const z of [-1, 1]) q.neck.add(slab([[0, 0.07], [0.07, 0.03], [0.05, -0.06], [-0.14, 0], [0.05, 0.06]], 0.02, i % 2 ? plate : DK(plate, 0.12), 'iron', [0.02 + i * 0.05, 0.14 - i * 0.02, 0.14 * z], [0.6 * z, 0, -0.4])); // łuski na karku
+  for (let i = 0; i < (hv ? 9 : 7); i++) { const m = (hv ? 4 : 3); q.body.add(slab([[-0.08, 0], [0.08, 0], [-0.02, (0.14 - Math.abs(i - m) * 0.015) * (hv ? 2 : 1)]], 0.035, edge, 'iron', [q.len * (hv ? 0.45 : 0.4) - i * (hv ? 0.12 : 0.14), q.r * 0.96, 0], [0, 0, 0.35])); } // grzebień płyt na grzbiecie
   const head = joint(q.neck, [0.06, -0.14, 0], -0.45 - hit * 0.3); // łeb nisko, jak u szarżującego byka
   head.add(rbox(0.3, 0.24, 0.3, 0.04, col, 'scale', [0.1, 0, 0])); head.add(rbox(0.22, 0.16, 0.24, 0.04, DK(col, 0.12), 'scale', [0.3, -0.06, 0], [0, 0, -0.2]));
   head.add(rbox(0.06, 0.26, 0.3, 0.015, plate, 'iron', [0.2, 0.12, 0], [0, 0, -1.0])); head.add(rbox(0.05, 0.18, 0.22, 0.015, plate, 'iron', [0.36, 0.02, 0], [0, 0, -0.6])); // żelazny pancerz na czole i nosie
   for (const z of [-1, 1]) {
     head.add(rbox(0.14, 0.04, 0.08, 0.012, edge, 'iron', [0.18, 0.1, 0.12 * z], [0, 0.2 * z, -0.35])); head.add(sph(0.03, eye, 'glow', [0.2, 0.05, 0.14 * z], [1.4, 0.6, 1])); // brew i zabójcze oko
     head.add(sph(0.018, '#0a0a08', 'skin', [0.42, -0.08, 0.05 * z]));
-    head.add(tube([[0.02, 0.1, 0.12 * z], [-0.04, 0.2, 0.28 * z], [0.06, 0.14, 0.4 * z], [0.2, 0.02, 0.38 * z], [0.28, 0.05, 0.3 * z]], 0.05, 0.008, horn, 'horn', 2)); // rogi zakręcone w dół i do przodu
+    const hk = L.hornScale || 1; head.add(tube([[0.02, 0.1, 0.12 * z], [-0.04, 0.2, 0.28 * z], [0.06, 0.14, 0.4 * z], [0.2, 0.02, 0.38 * z], [0.28, 0.05, 0.3 * z]].map(([x, y, zz], i) => i ? [0.02 + (x - 0.02) * hk, 0.1 + (y - 0.1) * hk, 0.12 * z + (zz - 0.12 * z) * hk] : [x, y, zz]), 0.05 * Math.sqrt(hk), 0.008, horn, 'horn', 2)); // rogi zakręcone w dół i do przodu
   }
   if (L.breath) for (let i = 0; i < 6; i++) head.add(sph(0.04 + i * 0.012, i % 2 ? L.breath : LT(L.breath, 0.3), 'glow', [0.48 + i * 0.05, -0.1 + Math.sin(i + (P.t || 0) * 3) * 0.02, (i % 2 ? 1 : -1) * 0.04], [1.4, 0.7, 1])); // trujący dym z nozdrzy
   marker(head, 'mouth', [0.46, -0.1, 0]);
@@ -231,8 +258,10 @@ function featherWing(parent, z, col, span, flap, K = 'feather') {
 const wingFlap = (P, base = 0.25) => P.fly != null ? 0.5 + Math.sin(P.fly * Math.PI * 2) * 1.0 : P.walk != null ? base + 0.1 + Math.sin(P.walk * Math.PI * 4) * 0.3 : base + Math.sin((P.t || 0) * 2) * 0.08 + (P.atk != null ? (P.atk < 0.45 ? Math.sin(P.atk / 0.45 * Math.PI / 2) : Math.max(0, 1 - (P.atk - 0.45) / 0.4)) * 0.8 : 0); // atak: skrzydła w górę w zamachu, opadają przy ciosie
 // Gryf: lwie ciało, orla głowa i skrzydła, przednie łapy ze szponami
 function griffin(L, P = {}) {
-  const root = new THREE.Group(), col = L.fur || '#c89a4a', wh = '#f0ece0';
+  const root = new THREE.Group(), col = L.fur || '#c89a4a', wh = L.head || '#f0ece0';
   const q = quadBody(root, { col, len: 0.9, legH: 0.58, r: 0.22, paws: true, chest: 1.2, rear: true }, P);
+  if (L.barding) { const bd = mesh(new THREE.CylinderGeometry(q.r * 1.05, q.r * 1.12, q.len * 0.55, 20, 1, true, -Math.PI * 0.6, Math.PI * 1.2), L.barding, 'cloth', [-0.1, -0.02, 0], [0, 0, Math.PI / 2]); bd.material = bd.material.clone(); bd.material.side = THREE.DoubleSide; q.body.add(bd);
+    if (L.trim) for (const x of [-0.1 + q.len * 0.27, -0.1 - q.len * 0.27]) q.body.add(torus(q.r * 1.1, 0.012, L.trim, 'gold', [x, -0.02, 0], [0, Math.PI / 2, 0], [1, 1, 0.95], Math.PI * 1.2)); } // czaprak gryfa cesarskiego
   q.neck.rotation.z = -0.4; q.neck.add(cap(0.12, 0.18, wh, 'feather', [0, 0.12, 0], null, [1, 1, 0.85]));
   const head = joint(q.neck, [0.03, 0.28, 0], -0.3); head.add(sph(0.12, wh, 'feather', [0, 0, 0], [1.1, 1, 0.9]));
   head.add(tube([[0.1, 0.0, 0], [0.2, -0.02, 0], [0.26, -0.08, 0], [0.24, -0.13, 0]], 0.05, 0.008, '#e8b040', 'horn'));
@@ -240,6 +269,8 @@ function griffin(L, P = {}) {
   q.tail.add(tube([[0, 0, 0], [-0.2, -0.1, 0], [-0.35, -0.3, 0], [-0.4, -0.45, 0]], 0.04, 0.02, col, 'fur'), sph(0.06, DK(col, 0.3), 'fur', [-0.4, -0.47, 0]));
   for (const z of [-1, 1]) featherWing(joint(q.body, [0.2, q.r * 0.7, 0]), z, col, 1.25, wingFlap(P));
   for (const z of [-1, 1]) head.add(rbox(0.08, 0.025, 0.05, 0.01, DK(wh, 0.3), 'feather', [0.07, 0.07, 0.07 * z], [0, 0, -0.3])); // groźna brew orła
+  if (L.crest) for (let i = 0; i < 5; i++) head.add(slab([[0, 0], [0.04, 0.01], [-0.3 - i * 0.04, 0.1 + i * 0.03], [-0.26 - i * 0.04, 0.05 + i * 0.02]], 0.012, i % 2 ? L.crest : LT(L.crest, 0.2), 'feather', [-0.06, 0.08, (i - 2) * 0.018], [0, 0, 0.3])); // pióropusz
+  if (L.helmet) { head.add(mesh(new THREE.SphereGeometry(0.13, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), L.helmet, 'gold', [-0.01, 0.02, 0], [0, 0, 0.35], [1.1, 1, 0.95])); head.add(slab([[0, 0], [0.13, 0.0], [0.2, -0.05], [0.12, 0.03]], 0.02, L.helmet, 'gold', [0.02, 0.08, 0])); for (const z of [-1, 1]) head.add(slab([[0, 0], [0.08, 0], [0.05, -0.08]], 0.012, L.helmet, 'gold', [0.0, 0.0, 0.1 * z])); } // hełm gryfa cesarskiego
   marker(head, 'mouth', [0.26, -0.06, 0]);
   if (L.size) root.scale.setScalar(L.size);
   return root;
@@ -252,7 +283,7 @@ function griffin(L, P = {}) {
 //    z długich, falujących wstęg ognia, zwisające nogi
 function birdBody(L, P, o) {
   const root = new THREE.Group(), t = P.t || 0, col = o.col, wcol = o.wing || col, K = o.kind, A = P.atk, fly = P.fly != null, hit = A != null ? Math.sin(A * Math.PI) : 0;
-  const st = o.style || 'eagle', eagle = st === 'eagle', storm = st === 'storm', fire = st === 'fire';
+  const st = o.style || 'eagle', eagle = st === 'eagle', storm = st === 'storm', fire = st === 'fire', FC = o.fire || ['#ff6a1a', '#ffc040', '#ffe080'];
   const legH = 0.58, pitch = fly ? 0.12 : (eagle ? 0.72 : storm ? 0.55 : 0.3) - hit * 0.4, hover = fire && !fly ? 0.38 + Math.sin(t * 2.4) * 0.05 : 0;
   const H = legH + 0.14 + hover + (fly ? 0.25 + Math.sin(P.fly * Math.PI * 2) * 0.05 : 0), fK = o.flame ? 'fire' : 'feather';
   const body = joint(root, [0, H, 0], pitch), hd = o.head || col, dark = DK(col, 0.35), sl = storm ? 0.85 : fire ? 0.8 : 1;
@@ -271,23 +302,25 @@ function birdBody(L, P, o) {
   const jw = joint(head, [0.14, -0.035, 0], -hit * 0.5); jw.add(slab([[0, 0.01], [0.12, 0.0], [0.08, -0.03], [0, -0.025]], 0.055, DK(bk, 0.15), 'horn'));
   for (const z of [-1, 1]) { head.add(rbox(0.1, 0.03, 0.05, 0.01, DK(hd, 0.45), K, [0.06, 0.065, 0.065 * z], [0, 0.2 * z, -0.25])); head.add(sph(0.022, o.eye || '#f0c030', o.glow || fire ? 'glow' : 'gem', [0.07, 0.035, 0.07 * z], [1.2, 0.8, 1])); head.add(sph(0.01, '#0a0604', 'skin', [0.085, 0.035, 0.078 * z]));
     if (storm) head.add(tube([[0.02, 0.07, 0.06 * z], [-0.1, 0.14, 0.08 * z], [-0.2, 0.16, 0.07 * z]], 0.022, 0.004, '#e8e8f0', 'horn')); } // rogi ptaka gromu
-  const crest = o.crest || DK(col, 0.1), nC = eagle ? 5 : 7, cl = eagle ? 0.3 : storm ? 0.55 : 0.5;
+  const crest = o.crest || DK(col, 0.1), nC = eagle ? 5 : o.crestL ? 9 : 7, cl = (eagle ? 0.3 : storm ? 0.55 : 0.5) * (o.crestL || 1);
   for (let i = 0; i < nC; i++) head.add(slab([[0, 0], [0.04, 0.01], [-cl - i * 0.04, 0.06 + i * 0.03], [-cl * 0.87 - i * 0.04, 0.02 + i * 0.02]], 0.012, i % 2 ? crest : LT(crest, 0.2), fire ? 'fire' : storm ? (i % 2 ? 'glow' : 'feather') : 'feather', [-0.06, 0.06, (i - nC / 2) * 0.02], [0, 0, (storm ? 0.05 : 0.25) + Math.sin(t * 3 + i) * 0.05])); // pióropusz
+  if (o.stormCrown) for (let i = 0; i < 3; i++) { const zz = (i - 1) * 0.05, h = 0.34 + (i === 1 ? 0.14 : 0); head.add(tube([[-0.02, 0.08, zz], [0.02, 0.08 + h * 0.3, zz], [-0.06, 0.08 + h * 0.5, zz * 1.4], [0.0, 0.08 + h * 0.78, zz * 1.6], [-0.08, 0.08 + h, zz * 2]], 0.026, 0.006, o.stormCrown, 'glow')); } // korona błyskawic
   marker(head, 'mouth', [0.3, -0.06, 0]);
   // skrzydła z barków (poza obrotem tułowia)
   const sx = 0.05 * Math.cos(pitch) - 0.17 * Math.sin(pitch), sy = H + 0.05 * Math.sin(pitch) + 0.17 * Math.cos(pitch), wl = joint(root, [sx, sy, 0]);
-  for (const z of [-1, 1]) {
-    const beat = fly ? Math.sin(P.fly * Math.PI * 2) : 0, w = joint(wl, [-0.04, 0, 0.12 * z]), idle = Math.sin(t * 2) * 0.05 + hit * 0.35;
+  for (let pw = 0; pw < (o.wingPairs || 1); pw++) for (const z of [-1, 1]) {
+    const beat = fly ? Math.sin(P.fly * Math.PI * 2 - pw * 0.8) : 0, w = joint(wl, [-0.04 - pw * 0.22, -pw * 0.06, 0.12 * z]), idle = Math.sin(t * 2) * 0.05 + hit * 0.35;
     const [rx, ry, rz] = fly ? [0.5 + beat * 1.0, -0.2, -0.3] : eagle ? [1.0 + idle, -0.75, 0.55] : storm ? [0.42 + idle, -0.4, 0.2] : [1.3 + Math.sin(t * 2.4) * 0.15, -0.45, -0.05];
-    w.rotation.set(rx * z, ry * z, rz); w.scale.setScalar((storm ? 2.05 : fire ? 1.9 : 1.95) * 0.9); featherFan(w, wcol, 1, !!o.flame, storm);
+    w.rotation.set((rx - pw * 0.35) * z, ry * z, rz + pw * 0.25); w.scale.setScalar((storm ? 2.05 : fire ? 1.9 : 1.95) * 0.9 * (1 - pw * 0.38) * (o.wingK || 1)); featherFan(w, wcol, 1, !!o.flame, storm);
     if (o.bolts) for (const off of [0, 0.2, 0.42]) w.add(tube([[0.02, 0.15 + off, 0.02], [0.1, 0.33 + off, 0.02], [-0.03, 0.46 + off, 0.02], [0.08, 0.64 + off, 0.02], [-0.05, 0.84 + off, 0.02]], 0.012, 0.004, o.bolts, 'glow')); // wyładowania
   }
   // ogon
-  if (fire) for (let i = 0; i < 5; i++) { const zz = (i - 2) * 0.09, wv = Math.sin(t * 3 + i) * 0.08, ln = 1.0 + (i % 2) * 0.35; // wstęgi ognia
-    body.add(tube([[-0.36, 0, zz * 0.3], [-0.7, -0.12 + wv, zz], [-0.95 * ln, -0.4 - wv, zz * 1.4], [-1.1 * ln, -0.75 + wv, zz * 1.6]], 0.05, 0.012, i % 2 ? '#ff6a1a' : '#ffc040', 'fire')); body.add(cone(0.06, 0.3, '#ffe080', 'fire', [-1.1 * ln, -0.8 + wv, zz * 1.6], [0, 0, 2.6], 6)); }
+  if (o.ring) { const rg = joint(body, [-0.15, 0.5, -0.2], -pitch); rg.add(torus(0.62, 0.05, o.ring, 'glow')); rg.add(torus(0.48, 0.022, FC[1], 'glow')); for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2 + t * 0.4; rg.add(cone(0.06, 0.26 + (i % 2) * 0.12, i % 2 ? o.ring : FC[1], 'fire', [Math.cos(a) * 0.8, Math.sin(a) * 0.8, 0], [0, 0, a - Math.PI / 2], 5)); } } // słoneczny krąg za feniksem
+  const tN = o.tailN || 5; if (fire) for (let i = 0; i < tN; i++) { const zz = (i - (tN - 1) / 2) * 0.09 * 5 / tN, wv = Math.sin(t * 3 + i) * 0.08, ln = (1.0 + (i % 2) * 0.35) * (o.tailL || 1); // wstęgi ognia
+    body.add(tube([[-0.36, 0, zz * 0.3], [-0.7, -0.12 + wv, zz], [-0.95 * ln, -0.4 - wv, zz * 1.4], [-1.1 * ln, -0.75 + wv, zz * 1.6]], 0.05, 0.012, i % 2 ? FC[0] : FC[1], 'fire')); body.add(cone(0.06, 0.3, FC[2], 'fire', [-1.1 * ln, -0.8 + wv, zz * 1.6], [0, 0, 2.6], 6)); }
   else for (let i = 0; i < 7; i++) { const a = (i - 3) * 0.12; body.add(slab([[0, 0], [0.05, -0.1], [0.03, -0.7 - Math.abs(i - 3) * -0.05], [0, -0.78], [-0.03, -0.6], [-0.04, -0.1]], 0.012, i % 2 ? wcol : LT(wcol, 0.12), fK, [-0.38, -0.02, a * 0.5], [a, 0, 1.3 + Math.abs(i - 3) * 0.04])); }
-  if (storm) for (const z of [-1, 1]) { body.add(tube([[-0.38, 0, 0.04 * z], [-0.8, -0.1, 0.12 * z], [-1.15, 0.05, 0.2 * z], [-1.4, 0.2, 0.24 * z]], 0.035, 0.01, wcol, 'feather')); body.add(slab([[0, 0.05], [0.12, 0], [0, -0.05], [-0.04, 0]], 0.02, o.bolts || '#a0d8ff', 'glow', [-1.42, 0.22, 0.24 * z])); } // rozwidlone wstęgi ogona
-  if (fire) for (let i = 0; i < 6; i++) body.add(cone(0.06, 0.3 + (i % 3) * 0.1, i % 2 ? '#ff7a1a' : '#ffd060', 'fire', [0.2 - i * 0.1, 0.15, (i % 2 ? 1 : -1) * 0.05], [0, 0, 1.3 + i * 0.05], 6)); // płomienie z grzbietu
+  if (storm) { const k = o.tailL || 1; for (const z of [-1, 1]) { body.add(tube([[-0.38, 0, 0.04 * z], [-0.8 * k, -0.1, 0.12 * z], [-1.15 * k, 0.05, 0.2 * z], [-1.4 * k, 0.2, 0.24 * z]], 0.035, 0.01, wcol, 'feather')); body.add(slab([[0, 0.05], [0.12, 0], [0, -0.05], [-0.04, 0]], 0.02, o.bolts || '#a0d8ff', 'glow', [-1.42 * k, 0.22, 0.24 * z])); } } // rozwidlone wstęgi ogona
+  if (fire) for (let i = 0; i < 6; i++) body.add(cone(0.06, 0.3 + (i % 3) * 0.1, i % 2 ? FC[0] : FC[1], 'fire', [0.2 - i * 0.1, 0.15, (i % 2 ? 1 : -1) * 0.05], [0, 0, 1.3 + i * 0.05], 6)); // płomienie z grzbietu
   // nogi: pióra na udach, łuskowate skoki, szpony (w locie podkulone, feniks: zwisają pod unoszącym się ptakiem)
   for (const z of [-1, 1]) {
     const lg = joint(root, [-0.02, legH + 0.08 + hover + (fly ? 0.2 : 0), 0.11 * z], fly ? -1.3 : fire ? -0.35 : 0.12);
@@ -299,8 +332,11 @@ function birdBody(L, P, o) {
   if (!fly) { const g = new THREE.Group(); g.add(root); root.rotation.y = eagle ? -0.45 : -0.3; return g; } // w spoczynku pierś lekko ku widzowi: widać oba skrzydła
   return root;
 }
-function bird(L, P = {}) { const r = birdBody(L, P, { col: L.fur, wing: L.wing, head: L.head, beak: L.beak, kind: 'feather', glow: L.glow, bolts: L.glow, crest: L.crest || (L.glow ? L.glow : null), style: L.glow ? 'storm' : 'eagle' }); r.scale.setScalar(1.1 * (L.size || 1)); return r; }
-function phoenix(L, P = {}) { const r = birdBody(L, P, { col: '#c02c0c', wing: '#e05a14', head: '#e88a18', beak: '#ffd040', kind: 'fire', flame: true, eye: '#fff8c0', crest: '#ffc020', leg: '#c87020', style: 'fire' }); r.scale.setScalar(1.05 * (L.size || 1)); return r; }
+function bird(L, P = {}) { const r = birdBody(L, P, { col: L.fur, wing: L.wing, head: L.head, beak: L.beak, kind: 'feather', glow: L.glow, bolts: L.glow, crest: L.crest || (L.glow ? L.glow : null), style: L.glow ? 'storm' : 'eagle', wingPairs: L.wingPairs, stormCrown: L.stormCrown, wingK: L.wingK, tailL: L.tailL }); r.scale.setScalar(1.1 * (L.size || 1)); return r; }
+const PHOENIX = { fire: { col: '#c02c0c', wing: '#e05a14', head: '#e88a18', beak: '#ffd040', eye: '#fff8c0', crest: '#ffc020', leg: '#c87020', fire: ['#ff6a1a', '#ffc040', '#ffe080'] },
+  sun: { col: '#d83010', wing: '#f07018', head: '#ffa020', beak: '#fff0a0', eye: '#ffffff', crest: '#ffe060', leg: '#e08020', fire: ['#ff7a10', '#ffd040', '#fff6d0'], ring: '#ffe080', tailN: 9, tailL: 1.3, crestL: 1.6 },
+  celestial: { col: '#2a5ac8', wing: '#4a90f0', head: '#7ab8ff', beak: '#e8f4ff', eye: '#ffffff', crest: '#c8ecff', leg: '#5a88d0', fire: ['#3a8aff', '#a8dcff', '#f0faff'] } };
+function phoenix(L, P = {}) { const r = birdBody(L, P, { ...PHOENIX[L.palette || 'fire'], kind: 'fire', flame: true, style: 'fire' }); r.scale.setScalar(1.05 * (L.size || 1)); return r; }
 
 // Smok: kanciasta głowa z łukami brwiowymi, kryzą kolców za żuchwą, rogami i zębami; płyty na brzuchu, płetwy kolców
 // na grzbiecie, szyi i ogonie, ostrze na ogonie; ogromne, postrzępione skrzydła z pazurami. W locie łapy podkulone,
@@ -320,12 +356,16 @@ function dragon(L, P = {}) {
     if (cry && i % 2) q.body.add(mesh(new THREE.OctahedronGeometry(0.17), L.gem || LT(col, 0.4), 'gem', [x, q.r * 1.1, 0], [0.3, i, 0.2], [0.7, 2.4, 0.7]));
     if (heavy) q.body.add(rbox(0.15, 0.07, q.r * 1.45, 0.02, dark, 'iron', [x, q.r * 0.9, 0], [0, 0, -0.15])); // pancerne płyty
     fin(q.body, x, q.r * 0.92, h); }
+  if (L.leaves) for (let i = 0; i < 7; i++) { const x = -0.6 + i * 0.19; q.body.add(sph(0.09, i % 2 ? L.leaves : LT(L.leaves, 0.12), 'fur', [x, q.r * 0.95, 0.12], [1.4, 0.6, 1])); q.body.add(tube([[x, q.r * 0.7, q.r * 0.9], [x + 0.04, -q.r * 0.2, q.r * 1.05], [x - 0.02, -q.r * 0.8 - (i % 2) * 0.1, q.r * 1.02]], 0.014, 0.008, DK(L.leaves, 0.1), 'fur')); if (L.blossom) q.body.add(sph(0.035, L.blossom, 'glow', [x - 0.02, -q.r * 0.82 - (i % 2) * 0.1, q.r * 1.02])); } // mech i pnącza z kwiatami
+  if (L.soulFire) { const sf = L.soulFire; q.body.add(sph(0.13, sf, 'glow', [0.1, -0.02, 0])); for (let i = 0; i < 9; i++) q.body.add(cone(0.05, 0.22 + (i % 3) * 0.1 + Math.sin(t * 7 + i) * 0.03, i % 2 ? sf : LT(sf, 0.4), 'fire', [-0.7 + i * 0.17, q.r * 1.1, 0], [0, 0, 0.4], 6)); } // upiorny ogień w klatce żeber i wzdłuż kręgosłupa
   q.body.scale.y *= heavy ? 0.9 : 0.82; // smukły tułów, nie beczka
   const nl = ser ? 1.35 : heavy ? 0.8 : 1;
   const nk = fly ? [[0, 0, 0], [0.26 * nl, 0.16 * nl, 0], [0.55 * nl, 0.3 * nl, 0], [0.82 * nl, 0.34 * nl, 0]]
     : [[0, 0, 0], [0.18 * nl - wind * 0.06, 0.3 * nl + wind * 0.08, 0], [0.3 * nl + hit * 0.18 - wind * 0.16, 0.62 * nl - hit * 0.3 + wind * 0.2, 0], [0.45 * nl + hit * 0.5 - wind * 0.26, 0.8 * nl - hit * 0.48 + wind * 0.26, 0]]; // zamach: szyja wygięta w tył i w górę (wdech), cios: łeb wyrzucony nisko do przodu
   q.neck.add(tube(nk, heavy ? 0.22 : 0.17, ser ? 0.08 : 0.11, col, K, 2));
   for (let i = 1; i < 4; i++) fin(q.neck, nk[i][0] - 0.06, nk[i][1] + 0.07, ser ? 0.3 : 0.2, dark, 0.3, 0.07); // kolce szyi
+  if (L.mane) for (let i = 0; i < 9; i++) { const f = i / 8, k = Math.min(2, Math.floor(f * 3)), u = f * 3 - k, a = nk[k], b = nk[k + 1], x = a[0] + (b[0] - a[0]) * u, y = a[1] + (b[1] - a[1]) * u; // grzywa wzdłuż szyi
+    for (const z of [-0.05, 0.05]) q.neck.add(slab([[0, 0], [0.07, 0.02], [0.03, 0.3 - f * 0.08], [-0.09, 0.2]], 0.016, i % 2 ? L.mane : LT(L.mane, 0.18), 'skin', [x - 0.1, y + 0.08, z], [z * 4, 0, 1.0 + f * 0.3])); }
   const head = joint(q.neck, nk[3], (fly ? -0.05 : -0.35) - hit * 0.35 + wind * 0.35), hs = heavy ? 1.5 : fae ? 1.1 : 1.35;
   head.scale.setScalar(hs);
   head.add(rbox(0.26, 0.15, 0.2, 0.03, col, K, [0.02, 0.01, 0], [0, 0, 0.1])); // czaszka
@@ -341,6 +381,8 @@ function dragon(L, P = {}) {
       : forest ? [[-0.04, 0.08, 0.07 * z], [-0.12, 0.26, 0.12 * z], [-0.2, 0.42, 0.14 * z], [-0.3, 0.54, 0.12 * z]]
       : [[-0.05, 0.08, 0.07 * z], [-0.24, 0.2, 0.11 * z], [-0.46, 0.3, 0.1 * z], [-0.58, 0.26, 0.08 * z]];
     if (forest) for (const [b, dx, dy] of [[1, 0.1, 0.1], [2, -0.12, 0.12], [2, 0.08, 0.14]]) head.add(tube([hr[b], [hr[b][0] + dx, hr[b][1] + dy, hr[b][2] * 1.1]], 0.02, 0.004, horn, 'horn')); // rozgałęzienia poroża
+    if (L.leaves) { const ak = 1.7, A2 = hr.map(([x, y, zz]) => [x * ak, y * ak - 0.04, zz * 1.3]); head.add(tube(A2, 0.05, 0.01, horn, 'horn', 2)); // wielkie poroże z liśćmi
+      for (const [b, dx, dy] of [[1, 0.16, 0.2], [2, -0.18, 0.2], [2, 0.12, 0.24], [3, -0.1, 0.12]]) { const e = [A2[b][0] + dx, A2[b][1] + dy, A2[b][2] * 1.15]; head.add(tube([A2[b], e], 0.03, 0.006, horn, 'horn')); head.add(sph(0.06, LT(L.leaves, (b % 2) * 0.12), 'fur', e, [1.3, 0.8, 1.1])); if (L.blossom) head.add(sph(0.025, L.blossom, 'glow', [e[0] + 0.03, e[1] + 0.04, e[2]])); } }
     if (black) for (let k = 0; k < 4; k++) head.add(tube([[-0.02 - k * 0.05, 0.06 - k * 0.02, 0.09 * z], [-0.16 - k * 0.07, 0.14 + (k % 2) * 0.08, (0.14 + k * 0.02) * z], [-0.3 - k * 0.08, 0.16 + (k % 2) * 0.12 - k * 0.03, (0.15 + k * 0.03) * z]], 0.03, 0.004, horn, 'horn')); // korona rogów
     head.add(tube(hr, heavy ? 0.065 : 0.05, 0.005, cry ? (L.gem || horn) : horn, hornK, 2));
     head.add(tube([[-0.05, 0.02, 0.09 * z], [-0.28, 0.06, 0.16 * z], [-0.46, 0.02, 0.2 * z]], 0.03, 0.004, horn, hornK)); // drugie rogi
@@ -348,6 +390,8 @@ function dragon(L, P = {}) {
   }
   const jaw = joint(head, [0.08, -0.07, 0], -hit * 0.75); jaw.add(rbox(0.3, 0.05, 0.12, 0.015, DK(col, 0.15), K, [0.15, -0.03, 0]));
   for (const z of [-1, 1]) for (let k = 0; k < 4; k++) jaw.add(spike(0.011, 0.05, '#f4ecd8', 'horn', [0.08 + k * 0.065, 0.015, 0.05 * z]));
+  if (L.whiskers) for (const z of [-1, 1]) head.add(tube([[0.36, -0.03, 0.05 * z], [0.46, -0.08, 0.14 * z], [0.52, -0.2, 0.2 * z], [0.5, -0.34, 0.18 * z]], 0.014, 0.003, L.whiskers, 'hair')); // wąsy
+  if (L.soulFire) { for (const z of [-1, 1]) head.add(cone(0.03, 0.14, L.soulFire, 'fire', [0.08, 0.09, 0.09 * z], [0, 0, 0.9], 5)); for (let k = 0; k < 5; k++) head.add(tube([[-0.04, 0.08, 0], [-0.12 - k * 0.02, 0.2 + k * 0.03, (k - 2) * 0.06], [-0.2 - k * 0.04, 0.32 + (k % 2) * 0.08, (k - 2) * 0.1]], 0.028, 0.004, horn, 'horn')); } // płonące oczodoły, korona rogów
   marker(head, 'mouth', [0.42, -0.07, 0]);
   if (hit > 0.45 && !bony) { const fc = L.breathCol || '#ff9a3a'; for (let i = 0; i < 5; i++) head.add(cone(0.05 - i * 0.006, 0.16 + i * 0.05, i % 2 ? fc : LT(fc, 0.5), 'fire', [0.45 + i * 0.05, -0.08 + Math.sin(i * 2) * 0.02, Math.cos(i * 2) * 0.02], [0, 0, -Math.PI / 2 + Math.sin(i) * 0.15], 6)); } // żar w paszczy
   const tl = fly ? [[0, 0, 0], [-0.45, -0.05, 0], [-0.9, -0.08, 0.05], [-1.3, -0.05, 0], [-1.7 * (ser ? 1.2 : 1), 0.02 + Math.sin(ph) * 0.08, -0.05]]
@@ -366,6 +410,7 @@ function dragon(L, P = {}) {
     if (fae) { for (const [a, rr] of [[0.5, 0.62], [-0.4, 0.46]]) w.add(slab([[0, 0], [-rr * Math.cos(a) * 0.4, rr * 0.9], [-rr * 1.3, rr * Math.sin(a) + 0.2], [-rr * 1.1, rr * Math.sin(a) - 0.25]], 0.01, L.wing || '#e0c0ff', 'gem', [0, 0, 0], null, null, 0.2)); continue; }
     if (bony) { membraneWingBones(w, col); continue; }
     membraneWing(w, W, DK(W, 0.45), 1, true, 1.3);
+    if (L.bolts) for (const k of [1, 0.7]) w.add(tube([[0.02, 0.4, 0], [-0.2, 0.55, 0], [-0.28, 0.47, 0], [-0.52, 0.76, 0], [-0.6, 0.68, 0], [-0.86, 0.92, 0]].map(([x, y]) => [x * k, y * k + (1 - k) * 0.2, 0.012]), 0.016, 0.006, L.bolts, 'glow')); // świecące runy/wyładowania na błonie
   }
   if (wyv) for (const z of [-1, 1]) q.body.add(spike(0.025, 0.14, horn, 'horn', [0.5, 0.05, 0.3 * z], [0, 0, -2.2])); // pazury na skrzydłach wywerny
   root.scale.setScalar(1.12 * (L.size || 1));
@@ -393,6 +438,7 @@ function behemoth(L, P = {}) {
   for (let i = 0; i < 7; i++) { const x = 0.05 + i * 0.16, h = 0.16 + (i > 3 ? 0.14 : 0.04) + (i === 5 ? 0.08 : 0); body.add(slab([[-0.08, 0], [0.07, 0], [-0.12, h]], 0.04, horn, 'horn', [x, (i > 3 ? 0.52 : 0.3) + (i > 4 ? 0.04 : 0), 0], [0, 0, 0.15])); } // kostne kolce grzbietu
   for (const z of [-1, 1]) for (let i = 0; i < 3; i++) body.add(slab([[-0.06, 0], [0.06, 0], [-0.08, 0.22 - i * 0.04]], 0.035, horn, 'horn', [0.8 + i * 0.12, 0.42, 0.34 * z], [0.7 * z, 0, 0.3])); // kolce na barkach
   for (let i = 0; i < 26; i++) { const x = 0.6 + (i % 9) * 0.07, z = (i % 2 ? 1 : -1) * (0.08 + (i % 4) * 0.08), c = i % 3 ? mane : DK(col, 0.1); body.add(cone(0.03, 0.22 + (i % 3) * 0.06, c, 'fur', [x, 0.42 - (i % 4) * 0.05 - Math.abs(z) * 0.25, z], [0.5 * Math.sign(z), 0, 2.2 + (i % 3) * 0.12], 5)); } // kudłata grzywa na garbie
+  if (L.plates) for (let i = 0; i < 5; i++) { const x = 0.05 + i * 0.22, y = 0.34 + (i > 2 ? 0.2 : i * 0.03) + (i > 3 ? 0.06 : 0); body.add(rbox(0.22, 0.08, 0.56 + i * 0.07, 0.03, i % 2 ? L.plates : DK(L.plates, 0.12), 'horn', [x, y, 0], [0, 0, -0.12])); for (const z of [-1, 1]) body.add(spike(0.045, 0.3 + i * 0.03, L.plates, 'horn', [x, y + 0.02, (0.2 + i * 0.03) * z], [0.5 * z, 0, 0.2])); } // kostny pancerz grzbietu z rzędami kolców
   const counter = -pitch; // stawy kończyn i szyi w układzie świata
   // przednie łapy: grube przedramiona goryla, pięść na knykciach, trzy szable pazurów
   for (const side of [1, -1]) {
@@ -425,6 +471,8 @@ function behemoth(L, P = {}) {
   for (const z of [-1, 1]) { jaw.add(tube([[0.18, 0.02, 0.1 * z], [0.24, 0.12, 0.13 * z], [0.22, 0.24, 0.12 * z]], 0.03, 0.006, '#f4ecd8', 'horn')); for (let j = 0; j < 3; j++) hd.add(spike(0.012, 0.05, '#f4ecd8', 'horn', [0.24 + j * 0.035, -0.14, 0.08 * z], [Math.PI, 0, 0])); } // kły z żuchwy, zęby
   for (const z of [-1, 1]) hd.add(tube(long ? [[-0.05, 0.14, 0.13 * z], [-0.2, 0.34, 0.24 * z], [-0.45, 0.52, 0.28 * z], [-0.72, 0.58, 0.24 * z]] : [[-0.02, 0.14, 0.15 * z], [0.0, 0.26, 0.34 * z], [0.18, 0.42, 0.42 * z], [0.36, 0.5, 0.36 * z]], 0.075, 0.008, horn, 'horn', 2)); // rogi
   for (let i = 0; i < 6; i++) hd.add(cone(0.04, 0.26, i % 2 ? mane : DK(mane, 0.15), 'fur', [-0.14 - (i % 3) * 0.05, 0.16, (i - 2.5) * 0.06], [0, 0, 1.3], 6)); // grzywka
+  if (L.tusks) for (const z of [-1, 1]) jaw.add(tube([[0.12, 0.0, 0.1 * z], [0.3, -0.12, 0.16 * z], [0.56, -0.08, 0.2 * z], [0.72, 0.14, 0.16 * z], [0.7, 0.3, 0.1 * z]], 0.06, 0.012, L.tusks, 'horn', 2)); // ciosy jak u mamuta
+  if (L.hornPairs > 1) for (const z of [-1, 1]) hd.add(tube([[0.12, 0.12, 0.12 * z], [0.22, 0.22, 0.22 * z], [0.36, 0.26, 0.26 * z], [0.46, 0.2, 0.22 * z]], 0.05, 0.006, horn, 'horn', 2)); // druga para rogów
   const tl = [[0, 0, 0], [-0.25, -0.12, 0], [-0.5, -0.12, 0.04], [-0.68, -0.02, 0]]; const tj = joint(body, [-0.26, 0.05, 0], counter * 0.3); tj.add(tube(tl, 0.13, 0.03, col, K));
   for (let i = 1; i < 4; i++) tj.add(spike(0.03, 0.12, horn, 'horn', [tl[i][0], tl[i][1] + 0.08, 0], [0, 0, 0.6])); // kolce na ogonie
   root.scale.setScalar(L.size || 1.6);
@@ -454,7 +502,7 @@ function reptileHead(h, col, o = {}) {
 function hydra(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#4a7a4a', n = L.heads || 5, t = P.t || 0, A = P.atk, hit = A != null ? Math.sin(A * Math.PI) : 0, dark = DK(col, 0.42);
   const q = quadBody(root, { col, kind: 'scale', len: 1.3, legH: 0.46, r: 0.26, paws: true, chest: 1.15, rump: 1.02, bulk: 1.0, claw: '#e8e0c8', dewclaw: true }, P);
-  for (let i = 0; i < 8; i++) { const x = -0.58 + i * 0.16; q.body.add(rbox(0.13, 0.05, q.r * 0.95, 0.016, DK(col, 0.22), 'horn', [x, q.r * 0.84, 0], [0, 0, -0.1])); q.body.add(spike(0.035, 0.15, dark, 'horn', [x, q.r * 0.93, 0], [0, 0, 0.4])); } // płyty i kolce grzbietu
+  for (let i = 0; i < 8; i++) { const x = -0.58 + i * 0.16; q.body.add(rbox(0.13, 0.05, q.r * 0.95, 0.016, DK(col, 0.22), 'horn', [x, q.r * 0.84, 0], [0, 0, -0.1])); q.body.add(spike(0.035 * (L.frill ? 1.5 : 1), 0.15 * (L.frill ? 2.2 : 1), L.frill ? L.horns || dark : dark, 'horn', [x, q.r * 0.93, 0], [0, 0, 0.4])); } // płyty i kolce grzbietu
   const tl = [[0, 0, 0], [-0.4, -0.12, 0], [-0.8, -0.28, 0.08], [-1.15, -0.34, 0], [-1.45, -0.3 + Math.sin(t * 2) * 0.03, -0.06]];
   q.tail.add(tube(tl, 0.16, 0.025, col, 'scale', 2)); for (let i = 1; i < 4; i++) q.tail.add(spike(0.03, 0.13 - i * 0.02, dark, 'horn', [tl[i][0], tl[i][1] + 0.11 - i * 0.02, tl[i][2]], [0, 0, 0.6]));
   const front = Math.round((n - 1) * 0.25);
@@ -468,6 +516,7 @@ function hydra(L, P = {}) {
     for (let i = 1; i < 3; i++) q.neck.add(spike(0.025, 0.1, dark, 'horn', [pts[i][0] - nx * 0.08, pts[i][1] + 0.08, pts[i][2]], [0, 0, a - 0.9])); // kolce na szyi
     const h = joint(q.neck, pts[3], -0.2 + (f - 0.4) * 0.6 - lunge * 0.3 + Math.sin(t * 1.5 + k) * 0.05); h.scale.setScalar(1.2); // głowy rozchylone wachlarzem
     reptileHead(h, col, { bite: Math.max(0, hk), eyes: L.eyes || '#f0e040', horns: L.horns });
+    if (L.frill) { const F = []; for (let i = 0; i <= 8; i++) { const a = -1.3 + i / 8 * 2.6, r = 0.2 + (i % 2) * 0.07; F.push([Math.sin(a) * r, Math.cos(a) * r * 0.9]); } F.push([0, -0.04]); h.add(slab(F, 0.012, L.frill, 'skin', [-0.1, 0.02, 0], [0, Math.PI / 2, 0], null, 0.2)); for (let i = 0; i < 5; i++) { const a = -1.0 + i * 0.5; h.add(spike(0.012, 0.24, L.horns || DK(L.frill, 0.3), 'horn', [-0.11, 0.02 + Math.cos(a) * 0.02, Math.sin(a) * 0.02], [a, 0, 0])); } } // kryza za głową
     if (k === front) marker(h, 'mouth', [0.4, -0.06, 0]);
   }
   root.scale.setScalar(1.12 * (L.size || 1));
@@ -478,9 +527,13 @@ function lizard(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#6a7a3a';
   const q = quadBody(root, { col, kind: 'scale', len: 1.15, legH: 0.34, r: 0.22, paws: true, belly: LT(col, 0.35) }, P);
   for (let i = 0; i < 8; i++) q.body.add(cone(0.04, 0.16, L.spikes || DK(col, 0.4), 'horn', [-0.55 + i * 0.16, q.r * 0.95, 0], [0, 0, 0.3], 5));
+  if (L.sail) { const Sp = [[0.5, 0]]; for (let i = 0; i <= 8; i++) { const x = 0.45 - i * 0.13, h = 0.28 + Math.sin(i / 8 * Math.PI) * 0.34 + (i % 2) * 0.05; Sp.push([x, h]); } Sp.push([-0.62, 0]); q.body.add(slab(Sp, 0.014, L.sail, 'skin', [0, q.r * 0.85, 0]));
+    for (let i = 0; i <= 8; i++) { const x = 0.45 - i * 0.13, h = 0.28 + Math.sin(i / 8 * Math.PI) * 0.34 + (i % 2) * 0.05; q.body.add(cyl(0.012, 0.006, h + 0.08, L.spikes || DK(L.sail, 0.35), 'horn', [x, q.r * 0.85 + (h + 0.08) / 2, 0])); } } // żagiel na grzbiecie
   const hit = q.hit, head = joint(q.neck, [0.05, -0.02, 0], -0.1 - hit * 0.2);
   head.add(sph(0.14, col, 'scale', [0.1, 0, 0], [1.5, 0.8, 1])); head.add(cap(0.06, 0.12, DK(col, 0.1), 'scale', [0.3, -0.03, 0], [0, 0, Math.PI / 2], [1, 1, 1.1]));
   for (const z of [-1, 1]) head.add(sph(0.03, L.eyes || '#f0e040', 'glow', [0.18, 0.06, 0.08 * z]));
+  if (L.frill) { const F = []; for (let i = 0; i <= 9; i++) { const a = -1.4 + i / 9 * 2.8, r = 0.24 + (i % 2) * 0.08; F.push([Math.sin(a) * r, Math.cos(a) * r * 0.85]); } F.push([0, -0.05]); head.add(slab(F, 0.015, L.frill, 'skin', [0.0, 0.03, 0], [0, Math.PI / 2, 0], null, 0.2)); } // kryza
+  if (L.crown) for (let i = 0; i < 7; i++) { const a = (i / 6 - 0.5) * 2.2; head.add(spike(0.025, 0.12 + (i % 2) * 0.05, L.crown, 'gold', [0.02 + Math.cos(a) * 0.06, 0.1, Math.sin(a) * 0.1], [Math.sin(a) * 0.5, 0, 0.5 - Math.cos(a) * 0.3])); } // królewska korona kolców
   q.tail.add(tube([[0, 0, 0], [-0.35, -0.1, 0], [-0.7, -0.2, 0.15], [-1.0, -0.22, 0]], 0.13, 0.02, col, 'scale', 2));
   if (L.size) root.scale.setScalar(L.size);
   return root;
@@ -489,11 +542,12 @@ function lizard(L, P = {}) {
 function insect(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#3a7ac8', t = P.t || 0, hover = Math.sin(t * 5) * 0.04, A = P.atk;
   const body = joint(root, [0, 1.0 + hover, 0], A != null ? -Math.sin(A * Math.PI) * 0.4 : 0);
-  body.add(sph(0.14, col, 'scale', [0, 0, 0], [1.4, 1, 1])); body.add(tube([[-0.15, 0, 0], [-0.5, -0.02, 0], [-0.85, 0.02, 0], [-1.1, 0.08, 0]], 0.07, 0.03, col, 'scale', 3));
-  for (let i = 0; i < 6; i++) body.add(torus(0.07 - i * 0.006, 0.01, DK(col, 0.4), 'scale', [-0.25 - i * 0.14, 0, 0], [0, Math.PI / 2, 0]));
-  body.add(sph(0.1, col, 'scale', [0.2, 0.02, 0])); for (const z of [-1, 1]) body.add(sph(0.08, L.eyes || '#a0f070', 'gem', [0.25, 0.05, 0.06 * z]));
+  const lt = !!L.longTail, ab = lt ? [[-0.15, 0, 0], [-0.55, -0.02, 0], [-1.0, 0.0, 0], [-1.42, 0.08, 0]] : [[-0.15, 0, 0], [-0.5, -0.02, 0], [-0.85, 0.02, 0], [-1.1, 0.08, 0]];
+  body.add(sph(0.14, col, 'scale', [0, 0, 0], [1.4, 1, 1])); body.add(tube(ab, lt ? 0.09 : 0.07, 0.03, col, 'scale', 3));
+  for (let i = 0; i < (lt ? 9 : 6); i++) { body.add(torus((lt ? 0.085 : 0.07) - i * 0.006, 0.01, DK(col, 0.4), 'scale', [-0.25 - i * 0.14, 0, 0], [0, Math.PI / 2, 0])); if (lt) body.add(spike(0.018, 0.12 - i * 0.006, L.stinger || DK(col, 0.4), 'horn', [-0.25 - i * 0.14, 0.07 - i * 0.004, 0], [0, 0, 0.7])); } // pierścienie odwłoka, u królowej z kolcami
   const wc = L.wing || '#d0ecff', fl = Math.sin(t * 20 + (P.walk || 0) * 20) * 0.3;
-  for (const z of [-1, 1]) for (const [x, s] of [[0.05, 1], [-0.1, 0.85]]) { const w = sheet([[0, 0], [-0.15, 0.05], [-0.6, 0.08], [-0.75, 0.02], [-0.6, -0.05], [-0.15, -0.04]].map(([a, b]) => [a * s, b * s]), wc, 'gem', [x, 0.1, 0.05 * z], [Math.PI / 2 * z + fl * z, 0.4 * z, Math.PI / 2 * z]); w.material.transparent = false; body.add(w); }
+  if (L.stinger) { body.add(spike(lt ? 0.045 : 0.035, lt ? 0.34 : 0.26, L.stinger, 'horn', lt ? [-1.56, 0.12, 0] : [-1.22, 0.1, 0], [0, 0, Math.PI / 2 + 0.35])); for (const z of [-1, 1]) body.add(tube([[0.24, 0.1, 0.04 * z], [0.3, 0.26, 0.08 * z], [0.24, 0.4, 0.1 * z]], 0.02, 0.005, L.stinger, 'horn')); } // żądło i rogi królowej
+  for (const z of [-1, 1]) for (const [x, s] of [[0.05, 1], [-0.1, 0.85], [-0.24, 0.72]].slice(0, L.wingPairs || 2)) { const w = sheet([[0, 0], [-0.15, 0.05], [-0.6, 0.08], [-0.75, 0.02], [-0.6, -0.05], [-0.15, -0.04]].map(([a, b]) => [a * s, b * s]), wc, 'gem', [x, 0.1, 0.05 * z], [Math.PI / 2 * z + fl * z, 0.4 * z, Math.PI / 2 * z]); w.material.transparent = false; body.add(w); }
   for (let i = 0; i < 3; i++) for (const z of [-1, 1]) { const lg = joint(body, [0.05 - i * 0.07, -0.08, 0.05 * z], 0.3 - i * 0.3); bone(lg, 0.012, 0.008, 0.25, DK(col, 0.3), 'scale'); }
   if (L.size) root.scale.setScalar(L.size);
   return root;
@@ -505,9 +559,11 @@ function eyeBeast(L, P = {}) {
   b.add(sph(0.2, '#f4f0e0', 'skin', [0.3, 0.05, 0], [0.6, 1, 1])); b.add(sph(0.1, L.eyes || '#f0e060', 'glow', [0.4, 0.05, 0], [0.5, 1, 1])); b.add(sph(0.05, '#101010', 'skin', [0.45, 0.05, 0], [0.4, 1, 0.6]));
   b.add(torus(0.18, 0.04, DK(col, 0.3), 'skin', [0.32, 0.05, 0], [0, Math.PI / 2, 0])); // powieka
   b.add(sph(0.2, '#2a0a10', 'skin', [0.28, -0.22, 0], [0.5, 0.35 + hit * 0.2, 1])); for (let i = 0; i < 6; i++) b.add(cone(0.02, 0.06, '#f0e8d0', 'horn', [0.36, -0.17, -0.15 + i * 0.06], [0, 0, Math.PI], 5));
-  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, w = Math.sin(t * 3 + i) * 0.08; const p0 = [-0.05, 0.3, 0], dir = [Math.cos(a) * 0.3, 0.3, Math.sin(a) * 0.35];
+  const nS = L.stalks || 8; for (let i = 0; i < nS; i++) { const a = i / nS * Math.PI * 2, w = Math.sin(t * 3 + i) * 0.08; const p0 = [-0.05, 0.3, 0], dir = [Math.cos(a) * 0.3, 0.3, Math.sin(a) * 0.35];
     const pts = [[p0[0] + dir[0] * 0.4, p0[1] + 0.05, dir[2] * 0.6], [p0[0] + dir[0] + w, p0[1] + 0.3, dir[2] * 1.1], [p0[0] + dir[0] * 1.3 + w, p0[1] + 0.5, dir[2] * 1.3]];
     b.add(tube(pts, 0.03, 0.02, col, 'skin')); b.add(sph(0.045, '#f4f0e0', 'skin', pts[2])); b.add(sph(0.022, L.orb || '#e0a0ff', 'glow', [pts[2][0] + 0.03, pts[2][1], pts[2][2]])); }
+  if (L.spikes) for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; b.add(spike(0.05, 0.2, L.spikes, 'horn', [Math.cos(a) * 0.36, -0.1, Math.sin(a) * 0.36], [Math.sin(a) * 1.3, 0, -Math.cos(a) * 1.3])); } // obręcz kolców
+  if (L.tentacles) for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.3, w = Math.sin(t * 2.5 + i) * 0.06; b.add(tube([[Math.cos(a) * 0.18, -0.3, Math.sin(a) * 0.18], [Math.cos(a) * 0.3 + w, -0.55, Math.sin(a) * 0.3], [Math.cos(a) * 0.24 - w, -0.8, Math.sin(a) * 0.24], [Math.cos(a) * 0.3, -0.95, Math.sin(a) * 0.3]], 0.05, 0.012, DK(col, 0.15), 'skin')); } // macki
   if (L.size) root.scale.setScalar(L.size);
   return root;
 }
@@ -520,6 +576,7 @@ function ghost(L, P = {}) {
   for (const z of [-0.05, 0.05]) b.add(sph(0.025, L.eyes || '#a0ffc0', 'glow', [0.16, 1.28, z]));
   if (L.longHair) b.add(cap(0.12, 0.5, L.longHair, 'hair', [-0.12, 1.05, 0], [0, 0, -0.1], [0.8, 1, 1.4]));
   const arm = joint(b, [0.05, 1.0, 0.2], 0.9 + hit * 0.8 - (A != null && A < 0.4 ? A * 2 : 0)); bone(arm, 0.07, 0.05, 0.5, col, 'cloth'); arm.add(sph(0.05, '#e8e8f0', 'skin', [0, -0.52, 0]));
+  if (L.wisps) for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + t * 0.8; root.add(sph(0.04, L.wisps, 'glow', [Math.cos(a) * 0.5, 0.7 + Math.sin(a * 2 + i) * 0.35, Math.sin(a) * 0.5])); root.add(cone(0.03, 0.12, L.wisps, 'fire', [Math.cos(a) * 0.5, 0.78 + Math.sin(a * 2 + i) * 0.35, Math.sin(a) * 0.5], null, 5)); } // błędne ogniki
   if (L.scythe) { const h = joint(arm, [0, -0.52, 0], -1.4); h.add(cyl(0.02, 0.02, 1.6, '#3a2a1a', 'wood', [0, 0.3, 0])); h.add(mesh(new THREE.TorusGeometry(0.35, 0.03, 6, 20, Math.PI * 0.55), '#c8ccd4', 'metal', [0.35, 1.05, 0], [0, 0, Math.PI * 0.5], [1, 1, 0.4])); }
   if (L.size) root.scale.setScalar(L.size);
   return root;
@@ -530,10 +587,15 @@ function treant(L, P = {}) {
   for (const z of [-1, 1]) { const lg = joint(root, [0, 0.55, 0.15 * z], walking ? Math.sin(ph) * 0.3 * z : 0); bone(lg, 0.13, 0.1, 0.5, col, 'bark'); for (let k = 0; k < 3; k++) lg.add(tube([[0, -0.48, 0], [0.1 + k * 0.05, -0.55, (k - 1) * 0.08], [0.22 + k * 0.05, -0.55, (k - 1) * 0.14]], 0.05, 0.015, col, 'bark')); }
   const trunk = joint(root, [0, 0.55, 0], -hit * 0.15);
   trunk.add(lathe([[0.2, -0.05], [0.24, 0.3], [0.21, 0.7], [0.25, 1.0], [0.3, 1.15], [0.001, 1.2]], col, 'bark', [0, 0, 0], [1, 1, 0.9], 2));
-  for (const z of [-0.07, 0.07]) trunk.add(sph(0.03, '#f0e070', 'glow', [0.2, 0.8, z])); trunk.add(box(0.03, 0.03, 0.14, '#1a1008', 'bark', [0.22, 0.62, 0]));
+  for (const z of [-0.07, 0.07]) trunk.add(sph(0.03, L.eyes || '#f0e070', 'glow', [0.2, 0.8, z])); trunk.add(box(0.03, 0.03, 0.14, '#1a1008', 'bark', [0.22, 0.62, 0]));
   for (const z of [-1, 1]) { const arm = joint(trunk, [0.02, 0.95, 0.24 * z], 0.6 + hit * 1.2 * (z > 0 ? 1 : 0.5)); bone(arm, 0.08, 0.05, 0.55, col, 'bark'); for (let k = 0; k < 3; k++) arm.add(tube([[0, -0.52, 0], [0.05, -0.65, (k - 1) * 0.06], [0.12, -0.72, (k - 1) * 0.1]], 0.025, 0.008, col, 'bark')); arm.add(sph(0.12, lv, 'fur', [0, -0.25, 0], [1, 0.8, 1])); }
   for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; trunk.add(sph(0.2 + (i % 3) * 0.04, i % 2 ? lv : LT(lv, 0.12), 'fur', [Math.cos(a) * 0.22 - 0.05, 1.3 + Math.sin(i * 2.3) * 0.12 + Math.sin(t * 2 + i) * 0.01, Math.sin(a) * 0.25])); }
   trunk.add(sph(0.26, DK(lv, 0.1), 'fur', [-0.05, 1.5, 0]));
+  if (L.antlers) for (const z of [-1, 1]) for (const [sx, sy] of [[1, 1], [-1, 0.8]]) { const br = [[0.02 * sx, 1.3, 0.1 * z], [0.18 * sx, 1.55, 0.22 * z], [0.38 * sx, 1.78, 0.28 * z], [0.5 * sx, 1.95 * sy + 0.1, 0.3 * z]]; trunk.add(tube(br, 0.08, 0.02, col, 'bark')); // korona z grubych konarów
+    for (const [k, dx, dy] of [[1, 0.12, 0.26], [2, -0.14, 0.2], [3, 0.1, 0.06]]) { const e = [br[k][0] + dx * sx, br[k][1] + dy, br[k][2] * 1.1]; trunk.add(tube([br[k], e], 0.035, 0.01, col, 'bark')); trunk.add(sph(0.15, k % 2 ? lv : LT(lv, 0.1), 'fur', e, [1.2, 0.8, 1.1])); } }
+  if (L.vines) for (const z of [-1, 1]) for (let k = 0; k < 3; k++) { const x = 0.04 - k * 0.1, y = 1.3 - k * 0.05; trunk.add(tube([[x, y, 0.3 * z], [x + 0.03, y - 0.3, 0.34 * z], [x - 0.02, y - 0.6 - k * 0.1, 0.36 * z]], 0.018, 0.01, L.vines, 'fur')); trunk.add(sph(0.045, L.blossom || LT(L.vines, 0.3), 'glow', [x - 0.02, y - 0.62 - k * 0.1, 0.36 * z])); } // pnącza z kwiatami
+  if (L.moss) { trunk.add(cone(0.13, 0.42, L.moss, 'fur', [0.2, 0.36, 0], [Math.PI, 0, 0.12], 7)); for (const z of [-0.1, 0.1]) trunk.add(cone(0.06, 0.3, DK(L.moss, 0.15), 'fur', [0.18, 0.4, z], [Math.PI, 0, 0.1], 6)); } // broda z mchu
+  if (L.blossom) for (let i = 0; i < 26; i++) { const a = i * 2.4, r = (L.antlers ? 0.42 : 0.28) + (i % 3) * 0.06; trunk.add(sph(0.05, i % 4 ? L.blossom : '#fff8e8', 'glow', [Math.cos(a) * r - 0.05, 1.35 + Math.sin(i * 1.7) * 0.28 + (L.antlers ? 0.15 : 0), Math.sin(a) * r])); } // kwiaty królewskiego drzewca
   root.scale.setScalar(L.size || 1);
   return root;
 }

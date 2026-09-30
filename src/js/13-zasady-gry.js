@@ -259,7 +259,7 @@ const schoolMul = (h, id) => 1 + SCHOOL_POWER[spellSchoolLv(h, id)] / 100;
 const skillVal = (h, id) => { const L = heroSkill(h, id); if (!L) return 0; const sp = heroSpec(h), v = SKILLS[id].v[L - 1]; return sp && sp.skill === id ? Math.round(v * (1 + 0.05 * h.level)) : v; };
 // --- specjalności bohaterów (HERO_SPECS) ---
 // Stwory specjalności: oba stwory z siedliska danego poziomu w rodzimej frakcji bohatera
-const specUnits = h => { const sp = heroSpec(h), F = sp && sp.dw && factionOf(heroFaction(h)); return F ? [F.dw['dw' + sp.dw][1], F.dw['dw' + sp.dw + 'u'][1]] : []; };
+const specUnits = h => { const sp = heroSpec(h), F = sp && sp.dw && factionOf(heroFaction(h)); return F ? DW_TIERS.map(s => F.dw['dw' + sp.dw + s][1]) : []; };
 // Premia dla oddziału stworów specjalności: +5% ataku i obrony za każdy poziom bohatera na poziom stwora (co najmniej +1), +1 szybkości
 function specBonus(h, cid) {
   if (!specUnits(h).includes(cid)) return null; const c = CREATURES[cid], k = 0.05 * h.level / c.level;
@@ -268,7 +268,7 @@ function specBonus(h, cid) {
 const specSpellMul = (h, id) => { const sp = heroSpec(h); return sp && sp.spell === id ? 1 + 0.03 * h.level : 1; };
 function specText(h) {
   const sp = heroSpec(h); if (!sp) return '';
-  if (sp.dw) { const [a, b] = specUnits(h), bo = specBonus(h, a); return `${CREATURES[a].plural} i ${CREATURES[b].plural.toLowerCase()}: +${bo.att} do ataku, +${bo.def} do obrony, +1 do szybkości (rośnie z poziomem)`; }
+  if (sp.dw) { const [a] = specUnits(h), bo = specBonus(h, a); return `${CREATURES[a].plural} i ich ulepszenia: +${bo.att} do ataku, +${bo.def} do obrony, +1 do szybkości (rośnie z poziomem)`; }
   if (sp.res) return `+${sp.n} ${sp.res === 'gold' ? 'złota' : resName(sp.res).toLowerCase()} dziennie`;
   if (sp.skill) return `${SKILLS[sp.skill].name}: działa o ${5 * h.level}% mocniej (5% za poziom)`;
   return `${SPELLS[sp.spell].name}: o ${3 * h.level}% mocniejszy (3% za poziom)`;
@@ -453,10 +453,12 @@ function startingArmy(fac, r) {
 // --- rekrutacja: każdy poziom siedliska ma wspólną pulę dla jednostki zwykłej i ulepszonej ---
 const DW_LEVELS = [1, 2, 3, 4, 5, 6, 7];
 const dwellingLevels = t => DW_LEVELS.filter(L => hasB(t, 'dw' + L));
+// Stopnie siedliska: '' (zwykłe), 'u' (ulepszone), 'x' (elitarne); dwTop = klucz F.dw najwyższego zbudowanego stopnia
+const DW_TIERS = ['', 'u', 'x'];
+const dwTop = (t, L) => 'dw' + L + (hasB(t, 'dw' + L + 'x') ? 'x' : hasB(t, 'dw' + L + 'u') ? 'u' : '');
 function dwellingUnits(t, L) {
-  const F = factionOf(t.faction), u = [F.dw['dw' + L][1]];
-  if (hasB(t, 'dw' + L + 'u')) u.push(F.dw['dw' + L + 'u'][1]);
-  return u;
+  const F = factionOf(t.faction);
+  return DW_TIERS.filter(s => !s || hasB(t, 'dw' + L + s)).map(s => F.dw['dw' + L + s][1]); // zwykła jednostka zawsze (także przed budową)
 }
 // Przyrost tygodniowy: bazowy z jednostki, +50% z Cytadelą, +100% z Zamkiem (opisy w BUILDINGS)
 // Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
@@ -554,7 +556,7 @@ function recruitAll(st, t) {
   const F = factionOf(t.faction), got = [];
   for (const L of [...DW_LEVELS].reverse()) {
     if (!hasB(t, 'dw' + L) || !(t.avail[L] > 0)) continue;
-    const cid = F.dw['dw' + L + (hasB(t, 'dw' + L + 'u') ? 'u' : '')][1], n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), t.owner));
+    const cid = F.dw[dwTop(t, L)][1], n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), t.owner));
     if (n > 0 && !recruit(st, t, L, cid, n)) got.push(`${CREATURES[cid].plural.toLowerCase()} ${n}`);
   }
   const n = got.reduce((s, g) => s + +g.split(' ').pop(), 0);
