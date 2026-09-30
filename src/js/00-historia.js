@@ -299,5 +299,7 @@
    maxDamage (Mistrzostwo), armorPierce (Przebicie, ARMOR_PIERCE% obrony), deathBlow (Cios śmiertelny, DEATH_BLOW% szans).
    Pula siedliska wspólna dla trzech stopni (dwellingUnits, dwTop = najwyższy zbudowany, DW_TIERS); specjalność bohatera
    obejmuje wszystkie stopnie; SI werbuje najwyższy stopień, na który ją stać (jeden oddział na poziom).
+   Wygląd elity: ta sama istota co ulepszona, mocniej rozwinięta własnymi cechami (większe rogi, łuski, grzywa, zbroja,
+   płomienie, czaszki), bez doklejanych części i w barwach frakcji. galeria.js: COLS i ZOOM do porównań przed wypaleniem.
    ===================================================================================== */
 
