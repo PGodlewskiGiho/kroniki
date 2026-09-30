@@ -217,7 +217,7 @@ function elite(from, id, [name, plural, gen, acc = gen], [att, def, dmin, dmax, 
 // Przystań
 elite('halberdier', 'guardsman', ['Gwardzista', 'Gwardziści', 'gwardzistów'], [7, 9, 2, 4, 14, 6, 165], { gold: 100 }, ['unlimitedRetal'],
   { cloth: '#2a4a8a', plume: '#e0b24a', tabard: '#2a4a8a', cross: '#e0b24a', shield: '#2a4a8a', shieldMark: '#e0b24a', shieldShape: 'tower', size: 1.0 });
-elite('marksman', 'arbalester', ['Arbaletnik', 'Arbaletnicy', 'arbaletników'], [8, 5, 4, 6, 13, 7, 265], { gold: 200 }, ['doubleShot', 'sharpshooter'],
+elite('marksman', 'arbalester', ['Arbaletnik', 'Arbaletnicy', 'arbaletników'], [8, 5, 4, 6, 13, 7, 265], { gold: 220 }, ['doubleShot', 'sharpshooter'],
   { cloth: '#3a5a2a', helm: 'sallet', helmCol: '#c8ced8', metal: '#c8ced8', armor: 'plate', pauldrons: true, pavise: '#3a5a8a', trim: '#e0b24a', cape: null, size: 1.05 });
 elite('royalGriffin', 'imperialGriffin', ['Gryf cesarski', 'Gryfy cesarskie', 'gryfów cesarskich', 'gryfy cesarskie'], [11, 11, 4, 8, 32, 11, 620], { gold: 320 }, ['fly', 'unlimitedRetal', 'deathBlow'],
   { fur: '#e0b85a', barding: '#2a4a8a', trim: '#e0b24a', crest: '#c83a2a', helmet: '#e0c050', size: 1.34 }, { retal: 9 });
@@ -225,7 +225,7 @@ elite('crusader', 'templar', ['Templariusz', 'Templariusze', 'templariuszy'], [1
   { weapon: 'greatsword', dual: false, cloth: '#e8e0d0', metal: '#d8dce4', helmCol: '#d8dce4', tabard: '#e8e0d0', cross: '#b02a1a', cape: '#a83a2a', crownSpikes: '#e0b24a', plume: '#f0ece0', hilt: '#e0b24a', glow: '#fff4d0', size: 1.26 });
 elite('priest', 'inquisitor', ['Inkwizytor', 'Inkwizytorzy', 'inkwizytorów'], [15, 12, 12, 15, 50, 8, 1000], { gold: 600, mercury: 1 }, ['noMeleePenalty', 'sharpshooter'],
   { cloth: '#e8e0d0', cape: '#8a1a1a', collar: true, book: '#6a1a1a', orb: '#fff0a0', helmCol: '#f0ead8', trim: '#e0b24a', armor: 'breast', metal: '#e0c870', size: 1.0 });
-elite('champion', 'paladin', ['Paladyn', 'Paladyni', 'paladynów'], [19, 19, 22, 28, 120, 10, 2800], { gold: 1600, crystal: 1 }, ['jousting', 'unlimitedRetal'],
+elite('champion', 'paladin', ['Paladyn', 'Paladyni', 'paladynów'], [20, 20, 25, 30, 135, 10, 2900], { gold: 1600, crystal: 1 }, ['jousting', 'unlimitedRetal'],
   { horse: '#e8e0d0', cloth: '#2a4a8a', barding: '#2a4a8a', horseArmor: '#d8dce4', trim: '#e0b24a', pennon: '#e0b24a', halo: '#fff0a0', shield: '#2a4a8a', shieldMark: '#e0b24a', shieldShape: 'heater', size: 1.16 });
 elite('dawnbringer', 'seraph', ['Serafin', 'Serafini', 'serafinów'], [26, 26, 50, 60, 260, 20, 8800], { gold: 7000, gems: 8 }, ['fly', 'doubleStrike', 'unlimitedRetal'],
   { wingPairs: 3, wingSpan: 1.3, helm: 'circlet', crownCol: '#ffd060', cape: '#e0c060', glow: '#fff4c0', flame: null, size: 1.72 });
@@ -236,7 +236,7 @@ elite('elfSharp', 'elfHunter', ['Elfi łowca', 'Elfi łowcy', 'elfich łowców']
   { helm: null, hair: '#c8a060', longHair: '#c8a060', antlers: '#e8dcc0', cape: '#5a3a1e', pauldrons: true, metal: '#8a6a3a', armor: 'breast', size: 1.06 });
 elite('centaurChief', 'centaurKhan', ['Chan centaurów', 'Chanowie centaurów', 'chanów centaurów'], [11, 9, 5, 8, 30, 10, 530], { gold: 330 }, ['noMeleePenalty', 'doubleShot'],
   { fur: '#8a5a2e', hair: '#d8d0c0', beard: '#d8d0c0', helm: 'horn', helmCol: '#8a7a5a', armor: 'brig', cloth: '#2a5a3a', cape: '#2a5a3a', barding: '#2a5a3a', trim: '#e0b24a', size: 1.42 }, { shots: 16 });
-elite('elderTreant', 'treantKing', ['Król drzewców', 'Królowie drzewców', 'królów drzewców'], [12, 17, 10, 16, 80, 5, 880], { gold: 560 }, ['regen', 'unlimitedRetal'],
+elite('elderTreant', 'treantKing', ['Król drzewców', 'Królowie drzewców', 'królów drzewców'], [13, 18, 11, 17, 90, 5, 900], { gold: 560 }, ['regen', 'unlimitedRetal'],
   { fur: '#4a3220', leaves: '#2e6a3a', antlers: true, moss: '#5a7a3a', vines: '#4a7a3a', blossom: '#f0d8e8', eyes: '#c0ff90', size: 1.4 });
 elite('silverUnicorn', 'starUnicorn', ['Gwiezdny jednorożec', 'Gwiezdne jednorożce', 'gwiezdnych jednorożców', 'gwiezdne jednorożce'], [18, 16, 16, 22, 95, 10, 1950], { gold: 1250, gems: 1 }, ['unlimitedRetal', 'deathBlow'],
   { fur: '#eef0f6', mane: '#e8e4f4', hornL: 1.8, hornGlow: true, longMane: true, eyes: '#a0e8ff', stars: '#fff0a0', size: 1.1 });
@@ -272,7 +272,7 @@ elite('mightyGorgon', 'armoredGorgon', ['Pancerna gorgona', 'Pancerne gorgony', 
   { heavyScales: true, hornScale: 1.35, size: 1.52 });
 elite('wyvernKing', 'stormWyvern', ['Wywern burzy', 'Wywerny burzy', 'wywernów burzy', 'wywerny burzy'], [17, 17, 20, 26, 100, 13, 2100], { gold: 1450, sulfur: 1 }, ['fly', 'noRetal', 'deathBlow'],
   { bolts: '#e8f4ff', mane: '#6a4a1a', size: 0.98 });
-elite('chaosHydra', 'primeHydra', ['Pradawna hydra', 'Pradawne hydry', 'pradawnych hydr', 'pradawne hydry'], [21, 23, 30, 50, 290, 8, 7500], { gold: 4600, sulfur: 3 }, ['noRetal', 'regen', 'breath', 'unlimitedRetal'],
+elite('chaosHydra', 'primeHydra', ['Pradawna hydra', 'Pradawne hydry', 'pradawnych hydr', 'pradawne hydry'], [21, 22, 30, 48, 260, 8, 7500], { gold: 4700, sulfur: 3 }, ['noRetal', 'regen', 'breath', 'unlimitedRetal'],
   { heads: 9, horns: '#e0c060', frill: '#9a6aaa', size: 1.32 });
 // Inferno
 elite('familiar', 'bies', ['Bies', 'Biesy', 'biesów', 'biesy'], [6, 5, 2, 3, 8, 8, 105], { gold: 80 }, ['deathBlow'],
@@ -281,7 +281,7 @@ elite('magog', 'firebrand', ['Podpalacz', 'Podpalacze', 'podpalaczy'], [9, 6, 3,
   { flameHair: '#ffb040', horns: '#1a1010', hornType: 'long', hornScale: 1.4, flameMantle: '#ff8a30', handFire: '#ffb040', skulls: '#e8e0cc', size: 1.12 });
 elite('cerberus', 'abyssCerberus', ['Cerber Otchłani', 'Cerbery Otchłani', 'cerberów Otchłani', 'cerbery Otchłani'], [12, 10, 3, 9, 38, 10, 610], { gold: 320 }, ['noRetal', 'breath'],
   { horns: '#1a1010', collar: '#2a1a14', blaze: '#e8d8c0', size: 1.34 });
-elite('hornedDemon', 'doomDemon', ['Demon zagłady', 'Demony zagłady', 'demonów zagłady', 'demony zagłady'], [15, 14, 8, 12, 55, 7, 840], { gold: 420 }, ['deathBlow'],
+elite('hornedDemon', 'doomDemon', ['Demon zagłady', 'Demony zagłady', 'demonów zagłady', 'demony zagłady'], [15, 15, 9, 13, 58, 7, 860], { gold: 420 }, ['deathBlow'],
   { weapon: 'labrys', wings: '#5a1810', wingSpan: 1.1, armor: 'breast', size: 1.32 });
 elite('pitLord', 'archFiend', ['Arcyczart', 'Arcyczarty', 'arcyczartów', 'arcyczarty'], [16, 15, 15, 20, 72, 8, 1750], { gold: 950, mercury: 1 }, ['lifeDrain', 'deathBlow'],
   { offWeapon: 'mace', hornScale: 1.8, wingSpan: 1.8, flameMantle: '#ff5a10', crownSpikes: '#3a2a2a', helm: null, size: 1.58 });
@@ -294,20 +294,20 @@ elite('masterGremlin', 'gremlinEngineer', ['Gremlin inżynier', 'Gremliny inżyn
   { weapon: 'crossbow', helm: 'kettle', helmCol: '#a0a4b0', pack: '#c8a040', size: 0.8 }, { shots: 12 });
 elite('obsidianGargoyle', 'runeGargoyle', ['Gargulec runiczny', 'Gargulce runiczne', 'gargulców runicznych', 'gargulce runiczne'], [9, 10, 3, 4, 22, 10, 310], { gold: 225 }, ['fly', 'unlimitedRetal'],
   { backSpikes: '#60c8ff', spikes: '#60c8ff', flameMantle: '#60c8ff', hornType: 'long', hornScale: 1.5, build: 'brute', wingSpan: 1.3, size: 1.0 });
-elite('ironGolem', 'mithrilGolem', ['Golem mithrilowy', 'Golemy mithrilowe', 'golemów mithrilowych', 'golemy mithrilowe'], [11, 13, 5, 7, 45, 6, 560], { gold: 290 }, ['unlimitedRetal'],
+elite('ironGolem', 'mithrilGolem', ['Golem mithrilowy', 'Golemy mithrilowe', 'golemów mithrilowych', 'golemy mithrilowe'], [12, 14, 5, 8, 50, 6, 580], { gold: 270 }, ['unlimitedRetal'],
   { metal: '#b8c4d0', core: '#80e0ff', crystals: '#a0e8ff', size: 1.5 });
 elite('archMage', 'battleMage', ['Mag bitewny', 'Magowie bitewni', 'magów bitewnych'], [14, 11, 9, 11, 36, 8, 930], { gold: 600 }, ['noMeleePenalty', 'sharpshooter'],
   { offWeapon: 'sword', offGlow: '#e0a0ff', armor: 'breast', metal: '#c8ccd4', pauldrons: true, robe: false, size: 1.06 });
 elite('masterGenie', 'genieLord', ['Dżin władca', 'Dżiny władcy', 'dżinów władców', 'dżiny władców'], [16, 15, 16, 20, 52, 12, 1300], { gold: 800, gems: 1 }, ['fly', 'deathBlow'],
   { offWeapon: 'scimitar', crownSpikes: '#ffd060', armor: 'breast', metal: '#ffd060', pauldrons: true, size: 1.56 });
-elite('nagaQueen', 'nagaEmpress', ['Naga cesarzowa', 'Nagi cesarzowe', 'nag cesarzowych', 'nagi cesarzowe'], [19, 16, 32, 36, 130, 8, 3600], { gold: 2100, gems: 2 }, ['noRetal', 'unlimitedRetal'],
+elite('nagaQueen', 'nagaEmpress', ['Naga cesarzowa', 'Nagi cesarzowe', 'nag cesarzowych', 'nagi cesarzowe'], [20, 17, 33, 38, 140, 8, 3700], { gold: 2100, gems: 2 }, ['noRetal', 'unlimitedRetal'],
   { cobraHood: '#3a6a8a', armSpread: true, helm: 'circlet', size: 1.58 });
 elite('titan', 'stormTitan', ['Tytan burzy', 'Tytani burzy', 'tytanów burzy'], [28, 28, 50, 65, 360, 13, 9600], { gold: 6500, gems: 4 }, ['noMeleePenalty', 'sharpshooter'],
   { weapon: 'spear', glow: '#c0e8ff', bolts: '#c0e8ff', crownSpikes: '#e0c060', helm: 'circlet', size: 2.7 });
 // Loch
 elite('infernalTroglodyte', 'shadowTroglodyte', ['Troglodyta cienia', 'Troglodyci cienia', 'troglodytów cienia'], [7, 6, 2, 4, 10, 6, 140], { gold: 100 }, ['deathBlow'],
   { weapon: 'trident', shieldShape: 'tower', cape: '#3a1a2a', backSpikes: '#3a2a20', size: 0.98 });
-elite('harpyHag', 'fury', ['Furia', 'Furie', 'furii', 'furie'], [10, 8, 2, 5, 20, 11, 370], { gold: 240 }, ['fly', 'noRetal', 'doubleStrike'],
+elite('harpyHag', 'fury', ['Furia', 'Furie', 'furii', 'furie'], [10, 8, 2, 5, 20, 11, 370], { gold: 260 }, ['fly', 'noRetal', 'doubleStrike'],
   { weapon: 'dagger', dual: true, snakes: '#5a6a4a', wingSpan: 1.45, size: 1.04 });
 elite('evilEye', 'doomEye', ['Oko zagłady', 'Oczy zagłady', 'oczu zagłady', 'oczy zagłady'], [12, 10, 4, 7, 32, 8, 560], { gold: 370 }, ['noMeleePenalty', 'sharpshooter'],
   { stalks: 12, spikes: '#e8d8c0', tentacles: true, size: 1.4 });

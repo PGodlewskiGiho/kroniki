@@ -79,3 +79,30 @@ test('komputer werbuje najwyższy stopień, na który go stać', async () => {
   });
   assert.deepEqual(r.rich, [[r.x, 20]]); assert.deepEqual(r.poor, [r.u]);
 });
+
+// Symulacja: sama elita przeciw samym ulepszonym tego samego poziomu za to samo złoto (bez bohaterów, morale i szczęścia),
+// na przemian z dala i wręcz (szybszy nie traci na tym, że pierwszy podchodzi). Elita ma zwykle wygrywać, ale nie zawsze.
+test('balans w walce: elita wygrywa za równe złoto, ale żadna nie jest bezużyteczna', async () => {
+  const r = await page.evaluate(() => {
+    const st = G.state;
+    function fight(a, b, seed, near) {
+      const B = { st, h: null, sides: [0, 1].map(o => ({ owner: o, hero: null, monster: true, town: null })), round: 0, order: [], waitQ: [], active: null, units: [], log: [],
+        over: null, auto: true, obst: new Map(), cast: [true, true], rng: mulberry32(seed), morale: [0, 0], luck: [0, 0] };
+      placeSide(B, 0, [{ cid: a[0], n: a[1], src: 'x' }]); placeSide(B, 1, [{ cid: b[0], n: b[1], src: 'x' }]);
+      if (near) { B.units[0].x = 7; B.units[1].x = 8; B.units[1].y = B.units[0].y; }
+      for (let g = 0; !B.over && g < 3000; g++) { const u = nextActive(B); if (!u) break; if (!u.dead && fighters(B, 1 - u.side).length) aiAct(B, u); }
+      const alive = s => B.units.some(u => u.side === s && !u.dead);
+      return alive(0) && !alive(1) ? 0 : alive(1) && !alive(0) ? 1 : -1;
+    }
+    const rates = {};
+    for (const F of FACTIONS) for (let L = 1; L <= 7; L++) {
+      const u = F.dw['dw' + L + 'u'][1], x = F.dw['dw' + L + 'x'][1], nx = CREATURES[x].growth * 6, nu = Math.round(nx * unitCost(x).gold / unitCost(u).gold);
+      let w = 0; for (let s = 0; s < 8; s++) { const sw = s % 2, near = s % 4 > 1; if (fight(sw ? [u, nu] : [x, nx], sw ? [x, nx] : [u, nu], 1000 + s, near) === sw) w++; }
+      rates[x] = w / 8;
+    }
+    return rates;
+  });
+  const v = Object.values(r), avg = v.reduce((a, b) => a + b, 0) / v.length;
+  assert.ok(avg > 0.65 && avg < 0.97, `średnio ${avg}`);
+  assert.deepEqual(Object.entries(r).filter(([, w]) => w < 0.35).map(([id]) => id), []);
+});
