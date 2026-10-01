@@ -94,7 +94,7 @@ const SYLVAN3 = {
   guild(t) { // krąg druidów: kamienny krąg z ołtarzem; każdy stopień – wyższe drzewo-wieża z runami, wyżej świecące kręgi
     const g = new THREE.Group(), H = 34 + t * 18;
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; g.add(menhir(Math.cos(a) * 34, Math.sin(a) * 18, 7, 20 + (i % 2) * 6, SV.stone, '#9ad0ff')); }
-    g.add(trunk3(0, -6, H, 11, { seed: 70, col: '#6a5a48' })); g.add(crown3(0, H + 18, -8, 26 + t * 3, '#62aa86', 71, 8));
+    g.add(trunk3(0, -6, H, 11, { seed: 70, col: '#6a5a48' })); g.add(sph(6 / PXU, '#9ad0ff', 'glow', P(0, H + 6, -6), null, 12)); /* szczyt wieży: kula mocy zamiast korony */
     for (let i = 0; i < t; i++) { const y = 20 + i * (H - 26) / Math.max(1, t - 1); g.add(torus(13 / PXU, 1 / PXU, '#9ad0ff', 'glow', P(0, y, -6), [Math.PI / 2, 0, 0])); g.add(opening(4, 6, 0, y - 4, 4, { glow: '#9ad0ff', frame: SV.barkD })); }
     g.add(blk(16, 7, 10, SV.stoneL, 'rock', 0, 0, 18)); g.add(sph(3 / PXU, '#9ad0ff', 'glow', P(0, 11, 18))); glowMark(g, 0, 10, 18, 12, '#9ad0ff'); glowMark(g, 0, H, 0, 20, '#9ad0ff');
     return g; },
@@ -104,19 +104,19 @@ const SYLVAN3 = {
     g.add(cyl3(1.2, 1.2, 26, SV.wood, 'wood', 22, 0, 24, 6)); g.add(blk(12, 9, 1.5, '#e8c868', 'planks', 26, 16, 24)); g.add(blk(5, 5, 1, '#6a4020', 'wood', 26, 18, 25)); glowMark(g, 0, 28, 20, 18, SV.glow); return g; },
   market() { // targ: altany z liściastymi daszkami, kosze z owocami, beczki
     const g = new THREE.Group();
-    for (let i = 0; i < 3; i++) { const x = -40 + i * 40; for (const dx of [-14, 14]) g.add(cyl3(1.5, 1.5, 26, SV.wood, 'wood', x + dx, 0, 6, 6)); g.add(blk(34, 3, 22, SV.wood, 'planks', x, 26, 6)); g.add(crown3(x, 32, 6, 15, i % 2 ? SV.leafL : SV.leaf, 90 + i, 5));
+    for (let i = 0; i < 3; i++) { const x = -40 + i * 40; for (const dx of [-14, 14]) g.add(cyl3(1.5, 1.5, 26, SV.wood, 'wood', x + dx, 0, 6, 6)); g.add(blk(34, 3, 22, SV.wood, 'planks', x, 26, 6));
       g.add(blk(26, 9, 10, SV.plank, 'planks', x, 0, 12)); for (let k = 0; k < 4; k++) g.add(sph(2.6 / PXU, ['#d83a2a', '#e8c040', '#7ac040', '#c060c0'][(k + i) % 4], 'cloth', P(x - 9 + k * 6, 11, 12), null, 8)); }
     for (const x of [-64, 62]) g.add(cyl3(5, 5, 12, '#7a5030', 'wood', x, 0, 14, 12)); return g; },
   smith() { // kuźnia w pniu: ogromny pniak z wykutym paleniskiem, kowadło, miechy
     const g = new THREE.Group(); g.add(cyl3(34, 30, 30, SV.bark, 'bark', 0, 0, -4, 18)); g.add(cyl3(31, 31, 2, '#c8a070', 'wood', 0, 30, -4, 18)); g.add(trunk3(0, -4, 6, 34, { seed: 100, roots: 6 }));
     g.add(opening(20, 18, 0, 0, 26, { inner: '#1a0e08', frame: SV.barkD, frameKind: 'bark', sill: false })); const f = blk(14, 6, 4, '#ff8a2a', 'win', 0, 2, 24); f.material = lightMat('#ff9a3a'); g.add(f); glowMark(g, 0, 8, 28, 16, '#ffa040');
-    g.add(blk(14, 6, 8, '#3a3a40', 'iron', 30, 6, 22)); g.add(cyl3(4, 5, 6, SV.barkD, 'bark', 30, 0, 22, 8)); g.add(crown3(-20, 38, -20, 14, SV.leaf, 101, 4)); marker(g, 'fx:smoke', P(8, 34, -4)); return g; },
+    g.add(blk(14, 6, 8, '#3a3a40', 'iron', 30, 6, 22)); g.add(cyl3(4, 5, 6, SV.barkD, 'bark', 30, 0, 22, 8)); marker(g, 'fx:smoke', P(8, 34, -4)); return g; },
   silo() { // spichlerz na palach z dachem z gontu, kosze, worki
     const g = new THREE.Group(); for (const [x, z] of [[-16, -10], [16, -10], [-16, 12], [16, 12]]) { g.add(cyl3(2.4, 2.4, 14, SV.barkD, 'wood', x, 0, z, 8)); g.add(sph(4 / PXU, SV.stone, 'rock', P(x, 14, z), [1, 0.5, 1], 8)); }
     g.add(blk(40, 26, 30, SV.plank, 'planks', 0, 16, 1)); g.add(gable(40, 30, 18, '#7a5a38', 'shingle', 0, 42, 1, 4, SV.plank, 'planks')); g.add(opening(10, 14, 0, 18, 16.5, { inner: '#3a2414', frame: SV.barkD, sill: false }));
     const l = blk(4, 18, 2, SV.wood, 'wood', 10, 0, 22); l.rotation.x = -0.4; g.add(l); for (let i = 0; i < 3; i++) g.add(sph(5 / PXU, '#c8a868', 'cloth', P(-26 + i * 7, 4, 20), [1, 0.8, 1], 10)); return g; },
   special() { // Skarbiec krasnoludów: kamienna brama w omszałym wzgórzu, złote wrota z runami, skrzynie z monetami
-    const g = new THREE.Group(); g.add(boulder(0, 0, -10, 50, '#6a6a5e', 110, 0.62)); g.add(crown3(-20, 30, -24, 16, SV.leaf, 111, 5));
+    const g = new THREE.Group(); g.add(boulder(0, 0, -10, 50, '#6a6a5e', 110, 0.62));
     g.add(blk(44, 34, 10, '#9a9688', 'ashlar', 0, 0, 22)); g.add(blk(50, 6, 12, '#7a7668', 'ashlar', 0, 34, 22)); g.add(opening(24, 26, 0, 0, 27, { inner: '#c89a30', frame: '#5a5650', frameKind: 'ashlar', sill: false, frameW: 4 }));
     g.add(blk(2, 22, 1, '#8a6a20', 'gold', 0, 1, 29)); for (const x of [-26, 26]) { g.add(blk(10, 7, 7, '#6a4422', 'wood', x, 0, 34)); g.add(sph(4 / PXU, SV.gold, 'gold', P(x, 8, 34), [1, 0.5, 1], 10)); } glowMark(g, 0, 14, 30, 18, '#ffd060'); return g; },
   grail() { // Strażnik Kniei: kolosalny pradawny drzewiec-strażnik z koroną z kwitnących gałęzi, świecące oczy i runy w korzeniach
@@ -138,7 +138,7 @@ const SYLVAN3 = {
     for (const [x, z] of [[-10, -6], [10, -6], [-10, 10], [10, 10]]) { const p = cyl3(2.6, 2, H, SV.bark, 'bark', x, 0, z, 8); p.rotation.z = -x * 0.004; g.add(p); }
     for (let y = 12; y < H - 16; y += 16) { const b = blk(26, 2, 2, SV.wood, 'wood', 0, y, 11); b.rotation.z = 0.5; g.add(b); }
     g.add(platform(0, H - 18, 2, 20, { hw: 22, hh: 14 })); if (t >= 2) g.add(platform(0, H - 50, 2, 16, { house: false }));
-    if (t >= 3) { g.add(crown3(0, H + 6, 0, 20, SV.leafD, 140, 6)); for (const s of [-1, 1]) g.add(mast(s * 22, H - 15, 2, 20)); for (let i = 0; i < 4; i++) { const b = cyl3(0.8, 0.8, 22, '#6a4424', 'wood', 26 + i * 4, 0, 18, 5); b.rotation.z = 0.2; g.add(b); } g.add(creature('elfHunter', -26, 0, 20, 0.45, -0.3)); }
+    if (t >= 3) { for (const s of [-1, 1]) g.add(mast(s * 22, H - 15, 2, 20)); for (let i = 0; i < 4; i++) { const b = cyl3(0.8, 0.8, 22, '#6a4424', 'wood', 26 + i * 4, 0, 18, 5); b.rotation.z = 0.2; g.add(b); } g.add(creature('elfHunter', -26, 0, 20, 0.45, -0.3)); }
     else g.add(mast(14, H - 15, 2, 16));
     return g; },
   dw3(t) { // zagroda centaurów: namiot, płot, centaur; 2: obóz wodzów – drugi namiot z chorągwią; 3: jurta chana – wielka zdobna jurta, sztandary, dwa centaury
