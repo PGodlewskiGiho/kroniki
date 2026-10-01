@@ -36,6 +36,15 @@ if T.get('wulkan'):  # wulkan: stożek ze ściętym kraterem, strugi lawy po zbo
         x = cx + (rng.random() - 0.5) * kr * 1.6; y = top + 4; pts = [(x, y)]
         while y < hor: y += 8 + rng.random() * 10; x += (x - cx) / max(1, (y - top)) * 9 + (rng.random() - 0.5) * 6; pts.append((x, min(y, hor)))
         g.line(pts, fill=liq[0], width=max(2, int(4 - i * 0.5))); gd.line(pts, fill=160, width=7)
+if T.get('lasy'):  # daleki pas lasu iglastego przy horyzoncie (tylko w oddali, nie rama)
+    c = tuple(T['lasy']); x = 0
+    while x < W:
+        h = 6 + rng.random() * 10; y0 = hor + 6 + rng.random() * 8; g.polygon([(x, y0), (x + 3.5, y0 - h), (x + 7, y0)], fill=c); x += 3 + rng.random() * 4
+for _ in range(T.get('kamienie', 0)):  # rozrzucone ciemne głazy z czapą śniegu/światła (przed płaskowyżami, więc nie wchodzą na urwiska)
+    y = hor + 10 + (H - hor - 10) * rng.random() ** 0.7; x = rng.random() * W; k = 0.25 + (y - hor) / (H - hor) * 1.2; w = (5 + rng.random() * 12) * k * S
+    g.ellipse([x - w, y - w * 0.55, x + w, y + w * 0.25], fill=tuple(min(255, int(v * (0.7 + 0.4 * rng.random()))) for v in T['skala'])); g.ellipse([x - w * 0.8, y - w * 0.6, x + w * 0.5, y - w * 0.25], fill=tuple(T['ziemia'][0]))
+for _ in range(T.get('cienie_n', 50) if T.get('cienie') else 0):  # błękitne cienie zasp i fałd śniegu
+    y = hor + 8 + (H - hor) * rng.random() ** 0.8; x = rng.random() * W; k = 0.3 + (y - hor) / (H - hor); g.ellipse([x - 26 * k * S, y - 2.6 * k * S, x + 26 * k * S, y + 2.6 * k * S], fill=tuple(min(255, int(v * (0.85 + 0.1 * rng.random()))) for v in T['cienie']))
 # rzeki (lawa/woda) w korytach na równinie: szerokość w perspektywie
 for R in T.get('rzeki', []):
     P0 = R['pkt']; seg = []

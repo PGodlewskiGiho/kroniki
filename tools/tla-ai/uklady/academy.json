@@ -1,148 +1,182 @@
 {
  "_opis": "Miejsca budowli na namalowanym tle: s = podstawa na ekranie, z = głębokość (budowle na płaskowyżu), k = skala.",
- "tlo": "academy-polana-tyl.png",
+ "tlo": "academy-polana.png",
  "pj": {
-  "hor": 130,
+  "hor": 140,
   "d": 440,
   "f": 500
  },
  "slots": [
   {
    "s": [
-    250,
-    334
+    262,
+    332
    ],
-   "k": 1.2
+   "k": 1.3
   },
   {
    "s": [
-    312,
-    206
+    330,
+    204
    ],
-   "z": 1.895,
-   "k": 1.1
+   "z": 2.289,
+   "k": 1.5
   },
   {
    "s": [
     470,
-    300
-   ]
+    374
+   ],
+   "k": 0.8
   },
   {
    "s": [
-    446,
-    204
+    482,
+    200
    ],
-   "z": 1.946,
-   "k": 1.1
+   "z": 2.442,
+   "k": 1.5
   },
   {
    "s": [
-    222,
-    194
+    228,
+    192
    ],
-   "z": 2.25,
-   "k": 1.7
+   "z": 2.817,
+   "k": 1.9
   },
   {
    "s": [
     150,
-    302
-   ]
-  },
-  {
-   "s": [
-    372,
-    192
-   ],
-   "z": 2.323,
-   "k": 1.6
-  },
-  {
-   "s": [
-    524,
-    352
-   ]
-  },
-  {
-   "s": [
-    130,
-    404
-   ]
-  },
-  {
-   "s": [
-    522,
-    414
-   ]
-  },
-  {
-   "s": [
-    132,
-    362
+    298
    ]
   },
   {
    "s": [
     404,
+    190
+   ],
+   "z": 2.93,
+   "k": 2.4
+  },
+  {
+   "s": [
+    548,
+    356
+   ]
+  },
+  {
+   "s": [
+    130,
+    410
+   ]
+  },
+  {
+   "s": [
+    530,
+    418
+   ]
+  },
+  {
+   "s": [
+    96,
+    366
+   ]
+  },
+  {
+   "s": [
+    388,
     334
    ]
   },
   {
    "s": [
-    204,
+    210,
     414
    ]
   },
   {
    "s": [
-    408,
-    414
+    400,
+    416
    ]
   },
   {
    "s": [
     330,
-    290
+    272
    ]
   },
   {
    "s": [
-    170,
-    204
+    128,
+    200
    ],
-   "z": 1.946,
-   "k": 1.4,
+   "z": 2.442,
+   "k": 1.8,
    "zaslona": false
   }
  ],
- "_analiza": "Horyzont 130 (podnóże dalekich gór). Płaskowyż: krawędź urwiska sy 208, podnóże (zamarznięta rzeka) sy 249 → wysokość 152; z = f*(d-152)/(sy-hor). Przód: śnieżne zbocze od 262, rzeka z lewej (x<90) wyłączona.",
+ "_analiza": "Horyzont 140 (podnóże gór, y~175 obrazu). Płaskowyż (górna równina): krawędź urwiska sy 208, podnóże sy 242 → H 147; z = f*(d-H)/(sy-hor). Z prawej jezioro pod lodospadami (sy 236-282) i skały (sy 290-318) wyłączone. Z lewej ciemna skała x<30.",
  "polana": {
   "zrodlo": "academy.png",
   "obszar": [
    [
-    100,
-    262
+    36,
+    246
    ],
    [
     584,
-    262
+    246
    ],
    [
     584,
     432
    ],
    [
-    66,
+    30,
     432
-   ],
-   [
-    84,
-    330
    ]
   ],
-  "bez": [],
-  "obszar_tyl": 262,
+  "bez": [
+   [
+    [
+     356,
+     232
+    ],
+    [
+     584,
+     232
+    ],
+    [
+     584,
+     284
+    ],
+    [
+     396,
+     284
+    ]
+   ],
+   [
+    [
+     436,
+     288
+    ],
+    [
+     584,
+     286
+    ],
+    [
+     584,
+     320
+    ],
+    [
+     436,
+     320
+    ]
+   ]
+  ],
+  "obszar_tyl": 246,
   "woda": [
    0,
    0
@@ -161,9 +195,9 @@
    ]
   ],
   "ziemia": [
-   172,
-   176,
-   186
+   196,
+   192,
+   198
   ],
   "trakt": [
    [
@@ -189,104 +223,41 @@
   ],
   "trakt_w": 14,
   "zachowaj": true,
-  "opis": "detailed fantasy matte painting, snowy mountain town ground, trodden snow and grey flagstone plots, snowdrifts, soft blue shadows, painterly, rich detail, crisp"
- },
- "polana_tyl": {
-  "zrodlo": "academy-polana.png",
-  "obszar": [
-   [
-    90,
-    150
-   ],
-   [
-    584,
-    150
-   ],
-   [
-    584,
-    258
-   ],
-   [
-    90,
-    258
-   ]
-  ],
-  "bez": [],
-  "obszar_tyl": 150,
-  "woda": [
-   0,
-   0
-  ],
-  "pnie": false,
-  "trawa": [
-   [
-    220,
-    226,
-    236
-   ],
-   [
-    220,
-    226,
-    236
-   ]
-  ],
-  "ziemia": [
-   190,
-   196,
-   206
-  ],
-  "trakt": [
-   [
-    300,
-    434
-   ],
-   [
-    300,
-    433
-   ]
-  ],
-  "trakt_w": 1,
-  "zachowaj": true,
-  "wyostrz": [
-   5,
-   140
-  ],
-  "odmglij": 0.35,
-  "opis": "detailed sharp fantasy matte painting, snowy plateau with dark grey granite cliffs and snow ledges, glowing blue frozen icefalls, frozen river, crisp rock texture, painterly"
+  "opis": "detailed fantasy matte painting, snowy town ground at golden hour, trodden snow and grey flagstone plots, soft pink light and blue shadows, painterly, rich detail, crisp"
  },
  "swiatlo": {
-  "niebo": 12900607,
-  "ziemia": 15265528,
-  "hemi": 0.7,
-  "slonce": 16773336,
-  "moc": 4.4,
-  "wypelnienie": 10139903,
-  "wypelnienie_moc": 0.5
+  "niebo": 12110064,
+  "ziemia": 15787232,
+  "hemi": 0.75,
+  "slonce": 16765608,
+  "moc": 4.2,
+  "wypelnienie": 10004712,
+  "wypelnienie_moc": 0.55
  },
- "haze": "#c8d8ec",
- "grade": "saturate(1.0) brightness(1.02) contrast(1.08)",
+ "haze": "#d8c8d0",
+ "grade": "saturate(1.02) brightness(1.02) contrast(1.08)",
  "ozdoby": [
   {
    "o": 2,
    "s": [
-    278,
-    300
+    284,
+    296
    ],
    "k": 1.6
   },
   {
    "o": 2,
    "s": [
-    322,
-    300
+    326,
+    296
    ],
    "k": 1.6
   },
   {
    "o": 2,
    "s": [
-    276,
-    372
+    282,
+    380
    ],
    "k": 1.6
   },
@@ -294,47 +265,47 @@
    "o": 2,
    "s": [
     324,
-    372
+    380
    ],
    "k": 1.6
   },
   {
    "o": 3,
    "s": [
-    300,
-    336
+    304,
+    350
    ],
    "k": 1.5
   },
   {
    "o": 1,
    "s": [
-    356,
-    384
+    352,
+    390
    ],
    "k": 1.6
   },
   {
    "o": 1,
    "s": [
-    246,
-    380
+    244,
+    388
    ],
    "k": 1.4
   },
   {
    "o": 5,
    "s": [
-    470,
-    378
+    460,
+    330
    ],
    "k": 1.5
   },
   {
    "o": 4,
    "s": [
-    350,
-    262
+    60,
+    300
    ],
    "k": 1.8
   },
@@ -342,7 +313,7 @@
    "o": 5,
    "s": [
     190,
-    262
+    264
    ],
    "k": 1.4
   }

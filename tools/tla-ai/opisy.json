@@ -332,38 +332,38 @@
   }
  },
  "academy": {
-  "opis": "painted snowy mountain plateau, dark grey granite cliffs with snow ledges, frozen icefalls, frozen river, snowy flat terraces, distant snow peaks, blue sky, warm sun",
+  "opis": "painted snowy mountain pass at golden hour, granite plateau and cliffs, frozen icefalls and river, scattered dark rocks, distant pine forest, pink sunlit peaks",
   "teren": {
    "hor": 128,
    "ziarno": 7,
    "niebo": [
     [
-     70,
-     120,
-     190
+     52,
+     84,
+     150
     ],
     [
-     200,
-     222,
-     240
+     246,
+     206,
+     168
     ]
    ],
    "ziemia": [
     [
-     214,
-     224,
-     236
+     248,
+     236,
+     226
     ],
     [
-     176,
-     188,
-     204
+     190,
+     200,
+     226
     ]
    ],
    "skala": [
-    78,
-    80,
-    92
+    70,
+    72,
+    86
    ],
    "ciecz": [
     [
@@ -378,41 +378,41 @@
     ]
    ],
    "mgla": [
-    220,
-    232,
-    244
+    236,
+    214,
+    200
    ],
    "lune": [
+    40,
     60,
-    90,
-    120
+    80
    ],
    "gory": [
     [
-     60,
-     110,
+     70,
+     120,
      [
-      214,
-      226,
-      240
+      244,
+      222,
+      212
      ]
     ],
     [
-     30,
-     70,
+     34,
+     74,
      [
       150,
-      166,
-      190
+      160,
+      196
      ]
     ],
     [
-     10,
-     34,
+     12,
+     36,
      [
-      120,
-      136,
-      160
+      96,
+      106,
+      140
      ]
     ]
    ],
@@ -430,9 +430,9 @@
       470
      ],
      "kolor": [
-      226,
-      234,
-      244
+      244,
+      232,
+      222
      ]
     },
     {
@@ -445,9 +445,9 @@
      "dol": 318,
      "wodospady": [],
      "kolor": [
-      220,
-      228,
-      240
+      236,
+      226,
+      220
      ]
     }
    ],
@@ -508,7 +508,18 @@
      46
     ]
    ],
-   "urwisko": "warstwy"
+   "urwisko": "warstwy",
+   "lasy": [
+    46,
+    62,
+    64
+   ],
+   "kamienie": 45,
+   "cienie": [
+    176,
+    190,
+    222
+   ]
   }
  }
 }
