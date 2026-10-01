@@ -12,7 +12,7 @@ const { ROOT, openStudio } = require('./wspolne');
 const OUT_DIR = path.join(ROOT, 'src', 'grafika', 'jednostki'), META = path.join(ROOT, 'src', 'grafika', 'jednostki.json');
 // Skala: w bitwie 1 piksel grafiki = UB px logicznych, na mapie UM; KB/KM = pikseli na jednostkę świata (człowiek ≈ 2 jednostki).
 // UB < 1: arkusze bitewne gęstsze niż ekran logiczny (więcej szczegółów na dużych ekranach). DS: płótno klatki względem dawnej skali
-const UB = 0.9, UM = 1.8, KB = 32 / UB, KM = 15.4 / UM, DS = KB / 24.6;
+const UB = 1.35, UM = 1.8, KB = 32 / UB, KM = 15.4 / UM, DS = KB / 24.6;
 const WORKERS = +(process.env.WORKERS || 3);
 
 async function bakeGroup(ids, done) {

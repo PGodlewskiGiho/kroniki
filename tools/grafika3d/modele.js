@@ -80,9 +80,16 @@ function inkLines(c, E) {
 function pixelize(c, step) {
   const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data, A = new Uint8Array(w * h);
   for (let i = 0, k = 0; k < w * h; k++, i += 4) {
-    if (d[i + 3] < 110) { d[i + 3] = 0; continue; } const a = d[i + 3] / 255; A[k] = 1;
-    for (let j = 0; j < 3; j++) d[i + j] = Math.min(255, Math.round(d[i + j] / a / step) * step); d[i + 3] = 255;
+    if (d[i + 3] < 110) { d[i + 3] = 0; continue; } A[k] = 1; // getImageData daje kolor bez mnożenia przez alfę: nie dzielimy (rozjaśniało brzegi)
+    for (let j = 0; j < 3; j++) d[i + j] = Math.min(255, Math.round(d[i + j] / step) * step); d[i + 3] = 255;
   }
+  // Brzeg sylwetki nie jaśniejszy od wnętrza: światło konturowe dawało jasną obwódkę wokół skrzydeł i zbroi
+  const lum = i => d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11, src = new Uint8ClampedArray(d);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const k = y * w + x; if (!A[k] || (A[k - 1] && A[k + 1] && A[k - w] && A[k + w])) continue;
+    let r = 0, gg = 0, b = 0, n = 0;
+    for (const q of [k - 1, k + 1, k - w, k + w, k - w - 1, k - w + 1, k + w - 1, k + w + 1]) if (A[q] && A[q - 1] && A[q + 1] && A[q - w] && A[q + w]) { const j = q * 4; r += src[j]; gg += src[j + 1]; b += src[j + 2]; n++; }
+    const i = k * 4; if (!n) continue; r /= n; gg /= n; b /= n;
+    if (lum(i) > (r * 0.3 + gg * 0.59 + b * 0.11) * 1.12 + 6) { d[i] = Math.round(r / step) * step; d[i + 1] = Math.round(gg / step) * step; d[i + 2] = Math.round(b / step) * step; } }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const k = y * w + x; if (A[k]) continue;
     if ((x > 0 && A[k - 1]) || (x < w - 1 && A[k + 1]) || (y > 0 && A[k - w]) || (y < h - 1 && A[k + w])) { const i = k * 4; d[i] = 24; d[i + 1] = 16; d[i + 2] = 10; d[i + 3] = 255; } }
   g.putImageData(img, 0, 0);
