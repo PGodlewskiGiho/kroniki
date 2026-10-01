@@ -12,7 +12,7 @@ const MODEL_FILES = ['modele.js', 'postacie.js', 'zwierzeta.js', 'maszyny.js', '
 // Dane jednostek (look, klatki animacji) z gry, a modele na osobnej, pustej stronie (nazwy funkcji gry i narzędzia nie kolidują)
 async function openStudio(viewport = { width: 1440, height: 900 }) {
   const { chromium } = require('playwright');
-  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  const exe = process.env.CHROMIUM_PATH || (require('fs').existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : null), browser = await chromium.launch(exe ? { executablePath: exe } : {});
   const game = await browser.newPage(); await game.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   await game.goto(require('url').pathToFileURL(path.join(ROOT, 'Kroniki Królestw.html')).href); await game.waitForFunction(() => typeof CREATURES !== 'undefined');
   const data = await game.evaluate(() => ({ creatures: Object.fromEntries(Object.entries(CREATURES).map(([id, c]) => [id, { look: c.look, abil: c.abil || [], name: c.name, faction: c.faction || '', level: c.level }])), frames: BATTLE_FRAMES,
