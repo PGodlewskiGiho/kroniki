@@ -1,6 +1,6 @@
 {
  "_opis": "Miejsca budowli na namalowanym tle: [sx, sy] = punkt podstawy na ekranie (kadr 8–584 × 8–430), z = głębokość (domyślnie z płaskiej ziemi: d / (sy − hor)), k = dodatkowa skala, flip = odbicie.",
- "tlo": "haven.png",
+ "tlo": "haven-drogi.png",
  "pj": {
   "hor": 132,
   "d": 470,
@@ -29,10 +29,13 @@
   },
   {
    "s": [
-    515,
-    162
+    505,
+    158
    ],
-   "z": 1.9
+   "z": 1.9,
+   "k": 1.05,
+   "tilt": 10,
+   "yaw": -35
   },
   {
    "s": [
@@ -42,9 +45,10 @@
   },
   {
    "s": [
-    130,
-    240
-   ]
+    118,
+    216
+   ],
+   "z": 1.52
   },
   {
    "s": [
@@ -79,10 +83,10 @@
   },
   {
    "s": [
-    555,
-    395
+    495,
+    286
    ],
-   "flip": true
+   "z": 0.8
   },
   {
    "s": [
@@ -104,10 +108,162 @@
   },
   {
    "s": [
-    262,
-    292
-   ]
+    250,
+    153
+   ],
+   "z": 3.5,
+   "k": 6
   }
  ],
- "_analiza": "Geometria obrazu: horyzont 132, kąt patrzenia ~40° u dołu, ~30° na środkowej łące, ~15° na półwyspie (f = 300). Płaskie: dolna łąka (y 340–420), środkowa łąka (x 230–420, y 270–330), półwysep (x 250–400, y 195–240), szczyt klifu (x 470–580, y 150–170). Wzniesienia: z = odległość podstawy wzgórza (rząd, gdzie styka się z doliną), e wynika z różnicy rzędów."
+ "_analiza": "Geometria obrazu: horyzont 132, kąt patrzenia ~40° u dołu, ~30° na środkowej łące, ~15° na półwyspie (f = 300). Płaskie: dolna łąka (y 340–420), środkowa łąka (x 230–420, y 270–330), półwysep (x 250–400, y 195–240), szczyt klifu (x 470–580, y 150–170). Wzniesienia: z = odległość podstawy wzgórza (rząd, gdzie styka się z doliną), e wynika z różnicy rzędów.",
+ "drogi": [
+  {
+   "pts": [
+    [
+     300,
+     432
+    ],
+    [
+     312,
+     400
+    ],
+    [
+     326,
+     378
+    ],
+    [
+     322,
+     340
+    ],
+    [
+     320,
+     312
+    ]
+   ],
+   "w": 16
+  },
+  {
+   "pts": [
+    [
+     322,
+     345
+    ],
+    [
+     285,
+     338
+    ],
+    [
+     248,
+     334
+    ]
+   ],
+   "w": 10
+  },
+  {
+   "pts": [
+    [
+     318,
+     380
+    ],
+    [
+     275,
+     392
+    ],
+    [
+     240,
+     408
+    ]
+   ],
+   "w": 10
+  },
+  {
+   "pts": [
+    [
+     330,
+     380
+    ],
+    [
+     380,
+     388
+    ],
+    [
+     425,
+     396
+    ]
+   ],
+   "w": 10
+  },
+  {
+   "pts": [
+    [
+     250,
+     336
+    ],
+    [
+     200,
+     348
+    ],
+    [
+     156,
+     364
+    ]
+   ],
+   "w": 9
+  },
+  {
+   "pts": [
+    [
+     150,
+     368
+    ],
+    [
+     110,
+     382
+    ],
+    [
+     74,
+     398
+    ]
+   ],
+   "w": 9
+  },
+  {
+   "pts": [
+    [
+     248,
+     334
+    ],
+    [
+     180,
+     322
+    ],
+    [
+     118,
+     311
+    ]
+   ],
+   "w": 8
+  },
+  {
+   "pts": [
+    [
+     322,
+     312
+    ],
+    [
+     365,
+     302
+    ],
+    [
+     405,
+     298
+    ]
+   ],
+   "w": 8
+  }
+ ],
+ "glebia": {
+  "lo": 1.851474642753601,
+  "hi": 4.330568790435791
+ }
 }
