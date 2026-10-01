@@ -2,7 +2,7 @@
 // Puszcza elfów: żywe drzewa z domami na platformach, omszałe głazy i menhiry, grzybowa tawerna, namioty centaurów,
 // świecące kryształy i robaczki. Stworzenia (centaury, jednorożce, feniksy, drzewce, smok) z modeli jednostek.
 /* global THREE, TOWN3, PXU, P, blk, cyl3, sph, cone, torus, slab, marker, mat, archMat, lightMat, DK, LT, rng, opening, door, gable, coneRoof, mast, glowMark, creature */
-const SV = { bark: '#5e4630', barkD: '#3e2c1c', leaf: '#3e7a32', leafD: '#2a5a26', leafL: '#6aaa48', moss: '#5a7a3a', wood: '#8a6238', plank: '#a07a4a', stone: '#8a8a7c', stoneL: '#b4b4a6',
+const SV = { bark: '#7a5a3c', barkD: '#4e3824', leaf: '#6ab84e', leafD: '#4c9a40', leafL: '#8ed262', moss: '#6a8a46', wood: '#8a6238', plank: '#a07a4a', stone: '#8a8a7c', stoneL: '#b4b4a6',
   cap: '#c8302a', capL: '#f0e8d8', glow: '#ffd890', green: '#b8ff90', gold: '#e0b040', blossom: '#eaa2c4', silver: '#d8e0ea', cloth: '#b08a58', crystal: '#4ae8a0' };
 // Pień: zwężający się walec z korzeniami (fx: rozszerzona podstawa) i lekkim pochyleniem
 function trunk3(x, z, h, r, { col = SV.bark, lean = 0, roots = 5, y = 0, seed = 1 } = {}) {
@@ -12,10 +12,10 @@ function trunk3(x, z, h, r, { col = SV.bark, lean = 0, roots = 5, y = 0, seed = 
   return g;
 }
 // Korona: kiść kul z liśćmi (faktura liści), kolor z odcieniami
-function crown3(x, y, z, r, col = SV.leaf, seed = 1, n = 9) {
-  const g = new THREE.Group(), R = rng(seed * 31 + 7);
-  for (let i = 0; i < n; i++) { const a = R() * Math.PI * 2, d = r * (i ? 0.35 + R() * 0.45 : 0), rr = r * (0.42 + R() * 0.28), c = i % 3 === 0 ? LT(col, 0.12) : i % 3 === 1 ? DK(col, 0.15) : col;
-    g.add(sph(rr / PXU, c, 'leaves', P(x + Math.cos(a) * d, y + (R() - 0.3) * r * 0.5, z + Math.sin(a) * d * 0.7), [1, 0.8, 1], 14)); }
+function crown3(x, y, z, r, col = SV.leaf, seed = 1, n = 9) { // n kęp (każda z kilku mniejszych kul), faktura liści gęsto powtórzona: drobne listowie zamiast plam
+  const g = new THREE.Group(), R = rng(seed * 31 + 7), N = n * 2 + 4;
+  for (let i = 0; i < N; i++) { const a = R() * Math.PI * 2, d = r * (i ? 0.3 + R() * 0.6 : 0), rr = r * (0.26 + R() * 0.2), c = i % 3 === 0 ? LT(col, 0.14) : i % 3 === 1 ? DK(col, 0.12) : col, up = (R() - 0.25) * r * 0.6;
+    g.add(mesh(new THREE.IcosahedronGeometry(rr / PXU, 2), c, 'leaves', P(x + Math.cos(a) * d, y + up, z + Math.sin(a) * d * 0.75), null, [1, 0.82, 1], Math.max(2, Math.round(rr / 7)))); }
   return g;
 }
 const tree3k = (x, z, h, r, cr, col, seed, o = {}) => { const g = new THREE.Group(); g.add(trunk3(x, z, h, r, { seed, ...o })); g.add(crown3(x, (o.y || 0) + h + cr * 0.35, z, cr, col, seed)); return g; };
@@ -42,15 +42,16 @@ const flowers = (x, z, w, d, cols, n = 18, seed = 5) => { const g = new THREE.Gr
 const lantern = (x, y, z, col = SV.glow) => { const g = new THREE.Group(); g.add(sph(2.4 / PXU, col, 'glow', P(x, y, z), null, 8)); glowMark(g, x, y, z, 8, col); return g; };
 const fireflies = (g, x, y, z, w, h, n = 8, seed = 9) => { const R = rng(seed); for (let i = 0; i < n; i++) g.add(sph(0.9 / PXU, '#f0ff90', 'glow', P(x + (R() - 0.5) * w, y + R() * h, z + (R() - 0.5) * w * 0.5), null, 5)); };
 // Namiot (stożek z płótna z wejściem), wieniec z wbitych pali
-function tent(x, z, r, h, col = SV.cloth, trim = '#8a3a2a') { const g = new THREE.Group(); g.add(cyl3(r, 0.6, h, col, 'cloth', x, 0, z, 12)); g.add(cyl3(r + 0.5, r, 4, trim, 'cloth', x, 0, z, 12));
+function tentK(x, z, r, h, col = SV.cloth, trim = '#8a3a2a') { const g = new THREE.Group(); g.add(cyl3(r, 0.6, h, col, 'cloth', x, 0, z, 12)); g.add(cyl3(r + 0.5, r, 4, trim, 'cloth', x, 0, z, 12));
   g.add(opening(r * 0.6, h * 0.4, x, 0, z + r * 0.85, { inner: '#2a1a10', frame: DK(col, 0.3), frameKind: 'cloth', sill: false })); for (let i = 0; i < 3; i++) { const p = cyl3(0.7, 0.4, 8, SV.barkD, 'wood', x + (i - 1) * 2, h - 2, z, 5); p.rotation.z = (i - 1) * 0.3; g.add(p); } return g; }
 function fence3(x0, x1, z, h = 10) { const g = new THREE.Group(); for (let x = x0; x <= x1; x += 7) g.add(cyl3(1.2, 1, h, SV.wood, 'wood', x, 0, z, 6)); g.add(blk(x1 - x0, 1.6, 1.6, SV.wood, 'wood', (x0 + x1) / 2, h * 0.45, z + 1)); g.add(blk(x1 - x0, 1.6, 1.6, SV.wood, 'wood', (x0 + x1) / 2, h * 0.8, z + 1)); return g; }
 // Grzyb (trzon + kapelusz z kropkami) – dom w tawernie, ozdoby
-function mushroom3(x, z, r, h, { cap = SV.cap, stem = SV.capL, spots = true, seed = 4 } = {}) {
+function shroomK(x, z, r, h, { cap = SV.cap, stem = SV.capL, spots = true, seed = 4 } = {}) {
   const g = new THREE.Group(); g.add(cyl3(r * 0.42, r * 0.36, h, stem, 'plaster', x, 0, z, 18));
   const pts = [[0, 0], [r * 1.05, 0], [r * 1.1, r * 0.12], [r, r * 0.36], [r * 0.75, r * 0.62], [r * 0.4, r * 0.8], [0.01, r * 0.86]].map(([a, b]) => new THREE.Vector2(a / PXU, b / PXU));
   const c = new THREE.Mesh(new THREE.LatheGeometry(pts, 28), archMat(cap, 'plaster')); c.position.set(...P(x, h - 2, z)); g.add(c);
-  if (spots) { const R = rng(seed); for (let i = 0; i < 12; i++) { const a = R() * Math.PI * 2, t = 0.25 + R() * 0.55, rr = r * (1 - t * 0.7), yy = r * (0.12 + t * 0.7); g.add(sph(r * (0.08 + R() * 0.05) / PXU, '#f8f4ea', 'plaster', P(x + Math.cos(a) * rr, h - 2 + yy, z + Math.sin(a) * rr), [1, 0.4, 1], 8)); } }
+  if (spots) { const R = rng(seed), prof = [[1.1, 0.12], [1, 0.36], [0.75, 0.62], [0.4, 0.8]], at = t => { const k = Math.min(2.999, t * 3), i = Math.floor(k), f = k - i; return [prof[i][0] + (prof[i + 1][0] - prof[i][0]) * f, prof[i][1] + (prof[i + 1][1] - prof[i][1]) * f]; };
+    for (let i = 0; i < 14; i++) { const a = R() * Math.PI * 2, [pr, py] = at(0.1 + R() * 0.85); g.add(sph(r * (0.07 + R() * 0.05) / PXU, '#f8f4ea', 'plaster', P(x + Math.cos(a) * pr * r * 1.01, h - 2 + py * r, z + Math.sin(a) * pr * r * 1.01), [1, 0.45, 1], 8)); } } /* kropki na powierzchni kapelusza (profil jak w LatheGeometry) */
   return g;
 }
 const SYLVAN3 = {
@@ -69,19 +70,19 @@ const SYLVAN3 = {
     const arch = torus(16 / PXU, 3 / PXU, SV.bark, 'bark', P(0, 26, 32), null, null, Math.PI); g.add(arch); g.add(cyl3(3, 3, 26, SV.bark, 'bark', -16, 0, 32, 8)); g.add(cyl3(3, 3, 26, SV.bark, 'bark', 16, 0, 32, 8));
     g.add(crown3(0, 46, 32, 14, SV.leafL, 41, 5));
     if (t >= 2) for (const s of [-1, 1]) { g.add(tree3k(s * 66, 4, 64, 9, 20, SV.leafD, 50 + s)); g.add(platform(s * 66, 48, 4, 13, { hw: 14, hh: 10 })); g.add(mast(s * 66, 72, 4, 18)); }
-    if (t >= 3) { g.add(trunk3(0, -36, 150, 34, { seed: 60, roots: 8 })); g.add(crown3(0, 190, -40, 80, SV.leaf, 61, 14)); g.add(platform(0, 112, -36, 46, { hw: 40, hh: 20, roof: '#2e6a2a' }));
+    if (t >= 3) { g.add(trunk3(0, -36, 150, 34, { seed: 60, roots: 8 })); g.add(crown3(0, 190, -40, 80, SV.leaf, 61, 14)); g.add(platform(0, 112, -36, 46, { hw: 40, hh: 20, roof: '#4c9a40' }));
       g.add(platform(0, 150, -36, 34, { hw: 26, hh: 14 })); for (const [x, y] of [[-30, 120], [30, 124], [0, 158], [-18, 168], [24, 172]]) g.add(lantern(x, y, -10)); g.add(mast(0, 172, -36, 24)); fireflies(g, 0, 90, -20, 160, 110, 16, 7); }
     return g; },
   guild(t) { // krąg druidów: kamienny krąg z ołtarzem; każdy stopień – wyższe drzewo-wieża z runami, wyżej świecące kręgi
     const g = new THREE.Group(), H = 34 + t * 18;
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; g.add(menhir(Math.cos(a) * 34, Math.sin(a) * 18, 7, 20 + (i % 2) * 6, SV.stone, '#9ad0ff')); }
-    g.add(trunk3(0, -6, H, 11, { seed: 70, col: '#6a5a48' })); g.add(crown3(0, H + 18, -8, 26 + t * 3, '#4a8a6a', 71, 8));
+    g.add(trunk3(0, -6, H, 11, { seed: 70, col: '#6a5a48' })); g.add(crown3(0, H + 18, -8, 26 + t * 3, '#62aa86', 71, 8));
     for (let i = 0; i < t; i++) { const y = 20 + i * (H - 26) / Math.max(1, t - 1); g.add(torus(13 / PXU, 1 / PXU, '#9ad0ff', 'glow', P(0, y, -6), [Math.PI / 2, 0, 0])); g.add(opening(4, 6, 0, y - 4, 4, { glow: '#9ad0ff', frame: SV.barkD })); }
     g.add(blk(16, 7, 10, SV.stoneL, 'rock', 0, 0, 18)); g.add(sph(3 / PXU, '#9ad0ff', 'glow', P(0, 11, 18))); glowMark(g, 0, 10, 18, 12, '#9ad0ff'); glowMark(g, 0, H, 0, 20, '#9ad0ff');
     return g; },
   tavern() { // grzybowa tawerna: wielki czerwony grzyb z drzwiami i oknami, mniejsze grzyby, szyld z kuflem
-    const g = new THREE.Group(); g.add(mushroom3(0, 0, 40, 42, { seed: 81 })); g.add(door(12, 18, 0, 0, 15, '#6a4020', SV.barkD, 'wood'));
-    for (const x of [-9, 9]) g.add(opening(6, 7, x, 26, 14, { glow: SV.glow, frame: SV.barkD })); g.add(mushroom3(-40, 14, 12, 14, { cap: '#d84a2a', seed: 82 })); g.add(mushroom3(34, 18, 9, 10, { cap: '#e0a030', seed: 83 }));
+    const g = new THREE.Group(); g.add(shroomK(0, 0, 40, 42, { seed: 81 })); g.add(door(12, 18, 0, 0, 15, '#6a4020', SV.barkD, 'wood'));
+    for (const x of [-9, 9]) g.add(opening(6, 7, x, 26, 14, { glow: SV.glow, frame: SV.barkD })); g.add(shroomK(-40, 14, 12, 14, { cap: '#d84a2a', seed: 82 })); g.add(shroomK(34, 18, 9, 10, { cap: '#e0a030', seed: 83 }));
     g.add(cyl3(1.2, 1.2, 26, SV.wood, 'wood', 22, 0, 24, 6)); g.add(blk(12, 9, 1.5, '#e8c868', 'planks', 26, 16, 24)); g.add(blk(5, 5, 1, '#6a4020', 'wood', 26, 18, 25)); glowMark(g, 0, 28, 20, 18, SV.glow); return g; },
   market() { // targ: altany z liściastymi daszkami, kosze z owocami, beczki
     const g = new THREE.Group();
@@ -126,14 +127,14 @@ const SYLVAN3 = {
     const g = new THREE.Group();
     if (t >= 3) { g.add(cyl3(38, 38, 20, '#d8c49a', 'cloth', 0, 0, -6, 20)); g.add(cyl3(40, 4, 26, '#b03a2a', 'cloth', 0, 20, -6, 20)); g.add(torus(38 / PXU, 1.2 / PXU, SV.gold, 'gold', P(0, 10, -6), [Math.PI / 2, 0, 0]));
       g.add(opening(14, 16, 0, 0, 31, { inner: '#2a1a10', frame: SV.gold, frameKind: 'gold', sill: false })); for (const s of [-1, 1]) g.add(mast(s * 46, 0, 10, 50)); g.add(creature('centaurKhan', -34, 0, 28, 0.62, 0.4)); g.add(creature('centaurChief', 40, 0, 26, 0.55, -0.5)); }
-    else { g.add(tent(-24, -4, 22, 38)); g.add(fence3(4, 54, 22)); g.add(creature(t >= 2 ? 'centaurChief' : 'centaur', 30, 0, 12, 0.55, -1.2)); if (t >= 2) { g.add(tent(24, -18, 18, 32, '#c09a68')); g.add(mast(24, 32, -18, 18)); } }
+    else { g.add(tentK(-24, -4, 22, 38)); g.add(fence3(4, 54, 22)); g.add(creature(t >= 2 ? 'centaurChief' : 'centaur', 30, 0, 12, 0.55, -1.2)); if (t >= 2) { g.add(tentK(24, -18, 18, 32, '#c09a68')); g.add(mast(24, 32, -18, 18)); } }
     return g; },
   dw4(t) { // stary las: trzy pradawne drzewa i drzewiec; 2: pradawny las – większe; 3: królewski bór – olbrzymi dąb z koroną z kwiatów, świecące oczy, król drzewców
     const g = new THREE.Group(), k = t >= 2 ? 1.2 : 1;
     for (const [x, z, s] of [[-40, -10, 1], [40, -12, 2]]) g.add(tree3k(x, z, 46 * k, 8, 26 * k, SV.leafD, 150 + s));
-    if (t >= 3) { g.add(trunk3(0, -14, 100, 22, { seed: 155, roots: 8, col: '#4a3220' })); g.add(crown3(0, 128, -16, 52, '#34702e', 156, 12)); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; g.add(sph(4 / PXU, i % 2 ? SV.blossom : '#f0e070', 'cloth', P(Math.cos(a) * 36, 150 + Math.sin(i * 2) * 8, Math.sin(a) * 18 - 16), null, 8)); }
+    if (t >= 3) { g.add(trunk3(0, -14, 100, 22, { seed: 155, roots: 8, col: '#4a3220' })); g.add(crown3(0, 128, -16, 52, '#4e9a42', 156, 12)); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; g.add(sph(4 / PXU, i % 2 ? SV.blossom : '#f0e070', 'cloth', P(Math.cos(a) * 36, 150 + Math.sin(i * 2) * 8, Math.sin(a) * 18 - 16), null, 8)); }
       for (const x of [-7, 7]) g.add(sph(2.6 / PXU, '#a0ffb0', 'glow', P(x, 56, 6), null, 8)); g.add(creature('treantKing', 30, 0, 26, 0.6, -0.8)); glowMark(g, 0, 56, 8, 20, '#a0ffb0'); }
-    else { g.add(trunk3(0, -6, 60 * k, 16, { seed: 157, col: '#4a3220' })); g.add(crown3(0, 74 * k, -8, 30 + t * 5, '#34702e', 158, 9)); for (const x of [-5, 5]) g.add(sph(2 / PXU, t >= 2 ? '#a0ffb0' : '#e8d070', 'glow', P(x, 32 * k, 10), null, 8)); g.add(creature(t >= 2 ? 'elderTreant' : 'treant', 30, 0, 22, 0.5, -0.8)); }
+    else { g.add(trunk3(0, -6, 60 * k, 16, { seed: 157, col: '#4a3220' })); g.add(crown3(0, 74 * k, -8, 30 + t * 5, '#4e9a42', 158, 9)); for (const x of [-5, 5]) g.add(sph(2 / PXU, t >= 2 ? '#a0ffb0' : '#e8d070', 'glow', P(x, 32 * k, 10), null, 8)); g.add(creature(t >= 2 ? 'elderTreant' : 'treant', 30, 0, 22, 0.5, -0.8)); }
     return g; },
   dw5(t) { // polana jednorożców: trylit z menhirów i jednorożec; 2: srebrna polana – srebrne kamienie i blask; 3: gwiezdna polana – krąg trylitów z gwiezdnymi kryształami
     const g = new THREE.Group(), ac = t >= 2 ? '#c8d0dc' : SV.stone, tri = (x, z, s = 1) => { const q = new THREE.Group(); q.add(menhir(x - 20 * s, z, 10 * s, 40 * s, ac, '#d8f0ff')); q.add(menhir(x + 20 * s, z, 10 * s, 40 * s, ac, '#d8f0ff')); q.add(blk(56 * s, 8 * s, 10 * s, ac, 'rock', x, 40 * s, z)); return q; };
