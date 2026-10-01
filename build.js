@@ -31,7 +31,10 @@ function build() {
   // Portrety bohaterów (tools/portrety-ai): imię -> PNG 72×72
   const pmeta = path.join(gdir, 'portrety.json'), port = {};
   if (fs.existsSync(pmeta)) for (const [name, f] of Object.entries(JSON.parse(fs.readFileSync(pmeta, 'utf8')))) { const pf = path.join(gdir, 'portrety', f); if (fs.existsSync(pf)) port[name] = fs.readFileSync(pf).toString('base64'); }
-  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\n`;
+  // Budowle miast wypalone z modeli 3D (tools/grafika3d/wypal-miasta.js): frakcja -> { b: klatki budowli, png: arkusz }
+  const tmeta = path.join(gdir, 'miasta.json'), tart = {};
+  if (fs.existsSync(tmeta)) for (const [fac, b] of Object.entries(JSON.parse(fs.readFileSync(tmeta, 'utf8')))) { const f = path.join(gdir, 'miasta', fac + '.png'); if (fs.existsSync(f)) tart[fac] = { b, png: fs.readFileSync(f).toString('base64') }; }
+  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\nconst TOWN_BUILD_ART = ${JSON.stringify(tart)};\n`;
   return shell.replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => artJs + js);
 }
 

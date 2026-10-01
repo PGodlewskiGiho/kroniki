@@ -503,8 +503,11 @@ const PJ_BASE = { hor: 94, d: 282 };
 function usePJ(L) { const p = (L && L.pj) || PJ_BASE; PJ.hor = p.hor; PJ.d = p.d; }
 function proj(X, Z, e = 0) { const s = 1 / Z; return [PJ.cx + X * s, PJ.hor + PJ.d * s - e * s, s]; }
 const hazeAt = Z => clamp((Z - 1.05) * 0.36, 0, 0.45);
-let TOWN_ART_SCALE = 1 / PIX; // pikseli sceny na px logiczny (drobny piksel: 1, niska jakość: 0,5)
-PIX_CLEAR.push(() => { TOWN_ART_SCALE = 1 / PIX; });
+// Scena miasta ma własny, drobniejszy piksel TOWN_PIX (jak jednostki w bitwie: budowle są wypalone z modeli 3D w tej gęstości);
+// przy niskiej jakości grafiki (PIX 2) dawny, grubszy piksel. TOWN_ART_SCALE = pikseli sceny na px logiczny.
+const TOWN_PIX = 1.35, townArtScale = () => (PIX >= 2 ? 1 / PIX : 1 / TOWN_PIX);
+let TOWN_ART_SCALE = townArtScale();
+PIX_CLEAR.push(() => { TOWN_ART_SCALE = townArtScale(); });
 // Rysuje obiekt jako pikselowy sprite w skali perspektywy (twarde krawędzie, obrys, mgła oddalenia)
 function drawObj(dst, draw, box, anchor, sx, sy, sc, haze, hazeCol, fx, flip) { // flip: odbicie w poziomie (to samo miasto, inne ustawienie budowli)
   const [bx0, by0, bw, bh] = box, R = TOWN_ART_SCALE * sc, cw = Math.ceil(bw * R) + 2, ch = Math.ceil(bh * R) + 2;
@@ -521,6 +524,20 @@ function drawObj(dst, draw, box, anchor, sx, sy, sc, haze, hazeCol, fx, flip) { 
   for (const [x, y] of t.smokes) { const [X, Y] = T(x, y); fx.smokes.push([X, Y, sc]); }
   for (const [x, y, r, col] of t.glows) { const [X, Y] = T(x, y); fx.glows.push([X, Y, r * sc, col]); }
   for (const [x, y, col] of t.flags) { const [X, Y] = T(x, y); fx.flags.push([X, Y, col, sc]); }
+}
+// Budowla wypalona z modelu 3D (tools/grafika3d/wypal-miasta.js): klatka arkusza frakcji w skali miejsca. Arkusz ma gęstość d pikseli
+// na piksel sceny w skali 1, więc w scenie piksel arkusza = sc / d px logicznych (przy pikselu sceny TOWN_PIX: dokładnie jeden).
+// Punkty efektów z modelu (m): dym z kominów, blask, flagi właściciela.
+const townBuildArt = (fac, key) => { const T = typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART[fac], im = TOWN_IMG[fac]; return T && T.b[key] && im && im._ok ? { ...T.b[key], im } : null; };
+function drawBaked(dst, art, sx, sy, sc, haze, hazeCol, fx, flip, col) {
+  const [x, y, w, h, ax, ay] = art.f, u = sc / art.d, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(art.im, x, y, w, h, 0, 0, w, h);
+  if (haze > 0) { g.globalCompositeOperation = 'source-atop'; g.globalAlpha = haze; g.fillStyle = hazeCol; g.fillRect(0, 0, w, h); }
+  const dx = sx - ax * u, dy = Math.round((sy - ay * u) * TOWN_ART_SCALE) / TOWN_ART_SCALE, lx = Math.round((flip ? 2 * sx - dx - w * u : dx) * TOWN_ART_SCALE) / TOWN_ART_SCALE;
+  dst.save(); dst.imageSmoothingEnabled = false; if (flip) { dst.translate(lx + w * u, dy); dst.scale(-1, 1); dst.drawImage(c, 0, 0, w * u, h * u); } else dst.drawImage(c, lx, dy, w * u, h * u); dst.restore();
+  for (const [nm, mx, my] of art.m || []) {
+    const X = sx + (flip ? -mx : mx) * u, Y = sy + my * u, [kind, r, gc] = nm.split('|');
+    if (kind === 'smoke') fx.smokes.push([X, Y, sc]); else if (kind === 'flag') fx.flags.push([X, Y, col, sc]); else if (kind === 'glow') fx.glows.push([X, Y, +r * sc, gc]);
+  }
 }
 // wstęga (droga, rzeka) w perspektywie: pts = [[X, Z, e, szerokość], ...]
 function subdiv(pts, n) {
@@ -876,7 +893,9 @@ function paintTownWorld(c, t, col, Wd) {
         castShadow(c, { x: sx - w / 2, b: sy, w, h }, 1);
         const [grp, tier] = groupOf(B), fn = arts[grp];
         const dw = grp.startsWith('dw'); // siedliska: elitarne rysowane jak ulepszone, z masztami przed wejściem
-        if (fn) drawObj(c, (g, tf) => { fn(g, A, can, dw ? Math.min(2, tier) : tier, col, tf); if (dw && tier === 3) eliteArt(g, can, col); }, box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip);
+        const art = townBuildArt(fac, grp + tier);
+        if (art) drawBaked(c, art, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip, col);
+        else if (fn) drawObj(c, (g, tf) => { fn(g, A, can, dw ? Math.min(2, tier) : tier, col, tf); if (dw && tier === 3) eliteArt(g, can, col); }, box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip);
       } // puste miejsce: sama ziemia jak w Heroes 3 (co tu stanie, widać po najechaniu myszą)
     } else if (o.tower) wallTowerArt(c, o.wall, A, o.tower, hzC, fx);
     else if (o.wall) wallSegArt(c, o.wall, A, o.a, o.b, hzC);

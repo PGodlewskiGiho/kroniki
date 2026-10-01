@@ -39,10 +39,11 @@ const G3 = {
     }
     this.comp.render();
     const mid = document.createElement('canvas'); mid.width = w * 2; mid.height = h * 2; const mg = mid.getContext('2d'); mg.imageSmoothingQuality = 'high'; mg.drawImage(r.domElement, 0, 0, w * 2, h * 2);
+    const marks = []; group.traverse(ob => { if (ob.name && ob.name.startsWith('fx:')) { const v = ob.getWorldPosition(new THREE.Vector3()).project(c); marks.push([ob.name.slice(3), (v.x + 1) / 2 * w, (1 - v.y) / 2 * h]); } }); // punkty efektów (dym, blask, flagi)
     let probe = null; if (o.probe) { const ob = group.getObjectByName(o.probe); if (ob) { const v = ob.getWorldPosition(new THREE.Vector3()).project(c); probe = [(v.x + 1) / 2 * w, (1 - v.y) / 2 * h]; } } // punkt pomocniczy w pikselach klatki
     const edges = this.edgePass(w, h); this.scene.remove(group);
     const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high'; g.drawImage(mid, 0, 0, w, h);
-    inkLines(out, edges); pixelize(out, o.step || 8); disposeGroup(group); out._probe = probe; return out;
+    inkLines(out, edges); pixelize(out, o.step || 8); disposeGroup(group); out._probe = probe; out._marks = marks; return out;
   },
   edgePass(w, h) {
     const r = this.r, s = this.scene; r.setSize(w, h, false); r.toneMapping = THREE.NoToneMapping; r.outputColorSpace = THREE.LinearSRGBColorSpace; const env = s.environment; s.environment = null;
