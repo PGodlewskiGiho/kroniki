@@ -12,7 +12,7 @@ const { ROOT, openStudio } = require('./wspolne');
 const OUT_DIR = path.join(ROOT, 'src', 'grafika', 'jednostki'), META = path.join(ROOT, 'src', 'grafika', 'jednostki.json');
 // Skala: w bitwie 1 piksel grafiki = UB px logicznych, na mapie UM; KB/KM = pikseli na jednostkę świata (człowiek ≈ 2 jednostki).
 // UB < 1: arkusze bitewne gęstsze niż ekran logiczny (więcej szczegółów na dużych ekranach). DS: płótno klatki względem dawnej skali
-const UB = 0.9, UM = 1.8, KB = 32 / UB, KM = 15.4 / UM, DS = KB / 24.6;
+const RAW = !process.env.PIKSEL, UB = +(process.env.UB || (RAW ? 0.6 : 1.35)), UM = 1.8, KB = 32 / UB, KM = 15.4 / UM, DS = KB / 24.6;
 const WORKERS = +(process.env.WORKERS || 3);
 
 async function bakeGroup(ids, done) {
@@ -21,7 +21,8 @@ async function bakeGroup(ids, done) {
   for (const id of ids) {
     if (!st || n++ % 6 === 0) { if (st) await st.browser.close(); st = await openStudio({ width: 400, height: 300 }); } // świeża przeglądarka co kilka jednostek (pamięć karty programowej)
     const page = st.page;
-    const r = await page.evaluate(([id, KB, KM, UB, UM, DS]) => {
+    const r = await page.evaluate(([id, KB, KM, UB, UM, DS, RAW]) => {
+      G3.raw = RAW;
       const L = CREATURES[id].look, s = Math.max(1, L.size || 1), F = BATTLE_FRAMES, frames = [], flyer = CREATURES[id].abil.includes('fly'), wide = L.kind === 'dragon' || L.wings || flyer ? 1.25 : 1; window.__blank = 0;
       if (!buildUnit(L, {})) return null;
       const W = Math.round(150 * s * DS * wide), H = Math.round(150 * s * DS * wide), AX = Math.round(W * 0.45), AY = H - Math.round(18 * s * DS);
@@ -48,8 +49,8 @@ async function bakeGroup(ids, done) {
       let sw = 0, sh = 0; for (const r of Object.values(rows)) { sw = Math.max(sw, r.reduce((a, f) => a + f.w + 1, 0)); sh += Math.max(...r.map(f => f.h)) + 1; }
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = sh; const g = sheet.getContext('2d'), meta = {};
       let y = 0; for (const [pose, r] of Object.entries(rows)) { let x = 0; meta[pose] = r.map(f => { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, x, y, f.w, f.h); const m = [x, y, f.w, f.h, f.ax, f.ay]; x += f.w + 1; return m; }); y += Math.max(...r.map(f => f.h)) + 1; }
-      return window.__blank ? { blank: window.__blank } : { png: sheet.toDataURL('image/png').split(',')[1], f: meta, u: UB, mu: UM, m: mouth };
-    }, [id, KB, KM, UB, UM, DS]);
+      return window.__blank ? { blank: window.__blank } : { png: (RAW ? sheet.toDataURL('image/webp', 0.9) : sheet.toDataURL('image/png')).split(',')[1], f: meta, u: UB, mu: UM, m: mouth };
+    }, [id, KB, KM, UB, UM, DS, RAW]);
     if (r && r.blank) { // pusta klatka: kontekst grafiki padł (np. brak pamięci) - świeża przeglądarka i jeszcze raz
       process.stdout.write('!'); await st.browser.close(); st = null; n = 0; ids.push(id); if ((retry[id] = (retry[id] || 0) + 1) > 2) throw new Error(`Puste klatki: ${id}`); continue; }
     done(id, r); process.stdout.write(r ? '.' : '-');
@@ -65,7 +66,8 @@ async function bakeHeroes(fresh) {
   const { browser, page } = await openStudio({ width: 400, height: 300 });
   const classes = (await page.evaluate(() => Object.keys(HERO_LOOKS3))).filter(c => !fresh || !meta[c]);
   for (const cls of classes) {
-    const r = await page.evaluate(([cls, KB, UB, DS]) => {
+    const r = await page.evaluate(([cls, KB, UB, DS, RAW]) => {
+      G3.raw = RAW;
       const H = HERO_LOOKS3[cls], mage = MAGES.includes(cls), KEY = '#ff00ff', F = BATTLE_FRAMES;
       const L = { kind: 'rider', horse: H.horse, mane: H.mane, skin: H.skin, cloth: KEY, weapon: mage ? 'staff' : 'sword', helm: H.hood ? 'hood' : 'helm', hoodCol: H.hood, helmCol: H.helm, metal: H.armor, armor: !H.hood, cape: KEY, barding: KEY, trim: '#e0b24a', banner: KEY, orb: '#a0d0ff' };
       const W = Math.round(170 * DS), Hh = Math.round(190 * DS), AX = Math.round(80 * DS), AY = Math.round(170 * DS), frames = [];
@@ -79,8 +81,8 @@ async function bakeHeroes(fresh) {
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = sh; const g = sheet.getContext('2d'), m = {};
       let y = 0; for (const [pose, rr] of Object.entries(rows)) { let x = 0; m[pose] = rr.map(f => { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, x, y, f.w, f.h); const q = [x, y, f.w, f.h, f.ax, f.ay]; x += f.w + 1; return q; }); y += Math.max(...rr.map(f => f.h)) + 1; }
       return { png: sheet.toDataURL('image/png').split(',')[1], f: m, u: UB };
-    }, [cls, KB, UB, DS]);
-    fs.writeFileSync(path.join(HERO_DIR, cls + '.png'), Buffer.from(r.png, 'base64')); meta[cls] = { u: r.u, f: r.f }; fs.writeFileSync(HERO_META, JSON.stringify(meta)); process.stdout.write('h');
+    }, [cls, KB, UB, DS, RAW]);
+    fs.writeFileSync(path.join(HERO_DIR, cls + '.png'), Buffer.from(r.png, 'base64')); meta[cls] = { u: r.u, f: r.f, ...(RAW ? { raw: 1 } : {}) }; fs.writeFileSync(HERO_META, JSON.stringify(meta)); process.stdout.write('h');
   }
   await browser.close();
 }
@@ -94,7 +96,7 @@ async function bakeHeroes(fresh) {
   if (!only && !fresh) for (const id of Object.keys(meta)) if (!ids.includes(id)) { delete meta[id]; const f = path.join(OUT_DIR, id + '.png'); if (fs.existsSync(f)) fs.unlinkSync(f); } // jednostki bez modelu
   if (fresh) ids = ids.filter(id => !meta[id] || !fs.existsSync(path.join(OUT_DIR, id + '.png')));
   console.log(`Wypalanie ${ids.length} jednostek w ${WORKERS} przeglądarkach…`);
-  const done = (id, r) => { if (!r) return; fs.writeFileSync(path.join(OUT_DIR, id + '.png'), Buffer.from(r.png, 'base64')); meta[id] = { u: r.u, mu: r.mu, f: r.f, ...(r.m ? { m: r.m } : {}) }; fs.writeFileSync(META, JSON.stringify(meta)); };
+  const done = (id, r) => { if (!r) return; const ext = RAW ? '.webp' : '.png', other = path.join(OUT_DIR, id + (ext === '.png' ? '.webp' : '.png')); if (fs.existsSync(other)) fs.unlinkSync(other); fs.writeFileSync(path.join(OUT_DIR, id + ext), Buffer.from(r.png, 'base64')); meta[id] = { u: r.u, mu: r.mu, f: r.f, ...(r.m ? { m: r.m } : {}), ...(RAW ? { raw: 1 } : {}) }; fs.writeFileSync(META, JSON.stringify(meta)); };
   await Promise.all(Array.from({ length: WORKERS }, (_, k) => bakeGroup(ids.filter((_, i) => i % WORKERS === k), done)));
   if (!only || args.includes('--bohaterowie')) await bakeHeroes(fresh);
   const bytes = fs.readdirSync(OUT_DIR).reduce((s, f) => s + fs.statSync(path.join(OUT_DIR, f)).size, 0);

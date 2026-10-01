@@ -156,7 +156,7 @@ function sprite(key, w, h, ax, ay, draw, outline = OUTLINE, sc = 0.5) {
 // Sprite w interfejsie: (x, y) = punkt zaczepienia w px logicznych; k = 1 to rozmiar jak na mapie
 // (1 piksel grafiki = 2 px logiczne), k = 2 dwa razy większy itd.
 function drawSprite(ctx, s, x, y, k = 1) {
-  const f = (s.u || 2) * k; ctx.save(); ctx.imageSmoothingEnabled = false;
+  const f = (s.u || 2) * k; ctx.save(); ctx.imageSmoothingEnabled = !!s.raw; if (s.raw) ctx.imageSmoothingQuality = 'high'; // grafika bez pikselizacji: gładkie skalowanie
   ctx.drawImage(s.c, x - s.ax * f, y - s.ay * f, s.c.width * f, s.c.height * f); ctx.restore();
 }
 // To samo, ale (x, y) = lewy górny róg sprite'a

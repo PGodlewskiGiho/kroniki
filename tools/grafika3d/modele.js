@@ -39,10 +39,11 @@ const G3 = {
     }
     this.comp.render();
     const mid = document.createElement('canvas'); mid.width = w * 2; mid.height = h * 2; const mg = mid.getContext('2d'); mg.imageSmoothingQuality = 'high'; mg.drawImage(r.domElement, 0, 0, w * 2, h * 2);
+    const marks = []; group.traverse(ob => { if (ob.name && ob.name.startsWith('fx:')) { const v = ob.getWorldPosition(new THREE.Vector3()).project(c); marks.push([ob.name.slice(3), (v.x + 1) / 2 * w, (1 - v.y) / 2 * h]); } }); // punkty efektów (dym, blask, flagi)
     let probe = null; if (o.probe) { const ob = group.getObjectByName(o.probe); if (ob) { const v = ob.getWorldPosition(new THREE.Vector3()).project(c); probe = [(v.x + 1) / 2 * w, (1 - v.y) / 2 * h]; } } // punkt pomocniczy w pikselach klatki
     const edges = this.edgePass(w, h); this.scene.remove(group);
     const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high'; g.drawImage(mid, 0, 0, w, h);
-    inkLines(out, edges); pixelize(out, o.step || 8); disposeGroup(group); out._probe = probe; return out;
+    inkLines(out, edges); if (o.raw || G3.raw) crisp(out); else pixelize(out, o.step || 8); /* raw: bez pikselizacji, wyostrzony */ disposeGroup(group); out._probe = probe; out._marks = marks; return out;
   },
   edgePass(w, h) {
     const r = this.r, s = this.scene; r.setSize(w, h, false); r.toneMapping = THREE.NoToneMapping; r.outputColorSpace = THREE.LinearSRGBColorSpace; const env = s.environment; s.environment = null;
@@ -76,13 +77,37 @@ function inkLines(c, E) {
   for (let k = 0; k < w * h; k++) if (mark[k]) { const i = k * 4, f = mark[k] === 1 ? 0.5 : 0.28; d[i] *= 1 - f; d[i + 1] *= 1 - f; d[i + 2] *= 1 - f * 0.8; }
   g.putImageData(img, 0, 0);
 }
+// Grafika bez pikselizacji, ale ostra (jak wyrenderowane sprite'y Heroes 3): wyostrzenie (maska wyostrzająca na kolorze),
+// twardsza krawędź sylwetki (alfa przez krzywą S) i cienki, wygładzony ciemny obrys na zewnątrz
+function crisp(c, amount = 0.7) {
+  const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data, src = new Float32Array(d);
+  const A = k => src[k * 4 + 3] / 255;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const k = y * w + x, i = k * 4; if (!d[i + 3]) continue;
+    for (let j = 0; j < 3; j++) { let s = 0, n = 0; for (const q of [k - 1, k + 1, k - w, k + w]) if (src[q * 4 + 3] > 0) { s += src[q * 4 + j]; n++; }
+      if (n) d[i + j] = Math.max(0, Math.min(255, src[i + j] + amount * (src[i + j] - s / n))); }
+  }
+  for (let k = 0; k < w * h; k++) { const i = k * 4, a = d[i + 3] / 255; if (a > 0 && a < 1) { const t = Math.min(1, Math.max(0, (a - 0.12) / 0.6)); d[i + 3] = Math.round(255 * t * t * (3 - 2 * t)); } }
+  const al = Float32Array.from({ length: w * h }, (_, k) => d[k * 4 + 3] / 255);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const k = y * w + x, i = k * 4, a = al[k]; if (a > 0.98) continue;
+    const m = Math.max(al[k - 1], al[k + 1], al[k - w], al[k + w], 0.7 * Math.max(al[k - w - 1], al[k - w + 1], al[k + w - 1], al[k + w + 1])), oa = m * 0.85; if (oa <= a) continue;
+    const f = a / oa; d[i] = d[i] * f + 24 * (1 - f); d[i + 1] = d[i + 1] * f + 16 * (1 - f); d[i + 2] = d[i + 2] * f + 10 * (1 - f); d[i + 3] = Math.round(oa * 255); }
+  g.putImageData(img, 0, 0); void A;
+}
 // Twarde krawędzie (bez półprzezroczystości), stopniowana paleta i ciemny obrys sylwetki
 function pixelize(c, step) {
   const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data, A = new Uint8Array(w * h);
   for (let i = 0, k = 0; k < w * h; k++, i += 4) {
-    if (d[i + 3] < 110) { d[i + 3] = 0; continue; } const a = d[i + 3] / 255; A[k] = 1;
-    for (let j = 0; j < 3; j++) d[i + j] = Math.min(255, Math.round(d[i + j] / a / step) * step); d[i + 3] = 255;
+    if (d[i + 3] < 110) { d[i + 3] = 0; continue; } A[k] = 1; // getImageData daje kolor bez mnożenia przez alfę: nie dzielimy (rozjaśniało brzegi)
+    for (let j = 0; j < 3; j++) d[i + j] = Math.min(255, Math.round(d[i + j] / step) * step); d[i + 3] = 255;
   }
+  // Brzeg sylwetki nie jaśniejszy od wnętrza: światło konturowe dawało jasną obwódkę wokół skrzydeł i zbroi
+  const lum = i => d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11, src = new Uint8ClampedArray(d);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const k = y * w + x; if (!A[k] || (A[k - 1] && A[k + 1] && A[k - w] && A[k + w])) continue;
+    let r = 0, gg = 0, b = 0, n = 0;
+    for (const q of [k - 1, k + 1, k - w, k + w, k - w - 1, k - w + 1, k + w - 1, k + w + 1]) if (A[q] && A[q - 1] && A[q + 1] && A[q - w] && A[q + w]) { const j = q * 4; r += src[j]; gg += src[j + 1]; b += src[j + 2]; n++; }
+    const i = k * 4; if (!n) continue; r /= n; gg /= n; b /= n;
+    if (lum(i) > (r * 0.3 + gg * 0.59 + b * 0.11) * 1.12 + 6) { d[i] = Math.round(r / step) * step; d[i + 1] = Math.round(gg / step) * step; d[i + 2] = Math.round(b / step) * step; } }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const k = y * w + x; if (A[k]) continue;
     if ((x > 0 && A[k - 1]) || (x < w - 1 && A[k + 1]) || (y > 0 && A[k - w]) || (y < h - 1 && A[k + w])) { const i = k * 4; d[i] = 24; d[i + 1] = 16; d[i + 2] = 10; d[i + 3] = 255; } }
   g.putImageData(img, 0, 0);
@@ -151,6 +176,34 @@ const DK = (hex, k = 0.25) => '#' + col3(hex).multiplyScalar(1 - k).getHexString
 const LT = (hex, k = 0.25) => '#' + col3(hex).lerp(col3('#ffffff'), k).getHexString();
 // jasny kolor (świecące oczy, aureole): jasność > 0,6
 const bright = hex => { const c = col3(hex); return (c.r + c.g + c.b) / 3 > 0.55; };
+// Kępa liści namalowana na kanwie (jak na tle AI): falista sylwetka z płatów wypełniona setkami pociągnięć pędzla; każdy płat jasny i ciepły u góry,
+// ciemny i chłodny u dołu. Korona = kilka takich kart zwróconych do kamery (widok miasta jest stały), w warstwach, więc ma głębię i rzuca cień.
+const LEAF_SPR = new Map();
+function leafSprite(col, v, fl = null) {
+  const key = col + v + (fl || ''); if (LEAF_SPR.has(key)) return LEAF_SPR.get(key);
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d'), R = rng(v * 7919 + 13), base = new THREE.Color(col);
+  const lobes = []; for (let i = 0; i < 16; i++) { const a = R() * Math.PI * 2, q = Math.sqrt(R()); lobes.push([128 + Math.cos(a) * q * 70, 140 + Math.sin(a) * q * 44 - (1 - q) * 14, 26 + R() * 22]); }
+  lobes.sort((a, b) => a[1] - b[1]);
+  const shade = t => { const k = 0.38 + 0.68 * t, c2 = base.clone().multiplyScalar(k); if (t < 0.45) c2.lerp(new THREE.Color('#1c3438'), (0.45 - t) * 0.7); else c2.lerp(new THREE.Color('#f0e890'), (t - 0.45) * 0.28); return `rgb(${Math.min(255, c2.r * 255) | 0},${Math.min(255, c2.g * 255) | 0},${Math.min(255, c2.b * 255) | 0})`; };
+  for (const [lx, ly, lr] of lobes) { /* najpierw ciemny podkład płatu, potem pociągnięcia od cienia do światła */
+    g.fillStyle = shade(0.05); g.beginPath(); g.ellipse(lx, ly + lr * 0.08, lr, lr * 0.82, 0, 0, Math.PI * 2); g.fill();
+    g.globalAlpha = 0.85; for (let k = 0; k < 150; k++) { const a = R() * Math.PI * 2, q = Math.sqrt(R()) * 0.95, x = lx + Math.cos(a) * q * lr, y = ly + Math.sin(a) * q * lr * 0.8, t = Math.min(1, Math.max(0, 0.5 - (y - ly) / lr * 0.75 - (x - lx) / lr * 0.25 + (R() - 0.5) * 0.35));
+      g.fillStyle = shade(t); g.beginPath(); g.ellipse(x, y, 2.5 + R() * 4, 1.8 + R() * 2.4, R() * Math.PI, 0, Math.PI * 2); g.fill(); } g.globalAlpha = 1; }
+  for (let k = 0; k < 160; k++) { const L = lobes[R() * lobes.length | 0], a = -Math.PI * R(), x = L[0] + Math.cos(a) * L[2] * (0.95 + R() * 0.2), y = L[1] + Math.sin(a) * L[2] * 0.8 * (0.95 + R() * 0.2); /* listki wystające z obrysu */
+    g.fillStyle = shade(0.55 + R() * 0.4); g.beginPath(); g.ellipse(x, y, 2 + R() * 3, 1.5 + R() * 2, R() * Math.PI, 0, Math.PI * 2); g.fill(); }
+  if (fl) for (let k = 0; k < 32; k++) { const L = lobes[R() * lobes.length | 0], a = R() * Math.PI * 2, q = Math.sqrt(R()) * 0.85, x = L[0] + Math.cos(a) * q * L[2], y = L[1] + Math.sin(a) * q * L[2] * 0.8 - L[2] * 0.15; /* kwiaty namalowane w liściach: drobne plamki, jaśniejsze w świetle */
+    g.fillStyle = k % 4 ? fl : '#fff8ec'; g.globalAlpha = 0.9; g.beginPath(); g.ellipse(x, y, 1.6 + R() * 1.8, 1.3 + R() * 1.3, R() * Math.PI, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1; }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; LEAF_SPR.set(key, t); return t;
+}
+// Kępa liści jako karta obracana do kamery przed każdym renderem (jak duszek, ale z normalną, więc światło i cienie kontaktowe działają):
+// liście stworzeń (drzewce) wyglądają tak samo z każdej strony, także w bitwie, gdy jednostka się obraca
+const _lcQ = new THREE.Quaternion();
+function leafClump(r, col, pos, v = 0, fl = null) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(r * 2.6, r * 2.6), new THREE.MeshStandardMaterial({ map: leafSprite(LT(col, 0.28), ((v % 6) + 6) % 6, fl), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1, metalness: 0 }));
+  m.position.set(...pos); m.userData.noShadow = true;
+  m.onBeforeRender = (r2, sc, cam) => { m.parent.getWorldQuaternion(_lcQ); m.quaternion.copy(_lcQ.invert().multiply(cam.quaternion)); m.updateMatrixWorld(true); };
+  return m;
+}
 
 // --- bryły ---
 function mesh(geo, col, kind, pos, rot, scl, rep) { const m = new THREE.Mesh(geo, mat(col, kind, rep)); if (pos) m.position.set(...pos); if (rot) m.rotation.set(...rot); if (scl) m.scale.set(...scl); return m; }

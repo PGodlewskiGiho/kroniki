@@ -503,8 +503,11 @@ const PJ_BASE = { hor: 94, d: 282 };
 function usePJ(L) { const p = (L && L.pj) || PJ_BASE; PJ.hor = p.hor; PJ.d = p.d; }
 function proj(X, Z, e = 0) { const s = 1 / Z; return [PJ.cx + X * s, PJ.hor + PJ.d * s - e * s, s]; }
 const hazeAt = Z => clamp((Z - 1.05) * 0.36, 0, 0.45);
-let TOWN_ART_SCALE = 1 / PIX; // pikseli sceny na px logiczny (drobny piksel: 1, niska jakość: 0,5)
-PIX_CLEAR.push(() => { TOWN_ART_SCALE = 1 / PIX; });
+// Scena miasta ma własny, drobniejszy piksel TOWN_PIX (jak jednostki w bitwie: budowle są wypalone z modeli 3D w tej gęstości);
+// przy niskiej jakości grafiki (PIX 2) dawny, grubszy piksel. TOWN_ART_SCALE = pikseli sceny na px logiczny.
+const TOWN_RAW = true, TOWN_PIX = TOWN_RAW ? 1 : 1.35, townArtScale = () => (PIX >= 2 ? 1 / PIX : TOWN_RAW && (window.devicePixelRatio || 1) >= 1.5 ? 2 : 1 / TOWN_PIX); // ekran gęsty: scena w dwukrotnej gęstości (wypalona jest w D = 2)
+let TOWN_ART_SCALE = townArtScale();
+PIX_CLEAR.push(() => { TOWN_ART_SCALE = townArtScale(); });
 // Rysuje obiekt jako pikselowy sprite w skali perspektywy (twarde krawędzie, obrys, mgła oddalenia)
 function drawObj(dst, draw, box, anchor, sx, sy, sc, haze, hazeCol, fx, flip) { // flip: odbicie w poziomie (to samo miasto, inne ustawienie budowli)
   const [bx0, by0, bw, bh] = box, R = TOWN_ART_SCALE * sc, cw = Math.ceil(bw * R) + 2, ch = Math.ceil(bh * R) + 2;
@@ -521,6 +524,20 @@ function drawObj(dst, draw, box, anchor, sx, sy, sc, haze, hazeCol, fx, flip) { 
   for (const [x, y] of t.smokes) { const [X, Y] = T(x, y); fx.smokes.push([X, Y, sc]); }
   for (const [x, y, r, col] of t.glows) { const [X, Y] = T(x, y); fx.glows.push([X, Y, r * sc, col]); }
   for (const [x, y, col] of t.flags) { const [X, Y] = T(x, y); fx.flags.push([X, Y, col, sc]); }
+}
+// Budowla wypalona z modelu 3D (tools/grafika3d/wypal-miasta.js): klatka arkusza frakcji w skali miejsca. Arkusz ma gęstość d pikseli
+// na piksel sceny w skali 1, więc w scenie piksel arkusza = sc / d px logicznych (przy pikselu sceny TOWN_PIX: dokładnie jeden).
+// Punkty efektów z modelu (m): dym z kominów, blask, flagi właściciela.
+const townBuildArt = (fac, key) => { const T = typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART[fac], im = TOWN_IMG[fac]; return T && T.b[key] && im && im._ok ? { ...T.b[key], im } : null; };
+function drawBaked(dst, art, sx, sy, sc, haze, hazeCol, fx, flip, col) {
+  const [x, y, w, h, ax, ay] = art.f, u = sc / art.d, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(art.im, x, y, w, h, 0, 0, w, h);
+  if (haze > 0) { g.globalCompositeOperation = 'source-atop'; g.globalAlpha = haze; g.fillStyle = hazeCol; g.fillRect(0, 0, w, h); }
+  const dx = sx - ax * u, dy = Math.round((sy - ay * u) * TOWN_ART_SCALE) / TOWN_ART_SCALE, lx = Math.round((flip ? 2 * sx - dx - w * u : dx) * TOWN_ART_SCALE) / TOWN_ART_SCALE;
+  dst.save(); dst.imageSmoothingEnabled = TOWN_RAW; if (flip) { dst.translate(lx + w * u, dy); dst.scale(-1, 1); dst.drawImage(c, 0, 0, w * u, h * u); } else dst.drawImage(c, lx, dy, w * u, h * u); dst.restore();
+  for (const [nm, mx, my] of art.m || []) {
+    const X = sx + (flip ? -mx : mx) * u, Y = sy + my * u, [kind, r, gc] = nm.split('|');
+    if (kind === 'smoke') fx.smokes.push([X, Y, sc]); else if (kind === 'flag') fx.flags.push([X, Y, col, sc]); else if (kind === 'glow') fx.glows.push([X, Y, +r * sc, gc]);
+  }
 }
 // wstęga (droga, rzeka) w perspektywie: pts = [[X, Z, e, szerokość], ...]
 function subdiv(pts, n) {
@@ -551,7 +568,7 @@ function skyDramatic(c, P) {
   if (P.stars) { const q = mulberry32(88 + (P.seed || 0)); for (let i = 0; i < 160; i++) { const x = 8 + q() * 576, y = 8 + q() * 170; c.fillStyle = `rgba(235,230,255,${((0.3 + q() * 0.7) * (1 - y / 190)).toFixed(2)})`; c.fillRect(x, y, q() < 0.12 ? 2 : 1, q() < 0.12 ? 2 : 1); } }
   if (!P.moon) { sg.addColorStop(0, 'rgba(255,226,160,.95)'); sg.addColorStop(0.18, 'rgba(255,196,120,.45)'); sg.addColorStop(1, 'rgba(255,180,100,0)'); c.fillStyle = sg; c.fillRect(8, 8, 576, 320); circ(c, sx, sy, 13, '#fff0cc'); }
   const r = mulberry32(41 + (P.seed || 0));
-  for (let i = 0; i < 12; i++) cloudBank(c, 8 + r() * 600, 16 + r() * 80, 120 + r() * 180, 10 + r() * 12, P.cloudDark, P.cloudLit, r);
+  if (!TOWN_RAW) for (let i = 0; i < 12; i++) cloudBank(c, 8 + r() * 600, 16 + r() * 80, 120 + r() * 180, 10 + r() * 12, P.cloudDark, P.cloudLit, r); // bez pikselizacji: chmury z bryłą (skyDetail)
   if (P.moon) { sg.addColorStop(0, 'rgba(210,200,255,.6)'); sg.addColorStop(1, 'rgba(210,200,255,0)'); c.fillStyle = sg; c.fillRect(8, 8, 576, 320); const mR = P.moonR || 24, mk = mR / 24; circ(c, sx, sy, mR, '#e8e2f2'); for (const [dx, dy, rr2] of [[-7, -5, 5], [8, 7, 4], [5, -9, 3], [-4, 10, 3]]) circ(c, sx + dx * mk, sy + dy * mk, rr2 * mk, 'rgba(150,140,180,.4)'); cloudBank(c, sx + 10, sy + mR * 0.7, 90 * mk, 6, P.cloudDark, P.cloudLit, r); }
   if (!P.moon) { c.save(); c.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 7; i++) { const a = 0.18 + i * 0.12, len = 520; c.fillStyle = 'rgba(255,214,150,.05)'; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + Math.cos(a) * len, sy + Math.sin(a) * len); c.lineTo(sx + Math.cos(a + 0.05) * len, sy + Math.sin(a + 0.05) * len); c.closePath(); c.fill(); }
@@ -566,6 +583,17 @@ function farForest(c, cols, hazeCol, seed = 0) {
     c.fillStyle = cols[Math.floor(k2 * cols.length)]; c.beginPath(); c.ellipse(sx, sy - h * 0.55, h * 0.42, h * 0.6, 0, 0, TAU); c.fill();
   }
   const y0 = proj(0, 4.6)[1], hz = c.createLinearGradient(0, y0 - 30, 0, y0 + 26); hz.addColorStop(0, 'rgba(0,0,0,0)'); hz.addColorStop(1, hazeCol); c.globalAlpha = 0.45; c.fillStyle = hz; c.fillRect(8, y0 - 30, 576, 56); c.globalAlpha = 1;
+}
+// Faktura ziemi bez pikselizacji: drobne źdźbła, grudki i plamy światła (ziarno, które dawniej dawał dithering), gęstsze bliżej
+function terrainGrain(c, Wd) {
+  const yF = proj(0, 4.4)[1], r = mulberry32(91 + (Wd.seed || 0)), N = 256, t = document.createElement('canvas'); t.width = t.height = N; const g = t.getContext('2d');
+  g.fillStyle = '#808080'; g.fillRect(0, 0, N, N);
+  for (let i = 0; i < 5200; i++) { const x = r() * N, y = r() * N, v = r() < 0.5 ? 40 + r() * 50 : 170 + r() * 70; g.strokeStyle = `rgb(${v},${v},${v})`; g.globalAlpha = 0.5 + r() * 0.5; g.lineWidth = 0.8 + r() * 0.8; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 2, y - 1.5 - r() * 3); g.stroke(); }
+  for (let i = 0; i < 40; i++) { const x = r() * N, y = r() * N, R = 6 + r() * 18, gr = g.createRadialGradient(x, y, 0, x, y, R), v = r() < 0.5 ? 60 : 200; gr.addColorStop(0, `rgba(${v},${v},${v},.35)`); gr.addColorStop(1, 'rgba(128,128,128,0)'); g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(x - R, y - R, R * 2, R * 2); }
+  c.save(); c.beginPath(); c.rect(8, yF, 576, 440 - yF); c.clip(); c.globalCompositeOperation = 'overlay';
+  for (const [y0, y1, k, a] of [[yF, yF + 40, 0.5, 0.35], [yF + 40, yF + 120, 0.75, 0.45], [yF + 120, 440, 1, 0.55]]) { // dalej drobniej i słabiej (perspektywa)
+    const pat = c.createPattern(t, 'repeat'); pat.setTransform(new DOMMatrix().scale(k, k * 0.7)); c.globalAlpha = a; c.fillStyle = pat; c.fillRect(8, y0, 576, y1 - y0); }
+  c.restore();
 }
 function groundPlane(c, Wd) {
   const yF = proj(0, 4.4)[1], g = c.createLinearGradient(0, yF, 0, 432);
@@ -843,19 +871,40 @@ TOWN_LAYOUTS.barrow = {
 };
 let TownFXCache = {}, lastTownKey = null;
 // --- malowanie całej sceny ---
+// Scena wypalona w 3D (tools/grafika3d/wypal-miasta.js, jak Resident Evil Remake): niebo malowane, na nim tło (teren, woda, drzewa, góry),
+// potem zbudowane budowle od najdalszej; każda klatka leży w swoim miejscu kadru i ma już cień na terenie i zasłonięcia przez to, co przed nią.
+// Pole kliknięcia miejsca = obrys budowli (pustego miejsca: obrys jej najwyższego stopnia).
+const townScene3D = fac => { const T = typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART[fac], im = TOWN_IMG[fac]; return T && T.bg && im && im._ok ? { ...T, im } : null; };
+function paintTown3D(c, t, col, Wd, T3) {
+  const fx = { wins: [], smokes: [], glows: [], flags: [], rects: {}, painted: !!T3.bgo }, d = T3.d, put = (fr, x, y) => c.drawImage(T3.im, fr[0], fr[1], fr[2], fr[3], x, y, fr[2] / d, fr[3] / d);
+  c.save(); c.beginPath(); c.rect(8, 8, 576, 422); c.clip(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  if (!T3.bgo) { skyDramatic(c, Wd.sky); skyDetail(c, Wd.sky); } put(T3.bg, ...(T3.bgo || [0, 0])); // namalowane tło (tools/tla-ai) ma własne niebo
+  const top = slot => { let best = null; for (const B of BUILDINGS) if (B.slot === slot && bAllowed(t, B)) { const [g, k] = groupOf(B), e = T3.b[g + k]; if (e) best = e; } return best; };
+  Wd.slots.map((S, i) => ({ S, i })).sort((a, b) => b.S.Z - a.S.Z).forEach(({ S, i }) => {
+    const B = slotBuilding(t, i), e = B ? T3.b[groupOf(B).join('')] : null, r = e || top(i);
+    if (r) fx.rects[i] = { x: r.o[0], y: r.o[1], w: r.f[2] / d, h: r.f[3] / d, z: S.Z };
+    if (!e) return; put(e.f, e.o[0], e.o[1]);
+    for (const [nm, mx, my] of e.m || []) { const [kind, rr, gc] = nm.split('|'), sc = S.k / S.Z; if (kind === 'smoke') fx.smokes.push([mx, my, sc]); else if (kind === 'flag') fx.flags.push([mx, my, col, sc]); else if (kind === 'glow') fx.glows.push([mx, my, +rr * sc, gc]); }
+  });
+  const vg = c.createRadialGradient(296, 230, 180, 296, 230, 420); vg.addColorStop(0, 'rgba(6,6,14,0)'); vg.addColorStop(1, 'rgba(6,6,14,.45)'); c.fillStyle = vg; c.fillRect(8, 8, 576, 422);
+  c.restore(); return fx;
+}
 function paintTownWorld(c, t, col, Wd) {
-  usePJ(Wd); const fac = t.faction, A = Wd.art || TOWN_ART[fac], fx = { wins: [], smokes: [], glows: [], flags: [], rects: {} }, arts = BUILD_ART[fac] || {}, hzC = Wd.haze;
+  usePJ(Wd); const T3 = townScene3D(t.faction); if (T3) return paintTown3D(c, t, col, Wd, T3); const fac = t.faction, A = Wd.art || TOWN_ART[fac], fx = { wins: [], smokes: [], glows: [], flags: [], rects: {} }, arts = BUILD_ART[fac] || {}, hzC = Wd.haze;
   c.save(); c.beginPath(); c.rect(8, 8, 576, 422); c.clip();
-  skyDramatic(c, Wd.sky);
-  const [rs1, rs2, rb] = Wd.ridge || [211, 237, 170]; ridge(c, rs1, rb, 96, Wd.mountains[0]); ridge(c, rs2, rb + 6, 58, Wd.mountains[1]);
-  farBand(c, Wd, hzC);
+  skyDramatic(c, Wd.sky); if (TOWN_RAW) skyDetail(c, Wd.sky);
+  const [rs1, rs2, rb] = Wd.ridge || [211, 237, 170], snow = fac === 'academy';
+  ridge(c, rs1, rb, 96, Wd.mountains[0]); if (TOWN_RAW) ridgeDetail(c, rs1, rb, 96, Wd.mountains[0], snow);
+  ridge(c, rs2, rb + 6, 58, Wd.mountains[1]); if (TOWN_RAW) ridgeDetail(c, rs2, rb + 6, 58, Wd.mountains[1], snow);
+  farBand(c, Wd, hzC); if (TOWN_RAW && (!(TOWN_BIOME[fac] || {}).far || (TOWN_BIOME[fac] || {}).far === 'oaks')) forestDetail(c, Wd);
   groundPlane(c, Wd);
   c.save(); groundDetail(c, Wd, fx); c.restore();
+  if (TOWN_RAW) { terrainGrain(c, Wd); meadowDetail(c, Wd); }
   for (const Sa of Wd.seas || []) seaArt(c, Sa);
   for (const Lk of [...(Wd.lake ? [Wd.lake] : []), ...(Wd.lakes || [])]) { lakeArt(c, Lk); if (Lk.hot) { const [lx, ly, ls] = proj(Lk.X, Lk.Z); fx.glows.push([lx, ly, Lk.rx * ls * 1.2, Lk.hot]); } }
-  for (const Rv of [...(Wd.river ? [Wd.river] : []), ...(Wd.rivers || [])]) { riverArt(c, Rv, hzC); if (Rv.chasm) chasmGlow(c, Rv); }
+  for (const Rv of [...(Wd.river ? [Wd.river] : []), ...(Wd.rivers || [])]) { riverArt(c, Rv, hzC); if (TOWN_RAW) riverDetail(c, Rv); if (Rv.chasm) chasmGlow(c, Rv); }
   for (const I of Wd.islands || []) islandArt(c, I, Wd);
-  [...Wd.hills.map(Hl => ({ Z: Hl.Z, Hl })), ...(Wd.slabs || []).map(Sb => ({ Z: Sb.Z0, Sb }))].sort((a, b) => b.Z - a.Z).forEach(o => o.Hl ? hillArt(c, o.Hl, hzC) : slabArt(c, o.Sb, hzC));
+  [...Wd.hills.map(Hl => ({ Z: Hl.Z, Hl })), ...(Wd.slabs || []).map(Sb => ({ Z: Sb.Z0, Sb }))].sort((a, b) => b.Z - a.Z).forEach(o => o.Hl ? (hillArt(c, o.Hl, hzC), TOWN_RAW && hillDetail(c, o.Hl)) : slabArt(c, o.Sb, hzC));
   for (const Sb of [...(Wd.slabs || [])].sort((a, b) => b.Z0 - a.Z0)) for (const [X, e0 = 0] of Sb.stairs || []) stairsArt(c, Sb, X, e0, hzC);
   const lanes = Wd.roads.filter(Rd => !Rd.main), mains = Wd.roads.filter(Rd => Rd.main); // ścieżki pod drogą główną; brzegi przed nawierzchnią
   for (const grp of [lanes, mains]) { for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'under'); for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'top'); }
@@ -873,10 +922,12 @@ function paintTownWorld(c, t, col, Wd) {
       fx.rects[o.slot] = { x: sx - w / 2, y: sy - h, w, h, z: S.Z };
       const box = [-44, -S.h * 0.8 - 50, S.w + 88, S.h * 1.8 + 62], anc = [S.w / 2, S.h], can = { x: 0, b: S.h, w: S.w, h: S.h };
       if (B) {
-        castShadow(c, { x: sx - w / 2, b: sy, w, h }, 1);
+        (TOWN_RAW ? softShadow : castShadow)(c, { x: sx - w / 2, b: sy, w, h }, 1);
         const [grp, tier] = groupOf(B), fn = arts[grp];
         const dw = grp.startsWith('dw'); // siedliska: elitarne rysowane jak ulepszone, z masztami przed wejściem
-        if (fn) drawObj(c, (g, tf) => { fn(g, A, can, dw ? Math.min(2, tier) : tier, col, tf); if (dw && tier === 3) eliteArt(g, can, col); }, box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip);
+        const art = townBuildArt(fac, grp + tier);
+        if (art) drawBaked(c, art, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip, col);
+        else if (fn) drawObj(c, (g, tf) => { fn(g, A, can, dw ? Math.min(2, tier) : tier, col, tf); if (dw && tier === 3) eliteArt(g, can, col); }, box, anc, sx, sy, sc, hazeAt(S.Z), hzC, fx, S.flip);
       } // puste miejsce: sama ziemia jak w Heroes 3 (co tu stanie, widać po najechaniu myszą)
     } else if (o.tower) wallTowerArt(c, o.wall, A, o.tower, hzC, fx);
     else if (o.wall) wallSegArt(c, o.wall, A, o.a, o.b, hzC);
@@ -890,14 +941,15 @@ function paintTownWorld(c, t, col, Wd) {
   }
   if (Wd.frame === 'forest') forestFrame(c);
   if (Wd.frame === 'cave') caveFrame(c, fx, Wd.seed || 0);
-  c.save(); c.globalCompositeOperation = 'saturation'; c.globalAlpha = Wd.desat || 0.25; c.fillStyle = '#808080'; c.fillRect(8, 8, 576, 422); c.restore();
+  c.save(); c.globalCompositeOperation = 'saturation'; c.globalAlpha = (Wd.desat || 0.25) * (TOWN_RAW ? 0.3 : 1); c.fillStyle = '#808080'; c.fillRect(8, 8, 576, 422); c.restore();
+  if (TOWN_RAW) { const cv = c.canvas, tmp = document.createElement('canvas'); tmp.width = cv.width; tmp.height = cv.height; tmp.getContext('2d').drawImage(cv, 0, 0); c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.filter = 'saturate(1.18) contrast(1.1)'; c.drawImage(tmp, 0, 0); c.restore(); } // bez pikselizacji: żywsze barwy
   const lg = c.createLinearGradient(8, 8, 584, 430); lg.addColorStop(0, 'rgba(255,190,110,.16)'); lg.addColorStop(0.5, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(16,20,56,.32)'); c.fillStyle = lg; c.fillRect(8, 8, 576, 422);
   const vg = c.createRadialGradient(296, 230, 150, 296, 230, 400); vg.addColorStop(0, 'rgba(6,6,14,0)'); vg.addColorStop(1, 'rgba(6,6,14,.58)'); c.fillStyle = vg; c.fillRect(8, 8, 576, 422);
   c.restore(); return fx;
 }
 function paintTownScene(c, t, col) {
   const fx = paintTownWorld(c, t, col, townLayout(t));
-  pixelQuantize(c.canvas); return fx;
+  if (!TOWN_RAW) pixelQuantize(c.canvas); return fx;
 }
 function drawTownFX(ctx, t, fx) {
   const LL = townLayout(t); usePJ(LL);
@@ -920,8 +972,7 @@ function drawTownFX(ctx, t, fx) {
     for (let i = 6; i >= 0; i--) ctx.lineTo(i * 2.4, 6 - i * 0.75 + Math.sin(tm * 5 - i * 0.8 + x) * 1.4 * i / 6);
     ctx.closePath(); ctx.fill(); ctx.restore();
   }
-  drawCreaturesFX(ctx, LL, tm);
-  drawTownFolk(ctx, LL, tm, fx.rects);
+  if (!fx.painted) { drawCreaturesFX(ctx, LL, tm); drawTownFolk(ctx, LL, tm, fx.rects); } // na namalowanym tle nie ma ścieżek sceny 2D
   if (LL.birds) for (let i = 0; i < 4; i++) {
     const x = ((tm * 18 + i * 170) % 720) - 60, y = 46 + i * 15 + Math.sin(tm * 0.8 + i) * 6, f = Math.sin(tm * 9 + i * 2) * 3;
     ctx.strokeStyle = LL.birdCol || 'rgba(40,40,60,.8)'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(x - 5, y - f); ctx.quadraticCurveTo(x - 2, y - 1, x, y + 1); ctx.quadraticCurveTo(x + 2, y - 1, x + 5, y - f); ctx.stroke();

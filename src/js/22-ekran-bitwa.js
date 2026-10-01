@@ -4,6 +4,8 @@ const HEX = { w: 54, h: 62, row: 46, x0: 36, y0: 52 };
 // Miejsce bohatera strony (x, y stóp, zwrot) i skala jego rysunku
 const HERO_BATTLE_K = 0.9, heroSpot = side => side ? [W - 22, 122, -1] : [22, 122, 1];
 const hexCenter = (x, y) => [HEX.x0 + x * HEX.w + (y & 1 ? HEX.w / 2 : 0) + HEX.w / 2, HEX.y0 + y * HEX.row + HEX.h / 2];
+// Środek oddziału na ekranie: duży stwór stoi między przodem a zadem (pół heksu w stronę zadu)
+const unitPos = (u, x = u.x, y = u.y) => { const [cx, cy] = hexCenter(x, y); return [cx + (isWide(u) ? tailDx(u) * HEX.w / 2 : 0), cy]; };
 // Paszcza zionącego stwora (px logiczne) przy zwrocie d: z arkusza (m: punkt paszczy w klatce ataku, wypalony z modelu) albo szacunkowo
 function mouthPos(u, d) {
   const A = unitArt(u.cid), L = CREATURES[u.cid].look, gy = u.py + 14 - (u.lift || 0);
@@ -105,7 +107,7 @@ G.screens.battle = {
     const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null;
     this.me = B.sides[0].owner === ME ? 0 : 1; this.floats = []; this.preview = null; this.timer = 0; this.ending = null; // strona gracza: 0 gdy atakuje, 1 gdy się broni
     this.terr = B.st.map.terrain[B.h.y * B.st.map.n + B.h.x] || TER.GRASS;
-    for (const u of B.units) { [u.px, u.py] = hexCenter(u.x, u.y); u.anim = null; u.dieT = null; u.flashT = null; u.face = null; }
+    for (const u of B.units) { [u.px, u.py] = unitPos(u); u.anim = null; u.dieT = null; u.flashT = null; u.face = null; }
     BattleFX.reset(); this.intro = { t: 0, dur: 0.9 };
     // przygotowanie klatek animacji z góry (żeby pierwszy ruch nie przycinał)
     for (const u of B.units) for (const d of [1, -1]) for (const [pose, n] of Object.entries(BATTLE_FRAMES)) for (let i = 0; i < n; i++) battleSprite(u.cid, d, pose, i); // obie strony: oddziały się obracają
@@ -182,7 +184,7 @@ G.screens.battle = {
       : fx.kind === 'hit' ? (fx.a && !fx.splash ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj || S.meteor ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
     const now = G.time, faceTo = (v, x) => { if (v && Math.abs(x - v.px) > 2) v.face = Math.sign(x - v.px); }; // oddział obraca się w stronę ruchu i celu
-    if (fx.kind === 'move') { fx.u.anim = { pose: fx.fly ? 'fly' : 'walk', t0: now, dur: this.play.dur }; if (fx.fly) faceTo(fx.u, hexCenter(fx.u.x, fx.u.y)[0]); }
+    if (fx.kind === 'move') { fx.u.anim = { pose: fx.fly ? 'fly' : 'walk', t0: now, dur: this.play.dur }; if (fx.fly) faceTo(fx.u, unitPos(fx.u)[0]); }
     if (fx.kind === 'hit' && fx.a && !fx.splash) { faceTo(fx.a, fx.tg.px); fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur }; }
     if (fx.kind === 'shot') faceTo(fx.a, fx.tg.px);
     if (fx.kind === 'siege') faceTo(fx.a, hexCenter(fx.x, fx.y)[0]);
@@ -202,9 +204,9 @@ G.screens.battle = {
     if (p.kind === 'move') {
       const u = p.u;
       if (p.fly) { // start, lot wysoko nad polem i lądowanie
-        const [ax, ay] = hexCenter(...p.path[0]), [bx, by] = hexCenter(u.x, u.y), k = ease(f), top = Math.min(66, 34 + Math.hypot(bx - ax, by - ay) * 0.12);
+        const [ax, ay] = unitPos(u, ...p.path[0]), [bx, by] = unitPos(u), k = ease(f), top = Math.min(66, 34 + Math.hypot(bx - ax, by - ay) * 0.12);
         u.px = lerp(ax, bx, k); u.py = lerp(ay, by, k); u.lift = top * Math.min(1, Math.sin(f * Math.PI) * 1.6);
-      } else { const seg = f * (p.path.length - 1), i = Math.min(p.path.length - 2, Math.floor(seg)), k = seg - i; const [ax, ay] = hexCenter(...p.path[i]), [bx, by] = hexCenter(...p.path[i + 1]); u.px = ax + (bx - ax) * k; u.py = ay + (by - ay) * k; if (bx !== ax) u.face = Math.sign(bx - ax); }
+      } else { const seg = f * (p.path.length - 1), i = Math.min(p.path.length - 2, Math.floor(seg)), k = seg - i; const [ax, ay] = unitPos(u, ...p.path[i]), [bx, by] = unitPos(u, ...p.path[i + 1]); u.px = ax + (bx - ax) * k; u.py = ay + (by - ay) * k; if (bx !== ax) u.face = Math.sign(bx - ax); }
       if (Math.random() < 0.35 && !p.fly) BattleFX.emit(u.px, u.py + 14, { n: 1, col: '#9a8a70', spd: 20, up: -15, life: 0.4, size: 3, drag: 2 });
     } else if (p.kind === 'hit') {
       if (p.a && !p.splash && hasAb(p.a, 'breath') && f > 0.3 && f < 0.78) { // zionięcie: strumień ognia z paszczy przez cel i pole za nim
@@ -252,7 +254,7 @@ G.screens.battle = {
         if (S.flash) BattleFX.flash = { col: S.col, a: S.flash }; if (S.shake) BattleFX.shake = S.shake;
       }
     }
-    if (p.t >= p.dur) { if (p.kind === 'move') { [p.u.px, p.u.py] = hexCenter(p.u.x, p.u.y); p.u.lift = 0; p.u.anim = null; } this.play = null; }
+    if (p.t >= p.dur) { if (p.kind === 'move') { [p.u.px, p.u.py] = unitPos(p.u); p.u.lift = 0; p.u.anim = null; } this.play = null; }
   },
   // Klatka do narysowania: poza, sprite, przesunięcia
   // Bohaterowie w narożnikach pola (jak w H3): lewy górny atakujący, prawy górny obrońca; czar = krótka animacja zamachu
@@ -295,9 +297,9 @@ G.screens.battle = {
     if (occ && occ.side !== u.side && targetable(occ)) {
       if (canShoot(B, u)) { this.preview = { kind: 'shoot', target: occ, est: estimateStrike(B, u, occ, true) }; return; }
       let best = null;
-      for (const [nx, ny] of hexNeighbors(occ.x, occ.y)) {
-        const own = nx === u.x && ny === u.y; if (!own && !this.reach.dist.has(hexKey(nx, ny))) continue;
-        const [cx, cy] = hexCenter(nx, ny), md = (cx - x) ** 2 + (cy - y) ** 2; if (!best || md < best.md) best = { nx, ny, md };
+      for (const [nx, ny] of [[u.x, u.y], ...attackSpots(u, occ)]) { // pole, z którego uderzy: najbliżej kursora (duży stwór: jego środek)
+        const own = nx === u.x && ny === u.y; if (!own && !this.reach.dist.has(hexKey(nx, ny)) || !hexAdjacent({ ...u, x: nx, y: ny }, occ)) continue;
+        const [cx, cy] = unitPos(u, nx, ny), md = (cx - x) ** 2 + (cy - y) ** 2; if (!best || md < best.md) best = { nx, ny, md };
       }
       this.preview = best ? { kind: 'attack', target: occ, from: [best.nx, best.ny], est: estimateStrike(B, u, occ, false, hexDistance(u, { x: best.nx, y: best.ny })) } : { kind: 'far', target: occ };
     } else if (!occ && this.reach.dist.has(k)) this.preview = { kind: 'move', to: [hx.x, hx.y] };
@@ -332,12 +334,12 @@ G.screens.battle = {
       ctx.fillStyle = 'rgba(255,240,200,.16)';
       for (const k of this.reach.dist.keys()) { hexPath(ctx, k % BCOLS, Math.floor(k / BCOLS), 2); ctx.fill(); }
       const p = this.preview;
-      if (p && (p.kind === 'move' || p.kind === 'attack')) { const [mx, my] = p.to || p.from; ctx.fillStyle = 'rgba(255,217,112,.35)'; hexPath(ctx, mx, my, 2); ctx.fill(); }
-      if (p && p.target) { ctx.strokeStyle = p.kind === 'info' ? '#c8d8f0' : p.kind === 'far' ? '#8a8078' : '#ff6a4a'; ctx.lineWidth = 2.5; hexPath(ctx, p.target.x, p.target.y, 3); ctx.stroke(); }
+      if (p && (p.kind === 'move' || p.kind === 'attack')) { const [mx, my] = p.to || p.from; ctx.fillStyle = 'rgba(255,217,112,.35)'; for (const [cx, cy] of unitCells(u0, mx, my)) { hexPath(ctx, cx, cy, 2); ctx.fill(); } }
+      if (p && p.target) { ctx.strokeStyle = p.kind === 'info' ? '#c8d8f0' : p.kind === 'far' ? '#8a8078' : '#ff6a4a'; ctx.lineWidth = 2.5; for (const [cx, cy] of unitCells(p.target)) { hexPath(ctx, cx, cy, 3); ctx.stroke(); } }
     }
     if (u0 && this.phase !== 'intro') {
-      const pulse = 0.55 + 0.45 * Math.sin(G.time * 6); ctx.strokeStyle = `rgba(255,217,112,${0.35 * pulse})`; ctx.lineWidth = 2; hexPath(ctx, u0.x, u0.y, 2); ctx.stroke();
-      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,90,${0.18 + 0.12 * pulse})`; ctx.beginPath(); ctx.ellipse(u0.px, u0.py + 14, 24, 9, 0, 0, TAU); ctx.fill(); ctx.restore();
+      const pulse = 0.55 + 0.45 * Math.sin(G.time * 6); ctx.strokeStyle = `rgba(255,217,112,${0.35 * pulse})`; ctx.lineWidth = 2; for (const [cx, cy] of unitCells(u0)) { hexPath(ctx, cx, cy, 2); ctx.stroke(); }
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,90,${0.18 + 0.12 * pulse})`; ctx.beginPath(); ctx.ellipse(u0.px, u0.py + 14, isWide(u0) ? 46 : 24, 9, 0, 0, TAU); ctx.fill(); ctx.restore();
     }
     if (B.moat) drawMoat(ctx, B); // fosa przed murem
     this.drawHeroes(ctx);

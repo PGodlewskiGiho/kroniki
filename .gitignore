@@ -3,3 +3,6 @@ test-results/
 tools/grafika3d/.cache/
 tools/portrety-ai/.cache/
 __pycache__/
+node_modules
+tools/portrety-ai/venv/
+tools/tla-ai/.cache/

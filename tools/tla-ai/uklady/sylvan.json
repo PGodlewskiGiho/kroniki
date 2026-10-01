@@ -1,0 +1,225 @@
+{
+ "_opis": "Układ z planu sceny 2D (szkic.js): s = podstawa na ekranie, z = głębokość jak w 2D.",
+ "tlo": "sylvan-polana.png",
+ "pj": {
+  "hor": 140,
+  "d": 440,
+  "f": 540
+ },
+ "slots": [
+  {
+   "s": [
+    478,
+    300
+   ],
+   "k": 0.85
+  },
+  {
+   "s": [
+    352,
+    282
+   ]
+  },
+  {
+   "s": [
+    70,
+    415
+   ]
+  },
+  {
+   "s": [
+    128,
+    334
+   ],
+   "k": 1.05
+  },
+  {
+   "s": [
+    318,
+    340
+   ]
+  },
+  {
+   "s": [
+    482,
+    350
+   ],
+   "k": 1.3
+  },
+  {
+   "s": [
+    126,
+    272
+   ]
+  },
+  {
+   "s": [
+    418,
+    320
+   ]
+  },
+  {
+   "s": [
+    178,
+    412
+   ]
+  },
+  {
+   "s": [
+    375,
+    372
+   ]
+  },
+  {
+   "s": [
+    420,
+    402
+   ]
+  },
+  {
+   "s": [
+    505,
+    402
+   ]
+  },
+  {
+   "s": [
+    320,
+    412
+   ]
+  },
+  {
+   "s": [
+    268,
+    350
+   ]
+  },
+  {
+   "s": [
+    205,
+    372
+   ],
+   "k": 0.85
+  },
+  {
+   "s": [
+    208,
+    272
+   ],
+   "k": 1.3
+  }
+ ],
+ "_analiza": "Horyzont ~135 (linia dalekich gór), kamera niżej niż w Przystani – jezioro to płaska elipsa. Płaskie: przednia łąka (y 340–415), prawa łąka (x 330–520, y 295–350), polana za wodospadem (x 300–430, y 255–290), lewy brzeg (x 40–140, y 290–330). Dalej las – tam tylko budowle w koronach i Graal.",
+ "polana": {
+  "_opis": "polana.py: teren miasta malowany od nowa wg planu; obszar = wielokąt w kadrze gry, bez = wycięcia (wodospad), woda = pas wierszy, w którym niebieskie piksele zostają",
+  "zrodlo": "sylvan.png",
+  "obszar": [
+   [
+    50,
+    300
+   ],
+   [
+    62,
+    272
+   ],
+   [
+    90,
+    258
+   ],
+   [
+    180,
+    253
+   ],
+   [
+    300,
+    249
+   ],
+   [
+    420,
+    253
+   ],
+   [
+    500,
+    258
+   ],
+   [
+    532,
+    268
+   ],
+   [
+    532,
+    432
+   ],
+   [
+    48,
+    432
+   ]
+  ],
+  "bez": [
+   [
+    [
+     244,
+     248
+    ],
+    [
+     272,
+     248
+    ],
+    [
+     272,
+     292
+    ],
+    [
+     244,
+     292
+    ]
+   ]
+  ],
+  "obszar_tyl": 250,
+  "woda": [
+   278,
+   350
+  ],
+  "trawa": [
+   [
+    96,
+    124,
+    60
+   ],
+   [
+    50,
+    80,
+    34
+   ]
+  ],
+  "ziemia": [
+   124,
+   104,
+   68
+  ],
+  "trakt": [
+   [
+    300,
+    434
+   ],
+   [
+    316,
+    400
+   ],
+   [
+    340,
+    352
+   ],
+   [
+    356,
+    312
+   ],
+   [
+    352,
+    292
+   ]
+  ],
+  "trakt_w": 16,
+  "opis": "detailed fantasy matte painting, sunlit elven forest town glade, wide flat open clearing of short green grass, mossy packed earth plots and worn dirt footpaths, enclosed by ancient forest, golden light, painterly, rich detail, crisp"
+ }
+}

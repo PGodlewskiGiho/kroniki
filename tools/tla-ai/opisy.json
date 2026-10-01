@@ -1,0 +1,149 @@
+{
+ "_styl": "detailed fantasy matte painting, background of a medieval fantasy town screen in Heroes of Might and Magic 3 style, {opis}, empty building plots of bare earth and short grass, painterly, rich detail, crisp, warm sunlight and long soft shadows, dramatic cloudy sky",
+ "_negatyw": "buildings, houses, castle, tower, roofs, walls, people, figures, text, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo",
+ "haven": {
+  "opis": "lush green river valley in spring, a winding blue river across the middle, gentle grassy hill on the left, a tall grey rocky crag on the right, oak groves and hedges, distant blue mountains under golden afternoon light"
+ },
+ "sylvan": {
+  "opis": "ancient enchanted elven forest glade framed by colossal mossy tree trunks and hanging vines, a calm forest lake in the middle, several flat open mossy clearings and grassy lawns, a rocky cliff with a waterfall on the right, misty blue mountains in the distance, golden dusk light rays through the canopy, fireflies"
+ },
+ "barrow": {
+  "opis": "haunted necropolis at night, a huge perfectly flat open plain of packed grey earth and dead grass filling the whole foreground and middle, dirt paths, a few broken tombstones only near the edges, burial mounds and ruined walls far in the distance, jagged mountains on the horizon, purple sky with a pale moon",
+  "szkic": {
+   "niebo": [
+    [
+     24,
+     14,
+     44
+    ],
+    [
+     96,
+     70,
+     110
+    ]
+   ],
+   "ziemia": [
+    [
+     86,
+     82,
+     96
+    ],
+    [
+     58,
+     54,
+     62
+    ]
+   ],
+   "gory": [
+    [
+     40,
+     70,
+     [
+      58,
+      48,
+      80
+     ]
+    ],
+    [
+     18,
+     40,
+     [
+      40,
+      34,
+      56
+     ]
+    ]
+   ],
+   "ksiezyc": [
+    560,
+    70,
+    26
+   ],
+   "ksiezyc_kolor": [
+    224,
+    226,
+    210
+   ],
+   "rama": [
+    26,
+    22,
+    30
+   ],
+   "skaly": [
+    70,
+    68,
+    78
+   ],
+   "mgla": [
+    120,
+    150,
+    130
+   ]
+  },
+  "opis_bez_ramy": "haunted necropolis valley at night, wide open view, a wide flat open barren plain of grey earth and dead grass, ancient burial mounds and rocky outcrops at the sides, jagged dark mountains in the distance, open purple stormy sky with a pale moon, eerie mist low on the far ground"
+ },
+ "fortress": {
+  "opis": "misty swamp lowland in warm afternoon light, a huge perfectly flat open plain of firm green-brown moss and short marsh grass filling the whole foreground and middle, muddy dirt paths, a few reeds and small dark ponds only near the edges, distant misty hills with low jungle on the horizon, hazy green-gold sky",
+  "szkic": {
+   "niebo": [
+    [
+     150,
+     170,
+     140
+    ],
+    [
+     220,
+     214,
+     170
+    ]
+   ],
+   "ziemia": [
+    [
+     108,
+     118,
+     70
+    ],
+    [
+     78,
+     88,
+     50
+    ]
+   ],
+   "gory": [
+    [
+     40,
+     70,
+     [
+      96,
+      118,
+      92
+     ]
+    ],
+    [
+     18,
+     40,
+     [
+      70,
+      92,
+      70
+     ]
+    ]
+   ],
+   "rama": [
+    40,
+    48,
+    30
+   ],
+   "skaly": [
+    100,
+    100,
+    84
+   ],
+   "mgla": [
+    190,
+    206,
+    170
+   ]
+  }
+ }
+}
