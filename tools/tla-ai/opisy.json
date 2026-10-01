@@ -523,7 +523,7 @@
   }
  },
  "dungeon": {
-  "opis": "huge underground cavern city site, flat rock terraces with cliffs, glowing teal underground lake and waterfalls, stalactites, giant glowing mushrooms, violet crystals, light shaft",
+  "opis": "huge underground cavern, wide flat rocky cave floor in the foreground, raised rock terrace behind, glowing teal lake and waterfalls, stalactites, violet crystals, light shaft",
   "teren": {
    "hor": 150,
    "ziarno": 4,
@@ -541,20 +541,20 @@
    ],
    "ziemia": [
     [
-     78,
-     70,
-     92
+     56,
+     50,
+     68
     ],
     [
-     46,
-     40,
-     56
+     104,
+     94,
+     118
     ]
    ],
    "skala": [
-    52,
-    46,
-    62
+    40,
+    36,
+    50
    ],
    "ciecz": [
     [
@@ -706,7 +706,13 @@
      46
     ]
    ],
-   "kamienie": 30
+   "kamienie": 70,
+   "cienie": [
+    44,
+    40,
+    56
+   ],
+   "cienie_n": 70
   }
  }
 }
