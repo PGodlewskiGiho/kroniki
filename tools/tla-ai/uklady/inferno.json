@@ -1,0 +1,328 @@
+{
+ "_opis": "Miejsca budowli na namalowanym tle: s = podstawa na ekranie, z = głębokość (budowle na płaskowyżu), k = skala.",
+ "tlo": "inferno-polana.png",
+ "pj": {
+  "hor": 135,
+  "d": 440,
+  "f": 500
+ },
+ "slots": [
+  {
+   "s": [
+    380,
+    334
+   ],
+   "k": 1.2
+  },
+  {
+   "s": [
+    300,
+    208
+   ],
+   "z": 1.925,
+   "k": 1.1
+  },
+  {
+   "s": [
+    398,
+    198
+   ],
+   "z": 2.23,
+   "k": 1.4
+  },
+  {
+   "s": [
+    484,
+    206
+   ],
+   "z": 1.979,
+   "k": 1.2
+  },
+  {
+   "s": [
+    206,
+    196
+   ],
+   "z": 2.303,
+   "k": 1.4
+  },
+  {
+   "s": [
+    190,
+    300
+   ]
+  },
+  {
+   "s": [
+    118,
+    352
+   ]
+  },
+  {
+   "s": [
+    456,
+    292
+   ]
+  },
+  {
+   "s": [
+    250,
+    414
+   ]
+  },
+  {
+   "s": [
+    456,
+    414
+   ]
+  },
+  {
+   "s": [
+    56,
+    404
+   ]
+  },
+  {
+   "s": [
+    214,
+    368
+   ]
+  },
+  {
+   "s": [
+    140,
+    414
+   ]
+  },
+  {
+   "s": [
+    352,
+    414
+   ]
+  },
+  {
+   "s": [
+    468,
+    352
+   ]
+  },
+  {
+   "s": [
+    112,
+    206
+   ],
+   "z": 1.979,
+   "k": 1.4,
+   "zaslona": false
+  }
+ ],
+ "_analiza": "Horyzont 135 (podstawa wulkanu, y ~168 obrazu). Płaskowyż z tyłu: krawędź urwiska sy 213, podnóże (fosa lawy) sy 257 → wysokość 159 jednostek; budowle na płaskowyżu mają z = f*(d-159)/(sy-hor). Przód: równina popiołu od 262, rzeka lawy po prawej (x 500-560) wyłączona.",
+ "polana": {
+  "zrodlo": "inferno.png",
+  "obszar": [
+   [
+    8,
+    262
+   ],
+   [
+    150,
+    262
+   ],
+   [
+    300,
+    264
+   ],
+   [
+    450,
+    262
+   ],
+   [
+    500,
+    264
+   ],
+   [
+    500,
+    432
+   ],
+   [
+    8,
+    432
+   ]
+  ],
+  "bez": [
+   [
+    [
+     488,
+     262
+    ],
+    [
+     584,
+     262
+    ],
+    [
+     584,
+     432
+    ],
+    [
+     516,
+     432
+    ],
+    [
+     494,
+     400
+    ],
+    [
+     488,
+     347
+    ],
+    [
+     500,
+     309
+    ]
+   ]
+  ],
+  "obszar_tyl": 262,
+  "woda": [
+   0,
+   0
+  ],
+  "pnie": false,
+  "trawa": [
+   [
+    84,
+    66,
+    60
+   ],
+   [
+    56,
+    44,
+    44
+   ]
+  ],
+  "ziemia": [
+   74,
+   58,
+   52
+  ],
+  "trakt": [
+   [
+    300,
+    434
+   ],
+   [
+    302,
+    400
+   ],
+   [
+    300,
+    340
+   ],
+   [
+    300,
+    290
+   ],
+   [
+    300,
+    266
+   ]
+  ],
+  "trakt_w": 16,
+  "bagno": 0.66,
+  "bagno_tyl": 0.0,
+  "bagno_skala": 120,
+  "woda_kolor": [
+   [
+    255,
+    140,
+    40
+   ],
+   [
+    230,
+    90,
+    24
+   ]
+  ],
+  "brzeg_kolor": [
+   40,
+   30,
+   30
+  ],
+  "trzciny": false,
+  "opis": "detailed fantasy matte painting, volcanic hell town ground, flat dark basalt and ash plain, cracked rock with thin glowing lava cracks and small lava pools, flat stone plots, painterly, rich detail, crisp",
+  "zachowaj": true
+ },
+ "ozdoby": [
+  {
+   "o": 1,
+   "s": [
+    276,
+    296
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 1,
+   "s": [
+    326,
+    296
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 3,
+   "s": [
+    254,
+    330
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 3,
+   "s": [
+    346,
+    318
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 5,
+   "s": [
+    300,
+    382
+   ],
+   "k": 1.4
+  },
+  {
+   "o": 4,
+   "s": [
+    262,
+    374
+   ],
+   "k": 1.8
+  },
+  {
+   "o": 1,
+   "s": [
+    424,
+    388
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 4,
+   "s": [
+    160,
+    330
+   ],
+   "k": 1.8
+  },
+  {
+   "o": 3,
+   "s": [
+    90,
+    300
+   ],
+   "k": 1.5
+  }
+ ]
+}
