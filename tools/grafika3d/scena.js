@@ -216,10 +216,16 @@ const TOWN_EXTRAS = {
 // --- Miasto na namalowanym tle (tools/tla-ai): układ z pliku uklady/<frakcja>.json i wykończenie budowli pod obraz ---
 // U = { pj: { hor, d, f }, slots: [{ s: [sx, sy], z?, k?, flip? }], haze?, grade? }: s = punkt podstawy na ekranie, z = głębokość
 // (domyślnie z płaskiej ziemi), e (wysokość) wynika z rzędu. Kamera jak townCamera z ogniskową f.
+// Ozdoby z układu (U.ozdoby: [{ o: wariant, s: [sx, sy], k }]) wtapiane w namalowane tło: render jak budowla (TOWN3[fac].ozd(wariant)), od dalszych do bliższych
+function paintedDecor(fac, U, c, D, dep) {
+  const T = TOWNS[fac], L = U.ozdoby || []; if (!L.length || !TOWN3[fac].ozd) return; const g = c.getContext('2d'), bgd = g.getImageData(0, 0, c.width, c.height);
+  L.map((o, i) => ({ o, i, sy: o.s[1] })).sort((a, b) => a.sy - b.sy).forEach(({ o, i }) => { const b = renderTownBuilding(fac, 'ozd' + o.o, 100 + i, D, true); if (b) g.drawImage(paintedFinish(b, fac, 100 + i, bgd, D, U, dep), 0, 0); });
+}
 function applyPaintedLayout(fac, U) {
   const T = TOWNS[fac], { hor, d } = U.pj, f = U.pj.f || 1000; T.scene.pj = U.pj;
   U.slots.forEach((o, i) => { const S = T.scene.slots[i]; if (!S) return; const [sx, sy] = o.s, zw = o.z ? o.z * 1000 : f * d / (sy - hor);
     S.X = (sx - 296) * zw / f; S.Z = zw / 1000; S.e = d - (sy - hor) * zw / f; S.k = (S.k0 || (S.k0 = S.k)) * (o.k || 1); S.flip = !!o.flip; S.tilt = o.tilt || 0; S.yaw = o.yaw || 0; });
+  (U.ozdoby || []).forEach((o, i) => { const [sx, sy] = o.s, zw = f * d / (sy - hor); T.scene.slots[100 + i] = { X: (sx - 296) * zw / f, Z: zw / 1000, e: 0, k: o.k || 1, k0: 1, w: 14, flip: !!o.flip, tilt: 0, yaw: o.yaw || 0 }; });
 }
 // b: render budowli (kadr 592×438 × D), bg: ImageData tła w tym samym kadrze. Zwraca nowy kadr: wydeptany placyk w barwie ziemi z obrazu
 // i cień styku pod podstawą (elipsa w perspektywie miejsca), na nich budowla przygaszona jak obraz, dalsza zamglona.

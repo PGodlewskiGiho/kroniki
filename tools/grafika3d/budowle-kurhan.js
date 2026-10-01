@@ -135,5 +135,13 @@ const BARROW3 = {
     g.add(creature(t >= 3 ? 'boneDragon' : t >= 2 ? 'ghostWyvern' : 'boneWyvern', 0, 52 * k, -14, t >= 3 ? 0.55 : 0.6, -Math.PI / 2 + 0.4));
     if (t >= 2) wisps(g, 0, 20, 0, 120, 60, 12, 92);
     return g; },
+  ozd(t) { // ozdoby wtapiane w tło (nie budowle): 1 kwatera grobów z płotkiem, 2 para zniczy i czaszki, 3 obelisk z runami, 4 martwe drzewo, 5 kamienny anioł-nagrobek
+    const g = new THREE.Group(), R = rng(300 + t);
+    if (t === 1) { g.add(blk(44, 1, 30, BR.dirt, 'cobble', 0, 0, 0)); g.add(ironFence(-22, 22, 15, 8)); for (let i = 0; i < 5; i++) g.add(tomb(-16 + (i % 3) * 16, -8 + Math.floor(i / 3) * 12, 0.8, 310 + i)); }
+    if (t === 2) { for (const x of [-14, 14]) g.add(brazier(x, 12, 0)); g.add(skulls(0, 2, 12, 6, 320)); }
+    if (t === 3) g.add(obelisk(0, 0, 8, 40, BR.stoneD, BR.violet));
+    if (t === 4) { g.add(cyl3(4, 2.4, 34, '#2e2a2a', 'bark', 0, 0, 0, 7)); for (let i = 0; i < 5; i++) { const a = R() * Math.PI * 2, b = cyl3(1.4, 0.4, 18 + R() * 10, '#2e2a2a', 'bark', 0, 0, 0, 5); b.position.set(...P(Math.cos(a) * 2, 22 + i * 3, Math.sin(a) * 2)); b.rotation.set(Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9); g.add(b); } }
+    if (t === 5) { g.add(blk(14, 8, 10, BR.stone, 'ashlar', 0, 0, 0)); g.add(creature('wraith', 0, 8, 0, 0.35, -Math.PI / 2)); }
+    return g; },
 };
 TOWN3.barrow = BARROW3;

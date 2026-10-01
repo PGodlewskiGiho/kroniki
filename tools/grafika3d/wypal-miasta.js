@@ -28,7 +28,7 @@ const KEYS = [['hall', 4, 0], ['fort', 3, 1], ['guild', 5, 2], ['dw7', 3, 3], ['
     for (const [key, slot] of jobs) {
       if (used++ >= 5) { await st.browser.close(); st = await openStudio({ width: 400, height: 300 }); used = 1; }
       const r = await st.page.evaluate(async ([fac, key, slot, D, crop, P]) => { let c;
-        if (P) { applyPaintedLayout(fac, P.U); if (!window._pbg) { const im = new Image(); im.src = P.url; await im.decode(); const b = paintedBg(im, D); window._pbg = { c: b, d: b.getContext('2d').getImageData(0, 0, b.width, b.height), dep: null }; if (P.dep) { const di = new Image(); di.src = P.dep; await di.decode(); window._pbg.dep = paintedDepth(di, D); } }
+        if (P) { applyPaintedLayout(fac, P.U); if (!window._pbg) { const im = new Image(); im.src = P.url; await im.decode(); const b = paintedBg(im, D); window._pbg = { c: b, d: b.getContext('2d').getImageData(0, 0, b.width, b.height), dep: null }; if (P.dep) { const di = new Image(); di.src = P.dep; await di.decode(); window._pbg.dep = paintedDepth(di, D); } paintedDecor(fac, P.U, b, D, window._pbg.dep); window._pbg.d = b.getContext('2d').getImageData(0, 0, b.width, b.height); }
           if (key === '_bg') c = window._pbg.c; else { const b = renderTownBuilding(fac, key, slot, D, true); c = b && paintedFinish(b, fac, slot, window._pbg.d, D, P.U, window._pbg.dep); } }
         else c = key === '_bg' ? renderTownBg(fac, D) : renderTownBuilding(fac, key, slot, D); if (!c) return null;
         const r = new Function('return ' + crop)()(c); if (!r) return { empty: true }; const o = document.createElement('canvas'); o.width = r[2]; o.height = r[3]; o.getContext('2d').drawImage(c, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]);
