@@ -115,23 +115,23 @@
   "obszar": [
    [
     8,
-    212
+    166
    ],
    [
     150,
-    206
+    162
    ],
    [
     300,
-    204
+    160
    ],
    [
     450,
-    206
+    162
    ],
    [
     584,
-    212
+    166
    ],
    [
     584,
@@ -143,7 +143,7 @@
    ]
   ],
   "bez": [],
-  "obszar_tyl": 204,
+  "obszar_tyl": 160,
   "woda": [
    0,
    0
@@ -190,7 +190,7 @@
   ],
   "trakt_w": 16,
   "opis": "detailed fantasy matte painting, swamp town ground in sunlight, dark swamp water pools and channels between flat muddy plots, green moss islands, reeds on the banks, muddy dirt road, painterly, rich detail, crisp",
-  "bagno": 0.44,
+  "bagno": 0.5,
   "woda_kolor": [
    [
     130,
@@ -202,7 +202,9 @@
     52,
     44
    ]
-  ]
+  ],
+  "bagno_tyl": 0.13,
+  "bagno_skala": 150
  },
  "ozdoby": [
   {

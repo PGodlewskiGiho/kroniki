@@ -67,9 +67,14 @@ tx = (0.75 + 0.5 * (0.6 * noise(6) + 0.4 * noise(2)))[..., None]
 teren = np.asarray(L).astype(np.float32); teren = teren * (1 - pa * 0.85) + ziemia * tx * pa * 0.85
 if P.get('bagno'):  # bagno: woda między placami (rozlewiska i kanały), brzeg z mułu, trzciny na brzegu
     pm = Image.fromarray((np.asarray(place) > 40).astype(np.uint8) * 255).filter(ImageFilter.MaxFilter(int(9 * S) | 1)).filter(ImageFilter.GaussianBlur(3 * S))
-    nz = 0.55 * noise(34) + 0.3 * noise(12) + 0.15 * noise(4); fy = np.clip((yy / S + 8 - P['obszar_tyl']) / 60, 0, 1)
-    wm = G & (np.asarray(pm) < 60) & (nz * fy > P['bagno'])
-    wm = np.asarray(Image.fromarray(wm.astype(np.uint8) * 255).filter(ImageFilter.MedianFilter(5))) > 128
+    gy = np.maximum(yy / S + 8 - hor, 2.0); Zw = f * d / gy; Xw = (xx / S + 8 - 296) * Zw / f  # szum w świecie (X, Z): rozlewiska spłaszczone perspektywą
+    def wnoise(cell, sd):
+        R2 = np.random.default_rng(sd).random((400, 400)); u = Xw / cell + 200; v = Zw / cell; i0 = np.floor(u).astype(int) % 399; j0 = np.floor(v).astype(int) % 399; fu = u - np.floor(u); fv = v - np.floor(v)
+        fu, fv = fu * fu * (3 - 2 * fu), fv * fv * (3 - 2 * fv); return (R2[j0, i0] * (1 - fu) + R2[j0, i0 + 1] * fu) * (1 - fv) + (R2[j0 + 1, i0] * (1 - fu) + R2[j0 + 1, i0 + 1] * fu) * fv
+    nz = 0.6 * wnoise(P.get('bagno_skala', 150), seed) + 0.3 * wnoise(P.get('bagno_skala', 150) / 2.6, seed + 1) + 0.1 * wnoise(P.get('bagno_skala', 150) / 7, seed + 2)
+    tt = np.clip((yy / S + 8 - P['obszar_tyl']) / (430 - P['obszar_tyl']), 0, 1); prog = P['bagno'] - P.get('bagno_tyl', 0.15) * (1 - tt)  # z tyłu więcej wody
+    wm = G & (np.asarray(pm) < 60) & (nz > prog)
+    wm = np.asarray(Image.fromarray(wm.astype(np.uint8) * 255).filter(ImageFilter.GaussianBlur(2.5 * S))) > 128  # gładki brzeg
     brzeg = (np.asarray(Image.fromarray(wm.astype(np.uint8) * 255).filter(ImageFilter.MaxFilter(int(5 * S) | 1))) > 128) & ~wm
     wk = np.array(P.get('woda_kolor', [[150, 170, 140], [40, 60, 48]]), np.float32); tw = np.clip((yy / S + 8 - P['obszar_tyl']) / (430 - P['obszar_tyl']), 0, 1)[..., None] ** 0.6
     wc = wk[0] * (1 - tw) + wk[1] * tw; wc = wc * (0.92 + 0.16 * noise(3)[..., None] * (0.5 + 0.5 * np.sin(yy / S * 1.7))[..., None])
