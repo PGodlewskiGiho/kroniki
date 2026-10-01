@@ -9,6 +9,11 @@ U = json.load(open(f'uklady/{fac}.json')); M = json.load(open(f'uklady/{fac}-wym
 hor, d, f = U['pj']['hor'], U['pj']['d'], U['pj']['f']
 im = Image.open('tla/' + P['zrodlo']).convert('RGB'); W, H = im.size; S = W / 576.0; a0 = np.asarray(im).astype(np.float32)
 def I(x, y): return ((x - 8) * S, (y - 8) * S)  # kadr gry -> piksele obrazu
+if P.get('zwegl'):  # zwęglenie: wszystko poniżej linii (skały, urwiska, ziemia) w czarny spieczony węgiel, lawa zostaje jasna
+    Z = P['zwegl']; r0, g0, b0 = a0[..., 0], a0[..., 1], a0[..., 2]; lawa = (r0 > 130) & (r0 > g0 * 1.3) & (r0 > b0 * 1.8)
+    lm = np.asarray(Image.fromarray((lawa * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(2 * S))).astype(np.float32)[..., None] / 255
+    ramp = np.clip((np.mgrid[0:H, 0:W][0] / S + 8 - Z['od']) / 30, 0, 1)[..., None]; ciemne = a0 * Z['k'] + np.array(Z.get('kolor', [16, 12, 12]), np.float32) * (1 - Z['k']) * 0.5
+    a0 = a0 * (1 - ramp) + (ciemne * (1 - lm) + a0 * lm) * ramp; im = Image.fromarray(a0.clip(0, 255).astype(np.uint8))
 def scr(X, Z): return (296 + f * X / Z, hor + f * d / Z)
 rng = np.random.default_rng(seed); yy, xx = np.mgrid[0:H, 0:W]
 # obszar polany: wielokąt z układu minus woda (niebieskawe piksele) i pnie ramy (ciemny brąz przy krawędziach)
@@ -84,6 +89,14 @@ if P.get('bagno'):  # bagno: woda między placami (rozlewiska i kanały), brzeg 
     for j in (rng.choice(len(bx), size=min(len(bx), int(900 * S)), replace=False) if P.get('trzciny', True) else []):  # trzciny
         x, y = bx[j], by[j]; k = 0.4 + (y / S + 8 - hor) / 260; hgt = (4 + 8 * rng.random()) * k * S
         td.line([(x, y), (x + (rng.random() - 0.5) * 2 * S, y - hgt)], fill=tuple(int(v) for v in np.array([70, 90, 40]) * (0.7 + 0.6 * rng.random())), width=max(1, int(0.9 * k * S)))
+    teren = np.asarray(T).astype(np.float32)
+if P.get('pekniecia'):  # sieć pęknięć w spieczonej skorupie: ciemna szczelina z żarzącym się środkiem, spłaszczona perspektywą
+    T = Image.fromarray(teren.clip(0, 255).astype(np.uint8)); td = ImageDraw.Draw(T); Gy, Gx = np.nonzero(G)
+    for _ in range(P['pekniecia']):
+        j = rng.integers(len(Gx)); x, y = float(Gx[j]), float(Gy[j]); a = rng.random() * np.pi * 2; pts = [(x, y)]
+        for _k in range(rng.integers(4, 12)):
+            k = 0.3 + (y / S + 8 - hor) / 300; a += (rng.random() - 0.5) * 1.2; x += np.cos(a) * 9 * k * S; y += np.sin(a) * 3 * k * S; pts.append((x, y))
+        k = 0.3 + (y / S + 8 - hor) / 300; td.line(pts, fill=(14, 8, 8), width=max(1, int(2.4 * k * S))); td.line(pts, fill=tuple(P.get('pekniecia_kolor', [255, 110, 30])), width=max(1, int(0.9 * k * S)))
     teren = np.asarray(T).astype(np.float32)
 szkic = np.where(G[..., None], teren, a0)
 sz = Image.fromarray(szkic.clip(0, 255).astype(np.uint8)); sz.save(out.replace('.png', '-szkic.png'))

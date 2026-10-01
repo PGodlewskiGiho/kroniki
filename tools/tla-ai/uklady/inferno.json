@@ -200,9 +200,9 @@
    ]
   ],
   "ziemia": [
-   74,
-   58,
-   52
+   46,
+   34,
+   30
   ],
   "trakt": [
    [
@@ -243,13 +243,28 @@
    ]
   ],
   "brzeg_kolor": [
-   40,
-   30,
-   30
+   20,
+   14,
+   14
   ],
   "trzciny": false,
-  "opis": "detailed fantasy matte painting, volcanic hell town ground, flat dark basalt and ash plain, cracked rock with thin glowing lava cracks and small lava pools, flat stone plots, painterly, rich detail, crisp",
-  "zachowaj": true
+  "opis": "detailed fantasy matte painting, hell town ground, black charred coal and sintered cinder crust, cracked with thin glowing lava cracks, small lava pools, dark flat stone plots, painterly, rich detail, crisp",
+  "zachowaj": true,
+  "zwegl": {
+   "od": 118,
+   "k": 0.42,
+   "kolor": [
+    14,
+    10,
+    10
+   ]
+  },
+  "pekniecia": 70,
+  "pekniecia_kolor": [
+   210,
+   70,
+   20
+  ]
  },
  "ozdoby": [
   {
