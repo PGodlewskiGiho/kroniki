@@ -8,7 +8,7 @@ const PXU = 30;
 // --- faktury architektury (szare, mnożą kolor materiału; służą też za wypukłość) ---
 function archTex(kind) {
   if (TEX[kind]) return TEX[kind];
-  const N = 256, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d'), R = rng(kind.length * 131 + kind.charCodeAt(1) * 7);
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N * 2; const g = c.getContext('2d'), R = rng(kind.length * 131 + kind.charCodeAt(1) * 7); g.scale(2, 2); // rysunek 256, płótno 512: ostrzejsza faktura
   const grey = (v, a = 1) => `rgba(${v | 0},${v | 0},${v | 0},${a})`, noise = (a, b, k = 1) => { for (let i = 0; i < N * N / 3 * k; i++) { g.fillStyle = grey(a + R() * (b - a)); g.fillRect(R() * N | 0, R() * N | 0, 1 + (R() * 2 | 0), 1); } };
   const blocks = (rowH, w0, w1, mortar, bev) => { // mur z bloków: rzędy, losowe szerokości, jaśniejsza górna krawędź, ciemna spoina
     for (let y = 0; y < N; y += rowH) { let x = -R() * w0; while (x < N) { const w = w0 + R() * (w1 - w0), v = 168 + R() * 70; g.fillStyle = grey(v); g.fillRect(x, y, w, rowH);
@@ -28,15 +28,21 @@ function archTex(kind) {
     case 'shingle': for (let y = 0; y < N; y += 14) for (let x = -(y / 14 % 2) * 10; x < N; x += 20) { const v = 140 + R() * 90; g.fillStyle = grey(v); g.fillRect(x, y, 19, 14); g.fillStyle = grey(v - 60); g.fillRect(x, y + 12, 20, 2); g.fillRect(x + 18, y, 2, 14); } noise(0, 255, 0.2); break;
     case 'thatch': for (let i = 0; i < 2600; i++) { const x = R() * N, y = R() * N, v = 120 + R() * 120; g.strokeStyle = grey(v, 0.8); g.lineWidth = 1 + R(); g.beginPath(); g.moveTo(x, y); g.lineTo(x + (R() - 0.5) * 3, y + 12 + R() * 10); g.stroke(); } for (let y = 0; y < N; y += 32) { g.fillStyle = grey(60, 0.5); g.fillRect(0, y, N, 3); } break;
     case 'cobble': for (let y = 0; y < N; y += 18) for (let x = -(y / 18 % 2) * 11; x < N; x += 22) { const v = 140 + R() * 90; g.fillStyle = grey(v); g.beginPath(); g.ellipse(x + 11, y + 9, 10, 8, 0, 0, 7); g.fill(); g.strokeStyle = grey(60); g.lineWidth = 1.5; g.stroke(); } break;
+    case 'grass': g.fillStyle = grey(150); g.fillRect(0, 0, N, N); for (let i = 0; i < 26; i++) { const x = R() * N, y = R() * N, r = 20 + R() * 50, gr = g.createRadialGradient(x, y, 0, x, y, r), v = R() < 0.5 ? 110 : 190; gr.addColorStop(0, grey(v, 0.5)); gr.addColorStop(1, grey(v, 0)); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+      for (let i = 0; i < 9000; i++) { const x = R() * N, y = R() * N, v = 70 + R() * 170; g.strokeStyle = grey(v, 0.7); g.lineWidth = 0.8 + R(); g.beginPath(); g.moveTo(x, y); g.lineTo(x + (R() - 0.5) * 3, y - 2 - R() * 5); g.stroke(); } break; // trawa: źdźbła i plamy
+    case 'leaves': g.fillStyle = grey(110); g.fillRect(0, 0, N, N); for (let i = 0; i < 1400; i++) { const x = R() * N, y = R() * N, v = 70 + R() * 180, a = R() * 3; g.fillStyle = grey(v); g.beginPath(); g.ellipse(x, y, 5 + R() * 4, 2.5 + R() * 2, a, 0, 7); g.fill(); } break; // liście
+    case 'dirt': noise(120, 220, 1.4); for (let i = 0; i < 300; i++) { const x = R() * N, y = R() * N, r = 1 + R() * 3, v = 80 + R() * 160; g.fillStyle = grey(v); g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } break; // ubita ziemia z kamykami
+    case 'rock': noise(110, 230, 1.2); for (let i = 0; i < 60; i++) { g.strokeStyle = grey(60, 0.6); g.lineWidth = 1 + R() * 2; let x = R() * N, y = R() * N; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (R() - 0.5) * 30; y += R() * 20; g.lineTo(x, y); } g.stroke(); }
+      for (let i = 0; i < 30; i++) { const x = R() * N, y = R() * N, r = 10 + R() * 30, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, grey(R() < 0.5 ? 80 : 220, 0.35)); gr.addColorStop(1, grey(128, 0)); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); } break;
     default: noise(210, 255, 1);
   }
-  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 16;
   return (TEX[kind] = t);
 }
 // rodzaje materiałów budowli: [metaliczność, szorstkość, faktura, wypukłość]; faktura mapowana w pikselach sceny (archUV)
 Object.assign(MK, { ashlar: [0, 0.88, 'ashlar', 1.6], brick: [0, 0.85, 'brick', 1.4], rubble: [0, 0.9, 'rubble', 2], plaster: [0, 0.92, 'plaster', 0.6], planks: [0, 0.8, 'planks', 1.3],
-  tiles: [0, 0.7, 'tiles', 2.2], shingle: [0, 0.82, 'shingle', 1.8], thatch: [0, 0.95, 'thatch', 2.4], cobble: [0, 0.85, 'cobble', 1.8], copper: [0.75, 0.38, 'plate', 0.4], win: [0, 0.4, null, 0] });
-for (const k of ['ashlar', 'brick', 'rubble', 'plaster', 'planks', 'tiles', 'shingle', 'thatch', 'cobble']) archTex(k);
+  tiles: [0, 0.7, 'tiles', 2.2], shingle: [0, 0.82, 'shingle', 1.8], thatch: [0, 0.95, 'thatch', 2.4], cobble: [0, 0.85, 'cobble', 1.8], grass: [0, 0.95, 'grass', 1.2], leaves: [0, 0.8, 'leaves', 2], dirt: [0, 0.95, 'dirt', 1.2], rock: [0, 0.9, 'rock', 2.4], copper: [0.75, 0.38, 'plate', 0.4], win: [0, 0.4, null, 0] });
+for (const k of ['ashlar', 'brick', 'rubble', 'plaster', 'planks', 'tiles', 'shingle', 'thatch', 'cobble', 'grass', 'leaves', 'dirt', 'rock']) archTex(k);
 // Gęstość faktury: jeden powtórzony kafel = TEXPX pikseli sceny (UV bryły przeliczane z jej wymiarów)
 const TEXPX = { ashlar: 70, brick: 60, rubble: 80, plaster: 90, planks: 60, tiles: 50, shingle: 46, thatch: 70, cobble: 60 };
 function archMat(col, kind) { const m = mat(col, kind, 1); if (kind === 'win') { m.emissive = new THREE.Color(col); m.emissiveIntensity = 0.9; } return m; }
@@ -110,7 +116,7 @@ function timberFrame(w, h, x, y, z, col = '#3a2416', posts = 4) {
   const g = new THREE.Group(), t = 3;
   g.add(blk(w + 2, t + 1, 2, col, 'wood', x, y, z)); g.add(blk(w + 2, t + 1, 2, col, 'wood', x, y + h - t - 1, z)); g.add(blk(w + 2, t, 2, col, 'wood', x, y + h * 0.5, z));
   for (let i = 0; i <= posts; i++) g.add(blk(t, h, 2, col, 'wood', x - w / 2 + i * w / posts, y, z));
-  for (let i = 0; i < posts; i++) { const cx = x - w / 2 + (i + 0.5) * w / posts, len = Math.hypot(w / posts, h * 0.5), a = Math.atan2(h * 0.5, w / posts) * (i % 2 ? 1 : -1); const b = blk(2.4, len, 1.6, col, 'wood', 0, 0, 0); b.geometry.translate(0, -len / 2 / PXU, 0); b.position.set(...P(cx, y + h * 0.25, z)); b.rotation.z = a + Math.PI / 2 * (i % 2 ? -1 : 1) * 0 ; b.rotation.z = (i % 2 ? 1 : -1) * (Math.PI / 2 - Math.atan2(h * 0.5, w / posts)); g.add(b); }
+  for (let i = 0; i < posts; i++) { const cx = x - w / 2 + (i + 0.5) * w / posts, len = Math.hypot(w / posts, h * 0.5), a = Math.atan2(h * 0.5, w / posts) * (i % 2 ? 1 : -1); const b = blk(2.4, len, 1.6, col, 'wood', 0, 0, 0); b.geometry.center(); b.position.set(...P(cx, y + h * 0.25, z)); b.rotation.z = a + Math.PI / 2 * (i % 2 ? -1 : 1) * 0 ; b.rotation.z = (i % 2 ? 1 : -1) * (Math.PI / 2 - Math.atan2(h * 0.5, w / posts)); g.add(b); }
   return g;
 }
 // Maszt z flagą właściciela (gra rysuje powiewającą flagę w punkcie fx:flag)
@@ -160,7 +166,8 @@ function halfTimber(w, h, d, x, z, { roof = HV.roof, roofH = h * 0.7, wins = 3, 
   const g = new THREE.Group();
   g.add(blk(w, base, d, HV.stoneD, 'ashlar', x, y, z)); g.add(blk(w, h - base, d, HV.plaster, 'plaster', x, y + base, z));
   g.add(timberFrame(w, h - base, x, y + base, z + d / 2, HV.beam, Math.max(3, wins + 1)));
-  for (let f = 0; f < floors; f++) for (let i = 0; i < wins; i++) { const wx = x - w / 2 + (i + 0.5) * w / wins; if (f === 0 && Math.abs(wx - (x + doorAt)) < w / wins * 0.5) continue; g.add(opening(8, 11, wx, y + base + 4 + f * (h - base) / floors, z + d / 2 + 0.5, { glow: HV.glow, frame: HV.beam, arch: false })); }
+  const eave = h - 5 * roofH / (d / 2) - 2, band = (eave - base - 3) / floors, wh = Math.min(11, band - 3); /* okna pod okapem: dach opada o 5 * roofH / (d / 2) poniżej ściany */
+  for (let f = 0; f < floors; f++) for (let i = 0; i < wins; i++) { const wx = x - w / 2 + (i + 0.5) * w / wins; if (f === 0 && Math.abs(wx - (x + doorAt)) < w / wins * 0.5) continue; g.add(opening(8, wh, wx, y + base + 3 + f * band + (band - wh) / 2, z + d / 2 + 0.5, { glow: HV.glow, frame: HV.beam, arch: false })); }
   g.add(door(12, 20, x + doorAt, y, z + d / 2, '#5a3820', HV.stoneD));
   g.add(gable(w, d, roofH, roof, roofKind, x, y + h, z, 5, HV.plaster));
   if (chim) g.add(chimney(x + w * 0.3, y + h + roofH * 0.35, z - d * 0.15, roofH * 0.55));
@@ -188,6 +195,18 @@ function curtain(x0, x1, z, h, col = HV.stone, t = 10, kind = 'ashlar') { const 
 function gatehouse(w, h, x, z, col = HV.stone) { const g = new THREE.Group(); g.add(blk(w, h, 18, col, 'ashlar', x, 0, z)); g.add(crenTop(w, 18, h, col, 'ashlar', x, z));
   g.add(opening(w * 0.5, h * 0.6, x, 0, z + 9, { inner: '#141010', frame: DK(col, 0.2), frameKind: 'ashlar', bars: true, sill: false, frameW: 3 })); return g; }
 
+// Wnętrze niebiańskiej bramy: łuk (prostokąt 0..y1 + półkole) z obrazem świetlistej głębi – jasny środek, złote wiry, obłoki
+function portalGlow(r, y0, y1, z) {
+  const sh = new THREE.Shape(); sh.moveTo(-r, y0); sh.lineTo(r, y0); sh.lineTo(r, y1); sh.absarc(0, y1, r, 0, Math.PI, false); sh.lineTo(-r, y0);
+  const geo = new THREE.ShapeGeometry(sh, 24), uv = geo.attributes.uv, pos = geo.attributes.position, top = y1 + r;
+  for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) + r) / (2 * r), (pos.getY(i) - y0) / (top - y0));
+  const c = document.createElement('canvas'); c.width = 128; c.height = 256; const q = c.getContext('2d'), R = rng(77);
+  const bg = q.createRadialGradient(64, 150, 4, 64, 150, 150); bg.addColorStop(0, '#fffef0'); bg.addColorStop(0.25, '#ffe9a0'); bg.addColorStop(0.6, '#e8a850'); bg.addColorStop(1, '#8a5a3a'); q.fillStyle = bg; q.fillRect(0, 0, 128, 256);
+  for (let i = 0; i < 26; i++) { const a = R() * Math.PI * 2, d = 20 + R() * 90; q.strokeStyle = `rgba(255,${200 + R() * 55 | 0},${120 + R() * 100 | 0},${0.25 + R() * 0.4})`; q.lineWidth = 1 + R() * 3; q.beginPath(); q.arc(64, 150, d, a, a + 0.6 + R() * 1.2); q.stroke(); }
+  for (let i = 0; i < 14; i++) { const x = R() * 128, y = 170 + R() * 90, rr = 8 + R() * 18, gg = q.createRadialGradient(x, y, 0, x, y, rr); gg.addColorStop(0, 'rgba(255,250,235,.55)'); gg.addColorStop(1, 'rgba(255,250,235,0)'); q.fillStyle = gg; q.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t })); m.scale.setScalar(1 / PXU); m.position.z = z / PXU; return m;
+}
 const HAVEN3 = {
   hall(t) { // ratusz: dom z muru pruskiego i wieża zegarowa; 2: kamienica ze schodkowym szczytem; 3: biały gmach z kopułą; 4: pałac ze złotą kopułą
     const g = new THREE.Group(), A = havenA();
@@ -215,13 +234,13 @@ const HAVEN3 = {
   },
   fort(t) { // mur z basztami i bramą; 2: donżon z czerwonymi stożkami; 3: zamek z wysokimi niebieskimi iglicami
     const g = new THREE.Group(), A = havenA();
-    g.add(water(200, 12, 0, 40)); g.add(curtain(-84, 84, 22, 32)); g.add(gatehouse(34, 44, 0, 24)); g.add(blk(18, 2, 14, '#6a4a2a', 'planks', 0, 0, 40));
+    g.add(curtain(-84, 84, 22, 32)); g.add(gatehouse(34, 44, 0, 24)); g.add(blk(18, 2, 14, '#6a4a2a', 'planks', 0, 0, 40));
     for (const s of [-1, 1]) g.add(squareTower(24, 46, s * 86, 22, { wins: 1 }));
     if (t >= 2) { g.add(squareTower(30, 70, -36, -10, { roof: HV.roof, roofH: 26, wins: 2 })); g.add(squareTower(26, 60, 40, -12, { roof: HV.roof, roofH: 24, wins: 2 }));
-      g.add(blk(50, 50, 30, HV.stone, 'ashlar', 4, 0, -14)); g.add(crenTop(50, 30, 50, HV.stone, 'ashlar', 4, -14)); g.add(roundTower(9, 70, 4, -4, A, { roof: HV.roof, roofH: 20, wins: 2 })); g.add(mast(4, 102, -4, 16)); }
+      g.add(blk(50, 50, 30, HV.stone, 'ashlar', 4, 0, -14)); g.add(crenTop(50, 30, 50, HV.stone, 'ashlar', 4, -14)); g.add(roundTower(9, 70, 4, -4, A, { roof: HV.roof, roofH: 20, wins: 2 })); if (t < 3) g.add(mast(4, 86, -4, 16)); }
     if (t >= 3) { g.add(roundTower(16, 110, -22, -30, A, { roof: HV.blue, roofH: 46, wins: 3 })); g.add(roundTower(13, 92, 52, -32, A, { roof: HV.blue, roofH: 40, wins: 3 }));
       g.add(blk(70, 80, 30, HV.stone, 'ashlar', 14, 0, -34)); g.add(crenTop(70, 30, 80, HV.stone, 'ashlar', 14, -34)); for (let i = 0; i < 3; i++) g.add(opening(8, 14, -6 + i * 20, 46, -19, { glow: HV.glow, frame: HV.stoneD, frameKind: 'ashlar' }));
-      g.add(mast(-22, 170, -30, 20)); for (const s of [-1, 1]) g.add(roundTower(10, 60, s * 86, 22, A, { roof: HV.blue, roofH: 26, y: 46, cren: false, wins: 0 })); }
+      g.add(mast(-22, 150, -30, 20)); for (const s of [-1, 1]) g.add(roundTower(10, 60, s * 86, 22, A, { roof: HV.blue, roofH: 26, y: 46, cren: false, wins: 0 })); }
     return g;
   },
   guild(t) { // gildia magów: zwężająca się kamienna wieża, niebieski stożek, gwiazda; wyżej z każdym poziomem
@@ -256,8 +275,17 @@ const HAVEN3 = {
     g.add(squareTower(12, 20, -6, -4, { roof: HV.blue, roofH: 12, y: 50, wins: 0 })); g.add(blk(56, 22, 2, '#2a1a10', 'wood', 6, 2, 14.5));
     g.add(creature('cavalier', 6, 0, 26, 0.5, 0, { t: 0.2 })); g.add(blk(40, 2, 2, '#7a5230', 'wood', 26, 10, 30)); for (let i = 0; i < 4; i++) g.add(blk(2, 13, 2, '#7a5230', 'wood', 8 + i * 12, 0, 30));
     return g; },
-  grail() { const g = new THREE.Group(); for (let i = 0; i < 3; i++) g.add(blk(60 - i * 14, 6, 40 - i * 10, HV.marble, 'ashlar', 0, i * 6, 0)); g.add(blk(14, 50, 14, HV.marble, 'ashlar', 0, 18, 0));
-    g.add(lathe([[5, 0], [3, 3], [2, 10], [7, 18], [9, 26], [0.1, 26]].map(([a, b]) => [a / PXU, b / PXU]), HV.gold, 'gold', P(0, 68, 0))); glowMark(g, 0, 96, 0, 30, '#fff0a0'); return g; },
+  grail() { // Kolos Archanioła: olbrzymi marmurowy serafin z uniesionym mieczem i złotymi skrzydłami na wysokim schodkowym postumencie, nad głową świetlista aureola
+    const g = new THREE.Group();
+    for (let i = 0; i < 4; i++) g.add(blk(130 - i * 20, 8, 96 - i * 16, HV.marble, 'ashlar', 0, i * 8, 0));
+    g.add(blk(56, 42, 46, HV.marble, 'ashlar', 0, 32, 0)); const band = y => { const b = blk(62, 5, 52, HV.gold, 'gold', 0, y, 0); b.material = new THREE.MeshStandardMaterial({ color: '#e0b448', roughness: 0.3, metalness: 0.85 }); return b; }; g.add(band(32)); g.add(band(70));
+    for (const s of [-1, 1]) { g.add(blk(14, 26, 14, HV.marble, 'ashlar', s * 52, 32, 30)); g.add(sph(6 / PXU, HV.gold, 'gold', P(s * 52, 63, 30))); glowMark(g, s * 52, 63, 30, 10, '#ffe8a0'); }
+    const st = creature('seraph', 0, 75, 0, 2.8, -Math.PI / 2, { t: 0.15 }), /* model jednostki patrzy w bok pola bitwy: obrót przodem do widza */ marble = new THREE.MeshStandardMaterial({ color: '#efe9dc', roughness: 0.55, metalness: 0 }), gold = new THREE.MeshStandardMaterial({ color: '#e0b448', roughness: 0.3, metalness: 0.85 });
+    st.traverse(m => { if (!m.isMesh) return; const om = Array.isArray(m.material) ? m.material[0] : m.material, c = om && om.color ? om.color : null, warm = c && c.r > c.b * 1.35 && c.r > 0.45;
+      m.material = om && om.metalness > 0.5 ? gold : marble; m.castShadow = true; }); g.add(st); /* posąg: marmur, złoto tam, gdzie model ma metal lub ciepłe barwy (skrzydła, oręż) */
+    st.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(st), top = bb.max.y * PXU;
+        glowMark(g, 0, top - 20, 0, 70, '#fff0a0');
+    return g; },
 // Siedliska: stopień 2 rozbudowuje budowlę, stopień 3 (elita) to ta sama budowla w pełnej okazałości: wyższa, z kamienia
   // i złoceń, z wieżami i chorągwiami w barwach frakcji (granat i złoto), bez doklejonych obcych części.
   dw1(t) { // strażnica pikinierów: mała kamienna wartownia z blankami i tarczą; 2: stojak z włóczniami i manekin;
@@ -266,11 +294,11 @@ const HAVEN3 = {
     g.add(blk(W, H, 34, HV.stone, 'ashlar', -6, 0, -4)); g.add(crenTop(W, 34, H, t >= 3 ? LT(HV.stone, 0.15) : HV.stone, 'ashlar', -6, -4));
     if (t >= 3) g.add(blk(W + 5, 2, 39, HV.gold, 'gold', -6, H, -4));
     g.add(door(12, 20, -6, 0, 13, '#5a3820', HV.stoneD)); for (const s of [-1, 1]) g.add(opening(6, 10, -6 + s * 15, 18, 13, { glow: HV.glow, frame: HV.stoneD, frameKind: 'ashlar' }));
-    if (t >= 3) for (const s of [-1, 1]) g.add(opening(6, 10, -6 + s * 15, 34, 13, { glow: HV.glow, frame: HV.stoneD, frameKind: 'ashlar' }));
+    if (false) for (const s of [-1, 1]) g.add(opening(6, 10, -6 + s * 15, 34, 13, { glow: HV.glow, frame: HV.stoneD, frameKind: 'ashlar' }));
     g.add(shieldPlate(-6, t >= 3 ? 40 : 28, 13.5, t >= 3 ? 8 : 6, t >= 3 ? '#2a4a8a' : '#c83a2a'));
     if (t >= 2) { for (let i = 0; i < 3; i++) { const sp = blk(1.6, 34, 1.6, '#6a4424', 'wood', 26 + i * 4, 0, 10); sp.rotation.z = -0.05; g.add(sp); g.add(cone(1.8 / PXU, 6 / PXU, '#c8ccd4', 'steel', P(26.5 + i * 4, 37, 10))); }
       g.add(blk(2.5, 30, 2.5, '#6a4424', 'wood', 40, 0, 16)); g.add(blk(18, 2.5, 2.5, '#6a4424', 'wood', 40, 22, 16)); g.add(sph(5 / PXU, '#d8c080', 'cloth', P(40, 16, 16), [1, 1.5, 0.8])); g.add(sph(4 / PXU, '#d8c080', 'cloth', P(40, 28, 16))); }
-    if (t >= 3) { for (const s of [-1, 1]) { g.add(roundTower(9, 62, -6 + s * (W / 2), 13, A, { roof: HV.blue, roofH: 22, wins: 1 })); g.add(hangBanner(-6 + s * 13, H - 4, 13, 8, 18)); } g.add(mast(-6, H + 11, -4, 22)); }
+    if (t >= 3) { for (const s of [-1, 1]) { g.add(roundTower(9, 62, -6 + s * (W / 2), 13, A, { roof: HV.blue, roofH: 22, wins: 1 })); g.add(hangBanner(-6 + s * 13, H - 4, 13, 8, 18)); } g.add(mast(-6, H, -4, 22)); }
     return g; },
   dw2(t) { // strzelnica kuszników: wiata i tarcze; 2: wieżyczka na palach; 3: arsenał – kamienna wieża z blankami zamiast drewnianej, złoty pas, chorągiew
     const g = new THREE.Group(), sx = t >= 2 ? 6 : -14, A = havenA();
@@ -297,11 +325,11 @@ const HAVEN3 = {
     // 3: komandoria templariuszy – hala z przyporami i wysokimi oknami, wyższa dzwonnica z iglicą, złocony krzyż, chorągwie
     const g = new THREE.Group(), bx = t >= 2 ? -10 : 0, bw = t >= 2 ? 80 : 96, hh = t >= 3 ? 48 : 40;
     g.add(stoneHall(bw, hh, 48, bx, -4, { roofH: 28, wins: t >= 3 ? 0 : 4, doorW: 16 }));
-    if (t >= 3) for (let i = 0; i < 4; i++) { const x = bx - bw / 2 + 8 + i * (bw - 16) / 3; g.add(blk(6, hh - 4, 8, HV.stoneD, 'ashlar', x, 0, 22)); g.add(blk(6, 6, 6, HV.stoneD, 'ashlar', x, hh - 4, 20)); if (i < 3) g.add(opening(7, 22, x + (bw - 16) / 6, 12, 20.5, { glow: HV.glow, frame: HV.stoneD, frameKind: 'ashlar' })); }
+    if (t >= 3) for (let i = 0; i < 4; i++) { const x = bx - bw / 2 + 8 + i * (bw - 16) / 3; g.add(blk(6, hh - 14, 8, HV.stoneD, 'ashlar', x, 0, 22)); g.add(blk(6, 5, 6, HV.stoneD, 'ashlar', x, hh - 14, 20)); /* przypory kończą się pod okapem */ if (i < 3) g.add(opening(7, 22, x + (bw - 16) / 6, 12, 20.5, { glow: HV.glow, frame: HV.stoneD, frameKind: 'ashlar' })); }
     for (const s of [-1, 1]) g.add(shieldPlate(bx + s * 28, t >= 3 ? 36 : 26, 20.5, 5, t >= 3 ? '#e8e2d0' : '#c83a2a'));
-    for (const s of [-1, 1]) { const sw = blk(2, 22, 1, '#d8dce4', 'steel', bx, 22, 22); sw.rotation.z = s * 0.7; g.add(sw); }
+    if (t < 3) for (const s of [-1, 1]) { const sw = blk(2, 22, 1, '#d8dce4', 'steel', bx, 22, 22); sw.rotation.z = s * 0.7; g.add(sw); } /* w 3 miecze zasłaniały środkowe okno */
     if (t >= 2) { const th = t >= 3 ? 76 : 56; g.add(squareTower(22, th, 44, -8, { roof: HV.roof, roofH: t >= 3 ? 40 : 26, wins: 2 })); g.add(crossTop(44, th + (t >= 3 ? 43 : 29), -8)); }
-    if (t >= 3) { g.add(blk(bw + 6, 2, 52, HV.gold, 'gold', bx, hh, -4)); for (const s of [-1, 1]) g.add(hangBanner(bx + s * 40, hh - 4, 21, 9, 22, '#e8e2d0', '#c83a2a')); }
+    if (t >= 3) for (const s of [-1, 1]) g.add(hangBanner(bx + s * 40, hh - 10, 21, 9, 22, '#e8e2d0', '#c83a2a')); /* chorągwie pod okapem (złota listwa wystawała spod dachu) */
     return g; },
   dw5(t) { // klasztor: kościół z rozetą i dzwonnicą; 2: dwie dzwonnice; 3: trybunał – wyższa nawa z przyporami, złote iglice, chorągwie
     const g = new THREE.Group(), hh = t >= 3 ? 58 : 46;
@@ -320,18 +348,21 @@ const HAVEN3 = {
     if (stone) { g.add(squareTower(14, 30, -20, -4, { roof: HV.blue, roofH: 16, y: 44, wins: 0, clock: true })); g.add(mast(-20, 92, -4, 14)); for (const s of [-1, 1]) g.add(hangBanner(-20 + s * 22, 26, 16, 8, 18)); }
     return g; },
   dw7(t) { // brama niebios: biały portal ze złotym światłem i posągami aniołów; 2: iglica ze złotą kulą;
-    // 3: niebiański chór – szerszy portal z dwiema iglicami, złote skrzydła na łuku i świetlisty krąg
-    const g = new THREE.Group(), wd = t >= 3 ? 28 : 22;
-    for (let i = 0; i < 3; i++) g.add(blk(70 - i * 8 + (t >= 3 ? 16 : 0), 4, 30 - i * 4, HV.marble, 'ashlar', 0, i * 4, 0));
-    for (const s of [-1, 1]) g.add(blk(14, 60, 14, HV.marble, 'ashlar', s * wd, 12, 0));
-    const arch = new THREE.Mesh(new THREE.TorusGeometry(wd / PXU, 7 / PXU, 10, 24, Math.PI), archMat(HV.marble, 'ashlar')); arch.position.set(...P(0, 72, 0)); g.add(arch);
-    const gate = new THREE.Mesh(new THREE.CircleGeometry((wd - 6) / PXU, 24, 0, Math.PI), lightMat('#ffe890')); gate.position.set(...P(0, 72, 1)); g.add(gate); const pane = blk(wd * 2 - 14, 60, 2, '#ffe890', 'win', 0, 12, 0); pane.material = lightMat('#ffe890'); g.add(pane);
-    glowMark(g, 0, 50, 4, 40, '#fff0a0');
-    for (const s of [-1, 1]) g.add(creature('seraph', s * wd, 72, 2, 0.3, s * 0.5, { t: 0.2 }));
-    if (t >= 2) { g.add(cyl3(6, 2, 40, HV.marble, 'stone', 0, 72 + wd, -2, 12)); g.add(sph(5 / PXU, HV.gold, 'gold', P(0, 116 + wd, -2))); }
-    if (t >= 3) { for (const s of [-1, 1]) { g.add(cyl3(5, 1.5, 46, HV.marble, 'stone', s * (wd + 16), 12, -2, 12)); g.add(blk(10, 12, 10, HV.marble, 'ashlar', s * (wd + 16), 0, -2)); g.add(sph(3.5 / PXU, HV.gold, 'gold', P(s * (wd + 16), 59, -2))); }
-      g.add(torus((wd + 10) / PXU, 1.6 / PXU, HV.gold, 'gold', P(0, 72, -3), null, null, Math.PI));
-      for (const s of [-1, 1]) { const wg = slab([[0, 0], [16, 6], [26, 18], [18, 14], [22, 24], [12, 16], [10, 22], [4, 10]].map(([a, b]) => [s * a / PXU, b / PXU]), 1.4 / PXU, HV.gold, 'gold', P(s * 6, 72 + wd + 2, 2)); g.add(wg); } }
+    // 3: niebiański chór – monumentalna brama: wysokie schody, filary ze złotymi głowicami, podwójny łuk, złote skrzydła, iglice i anioły na cokołach
+    const g = new THREE.Group(), big = t >= 3, wd = big ? 34 : 22, H = big ? 92 : 60, st = big ? 5 : 3, y0 = st * 4, A = y0 + H;
+    for (let i = 0; i < st; i++) g.add(blk(70 - i * 8 + (big ? 44 : 0), 4, 30 - i * 3 + (big ? 14 : 0), HV.marble, 'ashlar', 0, i * 4, 0));
+    for (const s of [-1, 1]) { g.add(blk(big ? 18 : 14, H, big ? 18 : 14, HV.marble, 'ashlar', s * wd, y0, 0)); if (big) { g.add(blk(22, 6, 22, HV.marble, 'ashlar', s * wd, y0, 0)); g.add(blk(22, 4, 22, HV.gold, 'gold', s * wd, y0 + H - 4, 0)); } }
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(wd / PXU, (big ? 9 : 7) / PXU, 10, 28, Math.PI), archMat(HV.marble, 'ashlar')); arch.position.set(...P(0, A, 0)); g.add(arch);
+    g.add(portalGlow(wd - (big ? 9 : 7), y0, A, -2)); /* świetlista głębia bramy zamiast płaskiej tafli */
+    glowMark(g, 0, y0 + H * 0.6, 4, big ? 70 : 40, '#fff0a0');
+    for (const s of [-1, 1]) g.add(creature('seraph', s * wd, A, 2, big ? 0.42 : 0.3, s * 0.5, { t: 0.2 }));
+    if (t >= 2) { g.add(cyl3(6, 2, big ? 54 : 40, HV.marble, 'stone', 0, A + wd, -2, 12)); g.add(sph((big ? 7 : 5) / PXU, HV.gold, 'gold', P(0, A + wd + (big ? 58 : 44), -2))); }
+    if (big) {
+      g.add(torus((wd + 13) / PXU, 2.4 / PXU, HV.gold, 'gold', P(0, A, -3), null, null, Math.PI));
+      for (const s of [-1, 1]) { const x = s * (wd + 30); g.add(blk(14, 16, 14, HV.marble, 'ashlar', x, 0, 4)); g.add(cyl3(6, 2, 74, HV.marble, 'stone', x, 16, 4, 12)); g.add(sph(4.5 / PXU, HV.gold, 'gold', P(x, 92, 4)));
+        g.add(blk(16, 10, 14, HV.marble, 'ashlar', s * (wd + 14), 0, 26)); g.add(creature('seraph', s * (wd + 14), 10, 26, 0.34, s * 0.3, { t: 0.5 })); }
+      for (const s of [-1, 1]) { const wg = slab([[0, 0], [16, 6], [26, 18], [18, 14], [22, 24], [12, 16], [10, 22], [4, 10]].map(([a, b]) => [s * a * 1.6 / PXU, b * 1.6 / PXU]), 1.4 / PXU, HV.gold, 'gold', P(s * 6, A + wd + 4, 2)); g.add(wg); }
+    }
     return g; },
 };
 const TOWN3 = { haven: HAVEN3 };

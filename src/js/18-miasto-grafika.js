@@ -505,7 +505,7 @@ function proj(X, Z, e = 0) { const s = 1 / Z; return [PJ.cx + X * s, PJ.hor + PJ
 const hazeAt = Z => clamp((Z - 1.05) * 0.36, 0, 0.45);
 // Scena miasta ma własny, drobniejszy piksel TOWN_PIX (jak jednostki w bitwie: budowle są wypalone z modeli 3D w tej gęstości);
 // przy niskiej jakości grafiki (PIX 2) dawny, grubszy piksel. TOWN_ART_SCALE = pikseli sceny na px logiczny.
-const TOWN_RAW = true, TOWN_PIX = TOWN_RAW ? 1 : 1.35, townArtScale = () => (PIX >= 2 ? 1 / PIX : 1 / TOWN_PIX);
+const TOWN_RAW = true, TOWN_PIX = TOWN_RAW ? 1 : 1.35, townArtScale = () => (PIX >= 2 ? 1 / PIX : TOWN_RAW && (window.devicePixelRatio || 1) >= 1.5 ? 2 : 1 / TOWN_PIX); // ekran gęsty: scena w dwukrotnej gęstości (wypalona jest w D = 2)
 let TOWN_ART_SCALE = townArtScale();
 PIX_CLEAR.push(() => { TOWN_ART_SCALE = townArtScale(); });
 // Rysuje obiekt jako pikselowy sprite w skali perspektywy (twarde krawędzie, obrys, mgła oddalenia)
@@ -871,8 +871,26 @@ TOWN_LAYOUTS.barrow = {
 };
 let TownFXCache = {}, lastTownKey = null;
 // --- malowanie całej sceny ---
+// Scena wypalona w 3D (tools/grafika3d/wypal-miasta.js, jak Resident Evil Remake): niebo malowane, na nim tło (teren, woda, drzewa, góry),
+// potem zbudowane budowle od najdalszej; każda klatka leży w swoim miejscu kadru i ma już cień na terenie i zasłonięcia przez to, co przed nią.
+// Pole kliknięcia miejsca = obrys budowli (pustego miejsca: obrys jej najwyższego stopnia).
+const townScene3D = fac => { const T = typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART[fac], im = TOWN_IMG[fac]; return T && T.bg && im && im._ok ? { ...T, im } : null; };
+function paintTown3D(c, t, col, Wd, T3) {
+  const fx = { wins: [], smokes: [], glows: [], flags: [], rects: {}, painted: !!T3.bgo }, d = T3.d, put = (fr, x, y) => c.drawImage(T3.im, fr[0], fr[1], fr[2], fr[3], x, y, fr[2] / d, fr[3] / d);
+  c.save(); c.beginPath(); c.rect(8, 8, 576, 422); c.clip(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  if (!T3.bgo) { skyDramatic(c, Wd.sky); skyDetail(c, Wd.sky); } put(T3.bg, ...(T3.bgo || [0, 0])); // namalowane tło (tools/tla-ai) ma własne niebo
+  const top = slot => { let best = null; for (const B of BUILDINGS) if (B.slot === slot && bAllowed(t, B)) { const [g, k] = groupOf(B), e = T3.b[g + k]; if (e) best = e; } return best; };
+  Wd.slots.map((S, i) => ({ S, i })).sort((a, b) => b.S.Z - a.S.Z).forEach(({ S, i }) => {
+    const B = slotBuilding(t, i), e = B ? T3.b[groupOf(B).join('')] : null, r = e || top(i);
+    if (r) fx.rects[i] = { x: r.o[0], y: r.o[1], w: r.f[2] / d, h: r.f[3] / d, z: S.Z };
+    if (!e) return; put(e.f, e.o[0], e.o[1]);
+    for (const [nm, mx, my] of e.m || []) { const [kind, rr, gc] = nm.split('|'), sc = S.k / S.Z; if (kind === 'smoke') fx.smokes.push([mx, my, sc]); else if (kind === 'flag') fx.flags.push([mx, my, col, sc]); else if (kind === 'glow') fx.glows.push([mx, my, +rr * sc, gc]); }
+  });
+  const vg = c.createRadialGradient(296, 230, 180, 296, 230, 420); vg.addColorStop(0, 'rgba(6,6,14,0)'); vg.addColorStop(1, 'rgba(6,6,14,.45)'); c.fillStyle = vg; c.fillRect(8, 8, 576, 422);
+  c.restore(); return fx;
+}
 function paintTownWorld(c, t, col, Wd) {
-  usePJ(Wd); const fac = t.faction, A = Wd.art || TOWN_ART[fac], fx = { wins: [], smokes: [], glows: [], flags: [], rects: {} }, arts = BUILD_ART[fac] || {}, hzC = Wd.haze;
+  usePJ(Wd); const T3 = townScene3D(t.faction); if (T3) return paintTown3D(c, t, col, Wd, T3); const fac = t.faction, A = Wd.art || TOWN_ART[fac], fx = { wins: [], smokes: [], glows: [], flags: [], rects: {} }, arts = BUILD_ART[fac] || {}, hzC = Wd.haze;
   c.save(); c.beginPath(); c.rect(8, 8, 576, 422); c.clip();
   skyDramatic(c, Wd.sky); if (TOWN_RAW) skyDetail(c, Wd.sky);
   const [rs1, rs2, rb] = Wd.ridge || [211, 237, 170], snow = fac === 'academy';
@@ -954,8 +972,7 @@ function drawTownFX(ctx, t, fx) {
     for (let i = 6; i >= 0; i--) ctx.lineTo(i * 2.4, 6 - i * 0.75 + Math.sin(tm * 5 - i * 0.8 + x) * 1.4 * i / 6);
     ctx.closePath(); ctx.fill(); ctx.restore();
   }
-  drawCreaturesFX(ctx, LL, tm);
-  drawTownFolk(ctx, LL, tm, fx.rects);
+  if (!fx.painted) { drawCreaturesFX(ctx, LL, tm); drawTownFolk(ctx, LL, tm, fx.rects); } // na namalowanym tle nie ma ścieżek sceny 2D
   if (LL.birds) for (let i = 0; i < 4; i++) {
     const x = ((tm * 18 + i * 170) % 720) - 60, y = 46 + i * 15 + Math.sin(tm * 0.8 + i) * 6, f = Math.sin(tm * 9 + i * 2) * 3;
     ctx.strokeStyle = LL.birdCol || 'rgba(40,40,60,.8)'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(x - 5, y - f); ctx.quadraticCurveTo(x - 2, y - 1, x, y + 1); ctx.quadraticCurveTo(x + 2, y - 1, x + 5, y - f); ctx.stroke();
