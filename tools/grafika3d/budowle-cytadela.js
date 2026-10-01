@@ -74,7 +74,7 @@ const STRONGHOLD3 = {
     for (let i = 0; i < 3; i++) { const y = 16 + i * 50, w = 54 - i * 8; g.add(blk(w, 48, w * 0.8, i % 2 ? CY.rock : '#b0684a', 'rock', 0, y, -6)); g.add(blk(w + 6, 7, 8, CY.rockD, 'rock', 0, y + 32, -6 + w * 0.4)); /* łuk brwiowy */
       for (const s of [-1, 1]) { const e = blk(w * 0.18, 5, 2, CY.fire, 'glow', s * w * 0.22, y + 25, -6 + w * 0.4 + 0.4); e.material = lightMat('#ffa040'); g.add(e); g.add(cone(2.6 / PXU, 12 / PXU, CY.bone, 'bone', P(s * w * 0.28, y + 9, -6 + w * 0.4 + 2), null, 6)); }
       g.add(blk(w * 0.24, 10, 6, CY.rockD, 'rock', 0, y + 14, -6 + w * 0.4 + 2)); g.add(blk(w * 0.6, 4, 3, '#2a1a10', 'rock', 0, y + 6, -6 + w * 0.4 + 0.6)); }
-    for (const s of [-1, 1]) g.add(torus(26 / PXU, 4 / PXU, CY.bone, 'bone', P(s * 22, 166, -6), [0, 0, s > 0 ? -0.1 : Math.PI + 0.1], null, Math.PI * 0.55)); /* rogi osadzone w górnej głowie */
+    for (const s of [-1, 1]) g.add(cone(5 / PXU, 26 / PXU, CY.bone, 'bone', P(s * 26, 166, -6), [0, 0, -s * 0.7], 8)); /* rogi wyrastające z boków górnej głowy */
     glowMark(g, 0, 120, 20, 40, CY.fire); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.3; g.add(blk(8, 34 + (i % 2) * 10, 6, CY.rockD, 'rock', Math.cos(a) * 84, 0, Math.sin(a) * 54)); } for (const s of [-1, 1]) g.add(cyFire(s * 44, 52, 1.4));
     return g; },
   dw1(t) { // chaty hobgoblinów: kilka małych namiotów ze skór i ognisko; 2: obóz łupieżców – palisada; 3: obóz rębaczy – stojaki z bronią i proporzec
