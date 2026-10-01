@@ -260,7 +260,7 @@ elite('dreadLord', 'abyssKnight', ['Rycerz Otchłani', 'Rycerze Otchłani', 'ryc
 elite('ghostWyvern', 'boneDragon', ['Kościany smok', 'Kościane smoki', 'kościanych smoków', 'kościane smoki'], [24, 21, 35, 60, 260, 15, 6400], { gold: 4200, mercury: 3 }, ['undead', 'fly', 'breath', 'deathBlow'],
   { fur: '#d8d0bc', eyes: '#8af0b8', soulFire: '#8af0b8', form: '', size: 1.28 });
 // Twierdza (bagna)
-elite('gnollMarauder', 'gnollBerserker', ['Gnoll berserker', 'Gnolle berserkerzy', 'gnolli berserkerów'], [7, 7, 2, 4, 10, 6, 130], { gold: 95 }, ['doubleStrike'],
+elite('gnollMarauder', 'gnollBerserker', ['Gnoll berserker', 'Gnolle berserkerzy', 'gnolli berserkerów'], [8, 7, 2, 4, 11, 6, 135], { gold: 95 }, ['doubleStrike'],
   { dual: true, shield: null, helm: null, build: 'stocky', armor: null, bare: true, skulls: '#e8e0cc', backSpikes: '#e8e0cc', pauldrons: 'spiked', size: 1.1 });
 elite('lizardWarrior', 'lizardSlayer', ['Jaszczur zabójca', 'Jaszczury zabójcy', 'jaszczurów zabójców'], [8, 9, 3, 5, 19, 6, 275], { gold: 190 }, ['noMeleePenalty', 'sharpshooter'],
   { helm: null, frill: '#c86a2a', armor: 'breast', metal: '#8a7a4a', skulls: '#e8e0cc', pauldrons: 'spiked', cape: '#3a4a2a', size: 1.04 });
@@ -272,16 +272,16 @@ elite('mightyGorgon', 'armoredGorgon', ['Pancerna gorgona', 'Pancerne gorgony', 
   { heavyScales: true, hornScale: 1.35, size: 1.52 });
 elite('wyvernKing', 'stormWyvern', ['Wywern burzy', 'Wywerny burzy', 'wywernów burzy', 'wywerny burzy'], [17, 17, 20, 26, 100, 13, 2100], { gold: 1450, sulfur: 1 }, ['fly', 'noRetal', 'deathBlow'],
   { bolts: '#e8f4ff', mane: '#6a4a1a', size: 0.98 });
-elite('chaosHydra', 'primeHydra', ['Pradawna hydra', 'Pradawne hydry', 'pradawnych hydr', 'pradawne hydry'], [21, 22, 30, 48, 260, 8, 7500], { gold: 4700, sulfur: 3 }, ['noRetal', 'regen', 'breath', 'unlimitedRetal'],
+elite('chaosHydra', 'primeHydra', ['Pradawna hydra', 'Pradawne hydry', 'pradawnych hydr', 'pradawne hydry'], [21, 23, 30, 48, 280, 8, 7500], { gold: 4600, sulfur: 3 }, ['noRetal', 'regen', 'breath', 'unlimitedRetal'],
   { heads: 9, horns: '#e0c060', frill: '#9a6aaa', size: 1.32 });
 // Inferno
-elite('familiar', 'bies', ['Bies', 'Biesy', 'biesów', 'biesy'], [6, 5, 2, 3, 8, 8, 105], { gold: 80 }, ['deathBlow'],
+elite('familiar', 'bies', ['Bies', 'Biesy', 'biesów', 'biesy'], [6, 5, 2, 3, 9, 8, 110], { gold: 80 }, ['deathBlow'],
   { weapon: 'trident', wingSpan: 0.85, hornType: 'long', size: 0.8 });
-elite('magog', 'firebrand', ['Podpalacz', 'Podpalacze', 'podpalaczy'], [9, 6, 3, 6, 20, 7, 350], { gold: 240 }, ['noMeleePenalty', 'armorPierce'],
+elite('magog', 'firebrand', ['Podpalacz', 'Podpalacze', 'podpalaczy'], [9, 6, 3, 6, 22, 7, 360], { gold: 240 }, ['noMeleePenalty', 'armorPierce'],
   { flameHair: '#ffb040', horns: '#1a1010', hornType: 'long', hornScale: 1.4, flameMantle: '#ff8a30', handFire: '#ffb040', skulls: '#e8e0cc', size: 1.12 });
 elite('cerberus', 'abyssCerberus', ['Cerber Otchłani', 'Cerbery Otchłani', 'cerberów Otchłani', 'cerbery Otchłani'], [12, 10, 3, 9, 38, 10, 610], { gold: 320 }, ['noRetal', 'breath'],
   { horns: '#1a1010', collar: '#2a1a14', blaze: '#e8d8c0', size: 1.34 });
-elite('hornedDemon', 'doomDemon', ['Demon zagłady', 'Demony zagłady', 'demonów zagłady', 'demony zagłady'], [15, 15, 9, 13, 58, 7, 860], { gold: 420 }, ['deathBlow'],
+elite('hornedDemon', 'doomDemon', ['Demon zagłady', 'Demony zagłady', 'demonów zagłady', 'demony zagłady'], [16, 15, 9, 13, 62, 7, 880], { gold: 420 }, ['deathBlow'],
   { weapon: 'labrys', wings: '#5a1810', wingSpan: 1.1, armor: 'breast', size: 1.32 });
 elite('pitLord', 'archFiend', ['Arcyczart', 'Arcyczarty', 'arcyczartów', 'arcyczarty'], [16, 15, 15, 20, 72, 8, 1750], { gold: 950, mercury: 1 }, ['lifeDrain', 'deathBlow'],
   { offWeapon: 'mace', hornScale: 1.8, wingSpan: 1.8, flameMantle: '#ff5a10', crownSpikes: '#3a2a2a', helm: null, size: 1.58 });
@@ -307,7 +307,7 @@ elite('titan', 'stormTitan', ['Tytan burzy', 'Tytani burzy', 'tytanów burzy'], 
 // Loch
 elite('infernalTroglodyte', 'shadowTroglodyte', ['Troglodyta cienia', 'Troglodyci cienia', 'troglodytów cienia'], [7, 6, 2, 4, 10, 6, 140], { gold: 100 }, ['deathBlow'],
   { weapon: 'trident', shieldShape: 'tower', cape: '#3a1a2a', backSpikes: '#3a2a20', size: 0.98 });
-elite('harpyHag', 'fury', ['Furia', 'Furie', 'furii', 'furie'], [10, 8, 2, 5, 20, 11, 370], { gold: 260 }, ['fly', 'noRetal', 'doubleStrike'],
+elite('harpyHag', 'fury', ['Furia', 'Furie', 'furii', 'furie'], [10, 8, 2, 5, 18, 11, 360], { gold: 260 }, ['fly', 'noRetal', 'doubleStrike'],
   { weapon: 'dagger', dual: true, snakes: '#5a6a4a', wingSpan: 1.45, size: 1.04 });
 elite('evilEye', 'doomEye', ['Oko zagłady', 'Oczy zagłady', 'oczu zagłady', 'oczy zagłady'], [12, 10, 4, 7, 32, 8, 560], { gold: 370 }, ['noMeleePenalty', 'sharpshooter'],
   { stalks: 12, spikes: '#e8d8c0', tentacles: true, size: 1.4 });
@@ -317,7 +317,7 @@ elite('minotaurKing', 'minotaurLord', ['Minotaur władca', 'Minotaury władcy', 
   { dual: true, armor: 'plate', hornScale: 2.1, pauldrons: 'spiked', crownSpikes: '#c8a050', skulls: '#e8e0cc', size: 1.7 });
 elite('scorpicore', 'ancientManticore', ['Pradawna mantykora', 'Pradawne mantykory', 'pradawnych mantykor', 'pradawne mantykory'], [19, 19, 17, 24, 115, 13, 2450], { gold: 1400, sulfur: 1 }, ['fly', 'noRetal', 'deathBlow'],
   { maneK: 1.3, wingK: 1.2, backSpikes: '#e0d0b0', quills: '#e0d0b0', size: 1.6 });
-elite('blackDragon', 'shadowDragon', ['Smok cienia', 'Smoki cienia', 'smoków cienia', 'smoki cienia'], [29, 29, 45, 55, 360, 17, 11000], { gold: 5500, sulfur: 3 }, ['fly', 'breath', 'armorPierce'],
+elite('blackDragon', 'shadowDragon', ['Smok cienia', 'Smoki cienia', 'smoków cienia', 'smoki cienia'], [29, 29, 45, 55, 340, 17, 11000], { gold: 5500, sulfur: 3 }, ['fly', 'breath', 'armorPierce'],
   { bolts: '#b060ff', mane: '#3a3048', eyes: '#d080ff', size: 1.32 });
 // Cytadela
 elite('hobgoblinRaider', 'hobgoblinSlasher', ['Hobgoblin rębacz', 'Hobgobliny rębacze', 'hobgoblinów rębaczy', 'hobgobliny rębacze'], [8, 5, 2, 4, 9, 8, 135], { gold: 75 }, ['doubleStrike'],
