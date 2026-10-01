@@ -714,5 +714,161 @@
    ],
    "cienie_n": 70
   }
+ },
+ "stronghold": {
+  "opis": "painted desert canyon town site at sunset, flat sandy plain and red sandstone mesa terraces with cliffs, small palm oasis pond, distant buttes, dramatic orange sky",
+  "teren": {
+   "hor": 140,
+   "ziarno": 9,
+   "niebo": [
+    [
+     70,
+     90,
+     150
+    ],
+    [
+     250,
+     170,
+     100
+    ]
+   ],
+   "ziemia": [
+    [
+     226,
+     190,
+     140
+    ],
+    [
+     196,
+     150,
+     100
+    ]
+   ],
+   "skala": [
+    160,
+    86,
+    58
+   ],
+   "ciecz": [
+    [
+     110,
+     190,
+     200
+    ],
+    [
+     60,
+     140,
+     160
+    ]
+   ],
+   "mgla": [
+    240,
+    190,
+    150
+   ],
+   "lune": [
+    30,
+    60,
+    70
+   ],
+   "urwisko": "warstwy",
+   "gory": [
+    [
+     40,
+     90,
+     [
+      200,
+      120,
+      90
+     ]
+    ],
+    [
+     14,
+     40,
+     [
+      170,
+      96,
+      70
+     ]
+    ]
+   ],
+   "kamienie": 40,
+   "cienie": [
+    200,
+    160,
+    116
+   ],
+   "cienie_n": 40,
+   "plyty": [
+    {
+     "x": [
+      170,
+      500
+     ],
+     "tyl": 150,
+     "przod": 206,
+     "dol": 246,
+     "wodospady": [],
+     "kolor": [
+      214,
+      160,
+      110
+     ]
+    },
+    {
+     "x": [
+      430,
+      584
+     ],
+     "tyl": 256,
+     "przod": 292,
+     "dol": 314,
+     "wodospady": [],
+     "kolor": [
+      220,
+      170,
+      120
+     ]
+    }
+   ],
+   "rzeki": [
+    {
+     "pkt": [
+      [
+       40,
+       296
+      ],
+      [
+       90,
+       310
+      ],
+      [
+       130,
+       330
+      ],
+      [
+       150,
+       356
+      ]
+     ],
+     "w": [
+      34,
+      44
+     ]
+    }
+   ],
+   "turnie": [
+    [
+     14,
+     150,
+     56
+    ],
+    [
+     578,
+     170,
+     40
+    ]
+   ]
+  }
  }
 }
