@@ -20,7 +20,7 @@ for R in U.get('drogi', []):
         x, y = p; w = R['w'] * max(0.15, (y - hor) / (420 - hor)) / 2; X, Y, r = (x - 8) * S, (y - 8) * S, w * S
         k = r * max(0.3, (y - hor) / np.hypot(U['pj'].get('f', 1000), y - hor))  # elipsa w perspektywie
         md.ellipse([X - r * 1.5, Y - k * 1.5, X + r * 1.5, Y + k * 1.5], fill=255)
-        c = tuple(int(v) for v in np.array([148, 124, 88]) + rng.normal(0, 8, 3)); dd.ellipse([X - r, Y - k, X + r, Y + k], fill=c)
+        c = tuple(int(v) for v in np.array([166, 142, 104]) + rng.normal(0, 8, 3)); dd.ellipse([X - r, Y - k, X + r, Y + k], fill=c)
 draw = Image.blend(im, draw, 0.85)
 torch.set_num_threads(os.cpu_count())
 pipe = StableDiffusionImg2ImgPipeline.from_pretrained(os.environ.get('MODEL', 'Lykon/dreamshaper-8'), torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
