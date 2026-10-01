@@ -18,7 +18,8 @@
     325,
     214
    ],
-   "k": 1.6
+   "k": 1.6,
+   "zaslona": false
   },
   {
    "s": [
@@ -34,7 +35,8 @@
    ],
    "z": 1.9,
    "k": 1.05,
-   "yaw": -55
+   "yaw": -55,
+   "zaslona": false
   },
   {
    "s": [
@@ -111,7 +113,8 @@
     153
    ],
    "z": 3.5,
-   "k": 6
+   "k": 2.8,
+   "zaslona": false
   }
  ],
  "_analiza": "Geometria obrazu: horyzont 132, kąt patrzenia ~40° u dołu, ~30° na środkowej łące, ~15° na półwyspie (f = 300). Płaskie: dolna łąka (y 340–420), środkowa łąka (x 230–420, y 270–330), półwysep (x 250–400, y 195–240), szczyt klifu (x 470–580, y 150–170). Wzniesienia: z = odległość podstawy wzgórza (rząd, gdzie styka się z doliną), e wynika z różnicy rzędów.",
