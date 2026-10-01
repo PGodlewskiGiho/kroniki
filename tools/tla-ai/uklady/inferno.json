@@ -406,19 +406,19 @@
  "swiatlo": {
   "niebo": 5910568,
   "ziemia": 16734746,
-  "hemi": 0.9,
+  "hemi": 0.4,
   "slonce": 16752752,
-  "moc": 2.4,
+  "moc": 2.2,
   "wypelnienie": 16738864,
-  "wypelnienie_moc": 0.35,
-  "kontra": 16740384,
-  "kontra_moc": 2.6,
-  "dol": 16738848,
-  "dol_moc": 1.6
+  "wypelnienie_moc": 0.15,
+  "kontra": 16752704,
+  "kontra_moc": 4.5,
+  "dol": 16734736,
+  "dol_moc": 2.6
  },
  "haze": "#5a2416",
- "grade": "saturate(1.08) brightness(0.96) contrast(1.05)",
+ "grade": "saturate(1.12) brightness(1.0) contrast(1.2)",
  "blendOpts": {
-  "color": 0.28
+  "color": 0.2
  }
 }
