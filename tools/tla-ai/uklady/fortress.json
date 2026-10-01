@@ -189,7 +189,20 @@
    ]
   ],
   "trakt_w": 16,
-  "opis": "detailed fantasy matte painting, swamp town ground in sunlight, flat open plain of green moss and short marsh grass, a wide muddy dirt road, flat bare earth plots, small puddles, painterly, rich detail, crisp"
+  "opis": "detailed fantasy matte painting, swamp town ground in sunlight, dark swamp water pools and channels between flat muddy plots, green moss islands, reeds on the banks, muddy dirt road, painterly, rich detail, crisp",
+  "bagno": 0.44,
+  "woda_kolor": [
+   [
+    130,
+    160,
+    140
+   ],
+   [
+    30,
+    52,
+    44
+   ]
+  ]
  },
  "ozdoby": [
   {
@@ -247,38 +260,6 @@
     336
    ],
    "k": 1.6
-  },
-  {
-   "o": 3,
-   "s": [
-    40,
-    300
-   ],
-   "k": 2.4
-  },
-  {
-   "o": 3,
-   "s": [
-    566,
-    262
-   ],
-   "k": 2.4
-  },
-  {
-   "o": 3,
-   "s": [
-    250,
-    286
-   ],
-   "k": 2.4
-  },
-  {
-   "o": 3,
-   "s": [
-    352,
-    286
-   ],
-   "k": 2.4
   },
   {
    "o": 4,

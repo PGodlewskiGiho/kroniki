@@ -42,6 +42,9 @@ for i, o in enumerate(U['slots']):
     for a in np.linspace(0, 2 * np.pi, 40, endpoint=False):  # elipsa w świecie: plac, nie prostokąt
         ex, ez = np.cos(a), np.sin(a); pts.append(I(*scr(X + ex * w, zw + (ez * back if ez > 0 else ez * front))))
     pd.polygon(pts, fill=255); fronty.append(scr(X, zw - m['front'] * k - 6))
+for o in U.get('ozdoby', []):  # małe place pod ozdobami (żeby nie stały w wodzie)
+    sx, sy = o['s']; zw = f * d / (sy - hor); X = (sx - 296) * zw / f; r0 = 16 * o.get('k', 1)
+    pd.polygon([I(*scr(X + np.cos(a) * r0, zw + np.sin(a) * r0 * 0.8)) for a in np.linspace(0, 2 * np.pi, 24, endpoint=False)], fill=255)
 # ścieżki: trakt z układu + odnoga do frontu każdej budowli od najbliższego punktu traktu
 def spline(pts, n=20):
     Q = [pts[0]] + pts + [pts[-1]]; o = []
@@ -62,6 +65,20 @@ for pts, wd in sciezki:
 place = place.filter(ImageFilter.GaussianBlur(2 * S)); pa = (np.asarray(place).astype(np.float32) / 255)[..., None]
 tx = (0.75 + 0.5 * (0.6 * noise(6) + 0.4 * noise(2)))[..., None]
 teren = np.asarray(L).astype(np.float32); teren = teren * (1 - pa * 0.85) + ziemia * tx * pa * 0.85
+if P.get('bagno'):  # bagno: woda między placami (rozlewiska i kanały), brzeg z mułu, trzciny na brzegu
+    pm = Image.fromarray((np.asarray(place) > 40).astype(np.uint8) * 255).filter(ImageFilter.MaxFilter(int(9 * S) | 1)).filter(ImageFilter.GaussianBlur(3 * S))
+    nz = 0.55 * noise(34) + 0.3 * noise(12) + 0.15 * noise(4); fy = np.clip((yy / S + 8 - P['obszar_tyl']) / 60, 0, 1)
+    wm = G & (np.asarray(pm) < 60) & (nz * fy > P['bagno'])
+    wm = np.asarray(Image.fromarray(wm.astype(np.uint8) * 255).filter(ImageFilter.MedianFilter(5))) > 128
+    brzeg = (np.asarray(Image.fromarray(wm.astype(np.uint8) * 255).filter(ImageFilter.MaxFilter(int(5 * S) | 1))) > 128) & ~wm
+    wk = np.array(P.get('woda_kolor', [[150, 170, 140], [40, 60, 48]]), np.float32); tw = np.clip((yy / S + 8 - P['obszar_tyl']) / (430 - P['obszar_tyl']), 0, 1)[..., None] ** 0.6
+    wc = wk[0] * (1 - tw) + wk[1] * tw; wc = wc * (0.92 + 0.16 * noise(3)[..., None] * (0.5 + 0.5 * np.sin(yy / S * 1.7))[..., None])
+    teren = np.where(wm[..., None], wc, teren); teren = np.where(brzeg[..., None], ziemia * 0.7 * tx, teren)
+    T = Image.fromarray(teren.clip(0, 255).astype(np.uint8)); td = ImageDraw.Draw(T); by, bx = np.nonzero(brzeg)
+    for j in rng.choice(len(bx), size=min(len(bx), int(900 * S)), replace=False):  # trzciny
+        x, y = bx[j], by[j]; k = 0.4 + (y / S + 8 - hor) / 260; hgt = (4 + 8 * rng.random()) * k * S
+        td.line([(x, y), (x + (rng.random() - 0.5) * 2 * S, y - hgt)], fill=tuple(int(v) for v in np.array([70, 90, 40]) * (0.7 + 0.6 * rng.random())), width=max(1, int(0.9 * k * S)))
+    teren = np.asarray(T).astype(np.float32)
 szkic = np.where(G[..., None], teren, a0)
 sz = Image.fromarray(szkic.clip(0, 255).astype(np.uint8)); sz.save(out.replace('.png', '-szkic.png'))
 if os.environ.get('SZKIC'): print(out.replace('.png', '-szkic.png')); sys.exit()
