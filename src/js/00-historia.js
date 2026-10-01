@@ -301,5 +301,12 @@
    obejmuje wszystkie stopnie; SI werbuje najwyższy stopień, na który ją stać (jeden oddział na poziom).
    Wygląd elity: ta sama istota co ulepszona, mocniej rozwinięta własnymi cechami (większe rogi, łuski, grzywa, zbroja,
    płomienie, czaszki), bez doklejanych części i w barwach frakcji. galeria.js: COLS i ZOOM do porównań przed wypaleniem.
+   Balans elity: symulacje walk za równe złoto i pełnych bitew z bohaterami (test w elite.test.js), korekty statystyk i cen.
+   Duże stwory na dwóch polach (jak w Heroes 3): CREATURES[cid].wide z rodzaju wyglądu (WIDE_KINDS w 03: jeźdźcy, czworonogi,
+   smoki, hydry, gryfy, ptaki, centaury, jednorogi, feniksy, nagi). Przód w (u.x, u.y), zad za nim po stronie, z której
+   przyszły (tailDx: strona 0 w lewo, 1 w prawo). unitCells, unitAt (także zad), hexAdjacent (każde pole przy każdym),
+   canStand (oba pola wolne) w ruchu, ustawieniu i lądowaniu, attackSpots (atak z zadu i w zad), czary obszarowe ranią raz.
+   Ekran: unitPos rysuje stwora między polami, podświetlenia obu pól. Piksel jednostek w bitwie 1,35 px (wypal.js UB),
+   pixelize bez dzielenia przez alfę i z brzegiem nie jaśniejszym od wnętrza (bez jasnych obwódek).
    ===================================================================================== */
 

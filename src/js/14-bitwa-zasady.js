@@ -9,7 +9,13 @@ function hexNeighbors(x, y) {
   const d = y & 1 ? [[1, 0], [-1, 0], [0, -1], [1, -1], [0, 1], [1, 1]] : [[1, 0], [-1, 0], [-1, -1], [0, -1], [-1, 1], [0, 1]];
   return d.map(([dx, dy]) => [x + dx, y + dy]).filter(([a, b]) => inField(a, b));
 }
-const hexAdjacent = (a, b) => hexNeighbors(a.x, a.y).some(([x, y]) => x === b.x && y === b.y);
+// Duże stwory (jak w Heroes 3: jeźdźcy, smoki, czworonogi) zajmują dwa pola: przód (u.x, u.y) i zad za nim,
+// po stronie, z której przyszły (strona 0: x − 1, strona 1: x + 1). Odwrócenie się w walce nie przesuwa zadu.
+const isWide = u => !!CREATURES[u.cid].wide;
+const tailDx = u => (u.side === 0 ? -1 : 1);
+const unitCells = (u, x = u.x, y = u.y) => (u.cid && isWide(u) ? [[x, y], [x + tailDx(u), y]] : [[x, y]]);
+// Sąsiedztwo pól albo oddziałów (każde pole jednego przy którymkolwiek polu drugiego)
+const hexAdjacent = (a, b) => { const cb = unitCells(b); return unitCells(a).some(([ax, ay]) => hexNeighbors(ax, ay).some(([x, y]) => cb.some(([bx, by]) => bx === x && by === y))); };
 // Potwory neutralne dzielą się na kilka oddziałów (jak w oryginale)
 function splitMonster(count) {
   const k = Math.min(count, count >= 20 ? 5 : count >= 8 ? 3 : count >= 3 ? 2 : 1), out = [];
@@ -36,8 +42,11 @@ function placeSide(B, side, stacks) {
   for (let c = 0; c * BROWS < stacks.length; c++) {
     const col = stacks.slice(c * BROWS, (c + 1) * BROWS), rows = spreadRows(col.length);
     col.forEach((e, k) => {
-      const cr = CREATURES[e.cid], x = side === 0 ? c : BCOLS - 1 - c;
-      B.units.push({ id: B.units.length, side, cid: e.cid, n: e.n, n0: e.n, hp: cr.hp, shots: cr.shots || 0, x, y: rows[k], src: e.src, slot: e.slot, retaliated: false, defending: false, waited: false, dead: false, buffs: {} });
+      const cr = CREATURES[e.cid], u = { id: B.units.length, side, cid: e.cid, n: e.n, n0: e.n, hp: cr.hp, shots: cr.shots || 0, x: 0, y: rows[k], src: e.src, slot: e.slot, retaliated: false, defending: false, waited: false, dead: false, buffs: {} };
+      const at = c0 => (side === 0 ? c0 : BCOLS - 1 - c0) - (cr.wide ? tailDx(u) : 0); // duży stwór: zad przy krawędzi
+      u.x = at(c);
+      if (!canStand(B, u, u.x, u.y)) { const free = [c, c + 1, c + 2, c + 3].flatMap(c0 => [...Array(BROWS).keys()].sort((a, b) => Math.abs(a - rows[k]) - Math.abs(b - rows[k])).map(y => [at(c0), y])).find(([x, y]) => canStand(B, u, x, y)); if (free) [u.x, u.y] = free; }
+      B.units.push(u);
     });
   }
 }
@@ -134,9 +143,11 @@ const alive = (B, side) => B.units.filter(u => !u.dead && (side == null || u.sid
 // Oddziały, od których zależy wynik: strona bez nich przegrywa, nawet jeśli zostały jej machiny
 const fighters = (B, side) => alive(B, side).filter(u => !isMachine(u));
 const hasCart = (B, side) => alive(B, side).some(u => u.cid === 'ammoCart');
-const unitAt = (B, x, y) => B.units.find(u => !u.dead && u.x === x && u.y === y) || null;
+const unitAt = (B, x, y) => B.units.find(u => !u.dead && u.y === y && (u.x === x || (isWide(u) && u.x + tailDx(u) === x))) || null;
 const hasAb = (u, a) => (CREATURES[u.cid].abil || []).includes(a);
 const isFree = (B, x, y, side) => !B.obst.has(hexKey(x, y)) && !walled(B, x, y, side) && !unitAt(B, x, y);
+// Czy oddział u zmieści się przodem na (x, y): wszystkie jego pola na planszy, bez przeszkód, murów i innych oddziałów
+const canStand = (B, u, x, y) => unitCells(u, x, y).every(([cx, cy]) => { if (!inField(cx, cy) || B.obst.has(hexKey(cx, cy)) || walled(B, cx, cy, u.side)) return false; const o = unitAt(B, cx, cy); return !o || o === u; });
 const endlessShots = u => u.cid === 'ballista' || u.cid === 'arrowTower';
 const canShoot = (B, u) => endlessShots(u) || u.shots > 0 && !alive(B, 1 - u.side).some(e => hexAdjacent(u, e));
 // Współrzędne sześcienne heksu (do odległości i kierunków); układ odd-r
@@ -170,7 +181,7 @@ function battleDist(B, u, limit = Infinity) {
   const dist = new Map([[hexKey(u.x, u.y), 0]]), prev = new Map();
   if (hasAb(u, 'fly')) {
     for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) {
-      const d = hexDistance(u, { x, y }); if (d > 0 && d <= limit && isFree(B, x, y, u.side)) { dist.set(hexKey(x, y), d); prev.set(hexKey(x, y), hexKey(u.x, u.y)); }
+      const d = hexDistance(u, { x, y }); if (d > 0 && d <= limit && canStand(B, u, x, y)) { dist.set(hexKey(x, y), d); prev.set(hexKey(x, y), hexKey(u.x, u.y)); }
     }
     return { dist, prev, fly: true };
   }
@@ -179,7 +190,7 @@ function battleDist(B, u, limit = Infinity) {
     const [x, y] = q.shift(), d = dist.get(hexKey(x, y)); if (d >= limit) continue;
     if (d > 0 && u.side === 0 && moatAt(B, x, y)) continue; // z fosy dalej już nie (ruch kończy się w wodzie)
     for (const [nx, ny] of hexNeighbors(x, y)) {
-      const k = hexKey(nx, ny); if (dist.has(k) || !isFree(B, nx, ny, u.side)) continue;
+      const k = hexKey(nx, ny); if (dist.has(k) || !canStand(B, u, nx, ny)) continue;
       dist.set(k, d + 1); prev.set(k, hexKey(x, y)); q.push([nx, ny]);
     }
   }
@@ -244,7 +255,7 @@ function strike(B, a, t, ranged, moved = 0) {
   }
   if (!ranged && hasAb(a, 'breath')) {
     const bh = hexBehind(a, t), v = bh && unitAt(B, bh[0], bh[1]);
-    if (v && v !== a) { const d2 = damageRoll(B, a, v, false, 0), k2 = applyDamage(v, d2); B.log.push(`Zionięcie rani też: ${CREATURES[v.cid].plural.toLowerCase()} (${d2}${k2 ? `, tracą ${k2}` : ''}).`); if (B.fx) B.fx.push({ kind: 'hit', a, tg: v, dmg: d2, killed: k2, splash: true }); }
+    if (v && v !== a && v !== t) { const d2 = damageRoll(B, a, v, false, 0), k2 = applyDamage(v, d2); B.log.push(`Zionięcie rani też: ${CREATURES[v.cid].plural.toLowerCase()} (${d2}${k2 ? `, tracą ${k2}` : ''}).`); if (B.fx) B.fx.push({ kind: 'hit', a, tg: v, dmg: d2, killed: k2, splash: true }); }
   }
   return dmg;
 }
@@ -297,6 +308,11 @@ function tradeValue(B, u, e, ranged, moved) {
   }
   B.rng = saved; return gain - loss;
 }
+// Pola (przód oddziału u), z których sięgnie wroga e: sąsiedzi każdego pola e, a dla dużego u także pola z zadem przy e
+function attackSpots(u, e) {
+  const n = unitCells(e).flatMap(([x, y]) => hexNeighbors(x, y)), out = isWide(u) ? [...n, ...n.map(([x, y]) => [x - tailDx(u), y])] : n;
+  return out.filter(([x, y], i) => inField(x, y) && out.findIndex(([a, b]) => a === x && b === y) === i);
+}
 // Obrońca oblężonego miasta trzyma się za murami (jak w Heroes 3), chyba że jego armia jest dużo silniejsza (wypad)
 function holdWalls(B, u, reach) {
   if (u.side !== 1 || !B.walls || reach.fly) return false;
@@ -315,8 +331,8 @@ function aiAct(B, u) {
     actShoot(B, u, t); return;
   }
   const spd = unitSpd(u), reach = battleDist(B, u, spd), hold = holdWalls(B, u, reach); let best = null;
-  for (const e of foes) for (const [nx, ny] of [[u.x, u.y], ...hexNeighbors(e.x, e.y)]) {
-    if (!hexAdjacent({ x: nx, y: ny }, e)) continue; const d = reach.dist.get(hexKey(nx, ny)); if (d == null) continue;
+  for (const e of foes) for (const [nx, ny] of [[u.x, u.y], ...attackSpots(u, e)]) {
+    if (!hexAdjacent({ ...u, x: nx, y: ny }, e)) continue; const d = reach.dist.get(hexKey(nx, ny)); if (d == null) continue;
     if (hold && nx < SIEGE_X) continue; // obrońca bije tylko zza muru (z bramy, wyłomu albo ze środka)
     const score = tradeValue(B, u, e, false, d) - d * 0.01; if (!best || score > best.score) best = { score, e, nx, ny };
   }
@@ -405,7 +421,7 @@ function spellArea(id, x, y, B) {
   if (S.chain && B) {
     const out = [[x, y]]; let cur = { x, y };
     for (let i = 0; i < S.chain; i++) {
-      const next = B.units.filter(u => !u.dead && targetable(u) && !out.some(([ax, ay]) => ax === u.x && ay === u.y)).sort((a, b) => hexDistance(cur, a) - hexDistance(cur, b))[0];
+      const next = B.units.filter(u => !u.dead && targetable(u) && !out.some(([ax, ay]) => unitAt(B, ax, ay) === u)).sort((a, b) => hexDistance(cur, a) - hexDistance(cur, b))[0];
       if (!next) break; out.push([next.x, next.y]); cur = next;
     }
     return out;
@@ -425,14 +441,15 @@ function castBattle(B, id, x, y) {
   h.mana -= spellCost(h, id); B.cast[s] = true; B.log.push(`${h.name} rzuca: ${S.name}.`);
   if (B.fx) B.fx.push({ kind: 'spell', id, x, y, area, side: s });
   learnBySight(B, s, id);
+  const hitOnce = new Set(); // duży stwór na dwóch polach obszaru dostaje raz
   if (S.dmg) area.forEach(([ax, ay], i) => {
-    const v = unitAt(B, ax, ay); if (!v || !targetable(v)) return;
+    const v = unitAt(B, ax, ay); if (!v || !targetable(v) || hitOnce.has(v)) return; hitOnce.add(v);
     if (resists(B, v, s)) { B.log.push(`${CREATURES[v.cid].plural}: odporność, czar nie działa.`); return; }
     const d = Math.max(1, Math.floor(spellDamage(h, S, sp) * hitMul(S, i))), k = applyDamage(v, d);
     B.log.push(`${CREATURES[v.cid].plural}: ${d} obrażeń${k ? `, tracą ${k}` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: v, dmg: d, killed: k });
   });
   if (S.heal && MASS_TARGETS.includes(S.target)) for (const [ax, ay] of area) { // Źródło życia: leczy wszystkich swoich
-    const u = unitAt(B, ax, ay); if (!u || isMachine(u)) continue; const amt = Math.floor(S.heal(sp) * specSpellMul(h, id) * schoolMul(h, id));
+    const u = unitAt(B, ax, ay); if (!u || isMachine(u) || hitOnce.has(u)) continue; hitOnce.add(u); const amt = Math.floor(S.heal(sp) * specSpellMul(h, id) * schoolMul(h, id));
     u.hp = Math.min(CREATURES[u.cid].hp, u.hp + amt); for (const b of BAD_BUFFS) delete u.buffs[b]; if (B.fx) B.fx.push({ kind: 'heal', u, amount: amt });
   }
   else if (S.heal && tu) {
@@ -442,7 +459,7 @@ function castBattle(B, id, x, y) {
     if (back) B.log.push(`Wraca do walki: ${back}.`); if (B.fx) B.fx.push({ kind: 'heal', u: tu, amount: amt });
   }
   if (S.buff) {
-    const targets = MASS_TARGETS.includes(S.target) || massBuff(B, id) ? area.map(([ax, ay]) => unitAt(B, ax, ay)).filter(Boolean) : tu ? [tu] : [];
+    const targets = MASS_TARGETS.includes(S.target) || massBuff(B, id) ? [...new Set(area.map(([ax, ay]) => unitAt(B, ax, ay)).filter(Boolean))] : tu ? [tu] : [];
     if (targets.length > 1 && !MASS_TARGETS.includes(S.target)) B.log.push(`Ekspert magii ${SCHOOLS[S.school].name}: czar działa na całą armię.`);
     for (const u of targets) { if (u.side !== s && resists(B, u, s)) { B.log.push(`${CREATURES[u.cid].plural}: odporność, czar nie działa.`); continue; } u.buffs[S.buff] = SPELL_ROUNDS(sp) + spellSchoolLv(h, id); if (B.fx) B.fx.push({ kind: 'heal', u, amount: 0, label: SPELLS[id].name }); }
   }
@@ -455,9 +472,9 @@ function aiHeroCast(B) {
     const S = SPELLS[id]; if (!S.dmg || spellCost(h, id) > h.mana) continue;
     const cells = S.target === 'hex' || S.target === 'ring' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : MASS_TARGETS.includes(S.target) ? [[0, 0]] : alive(B, 1 - s).filter(targetable).map(u => [u.x, u.y]);
     for (const [x, y] of cells) {
-      let val = 0;
+      let val = 0; const seen = new Set();
       for (const [i, [ax, ay]] of spellArea(id, x, y, B).entries()) {
-        const v = unitAt(B, ax, ay); if (!v || !targetable(v)) continue; const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = Math.floor(spellDamage(h, S, sp) * hitMul(S, i));
+        const v = unitAt(B, ax, ay); if (!v || !targetable(v) || seen.has(v)) continue; seen.add(v); const hp = CREATURES[v.cid].hp, pool = (v.n - 1) * hp + v.hp, d = Math.floor(spellDamage(h, S, sp) * hitMul(S, i));
         const k = d >= pool ? v.n : v.n - Math.ceil((pool - d) / hp); val += (v.side !== s ? 1 : -1.5) * k * CREATURES[v.cid].value;
       }
       if (val > 0 && (!best || val > best.val)) best = { val, id, x, y };

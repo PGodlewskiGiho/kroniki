@@ -334,4 +334,8 @@ elite('cyclopsKing', 'elderCyclops', ['Pradawny cyklop', 'Pradawni cyklopi', 'pr
   { boulder: '#8a8478', helm: null, crownSpikes: '#8a7a5a', beard: '#8a7a6a', armor: 'plate', skulls: '#e8e0cc', size: 2.0 });
 elite('ancientBehemoth', 'primalBehemoth', ['Pierwotny behemot', 'Pierwotne behemoty', 'pierwotnych behemotów', 'pierwotne behemoty'], [23, 22, 35, 55, 400, 11, 8900], { gold: 4500, crystal: 3 }, ['unlimitedRetal', 'armorPierce'],
   { plates: '#d8ccb0', hornPairs: 2, tusks: '#f0e8d8', size: 2.0 });
+// Duże stwory zajmują w bitwie dwa pola (jak w Heroes 3): jeźdźcy, czworonogi, smoki, hydry, gryfy i wielkie ptaki,
+// centaury, jednorogi, feniksy i nagi z wężowym ogonem. Piechota, latające owady, oczy, duchy i drzewce: jedno pole.
+const WIDE_KINDS = ['wolf', 'griffin', 'rider', 'dragon', 'centaur', 'unicorn', 'phoenix', 'lizard', 'bull', 'hydra', 'bird'];
+for (const c of Object.values(CREATURES)) if (WIDE_KINDS.includes(c.look.kind) || c.look.serpent) c.wide = true;
 fillNeutrals();
