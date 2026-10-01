@@ -505,7 +505,7 @@ function proj(X, Z, e = 0) { const s = 1 / Z; return [PJ.cx + X * s, PJ.hor + PJ
 const hazeAt = Z => clamp((Z - 1.05) * 0.36, 0, 0.45);
 // Scena miasta ma własny, drobniejszy piksel TOWN_PIX (jak jednostki w bitwie: budowle są wypalone z modeli 3D w tej gęstości);
 // przy niskiej jakości grafiki (PIX 2) dawny, grubszy piksel. TOWN_ART_SCALE = pikseli sceny na px logiczny.
-const TOWN_PIX = 1.35, townArtScale = () => (PIX >= 2 ? 1 / PIX : 1 / TOWN_PIX);
+const TOWN_RAW = true, TOWN_PIX = TOWN_RAW ? 1 : 1.35, townArtScale = () => (PIX >= 2 ? 1 / PIX : 1 / TOWN_PIX);
 let TOWN_ART_SCALE = townArtScale();
 PIX_CLEAR.push(() => { TOWN_ART_SCALE = townArtScale(); });
 // Rysuje obiekt jako pikselowy sprite w skali perspektywy (twarde krawędzie, obrys, mgła oddalenia)
@@ -533,7 +533,7 @@ function drawBaked(dst, art, sx, sy, sc, haze, hazeCol, fx, flip, col) {
   const [x, y, w, h, ax, ay] = art.f, u = sc / art.d, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(art.im, x, y, w, h, 0, 0, w, h);
   if (haze > 0) { g.globalCompositeOperation = 'source-atop'; g.globalAlpha = haze; g.fillStyle = hazeCol; g.fillRect(0, 0, w, h); }
   const dx = sx - ax * u, dy = Math.round((sy - ay * u) * TOWN_ART_SCALE) / TOWN_ART_SCALE, lx = Math.round((flip ? 2 * sx - dx - w * u : dx) * TOWN_ART_SCALE) / TOWN_ART_SCALE;
-  dst.save(); dst.imageSmoothingEnabled = false; if (flip) { dst.translate(lx + w * u, dy); dst.scale(-1, 1); dst.drawImage(c, 0, 0, w * u, h * u); } else dst.drawImage(c, lx, dy, w * u, h * u); dst.restore();
+  dst.save(); dst.imageSmoothingEnabled = TOWN_RAW; if (flip) { dst.translate(lx + w * u, dy); dst.scale(-1, 1); dst.drawImage(c, 0, 0, w * u, h * u); } else dst.drawImage(c, lx, dy, w * u, h * u); dst.restore();
   for (const [nm, mx, my] of art.m || []) {
     const X = sx + (flip ? -mx : mx) * u, Y = sy + my * u, [kind, r, gc] = nm.split('|');
     if (kind === 'smoke') fx.smokes.push([X, Y, sc]); else if (kind === 'flag') fx.flags.push([X, Y, col, sc]); else if (kind === 'glow') fx.glows.push([X, Y, +r * sc, gc]);
@@ -583,6 +583,17 @@ function farForest(c, cols, hazeCol, seed = 0) {
     c.fillStyle = cols[Math.floor(k2 * cols.length)]; c.beginPath(); c.ellipse(sx, sy - h * 0.55, h * 0.42, h * 0.6, 0, 0, TAU); c.fill();
   }
   const y0 = proj(0, 4.6)[1], hz = c.createLinearGradient(0, y0 - 30, 0, y0 + 26); hz.addColorStop(0, 'rgba(0,0,0,0)'); hz.addColorStop(1, hazeCol); c.globalAlpha = 0.45; c.fillStyle = hz; c.fillRect(8, y0 - 30, 576, 56); c.globalAlpha = 1;
+}
+// Faktura ziemi bez pikselizacji: drobne źdźbła, grudki i plamy światła (ziarno, które dawniej dawał dithering), gęstsze bliżej
+function terrainGrain(c, Wd) {
+  const yF = proj(0, 4.4)[1], r = mulberry32(91 + (Wd.seed || 0)), N = 256, t = document.createElement('canvas'); t.width = t.height = N; const g = t.getContext('2d');
+  g.fillStyle = '#808080'; g.fillRect(0, 0, N, N);
+  for (let i = 0; i < 5200; i++) { const x = r() * N, y = r() * N, v = r() < 0.5 ? 40 + r() * 50 : 170 + r() * 70; g.strokeStyle = `rgb(${v},${v},${v})`; g.globalAlpha = 0.5 + r() * 0.5; g.lineWidth = 0.8 + r() * 0.8; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 2, y - 1.5 - r() * 3); g.stroke(); }
+  for (let i = 0; i < 40; i++) { const x = r() * N, y = r() * N, R = 6 + r() * 18, gr = g.createRadialGradient(x, y, 0, x, y, R), v = r() < 0.5 ? 60 : 200; gr.addColorStop(0, `rgba(${v},${v},${v},.35)`); gr.addColorStop(1, 'rgba(128,128,128,0)'); g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(x - R, y - R, R * 2, R * 2); }
+  c.save(); c.beginPath(); c.rect(8, yF, 576, 440 - yF); c.clip(); c.globalCompositeOperation = 'overlay';
+  for (const [y0, y1, k, a] of [[yF, yF + 40, 0.5, 0.35], [yF + 40, yF + 120, 0.75, 0.45], [yF + 120, 440, 1, 0.55]]) { // dalej drobniej i słabiej (perspektywa)
+    const pat = c.createPattern(t, 'repeat'); pat.setTransform(new DOMMatrix().scale(k, k * 0.7)); c.globalAlpha = a; c.fillStyle = pat; c.fillRect(8, y0, 576, y1 - y0); }
+  c.restore();
 }
 function groundPlane(c, Wd) {
   const yF = proj(0, 4.4)[1], g = c.createLinearGradient(0, yF, 0, 432);
@@ -868,6 +879,7 @@ function paintTownWorld(c, t, col, Wd) {
   farBand(c, Wd, hzC);
   groundPlane(c, Wd);
   c.save(); groundDetail(c, Wd, fx); c.restore();
+  if (TOWN_RAW) terrainGrain(c, Wd);
   for (const Sa of Wd.seas || []) seaArt(c, Sa);
   for (const Lk of [...(Wd.lake ? [Wd.lake] : []), ...(Wd.lakes || [])]) { lakeArt(c, Lk); if (Lk.hot) { const [lx, ly, ls] = proj(Lk.X, Lk.Z); fx.glows.push([lx, ly, Lk.rx * ls * 1.2, Lk.hot]); } }
   for (const Rv of [...(Wd.river ? [Wd.river] : []), ...(Wd.rivers || [])]) { riverArt(c, Rv, hzC); if (Rv.chasm) chasmGlow(c, Rv); }
@@ -909,14 +921,15 @@ function paintTownWorld(c, t, col, Wd) {
   }
   if (Wd.frame === 'forest') forestFrame(c);
   if (Wd.frame === 'cave') caveFrame(c, fx, Wd.seed || 0);
-  c.save(); c.globalCompositeOperation = 'saturation'; c.globalAlpha = Wd.desat || 0.25; c.fillStyle = '#808080'; c.fillRect(8, 8, 576, 422); c.restore();
+  c.save(); c.globalCompositeOperation = 'saturation'; c.globalAlpha = (Wd.desat || 0.25) * (TOWN_RAW ? 0.3 : 1); c.fillStyle = '#808080'; c.fillRect(8, 8, 576, 422); c.restore();
+  if (TOWN_RAW) { const cv = c.canvas, tmp = document.createElement('canvas'); tmp.width = cv.width; tmp.height = cv.height; tmp.getContext('2d').drawImage(cv, 0, 0); c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.filter = 'saturate(1.18) contrast(1.1)'; c.drawImage(tmp, 0, 0); c.restore(); } // bez pikselizacji: żywsze barwy
   const lg = c.createLinearGradient(8, 8, 584, 430); lg.addColorStop(0, 'rgba(255,190,110,.16)'); lg.addColorStop(0.5, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(16,20,56,.32)'); c.fillStyle = lg; c.fillRect(8, 8, 576, 422);
   const vg = c.createRadialGradient(296, 230, 150, 296, 230, 400); vg.addColorStop(0, 'rgba(6,6,14,0)'); vg.addColorStop(1, 'rgba(6,6,14,.58)'); c.fillStyle = vg; c.fillRect(8, 8, 576, 422);
   c.restore(); return fx;
 }
 function paintTownScene(c, t, col) {
   const fx = paintTownWorld(c, t, col, townLayout(t));
-  pixelQuantize(c.canvas); return fx;
+  if (!TOWN_RAW) pixelQuantize(c.canvas); return fx;
 }
 function drawTownFX(ctx, t, fx) {
   const LL = townLayout(t); usePJ(LL);

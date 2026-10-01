@@ -25,7 +25,7 @@ function build() {
   // Grafiki jednostek wypalone z modeli 3D (tools/grafika3d/wypal.js): opis klatek i arkusze PNG jako dane base64
   const gdir = path.join(SRC, 'grafika'), gmeta = path.join(gdir, 'jednostki.json');
   const art = fs.existsSync(gmeta) ? JSON.parse(fs.readFileSync(gmeta, 'utf8')) : {};
-  for (const id of Object.keys(art)) { const f = path.join(gdir, 'jednostki', id + '.png'); if (fs.existsSync(f)) art[id].png = fs.readFileSync(f).toString('base64'); else delete art[id]; }
+  for (const id of Object.keys(art)) { const fw = path.join(gdir, 'jednostki', id + '.webp'), f = path.join(gdir, 'jednostki', id + '.png'); if (fs.existsSync(fw)) { art[id].png = fs.readFileSync(fw).toString('base64'); art[id].webp = 1; } else if (fs.existsSync(f)) art[id].png = fs.readFileSync(f).toString('base64'); else delete art[id]; } // arkusz WebP (grafika bez pikselizacji) albo PNG
   const hmeta = path.join(gdir, 'bohaterowie.json'), hart = fs.existsSync(hmeta) ? JSON.parse(fs.readFileSync(hmeta, 'utf8')) : {};
   for (const id of Object.keys(hart)) { const f = path.join(gdir, 'bohaterowie', id + '.png'); if (fs.existsSync(f)) hart[id].png = fs.readFileSync(f).toString('base64'); else delete hart[id]; }
   // Portrety bohaterów (tools/portrety-ai): imię -> PNG 72×72

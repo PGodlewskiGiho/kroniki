@@ -43,7 +43,7 @@ const G3 = {
     let probe = null; if (o.probe) { const ob = group.getObjectByName(o.probe); if (ob) { const v = ob.getWorldPosition(new THREE.Vector3()).project(c); probe = [(v.x + 1) / 2 * w, (1 - v.y) / 2 * h]; } } // punkt pomocniczy w pikselach klatki
     const edges = this.edgePass(w, h); this.scene.remove(group);
     const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high'; g.drawImage(mid, 0, 0, w, h);
-    inkLines(out, edges); pixelize(out, o.step || 8); disposeGroup(group); out._probe = probe; out._marks = marks; return out;
+    inkLines(out, edges); if (o.raw || G3.raw) crisp(out); else pixelize(out, o.step || 8); /* raw: bez pikselizacji, wyostrzony */ disposeGroup(group); out._probe = probe; out._marks = marks; return out;
   },
   edgePass(w, h) {
     const r = this.r, s = this.scene; r.setSize(w, h, false); r.toneMapping = THREE.NoToneMapping; r.outputColorSpace = THREE.LinearSRGBColorSpace; const env = s.environment; s.environment = null;
@@ -76,6 +76,23 @@ function inkLines(c, E) {
   }
   for (let k = 0; k < w * h; k++) if (mark[k]) { const i = k * 4, f = mark[k] === 1 ? 0.5 : 0.28; d[i] *= 1 - f; d[i + 1] *= 1 - f; d[i + 2] *= 1 - f * 0.8; }
   g.putImageData(img, 0, 0);
+}
+// Grafika bez pikselizacji, ale ostra (jak wyrenderowane sprite'y Heroes 3): wyostrzenie (maska wyostrzająca na kolorze),
+// twardsza krawędź sylwetki (alfa przez krzywą S) i cienki, wygładzony ciemny obrys na zewnątrz
+function crisp(c, amount = 0.7) {
+  const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data, src = new Float32Array(d);
+  const A = k => src[k * 4 + 3] / 255;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const k = y * w + x, i = k * 4; if (!d[i + 3]) continue;
+    for (let j = 0; j < 3; j++) { let s = 0, n = 0; for (const q of [k - 1, k + 1, k - w, k + w]) if (src[q * 4 + 3] > 0) { s += src[q * 4 + j]; n++; }
+      if (n) d[i + j] = Math.max(0, Math.min(255, src[i + j] + amount * (src[i + j] - s / n))); }
+  }
+  for (let k = 0; k < w * h; k++) { const i = k * 4, a = d[i + 3] / 255; if (a > 0 && a < 1) { const t = Math.min(1, Math.max(0, (a - 0.12) / 0.6)); d[i + 3] = Math.round(255 * t * t * (3 - 2 * t)); } }
+  const al = Float32Array.from({ length: w * h }, (_, k) => d[k * 4 + 3] / 255);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const k = y * w + x, i = k * 4, a = al[k]; if (a > 0.98) continue;
+    const m = Math.max(al[k - 1], al[k + 1], al[k - w], al[k + w], 0.7 * Math.max(al[k - w - 1], al[k - w + 1], al[k + w - 1], al[k + w + 1])), oa = m * 0.85; if (oa <= a) continue;
+    const f = a / oa; d[i] = d[i] * f + 24 * (1 - f); d[i + 1] = d[i + 1] * f + 16 * (1 - f); d[i + 2] = d[i + 2] * f + 10 * (1 - f); d[i + 3] = Math.round(oa * 255); }
+  g.putImageData(img, 0, 0); void A;
 }
 // Twarde krawędzie (bez półprzezroczystości), stopniowana paleta i ciemny obrys sylwetki
 function pixelize(c, step) {
