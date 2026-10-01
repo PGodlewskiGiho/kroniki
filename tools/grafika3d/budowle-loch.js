@@ -74,7 +74,8 @@ const DUNGEON3 = {
     const g = new THREE.Group(); for (let i = 0; i < 4; i++) g.add(blk(140 - i * 22, 10, 100 - i * 16, i % 2 ? LC.rockD : LC.rock, 'rubble', 0, i * 10, -10));
     g.add(cone(40 / PXU, 130 / PXU, '#3a3442', 'rock', P(0, 40 + 65, -16), null, 10)); g.add(sph(22 / PXU, '#3a3442', 'rock', P(0, 40 + 126, -16), [1, 1.15, 1], 16)); /* szata i kaptur */
     g.add(sph(15 / PXU, '#0c0a10', 'skin', P(0, 40 + 122, 0), [1, 1.2, 0.6], 12)); for (const s of [-1, 1]) { const e = sph(2.6 / PXU, LC.green, 'glow', P(s * 5.5, 40 + 126, 5), null, 8); e.material = lightMat('#80ffb0'); g.add(e); }
-    for (const s of [-1, 1]) { const arm = cyl3(7, 9, 50, '#3a3442', 'rock', 0, 0, 0, 8); arm.rotation.z = s * 0.9; arm.position.set(...P(s * 26, 40 + 84, 2)); g.add(arm); }
+    g.add(cone(30 / PXU, 46 / PXU, '#332d3a', 'rock', P(0, 40 + 136, -12), [-0.25, 0, 0], 10)); /* kaptur */
+    for (const s of [-1, 1]) { g.add(sph(9 / PXU, '#3a3442', 'rock', P(s * 12, 40 + 96, 18), [1, 0.8, 1.2], 10)); const fa = cyl3(6, 8, 30, '#3a3442', 'rock', 0, 0, 0, 8); fa.rotation.set(-0.9, 0, s * 0.35); fa.position.set(...P(s * 18, 40 + 104, 6)); g.add(fa); } /* przedramiona i dłonie trzymające kryształ przy piersi */
     const cr = cone(14 / PXU, 46 / PXU, LC.violet, 'gem', P(0, 40 + 92, 22), null, 6); cr.material = lightMat('#c080ff'); g.add(cr); const cr2 = cone(14 / PXU, 22 / PXU, LC.violet, 'gem', P(0, 40 + 64, 22), [Math.PI, 0, 0], 6); cr2.material = lightMat('#a060f0'); g.add(cr2); glowMark(g, 0, 40 + 84, 26, 50, LC.violet);
     for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.3; g.add(lcCrystals(Math.cos(a) * 80, 0, -10 + Math.sin(a) * 52, 1.6, 4, 140 + i, i % 2 ? LC.green : LC.violet)); }
     g.add(blk(30, 40, 16, LC.rockL, 'rubble', 0, 0, 44)); return g; },
@@ -92,7 +93,7 @@ const DUNGEON3 = {
   dw3(t) { // kolumna oczu: kamienna kolumna z rzeźbionymi oczami (kule z tęczówką) i obserwator; 2: głębia oczu – trzy kolumny; 3: oko otchłani – olbrzymie oko na szczycie
     const g = new THREE.Group(); const cols = t >= 2 ? [[-22, 46], [0, 62], [22, 50]] : [[0, 56]];
     for (const [x, h] of cols) { g.add(cyl3(6, 7, h, LC.rockL, 'rubble', x, 0, -6, 10)); for (let i = 0; i < 3; i++) { const y = h * (0.25 + i * 0.25); g.add(sph(3.4 / PXU, '#e8e0d0', 'skin', P(x, y, 0.4), null, 10)); const ir = sph(1.6 / PXU, LC.green, 'glow', P(x, y, 3.4), null, 8); ir.material = lightMat('#80ff90'); g.add(ir); } }
-    if (t >= 3) { g.add(sph(12 / PXU, '#e8e0d0', 'skin', P(0, 80, -6), null, 16)); const ir = sph(6 / PXU, '#ff4060', 'glow', P(0, 80, 5), [1, 1, 0.5], 12); ir.material = lightMat('#ff5070'); g.add(ir); glowMark(g, 0, 80, 6, 18, '#ff5070'); }
+    if (t >= 3) { g.add(sph(12 / PXU, '#e8e0d0', 'skin', P(0, 72, -6), null, 16)); const ir = sph(6 / PXU, '#ff4060', 'glow', P(0, 72, 5), [1, 1, 0.5], 12); ir.material = lightMat('#ff5070'); g.add(ir); glowMark(g, 0, 72, 6, 18, '#ff5070'); /* oko osadzone na środkowej kolumnie */ }
     g.add(creature(t >= 3 ? 'doomEye' : t >= 2 ? 'evilEye' : 'beholder', 26, 20, 22, 0.5, -Math.PI / 2 + 0.3)); return g; },
   dw4(t) { // kaplica ciszy: niska kaplica z kolumnami w kształcie węży, skamieniali wędrowcy przed wejściem; 2: świątynia meduz – wyższy fronton; 3: sanktuarium – zielony blask i więcej posągów
     const g = new THREE.Group(); g.add(blk(56, 4, 40, LC.rockD, 'rubble', 0, 0, -6)); g.add(blk(44, 26, 28, LC.rock, 'rubble', 0, 4, -10)); g.add(gable(50, 34, t >= 2 ? 16 : 10, '#3a5a4a', 'tiles', 0, 30, -10, 3, LC.rock, 'rubble'));
