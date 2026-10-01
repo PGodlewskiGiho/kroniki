@@ -2,110 +2,112 @@
  "_opis": "Miejsca budowli na namalowanym tle: [sx, sy] = punkt podstawy na ekranie (kadr 8–584 × 8–430), z = głębokość (domyślnie z płaskiej ziemi: d / (sy − hor)), k = dodatkowa skala, flip = odbicie.",
  "tlo": "haven.png",
  "pj": {
-  "hor": 128,
+  "hor": 132,
   "d": 470,
-  "f": 450
+  "f": 300
  },
  "slots": [
   {
    "s": [
-    300,
-    312
+    320,
+    305
    ]
   },
   {
    "s": [
-    335,
+    325,
     214
    ],
-   "k": 1.9
+   "k": 1.6
   },
   {
    "s": [
-    80,
-    285
-   ]
-  },
-  {
-   "s": [
-    512,
-    166
+    62,
+    272
    ],
-   "z": 1.6
+   "z": 1.15
   },
   {
    "s": [
-    470,
-    292
-   ]
+    515,
+    162
+   ],
+   "z": 1.9
   },
   {
    "s": [
-    140,
-    212
-   ]
-  },
-  {
-   "s": [
-    205,
-    296
-   ]
-  },
-  {
-   "s": [
-    545,
-    258
-   ]
-  },
-  {
-   "s": [
-    215,
+    428,
     392
    ]
   },
   {
    "s": [
-    425,
-    336
+    130,
+    240
+   ]
+  },
+  {
+   "s": [
+    150,
+    360
+   ]
+  },
+  {
+   "s": [
+    548,
+    262
+   ],
+   "z": 1.25
+  },
+  {
+   "s": [
+    232,
+    404
+   ]
+  },
+  {
+   "s": [
+    112,
+    308
    ]
   },
   {
    "s": [
     70,
-    372
+    395
    ]
   },
   {
    "s": [
     555,
-    318
+    395
    ],
    "flip": true
   },
   {
    "s": [
-    150,
-    340
+    240,
+    330
    ]
   },
   {
    "s": [
-    355,
+    328,
     372
-   ],
-   "flip": true
+   ]
   },
   {
    "s": [
-    410,
-    252
+    408,
+    296
    ]
   },
   {
    "s": [
     262,
-    236
+    292
    ]
   }
- ]
+ ],
+ "_analiza": "Geometria obrazu: horyzont 132, kąt patrzenia ~40° u dołu, ~30° na środkowej łące, ~15° na półwyspie (f = 300). Płaskie: dolna łąka (y 340–420), środkowa łąka (x 230–420, y 270–330), półwysep (x 250–400, y 195–240), szczyt klifu (x 470–580, y 150–170). Wzniesienia: z = odległość podstawy wzgórza (rząd, gdzie styka się z doliną), e wynika z różnicy rzędów."
 }
