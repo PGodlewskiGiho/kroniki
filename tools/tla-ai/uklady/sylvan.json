@@ -1,115 +1,225 @@
 {
  "_opis": "Układ z planu sceny 2D (szkic.js): s = podstawa na ekranie, z = głębokość jak w 2D.",
- "tlo": "sylvan.png",
+ "tlo": "sylvan-polana.png",
  "pj": {
-  "hor": 135,
-  "d": 480,
-  "f": 320
+  "hor": 140,
+  "d": 440,
+  "f": 540
  },
  "slots": [
   {
    "s": [
-    362,
+    478,
+    300
+   ],
+   "k": 0.85
+  },
+  {
+   "s": [
+    352,
     282
    ]
   },
   {
    "s": [
-    428,
+    70,
+    415
+   ]
+  },
+  {
+   "s": [
+    128,
+    334
+   ],
+   "k": 1.05
+  },
+  {
+   "s": [
+    318,
     340
    ]
   },
   {
    "s": [
-    88,
-    318
-   ]
-  },
-  {
-   "s": [
-    508,
-    302
+    482,
+    350
    ],
-   "flip": true
+   "k": 1.3
   },
   {
    "s": [
-    300,
-    250
-   ],
-   "z": 1.6,
-   "k": 1.25
-  },
-  {
-   "s": [
-    522,
-    368
+    126,
+    272
    ]
   },
   {
    "s": [
-    298,
-    356
+    290,
+    378
    ]
   },
   {
    "s": [
-    215,
-    356
-   ]
-  },
-  {
-   "s": [
-    95,
-    402
-   ]
-  },
-  {
-   "s": [
-    470,
-    398
-   ]
-  },
-  {
-   "s": [
-    150,
-    392
-   ]
-  },
-  {
-   "s": [
-    392,
+    178,
     412
    ]
   },
   {
    "s": [
-    330,
-    408
+    375,
+    372
    ]
   },
   {
    "s": [
-    62,
-    362
+    420,
+    402
    ]
   },
   {
    "s": [
-    160,
-    285
-   ],
-   "z": 1.3
+    505,
+    402
+   ]
   },
   {
    "s": [
-    222,
-    262
+    312,
+    412
+   ]
+  },
+  {
+   "s": [
+    268,
+    350
+   ]
+  },
+  {
+   "s": [
+    205,
+    372
    ],
-   "z": 2.6,
-   "k": 2.2,
-   "zaslona": false
+   "k": 0.85
+  },
+  {
+   "s": [
+    208,
+    272
+   ],
+   "k": 1.3
   }
  ],
- "_analiza": "Horyzont ~135 (linia dalekich gór), kamera niżej niż w Przystani – jezioro to płaska elipsa. Płaskie: przednia łąka (y 340–415), prawa łąka (x 330–520, y 295–350), polana za wodospadem (x 300–430, y 255–290), lewy brzeg (x 40–140, y 290–330). Dalej las – tam tylko budowle w koronach i Graal."
+ "_analiza": "Horyzont ~135 (linia dalekich gór), kamera niżej niż w Przystani – jezioro to płaska elipsa. Płaskie: przednia łąka (y 340–415), prawa łąka (x 330–520, y 295–350), polana za wodospadem (x 300–430, y 255–290), lewy brzeg (x 40–140, y 290–330). Dalej las – tam tylko budowle w koronach i Graal.",
+ "polana": {
+  "_opis": "polana.py: teren miasta malowany od nowa wg planu; obszar = wielokąt w kadrze gry, bez = wycięcia (wodospad), woda = pas wierszy, w którym niebieskie piksele zostają",
+  "zrodlo": "sylvan.png",
+  "obszar": [
+   [
+    50,
+    300
+   ],
+   [
+    62,
+    272
+   ],
+   [
+    90,
+    258
+   ],
+   [
+    180,
+    253
+   ],
+   [
+    300,
+    249
+   ],
+   [
+    420,
+    253
+   ],
+   [
+    500,
+    258
+   ],
+   [
+    532,
+    268
+   ],
+   [
+    532,
+    432
+   ],
+   [
+    48,
+    432
+   ]
+  ],
+  "bez": [
+   [
+    [
+     244,
+     248
+    ],
+    [
+     272,
+     248
+    ],
+    [
+     272,
+     292
+    ],
+    [
+     244,
+     292
+    ]
+   ]
+  ],
+  "obszar_tyl": 250,
+  "woda": [
+   278,
+   350
+  ],
+  "trawa": [
+   [
+    96,
+    124,
+    60
+   ],
+   [
+    50,
+    80,
+    34
+   ]
+  ],
+  "ziemia": [
+   124,
+   104,
+   68
+  ],
+  "trakt": [
+   [
+    300,
+    434
+   ],
+   [
+    316,
+    400
+   ],
+   [
+    340,
+    352
+   ],
+   [
+    356,
+    312
+   ],
+   [
+    352,
+    292
+   ]
+  ],
+  "trakt_w": 16,
+  "opis": "detailed fantasy matte painting, sunlit elven forest town glade, wide flat open clearing of short green grass, mossy packed earth plots and worn dirt footpaths, enclosed by ancient forest, golden light, painterly, rich detail, crisp"
+ }
 }

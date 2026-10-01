@@ -145,7 +145,7 @@ function townWorld(fac, bare = false) {
 }
 // Render sceny do płótna W×H (×D) z nadpróbkowaniem; tło przezroczyste (niebo maluje gra)
 function renderTown(scene, cam, D, SS = 2) {
-  G3.init(); const r = G3.r, W = SW * D, H = SH * D; r.setSize(W * SS, H * SS, false); r.shadowMap.enabled = true; r.setClearColor(0x000000, 0);
+  G3.init(); const r = G3.r, W = SW * D, H = SH * D; r.setSize(W * SS, H * SS, false); r.shadowMap.enabled = true; r.localClippingEnabled = true; r.setClearColor(0x000000, 0);
   const c2 = cam.clone(); c2.setViewOffset(cam.view.fullWidth * SS, cam.view.fullHeight * SS, cam.view.offsetX * SS, cam.view.offsetY * SS, W * SS, H * SS); c2.updateProjectionMatrix();
   const key = W * SS + 'x' + H * SS; if (!renderTown.comp || renderTown.comp._k !== key) { const comp = new THREE.EffectComposer(r, new THREE.WebGLRenderTarget(W * SS, H * SS, { type: THREE.HalfFloatType, samples: 4 })); comp._k = key; renderTown.comp = comp; }
   if (renderTown.plain) { r.render(scene, c2); const o2 = document.createElement('canvas'); o2.width = W; o2.height = H; o2.getContext('2d').drawImage(r.domElement, 0, 0, W, H); return o2; }
@@ -164,6 +164,7 @@ function renderTownBuilding(fac, key, slot, D = 2, bare = false) {
   for (const o of w.far) o.visible = false;
   b.scale.set(PXU * S.k * (S.flip ? -1 : 1), PXU * S.k, PXU * S.k); const y0 = bare ? (S.e || 0) : slotBase(w.L, slot); b.position.set(S.X, y0, tz(S.Z)); if (bare) { b.rotation.order = 'YXZ'; b.rotation.x = (S.tilt || 0) * Math.PI / 180; b.rotation.y = (S.yaw || 0) * Math.PI / 180; } /* pochylenie ku kamerze: obraz pokazuje to miejsce bardziej z góry, niż wynika z perspektywy */
   if (bare) { for (const o of w.occl) w.scene.remove(o); const pl = new THREE.Mesh(new THREE.CircleGeometry(PXU * S.k * S.w * 1.6, 48), shadowM); pl.rotation.x = -Math.PI / 2; pl.position.set(S.X, y0 + 0.3, tz(S.Z)); pl.receiveShadow = true; w.scene.add(pl); } /* tło namalowane: cień tylko na płaskim krążku pod budowlą */ b.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); w.scene.add(b);
+  if (bare) { const clip = [new THREE.Plane(new THREE.Vector3(0, 1, 0), -y0)]; b.traverse(m => { if (m.isMesh && m.material) m.material = [].concat(m.material).map(x => { const c = x.clone(); c.clippingPlanes = clip; return c; }).reduce((a, c, i, A) => A.length > 1 ? A : c, null); }); } /* korzenie i podmurówki pod ziemią: na malowanym tle nic ich nie zasłania, więc obcinamy wszystko poniżej gruntu */
   w.scene.updateMatrixWorld(true); const marks = []; b.traverse(o => { if (o.name && o.name.startsWith('fx:')) { const v = o.getWorldPosition(new THREE.Vector3()).project(cam); marks.push([o.name.slice(3), Math.round((v.x + 1) / 2 * SW * 10) / 10, Math.round((1 - v.y) / 2 * SH * 10) / 10]); } });
   const c = renderTown(w.scene, cam, D); sharpen(c, 0.35); c._marks = marks; return c;
 }
