@@ -84,6 +84,18 @@ for (x, szczyt, szer) in T.get('turnie', []):  # skalne turnie przy brzegach
     X, Yt = I(x, szczyt); w = szer * S / 2; pts = [(X - w, H + 2)]; n = 7
     for i in range(1, n): f_ = i / n; pts.append((X - w + 2 * w * f_ + (rng.random() - 0.5) * w * 0.3, Yt + (H - Yt) * (abs(f_ - 0.5) * 2) ** 1.6 * 0.85 + rng.random() * 20))
     pts.append((X + w, H + 2)); g.polygon(pts, fill=tuple(T.get('turnie_kolor', T['skala'])))
+if T.get('sufit'):  # sklepienie pieczary: postrzępiony strop z wiszącymi stalaktytami (zamiast nieba)
+    SF = T['sufit']; yb = (SF['y'] - 8) * S; pts = [(0, 0), (W, 0)]; x = W
+    while x > 0:
+        x -= 14 + rng.random() * 30; y = yb + (rng.random() - 0.3) * 30
+        if rng.random() < 0.45: pts += [(x + 8, y), (x + 3, y + 30 + rng.random() * 70), (x - 2, y)]
+        else: pts.append((x, y))
+    g.polygon(pts + [(0, yb)], fill=tuple(SF['kolor']))
+    for _ in range(SF.get('stalaktyty', 20)): x = rng.random() * W; y = yb * rng.random() * 0.6; L_ = 20 + rng.random() * 60; g.polygon([(x - 6, y), (x + 6, y), (x, y + L_)], fill=tuple(int(v * 1.15) for v in SF['kolor']))
+if T.get('promien'):  # snop światła z otworu w stropie
+    PR = T['promien']; X0, Y0 = I(PR['x'], PR.get('od', 8)); X1, Y1 = I(PR['x2'], PR['do']); w0, w1 = PR['w'][0] * S, PR['w'][1] * S
+    ray = Image.new('L', (W, H), 0); ImageDraw.Draw(ray).polygon([(X0 - w0, Y0), (X0 + w0, Y0), (X1 + w1, Y1), (X1 - w1, Y1)], fill=PR.get('a', 90)); ray = ray.filter(ImageFilter.GaussianBlur(10))
+    im = Image.composite(Image.new('RGB', (W, H), tuple(PR['kolor'])), im, ray); g = ImageDraw.Draw(im)
 mg = Image.new('L', (W, H), 0); ImageDraw.Draw(mg).rectangle([0, hor - 26, W, hor + 26], fill=90); mg = mg.filter(ImageFilter.GaussianBlur(16))
 im = Image.composite(Image.new('RGB', (W, H), tuple(T.get('mgla', T['niebo'][1]))), im, mg)
 gl = np.asarray(glow.filter(ImageFilter.GaussianBlur(14))).astype(np.float32)[..., None] / 255; a = np.asarray(im).astype(np.float32)

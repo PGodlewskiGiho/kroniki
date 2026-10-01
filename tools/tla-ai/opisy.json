@@ -521,5 +521,192 @@
     222
    ]
   }
+ },
+ "dungeon": {
+  "opis": "huge underground cavern city site, flat rock terraces with cliffs, glowing teal underground lake and waterfalls, stalactites, giant glowing mushrooms, violet crystals, light shaft",
+  "teren": {
+   "hor": 150,
+   "ziarno": 4,
+   "niebo": [
+    [
+     20,
+     16,
+     30
+    ],
+    [
+     60,
+     50,
+     80
+    ]
+   ],
+   "ziemia": [
+    [
+     78,
+     70,
+     92
+    ],
+    [
+     46,
+     40,
+     56
+    ]
+   ],
+   "skala": [
+    52,
+    46,
+    62
+   ],
+   "ciecz": [
+    [
+     110,
+     240,
+     220
+    ],
+    [
+     60,
+     170,
+     180
+    ]
+   ],
+   "mgla": [
+    70,
+    80,
+    110
+   ],
+   "lune": [
+    40,
+    140,
+    140
+   ],
+   "urwisko": "warstwy",
+   "gory": [
+    [
+     40,
+     90,
+     [
+      52,
+      46,
+      66
+     ]
+    ],
+    [
+     14,
+     44,
+     [
+      40,
+      36,
+      52
+     ]
+    ]
+   ],
+   "sufit": {
+    "y": 70,
+    "kolor": [
+     30,
+     26,
+     38
+    ],
+    "stalaktyty": 26
+   },
+   "promien": {
+    "x": 250,
+    "x2": 300,
+    "od": 8,
+    "do": 250,
+    "w": [
+     14,
+     46
+    ],
+    "kolor": [
+     200,
+     220,
+     255
+    ],
+    "a": 70
+   },
+   "plyty": [
+    {
+     "x": [
+      120,
+      480
+     ],
+     "tyl": 160,
+     "przod": 214,
+     "dol": 250,
+     "wodospady": [
+      210,
+      400
+     ],
+     "kolor": [
+      86,
+      78,
+      100
+     ]
+    }
+   ],
+   "rzeki": [
+    {
+     "pkt": [
+      [
+       8,
+       258
+      ],
+      [
+       150,
+       254
+      ],
+      [
+       320,
+       256
+      ],
+      [
+       584,
+       252
+      ]
+     ],
+     "w": [
+      16,
+      20
+     ]
+    },
+    {
+     "pkt": [
+      [
+       500,
+       256
+      ],
+      [
+       524,
+       300
+      ],
+      [
+       498,
+       350
+      ],
+      [
+       530,
+       436
+      ]
+     ],
+     "w": [
+      16,
+      30
+     ]
+    }
+   ],
+   "turnie": [
+    [
+     10,
+     150,
+     50
+    ],
+    [
+     582,
+     160,
+     46
+    ]
+   ],
+   "kamienie": 30
+  }
  }
 }
