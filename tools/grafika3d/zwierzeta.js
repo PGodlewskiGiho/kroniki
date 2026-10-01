@@ -588,14 +588,13 @@ function treant(L, P = {}) {
   const trunk = joint(root, [0, 0.55, 0], -hit * 0.15);
   trunk.add(lathe([[0.2, -0.05], [0.24, 0.3], [0.21, 0.7], [0.25, 1.0], [0.3, 1.15], [0.001, 1.2]], col, 'bark', [0, 0, 0], [1, 1, 0.9], 2));
   for (const z of [-0.07, 0.07]) trunk.add(sph(0.03, L.eyes || '#f0e070', 'glow', [0.2, 0.8, z])); trunk.add(box(0.03, 0.03, 0.14, '#1a1008', 'bark', [0.22, 0.62, 0]));
-  for (const z of [-1, 1]) { const arm = joint(trunk, [0.02, 0.95, 0.24 * z], 0.6 + hit * 1.2 * (z > 0 ? 1 : 0.5)); bone(arm, 0.08, 0.05, 0.55, col, 'bark'); for (let k = 0; k < 3; k++) arm.add(tube([[0, -0.52, 0], [0.05, -0.65, (k - 1) * 0.06], [0.12, -0.72, (k - 1) * 0.1]], 0.025, 0.008, col, 'bark')); arm.add(sph(0.12, lv, 'fur', [0, -0.25, 0], [1, 0.8, 1])); }
-  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; trunk.add(sph(0.2 + (i % 3) * 0.04, i % 2 ? lv : LT(lv, 0.12), 'fur', [Math.cos(a) * 0.22 - 0.05, 1.3 + Math.sin(i * 2.3) * 0.12 + Math.sin(t * 2 + i) * 0.01, Math.sin(a) * 0.25])); }
-  trunk.add(sph(0.26, DK(lv, 0.1), 'fur', [-0.05, 1.5, 0]));
+  for (const z of [-1, 1]) { const arm = joint(trunk, [0.02, 0.95, 0.24 * z], 0.6 + hit * 1.2 * (z > 0 ? 1 : 0.5)); bone(arm, 0.08, 0.05, 0.55, col, 'bark'); for (let k = 0; k < 3; k++) arm.add(tube([[0, -0.52, 0], [0.05, -0.65, (k - 1) * 0.06], [0.12, -0.72, (k - 1) * 0.1]], 0.025, 0.008, col, 'bark')); arm.add(leafClump(0.15, lv, [0, -0.25, 0], z > 0 ? 1 : 2, L.blossom)); }
+  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; trunk.add(leafClump(0.21 + (i % 3) * 0.04, lv, [Math.cos(a) * 0.22 - 0.05, 1.3 + Math.sin(i * 2.3) * 0.12 + Math.sin(t * 2 + i) * 0.01, Math.sin(a) * 0.25], i, L.blossom)); }
+  trunk.add(leafClump(0.3, lv, [-0.05, 1.5, 0], 7, L.blossom));
   if (L.antlers) for (const z of [-1, 1]) for (const [sx, sy] of [[1, 1], [-1, 0.8]]) { const br = [[0.02 * sx, 1.3, 0.1 * z], [0.18 * sx, 1.55, 0.22 * z], [0.38 * sx, 1.78, 0.28 * z], [0.5 * sx, 1.95 * sy + 0.1, 0.3 * z]]; trunk.add(tube(br, 0.08, 0.02, col, 'bark')); // korona z grubych konarów
-    for (const [k, dx, dy] of [[1, 0.12, 0.26], [2, -0.14, 0.2], [3, 0.1, 0.06]]) { const e = [br[k][0] + dx * sx, br[k][1] + dy, br[k][2] * 1.1]; trunk.add(tube([br[k], e], 0.035, 0.01, col, 'bark')); trunk.add(sph(0.15, k % 2 ? lv : LT(lv, 0.1), 'fur', e, [1.2, 0.8, 1.1])); } }
-  if (L.vines) for (const z of [-1, 1]) for (let k = 0; k < 3; k++) { const x = 0.04 - k * 0.1, y = 1.3 - k * 0.05; trunk.add(tube([[x, y, 0.3 * z], [x + 0.03, y - 0.3, 0.34 * z], [x - 0.02, y - 0.6 - k * 0.1, 0.36 * z]], 0.018, 0.01, L.vines, 'fur')); trunk.add(sph(0.045, L.blossom || LT(L.vines, 0.3), 'glow', [x - 0.02, y - 0.62 - k * 0.1, 0.36 * z])); } // pnącza z kwiatami
+    for (const [k, dx, dy] of [[1, 0.12, 0.26], [2, -0.14, 0.2], [3, 0.1, 0.06]]) { const e = [br[k][0] + dx * sx, br[k][1] + dy, br[k][2] * 1.1]; trunk.add(tube([br[k], e], 0.035, 0.01, col, 'bark')); trunk.add(leafClump(0.17, lv, e, k + 3, L.blossom)); } }
+  if (L.vines) for (const z of [-1, 1]) for (let k = 0; k < 3; k++) { const x = 0.04 - k * 0.1, y = 1.3 - k * 0.05; trunk.add(tube([[x, y, 0.3 * z], [x + 0.03, y - 0.3, 0.34 * z], [x - 0.02, y - 0.6 - k * 0.1, 0.36 * z]], 0.018, 0.01, L.vines, 'fur')); } // pnącza
   if (L.moss) { trunk.add(cone(0.13, 0.42, L.moss, 'fur', [0.2, 0.36, 0], [Math.PI, 0, 0.12], 7)); for (const z of [-0.1, 0.1]) trunk.add(cone(0.06, 0.3, DK(L.moss, 0.15), 'fur', [0.18, 0.4, z], [Math.PI, 0, 0.1], 6)); } // broda z mchu
-  if (L.blossom) for (let i = 0; i < 26; i++) { const a = i * 2.4, r = (L.antlers ? 0.42 : 0.28) + (i % 3) * 0.06; trunk.add(sph(0.05, i % 4 ? L.blossom : '#fff8e8', 'glow', [Math.cos(a) * r - 0.05, 1.35 + Math.sin(i * 1.7) * 0.28 + (L.antlers ? 0.15 : 0), Math.sin(a) * r])); } // kwiaty królewskiego drzewca
   root.scale.setScalar(L.size || 1);
   return root;
 }

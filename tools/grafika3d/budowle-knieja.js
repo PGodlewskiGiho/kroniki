@@ -12,27 +12,10 @@ function trunk3(x, z, h, r, { col = SV.bark, lean = 0, roots = 5, y = 0, seed = 
   return g;
 }
 // Korona: kiść kul z liśćmi (faktura liści), kolor z odcieniami
-// Kępa liści namalowana na kanwie (jak na tle AI): falista sylwetka z płatów wypełniona setkami pociągnięć pędzla; każdy płat jasny i ciepły u góry,
-// ciemny i chłodny u dołu. Korona = kilka takich kart zwróconych do kamery (widok miasta jest stały), w warstwach, więc ma głębię i rzuca cień.
-const LEAF_SPR = new Map();
-function leafSprite(col, v) {
-  const key = col + v; if (LEAF_SPR.has(key)) return LEAF_SPR.get(key);
-  const N = 256, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d'), R = rng(v * 7919 + 13), base = new THREE.Color(col);
-  const lobes = []; for (let i = 0; i < 16; i++) { const a = R() * Math.PI * 2, q = Math.sqrt(R()); lobes.push([128 + Math.cos(a) * q * 70, 140 + Math.sin(a) * q * 44 - (1 - q) * 14, 26 + R() * 22]); }
-  lobes.sort((a, b) => a[1] - b[1]);
-  const shade = t => { const k = 0.38 + 0.68 * t, c2 = base.clone().multiplyScalar(k); if (t < 0.45) c2.lerp(new THREE.Color('#1c3438'), (0.45 - t) * 0.7); else c2.lerp(new THREE.Color('#f0e890'), (t - 0.45) * 0.28); return `rgb(${Math.min(255, c2.r * 255) | 0},${Math.min(255, c2.g * 255) | 0},${Math.min(255, c2.b * 255) | 0})`; };
-  for (const [lx, ly, lr] of lobes) { /* najpierw ciemny podkład płatu, potem pociągnięcia od cienia do światła */
-    g.fillStyle = shade(0.05); g.beginPath(); g.ellipse(lx, ly + lr * 0.08, lr, lr * 0.82, 0, 0, Math.PI * 2); g.fill();
-    g.globalAlpha = 0.85; for (let k = 0; k < 150; k++) { const a = R() * Math.PI * 2, q = Math.sqrt(R()) * 0.95, x = lx + Math.cos(a) * q * lr, y = ly + Math.sin(a) * q * lr * 0.8, t = Math.min(1, Math.max(0, 0.5 - (y - ly) / lr * 0.75 - (x - lx) / lr * 0.25 + (R() - 0.5) * 0.35));
-      g.fillStyle = shade(t); g.beginPath(); g.ellipse(x, y, 2.5 + R() * 4, 1.8 + R() * 2.4, R() * Math.PI, 0, Math.PI * 2); g.fill(); } g.globalAlpha = 1; }
-  for (let k = 0; k < 160; k++) { const L = lobes[R() * lobes.length | 0], a = -Math.PI * R(), x = L[0] + Math.cos(a) * L[2] * (0.95 + R() * 0.2), y = L[1] + Math.sin(a) * L[2] * 0.8 * (0.95 + R() * 0.2); /* listki wystające z obrysu */
-    g.fillStyle = shade(0.55 + R() * 0.4); g.beginPath(); g.ellipse(x, y, 2 + R() * 3, 1.5 + R() * 2, R() * Math.PI, 0, Math.PI * 2); g.fill(); }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; LEAF_SPR.set(key, t); return t;
-}
-function crown3(x, y, z, r, col = SV.leaf, seed = 1, n = 9) {
+function crown3(x, y, z, r, col = SV.leaf, seed = 1, n = 9, fl = null) {
   const g = new THREE.Group(), R = rng(seed * 31 + 7), N = Math.round(n * 0.8) + 5;
   const cards = []; for (let i = 0; i < N; i++) { const a = R() * Math.PI * 2, q = i ? Math.sqrt(R()) : 0; cards.push([Math.cos(a) * q * r * 0.8, (R() - 0.35) * r * 0.55 * (1 - q * 0.4), Math.sin(a) * q * r * 0.7, r * (0.62 + R() * 0.25)]); }
-  for (const [dx, dy, dz, sz] of cards) { const mt = new THREE.MeshStandardMaterial({ map: leafSprite(col, (R() * 6) | 0), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1, metalness: 0 });
+  for (const [dx, dy, dz, sz] of cards) { const mt = new THREE.MeshStandardMaterial({ map: leafSprite(col, (R() * 6) | 0, fl), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1, metalness: 0 });
     const m = new THREE.Mesh(new THREE.PlaneGeometry(sz * 2 / PXU, sz * 2 / PXU), mt); m.position.set(...P(x + dx, y + dy, z + dz)); m.rotation.set(-0.35, (R() - 0.5) * 0.5, (R() - 0.5) * 0.3); if (R() < 0.5) m.scale.x = -1; g.add(m); }
   return g;
 }
@@ -123,7 +106,7 @@ const SYLVAN3 = {
     const g = new THREE.Group(); g.add(boulder(0, 0, 0, 70, '#5a6a50', 120, 0.35));
     for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; g.add(menhir(Math.cos(a) * 62, Math.sin(a) * 30, 8, 22, SV.stoneL, SV.green)); }
     const st = creature('treantKing', 0, 20, 0, 3.4, -Math.PI / 2, { t: 0.2 }); g.add(st); st.updateMatrixWorld(true); const top = new THREE.Box3().setFromObject(st).max.y * PXU;
-    g.add(crown3(0, top - 6, -6, 46, '#6ab84a', 121, 10)); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; g.add(sph(5 / PXU, SV.blossom, 'cloth', P(Math.cos(a) * 34, top + 4 + Math.sin(i) * 10, Math.sin(a) * 20 - 6), null, 8)); }
+    g.add(crown3(0, top - 6, -6, 46, '#6ab84a', 121, 10, SV.blossom));
     glowMark(g, 0, top * 0.6, 10, 70, '#b8ff90'); fireflies(g, 0, 30, 0, 160, top, 18, 12); return g; },
   dw1(t) { // gaj driad: trzy drzewa i łuk z gałęzi; 2: święty gaj – kwitnące różem; 3: jezioro rusałek – staw z liliami w kręgu kwitnących drzew
     const g = new THREE.Group(), bl = t >= 2 ? SV.blossom : SV.leafL;
@@ -150,7 +133,7 @@ const SYLVAN3 = {
   dw4(t) { // stary las: trzy pradawne drzewa i drzewiec; 2: pradawny las – większe; 3: królewski bór – olbrzymi dąb z koroną z kwiatów, świecące oczy, król drzewców
     const g = new THREE.Group(), k = t >= 2 ? 1.2 : 1;
     for (const [x, z, s] of [[-40, -10, 1], [40, -12, 2]]) g.add(tree3k(x, z, 46 * k, 8, 26 * k, SV.leafD, 150 + s));
-    if (t >= 3) { g.add(trunk3(0, -14, 100, 22, { seed: 155, roots: 8, col: '#4a3220' })); g.add(crown3(0, 128, -16, 52, '#4e9a42', 156, 12)); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; g.add(sph(4 / PXU, i % 2 ? SV.blossom : '#f0e070', 'cloth', P(Math.cos(a) * 36, 150 + Math.sin(i * 2) * 8, Math.sin(a) * 18 - 16), null, 8)); }
+    if (t >= 3) { g.add(trunk3(0, -14, 100, 22, { seed: 155, roots: 8, col: '#4a3220' })); g.add(crown3(0, 128, -16, 52, '#4e9a42', 156, 12, SV.blossom));
       for (const x of [-7, 7]) g.add(sph(2.6 / PXU, '#a0ffb0', 'glow', P(x, 56, 6), null, 8)); g.add(creature('treantKing', 30, 0, 26, 0.6, -0.8)); glowMark(g, 0, 56, 8, 20, '#a0ffb0'); }
     else { g.add(trunk3(0, -6, 60 * k, 16, { seed: 157, col: '#4a3220' })); g.add(crown3(0, 74 * k, -8, 30 + t * 5, '#4e9a42', 158, 9)); for (const x of [-5, 5]) g.add(sph(2 / PXU, t >= 2 ? '#a0ffb0' : '#e8d070', 'glow', P(x, 32 * k, 10), null, 8)); g.add(creature(t >= 2 ? 'elderTreant' : 'treant', 30, 0, 22, 0.5, -0.8)); }
     return g; },

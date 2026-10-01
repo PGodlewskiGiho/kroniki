@@ -9,7 +9,7 @@ const GAME_URL = pathToFileURL(path.join(__dirname, '..', 'Kroniki Królestw.htm
 // Otwiera grę i zbiera błędy strony. Fonty z sieci blokujemy: testy nie zależą od internetu.
 // CHROMIUM_PATH pozwala użyć przeglądarki zainstalowanej obok (gdy wersja Playwrighta jej nie zna).
 async function openGame() {
-  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  const exe = process.env.CHROMIUM_PATH || (require('fs').existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : null), browser = await chromium.launch(exe ? { executablePath: exe } : {});
   const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
   const errors = [];
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
