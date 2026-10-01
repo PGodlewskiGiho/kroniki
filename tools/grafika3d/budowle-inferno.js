@@ -36,6 +36,18 @@ function ifDemonHead(g, R, x, y, z) { const hd = sph(R / PXU, IF.bas, 'rock', P(
   for (let i = 0; i < 7; i++) { const tx = x - R * 0.48 + i * R * 0.16, big = i === 1 || i === 5; g.add(cone(R * (big ? 0.07 : 0.05) / PXU, R * (big ? 0.34 : 0.2) / PXU, IF.bone, 'bone', P(tx, y + R * 0.7, z + R * 1.0), [Math.PI, 0, 0], 6));
     g.add(cone(R * 0.05 / PXU, R * (big ? 0.3 : 0.18) / PXU, IF.bone, 'bone', P(tx + R * 0.06, y + R * 0.38, z + R * 1.0), null, 6)); }
   for (const s of [-1, 1]) { ifHornS(g, x + s * R * 0.8, y + R * 1.45, z, R / 22, s); g.add(cone(R * 0.08 / PXU, R * 0.4 / PXU, IF.bone, 'bone', P(x + s * R * 0.62, y + R * 0.28, z + R * 0.75), [0.4, 0, -s * 0.6], 6)); } }
+// Portal z głębią: tunel w głąb bryły (ściany i stopniowo węższe ościeża), na dnie świecąca tafla, po drodze półprzezroczyste warstwy wiru
+function ifPortalRect(g, x, y, z, w, h, D, col = '#ff6a20') { const wall = IF.basD;
+  for (let i = 0; i < 3; i++) { const k = 1 - i * 0.12, zz = z - i * D / 3, d3 = D / 3; for (const s of [-1, 1]) g.add(blk(4, h * k, d3, wall, 'ashlar', x + s * (w * k / 2 + 2), y, zz - d3 / 2)); g.add(blk(w * k + 8, 4, d3, wall, 'ashlar', x, y + h * k, zz - d3 / 2)); }
+  const b = blk(w * 0.76, h * 0.76, 1, col, 'win', x, y, z - D); b.material = lightMat(col); g.add(b);
+  for (let i = 1; i <= 3; i++) { const k = 0.95 - i * 0.07, pl = blk(w * k, h * k, 0.4, col, 'win', x, y, z - D * i / 4); pl.material = lightMat(col); pl.material.transparent = true; pl.material.opacity = 0.18 + i * 0.06; g.add(pl);
+    g.add(torus(Math.min(w, h) * k * 0.3 / PXU, 0.6 / PXU, LT(col, 0.3), 'glow', P(x, y + h * k * 0.5, z - D * i / 4 + 0.3), [0, 0, i])); }
+  glowMark(g, x, y + h / 2, z + 2, Math.max(w, h) * 0.5, col); }
+function ifPortalRound(g, x, y, z, R, D, col = '#ff5a20') { const tube = cyl3(R, R, D, IF.basD, 'ashlar', 0, 0, 0, 28, true); tube.material = tube.material.clone(); tube.material.side = THREE.DoubleSide; tube.rotation.x = Math.PI / 2; tube.position.set(...P(x, y, z - D / 2)); g.add(tube);
+  const back = cyl3(R, R, 1, col, 'win', 0, 0, 0, 28); back.material = lightMat(col); back.rotation.x = Math.PI / 2; back.position.set(...P(x, y, z - D)); g.add(back);
+  for (let i = 1; i <= 3; i++) { const d = cyl3(R * (1 - i * 0.12), R * (1 - i * 0.12), 0.4, col, 'win', 0, 0, 0, 24); d.material = lightMat(LT(col, 0.15 * i)); d.material.transparent = true; d.material.opacity = 0.16 + i * 0.07; d.rotation.x = Math.PI / 2; d.position.set(...P(x, y, z - D * i / 4)); g.add(d);
+    g.add(torus(R * (0.75 - i * 0.15) / PXU, 0.7 / PXU, LT(col, 0.35), 'glow', P(x, y, z - D * i / 4 + 0.3))); }
+  glowMark(g, x, y, z + 2, R, col); }
 // Jezioro / rzeka lawy: świecąca tafla z bazaltowym brzegiem
 function ifLava(x, z, w, d, seg = 20) { const g = new THREE.Group(); const b = cyl3(w / 2 + 4, w / 2 + 6, 1.6, IF.basD, 'rock', x, 0, z, seg); b.scale.z = d / w; g.add(b);
   const l = cyl3(w / 2, w / 2, 1.2, IF.lava, 'win', x, 0.8, z, seg); l.material = lightMat('#ff7a24'); l.scale.z = d / w; g.add(l); glowMark(g, x, 3, z, w * 0.4, IF.lava); return g; }
@@ -86,11 +98,11 @@ const INFERNO3 = {
     const g = new THREE.Group(); for (const [x, r, h] of [[-14, 12, 34], [14, 10, 28]]) { g.add(cyl3(r, r, h, IF.iron, 'iron', x, 0, -6, 14)); for (const y of [6, h - 6]) g.add(torus(r / PXU, 0.9 / PXU, '#4a3e40', 'iron', P(x, y, -6), [Math.PI / 2, 0, 0])); g.add(cone(r * 1.1 / PXU, r * 0.8 / PXU, IF.roofD, 'tiles', P(x, h + r * 0.4, -6), null, 14)); }
     const ch = blk(4, 2, 24, IF.iron, 'iron', 6, 14, 12); ch.rotation.x = 0.5; g.add(ch);
     for (const [x, z, r] of [[-28, 16, 10], [26, 18, 8], [6, 24, 7]]) g.add(sph(r / PXU, IF.sulf, 'rock', P(x, 0, z), [1, 0.7, 1], 10)); return g; },
-  special() { // Brama piekieł: wielki pierścień z bazaltu na schodach, w środku wir ognia, rogi i kolce
-    const g = new THREE.Group(); g.add(blk(80, 6, 40, IF.basD, 'ashlar', 0, 0, 0)); g.add(blk(64, 6, 30, IF.bas, 'ashlar', 0, 6, 0));
-    g.add(torus(30 / PXU, 6 / PXU, IF.bas, 'ashlar', P(0, 44, 0), null, null)); const v = cyl3(26, 26, 2, IF.lava, 'win', 0, 0, 0, 28); v.material = lightMat('#ff5a20'); v.material.transparent = true; v.material.opacity = 0.75; v.rotation.x = Math.PI / 2; v.position.set(...P(0, 44, 0)); g.add(v);
-    g.add(torus(16 / PXU, 2 / PXU, IF.purple, 'glow', P(0, 44, 1.5))); glowMark(g, 0, 44, 4, 34, IF.lava); for (const s of [-1, 1]) g.add(ifBowl(s * 44, 14, 14));
-    for (let i = 0; i < 8; i++) { const a = Math.PI * (0.05 + i * 0.128); g.add(cone(2 / PXU, 9 / PXU, IF.iron, 'iron', P(Math.cos(a) * 37, 44 + Math.sin(a) * 37, 0), [0, 0, a - Math.PI / 2], 5)); } return g; },
+  special() { // Brama piekieł: gruby pierścień-tunel z bazaltu na schodach, w głębi wir ognia, misy ognia i kolce
+    const g = new THREE.Group(); g.add(blk(84, 6, 44, IF.basD, 'ashlar', 0, 0, -6)); g.add(blk(68, 6, 34, IF.bas, 'ashlar', 0, 6, -6));
+    const outer = cyl3(36, 36, 26, IF.bas, 'ashlar', 0, 0, 0, 28, true); outer.rotation.x = Math.PI / 2; outer.position.set(...P(0, 44, -8)); g.add(outer); g.add(torus(32 / PXU, 5 / PXU, IF.basL, 'ashlar', P(0, 44, 5)));
+    ifPortalRound(g, 0, 44, 5.5, 28, 24); for (const s of [-1, 1]) g.add(ifBowl(s * 46, 14, 12));
+    for (let i = 0; i < 8; i++) { const a = Math.PI * (0.05 + i * 0.128); g.add(cone(2.4 / PXU, 10 / PXU, IF.iron, 'iron', P(Math.cos(a) * 40, 44 + Math.sin(a) * 40, -4), [0, 0, a - Math.PI / 2], 5)); } return g; },
   grail() { // Ołtarz Ognia: kolosalna schodkowa piramida z bazaltu otoczona rzekami lawy, na szczycie olbrzymia misa z kolumną ognia, rogate obeliski i łuk z rogów
     const g = new THREE.Group(); g.add(ifLava(0, 0, 230, 150, 28)); for (let i = 0; i < 5; i++) { const k = 1 - i * 0.17; g.add(blk(170 * k, 22, 120 * k, i % 2 ? IF.basD : IF.bas, 'ashlar', 0, i * 22, -10)); g.add(blk(170 * k + 3, 2.4, 120 * k + 3, IF.lava, 'glow', 0, (i + 1) * 22 - 1.2, -10)); }
     g.add(blk(26, 110, 14, IF.basL, 'ashlar', 0, 0, 46)); /* schody */ for (const s of [-1, 1]) { const f = blk(8, 110, 2, IF.lava, 'win', s * 18, 0, 48); f.material = lightMat('#ff6a1a'); g.add(f); } /* spływająca lawa */
@@ -120,7 +132,7 @@ const INFERNO3 = {
     return g; },
   dw4(t) { // brama demonów: dwa bazaltowe pylony z łukiem i ognisty portal; 2: wrota rogatych – rogi i kolce; 3: brama zagłady – wyższe pylony, fiolet zagłady
     const g = new THREE.Group(), H = t >= 3 ? 70 : 56; for (const s of [-1, 1]) { g.add(blk(16, H, 16, IF.bas, 'ashlar', s * 28, 0, -6)); g.add(cone(9 / PXU, 20 / PXU, IF.roof, 'tiles', P(s * 28, H + 10, -6), [0, Math.PI / 4, 0], 4)); }
-    g.add(blk(72, 12, 16, IF.basD, 'ashlar', 0, H - 12, -6)); const pt = blk(40, H - 12, 2, t >= 3 ? IF.purple : IF.lava, 'win', 0, 0, -6); pt.material = lightMat(t >= 3 ? '#b060ff' : '#ff6a20'); pt.material.transparent = true; pt.material.opacity = 0.8; g.add(pt); glowMark(g, 0, H / 2, -4, 30, t >= 3 ? IF.purple : IF.lava);
+    g.add(blk(72, 12, 22, IF.basD, 'ashlar', 0, H - 12, -6)); ifPortalRect(g, 0, 0, 4, 38, H - 14, 22, t >= 3 ? '#b060ff' : '#ff6a20');
     g.add(creature(t >= 3 ? 'doomDemon' : t >= 2 ? 'hornedDemon' : 'demon', 30, 0, 24, 0.55, -Math.PI / 2 + 0.5)); return g; },
   dw5(t) { // szyb czartów: okrągły szyb z płonącą otchłanią i żurawiem z łańcuchem; 2: otchłań władców – wieżyczki; 3: tron Otchłani – bazaltowy tron nad szybem
     const g = new THREE.Group(); g.add(cyl3(30, 32, 10, IF.bas, 'ashlar', 0, 0, -6, 18)); const pit = cyl3(24, 24, 1, IF.lava, 'win', 0, 10, -6, 18); pit.material = lightMat('#ff5a18'); g.add(pit); glowMark(g, 0, 16, -6, 30, IF.lava);
@@ -136,7 +148,7 @@ const INFERNO3 = {
     g.add(creature(t >= 3 ? 'flameLord' : t >= 2 ? 'efreetSultan' : 'efreet', 40, 0, 28, 0.32, -Math.PI / 2 + 0.6)); return g; },
   dw7(t) { // wrota piekieł: olbrzymie wrota wykute w skale, za nimi łuna lawy, diabeł na schodach; 2: tron ognia – tron nad wrotami; 3: serce piekieł – pulsujące serce lawy i iglice
     const g = new THREE.Group(), k = t >= 3 ? 1.2 : 1; g.add(boulder(0, 0, -30, 70 * k, '#3e3034', 70, 0.8)); g.add(boulder(-58 * k, 0, -10, 34, '#46383a', 71, 0.8)); g.add(boulder(58 * k, 0, -14, 38, '#46383a', 72, 0.8));
-    g.add(blk(60, 70, 12, IF.basD, 'ashlar', 0, 0, 22)); const gate = blk(40, 56, 2, IF.lava, 'win', 0, 0, 28.5); gate.material = lightMat('#ff5a18'); g.add(gate); glowMark(g, 0, 28, 32, 36, IF.lava);
+    for (const sx of [-1, 1]) g.add(blk(14, 70, 26, IF.basD, 'ashlar', sx * 25, 0, 16)); g.add(blk(64, 14, 26, IF.basD, 'ashlar', 0, 56, 16)); ifPortalRect(g, 0, 0, 28, 36, 54, 24, '#ff5a18');
     for (let i = 0; i < 5; i++) g.add(blk(2, 56, 1.6, IF.iron, 'iron', -16 + i * 8, 0, 29.6));
     for (let i = 0; i < 4; i++) g.add(blk(60 - i * 8, 3, 8, IF.basL, 'ashlar', 0, i * 3, 34 + 8 - i * 2.5)); g.add(ifLava(0, 46, 120 * k, 14));
     if (t >= 2) { g.add(blk(24, 36, 12, IF.basD, 'ashlar', 0, 70, 18)); g.add(blk(30, 8, 20, IF.bas, 'ashlar', 0, 70, 24)); ifFire(g, -16, 78, 24); ifFire(g, 16, 78, 24); }

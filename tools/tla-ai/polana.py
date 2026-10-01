@@ -5,7 +5,7 @@
 import json, os, sys, numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 fac, out = sys.argv[1], sys.argv[2]; strength = float(sys.argv[3]) if len(sys.argv) > 3 else 0.45; seed = int(sys.argv[4]) if len(sys.argv) > 4 else 7
-U = json.load(open(f'uklady/{fac}.json')); M = json.load(open(f'uklady/{fac}-wymiary.json')); P = U['polana']
+U = json.load(open(f'uklady/{fac}.json')); M = json.load(open(f'uklady/{fac}-wymiary.json')); P = U[os.environ.get('KLUCZ', 'polana')]  # KLUCZ=polana_tyl: drugie przejście (np. dalszy plan)
 hor, d, f = U['pj']['hor'], U['pj']['d'], U['pj']['f']
 im = Image.open('tla/' + P['zrodlo']).convert('RGB'); W, H = im.size; S = W / 576.0; a0 = np.asarray(im).astype(np.float32)
 def I(x, y): return ((x - 8) * S, (y - 8) * S)  # kadr gry -> piksele obrazu
@@ -98,6 +98,10 @@ if P.get('pekniecia'):  # sieć pęknięć w spieczonej skorupie: ciemna szczeli
             k = 0.3 + (y / S + 8 - hor) / 300; a += (rng.random() - 0.5) * 1.2; x += np.cos(a) * 9 * k * S; y += np.sin(a) * 3 * k * S; pts.append((x, y))
         k = 0.3 + (y / S + 8 - hor) / 300; td.line(pts, fill=(14, 8, 8), width=max(1, int(2.4 * k * S))); td.line(pts, fill=tuple(P.get('pekniecia_kolor', [255, 110, 30])), width=max(1, int(0.9 * k * S)))
     teren = np.asarray(T).astype(np.float32)
+if P.get('wyostrz'):  # dalszy plan bez mgły: lokalny kontrast i wyostrzenie przed AI
+    r_, pc = P['wyostrz']; gr = Image.fromarray(teren.mean(-1).clip(0, 255).astype(np.uint8))  # tylko jasność (bez barwnych obwódek)
+    teren = teren + (np.asarray(gr.filter(ImageFilter.UnsharpMask(radius=r_ * S, percent=pc, threshold=0))).astype(np.float32) - np.asarray(gr).astype(np.float32))[..., None]
+    if P.get('odmglij'): m = np.asarray(Image.fromarray(teren.clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(30 * S))).astype(np.float32); teren = teren * (1 + P['odmglij']) - m * P['odmglij']
 szkic = np.where(G[..., None], teren, a0)
 sz = Image.fromarray(szkic.clip(0, 255).astype(np.uint8)); sz.save(out.replace('.png', '-szkic.png'))
 if os.environ.get('SZKIC'): print(out.replace('.png', '-szkic.png')); sys.exit()

@@ -1,6 +1,6 @@
 {
  "_opis": "Miejsca budowli na namalowanym tle: s = podstawa na ekranie, z = głębokość (budowle na płaskowyżu), k = skala.",
- "tlo": "inferno-polana.png",
+ "tlo": "inferno-polana-tyl.png",
  "pj": {
   "hor": 135,
   "d": 440,
@@ -227,7 +227,7 @@
    ]
   ],
   "trakt_w": 16,
-  "bagno": 0.66,
+  "bagno": 0.74,
   "bagno_tyl": 0.0,
   "bagno_skala": 120,
   "woda_kolor": [
@@ -259,7 +259,7 @@
     10
    ]
   },
-  "pekniecia": 70,
+  "pekniecia": 0,
   "pekniecia_kolor": [
    210,
    70,
@@ -339,5 +339,68 @@
    ],
    "k": 1.5
   }
- ]
+ ],
+ "polana_tyl": {
+  "zrodlo": "inferno-polana.png",
+  "obszar": [
+   [
+    8,
+    156
+   ],
+   [
+    584,
+    156
+   ],
+   [
+    584,
+    262
+   ],
+   [
+    8,
+    262
+   ]
+  ],
+  "bez": [],
+  "obszar_tyl": 156,
+  "woda": [
+   0,
+   0
+  ],
+  "pnie": false,
+  "trawa": [
+   [
+    30,
+    24,
+    24
+   ],
+   [
+    30,
+    24,
+    24
+   ]
+  ],
+  "ziemia": [
+   40,
+   30,
+   28
+  ],
+  "trakt": [
+   [
+    300,
+    434
+   ],
+   [
+    300,
+    433
+   ]
+  ],
+  "trakt_w": 1,
+  "zachowaj": true,
+  "wyostrz": [
+   5,
+   120
+  ],
+  "opis": "detailed sharp fantasy matte painting, black charred basalt plateau with crisp cliffs and rock ledges, glowing lava falls into a lava river, dark volcanic rock texture, clear air, painterly, crisp",
+  "odmglij": 0.45
+ }
 }
