@@ -2,7 +2,7 @@
 # niebo, postrzępione góry przy horyzoncie (ten sam co w układach: hor = 140 w kadrze gry), płaska ziemia w perspektywie przez
 # ponad połowę kadru, wąskie pasy ramy (martwe drzewa / skały) przy krawędziach. Barwy z opisy.json → <frakcja>.szkic.
 #   python szkic-rownina.py frakcja wynik.png
-import sys, json, numpy as np
+import os, sys, json, numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 fac, out = sys.argv[1], sys.argv[2]; S = json.load(open('opisy.json', encoding='utf-8'))[fac]['szkic']
 W, H = 768, 560; hor = int((140 - 8) * H / 422); rng = np.random.default_rng(5)
@@ -26,8 +26,8 @@ def drzewo(x0, flip):  # martwe, sękate drzewo ramy: pień + gałęzie
     for i in range(7):
         y = 120 + i * 40; L = 60 + rng.random() * 90; d = 1 if (i % 2) ^ flip else -1; ang = -0.5 - rng.random() * 0.6
         g.line([(x0, y), (x0 + d * L, y + ang * L * 0.6), (x0 + d * L * 1.4, y + ang * L)], fill=c, width=max(3, 12 - i))
-drzewo(30, 0); drzewo(W - 30, 1)
-for x in (rng.random(4) * 120).tolist() + (W - rng.random(4) * 120).tolist():  # skały i nagrobki tylko przy brzegach u dołu
+if not os.environ.get('BEZ_RAMY'): drzewo(30, 0); drzewo(W - 30, 1)
+for x in [] if os.environ.get('BEZ_RAMY') else (rng.random(4) * 120).tolist() + (W - rng.random(4) * 120).tolist():  # skały i nagrobki tylko przy brzegach u dołu
     y = H - 20 - rng.random() * 90; w = 14 + rng.random() * 18; g.rounded_rectangle([x - w / 2, y - w * 1.3, x + w / 2, y], radius=5, fill=tuple(S['skaly']))
 mg = Image.new('L', (W, H), 0); ImageDraw.Draw(mg).rectangle([0, hor - 30, W, hor + 40], fill=110); mg = mg.filter(ImageFilter.GaussianBlur(18))  # mgła przy horyzoncie
 im = Image.composite(Image.new('RGB', (W, H), tuple(S['mgla'])), im, mg)
