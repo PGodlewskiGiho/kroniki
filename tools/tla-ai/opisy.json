@@ -81,5 +81,69 @@
    ]
   },
   "opis_bez_ramy": "haunted necropolis valley at night, wide open view, a wide flat open barren plain of grey earth and dead grass, ancient burial mounds and rocky outcrops at the sides, jagged dark mountains in the distance, open purple stormy sky with a pale moon, eerie mist low on the far ground"
+ },
+ "fortress": {
+  "opis": "misty swamp lowland in warm afternoon light, a huge perfectly flat open plain of firm green-brown moss and short marsh grass filling the whole foreground and middle, muddy dirt paths, a few reeds and small dark ponds only near the edges, distant misty hills with low jungle on the horizon, hazy green-gold sky",
+  "szkic": {
+   "niebo": [
+    [
+     150,
+     170,
+     140
+    ],
+    [
+     220,
+     214,
+     170
+    ]
+   ],
+   "ziemia": [
+    [
+     108,
+     118,
+     70
+    ],
+    [
+     78,
+     88,
+     50
+    ]
+   ],
+   "gory": [
+    [
+     40,
+     70,
+     [
+      96,
+      118,
+      92
+     ]
+    ],
+    [
+     18,
+     40,
+     [
+      70,
+      92,
+      70
+     ]
+    ]
+   ],
+   "rama": [
+    40,
+    48,
+    30
+   ],
+   "skaly": [
+    100,
+    100,
+    84
+   ],
+   "mgla": [
+    190,
+    206,
+    170
+   ]
+  }
  }
 }
