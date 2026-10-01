@@ -568,7 +568,7 @@ function skyDramatic(c, P) {
   if (P.stars) { const q = mulberry32(88 + (P.seed || 0)); for (let i = 0; i < 160; i++) { const x = 8 + q() * 576, y = 8 + q() * 170; c.fillStyle = `rgba(235,230,255,${((0.3 + q() * 0.7) * (1 - y / 190)).toFixed(2)})`; c.fillRect(x, y, q() < 0.12 ? 2 : 1, q() < 0.12 ? 2 : 1); } }
   if (!P.moon) { sg.addColorStop(0, 'rgba(255,226,160,.95)'); sg.addColorStop(0.18, 'rgba(255,196,120,.45)'); sg.addColorStop(1, 'rgba(255,180,100,0)'); c.fillStyle = sg; c.fillRect(8, 8, 576, 320); circ(c, sx, sy, 13, '#fff0cc'); }
   const r = mulberry32(41 + (P.seed || 0));
-  for (let i = 0; i < 12; i++) cloudBank(c, 8 + r() * 600, 16 + r() * 80, 120 + r() * 180, 10 + r() * 12, P.cloudDark, P.cloudLit, r);
+  if (!TOWN_RAW) for (let i = 0; i < 12; i++) cloudBank(c, 8 + r() * 600, 16 + r() * 80, 120 + r() * 180, 10 + r() * 12, P.cloudDark, P.cloudLit, r); // bez pikselizacji: chmury z bryłą (skyDetail)
   if (P.moon) { sg.addColorStop(0, 'rgba(210,200,255,.6)'); sg.addColorStop(1, 'rgba(210,200,255,0)'); c.fillStyle = sg; c.fillRect(8, 8, 576, 320); const mR = P.moonR || 24, mk = mR / 24; circ(c, sx, sy, mR, '#e8e2f2'); for (const [dx, dy, rr2] of [[-7, -5, 5], [8, 7, 4], [5, -9, 3], [-4, 10, 3]]) circ(c, sx + dx * mk, sy + dy * mk, rr2 * mk, 'rgba(150,140,180,.4)'); cloudBank(c, sx + 10, sy + mR * 0.7, 90 * mk, 6, P.cloudDark, P.cloudLit, r); }
   if (!P.moon) { c.save(); c.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 7; i++) { const a = 0.18 + i * 0.12, len = 520; c.fillStyle = 'rgba(255,214,150,.05)'; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + Math.cos(a) * len, sy + Math.sin(a) * len); c.lineTo(sx + Math.cos(a + 0.05) * len, sy + Math.sin(a + 0.05) * len); c.closePath(); c.fill(); }
@@ -874,17 +874,19 @@ let TownFXCache = {}, lastTownKey = null;
 function paintTownWorld(c, t, col, Wd) {
   usePJ(Wd); const fac = t.faction, A = Wd.art || TOWN_ART[fac], fx = { wins: [], smokes: [], glows: [], flags: [], rects: {} }, arts = BUILD_ART[fac] || {}, hzC = Wd.haze;
   c.save(); c.beginPath(); c.rect(8, 8, 576, 422); c.clip();
-  skyDramatic(c, Wd.sky);
-  const [rs1, rs2, rb] = Wd.ridge || [211, 237, 170]; ridge(c, rs1, rb, 96, Wd.mountains[0]); ridge(c, rs2, rb + 6, 58, Wd.mountains[1]);
-  farBand(c, Wd, hzC);
+  skyDramatic(c, Wd.sky); if (TOWN_RAW) skyDetail(c, Wd.sky);
+  const [rs1, rs2, rb] = Wd.ridge || [211, 237, 170], snow = fac === 'academy';
+  ridge(c, rs1, rb, 96, Wd.mountains[0]); if (TOWN_RAW) ridgeDetail(c, rs1, rb, 96, Wd.mountains[0], snow);
+  ridge(c, rs2, rb + 6, 58, Wd.mountains[1]); if (TOWN_RAW) ridgeDetail(c, rs2, rb + 6, 58, Wd.mountains[1], snow);
+  farBand(c, Wd, hzC); if (TOWN_RAW && (!(TOWN_BIOME[fac] || {}).far || (TOWN_BIOME[fac] || {}).far === 'oaks')) forestDetail(c, Wd);
   groundPlane(c, Wd);
   c.save(); groundDetail(c, Wd, fx); c.restore();
-  if (TOWN_RAW) terrainGrain(c, Wd);
+  if (TOWN_RAW) { terrainGrain(c, Wd); meadowDetail(c, Wd); }
   for (const Sa of Wd.seas || []) seaArt(c, Sa);
   for (const Lk of [...(Wd.lake ? [Wd.lake] : []), ...(Wd.lakes || [])]) { lakeArt(c, Lk); if (Lk.hot) { const [lx, ly, ls] = proj(Lk.X, Lk.Z); fx.glows.push([lx, ly, Lk.rx * ls * 1.2, Lk.hot]); } }
-  for (const Rv of [...(Wd.river ? [Wd.river] : []), ...(Wd.rivers || [])]) { riverArt(c, Rv, hzC); if (Rv.chasm) chasmGlow(c, Rv); }
+  for (const Rv of [...(Wd.river ? [Wd.river] : []), ...(Wd.rivers || [])]) { riverArt(c, Rv, hzC); if (TOWN_RAW) riverDetail(c, Rv); if (Rv.chasm) chasmGlow(c, Rv); }
   for (const I of Wd.islands || []) islandArt(c, I, Wd);
-  [...Wd.hills.map(Hl => ({ Z: Hl.Z, Hl })), ...(Wd.slabs || []).map(Sb => ({ Z: Sb.Z0, Sb }))].sort((a, b) => b.Z - a.Z).forEach(o => o.Hl ? hillArt(c, o.Hl, hzC) : slabArt(c, o.Sb, hzC));
+  [...Wd.hills.map(Hl => ({ Z: Hl.Z, Hl })), ...(Wd.slabs || []).map(Sb => ({ Z: Sb.Z0, Sb }))].sort((a, b) => b.Z - a.Z).forEach(o => o.Hl ? (hillArt(c, o.Hl, hzC), TOWN_RAW && hillDetail(c, o.Hl)) : slabArt(c, o.Sb, hzC));
   for (const Sb of [...(Wd.slabs || [])].sort((a, b) => b.Z0 - a.Z0)) for (const [X, e0 = 0] of Sb.stairs || []) stairsArt(c, Sb, X, e0, hzC);
   const lanes = Wd.roads.filter(Rd => !Rd.main), mains = Wd.roads.filter(Rd => Rd.main); // ścieżki pod drogą główną; brzegi przed nawierzchnią
   for (const grp of [lanes, mains]) { for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'under'); for (const Rd of grp) roadStyled(c, A, Rd, Wd, fx, 'top'); }
@@ -902,7 +904,7 @@ function paintTownWorld(c, t, col, Wd) {
       fx.rects[o.slot] = { x: sx - w / 2, y: sy - h, w, h, z: S.Z };
       const box = [-44, -S.h * 0.8 - 50, S.w + 88, S.h * 1.8 + 62], anc = [S.w / 2, S.h], can = { x: 0, b: S.h, w: S.w, h: S.h };
       if (B) {
-        castShadow(c, { x: sx - w / 2, b: sy, w, h }, 1);
+        (TOWN_RAW ? softShadow : castShadow)(c, { x: sx - w / 2, b: sy, w, h }, 1);
         const [grp, tier] = groupOf(B), fn = arts[grp];
         const dw = grp.startsWith('dw'); // siedliska: elitarne rysowane jak ulepszone, z masztami przed wejściem
         const art = townBuildArt(fac, grp + tier);
