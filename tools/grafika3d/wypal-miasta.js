@@ -6,7 +6,7 @@
 const path = require('path'), fs = require('fs');
 const { ROOT, openStudio } = require('./wspolne');
 const OUT = path.join(ROOT, 'src', 'grafika', 'miasta'), META = path.join(ROOT, 'src', 'grafika', 'miasta.json');
-const PIXD = +(process.env.PIXD || 1.35), Q = +(process.env.Q || 1);
+const RAW = !process.env.PIKSEL, PIXD = +(process.env.PIXD || (RAW ? 1 : 1.35)), Q = +(process.env.Q || 1);
 // klucz budowli (grupa + stopień) -> miejsce w scenie (jak BUILDINGS.slot)
 const KEYS = [['hall', 4, 0], ['fort', 3, 1], ['guild', 5, 2], ['dw7', 3, 3], ['dw6', 3, 4], ['dw5', 3, 5], ['dw4', 3, 6], ['dw3', 3, 7], ['smith', 1, 8], ['silo', 1, 9],
   ['dw1', 3, 10], ['dw2', 3, 11], ['tavern', 1, 12], ['market', 1, 13], ['special', 1, 14], ['grail', 1, 15]];
@@ -30,7 +30,7 @@ const KEYS = [['hall', 4, 0], ['fort', 3, 1], ['guild', 5, 2], ['dw7', 3, 3], ['
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = y + rh; const g = sheet.getContext('2d'), out = {};
       for (const f of frames) { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, f.px, f.py, f.w, f.h); out[f.key] = { f: [f.px, f.py, f.w, f.h, f.ax, f.ay], d: Math.round(f.D * 1000) / 1000, ...(f.m.length ? { m: f.m } : {}) }; }
       return { png: sheet.toDataURL('image/png').split(',')[1], b: out };
-    }, [fac, KEYS, PIXD, Q, !!process.env.RAW]);
+    }, [fac, KEYS, PIXD, Q, RAW]);
     fs.writeFileSync(path.join(OUT, fac + '.png'), Buffer.from(r.png, 'base64')); meta[fac] = r.b; fs.writeFileSync(META, JSON.stringify(meta));
     console.log(`${fac}: ${Object.keys(r.b).length} budowli`);
   }
