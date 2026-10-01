@@ -332,7 +332,7 @@
   }
  },
  "academy": {
-  "opis": "snowy mountain town site, flat snowy stone terraces with cliffs, frozen waterfalls and a frozen river, huge snow peaks, clear blue sky, crisp winter sunlight",
+  "opis": "painted snowy mountain plateau, dark grey granite cliffs with snow ledges, frozen icefalls, frozen river, snowy flat terraces, distant snow peaks, blue sky, warm sun",
   "teren": {
    "hor": 128,
    "ziarno": 7,
@@ -361,9 +361,9 @@
     ]
    ],
    "skala": [
-    96,
-    104,
-    120
+    78,
+    80,
+    92
    ],
    "ciecz": [
     [
@@ -507,7 +507,8 @@
      160,
      46
     ]
-   ]
+   ],
+   "urwisko": "warstwy"
   }
  }
 }

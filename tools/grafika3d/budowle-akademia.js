@@ -130,11 +130,11 @@ const ACADEMY3 = {
     g.add(cone(1 / PXU, 14 / PXU, AK.gold, 'gold', P(0, 5 + lv * 20 + 6, -4), null, 6));
     if (t >= 3) for (const s of [-1, 1]) { g.add(blk(6, 6, 6, AK.marbleD, 'ashlar', s * 30, 5, 18)); g.add(sph(3 / PXU, AK.gold, 'gold', P(s * 30, 14, 18), [1, 1.6, 1], 8)); }
     g.add(creature(t >= 3 ? 'nagaEmpress' : t >= 2 ? 'nagaQueen' : 'naga', 22, 5, 22, 0.45, -Math.PI / 2 + 0.4)); return g; },
-  dw7(t) { // chmurna świątynia: świątynia na szczycie skalnej iglicy, schody wykute w skale, wokół obłoki; 2: niebiańska – złota kopuła i druga świątynia niżej; 3: świątynia burzy – piorunochrony i błękitny blask
+  dw7(t) { // chmurna świątynia: świątynia na szczycie skalnej iglicy, schody wykute w skale, na półkach śnieg; 2: niebiańska – złota kopuła i druga świątynia niżej; 3: świątynia burzy – piorunochrony i błękitny blask
     const g = new THREE.Group(), H = t >= 3 ? 110 : 96; g.add(boulder(0, 0, -16, 46, '#8a8e98', 90, 0.9)); g.add(cyl3(22, 40, H, '#8a8e98', 'rock', 0, 0, -16, 10)); g.add(boulder(0, H - 10, -16, 30, '#9a9ea8', 91, 0.6));
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 1.6 - 0.4, r = 38 - i * 2.2; g.add(blk(10, 3, 6, AK.marbleD, 'ashlar', Math.cos(a) * r, i * H / 8, -16 + Math.sin(a) * r * 0.5)); } /* schody */
     g.add(akTemple(44, 22, 30, 0, -16, { y: H - 4, cols: 5, roofCol: t >= 2 ? AK.gold : AK.blue })); if (t >= 2) g.add(dome(10, 9, AK.gold, 'gold', 0, H + 30, -16));
-    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; g.add(sph((10 + (i % 3) * 3) / PXU, '#f4f6fa', 'plaster', P(Math.cos(a) * 46, H * 0.45 + (i % 2) * 14, -16 + Math.sin(a) * 26), [1.8, 0.7, 1.1], 10)); } /* obłoki wokół iglicy */
+    for (let i = 0; i < 4; i++) g.add(sph((8 - i) / PXU, AK.snow, 'plaster', P((i % 2 ? 1 : -1) * (24 - i * 3), H * (0.25 + i * 0.18), -16 + 20 - i * 2), [1.6, 0.5, 1], 10)); /* łaty śniegu na półkach skały */
     if (t >= 3) { for (const s of [-1, 1]) g.add(cyl3(0.8, 0.8, 30, AK.gold, 'gold', s * 18, H + 26, -16, 5)); glowMark(g, 0, H + 40, -16, 40, AK.cyan); }
     g.add(creature(t >= 3 ? 'stormTitan' : t >= 2 ? 'titan' : 'giant', 40, 0, 24, 0.5, -Math.PI / 2 + 0.4)); return g; },
   ozd(t) { // ozdoby: 1 kryształy lodu, 2 para magicznych latarni, 3 posąg maga na cokole, 4 zaspa z kamieniami, 5 obelisk z runą

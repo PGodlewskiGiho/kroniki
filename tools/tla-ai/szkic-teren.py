@@ -55,8 +55,16 @@ for p in sorted(T.get('plyty', []), key=lambda p: p['dol']):
     front = []; x = x0
     while x <= x1: front.append(I(x, p['przod'] + (rng.random() - 0.5) * 3)); x += 12
     g.polygon([I(x0, p['dol'])] + front + [I(x1, p['dol'])], fill=cl)
-    for i in range(int((x1 - x0) / 5)):  # pionowe żłobienia urwiska (kolumny bazaltu)
-        X = I(x0 + 3 + i * 5, 0)[0]; c = tuple(min(255, int(v * (0.7 + 0.5 * rng.random()))) for v in cl); g.line([(X, I(0, p['przod'])[1] + 2), (X + (rng.random() - 0.5) * 3, I(0, p['dol'])[1])], fill=c, width=2)
+    if T.get('urwisko') == 'warstwy':  # skalne warstwy (granit) z łatami śniegu na półkach zamiast kolumn bazaltu
+        yt, yb = I(0, p['przod'])[1], I(0, p['dol'])[1]
+        for k in range(int((yb - yt) / 5)):
+            yk = yt + 3 + k * 5 + rng.random() * 2; pts = []; xx_ = I(x0, 0)[0]
+            while xx_ < I(x1, 0)[0]: pts.append((xx_, yk + (rng.random() - 0.5) * 3)); xx_ += 10 + rng.random() * 12
+            c = tuple(min(255, int(v * (0.6 + 0.5 * rng.random()))) for v in cl); g.line(pts, fill=c, width=2)
+            if rng.random() < 0.5: X0 = I(x0 + rng.random() * (x1 - x0), 0)[0]; g.ellipse([X0 - 14, yk - 2, X0 + 14, yk + 2], fill=tuple(T['ziemia'][0]))
+    else:
+        for i in range(int((x1 - x0) / 5)):  # pionowe żłobienia urwiska (kolumny bazaltu)
+            X = I(x0 + 3 + i * 5, 0)[0]; c = tuple(min(255, int(v * (0.7 + 0.5 * rng.random()))) for v in cl); g.line([(X, I(0, p['przod'])[1] + 2), (X + (rng.random() - 0.5) * 3, I(0, p['dol'])[1])], fill=c, width=2)
     g.polygon([top[0], top[1], I(x1, p['przod']), *front[::-1][1:-1], I(x0, p['przod'])], fill=ct)
     for i in range(160):  # faktura wierzchu
         tx, ty = x0 + rng.random() * (x1 - x0), p['tyl'] + rng.random() * (p['przod'] - p['tyl']); X, Y = I(tx, ty); c = tuple(min(255, int(v * (0.7 + 0.5 * rng.random()))) for v in ct); g.line([(X, Y), (X + 5, Y - 1)], fill=c, width=1)
