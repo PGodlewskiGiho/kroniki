@@ -308,5 +308,13 @@
    canStand (oba pola wolne) w ruchu, ustawieniu i lądowaniu, attackSpots (atak z zadu i w zad), czary obszarowe ranią raz.
    Ekran: unitPos rysuje stwora między polami, podświetlenia obu pól. Piksel jednostek w bitwie 1,35 px (wypal.js UB),
    pixelize bez dzielenia przez alfę i z brzegiem nie jaśniejszym od wnętrza (bez jasnych obwódek).
+   Grafika bez pikselizacji: wypal.js domyślnie wygładza (crisp: wyostrzenie, krawędź alfy), arkusze WebP, UB 0,6 (PIKSEL=1
+   przywraca dawny styl); drawSprite wygładza arkusze z raw.
+   Miasta na tle malowanym przez AI (tools/tla-ai): szkic kompozycji z gry (szkic.js: place pod budowle w perspektywie),
+   Stable Diffusion img2img (generuj.py, warianty do wyboru), głębia obrazu (glebia.py), drogi i place domalowane przez AI
+   (drogi.py), układ uklady/<frakcja>.json (punkt podstawy na ekranie, głębokość, obrót). Budowle 3D (budowle*.js) renderowane
+   kamerą o ogniskowej f dopasowanej do kąta obrazu (scena.js: applyPaintedLayout, paintedFinish: placyk i cień styku,
+   zasłanianie z głębi, wtopienie barw/ostrości/światła), wypal-miasta.js składa arkusz (tło + klatki w miejscach kadru);
+   gra rysuje je w paintTown3D (bez sceny 2D, ludzi i stworów na ścieżkach). Gotowa: Przystań (Graal: Kolos Archanioła).
    ===================================================================================== */
 

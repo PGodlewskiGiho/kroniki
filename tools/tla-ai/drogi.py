@@ -1,6 +1,7 @@
-# Drogi na namalowanym tle: przebieg z układu (uklady/<frakcja>.json, "drogi"), rysowany w perspektywie (szerokość ∝ odległość od
+# Drogi i płaskie place na namalowanym tle: przebieg z układu (uklady/<frakcja>.json, "drogi"), rysowany w perspektywie (szerokość ∝ odległość od
 # horyzontu), potem przemalowany przez AI (img2img na całym obrazie) i wklejony z powrotem tylko w pasie drogi z miękką krawędzią.
-#   python drogi.py tło.png uklad.json wynik.png [siła=0.4] [ziarno=7]
+# Place ("place": [sx, sy, rx, ry], z szkic.js) to płaskie polany pod budowle: malowane w barwie otoczenia, wygładzone, potem przemalowane razem z drogami.
+#   python drogi.py tło.png uklad.json wynik.png [siła=0.4] [ziarno=7] [frakcja: opis z opisy.json]
 import json, os, sys, numpy as np, torch
 from PIL import Image, ImageDraw, ImageFilter
 from diffusers import StableDiffusionImg2ImgPipeline, DPMSolverMultistepScheduler
@@ -14,6 +15,13 @@ def spline(pts, n=24):  # Catmull-Rom przez punkty
         for t in np.linspace(0, 1, n, endpoint=False): o.append(0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t ** 3))
     o.append(np.array(pts[-1])); return o
 mask = Image.new('L', (W, H), 0); md = ImageDraw.Draw(mask); draw = im.copy(); dd = ImageDraw.Draw(draw); rng = np.random.default_rng(3)
+a0 = np.asarray(im).astype(np.float32)
+for (px, py, rx, ry) in U.get('place', []):  # płaski plac: barwa terenu z okolicy, jaśniejsza i wyrównana
+    X, Y, RX, RY = (px - 8) * S, (py - 8) * S, rx * S, ry * S
+    x0, x1, y0, y1 = int(max(0, X - RX * 1.6)), int(min(W, X + RX * 1.6)), int(max(0, Y - RY * 1.6)), int(min(H, Y + RY * 1.6))
+    col = np.median(a0[y0:y1, x0:x1].reshape(-1, 3), 0) * 1.08 + np.array([10, 8, 2])
+    md.ellipse([X - RX * 1.3, Y - RY * 1.3, X + RX * 1.3, Y + RY * 1.3], fill=255)
+    for k in range(6): f = 1 - k / 6; dd.ellipse([X - RX * f, Y - RY * f, X + RX * f, Y + RY * f], fill=tuple(int(v) for v in np.clip(col + rng.normal(0, 3, 3), 0, 255)))
 for R in U.get('drogi', []):
     pts = spline(R['pts'])
     for p in pts:
@@ -26,6 +34,9 @@ torch.set_num_threads(os.cpu_count())
 pipe = StableDiffusionImg2ImgPipeline.from_pretrained(os.environ.get('MODEL', 'Lykon/dreamshaper-8'), torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
 pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, algorithm_type='dpmsolver++', use_karras_sigmas=True); pipe.set_progress_bar_config(disable=True)
 prompt = 'detailed fantasy matte painting, green river valley with winding dirt roads and worn cobblestone paths through the meadows, wheel ruts, grass edges, painterly, crisp'
+if len(sys.argv) > 6:
+    O = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'opisy.json'), encoding='utf-8'))
+    prompt = 'detailed fantasy matte painting, ' + O[sys.argv[6]]['opis'] + ', flat open clearings of short grass and packed earth, worn dirt paths, painterly, crisp'
 neg = 'buildings, houses, people, text, watermark, blurry, lowres'
 res = pipe(prompt, image=draw.resize((768, 560), Image.LANCZOS), strength=strength, negative_prompt=neg, num_inference_steps=30, guidance_scale=7, generator=torch.Generator().manual_seed(seed)).images[0].resize((W, H), Image.LANCZOS)
 soft = mask.filter(ImageFilter.GaussianBlur(3 * S))
