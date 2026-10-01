@@ -12,16 +12,28 @@ function trunk3(x, z, h, r, { col = SV.bark, lean = 0, roots = 5, y = 0, seed = 
   return g;
 }
 // Korona: kiść kul z liśćmi (faktura liści), kolor z odcieniami
-function crown3(x, y, z, r, col = SV.leaf, seed = 1, n = 9) { // korona jak na malowanym tle: gęsta masa zachodzących kęp o postrzępionym obrysie, jasna ciepła góra, ciemny chłodny spód, plamy jak pociągnięcia pędzla (bez drobnej faktury)
-  const g = new THREE.Group(), R = rng(seed * 31 + 7), N = n * 2 + 8, top = new THREE.Color(0.8, 0.8, 0.56), bot = new THREE.Color(0.2, 0.25, 0.28);
-  const lobe = (cx, cy, cz, rr, c) => { const geo = new THREE.IcosahedronGeometry(rr / PXU, 3), pos = geo.attributes.position, cols = [], ph = R() * 9;
-    for (let k = 0; k < pos.count; k++) { const lx = pos.getX(k) / (rr / PXU), ly = pos.getY(k) / (rr / PXU), lz = pos.getZ(k) / (rr / PXU), ny = ly * 0.6 + ((cy - y) / r) * 0.9, t = Math.min(1, Math.max(0, (ny + 0.25) / 0.7)),
-        dab = 0.88 + 0.12 * Math.sin(lx * 5 + ph) * Math.sin(lz * 4 + ly * 3 + ph), v = bot.clone().lerp(top, t * t * (3 - 2 * t)).multiplyScalar(dab); cols.push(v.r, v.g, v.b); }
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
-    const m = mesh(geo, c, 'leaves', P(cx, cy, cz), null, [1, 0.72, 1], 1); m.material = m.material.clone(); m.material.vertexColors = true; m.material.map = null; m.material.bumpScale *= 0.45; m.material.roughness = 0.95; g.add(m); };
-  for (let i = 0; i < N; i++) { const a = R() * Math.PI * 2, q = i ? Math.sqrt(R()) : 0, d = r * 0.85 * q, rr = r * (0.34 + R() * 0.2) * (1 - q * 0.25), up = r * (0.34 * Math.sqrt(1 - q * q) - 0.22 + R() * 0.3), c = i % 4 === 0 ? LT(col, 0.08) : i % 4 === 2 ? DK(col, 0.08) : col;
-    lobe(x + Math.cos(a) * d, y + up, z + Math.sin(a) * d * 0.8, rr, c);
-    if (q > 0.55) for (let k = 0; k < 2; k++) { const b = a + (R() - 0.5) * 0.9, e = d + rr * (0.6 + R() * 0.3); lobe(x + Math.cos(b) * e, y + up - rr * (0.1 + R() * 0.35), z + Math.sin(b) * e * 0.8, rr * (0.32 + R() * 0.14), c); } } /* drobne kępki na brzegu: postrzępiony obrys */
+// Kępa liści namalowana na kanwie (jak na tle AI): falista sylwetka z płatów wypełniona setkami pociągnięć pędzla; każdy płat jasny i ciepły u góry,
+// ciemny i chłodny u dołu. Korona = kilka takich kart zwróconych do kamery (widok miasta jest stały), w warstwach, więc ma głębię i rzuca cień.
+const LEAF_SPR = new Map();
+function leafSprite(col, v) {
+  const key = col + v; if (LEAF_SPR.has(key)) return LEAF_SPR.get(key);
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d'), R = rng(v * 7919 + 13), base = new THREE.Color(col);
+  const lobes = []; for (let i = 0; i < 16; i++) { const a = R() * Math.PI * 2, q = Math.sqrt(R()); lobes.push([128 + Math.cos(a) * q * 70, 140 + Math.sin(a) * q * 44 - (1 - q) * 14, 26 + R() * 22]); }
+  lobes.sort((a, b) => a[1] - b[1]);
+  const shade = t => { const k = 0.38 + 0.68 * t, c2 = base.clone().multiplyScalar(k); if (t < 0.45) c2.lerp(new THREE.Color('#1c3438'), (0.45 - t) * 0.7); else c2.lerp(new THREE.Color('#f0e890'), (t - 0.45) * 0.28); return `rgb(${Math.min(255, c2.r * 255) | 0},${Math.min(255, c2.g * 255) | 0},${Math.min(255, c2.b * 255) | 0})`; };
+  for (const [lx, ly, lr] of lobes) { /* najpierw ciemny podkład płatu, potem pociągnięcia od cienia do światła */
+    g.fillStyle = shade(0.05); g.beginPath(); g.ellipse(lx, ly + lr * 0.08, lr, lr * 0.82, 0, 0, Math.PI * 2); g.fill();
+    g.globalAlpha = 0.85; for (let k = 0; k < 150; k++) { const a = R() * Math.PI * 2, q = Math.sqrt(R()) * 0.95, x = lx + Math.cos(a) * q * lr, y = ly + Math.sin(a) * q * lr * 0.8, t = Math.min(1, Math.max(0, 0.5 - (y - ly) / lr * 0.75 - (x - lx) / lr * 0.25 + (R() - 0.5) * 0.35));
+      g.fillStyle = shade(t); g.beginPath(); g.ellipse(x, y, 2.5 + R() * 4, 1.8 + R() * 2.4, R() * Math.PI, 0, Math.PI * 2); g.fill(); } g.globalAlpha = 1; }
+  for (let k = 0; k < 160; k++) { const L = lobes[R() * lobes.length | 0], a = -Math.PI * R(), x = L[0] + Math.cos(a) * L[2] * (0.95 + R() * 0.2), y = L[1] + Math.sin(a) * L[2] * 0.8 * (0.95 + R() * 0.2); /* listki wystające z obrysu */
+    g.fillStyle = shade(0.55 + R() * 0.4); g.beginPath(); g.ellipse(x, y, 2 + R() * 3, 1.5 + R() * 2, R() * Math.PI, 0, Math.PI * 2); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; LEAF_SPR.set(key, t); return t;
+}
+function crown3(x, y, z, r, col = SV.leaf, seed = 1, n = 9) {
+  const g = new THREE.Group(), R = rng(seed * 31 + 7), N = Math.round(n * 0.8) + 5;
+  const cards = []; for (let i = 0; i < N; i++) { const a = R() * Math.PI * 2, q = i ? Math.sqrt(R()) : 0; cards.push([Math.cos(a) * q * r * 0.8, (R() - 0.35) * r * 0.55 * (1 - q * 0.4), Math.sin(a) * q * r * 0.7, r * (0.62 + R() * 0.25)]); }
+  for (const [dx, dy, dz, sz] of cards) { const mt = new THREE.MeshStandardMaterial({ map: leafSprite(col, (R() * 6) | 0), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1, metalness: 0 });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(sz * 2 / PXU, sz * 2 / PXU), mt); m.position.set(...P(x + dx, y + dy, z + dz)); m.rotation.set(-0.35, (R() - 0.5) * 0.5, (R() - 0.5) * 0.3); if (R() < 0.5) m.scale.x = -1; g.add(m); }
   return g;
 }
 const tree3k = (x, z, h, r, cr, col, seed, o = {}) => { const g = new THREE.Group(); g.add(trunk3(x, z, h, r, { seed, ...o })); g.add(crown3(x, (o.y || 0) + h + cr * 0.35, z, cr, col, seed)); return g; };
