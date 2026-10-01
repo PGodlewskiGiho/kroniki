@@ -3,20 +3,20 @@
 // Te same zasady co budowle-kurhan.js: piksele sceny (PXU), stopnie rosną bryłą i detalem, TOWN3.academy = { hall(t), fort(t), … }.
 'use strict';
 /* global THREE, TOWN3, PXU, P, blk, cyl3, sph, cone, torus, marker, DK, LT, rng, opening, door, gable, hipRoof, coneRoof, mast, glowMark, creature, lightMat, boulder, dome, onionDome, crenTop, merlons, ringMerlons */
-const AK = { marble: '#e8e6e0', marbleD: '#bcbab4', stone: '#9aa0aa', stoneD: '#6e7480', blue: '#3a6ab0', blueL: '#6a9ad8', teal: '#4aa0b0', gold: '#d8b048',
+const AK = { marble: '#e4eaf2', marbleD: '#b4bed0', stone: '#a4acbc', stoneD: '#6a7488', blue: '#3c9a8a', blueL: '#6ac4b0', teal: '#4aa0b0', gold: '#d8b048',
   snow: '#f6f8fc', ice: '#a8e0ff', wood: '#7a5a3c', glow: '#ffe0a0', cyan: '#80f0ff', violet: '#9a7ae0' };
 // --- drobne bryły ---
 const akWin = (w, h, x, y, z, glow = AK.glow) => opening(w, h, x, y, z, { glow, frame: AK.marbleD, frameKind: 'ashlar' });
 // Śnieżna czapa na stożku/kopule: biały, płaski stożek tuż nad szczytem bryły
 const akSnowCap = (r, h, x, y, z) => cone(r / PXU, h / PXU, AK.snow, 'plaster', P(x, y + h / 2, z), null, 14);
 // Smukła wieża: walec z marmuru, pas gzymsu, okna, dach (stożek/kopuła/cebula) ze śniegiem i złotą iglicą
-function akTower(r, h, x, z, { y = 0, roof = 'cone', col = AK.marble, rc = AK.blue, wins = 2, glow = AK.glow } = {}) { const g = new THREE.Group();
+function akTower(r, h, x, z, { y = 0, roof = 'dome', col = AK.marble, rc = AK.blue, wins = 2, glow = AK.glow } = {}) { const g = new THREE.Group();
   g.add(cyl3(r * 1.15, r * 1.2, 6, AK.stoneD, 'ashlar', x, y, z, 14)); g.add(cyl3(r, r * 0.94, h, col, 'ashlar', x, y + 6, z, 14)); g.add(cyl3(r * 1.12, r * 1.12, 3, AK.marbleD, 'ashlar', x, y + 6 + h - 3, z, 14));
   for (let i = 0; i < wins; i++) g.add(akWin(r * 0.5, r * 0.9, x, y + 6 + h * (0.3 + 0.5 * i / Math.max(1, wins)), z + r * 0.93, glow));
   const top = y + 6 + h;
   if (roof === 'cone') { g.add(coneRoof(r * 1.2, r * 2.6, rc, 'tiles', x, top, z, 14)); g.add(akSnowCap(r * 0.5, r * 1.1, x, top + r * 1.5, z)); g.add(cone(0.7 / PXU, 10 / PXU, AK.gold, 'gold', P(x, top + r * 2.6 + 5, z), null, 6)); }
-  if (roof === 'dome') { g.add(dome(r * 1.05, r * 0.9, rc, 'tiles', x, top, z)); g.add(dome(r * 0.6, r * 0.35, AK.snow, 'plaster', x, top + r * 0.62, z)); g.add(cone(0.7 / PXU, 10 / PXU, AK.gold, 'gold', P(x, top + r * 0.9 + 5, z), null, 6)); }
-  if (roof === 'onion') { g.add(onionDome(r * 0.95, rc, 'gold', x, top, z)); g.add(cone(0.7 / PXU, 10 / PXU, AK.gold, 'gold', P(x, top + r * 1.9 + 5, z), null, 6)); }
+  if (roof === 'dome') { g.add(dome(r * 1.05, r * 0.9, rc, 'tiles', x, top, z)); g.add(dome(r * 0.6, r * 0.35, AK.snow, 'plaster', x, top + r * 0.62, z)); g.add(akCrystals(x, top + r * 0.8, z, r / 12, 3, Math.round(x * 3 + z), AK.cyan)); }
+  if (roof === 'onion') { g.add(onionDome(r * 0.95, rc, 'tiles', x, top, z)); g.add(cone(r * 0.25 / PXU, r * 1.4 / PXU, AK.cyan, 'gem', P(x, top + r * 2.4, z), null, 6)); glowMark(g, x, top + r * 2.4, z, r, AK.cyan); }
   return g; }
 // Łukowy most między wieżami
 function akBridge(x0, x1, y, z, w = 8) { const g = new THREE.Group(), L = Math.abs(x1 - x0); g.add(blk(L, 4, w, AK.marble, 'ashlar', (x0 + x1) / 2, y, z));
@@ -41,18 +41,18 @@ const ACADEMY3 = {
     g.add(door(12, 20, 0, 5, 16, '#4a3a2a', AK.marbleD)); const dr = t >= 4 ? 30 : 20, dy = 9 + h; g.add(cyl3(dr * 0.9, dr * 0.9, t >= 4 ? 18 : 8, AK.marble, 'ashlar', 0, dy, -6, 20));
     g.add(dome(dr, dr * 0.85, t >= 4 ? AK.gold : AK.blue, t >= 4 ? 'gold' : 'tiles', 0, dy + (t >= 4 ? 18 : 8), -6)); g.add(dome(dr * 0.5, dr * 0.26, AK.snow, 'plaster', 0, dy + (t >= 4 ? 18 : 8) + dr * 0.72, -6));
     if (t >= 2) { for (let i = 0; i < 6; i++) g.add(cyl3(2.6, 2.6, h - 4, AK.marble, 'ashlar', -w * 0.4 + i * w * 0.16, 5, 24, 10)); g.add(blk(w * 0.9, 4, 10, AK.marbleD, 'ashlar', 0, 1 + h, 24)); g.add(gable(w * 0.9, 12, 10, AK.blue, 'tiles', 0, 5 + h, 24, 1)); }
-    if (t >= 3) for (const s of [-1, 1]) g.add(akTower(8, h + 30, s * (w / 2 + 6), -14, { y: 5, roof: 'cone' }));
+    if (t >= 3) for (const s of [-1, 1]) g.add(akTower(8, h + 30, s * (w / 2 + 6), -14, { y: 5, roof: 'onion' }));
     if (t >= 4) for (const s of [-1, 1]) g.add(akTower(7, h + 14, s * (w / 2 + 6), 18, { y: 5, roof: 'onion' }));
     return g; },
   fort(t) { // fort: niski marmurowy mur z bramą; 2: mury z okrągłymi basztami pod błękitnymi dachami; 3: Cytadela Magów – wysoka biała wieża z kryształem, krąg wież i mosty
-    const g = new THREE.Group(); g.add(blk(170, t === 1 ? 20 : 36, 10, AK.marble, 'ashlar', 0, 0, 34)); g.add(merlons(-84, 84, t === 1 ? 20 : 36, 34, AK.marbleD, 'ashlar'));
+    const g = new THREE.Group(); g.add(blk(170, t === 1 ? 20 : 36, 10, AK.marble, 'ashlar', 0, 0, 34)); { const wh = t === 1 ? 20 : 36; g.add(blk(172, 2.4, 12, AK.gold, 'gold', 0, wh, 34)); g.add(blk(170, 3, 11, AK.snow, 'plaster', 0, wh + 2.4, 34)); for (let x = -80; x <= 80; x += 32) { if (Math.abs(x) < 24) continue; g.add(cyl3(2.6, 3, 12, AK.marble, 'ashlar', x, wh, 34, 8)); g.add(akCrystals(x, wh + 12, 34, 0.45, 2, 600 + x, AK.cyan)); } } /* gzyms ze złotym pasem i kryształowymi słupkami zamiast blanków */
     g.add(blk(40, t === 1 ? 32 : 52, 16, AK.marbleD, 'ashlar', 0, 0, 36)); g.add(opening(18, 28, 0, 0, 44.5, { inner: '#2a2e3a', frame: AK.gold, frameKind: 'ashlar', bars: true, sill: false, frameW: 3 }));
     g.add(blk(44, 3, 20, AK.snow, 'plaster', 0, t === 1 ? 32 : 52, 36));
     if (t === 1) return g;
-    for (const s of [-1, 1]) { g.add(akTower(14, 54, s * 92, 34, { roof: 'cone' })); g.add(akTower(9, 52, s * 22, 38, { roof: 'cone', rc: AK.blueL })); }
-    if (t >= 3) { g.add(blk(100, 70, 56, AK.marble, 'ashlar', 0, 0, -30)); g.add(crenTop(100, 56, 70, AK.marbleD, 'ashlar', 0, -30)); for (let i = 0; i < 5; i++) g.add(akWin(7, 20, -40 + i * 20, 30, -1.8));
+    for (const s of [-1, 1]) { g.add(akTower(14, 54, s * 92, 34, { roof: 'onion' })); g.add(akTower(9, 52, s * 22, 38, { roof: 'onion', rc: AK.blueL })); }
+    if (t >= 3) { g.add(blk(100, 70, 56, AK.marble, 'ashlar', 0, 0, -30)); g.add(blk(104, 3, 60, AK.gold, 'gold', 0, 70, -30)); g.add(dome(30, 12, AK.blue, 'tiles', 0, 73, -30)); for (let i = 0; i < 5; i++) g.add(akWin(7, 20, -40 + i * 20, 30, -1.8));
       g.add(akTower(20, 150, 0, -40, { wins: 4, roof: 'dome' })); g.add(akCrystals(0, 150 + 6 + 26, -40, 1.6, 5, 11, AK.cyan));
-      for (const s of [-1, 1]) { g.add(akTower(13, 110, s * 56, -44, { wins: 3, roof: 'cone' })); g.add(akBridge(s * 20, s * 43, 96, -40)); g.add(akTower(10, 84, s * 54, -6, { roof: 'onion' })); } }
+      for (const s of [-1, 1]) { g.add(akTower(13, 110, s * 56, -44, { wins: 3, roof: 'onion' })); g.add(akBridge(s * 20, s * 43, 96, -40)); g.add(akTower(10, 84, s * 54, -6, { roof: 'onion' })); } }
     return g; },
   guild(t) { // wieża wiedzy: okrągła wieża-biblioteka z galeriami; każdy stopień – kondygnacja z balkonem; na szczycie sfera armilarna
     const g = new THREE.Group(), fl = 22; g.add(cyl3(30, 32, 5, AK.stoneD, 'ashlar', 0, 0, -4, 18));
@@ -113,7 +113,7 @@ const ACADEMY3 = {
     const g = new THREE.Group(); for (let i = 0; i < 4; i++) { const r = 14 - i * 1.6, sg = cyl3(r, r * 0.95, 26, AK.marble, 'ashlar', i * 1.6, 4 + i * 26, -8, 12); sg.rotation.y = i * 0.3; g.add(sg); g.add(akWin(4, 9, i * 1.6, 12 + i * 26, -8 + r * 0.95, AK.violet)); }
     g.add(cyl3(16, 16, 4, AK.stoneD, 'ashlar', 0, 0, -8, 12)); const tp = 4 + 4 * 26; g.add(cyl3(13, 13, 3, AK.marbleD, 'ashlar', 6, tp, -8, 14)); g.add(dome(12, 11, '#3a3a6a', 'tiles', 6, tp + 3, -8));
     const sc = cyl3(1.6, 2.4, 22, AK.gold, 'gold', 0, 0, 0, 8); sc.rotation.z = -0.9; sc.position.set(...P(14, tp + 12, -2)); g.add(sc);
-    if (t >= 2) { g.add(akTower(8, 66, -34, -14, { roof: 'cone', rc: '#4a3a8a', glow: AK.violet })); g.add(akBridge(-26, -8, 64, -10, 6)); }
+    if (t >= 2) { g.add(akTower(8, 66, -34, -14, { roof: 'onion', rc: '#4a3a8a', glow: AK.violet })); g.add(akBridge(-26, -8, 64, -10, 6)); }
     if (t >= 3) for (const x of [24, 38]) { g.add(cyl3(1, 1, 14, AK.wood, 'wood', x, 0, 26, 5)); const tg = cyl3(5, 5, 1.4, '#c84040', 'cloth', 0, 0, 0, 14); tg.rotation.x = Math.PI / 2; tg.position.set(...P(x, 16, 26.5)); g.add(tg); }
     g.add(creature(t >= 3 ? 'battleMage' : t >= 2 ? 'archMage' : 'mage', 18, 0, 22, 0.5, -Math.PI / 2 + 0.3)); return g; },
   dw5(t) { // ołtarz życzeń: okrągła platforma ze schodami, krąg kolumn z łukami, pośrodku na postumencie lampa dżina; 2: złoty ołtarz – złote łuki; 3: diamentowy – kryształowa kopuła
