@@ -126,10 +126,13 @@ function farForest3(L) {
 function townWorld(fac, bare = false) {
   G3.init(); const T = TOWNS[fac], L = T.scene, scene = new THREE.Scene(), occl = [], far = []; L.pads = slotPads(fac, L); L.keepOut = []; L.cam = townCamera(L.pj || { hor: 94, d: 282 }, 1); L.rects = slotScreenRects(fac, L, L.cam);
   const hz = C3(L.haze || '#a0a0a0').lerp(C3((T.sky && T.sky.mid) || '#8aa0c8'), 0.6); scene.fog = new THREE.Fog(hz, 1400, 24000); // ta sama mgła dla terenu i gór: góry wyrastają z ziemi
-  scene.add(new THREE.HemisphereLight(0xc8d4f4, 0x3a3020, 0.5));
-  const sun = new THREE.DirectionalLight(0xffe2b8, 4.8), target = new THREE.Object3D(); target.position.set(0, 0, tz(1.8)); scene.add(target); sun.target = target;
+  const SW = L.swiatlo || {}; /* światło z układu (np. Inferno: łuna lawy od dołu, czerwone słońce, kontra od wulkanu) */
+  scene.add(new THREE.HemisphereLight(SW.niebo || 0xc8d4f4, SW.ziemia || 0x3a3020, SW.hemi ?? 0.5));
+  const sun = new THREE.DirectionalLight(SW.slonce || 0xffe2b8, SW.moc ?? 4.8), target = new THREE.Object3D(); target.position.set(0, 0, tz(1.8)); scene.add(target); sun.target = target;
   if (bare) sun.position.set(1400, 4200, tz(1.8) + 900); else sun.position.set(-3000, 1500, tz(1.8) - 500); /* słońce z lewej, lekko zza sceny: cienie padają w prawo i ku widzowi, fasady w świetle bocznym */ sun.castShadow = true; Object.assign(sun.shadow.camera, { left: -1800, right: 1800, top: 1800, bottom: -1800, near: 100, far: 9000 }); sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 1.5; sun.shadow.radius = 3; scene.add(sun);
-  const fill = new THREE.DirectionalLight(0x9ab0e8, 0.45); fill.position.set(1500, 600, 2500); scene.add(fill);
+  const fill = new THREE.DirectionalLight(SW.wypelnienie || 0x9ab0e8, SW.wypelnienie_moc ?? 0.45); fill.position.set(1500, 600, 2500); scene.add(fill);
+  if (SW.kontra) { const k = new THREE.DirectionalLight(SW.kontra, SW.kontra_moc ?? 2); k.position.set(0, 1800, tz(1.8) - 6000); k.target = target; scene.add(k); } /* światło zza sceny: obrysy brył */
+  if (SW.dol) { const d = new THREE.DirectionalLight(SW.dol, SW.dol_moc ?? 1.5); d.position.set(-400, -900, tz(1.8) + 2500); d.target = target; scene.add(d); } /* łuna od dołu (lawa) */
   const ter = terrainMesh(L); scene.add(ter); occl.push(ter);
   if (bare) { scene.environment = G3.scene.environment; return { scene, occl, far, L }; }
   for (const Rv of L.rivers || []) { const w = ribbonMesh(L, Rv.pts, Rv.w, -4, new THREE.MeshStandardMaterial({ color: '#5a8cb4', roughness: 0.12, metalness: 0.15 }), false); w.position.y = -4; scene.add(w); occl.push(w); }
@@ -222,7 +225,7 @@ function paintedDecor(fac, U, c, D, dep) {
   L.map((o, i) => ({ o, i, sy: o.s[1] })).sort((a, b) => a.sy - b.sy).forEach(({ o, i }) => { const b = renderTownBuilding(fac, 'ozd' + o.o, 100 + i, D, true); if (b) g.drawImage(paintedFinish(b, fac, 100 + i, bgd, D, U, dep), 0, 0); });
 }
 function applyPaintedLayout(fac, U) {
-  const T = TOWNS[fac], { hor, d } = U.pj, f = U.pj.f || 1000; T.scene.pj = U.pj;
+  const T = TOWNS[fac], { hor, d } = U.pj, f = U.pj.f || 1000; T.scene.pj = U.pj; T.scene.swiatlo = U.swiatlo;
   U.slots.forEach((o, i) => { const S = T.scene.slots[i]; if (!S) return; const [sx, sy] = o.s, zw = o.z ? o.z * 1000 : f * d / (sy - hor);
     S.X = (sx - 296) * zw / f; S.Z = zw / 1000; S.e = d - (sy - hor) * zw / f; S.k = (S.k0 || (S.k0 = S.k)) * (o.k || 1); S.flip = !!o.flip; S.tilt = o.tilt || 0; S.yaw = o.yaw || 0; });
   (U.ozdoby || []).forEach((o, i) => { const [sx, sy] = o.s, zw = f * d / (sy - hor); T.scene.slots[100 + i] = { X: (sx - 296) * zw / f, Z: zw / 1000, e: 0, k: o.k || 1, k0: 1, w: 14, flip: !!o.flip, tilt: 0, yaw: o.yaw || 0 }; });

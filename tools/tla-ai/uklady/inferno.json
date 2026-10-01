@@ -402,5 +402,23 @@
   ],
   "opis": "detailed sharp fantasy matte painting, black charred basalt plateau with crisp cliffs and rock ledges, glowing lava falls into a lava river, dark volcanic rock texture, clear air, painterly, crisp",
   "odmglij": 0.45
+ },
+ "swiatlo": {
+  "niebo": 5910568,
+  "ziemia": 16734746,
+  "hemi": 0.9,
+  "slonce": 16752752,
+  "moc": 2.4,
+  "wypelnienie": 16738864,
+  "wypelnienie_moc": 0.35,
+  "kontra": 16740384,
+  "kontra_moc": 2.6,
+  "dol": 16738848,
+  "dol_moc": 1.6
+ },
+ "haze": "#5a2416",
+ "grade": "saturate(1.08) brightness(0.96) contrast(1.05)",
+ "blendOpts": {
+  "color": 0.28
  }
 }
