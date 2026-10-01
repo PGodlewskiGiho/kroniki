@@ -12,10 +12,16 @@ function trunk3(x, z, h, r, { col = SV.bark, lean = 0, roots = 5, y = 0, seed = 
   return g;
 }
 // Korona: kiść kul z liśćmi (faktura liści), kolor z odcieniami
-function crown3(x, y, z, r, col = SV.leaf, seed = 1, n = 9) { // n kęp (każda z kilku mniejszych kul), faktura liści gęsto powtórzona: drobne listowie zamiast plam
-  const g = new THREE.Group(), R = rng(seed * 31 + 7), N = n * 2 + 4;
-  for (let i = 0; i < N; i++) { const a = R() * Math.PI * 2, d = r * (i ? 0.3 + R() * 0.6 : 0), rr = r * (0.26 + R() * 0.2), c = i % 3 === 0 ? LT(col, 0.14) : i % 3 === 1 ? DK(col, 0.12) : col, up = (R() - 0.25) * r * 0.6;
-    g.add(mesh(new THREE.IcosahedronGeometry(rr / PXU, 2), c, 'leaves', P(x + Math.cos(a) * d, y + up, z + Math.sin(a) * d * 0.75), null, [1, 0.82, 1], Math.max(2, Math.round(rr / 7)))); }
+function crown3(x, y, z, r, col = SV.leaf, seed = 1, n = 9) { // korona jak na malowanym tle: gęsta masa zachodzących kęp o postrzępionym obrysie, jasna ciepła góra, ciemny chłodny spód, plamy jak pociągnięcia pędzla (bez drobnej faktury)
+  const g = new THREE.Group(), R = rng(seed * 31 + 7), N = n * 2 + 8, top = new THREE.Color(0.8, 0.8, 0.56), bot = new THREE.Color(0.2, 0.25, 0.28);
+  const lobe = (cx, cy, cz, rr, c) => { const geo = new THREE.IcosahedronGeometry(rr / PXU, 3), pos = geo.attributes.position, cols = [], ph = R() * 9;
+    for (let k = 0; k < pos.count; k++) { const lx = pos.getX(k) / (rr / PXU), ly = pos.getY(k) / (rr / PXU), lz = pos.getZ(k) / (rr / PXU), ny = ly * 0.6 + ((cy - y) / r) * 0.9, t = Math.min(1, Math.max(0, (ny + 0.25) / 0.7)),
+        dab = 0.88 + 0.12 * Math.sin(lx * 5 + ph) * Math.sin(lz * 4 + ly * 3 + ph), v = bot.clone().lerp(top, t * t * (3 - 2 * t)).multiplyScalar(dab); cols.push(v.r, v.g, v.b); }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    const m = mesh(geo, c, 'leaves', P(cx, cy, cz), null, [1, 0.72, 1], 1); m.material = m.material.clone(); m.material.vertexColors = true; m.material.map = null; m.material.bumpScale *= 0.45; m.material.roughness = 0.95; g.add(m); };
+  for (let i = 0; i < N; i++) { const a = R() * Math.PI * 2, q = i ? Math.sqrt(R()) : 0, d = r * 0.85 * q, rr = r * (0.34 + R() * 0.2) * (1 - q * 0.25), up = r * (0.34 * Math.sqrt(1 - q * q) - 0.22 + R() * 0.3), c = i % 4 === 0 ? LT(col, 0.08) : i % 4 === 2 ? DK(col, 0.08) : col;
+    lobe(x + Math.cos(a) * d, y + up, z + Math.sin(a) * d * 0.8, rr, c);
+    if (q > 0.55) for (let k = 0; k < 2; k++) { const b = a + (R() - 0.5) * 0.9, e = d + rr * (0.6 + R() * 0.3); lobe(x + Math.cos(b) * e, y + up - rr * (0.1 + R() * 0.35), z + Math.sin(b) * e * 0.8, rr * (0.32 + R() * 0.14), c); } } /* drobne kępki na brzegu: postrzępiony obrys */
   return g;
 }
 const tree3k = (x, z, h, r, cr, col, seed, o = {}) => { const g = new THREE.Group(); g.add(trunk3(x, z, h, r, { seed, ...o })); g.add(crown3(x, (o.y || 0) + h + cr * 0.35, z, cr, col, seed)); return g; };
