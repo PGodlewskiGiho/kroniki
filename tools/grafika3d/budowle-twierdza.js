@@ -102,8 +102,8 @@ const FORTRESS3 = {
     const fall = blk(16, 120, 4, FT.teal, 'win', 0, 2, 26); fall.material = lightMat('#6af0d0'); fall.material.transparent = true; fall.material.opacity = 0.7; g.add(fall); /* wodospad po schodach */
     for (let i = 0; i < 10; i++) g.add(sph((3 + (i % 3)) / PXU, '#d8fff4', 'glow', P(-14 + (i * 7) % 28, 3 + (i % 2) * 3, 32 + (i % 3) * 3), null, 6));
     const sp = sph(9 / PXU, FT.teal, 'glow', P(0, 186, -30), null, 14); g.add(sp); glowMark(g, 0, 186, -30, 40, FT.teal); for (let i = 0; i < 3; i++) g.add(torus((14 + i * 7) / PXU, 0.8 / PXU, FT.teal, 'glow', P(0, 186, -30), [Math.PI / 2 + 0.3 * (i - 1), 0, 0.25 * i]));
-    for (let i = 0; i < 9; i++) { const a = -0.4 + i * 0.95, r = 70 - i * 3.6, y = 6 + i * 13; g.add(sph((9 - i * 0.45) / PXU, i % 2 ? '#3a6a3a' : '#4e8a44', 'scale', P(Math.cos(a) * r, y, -30 + Math.sin(a) * r * 0.7), [1.2, 0.9, 1.2], 10)); } /* cielsko węża wokół piramidy */
-    const hd = sph(12 / PXU, '#4e8a44', 'scale', P(-40, 124, 6), [1.5, 0.9, 1], 12); g.add(hd); for (const s of [-1, 1]) g.add(sph(2.4 / PXU, '#ffe040', 'glow', P(-46, 128, 6 + s * 7), null, 6)); g.add(cone(2 / PXU, 9 / PXU, FT.bone, 'bone', P(-56, 120, 6), [0, 0, Math.PI / 2], 5));
+    for (const s of [-1, 1]) { g.add(blk(26, 30, 26, FT.stoneD, 'ashlar', s * 30, 0, 30)); g.add(sph(15 / PXU, FT.stone, 'rock', P(s * 30, 40, 34), [1, 0.8, 1.3], 12)); g.add(cone(5 / PXU, 16 / PXU, FT.stone, 'rock', P(s * 30, 40, 52), [Math.PI / 2, 0, 0], 8)); /* kamienne głowy węży-strażników */
+      for (const k of [-1, 1]) g.add(sph(2.4 / PXU, FT.teal, 'glow', P(s * 30 + k * 7, 46, 44), null, 6)); g.add(blk(28, 3, 28, FT.moss, 'rubble', s * 30, 30, 30)); }
     for (const s of [-1, 1]) { g.add(twTotem(s * 92, 10, 110, 70 + s)); g.add(twTotem(s * 70, 34, 80, 72 + s)); g.add(twTorch(s * 34, 30, 40)); } return g; },
   dw1(t) { // nora gnolli: ziemianki pod strzechą, kości, gnoll; 2: obóz – palisada i druga chata; 3: krąg berserkerów – krąg pali z czaszkami i ognisko
     const g = new THREE.Group(); g.add(twHut(16, 12, -10, -6, { roofH: 22, col: FT.mudD })); g.add(sph(10 / PXU, FT.mudD, 'dirt', P(22, 0, -10), [1.4, 0.7, 1], 10));
@@ -123,17 +123,17 @@ const FORTRESS3 = {
     g.add(creature(t >= 3 ? 'queenFly' : t >= 2 ? 'venomFly' : 'dragonfly', 10, 22, 16, 0.5, -Math.PI / 2 + 0.4)); return g; },
   dw4(t) { // jama bazyliszków: skalny kopiec z jamą; 2: leże – kamienie z runami, większe skały; 3: królewskie leże – złote ozdoby i pochodnie
     const g = new THREE.Group(), k = t >= 2 ? 1.15 : 1; g.add(boulder(0, 0, -16, 46 * k, '#6a6a52', 40, 0.55)); g.add(boulder(-40, 0, -4, 22, '#74725a', 41, 0.6));
-    g.add(opening(26, 18, 0, 0, 16, { inner: '#0e0a06', frame: FT.stoneD, frameKind: 'rubble', sill: false })); g.add(creature(t >= 3 ? 'royalBasilisk' : t >= 2 ? 'greatBasilisk' : 'basilisk', 26, 0, 26, 0.55, -Math.PI / 2 + 0.5));
+    g.add(opening(26, 18, 0, 0, 16, { inner: '#0e0a06', frame: FT.stoneD, frameKind: 'rubble', sill: false })); g.add(creature(t >= 3 ? 'royalBasilisk' : t >= 2 ? 'greatBasilisk' : 'basilisk', 40, 0, 40, 1.0, -Math.PI / 2 + 0.5));
     if (t >= 2) for (const s of [-1, 1]) g.add(blk(6, 22, 4, FT.stone, 'rock', s * 22, 0, 24));
     if (t >= 3) { for (const s of [-1, 1]) g.add(twTorch(s * 34, 22, 30)); g.add(blk(28, 3, 2, FT.gold, 'gold', 0, 20, 17)); } return g; },
   dw5(t) { // zagroda gorgon: zagroda z bali i obora z gliny; 2: żelazna zagroda – okute wrota i kamienne narożniki; 3: pancerna – wieża i zbroje
     const g = new THREE.Group(); g.add(twLodge(54, 22, 30, -8, -20, { roofH: 24, wins: 2, horns: true }));
-    for (const z of [6, 34]) for (let x = -50; x <= 50; x += 12) g.add(cyl3(1.8, 1.8, 16, FT.logD, 'bark', x, 0, z, 6)); for (const z of [6, 34]) for (const y of [6, 13]) g.add(blk(100, 2, 2, FT.log, 'wood', 0, y, z));
-    if (t >= 2) { for (const sx of [-1, 1]) g.add(blk(10, 22, 10, FT.stone, 'ashlar', sx * 52, 0, 34)); g.add(blk(24, 16, 2, '#4a4a4c', 'iron', 0, 0, 35)); }
+    for (const x of [-50, 50]) for (let z = 2; z <= 38; z += 12) g.add(cyl3(1.8, 1.8, 16, FT.logD, 'bark', x, 0, z, 6)); for (const x of [-50, 50]) for (const y of [6, 13]) g.add(blk(2, 2, 38, FT.log, 'wood', x, y, 20));
+    if (t >= 2) { for (const sx of [-1, 1]) { g.add(blk(10, 22, 10, FT.stone, 'ashlar', sx * 52, 0, 38)); g.add(blk(2.4, 16, 30, '#4a4a4c', 'iron', sx * 50, 0, 20)); } }
     if (t >= 3) g.add(twWatch(40, -24, 46, 0.9));
-    g.add(creature(t >= 3 ? 'armoredGorgon' : t >= 2 ? 'mightyGorgon' : 'gorgon', 0, 0, 20, 0.5, -Math.PI / 2 + 0.3)); return g; },
+    g.add(creature(t >= 3 ? 'armoredGorgon' : t >= 2 ? 'mightyGorgon' : 'gorgon', 0, 0, 22, 0.6, -Math.PI / 2 + 0.3)); return g; },
   dw6(t) { // gniazdo wywern: skalna turnia z gniazdem z gałęzi na szczycie; 2: turnia – wyższa, z totemem; 3: burzowa turnia – świecące runy i błękitny blask
-    const g = new THREE.Group(), h = [70, 90, 104][t - 1]; g.add(boulder(0, 0, -10, 40, '#6a6656', 60, 0.6)); g.add(cyl3(16, 30, h, '#6e6a58', 'rock', 0, 0, -10, 9)); g.add(boulder(0, h - 6, -10, 24, '#76725e', 61, 0.5));
+    const g = new THREE.Group(), h = [70, 90, 104][t - 1]; g.add(boulder(0, 0, -10, 40, '#6a6656', 60, 0.6)); for (let i = 0; i < 5; i++) { const y = i * h / 5, rr = 34 - i * 4.6; g.add(boulder((i % 2 ? 4 : -4), y, -10, rr, i % 2 ? '#6e6a58' : '#76725e', 63 + i, 0.9)); } g.add(boulder(0, h - 8, -10, 18, '#7a765e', 61, 0.6));
     g.add(torus(20 / PXU, 5 / PXU, FT.logD, 'bark', P(0, h + 4, -10), [Math.PI / 2, 0, 0])); for (let i = 0; i < 3; i++) g.add(sph(3.6 / PXU, '#e8e0c8', 'bone', P(-5 + i * 5, h + 6, -10), [1, 1.3, 1], 8));
     if (t >= 2) g.add(twTotem(34, 18, 36, 62)); if (t >= 3) { for (let i = 0; i < 3; i++) g.add(blk(4, 8, 0.8, '#8ad8ff', 'glow', -6 + i * 6, h * 0.5 + i * 8, 20)); glowMark(g, 0, h * 0.6, 20, 24, '#8ad8ff'); }
     g.add(creature(t >= 3 ? 'stormWyvern' : t >= 2 ? 'wyvernKing' : 'wyvern', 0, h + 6, -6, 0.5, -Math.PI / 2 + 0.4)); return g; },
@@ -142,7 +142,7 @@ const FORTRESS3 = {
     for (const s of [-1, 1]) { const c = cyl3(6, 7, 40 + s * 8, FT.stone, 'ashlar', s * 40 * k, 0, -30, 8); c.rotation.z = s * 0.12; g.add(c); }
     if (t >= 2) { for (let i = 0; i < 8; i++) g.add(sph((3 + (i % 3)) / PXU, '#b080ff', 'glow', P(-60 + i * 17, 6 + (i % 2) * 6, -4 + (i % 3) * 8), [1.6, 0.6, 1], 6)); glowMark(g, 0, 10, 0, 50, '#b080ff'); }
     if (t >= 3) { g.add(torus(42 / PXU, 6 / PXU, FT.stone, 'ashlar', P(0, 0, -44), null, null, Math.PI)); g.add(blk(18, 6, 8, FT.moss, 'rubble', 0, 42, -44)); }
-    g.add(creature(t >= 3 ? 'primeHydra' : t >= 2 ? 'chaosHydra' : 'hydra', 0, 0, 4, 0.6 * k, -Math.PI / 2 + 0.3)); return g; },
+    g.add(creature(t >= 3 ? 'primeHydra' : t >= 2 ? 'chaosHydra' : 'hydra', 0, 0, 6, 0.85 * k, 0.35)); return g; },
   ozd(t) { // ozdoby wtapiane w tło: 1 totem, 2 para pochodni z czaszką na palu, 3 oczko z trzcinami, 4 suszarnia skór, 5 kamienny bożek z mchem
     const g = new THREE.Group();
     if (t === 1) g.add(twTotem(0, 0, 40, 101));
