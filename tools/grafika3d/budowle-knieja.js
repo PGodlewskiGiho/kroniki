@@ -106,7 +106,7 @@ const SYLVAN3 = {
     const g = new THREE.Group(); g.add(boulder(0, 0, 0, 70, '#5a6a50', 120, 0.35));
     for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; g.add(menhir(Math.cos(a) * 62, Math.sin(a) * 30, 8, 22, SV.stoneL, SV.green)); }
     const st = creature('treantKing', 0, 20, 0, 3.4, -Math.PI / 2, { t: 0.2 }); g.add(st); st.updateMatrixWorld(true); const top = new THREE.Box3().setFromObject(st).max.y * PXU;
-    g.add(crown3(0, top - 6, -6, 46, '#6ab84a', 121, 10, SV.blossom));
+    
     glowMark(g, 0, top * 0.6, 10, 70, '#b8ff90'); fireflies(g, 0, 30, 0, 160, top, 18, 12); return g; },
   dw1(t) { // gaj driad: trzy drzewa i łuk z gałęzi; 2: święty gaj – kwitnące różem; 3: jezioro rusałek – staw z liliami w kręgu kwitnących drzew
     const g = new THREE.Group(), bl = t >= 2 ? SV.blossom : SV.leafL;
@@ -153,11 +153,11 @@ const SYLVAN3 = {
     return g; },
   dw7(t) { // szmaragdowa grota: skalny kopiec z jaskinią i kryształami; 2: nefrytowa grota – więcej kryształów, oczy smoka w mroku; 3: serce puszczy – wielkie wzgórze z drzewem, smok leżący u wejścia
     const g = new THREE.Group(), cc = t >= 2 ? '#4ae8a0' : '#3ac870', s = t >= 3 ? 1.3 : 1;
-    g.add(boulder(0, 0, -16, 64 * s, '#5a6258', 180, 0.7)); g.add(crown3(-34 * s, 50 * s, -30, 18 * s, SV.leaf, 181, 6));
+    g.add(boulder(0, 0, -16, 64 * s, '#5a6258', 180, 0.7));
     g.add(opening(34, 34, 0, 0, 26 * s, { inner: '#06140c', frame: '#4a5048', frameKind: 'rock', sill: false, frameW: 5 })); glowMark(g, 0, 16, 30, 40, cc);
     g.add(crystals(-34, 0, 26, 1, cc, 5, 182)); g.add(crystals(36, 0, 22, t >= 2 ? 1.1 : 0.7, cc, 5, 183));
     if (t === 2) for (const x of [-7, 7]) g.add(sph(2.2 / PXU, '#f0ff60', 'glow', P(x, 20, 26 * s), null, 8));
-    if (t >= 3) { g.add(tree3k(10, -30, 60, 10, 34, SV.leafD, 184, { y: 70 })); g.add(creature('forestDragon', 0, 0, 52, 0.7, -Math.PI / 2 + 0.3)); g.add(crystals(0, 0, 50, 1.3, cc, 7, 185)); }
+    if (t >= 3) { g.add(creature('forestDragon', 0, 0, 52, 0.7, -Math.PI / 2 + 0.3)); g.add(crystals(0, 0, 50, 1.3, cc, 7, 185)); }
     return g; },
 };
 TOWN3.sylvan = SYLVAN3;
