@@ -17,7 +17,7 @@ r, g, b = a0[..., 0], a0[..., 1], a0[..., 2]
 woda = (b > r + 14) & (b >= g - 6) & (yy > (P['woda'][0] - 8) * S) & (yy < (P['woda'][1] - 8) * S)
 wi = Image.fromarray((woda * 255).astype(np.uint8)).filter(ImageFilter.MedianFilter(7)).filter(ImageFilter.MaxFilter(5)); ImageDraw.floodfill(wi, (0, 0), 128)  # dziury w wodzie (jasne odblaski) też są wodą
 woda = np.asarray(wi) != 128
-pien = (r > g + 4) & (g < 70) & ((xx < 70 * S) | (xx > 510 * S))
+pien = ((r > g + 4) & (g < 70) & ((xx < 70 * S) | (xx > 510 * S))) if P.get('pnie', True) else np.zeros_like(G)
 G &= ~woda & ~pien
 top = np.where(G.any(0), G.argmax(0), H); sm = np.convolve(rng.random(W + 60), np.ones(30) / 30, 'same')[30:W + 30]; sm2 = np.convolve(rng.random(W + 16), np.ones(8) / 8, 'same')[8:W + 8]
 G &= yy >= (top + (sm - 0.35) * 40 * S + sm2 * 10 * S)[None, :]  # tylna krawędź polany nieregularna: las wchodzi językami

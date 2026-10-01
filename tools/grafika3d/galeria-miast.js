@@ -6,7 +6,7 @@ const { ROOT, openStudio } = require('./wspolne');
 const fac = process.argv[2] || 'haven', out = process.argv[3] || path.join(ROOT, 'tools', 'grafika3d', '.cache', `miasto-${fac}.png`), K = +process.env.K || 2, FILTR = process.env.FILTR || '';
 (async () => {
   const { chromium } = require('playwright');
-  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  const browser = await chromium.launch((p => p ? { executablePath: p } : {})(process.env.CHROMIUM_PATH || (require('fs').existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : null)));
   const game = await browser.newPage(); await game.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   await game.goto(require('url').pathToFileURL(path.join(ROOT, 'Kroniki Królestw.html')).href); await game.waitForFunction(() => typeof BUILD_ART !== 'undefined');
   // rysunki 2D: każda budowla w każdym stopniu, na płótnie w rozmiarze miejsca × K
