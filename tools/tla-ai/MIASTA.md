@@ -1,6 +1,6 @@
 # Jak robimy miasto: tło AI + budowle 3D (instrukcja krok po kroku)
 
-Gotowe: **Przystań** (haven), **Knieja** (sylvan), **Kurhan** (barrow), **Twierdza** (fortress). Kolejność dalej: Inferno, Akademia (academy), Loch (dungeon), Cytadela (stronghold).
+Gotowe: **Przystań** (haven), **Knieja** (sylvan), **Kurhan** (barrow), **Twierdza** (fortress), **Inferno**, **Akademia** (academy). Kolejność dalej: Loch (dungeon), Cytadela (stronghold).
 Wzorce do podglądania: `uklady/sylvan.json`, `uklady/barrow.json`, `uklady/fortress.json` (bagno), `../grafika3d/budowle-knieja.js`, `../grafika3d/budowle-kurhan.js`, `../grafika3d/budowle-twierdza.js`.
 
 ## Zasady od użytkownika (obowiązkowe)
@@ -62,3 +62,11 @@ Python: `tools/portrety-ai/venv/bin/python`; skrypty z AI przez `LD_PRELOAD=../p
 
 - `paintedBg` (tło), `paintedDecor` (ozdoby wtapiane w tło), `renderTownBuilding(..., bare)` + `paintedFinish` (placyk, cień styku, dopasowanie barw, mgła) w `tools/grafika3d/scena.js`. Bryły poniżej gruntu są obcinane (płaszczyzna przycinania), żeby nic nie wisiało.
 - Arkusz miasta: `{d, bg, bgo, b: {klucz: {f, o, m}}}`; gra (`src/js/18-miasto-grafika.js`) rysuje tło zamiast nieba i pomija postacie 2D, gdy `fx.painted`.
+
+## Teren z rzeźbą (od Inferna) i światło
+
+- Użytkownik nie chce już płaskich równin z górami: ma być **ciekawa topografia z płaskimi miejscami** (płaskowyże, urwiska, rzeki, lawospady/lodospady). Szkic: `szkic-teren.py <frakcja> tla/szkic-<frakcja>.png` ze specem `opisy.json → <frakcja>.teren` (plyty, rzeki, wulkan, gory, turnie, ciecz, `urwisko: 'warstwy'` dla skał zamiast kolumn bazaltu — kolumny AI potrafi zamienić w drewniane domy).
+- Budowle na płaskowyżu: slot z `z` = f·(d−H)/(sy−hor)/1000, gdzie H = wysokość płaskowyżu z pomiaru (krawędź urwiska i jego podnóże na obrazie). Polana pomija place slotów z `z`.
+- Polana: `zachowaj: true` (rzeźba z tła, malowane tylko place/ścieżki/ciecz), `zwegl` (przyciemnienie poniżej linii, lawa zostaje), `bagno` z `trzciny: false` i `brzeg_kolor` dla kałuż lawy, drugie przejście dla dalszego planu: `KLUCZ=polana_tyl` z `wyostrz: [r, %]` (tylko jasność) i `odmglij`; wtedy `tlo: <frakcja>-polana-tyl.png`.
+- **Światło z układu** `swiatlo`: `niebo`, `ziemia` (półkula), `hemi`, `slonce`, `moc`, `wypelnienie`, `wypelnienie_moc`, `kontra` (zza sceny), `dol` (łuna od dołu); do tego `haze` (mgła na dalszych budowlach), `grade` (filtr CSS), `blendOpts.color`. Inferno: ciepła łuna, mocny kontrast; Akademia: zimne niebo, odbicie od śniegu.
+- Każda budowla ma mieć **własną bryłę** (bez jednego domku z dodatkami), bez elementów wiszących w powietrzu (rogi/kości/obłoki muszą być osadzone w bryle). Portale z głębią (tunel, warstwy wiru).
