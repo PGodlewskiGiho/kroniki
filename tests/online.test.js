@@ -96,3 +96,30 @@ test('rozłączenie gościa: wraca sam i dostaje aktualny stan', async () => {
   await until(A.page, () => Net.guests[0].conn && Net.guests[0].conn.open, null, 20000);
   await until(B.page, () => G.state.players[0].resources.gold === 5151, null, 20000);
 });
+
+test('komputer atakuje gracza online: wspólna bitwa, strona komputera liczona u obu', async () => {
+  await A.page.evaluate(() => {
+    G.modal = null; const st = G.state, ai = st.heroes.find(h => !st.players[h.owner].human), b = st.heroes.find(h => h.owner === 1) || createHero(st, 1, ai.x + 1, ai.y); // bohater gościa poległ w poprzedniej bitwie: nowy
+    ai.army = [{ cid: 'swordsman', n: 40 }, null, null, null, null, null, null]; b.army = [{ cid: 'pikeman', n: 5 }, null, null, null, null, null, null];
+    b.x = ai.x + 1; b.y = ai.y; rebuildObjIndex(st); window.__res = null;
+    netBattle(st, ai, b, res => { window.__res = res.outcome; G.go('adventure'); });
+  });
+  await until(B.page, () => G.screenName === 'battle');
+  for (let i = 0; i < 400; i++) {
+    await B.page.evaluate(() => { const s = G.screens.battle; if (G.screenName === 'battle' && s.phase === 'input' && !G.modal) s.order({ a: 'def' }); });
+    if (await A.page.evaluate(() => window.__res != null)) break; await A.page.waitForTimeout(100);
+  }
+  assert.equal(await A.page.evaluate(() => window.__res), 'win');
+  await until(B.page, () => !!G.modal); await B.page.evaluate(() => G.modal.buttons[0].action());
+  await until(B.page, () => G.screenName === 'adventure');
+});
+
+test('gospodarz wznawia grę po przeładowaniu: ten sam kod, gość wraca sam', async () => {
+  await A.page.evaluate(async () => { G.state.players[0].resources.gold = 6262; await Net.saveHost(G.state); });
+  await A.page.waitForTimeout(300);
+  await A.page.evaluate(() => { const last = Net.recalled(); Net.close(); G.state = null; window.__last = last; });
+  await until(B.page, () => !Net.host, null, 20000);
+  await A.page.evaluate(() => G.screens.online.resumeHost(window.__last));
+  await until(A.page, () => G.screenName === 'adventure' && G.state && G.state.players[0].resources.gold === 6262, null, 20000);
+  await until(B.page, () => Net.host && G.state.players[0].resources.gold === 6262, null, 30000);
+});

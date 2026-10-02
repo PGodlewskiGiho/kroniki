@@ -343,7 +343,7 @@ G.screens.load = {
   },
   fromFile() {
     if (this.busy) return; this.err = null;
-    pickGameFile().then(st => { if (!st) return; G.state = st; G.go('adventure', { flash: 'Wczytano grę z pliku' }); },
+    pickGameFile().then(st => { if (!st) return; G.state = st; G.go('adventure', { flash: 'Wczytano grę z pliku', welcome: sharedScreen(st) }); }, // hot-seat z pliku (gra korespondencyjna): zaczyna się tura gracza, który go dostał
       e => { this.err = `Nie można wczytać pliku: ${e && e.message ? e.message : 'nieznany błąd'}.`; });
   },
   doLoad(slot) {

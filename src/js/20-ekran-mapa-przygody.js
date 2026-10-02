@@ -167,9 +167,16 @@ G.screens.adventure = {
     const next = () => { const m = msgs.shift(); if (m) showDialog(m[0], [{ label: m[1], key: 'enter', action: next }], m[2]); };
     if (live && sharedScreen(st)) {
       this.curtain = ME;
-      showDialog(`Tura: ${cap1(playerName(st, ME))} (${factionOf(p.faction).name}), ${dateText(st).toLowerCase()}. Pozostali gracze, nie patrzcie na ekran.`, [{ label: 'Zaczynam', key: 'enter', action: () => { this.curtain = null; next(); } }],
+      showDialog(`Tura: ${cap1(playerName(st, ME))} (${factionOf(p.faction).name}), ${dateText(st).toLowerCase()}. Pozostali gracze, nie patrzcie na ekran.`, [{ label: 'Zaczynam', key: 'enter', action: () => { this.curtain = null; next(); } },
+        { label: 'Wyślij plikiem', key: 'p', tip: 'Gra korespondencyjna: zapisz grę do pliku i wyślij ją temu graczowi (np. komunikatorem). Wczyta ją w menu: Wczytaj grę → Z pliku, i zagra swoją turę.', action: () => this.mailTurn(st) }],
         { locked: true, iconH: 70, icon: (ctx, cx, cy) => { ctx.save(); ctx.translate(cx - 30, cy - 24); ctx.scale(2.4, 2.4); drawFlag(ctx, 0, 0, 24, 13, G.time, ownerColor(st, ME)); ctx.restore(); } });
     } else next();
+  },
+  // Gra korespondencyjna (hot-seat przez plik): zapis z turą następnego gracza; on wczytuje plik i gra dalej u siebie
+  mailTurn(st) {
+    const name = exportGameFile(st);
+    showDialog(`Zapisano plik ${name}. Wyślij go graczowi ${playerName(st, ME)}: wczyta go w menu „Wczytaj grę” → „Z pliku” i zagra swoją turę, a potem odeśle plik dalej.`,
+      [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, { label: 'Wróć', key: 'escape', action: () => this.startHumanTurn(st, true) }], { locked: true });
   },
   // Zmiana gracza przed ekranem: jego mgła, kamera i wybrany bohater (poprzedni gracz zachowuje swoje)
   setViewer(st, id) {
@@ -442,6 +449,10 @@ G.screens.adventure = {
     this.layout();
     drawLayer(ctx, Layers.get(`advChrome_${VW}x${VH}_${uiArtReady() ? 1 : 0}`, VW, VH, paintAdvChrome), 0, 0);
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
+    if (this.watching && st.players[st.cur]) { // online: czyja tura (oglądamy)
+      const msg = `Tura: ${cap1(playerName(st, st.cur))}${st.players[st.cur].human ? '' : ' (komputer)'} – oglądasz`, w = 300, x = VIEW.x + VIEW.w / 2 - w / 2;
+      drawParchment(ctx, x, VIEW.y + 10, w, 36); text(ctx, msg, x + w / 2, VIEW.y + 33, { size: 16, align: 'center', color: '#3a1e08', fam: 'title' });
+    }
     this.buttons.forEach(b => b.draw(ctx));
     drawResourceBar(ctx, st, VH - H, VW);
     if (this.curtain != null) viewportDraw(ctx, c => { // zasłona hot-seat: nic z mapy poprzedniego gracza

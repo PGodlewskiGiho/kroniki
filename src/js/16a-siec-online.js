@@ -160,7 +160,7 @@ function netStep(m) {
 // Bitwa z człowiekiem online: ten, czyja jest tura (lead), wysyła obrońcy stan i początek bitwy; obaj liczą ją tak samo
 async function netBattle(st, h, foe, onDone) {
   const D = battleSide(st, foe), d = await Net.pack(st), ref = st.towns.includes(foe) ? { kind: 'town', id: st.towns.indexOf(foe) } : { kind: 'hero', id: foe.id };
-  Net.send({ t: 'bstart', d, h: h.id, prev: h.prev || null, foe: ref }, D.owner);
+  Net.send({ t: 'bstart', d, h: h.id, prev: h.prev || null, foe: ref, lead: ME }, D.owner); // lead: kto prowadzi bitwę (do niego wracają rozkazy, także gdy atakuje komputer)
   Net.battleQ = []; G.modal = null;
   G.go('battle', { battle: createBattle(st, h, foe), net: { lead: true, foe: D.owner }, onDone });
 }
@@ -169,7 +169,7 @@ async function netBattleStart(m) {
   const h = st.heroes.find(x => x.id === m.h), foe = m.foe.kind === 'town' ? st.towns[m.foe.id] : st.heroes.find(x => x.id === m.foe.id);
   if (!h || !foe) return; h.prev = m.prev; if (G.state && G.state.online) st.cam = G.state.cam;
   G.state = st; Net.battleQ = []; G.modal = null;
-  G.go('battle', { battle: createBattle(st, h, foe), net: { lead: false, foe: h.owner } });
+  G.go('battle', { battle: createBattle(st, h, foe), net: { lead: false, foe: m.lead } });
 }
 // Gracz online, z którym toczy się bitwa (ludzki właściciel drugiej strony), albo -1
 const netHumanOwner = (st, owner) => (Net.online(st) && owner >= 0 && owner !== ME && st.players[owner] && st.players[owner].human ? owner : -1);
