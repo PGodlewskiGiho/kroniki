@@ -207,9 +207,13 @@ function landColor(t, ax, ay, hh) {
 // Tekstury terenu (TERRAIN_ART, malowane przez AI, bezszwowe): piksele w tablicy + średnia barwa. Teren bierze z tekstury strukturę
 // (kępy trawy, szczeliny, kamienie), a barwę z palety i pory roku: kolor = tekstura × (barwa terenu / średnia tekstury).
 const TERRAIN_TEX = {}, TEX_NAME = ['water', 'grass', 'dirt', 'sand', 'snow', 'swamp', 'rough', 'lava'], TEX_TILES = 6; // tekstura na 6×6 pól
-// faktura z tekstury AI w barwie terenu (pora roku, paleta): kolor × (tekstura / jej średnia); powtarza się co TEX_TILES pól
-function texShade(TX, col, ax, ay, w) { const sx = ((Math.floor(ax * TX.w / (TEX_TILES * AP)) % TX.w) + TX.w) % TX.w, sy = ((Math.floor(ay * TX.h / (TEX_TILES * AP)) % TX.h) + TX.h) % TX.h, q = (sy * TX.w + sx) * 4, M = TX.mean, d = TX.d, u = 1 - w;
-  return [Math.min(255, col[0] * (d[q] / M[0] * w + u)), Math.min(255, col[1] * (d[q + 1] / M[1] * w + u)), Math.min(255, col[2] * (d[q + 2] / M[2] * w + u))]; }
+// faktura z tekstury AI w barwie terenu (pora roku, paleta): kolor × (tekstura / jej średnia). Żeby nie było widać powtórzeń,
+// tekstura jest próbkowana dwa razy (co TEX_TILES pól i co ~1,6× tyle, z zamienionymi osiami) i obie próbki mieszane wolnym szumem
+function texShade(TX, col, ax, ay, w) { const W = TX.w, H = TX.h, P = TEX_TILES * AP, d = TX.d, M = TX.mean;
+  const q1 = ((((Math.floor(ay * H / P) % H) + H) % H) * W + (((Math.floor(ax * W / P) % W) + W) % W)) * 4;
+  const q2 = ((((Math.floor((ax + 37 * AP) * H / (P * 1.618)) % H) + H) % H) * W + (((Math.floor((ay + 11 * AP) * W / (P * 1.618)) % W) + W) % W)) * 4;
+  const m = clamp((vnoise2(ax / (AP * 3.5), ay / (AP * 3.5), 91) - 0.5) * 3 + 0.5, 0, 1), a = (1 - m) * w, b = m * w, u = 1 - w;
+  return [Math.min(255, col[0] * (d[q1] / M[0] * a + d[q2] / M[0] * b + u)), Math.min(255, col[1] * (d[q1 + 1] / M[1] * a + d[q2 + 1] / M[1] * b + u)), Math.min(255, col[2] * (d[q1 + 2] / M[2] * a + d[q2 + 2] / M[2] * b + u))]; }
 function texData(im) {
   const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, c.width, c.height).data;
   let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4;
