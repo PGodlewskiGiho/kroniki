@@ -200,4 +200,4 @@ def cien():  # miasto (mroczne frakcje): e-moll, chór, niskie smyczki, dzwony
     timp.note(S.bar(9), 2, 40, 96)
     return S
 
-SONGS = [kroniki, wedrowka, starcie, grod, cien]
+SONGS = [kroniki, starcie, grod, cien] # wedrowka (mapa) poza grą: mapa jest bez muzyki

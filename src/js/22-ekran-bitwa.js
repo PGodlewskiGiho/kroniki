@@ -139,7 +139,7 @@ G.screens.battle = {
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
     Sfx.play('battlestart', { vol: 0.8, jit: 0 });
-    const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null;
+    const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null; this.net = p.net || null;
     this.me = B.sides[0].owner === ME ? 0 : 1; this.floats = []; this.preview = null; this.timer = 0; this.ending = null; // strona gracza: 0 gdy atakuje, 1 gdy się broni
     this.terr = B.st.map.terrain[B.h.y * B.st.map.n + B.h.x] || TER.GRASS;
     for (const u of B.units) { [u.px, u.py] = unitPos(u); u.anim = null; u.dieT = null; u.flashT = null; u.face = null; }
@@ -147,9 +147,10 @@ G.screens.battle = {
     // przygotowanie klatek animacji z góry (żeby pierwszy ruch nie przycinał)
     for (const u of B.units) for (const d of [1, -1]) for (const [pose, n] of Object.entries(BATTLE_FRAMES)) for (let i = 0; i < n; i++) battleSprite(u.cid, d, pose, i); // obie strony: oddziały się obracają
     const bx = 470, mk = (i, j, label, act, o) => new Button(bx + i * 108, 500 + j * 46, 100, 38, label, act, Object.assign({ size: 15 }, o));
-    this.bWait = mk(0, 0, 'Czekaj', () => this.player(u => actWait(B, u)), { key: 'w', tip: 'Oddział ruszy na końcu tej rundy (klawisz W).' });
-    this.bDef = mk(1, 0, 'Obrona', () => this.player(u => actDefend(B, u)), { key: 'd', tip: 'Oddział broni się: wyższa obrona do jego następnego ruchu (klawisz D).' });
-    this.bAuto = mk(0, 1, 'Auto', () => { B.auto = !B.auto; if (B.auto && this.phase === 'input') this.startTurnFor(B.active); }, { key: 'a', selected: () => B.auto, tip: 'Walka automatyczna: twoje oddziały dowodzą się same (klawisz A).' });
+    this.bWait = mk(0, 0, 'Czekaj', () => this.order({ a: 'wait' }), { key: 'w', tip: 'Oddział ruszy na końcu tej rundy (klawisz W).' });
+    this.bDef = mk(1, 0, 'Obrona', () => this.order({ a: 'def' }), { key: 'd', tip: 'Oddział broni się: wyższa obrona do jego następnego ruchu (klawisz D).' });
+    this.myAuto = false;
+    this.bAuto = mk(0, 1, 'Auto', () => { if (this.net) { this.myAuto = !this.myAuto; if (this.myAuto && this.phase === 'input') this.order({ a: 'ai' }); return; } B.auto = !B.auto; if (B.auto && this.phase === 'input') this.startTurnFor(B.active); }, { key: 'a', selected: () => (this.net ? this.myAuto : B.auto), tip: 'Walka automatyczna: twoje oddziały dowodzą się same (klawisz A).' });
     this.bFlee = mk(1, 1, 'Ucieczka', () => this.onBack(), { key: 'u', tip: 'Wycofanie się z bitwy: ocalałe oddziały zostają, ale bohater traci resztę ruchu na dziś (klawisz U).' });
     this.bCast = mk(2, 0, 'Czar', () => this.openBook(), { key: 'c', tip: 'Księga czarów bohatera: jeden czar na rundę, przed ruchem oddziału (klawisz C).' });
     this.bInfo = mk(2, 1, 'Mana', null, { disabled: true, display: true, tip: 'Mana bohatera. Odnawia się o 1 dziennie, a w pełni w mieście z gildią magów.' });
@@ -163,7 +164,7 @@ G.screens.battle = {
     if (this.phase === 'over') return;
     if (this.casting) { this.casting = null; this.preview = null; return; } // Esc anuluje wybór celu czaru
     if (this.phase !== 'input' && !this.B.auto || this.me === 1) return;
-    showDialog('Wycofać się z bitwy? Ocalałe oddziały zostaną z bohaterem, ale na dziś koniec marszu.', [{ label: 'Uciekaj', key: 'enter', action: () => this.finish(true) }, { label: 'Walcz dalej', key: 'escape' }]);
+    showDialog('Wycofać się z bitwy? Ocalałe oddziały zostaną z bohaterem, ale na dziś koniec marszu.', [{ label: 'Uciekaj', key: 'enter', action: () => (this.net ? this.order({ a: 'flee' }) : this.finish(true)) }, { label: 'Walcz dalej', key: 'escape' }]);
   },
   nextTurn() {
     const B = this.B, u = nextActive(B); this.preview = null;
@@ -177,11 +178,30 @@ G.screens.battle = {
     const ai = mach || B.auto || !humanSide(B, u.side);
     if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
     if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
+    if (this.net && B.sides[u.side].owner !== ME) { this.phase = 'remote'; this.reach = null; return; } // online: ruch przeciwnika-człowieka przyjdzie siecią
+    if (this.net && this.myAuto) { this.phase = 'input'; this.order({ a: 'ai' }); return; } // online Auto: rozkaz „decyduje komputer” – obie strony liczą ten sam ruch SI
     this.phase = 'input'; this.reach = battleDist(B, u, unitSpd(u));
     if (this.me !== u.side) { this.me = u.side; this.bFlee.disabled = u.side === 1; this.bFlee.tip = u.side ? 'Obrońca nie może uciec z pola bitwy.' : this.fleeTip; } // hot-seat: dowodzą na zmianę dwaj ludzie
     this.bWait.disabled = u.waited; this.onPointerMove(G.mouse.x, G.mouse.y);
   },
   player(fn) { if (this.phase !== 'input') return; this.casting = null; fn(this.B.active); this.phase = 'play'; },
+  // Rozkaz gracza jako dane (online wysyłany przeciwnikowi, który wykonuje go u siebie tak samo): a = rodzaj, t = cel, p = ścieżka
+  order(c) {
+    if (this.phase !== 'input') return; const B = this.B; c.u = B.units.indexOf(B.active); c.r = B.round;
+    if (this.net) Net.send({ t: 'bcmd', c }, this.net.foe);
+    this.applyOrder(c);
+  },
+  applyOrder(c) {
+    const B = this.B, u = B.active, T = c.t != null ? B.units[c.t] : null;
+    if (B.units.indexOf(u) !== c.u) console.warn('bitwa online: rozbieżność kolejki', c, B.units.indexOf(u));
+    this.casting = null; this.preview = null; this.touchKey = null;
+    if (c.a === 'cast') { castBattle(B, c.id, c.x, c.y); this.phase = 'play'; this.resume = true; return; }
+    if (c.a === 'flee') { this.finish(true); return; }
+    if (c.a === 'ai') { if (aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } aiAct(B, u); this.phase = 'play'; return; } // ruch SI za gracza (Auto online): ten sam u obu, bo bitwa jest powtarzalna
+    if (c.a === 'wait') actWait(B, u); else if (c.a === 'def') actDefend(B, u); else if (c.a === 'shoot') actShoot(B, u, T);
+    else if (c.a === 'heal') actFirstAid(B, u, T); else actMoveAttack(B, u, c.p, T);
+    this.phase = 'play';
+  },
   openBook() {
     if (this.phase !== 'input') return; const B = this.B;
     const mh = sideHero(B, this.me); if (!mh) return;
@@ -195,6 +215,8 @@ G.screens.battle = {
   },
   finish(fled) {
     const B = this.B, st = B.st, h = B.h, res = resolveBattle(B, fled), f = this.onDone; this.onDone = null; this.phase = 'done';
+    if (this.net && !this.net.lead) { showBattleReport(st, res, defenseReport(st, { h }, B.sides[1].hero, res), () => G.go('adventure')); return; } // online, obrońca: wynik u siebie, stan gry przyśle prowadzący
+    if (this.net && f) { f(res); return; } // online: komputer zaatakował człowieka przy innym ekranie – wynik od razu wraca do tury komputera
     if (f) showBattleReport(st, res, defenseReport(st, { h }, B.sides[1].hero, res), () => { res.reported = true; f(res); }); // obrona: wynik wraca do tury przeciwnika
     else showBattleReport(st, res, attackReport(st, h, res), () => G.go('adventure', { after: () => battleAftermath(st, h, res) }));
   },
@@ -210,6 +232,7 @@ G.screens.battle = {
       this.nextTurn(); return;
     }
     if (this.phase === 'ai') { this.timer -= dt; if (this.timer <= 0) { aiAct(B, B.active); this.phase = 'play'; } return; }
+    if (this.phase === 'remote' && Net.battleQ && Net.battleQ.length) { this.applyOrder(Net.battleQ.shift()); return; }
     if (this.phase === 'over') { const E = this.ending; E.t += dt; if (E.t >= E.dur) this.finish(false); }
   },
   // Czasy efektów (w sekundach); walka automatyczna odtwarza się szybciej
@@ -357,11 +380,12 @@ G.screens.battle = {
       this.touchKey = null;
     }
     const B = this.B, p = this.preview; if (this.phase !== 'input' || !p) return;
-    if (p.kind === 'cast') { this.casting = null; castBattle(B, p.id, p.x, p.y); this.phase = 'play'; this.resume = true; return; }
-    if (p.kind === 'heal') this.player(u => actFirstAid(B, u, p.target));
-    else if (p.kind === 'shoot') this.player(u => actShoot(B, u, p.target));
-    else if (p.kind === 'attack') this.player(u => actMoveAttack(B, u, pathTo(this.reach, u, ...p.from), p.target));
-    else if (p.kind === 'move') this.player(u => actMoveAttack(B, u, pathTo(this.reach, u, ...p.to), null));
+    const ix = v => B.units.indexOf(v), u = B.active;
+    if (p.kind === 'cast') this.order({ a: 'cast', id: p.id, x: p.x, y: p.y });
+    else if (p.kind === 'heal') this.order({ a: 'heal', t: ix(p.target) });
+    else if (p.kind === 'shoot') this.order({ a: 'shoot', t: ix(p.target) });
+    else if (p.kind === 'attack') this.order({ a: 'move', t: ix(p.target), p: pathTo(this.reach, u, ...p.from) });
+    else if (p.kind === 'move') this.order({ a: 'move', p: pathTo(this.reach, u, ...p.to) });
   },
   rightInfo(x, y) {
     const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y), w = hx && wallAt(this.B, hx.x, hx.y);
@@ -436,7 +460,7 @@ G.screens.battle = {
     text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: UI.txt, fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
-    let tip = this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
+    let tip = this.phase === 'remote' && u0 ? `Ruch gracza ${playerName(st, B.sides[u0.side].owner)}: ${cu.plural.toLowerCase()}…` : this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
     if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(heroStat(sideHero(B, this.me) || B.h, 'sp'))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
     else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots}${shotPenaltyText(B, u0, pv.target)})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';

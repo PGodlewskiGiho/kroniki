@@ -57,7 +57,9 @@ function build() {
   const mdir = path.join(SRC, 'muzyka'), mus = {}, mloops = fs.existsSync(path.join(mdir, 'petle.json')) ? JSON.parse(fs.readFileSync(path.join(mdir, 'petle.json'), 'utf8')) : {};
   if (fs.existsSync(mdir)) for (const f of fs.readdirSync(mdir).sort()) if (f.endsWith('.mp3')) { const n = f.replace('.mp3', ''); mus[n] = { d: b85(fs.readFileSync(path.join(mdir, f))), loop: mloops[n] || 0 }; }
   const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\nconst TOWN_BUILD_ART = ${JSON.stringify(tart)};\nconst ARTIFACT_ART = ${JSON.stringify(aart)};\nconst MAP3D_ART = ${JSON.stringify(mart)};\nconst BATTLE_BG_ART = ${JSON.stringify(bart)};\nconst SKILL_ART = ${JSON.stringify(sart)};\nconst UI_ART = ${JSON.stringify(uiart)};\nconst SPELL_ART = ${JSON.stringify(spart)};\nconst SOUND_ART = ${JSON.stringify(snd)};\nconst MUSIC_ART = ${JSON.stringify(mus)};\n`;
-  return shell.replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => artJs + js);
+  // Biblioteka PeerJS (npm peerjs, licencja MIT): połączenia WebRTC między graczami online, osobny <script> przed kodem gry
+  const peerjs = fs.readFileSync(path.join(__dirname, 'node_modules', 'peerjs', 'dist', 'peerjs.min.js'), 'utf8').replace(/\/\/# sourceMappingURL=.*$/m, '');
+  return shell.replace('@@BIBLIOTEKI@@', () => peerjs).replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => artJs + js);
 }
 
 const arg = process.argv[2];

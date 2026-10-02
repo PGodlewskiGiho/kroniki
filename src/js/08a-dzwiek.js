@@ -49,7 +49,7 @@ const Music = {
   // utwór dla ekranu (null = bez zmiany)
   forScreen(name, p = {}) {
     if (['menu', 'setup', 'rules', 'load', 'scores', 'credits', 'nazwa'].includes(name)) return 'menu';
-    if (name === 'adventure') return 'mapa';
+    if (name === 'adventure') return ''; // mapa świata: bez muzyki (same dźwięki otoczenia i kroki)
     if (name === 'battle') return 'bitwa';
     if (name === 'town') { const t = G.state && G.state.towns[p.townId || 0]; return t && MUSIC_DARK.includes(t.faction) ? 'miasto_mrok' : 'miasto'; }
     if (name === 'bye') return '';

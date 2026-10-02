@@ -135,3 +135,19 @@ test('imiona graczy: wpisane na ekranie nowej gry zastępują „gracz <kolor>�
   assert.equal(await page.evaluate(() => !!document.querySelector('input') || !!G.modal), false, 'Esc zamyka okno i pole');
   await page.evaluate(s => { Object.assign(G.settings, JSON.parse(s)); }, saved);
 });
+
+test('gra korespondencyjna: zasłona tury ma „Wyślij plikiem”, plik wczytany u drugiego gracza zaczyna jego turę', async () => {
+  await newGame(page, { mapSize: 'S', slots: slots('hh') }, 23);
+  await page.evaluate(() => { G.modal = null; const A = G.screens.adventure; A.doEndTurn({ live: true }); });
+  await page.waitForFunction(() => G.modal && G.modal.buttons.some(b => b.label === 'Wyślij plikiem'), null, { timeout: 20000 });
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.evaluate(() => G.modal.buttons.find(b => b.label === 'Wyślij plikiem').action())]);
+  const file = require('path').join(require('os').tmpdir(), 'kk-korespondencja.json'); await dl.saveAs(file);
+  const who = await page.evaluate(() => ME);
+  await page.evaluate(() => { G.modal = null; G.go('load', { mode: 'load' }); });
+  await page.waitForFunction(() => G.screenName === 'load');
+  const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => { G.screen.fromFile(); })]);
+  await fc.setFiles(file);
+  await page.waitForFunction(() => G.screenName === 'adventure' && G.modal && /Tura:/.test(G.modal.msg), null, { timeout: 10000 });
+  assert.equal(await page.evaluate(() => ME), who);
+  require('fs').unlinkSync(file);
+});

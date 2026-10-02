@@ -135,7 +135,7 @@ G.screens.adventure = {
   // Po zmianie rozmiaru okna: nowy układ panelu, przyciski na nowych miejscach, kamera w granicach mapy
   layout(force) {
     const key = VW + 'x' + VH; if (!force && this.layoutKey === key) return; this.layoutKey = key;
-    const st = G.state; layoutAdventure(); buildPanelButtons(this, st); if (this.aiRun) this.lockButtons(true);
+    const st = G.state; layoutAdventure(); buildPanelButtons(this, st); if (this.aiRun || this.watching) this.lockButtons(true);
     if (st.cam) camClamp(st);
   },
   enter(p) {
@@ -147,7 +147,9 @@ G.screens.adventure = {
     this.layout(true); // przyciski panelu; w trakcie tury przeciwnika (powrót z bitwy obronnej) zablokowane
     if (p.flash) this.flash(p.flash);
     if (p.after) p.after();
-    if (p.welcome) this.startHumanTurn(st, true); else human(st).welcomed = true; // gra wczytana albo powrót z innego ekranu
+    this.netWatch(Net.online(st) && st.cur !== ME); // gra online: nie moja tura = oglądanie
+    if (Net.pending) { const [d, k] = Net.pending; Net.pending = null; setTimeout(() => netApplyState(d, k), 0); } // stan, który przyszedł w trakcie bitwy
+    if (p.welcome && Net.myTurn(st)) this.startHumanTurn(st, true); else human(st).welcomed = human(st).welcomed || !Net.online(st); // gra wczytana albo powrót z innego ekranu
   },
   // Powitanie gracza na początku jego pierwszej tury: frakcja, rywale, bonus startowy
   welcomeText(st) {
@@ -165,9 +167,16 @@ G.screens.adventure = {
     const next = () => { const m = msgs.shift(); if (m) showDialog(m[0], [{ label: m[1], key: 'enter', action: next }], m[2]); };
     if (live && sharedScreen(st)) {
       this.curtain = ME;
-      showDialog(`Tura: ${cap1(playerName(st, ME))} (${factionOf(p.faction).name}), ${dateText(st).toLowerCase()}. Pozostali gracze, nie patrzcie na ekran.`, [{ label: 'Zaczynam', key: 'enter', action: () => { this.curtain = null; next(); } }],
+      showDialog(`Tura: ${cap1(playerName(st, ME))} (${factionOf(p.faction).name}), ${dateText(st).toLowerCase()}. Pozostali gracze, nie patrzcie na ekran.`, [{ label: 'Zaczynam', key: 'enter', action: () => { this.curtain = null; next(); } },
+        { label: 'Wyślij plikiem', key: 'p', tip: 'Gra korespondencyjna: zapisz grę do pliku i wyślij ją temu graczowi (np. komunikatorem). Wczyta ją w menu: Wczytaj grę → Z pliku, i zagra swoją turę.', action: () => this.mailTurn(st) }],
         { locked: true, iconH: 70, icon: (ctx, cx, cy) => { ctx.save(); ctx.translate(cx - 30, cy - 24); ctx.scale(2.4, 2.4); drawFlag(ctx, 0, 0, 24, 13, G.time, ownerColor(st, ME)); ctx.restore(); } });
     } else next();
+  },
+  // Gra korespondencyjna (hot-seat przez plik): zapis z turą następnego gracza; on wczytuje plik i gra dalej u siebie
+  mailTurn(st) {
+    const name = exportGameFile(st);
+    showDialog(`Zapisano plik ${name}. Wyślij go graczowi ${playerName(st, ME)}: wczyta go w menu „Wczytaj grę” → „Z pliku” i zagra swoją turę, a potem odeśle plik dalej.`,
+      [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, { label: 'Wróć', key: 'escape', action: () => this.startHumanTurn(st, true) }], { locked: true });
   },
   // Zmiana gracza przed ekranem: jego mgła, kamera i wybrany bohater (poprzedni gracz zachowuje swoje)
   setViewer(st, id) {
@@ -179,6 +188,15 @@ G.screens.adventure = {
     this.layout(true);
   },
   flash(msg) { this.flashMsg = { text: msg, t: G.time }; },
+  // Gra online: tura innego gracza (watching) – przyciski zablokowane, mapę można tylko oglądać
+  netWatch(on) { this.watching = on; if (on || !this.aiRun) this.lockButtons(on); },
+  netUpdate(st, kind) {
+    MapRender.miniDirty = true; this.layout(true);
+    if (kind === 'sync') return;
+    const mine = st.cur === ME; this.netWatch(!mine);
+    if (mine) { const h = hero(st) || myTowns(st)[0]; if (h) centerCam(st, h.x, h.y); this.autosave(st); this.startHumanTurn(st, true); }
+    else this.flash(`Tura: ${playerName(st, st.cur)}`);
+  },
   systemMenu() {
     showDialog('Gra jest wstrzymana. Co chcesz zrobić?', [
       { label: 'Wróć do gry', key: 'escape' },
@@ -194,6 +212,7 @@ G.screens.adventure = {
   onKey(k) {
     if ((k === '+' || k === '=' || k === '-') && G.state) { const i = ZOOMS.indexOf(ZOOM); setZoom(G.state, ZOOMS[clamp(i + (k === '-' ? -1 : 1), 0, ZOOMS.length - 1)]); return; } // klawisze +/−: przybliż, oddal
     if (this.aiRun) { if (k === ' ' || k === 'escape' || k === 'enter') this.skipAi(); return; }
+    if (this.watching) { if (k === 'escape') this.systemMenu(); return; }
     const h = hero(G.state); if (!h) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
   selectHero(h) {
     const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
@@ -289,11 +308,15 @@ G.screens.adventure = {
     this.aiRun = { st, gen, news, input: undefined, wait: false, who: null, anim: null, seen: new Set() }; this.lockButtons(true);
   },
   nextHuman(st, id, live) {
+    if (Net.online(st)) { // online: kolejka przechodzi do innego człowieka – wysyłamy mu stan, sami oglądamy
+      st.cur = id; if (id !== ME) { Net.sendState(st, 'turn'); this.netWatch(true); this.flash(`Tura: ${playerName(st, id)}`); return; }
+      this.netWatch(false);
+    }
     if (id !== ME) this.setViewer(st, id);
     if (live) this.autosave(st);
     this.startHumanTurn(st, live);
   },
-  lockButtons(on) { for (const b of this.buttons) { if (on) { b._was = b.disabled; b.disabled = true; } else if (b._was !== undefined) { b.disabled = b._was; delete b._was; } } },
+  lockButtons(on) { for (const b of this.buttons) { if (on) { if (b._was === undefined) { b._was = b.disabled; b.disabled = true; } } else if (b._was !== undefined) { b.disabled = b._was; delete b._was; } } },
   skipAi() { const R = this.aiRun; if (!R || R.skip) return; R.skip = true; if (R.anim) { R.anim.anim = null; R.anim = null; } },
   // Odtwarzanie tury SI: widoczne kroki (na odkrytej mapie) z animacją i kamerą, reszta od razu; atak na gracza czeka na jego decyzję
   updateAi(st, dt) {
@@ -314,6 +337,7 @@ G.screens.adventure = {
       if (a.kind === 'player') { R.who = a.p; continue; }
       if (a.kind === 'day') { this.banner = { text: `Dzień ${st.day}`, t: G.time }; continue; }
       if (a.kind === 'step') { // w hot-seat ruchów komputera nie pokazujemy (mgła każdego gracza jest tajna)
+        if (Net.online(st)) Net.step(a.h, a.fx, a.fy); // gra online: oglądający widzą ruch komputera
         if (!step || sharedScreen(st) || !st.heroes.includes(a.h) || !(ex[a.fy * n + a.fx] || ex[a.h.y * n + a.h.x])) continue; // niewidoczny ruch: od razu
         if (!R.seen.has(a.h)) { R.seen.add(a.h); centerCam(st, a.fx, a.fy); }
         a.h.anim = { fx: a.fx, fy: a.fy, t: 0, d: step }; R.anim = a.h; return;
@@ -321,6 +345,11 @@ G.screens.adventure = {
       if (a.kind === 'defend') {
         R.wait = true; const ask = () => this.askDefense(st, a, res => { R.input = res; R.wait = false; });
         if (a.owner === ME) { ask(); return; }
+        if (netHumanOwner(st, a.owner) >= 0) { // broni się człowiek online: wspólna bitwa (strona komputera liczona u obu tak samo)
+          const t = a.foe.garrison ? a.foe : null, D = t ? townHero(st, t) : a.foe; a.shown = true;
+          netBattle(st, a.h, a.foe, res => G.go('adventure', { after: () => { if (res.outcome !== 'win' && D && res.foeExp && st.heroes.includes(D)) gainExp(st, D, res.foeExp); R.input = res; R.wait = false; } }));
+          return;
+        }
         this.setViewer(st, a.owner); this.curtain = ME; // hot-seat: broni się inny człowiek, siada do ekranu
         showDialog(`${cap1(playerName(st, ME))}: komputer atakuje twoje ziemie! Podejdź do ekranu.`, [{ label: 'Jestem', key: 'enter', action: () => { this.curtain = null; ask(); } }], { locked: true, iconH: 70, icon: (ctx, cx, cy) => { ctx.save(); ctx.translate(cx - 30, cy - 24); ctx.scale(2.4, 2.4); drawFlag(ctx, 0, 0, 24, 13, G.time, ownerColor(st, ME)); ctx.restore(); } });
         return;
@@ -405,6 +434,7 @@ G.screens.adventure = {
   miniJump(x, y) { const st = G.state, n = levelSize(st.map), o = levelOrigin(st.map, st.map.ln ? st.view || 0 : 0); centerCam(st, o + clamp((x - MINI.x) / MINI.s * n, 0, n - 0.01) - 0.5, o + clamp((y - MINI.y) / MINI.s * n, 0, n - 0.01) - 0.5); },
   onClick(x, y) {
     if (this.aiRun) { if (inRect(x, y, VIEW)) this.skipAi(); return; } // tura przeciwnika: mapę można tylko oglądać, kliknięcie pomija animację
+    if (this.watching) { if (clickButtons(this.buttons, x, y)) return; return; } // online: tura innego gracza
     if (clickButtons(this.buttons, x, y)) return;
     const st = G.state;
     if (inRect(x, y, LIST)) {
@@ -419,6 +449,10 @@ G.screens.adventure = {
     this.layout();
     drawLayer(ctx, Layers.get(`advChrome_${VW}x${VH}_${uiArtReady() ? 1 : 0}`, VW, VH, paintAdvChrome), 0, 0);
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
+    if (this.watching && st.players[st.cur]) { // online: czyja tura (oglądamy)
+      const msg = `Tura: ${cap1(playerName(st, st.cur))}${st.players[st.cur].human ? '' : ' (komputer)'} – oglądasz`, w = 300, x = VIEW.x + VIEW.w / 2 - w / 2;
+      drawParchment(ctx, x, VIEW.y + 10, w, 36); text(ctx, msg, x + w / 2, VIEW.y + 33, { size: 16, align: 'center', color: '#3a1e08', fam: 'title' });
+    }
     this.buttons.forEach(b => b.draw(ctx));
     drawResourceBar(ctx, st, VH - H, VW);
     if (this.curtain != null) viewportDraw(ctx, c => { // zasłona hot-seat: nic z mapy poprzedniego gracza
