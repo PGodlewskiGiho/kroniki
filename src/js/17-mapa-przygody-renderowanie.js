@@ -170,10 +170,28 @@ function segDist(px, py, s) {
 function roadColor(t, ax, ay, hh) {
   const P = RPAL[t];
   if (t === 3) { const row = (ay / 3) | 0, mortar = ay % 3 === 0 || ((ax + (row & 1) * 2) % 4) === 0; return mortar ? P[0] : (hh < 0.4 ? P[2] : P[1]); }
+  if (!PIXEL_ART) return t === 2 ? mixRgb(P[1], P[2], vnoise2(ax / 2.5, ay / 2.5, 17) * 0.6) : mixRgb(P[1], P[0], vnoise2(ax / 3, ay / 3, 19) * 0.35); // gładka droga (bruk zostaje kostką)
   if (t === 2) return hh < 0.18 ? P[0] : hh < 0.36 ? P[2] : P[1];
   return hh < 0.08 ? P[0] : hh > 0.93 ? P[2] : P[1];
 }
+// Gładki teren (PIXEL_ART = false): barwa płynnie między jasnym, średnim i ciemnym odcieniem palety wg szumu wartości,
+// do tego drobna, miękka faktura (szum w kilku skalach) zamiast pojedynczych plamek; cechy terenu (żyły lawy, rozlewiska, zmarszczki piasku) zostają
+const lerp3 = (P, v) => (v < 0.5 ? mixRgb(P[1], P[0], 1 - v * 2) : mixRgb(P[1], P[2], (v - 0.5) * 2));
+const shadeRgb = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+function landColorSmooth(t, ax, ay) {
+  const P = TPAL[t], v = clamp((vnoise2(ax / 9, ay / 9, 31 + t) * 0.65 + vnoise2(ax / 3.5, ay / 3.5, 37 + t) * 0.35 - 0.5) * 1.6 + 0.5, 0, 1);
+  let col = lerp3(P, v); const f = 0.94 + vnoise2(ax / 1.4, ay / 1.4, 13 + t) * 0.1; col = shadeRgb(col, f);
+  switch (t) {
+    case TER.GRASS: { const m = vnoise2(ax / 14, ay / 14, 71); if (m > 0.62) col = mixRgb(col, P[3], Math.min(1, (m - 0.62) * 3) * 0.5); break; } // ciemniejsze kępy trawy
+    case TER.SAND: { const w = Math.sin((ay + vnoise2(ax / 9, ay / 9, 5) * 8) * Math.PI / 3); if (w > 0.6) col = mixRgb(col, P[2], (w - 0.6) * 1.2); break; } // zmarszczki wydm
+    case TER.SWAMP: { const pv = vnoise2(ax / 4, ay / 4, 41); if (pv > 0.62) col = mixRgb(col, P[3], Math.min(1, (pv - 0.62) * 8)); break; }
+    case TER.LAVA: { const cr = Math.abs(vnoise2(ax / 6, ay / 6, 51) - 0.5); if (cr < 0.06) col = mixRgb(col, cr < 0.03 ? PC.hot : PC.warm, 1 - cr / 0.06 * 0.5); break; }
+    case TER.ROUGH: case TER.DIRT: { const m = vnoise2(ax / 6, ay / 6, 81); if (m < 0.3) col = mixRgb(col, P[3], (0.3 - m) * 1.5); break; }
+  }
+  return col;
+}
 function landColor(t, ax, ay, hh) {
+  if (!PIXEL_ART) return landColorSmooth(t, ax, ay);
   const P = TPAL[t], bnd = vnoise2(ax / 5, ay / 5, 31 + t); let col = bnd < 0.3 ? P[0] : bnd > 0.7 ? P[2] : P[1];
   switch (t) {
     case TER.GRASS: if (hh < 0.02) col = P[3]; else if (hh < 0.035) col = P[0]; else if (hh > 0.997) col = PC.flY; else if (hh > 0.994) col = PC.flW; break;
@@ -195,6 +213,7 @@ function seasonLand(col, t, ax, ay, hh, S) {
   if (S === 2) { if (t === TER.SAND) return col; const v = vnoise2(ax / 11, ay / 11, 91); return mixRgb(col, AUTC[clamp((v * 4) | 0, 0, 3)], t === TER.GRASS ? 0.55 : 0.28); }
   const v = vnoise2(ax / 9, ay / 9, 97);
   if (t === TER.SAND) return mixRgb(col, SNOWC[0], v > 0.45 ? 0.6 : 0.25); // piasek tylko przyprószony
+  if (!PIXEL_ART) return mixRgb(col, mixRgb(SNOWC[1], SNOWC[2], vnoise2(ax / 2, ay / 2, 99)), 0.55 + clamp((v - 0.2) * 3, 0, 1) * 0.35); // gładki śnieg
   return mixRgb(col, SNOWC[hh < 0.3 ? 1 : hh > 0.97 ? 2 : 0], v > 0.3 ? 0.9 : 0.55);
 }
 function renderChunkPixel(map, cx, cy) {
@@ -224,7 +243,7 @@ function renderChunkPixel(map, cx, cy) {
         wm[wi] = near <= 2 ? 2 : 1; wet = true;
         if (SN === 3 && near <= 4) { wm[wi] = 0; col = near === 1 ? SNOWC[2] : (thash(ax >> 1, ay >> 2, 81) % 23 === 0) ? [150, 186, 214] : near <= 2 ? [206, 226, 240] : [184, 212, 232]; } // zimą lód przy brzegu
         else if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
-        else { const P = TPAL[0]; col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; }
+        else { const P = TPAL[0]; if (!PIXEL_ART) col = mixRgb(P[1], P[0], clamp((vnoise2(ax / 8, ay / 8, 61) - 0.2) * 2.2, 0, 1)); else { col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; } }
       } else {
         col = seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN);
         const below = TT(fx, fy + D); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
@@ -430,7 +449,7 @@ function fogChunk(ex, n, cx, cy) {
       f.fill();
     }
     const img = f.getImageData(0, 0, S, S), d = img.data, bx = cx * S, by = cy * S;
-    for (let y = 0, k = 0; y < S; y++) for (let x = 0; x < S; x++, k += 4) { const a = d[k + 3]; d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = (a >= 225 || (a >= 70 && ((bx + x + by + y) & 1))) ? 255 : 0; }
+    for (let y = 0, k = 0; y < S; y++) for (let x = 0; x < S; x++, k += 4) { const a = d[k + 3]; d[k] = d[k + 1] = d[k + 2] = 0; d[k + 3] = !PIXEL_ART ? a : (a >= 225 || (a >= 70 && ((bx + x + by + y) & 1))) ? 255 : 0; } // gładko: miękki brzeg mgły
     // gotowy kawałek w zwykłym płótnie (roboczy, czytany procesorem, służy tylko do liczenia)
     c = document.createElement('canvas'); c.width = c.height = S; c.getContext('2d').putImageData(img, 0, 0);
   }
@@ -516,7 +535,7 @@ function mapLight(w, h) {
       const t = (x / w + y / h) / 2, warm = Math.max(0, 0.13 * (1 - t * 2)), cool = Math.max(0, 0.24 * (t * 2 - 1));
       const rr = Math.hypot(x - cx, y - cy), v = clamp((rr - h * 0.35) / (h * 0.5), 0, 1) * 0.5;
       let a = warm + cool + v, r = (255 * warm + 18 * cool + 6 * v) / (a || 1), g = (200 * warm + 22 * cool + 6 * v) / (a || 1), b = (130 * warm + 60 * cool + 14 * v) / (a || 1);
-      const q = Math.floor(a * 8 + BAYER4[(y & 3) * 4 + (x & 3)] / 16) / 8;
+      const q = PIXEL_ART ? Math.floor(a * 8 + BAYER4[(y & 3) * 4 + (x & 3)] / 16) / 8 : a; // gładko: bez stopni i ditheringu
       d[k] = r; d[k + 1] = g; d[k + 2] = b; d[k + 3] = clamp(q, 0, 1) * 255;
     }
     c.putImageData(img, 0, 0);

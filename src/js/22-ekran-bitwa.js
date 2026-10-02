@@ -36,7 +36,8 @@ function paintBattleBg(c, terr, fac) {
     else if (fac && x * 2 > PAVE_X + Math.round(vnoise2(0, y / 4, 3) * 6)) { // bruk dziedzińca za murem
       const pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, row = Math.floor(y / 5), cx = x + (row % 2) * 4, edge = y % 5 === 0 || cx % 8 === 0, k = thash(Math.floor(cx / 8), row, 7) % 3;
       col = edge ? pv[1].map(v => v * 0.8) : k === 0 ? pv[1] : k === 1 ? pv[0] : pv[0].map((v, i) => (v + pv[1][i]) / 2);
-    } else { const n = vnoise2(xs / 9, ys / 6, 17) * 0.7 + vnoise2(xs / 3, ys / 3, 5) * 0.3 + (BAYER4[(fy & 3) * 4 + (fx & 3)] / 16 - 0.5) * 0.18; col = P[n < 0.32 ? 0 : n < 0.62 ? 1 : n < 0.8 ? 2 : 3]; }
+    } else { const n = vnoise2(xs / 9, ys / 6, 17) * 0.7 + vnoise2(xs / 3, ys / 3, 5) * 0.3 + (PIXEL_ART ? (BAYER4[(fy & 3) * 4 + (fx & 3)] / 16 - 0.5) * 0.18 : 0);
+      if (PIXEL_ART) col = P[n < 0.32 ? 0 : n < 0.62 ? 1 : n < 0.8 ? 2 : 3]; else { const q = clamp((n - 0.2) / 0.7, 0, 1) * 3, i = Math.min(2, Math.floor(q)); col = shadeRgb(mixRgb(P[i], P[i + 1], q - i), 0.95 + vnoise2(xs / 1.3, ys / 1.3, 9) * 0.1); } } // gładko: płynne przejścia barw
     img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
   }
   g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = !PIXEL_ART; c.drawImage(off, 0, 0, W, H);
