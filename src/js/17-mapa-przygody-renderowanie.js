@@ -464,7 +464,7 @@ function drawWorldPixel(b, st) {
   list.sort((a, c) => a.y - c.y);
   const shadow = (w, x, y) => { b.globalAlpha = 0.3; blitG(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
   for (const it of list) {
-    if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16; shadow(14, x, y + 13); blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
+    if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16, h3 = heroMap3d(it.hero, ownerColor(st, it.hero.owner)); shadow(14, x, y + 13); if (h3) blitG(b, h3, x, y + 13); else blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
     if (it.caravan) { const x = ox + it.cx * T + 16, y = oy + it.cy * T + 16; shadow(12, x, y + 10); blitG(b, caravanSprite(ownerColor(st, it.caravan.owner), Math.floor(G.time * 3) % 2), x, y + 8); continue; }
     const ob = it.ob, px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
     if (ob.type === 'monster') { shadow(10, px, py + 10); blitG(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
@@ -477,6 +477,8 @@ function drawWorldPixel(b, st) {
     else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, s3 = map3dSprite('mine_' + ob.kind); if (s3) blitG(b, s3, px + 6, py); else blitG(b, mineSprite(ob.kind), mx, my); blitG(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
     else if (ob.type === 'town') {
       const t = st.towns[ob.townId], lvl = townLevel(t), mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, fc = ownerColor(st, ob.owner);
+      const k3 = `town_${t.faction}_${lvl}`, s3 = map3dSprite(k3);
+      if (s3) { blitG(b, s3, px, py + 10); for (const [fx, fy] of map3dFlags(k3)) blitG(b, flagSprite(fc, 10, 6), px + fx, py + 10 + fy - 22); continue; } // 3D: brama na polu wejścia, flagi na masztach modelu
       blitG(b, townSprite(t.faction, lvl), mx, my);
       for (const [fx, fy] of townFlagPoints(t.faction, lvl)) blitG(b, flagSprite(fc, 10, 6), mx + fx, my + fy - 20); // drzewce stoi na szczycie dachu
     }

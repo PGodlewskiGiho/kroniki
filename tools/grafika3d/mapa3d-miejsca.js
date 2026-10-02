@@ -106,3 +106,9 @@ for (const k of Object.keys(SITE3)) MAP3['site_' + k] = () => mqWrap(SITE3[k]())
 for (const k of Object.keys(MINE3)) MAP3['mine_' + k] = () => mqWrap(MINE3[k]());
 for (const k of Object.keys(BANK3)) for (const c of [0, 1]) MAP3[`bank_${k}_${c}`] = () => mqWrap(BANK3[k](!!c));
 MAP3.boat = () => mqWrap(mqBoat());
+// --- miasta na mapie: fort frakcji (bez fortu: ratusz) z modeli miast (TOWN3), zmniejszony do ok. 3 pól szerokości ---
+function mqFit(g, width) { const b = new THREE.Box3().setFromObject(g), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3()), k = width / Math.max(sz.x, sz.z * 0.8);
+  g.position.set(-c.x, -b.min.y, -c.z); const w = mpGrp(g); w.scale.setScalar(k); return mpGrp(w); }
+for (const fac of Object.keys(TOWN3)) for (let lvl = 0; lvl <= 3; lvl++) MAP3[`town_${fac}_${lvl}`] = () => { // fort 1–2 to same mury: za nimi ratusz wyższego stopnia; fort 3 to cały zamek
+  const M = TOWN3[fac], g = new THREE.Group(); if (lvl === 3) g.add(M.fort(3)); else { const h = M.hall(lvl + 1), hb = new THREE.Box3().setFromObject(h); g.add(h); if (lvl) { const f = M.fort(lvl), fb = new THREE.Box3().setFromObject(f); f.position.z = hb.max.z - fb.min.z + 0.2; g.add(f); } }
+  return mqFit(g, lvl ? 3 : 2.2); };

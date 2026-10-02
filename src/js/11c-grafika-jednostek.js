@@ -20,6 +20,12 @@ const unitArtReady = () => (typeof UNIT_ART === 'undefined' || Object.keys(UNIT_
   && (typeof MAP3D_ART === 'undefined' || !MAP3D_ART || (MAP3D_IMG.sheet && MAP3D_IMG.sheet._ok));
 // Obiekt mapy wypalony z 3D (tools/grafika3d/wypal-mape.js) jako sprite w gęstości grafiki (PXD pikseli na piksel grafiki),
 // pomniejszony raz z wygładzaniem; null, gdy brak klatki albo arkusz jeszcze się nie wczytał (wtedy dawny rysunek)
+// Maszty flag właściciela obiektu 3D (px logiczne względem punktu zaczepienia); bez masztów w modelu: szczyt środka rysunku
+function map3dFlags(key) {
+  const A = MAP3D_ART, f = A && A.f[key], s = map3dSprite(key); if (!f || !s) return [];
+  const k = 2 / A.d, fl = (f[6] || []).filter(([, y]) => y * k < -16).slice(0, 2).map(([x, y]) => [x * k, y * k]);
+  return fl.length ? fl : [[0, -s.ay * s.u + 6]];
+}
 function map3dSprite(key) {
   const A = typeof MAP3D_ART !== 'undefined' && MAP3D_ART, im = MAP3D_IMG.sheet, f = A && A.f[key]; if (!f || !im || !im._ok) return null;
   const sk = `m3_${key}`; let s = SPR.get(sk); if (s) return s; const [x, y, w, h, ax, ay] = f, k = PXD / A.d, cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
@@ -42,6 +48,13 @@ function creatureSprite(cid, dir, i = 0) { const A = unitArt(cid); return A ? ar
 function drawCreatureIcon(ctx, cid, x, y, k = 1) {
   if (unitArt(cid) && k >= 1.4) drawSprite(ctx, battleSprite(cid, 1, 'idle', 0), x, y, k / 2);
   else drawSprite(ctx, creatureSprite(cid, 1), x, y, k);
+}
+// Bohater na mapie przygody: ten sam jeździec 3D co w bitwie (klatki spoczynku, w ruchu szybciej), zmniejszony do ok. 46 px; na łodzi dawny rysunek
+const HERO_MAP_H = 46;
+function heroMap3d(h, col) {
+  const A = typeof HERO_ART !== 'undefined' && HERO_ART[h.cls], im = HERO_IMG[h.cls]; if (h.boat || !A || !im || !im._ok) return null;
+  const s = heroBattleSprite(h, col, h.dir < 0 ? -1 : 1, Math.floor(G.time * (h.anim ? 10 : 3)) % A.f.idle.length);
+  return s._map || (s._map = { c: s.c, ax: s.ax, ay: s.ay, u: HERO_MAP_H / A.f.idle[0][3], raw: true });
 }
 // Bohater w bitwie (jeździec z chorągwią): arkusz klasy, a części w kolorze-kluczu (magenta) dostają barwę gracza
 // z zachowaniem cieniowania. i: klatka, cast: rzucanie czaru. Bez arkusza: dawny rysunek (heroBattleSprite2D).
