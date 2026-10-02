@@ -28,7 +28,7 @@ G.screens.town = {
     this.bGiveDown = new Button(546, 518, 36, 30, 'Do bohatera', () => give(false), { icon: iconArrow(1), key: 'arrowdown', tip: 'Cały garnizon przechodzi do armii bohatera w bramie (klawisz ↓).' });
     this.bSwap = new Button(546, 480, 36, 34, 'Zamień', () => { const st = G.state, t = this.town(), e = swapGarrison(st, t); this.sel = null; if (e) return this.say(e); const g = garrisonHero(st, t);
       this.say(g ? `${g.name} dowodzi garnizonem: brama jest wolna` : 'Bohater wychodzi do bramy'); this.guildVisit(); },
-      { icon: (ctx, cx, cy, col) => { iconArrow(-1)(ctx, cx, cy - 6, col); iconArrow(1)(ctx, cx, cy + 6, col); }, key: 'z',
+      { icon: Object.assign((ctx, cx, cy, col) => { iconArrow(-1)(ctx, cx, cy - 6, col); iconArrow(1)(ctx, cx, cy + 6, col); }, { k3: 'ic_swap' }), key: 'z',
         tip: 'Zamień: bohater z bramy wchodzi do garnizonu (przejmuje jego wojsko), a bohater z garnizonu wychodzi do bramy. Brama wolna = można nająć nowego bohatera (klawisz Z).' });
     this.buttons = this.baseButtons;
   },
@@ -78,7 +78,8 @@ G.screens.town = {
       { label: 'Wyjdź', key: 'escape' },
     ], { iconH: 96, icon: (ctx, cx, cy) => avail.forEach(({ o }, i) => {
       const x = cx + (i - (avail.length - 1) / 2) * 144 - 36, look = { name: o.name, cls: o.cls, female: o.female, asleep: false };
-      drawHeroPortrait(ctx, x, cy - 44, look, ownerColor(st, t.owner), 2);
+      if (PIXEL_ART) return drawHeroPortrait(ctx, x, cy - 44, look, ownerColor(st, t.owner), 2);
+      drawHeroMedal(ctx, x + 36, cy - 6, 40, look, ownerColor(st, t.owner)); drawSpecIcon(ctx, o, x + 80, cy + 24, 36); // portret w medalionie, obok znak specjalności
     }) });
   },
   // Kuźnia: machiny wojenne dla bohatera stojącego w mieście
@@ -271,13 +272,14 @@ function guildWinPath(c, kind, x, y, w, h, grow = 0) { // obrys okna: ostrołuk,
 function paintGuildRoom(c, fac) { // nieruchome wnętrze gildii (raz na frakcję)
   const A = TOWN_ART[fac] || TOWN_ART.haven, L = GUILD_LOOK[fac] || GUILD_LOOK.haven, { win: Wn, info: I, sh: S } = GV;
   wallRect(c, A, GV.x, GV.y, GV.w, GV.h); c.fillStyle = 'rgba(8,6,10,.42)'; c.fillRect(GV.x, GV.y, GV.w, GV.h);
-  c.strokeStyle = L.edge; c.lineWidth = 3; c.strokeRect(GV.x + 1.5, GV.y + 1.5, GV.w - 3, GV.h - 3); c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 2; c.strokeRect(GV.x + 5, GV.y + 5, GV.w - 10, GV.h - 10);
+  if (PIXEL_ART) { c.strokeStyle = L.edge; c.lineWidth = 3; c.strokeRect(GV.x + 1.5, GV.y + 1.5, GV.w - 3, GV.h - 3); } else { goldRim(c, GV.x - 4, GV.y - 4, GV.w + 8, GV.h + 8, 5); c.strokeStyle = L.edge; c.lineWidth = 1; c.strokeRect(GV.x + 2.5, GV.y + 2.5, GV.w - 5, GV.h - 5); }
+  c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 2; c.strokeRect(GV.x + 5, GV.y + 5, GV.w - 10, GV.h - 10);
   c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, GV.x + GV.w / 2 - 230, GV.y + 10, 460, 36, 6); c.fill(); c.strokeStyle = L.edge; c.lineWidth = 1.5; c.stroke();
   guildWinPath(c, L.win, Wn.x, Wn.y, Wn.w, Wn.h, 12); c.fillStyle = sh(A.wall[1], -0.25); c.fill(); guildWinPath(c, L.win, Wn.x, Wn.y, Wn.w, Wn.h, 6); c.fillStyle = sh(A.wall[0], 0.05); c.fill(); // rama okna
   c.strokeStyle = L.edge; c.lineWidth = 2; guildWinPath(c, L.win, Wn.x, Wn.y, Wn.w, Wn.h, 7); c.stroke();
   c.fillStyle = sh(A.wall[1], -0.1); c.fillRect(Wn.x - 18, Wn.y + Wn.h + 2, Wn.w + 36, 9); c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(Wn.x - 18, Wn.y + Wn.h + 9, Wn.w + 36, 3); // parapet
   guildDecor(c, L.deco, Wn, L);
-  c.fillStyle = 'rgba(12,8,4,.72)'; rr(c, I.x, I.y + 8, I.w, I.h, 6); c.fill(); c.strokeStyle = L.edge; c.lineWidth = 1.2; c.stroke();
+  if (PIXEL_ART) { c.fillStyle = 'rgba(12,8,4,.72)'; rr(c, I.x, I.y + 8, I.w, I.h, 6); c.fill(); c.strokeStyle = L.edge; c.lineWidth = 1.2; c.stroke(); } else { insetBox(c, I.x, I.y + 8, I.w, I.h, 13); c.strokeStyle = L.edge; c.lineWidth = 1; c.strokeRect(I.x - 3.5, I.y + 4.5, I.w + 7, I.h + 7); } // okno opisu: wnęka w barwie frakcji
   for (let i = 0; i < 5; i++) { // półki
     const y = S.y + i * S.row + 74; c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(S.x, y - 72, S.w, 72);
     c.fillStyle = L.shelf; c.fillRect(S.x - 4, y, S.w + 8, 10); c.fillStyle = sh(L.shelf, 0.25); c.fillRect(S.x - 4, y, S.w + 8, 2); c.fillStyle = sh(L.shelf, -0.35); c.fillRect(S.x - 4, y + 8, S.w + 8, 2);
@@ -304,7 +306,7 @@ function drawScroll(ctx, cx, top, id, hot, known) { // zwój z ikoną czaru; hot
   for (const yy of [y + 4, y + h - 4]) { ctx.fillStyle = '#c8b080'; ctx.beginPath(); ctx.ellipse(cx, yy, w / 2 + 3, 5, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#a88a58'; ctx.beginPath(); ctx.ellipse(cx + w / 2 + 3, yy, 2.5, 5, 0, 0, TAU); ctx.fill(); }
   drawSprite(ctx, spellSprite(id), cx, y + h / 2, 1.5);
   if (known) { ctx.strokeStyle = '#2a8a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx + w / 2 - 12, y + 12); ctx.lineTo(cx + w / 2 - 7, y + 17); ctx.lineTo(cx + w / 2 + 1, y + 6); ctx.stroke(); }
-  let fs = 12; ctx.font = font(fs, 700, 'body'); const nm = SPELLS[id].name; while (fs > 9 && ctx.measureText(nm).width > 124) { fs--; ctx.font = font(fs, 700, 'body'); }
+  let fs = 13; ctx.font = font(fs, 700, 'body'); const nm = SPELLS[id].name; while (fs > 9 && ctx.measureText(nm).width > 124) { fs--; ctx.font = font(fs, 700, 'body'); }
   const tw = ctx.measureText(nm).width + 10; ctx.fillStyle = 'rgba(12,8,4,.72)'; rr(ctx, cx - tw / 2, top + h + 2, tw, 16, 3); ctx.fill();
   text(ctx, nm, cx, top + h + 10, { size: fs, align: 'center', color: '#f3e2b0' });
 }
@@ -358,9 +360,9 @@ function showGuildView(st, t, scr) {
         const Sp = SPELLS[this.sel], sp = this.spAt();
         drawSprite(ctx, spellSprite(this.sel), tx + 20, ty + 14, 1.5);
         text(ctx, Sp.name, tx + 46, ty + 6, { size: 17, color: '#f3e2b0', fam: 'title' });
-        text(ctx, `Poziom ${Sp.level} · ${Sp.cost} many · ${Sp.kind === 'battle' ? 'czar bitewny' : 'czar mapy'}`, tx + 46, ty + 24, { size: 12, weight: 600, color: '#c8b88a' });
-        ctx.font = font(13, 500, 'body'); wrapText(ctx, `${cap1(Sp.desc(sp))}.`, tw).slice(0, 4).forEach((l, i) => text(ctx, l, tx, ty + 50 + i * 17, { size: 13, weight: 500, color: '#ecd9a8' }));
-        text(ctx, `Moc czarów: ${sp}${h ? ` (${h.name})` : ' (bez bohatera)'}`, tx, ty + 124, { size: 12, weight: 600, color: '#c8b88a' });
+        text(ctx, `Poziom ${Sp.level} · ${Sp.cost} many · ${Sp.kind === 'battle' ? 'czar bitewny' : 'czar mapy'}`, tx + 46, ty + 24, { size: 14, weight: 600, color: UI.txt2 });
+        ctx.font = font(15, 600, 'body'); wrapText(ctx, `${cap1(Sp.desc(sp))}.`, tw).slice(0, 4).forEach((l, i) => text(ctx, l, tx, ty + 50 + i * 17, { size: 15, weight: 600, color: UI.txt }));
+        text(ctx, `Moc czarów: ${sp}${h ? ` (${h.name})` : ' (bez bohatera)'}`, tx, ty + 124, { size: 14, weight: 600, color: UI.txt2 });
         text(ctx, h ? (knows(h, this.sel) ? `${h.name} zna ten czar.` : `${h.name} jeszcze go nie zna.`) : 'Bohater pozna go, wchodząc do miasta.', tx, ty + 146, { size: 12, italic: true, weight: 600, color: h && knows(h, this.sel) ? '#8ad080' : '#e0b070' });
       } else {
         const all = []; for (let k = 1; k <= Lv; k++) all.push(...((t.guild || {})[k] || [])); const kn = h ? all.filter(id => knows(h, id)).length : 0;
@@ -368,7 +370,7 @@ function showGuildView(st, t, scr) {
         const lines = [h ? `${h.name} zna ${kn} z ${all.length} czarów gildii i ma pełną manę.` : 'W mieście nie ma bohatera. Bohater, który tu wejdzie, pozna wszystkie czary gildii i odnowi manę.', `${F.name}: ${magicText(t.faction)}.`,
           next ? `Następny poziom: ${bInfo(next, t.faction).name}${reqMet(t, next) ? '' : ` (wymaga: ${next.req.filter(r => !hasB(t, r)).map(r => bInfo(BUILD_BY_ID[r], t.faction).name).join(', ')})`}.` : 'Gildia jest w pełni rozbudowana.',
           'Kliknij zwój, aby zobaczyć opis czaru.'];
-        ctx.font = font(13, 500, 'body'); let yy = ty + 24; for (const para of lines) for (const l of wrapText(ctx, para, tw)) { text(ctx, l, tx, yy, { size: 13, weight: 500, color: para.startsWith('Kliknij') ? '#c8b88a' : '#ecd9a8' }); yy += 17; }
+        ctx.font = font(15, 600, 'body'); let yy = ty + 24; for (const para of lines) for (const l of wrapText(ctx, para, tw)) { text(ctx, l, tx, yy, { size: 15, weight: 600, color: para.startsWith('Kliknij') ? '#c8b88a' : '#ecd9a8' }); yy += 17; }
       }
       this.buttons.forEach(b => b.draw(ctx));
     },

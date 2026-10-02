@@ -3,11 +3,11 @@
 // opis klatek i obrazek base64). Klatka = [x, y, w, h, ax, ay] w arkuszu, (ax, ay) = stopy. Bitwa: 1 piksel arkusza = u px
 // logicznych (1,3), mapa: mu (1,8). Dla dir = -1 klatka jest odbita w poziomie. Jednostka bez arkusza (albo zanim obrazek
 // się wczyta) korzysta z dawnego rysunku wektorowego (battleSprite2D, creatureSprite2D).
-const UNIT_IMG = {}, HERO_IMG = {}, PORTRAIT_IMG = {}, TOWN_IMG = {}, ARTIFACT_IMG = {}, SKILL_IMG = {}, UI_IMG = {}, MAP3D_IMG = {}, BATTLE_BG_IMG = {};
+const UNIT_IMG = {}, HERO_IMG = {}, PORTRAIT_IMG = {}, TOWN_IMG = {}, ARTIFACT_IMG = {}, SKILL_IMG = {}, UI_IMG = {}, SPELL_IMG = {}, MAP3D_IMG = {}, BATTLE_BG_IMG = {};
 function loadUnitArt() {
   if (typeof UNIT_ART === 'undefined') return;
   const load = (set, store) => { for (const [id, A] of Object.entries(set)) { const png = typeof A === 'string' ? A : A.png; if (store[id] || !png) continue; const im = new Image(); im.onload = () => { im._ok = true; G.dirty = true; }; im.src = `data:image/${A.webp ? 'webp' : 'png'};base64,` + png; store[id] = im; } };
-  load(UNIT_ART, UNIT_IMG); if (typeof HERO_ART !== 'undefined') load(HERO_ART, HERO_IMG); if (typeof HERO_PORTRAITS !== 'undefined') load(HERO_PORTRAITS, PORTRAIT_IMG); if (typeof TOWN_BUILD_ART !== 'undefined') load(TOWN_BUILD_ART, TOWN_IMG); if (typeof ARTIFACT_ART !== 'undefined' && ARTIFACT_ART) load({ sheet: ARTIFACT_ART }, ARTIFACT_IMG); if (typeof SKILL_ART !== 'undefined' && SKILL_ART) load({ sheet: SKILL_ART }, SKILL_IMG); if (typeof UI_ART !== 'undefined' && UI_ART) load({ sheet: UI_ART }, UI_IMG); if (typeof BATTLE_BG_ART !== 'undefined') load(BATTLE_BG_ART, BATTLE_BG_IMG);
+  load(UNIT_ART, UNIT_IMG); if (typeof HERO_ART !== 'undefined') load(HERO_ART, HERO_IMG); if (typeof HERO_PORTRAITS !== 'undefined') load(HERO_PORTRAITS, PORTRAIT_IMG); if (typeof TOWN_BUILD_ART !== 'undefined') load(TOWN_BUILD_ART, TOWN_IMG); if (typeof ARTIFACT_ART !== 'undefined' && ARTIFACT_ART) load({ sheet: ARTIFACT_ART }, ARTIFACT_IMG); if (typeof SKILL_ART !== 'undefined' && SKILL_ART) load({ sheet: SKILL_ART }, SKILL_IMG); if (typeof UI_ART !== 'undefined' && UI_ART) load({ sheet: UI_ART }, UI_IMG); if (typeof SPELL_ART !== 'undefined' && SPELL_ART) load({ sheet: SPELL_ART }, SPELL_IMG); if (typeof BATTLE_BG_ART !== 'undefined') load(BATTLE_BG_ART, BATTLE_BG_IMG);
   if (typeof MAP3D_ART !== 'undefined' && MAP3D_ART) { load({ sheet: MAP3D_ART }, MAP3D_IMG); // teren z drzewami i górami malowany wcześniej dawnymi rysunkami: od nowa
     MAP3D_IMG.sheet.addEventListener('load', () => { if (typeof MapRender !== 'undefined' && MapRender.map) MapRender.reset(MapRender.map, MapRender.explored); }); }
 }
@@ -18,6 +18,7 @@ const unitArtReady = () => (typeof UNIT_ART === 'undefined' || Object.keys(UNIT_
   && (typeof HERO_PORTRAITS === 'undefined' || Object.keys(HERO_PORTRAITS).every(n => PORTRAIT_IMG[n] && PORTRAIT_IMG[n]._ok))
   && (typeof TOWN_BUILD_ART === 'undefined' || Object.keys(TOWN_BUILD_ART).every(f => TOWN_IMG[f] && TOWN_IMG[f]._ok))
   && (typeof ARTIFACT_ART === 'undefined' || !ARTIFACT_ART || (ARTIFACT_IMG.sheet && ARTIFACT_IMG.sheet._ok))
+  && (typeof SPELL_ART === 'undefined' || !SPELL_ART || (SPELL_IMG.sheet && SPELL_IMG.sheet._ok))
   && (typeof UI_ART === 'undefined' || !UI_ART || (UI_IMG.sheet && UI_IMG.sheet._ok))
   && (typeof SKILL_ART === 'undefined' || !SKILL_ART || (SKILL_IMG.sheet && SKILL_IMG.sheet._ok))
   && (typeof MAP3D_ART === 'undefined' || !MAP3D_ART || (MAP3D_IMG.sheet && MAP3D_IMG.sheet._ok))

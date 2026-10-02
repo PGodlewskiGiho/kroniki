@@ -105,6 +105,12 @@ function drawHeroPortrait(ctx, x, y, h, col, k = 1) {
   if (h.asleep) { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x, y, s, s); text(ctx, 'z z', x + s / 2, y + s / 2, { size: 14, align: 'center', color: '#ecd9a8', fam: 'title' }); }
   ctx.lineWidth = 2; ctx.strokeStyle = '#b8913f'; ctx.strokeRect(x, y, s, s);
 }
+// Portret w okrągłym medalionie (złoty pierścień 3D): środek (cx, cy), promień r; w stylu pikselowym zwykły kwadrat
+function drawHeroMedal(ctx, cx, cy, r, h, col) {
+  if (PIXEL_ART || !uiArtReady()) return drawHeroPortrait(ctx, cx - r, cy - r, h, col, r / 18);
+  const pc = portraitArt(h) || portraitCanvas(h, col); ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r * 0.88, 0, TAU); ctx.fillStyle = '#100a05'; ctx.fill(); ctx.clip(); ctx.imageSmoothingEnabled = true; ctx.drawImage(pc, cx - r * 0.95, cy - r * 0.95, r * 1.9, r * 1.9);
+  if (h.asleep) { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r); } ctx.restore(); drawUiPiece(ctx, 'ring', cx - r * 1.08, cy - r * 1.08, r * 2.16, r * 2.16);
+}
 function portraitCanvas(h, col) {
   const key = `${h.name}|${h.cls}|${h.female ? 1 : 0}|${col}`; let c = PORTRAITS.get(key);
   if (!c) {

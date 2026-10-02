@@ -10,14 +10,24 @@ function iconStat(ctx, id, cx, cy, col) {
 }
 const RELIC_BTN = { x: 668, y: 60, w: 108, h: 22 }; // przycisk „Złóż relikwię” (gdy komplet części jest założony)
 const BAG_VIEW = 6, SLOT_BOX = 50, SPEC_BOX = { x: 322, y: 30, w: 66, h: 76 };
+// Mały znak specjalności (stwór, surowiec, czar, umiejętność) z grafik 3D; środek (cx, cy), bok s
+function drawSpecIcon(ctx, h, cx, cy, s) {
+  const sp = heroSpec(h); if (!sp) return;
+  if (sp.dw) { ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, s / 2, 0, TAU); ctx.fillStyle = '#1a120a'; ctx.fill(); ctx.clip(); { const bs = battleSprite(specUnits(h)[0], 1, 'idle', 0), k = clamp(s * 0.9 / (bs.c.height * bs.u), 0.2, 1); drawSprite(ctx, bs, cx, cy + s * 0.45, k); } ctx.restore(); if (!PIXEL_ART) drawUiPiece(ctx, 'ring', cx - s * 0.56, cy - s * 0.56, s * 1.12, s * 1.12); }
+  else if (sp.res) resIcon(ctx, sp.res, cx, cy, s);
+  else if (sp.spell) drawSprite(ctx, spellSprite(sp.spell), cx, cy, s / 32);
+  else if (sp.skill) skillIcon(ctx, sp.skill, cx, cy, s);
+}
 // Specjalność bohatera: ramka z obrazkiem (stwór, surowiec, czar albo księga umiejętności) i podpisem
 function drawSpecBox(ctx, h) {
   const r = SPEC_BOX, sp = heroSpec(h), cx = r.x + r.w / 2, hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
-  ctx.fillStyle = 'rgba(90,55,20,.14)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill(); ctx.strokeStyle = hot ? '#b8862a' : 'rgba(90,55,20,.5)'; ctx.lineWidth = hot ? 1.8 : 1; ctx.stroke();
+  if (PIXEL_ART) { ctx.fillStyle = 'rgba(90,55,20,.14)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill(); ctx.strokeStyle = hot ? '#b8862a' : 'rgba(90,55,20,.5)'; ctx.lineWidth = hot ? 1.8 : 1; ctx.stroke(); }
+  else { ctx.fillStyle = 'rgba(90,55,20,.14)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill(); slotBox(ctx, r.x + 6, r.y + 15, r.w - 12, 46, hot ? 'hover' : ''); }
   text(ctx, 'Specjalność', cx, r.y + 9, { size: 10, weight: 700, align: 'center', color: '#6a4418' });
-  if (sp.dw) { ctx.save(); rr(ctx, r.x + 3, r.y + 16, r.w - 6, 44, 3); ctx.clip(); drawCreatureIcon(ctx, specUnits(h)[0], cx, r.y + 56, 1.2); ctx.restore(); }
-  else if (sp.res) resIcon(ctx, sp.res, cx, r.y + 38, 30);
-  else if (sp.spell) drawSprite(ctx, spellSprite(sp.spell), cx, r.y + 38, 1.8);
+  if (sp.dw) { ctx.save(); rr(ctx, r.x + 7, r.y + 16, r.w - 14, 44, 3); ctx.clip(); drawCreatureIcon(ctx, specUnits(h)[0], cx, r.y + 58, PIXEL_ART ? 1.2 : 1.45); ctx.restore(); }
+  else if (sp.res) resIcon(ctx, sp.res, cx, r.y + 38, PIXEL_ART ? 30 : 36);
+  else if (sp.spell) drawSprite(ctx, spellSprite(sp.spell), cx, r.y + 38, PIXEL_ART ? 1.8 : 1.3);
+  else if (!PIXEL_ART && sp.skill) skillIcon(ctx, sp.skill, cx, r.y + 38, 42); // umiejętność: ikona 3D
   else { ctx.save(); ctx.translate(cx, r.y + 38); ctx.fillStyle = '#6a2a2a'; ctx.fillRect(-12, -14, 24, 28); ctx.fillStyle = '#f0e0b0'; ctx.fillRect(-9, -11, 18, 22); ctx.restore(); iconStat(ctx, 'sp', cx, r.y + 38, '#b8862a'); }
   const nm = specName(h); text(ctx, nm, cx, r.y + 68, { size: nm.length > 11 ? 9 : 11, weight: 700, align: 'center', color: '#3a1e08' });
 }

@@ -249,7 +249,7 @@ class Button {
       ctx.lineWidth = 2; ctx.strokeStyle = '#e0b24a'; ctx.strokeRect(x + 10, y + h / 2 - 8, 16, 16); cx = x + (w + 26) / 2;
     }
     if (this.lead) { this.lead(ctx, x + 24, y + h / 2); cx = x + (w + 34) / 2; } // mała ikona przed napisem (np. umiejętność)
-    const k3 = !PIXEL_ART && this.icon && ICON3.get(this.icon);
+    const k3 = !PIXEL_ART && this.icon && (this.icon.k3 || ICON3.get(this.icon));
     if (k3 && uiArtReady()) { const S = Math.min(w, h) - 4; if (this.disabled) ctx.globalAlpha = 0.4; drawUiPiece(ctx, k3, cx - S / 2, y + h / 2 - S / 2, S, S); ctx.restore(); return; } // ikona z modelu 3D
     if (this.icon) { this.icon(ctx, cx + 2, y + h / 2 + 2, '#120a03'); this.icon(ctx, cx, y + h / 2, col); ctx.restore(); return; } // twardy cień zamiast poświaty
     let fs = this.size; const maxW = w - (this.swatch ? 40 : this.lead ? 48 : 14);
@@ -347,8 +347,8 @@ function iconSpell(ctx, cx, cy, col) {
   for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * TAU / 5; ctx.lineTo(cx + Math.cos(a) * 5, cy - 11 + Math.sin(a) * 5); const b = a + TAU / 10; ctx.lineTo(cx + Math.cos(b) * 2, cy - 11 + Math.sin(b) * 2); }
   ctx.closePath(); ctx.fill();
 }
-const iconArrowSide = dir => (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 4 * dir, cy - 8); ctx.lineTo(cx - 4 * dir, cy + 8); ctx.lineTo(cx + 5 * dir, cy); ctx.closePath(); ctx.fill(); };
-const iconArrow = dir => (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 8, cy - 4 * dir); ctx.lineTo(cx + 8, cy - 4 * dir); ctx.lineTo(cx, cy + 5 * dir); ctx.closePath(); ctx.fill(); };
+const iconArrowSide = dir => Object.assign((ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 4 * dir, cy - 8); ctx.lineTo(cx - 4 * dir, cy + 8); ctx.lineTo(cx + 5 * dir, cy); ctx.closePath(); ctx.fill(); }, { k3: dir > 0 ? 'ic_right' : 'ic_left' });
+const iconArrow = dir => Object.assign((ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 8, cy - 4 * dir); ctx.lineTo(cx + 8, cy - 4 * dir); ctx.lineTo(cx, cy + 5 * dir); ctx.closePath(); ctx.fill(); }, { k3: dir > 0 ? 'ic_down' : 'ic_up' });
 function iconGear(ctx, cx, cy, col) {
   ctx.fillStyle = col;
   for (let i = 0; i < 8; i++) { const a = i * TAU / 8; ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.fillRect(-2, -10, 4, 5); ctx.restore(); }
