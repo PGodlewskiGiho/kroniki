@@ -220,10 +220,15 @@ function renderChunkPixel(map, cx, cy) {
   const SN = MapRender.season || 0;
   // D = gęstość pikseli (PXD): teren liczony w drobnych pikselach, współrzędne tekstur (ax, ay) w dawnych pikselach grafiki
   const n = map.n, S = CHUNK * AP, SF = Math.round(S * MapRender.D), D = SF / S, M = 5, MF = Math.round(M * D), R = SF + 2 * MF, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
-  for (let y = 0; y < R; y++) for (let x = 0; x < R; x++) {
-    const ax = bx + (x - MF) / D, ay = by + (y - MF) / D, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
-    tid[y * R + x] = map.terrain[clamp(Math.floor((ay + jy) / AP), 0, n - 1) * n + clamp(Math.floor((ax + jx) / AP), 0, n - 1)];
-  }
+  // przesunięcie granic terenów szumem: szum jest gładki (skala 7 pikseli grafiki), więc liczymy go co piksel grafiki i interpolujemy
+  const GW = Math.ceil(R / D) + 2, gx0 = bx - M, gy0 = by - M, JX = new Float32Array(GW * GW), JY = new Float32Array(GW * GW);
+  for (let j = 0; j < GW; j++) for (let i = 0; i < GW; i++) { const ax = gx0 + i, ay = gy0 + j; JX[j * GW + i] = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9; JY[j * GW + i] = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9; }
+  for (let y = 0; y < R; y++) { const ay = by + (y - MF) / D, v = ay - gy0, j = Math.min(GW - 2, Math.floor(v)), fy = v - j;
+    for (let x = 0; x < R; x++) {
+      const ax = bx + (x - MF) / D, u = ax - gx0, i = Math.min(GW - 2, Math.floor(u)), fx = u - i, k = j * GW + i;
+      const jx = (JX[k] * (1 - fx) + JX[k + 1] * fx) * (1 - fy) + (JX[k + GW] * (1 - fx) + JX[k + GW + 1] * fx) * fy, jy = (JY[k] * (1 - fx) + JY[k + 1] * fx) * (1 - fy) + (JY[k + GW] * (1 - fx) + JY[k + GW + 1] * fx) * fy;
+      tid[y * R + x] = map.terrain[clamp(Math.floor((ay + jy) / AP), 0, n - 1) * n + clamp(Math.floor((ax + jx) / AP), 0, n - 1)];
+    } }
   // podziemia: lita skała (ściana jaskini) to ciemność jak w Heroes 3, z miękkim, poszarpanym brzegiem (pola skały interpolowane i przesunięte szumem)
   const under = map.ln && cx * CHUNK >= map.ln && cy * CHUNK >= map.ln, rk = under ? new Float32Array(R * R) : null;
   if (under) { const rock = (x, y) => { x = clamp(x, 0, n - 1); y = clamp(y, 0, n - 1); return map.obst[y * n + x] === OBST.MOUNT ? 1 : 0; };
@@ -461,7 +466,7 @@ function fogChunk(ex, n, cx, cy) {
   let c = null;
   if (any) {
     const w = pixBuf('fogWork', S, S, true), f = w._ctx, ox = -cx * CHUNK * T, oy = -cy * CHUNK * T; f.setTransform(1, 0, 0, 1, 0, 0); f.clearRect(0, 0, S, S);
-    f.setTransform(1 / PIX, 0, 0, 1 / PIX, 0, 0);
+    const fk = S / (CHUNK * T); f.setTransform(fk, 0, 0, fk, 0, 0); // px logiczne → piksele kawałka (gęstość terenu)
     for (const [alpha, extra] of [[0.45, 7], [1, 0]]) {
       f.fillStyle = `rgba(0,0,0,${alpha})`; f.beginPath();
       for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) {

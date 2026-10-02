@@ -35,7 +35,7 @@ function townElev(T, L, X, Z) { // wysokość gruntu: taras albo płaskowyż pod
   let e = 0; for (const Sb of L.slabs) if (Z >= Sb.Z0 && Z <= Sb.Z1 && X >= Sb.x0 && X <= Sb.x1) e = Math.max(e, Sb.e); return e;
 }
 function inIsland(T, X, Z, k = 1) { return T.islands.some(I => ((X - I.X) / (I.rx * k)) ** 2 + ((Z - I.Z) / (I.rz * k)) ** 2 < 1); }
-function segDist(X, Z, pts) { // odległość punktu od łamanej w świecie (Z ×300, jak wstęgi dróg i rzek)
+function polyDist(X, Z, pts) { // odległość punktu od łamanej w świecie (Z ×300, jak wstęgi dróg i rzek)
   let best = Infinity;
   for (let i = 0; i < pts.length - 1; i++) {
     const ax = pts[i][0], az = pts[i][1] * 300, bx = pts[i + 1][0], bz = pts[i + 1][1] * 300, dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
@@ -44,7 +44,7 @@ function segDist(X, Z, pts) { // odległość punktu od łamanej w świecie (Z �
   return best;
 }
 function townBlocked(T, L, X, Z, e, halfW, onIsland) {
-  for (const f of T.feats) for (let k = -1; k <= 1; k++) if (segDist(X + k * halfW * 0.8, Z, f.pts) < f.w / 2 + 6) return true;
+  for (const f of T.feats) for (let k = -1; k <= 1; k++) if (polyDist(X + k * halfW * 0.8, Z, f.pts) < f.w / 2 + 6) return true;
   if (!onIsland) for (const Lk of T.ells) for (let k = -1; k <= 1; k++) if (((X + k * halfW * 0.8 - Lk.X) / (Lk.rx + 12)) ** 2 + ((Z - Lk.Z) / (Lk.rz + 0.04)) ** 2 < 1 && !inIsland(T, X + k * halfW * 0.8, Z, 0.95)) return true;
   if (T.sea) for (let k = -1; k <= 1; k++) if (T.sea.s * (X + k * halfW) > T.sea.s * T.sea.xAt(Z) - 20) return true;
   for (const Hl of L.hills) if (Z > Hl.Z - 0.03 && Math.abs(X - Hl.X) < Hl.rx && e < hillTop(Hl, X) - 2) return true;
@@ -87,7 +87,7 @@ function townWallGates(r, T, L) {
   const Wl = L.walls[0], segs = [], towers = [];
   for (let i = 0; i < Wl.pts.length - 1; i++) {
     const a = Wl.pts[i], b = Wl.pts[i + 1], mX = (a[0] + b[0]) / 2, mZ = (a[1] + b[1]) / 2, [sx] = proj(mX, mZ);
-    const road = T.main && segDist(mX, mZ, T.main) < 34, off = sx < -40 || sx > 632, hidden = townBlocked({ ...T, feats: [] }, L, mX, mZ, 0, 20, false);
+    const road = T.main && polyDist(mX, mZ, T.main) < 34, off = sx < -40 || sx > 632, hidden = townBlocked({ ...T, feats: [] }, L, mX, mZ, 0, 20, false);
     segs.push(road ? 'gate' : off || hidden ? null : [a, b]);
   }
   for (let i = 0; i < segs.length; i++) {

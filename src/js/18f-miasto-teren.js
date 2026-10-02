@@ -266,8 +266,8 @@ function townPaths(r, T, L, Bm, walks = []) {
     P.forEach((q, i) => net.push({ X: q[0], Z: q[1], e: q[2], route: [...base.route, ...P.slice(0, i + 1)] }));
   }
   const wet = (X, Z) => {
-    if (T.river && segDist(X, Z, T.river.pts) < T.river.w / 2 + 6) return 2;
-    if (T.chasm && segDist(X, Z, T.chasm.pts) < 95) return 2;
+    if (T.river && polyDist(X, Z, T.river.pts) < T.river.w / 2 + 6) return 2;
+    if (T.chasm && polyDist(X, Z, T.chasm.pts) < 95) return 2;
     if (T.sea && T.sea.s * X > T.sea.s * T.sea.xAt(Z) - 14) return 2;
     if (!T.frozen) for (const Lk of L.lakes) if (((X - Lk.X) / (Lk.rx + 6)) ** 2 + ((Z - Lk.Z) / (Lk.rz + 0.02)) ** 2 < 1 && !inIsland(T, X, Z, 0.95)) return Lk.pit ? 2 : 1;
     return 0;
