@@ -115,7 +115,7 @@ function heroStep(st, h) {
   if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } else if (playerOf(st, h.owner).human && !G.screens.adventure.aiRun) showMeeting(st, h, other); return false; } // własny: spotkanie po dojściu
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
-  h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
+  h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h)); Net.step(h, h.prev[0], h.prev[1]);
   if (h.owner === ME || human(st).explored[ni]) Sfx.play(h.boat ? 'oar' : st.map.terrain[ni] === TER.SNOW ? 'hoofsnow' : 'hoof', { vol: h.owner === ME ? 0.5 : 0.25, gap: 0.08 }); // kroki konia (łódź: wiosła)
   if (!h.path.length) { h.path = null; h.dest = null; }
   if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); return true; }
@@ -281,6 +281,13 @@ function startTownAssault(st, h, t) {
 }
 // Okno przed bitwą: porównanie sił i wybór (walka, walka automatyczna, odwrót)
 function offerBattle(st, h, foe, who, foePower, icon) {
+  const rival = netHumanOwner(st, battleSide(st, foe).owner);
+  if (rival >= 0) { // przeciwnik to człowiek online: wspólna bitwa na żywo, każdy dowodzi swoją stroną
+    showDialog(`${who} Dowodzi nim ${playerName(st, rival)} – bitwa rozegra się na żywo u was obu.`, [
+      { label: 'Walcz', key: 'enter', action: () => netBattle(st, h, foe) },
+      { label: 'Wycofaj się', key: 'escape', action: () => { if (h.prev) { h.x = h.prev[0]; h.y = h.prev[1]; h.prev = null; } } },
+    ], { locked: true, iconH: 84, icon }); return;
+  }
   const ph = Math.round(armyPower(h.army) * heroFactor(h)), odds = ph > foePower * 1.5 ? 'Przewaga jest po twojej stronie.' : ph > foePower ? 'Siły są dość wyrównane.' : 'Przeciwnik wygląda na silniejszego.';
   showDialog(`${who} ${odds} (siła: twoja ${ph}, wroga ${foePower})`, [
     { label: 'Walcz', key: 'enter', action: () => G.go('battle', { battle: createBattle(st, h, foe) }) },

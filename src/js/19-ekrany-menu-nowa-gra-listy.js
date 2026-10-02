@@ -161,12 +161,13 @@ G.screens.menu = {
   fps: smoothFps, // animowana scena menu w tle: płynnie
   backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'main',
-  enter(p) { G.state = null; this.setMode(p.mode || 'main'); },
+  enter(p) { G.state = null; if (Net.inGame) Net.close(); this.setMode(p.mode || 'main'); },
   setMode(m) {
-    this.mode = m; let y = 186;
-    const B = (label, act, o = {}) => { const b = new Button(540, y, 220, 46, label, act, Object.assign({ size: 17 }, o)); y += 56; return b; };
+    this.mode = m; let y = 180;
+    const B = (label, act, o = {}) => { const b = new Button(540, y, 220, 44, label, act, Object.assign({ size: 17 }, o)); y += 50; return b; };
     this.buttons = [
       B('Nowa gra', () => G.go('setup'), { key: 'n' }),
+      B('Gra online', () => G.go('online'), { key: 'o', tip: 'Gra przez internet ze znajomymi: jeden zakłada pokój, reszta dołącza kodem.' }),
       B('Wczytaj grę', () => G.go('load', { mode: 'load' }), { key: 'l' }),
       B('Najlepsze wyniki', () => G.go('scores'), { key: 'h' }),
       B('Grafika', () => showGfxSettings(), { key: 'g' }),
@@ -178,7 +179,7 @@ G.screens.menu = {
   onBack() { askQuit(); },
   draw(ctx) {
     drawMenuScene(ctx);
-    drawStone(ctx, 520, 172, 260, 354);
+    drawStone(ctx, 520, 164, 260, 378);
     this.buttons.forEach(b => b.draw(ctx));
     goldText(ctx, 'KRONIKI KRÓLESTW', W / 2, 62, 44);
     text(ctx, 'Czas bohaterów', W / 2, 104, { size: 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
@@ -193,7 +194,8 @@ G.screens.setup = {
   fps: smoothFps, // animowana scena menu w tle: płynnie
   backdrop() {}, // scena menu maluje całe okno
   buttons: [],
-  enter() {
+  enter(p = {}) {
+    this.online = !!p.online;
     const S = G.settings, B = []; S.slots = validSlots(S.slots) || legacySlots(S);
     MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 114, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}`, tip: `Na tej mapie zmieści się do ${SITE_COUNT[m.n]} graczy.` })));
     DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 168, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
@@ -212,7 +214,7 @@ G.screens.setup = {
     });
     this.bStart = new Button(90, 506, 190, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19, primary: true });
     B.push(this.bStart, new Button(305, 506, 190, 46, 'Zasady…', () => G.go('rules'), { key: 'z', size: 19, sub: rulesSummary(G.settings.rules), tip: 'Limit bohaterów, rozejm z komputerem, siła potworów, skarby i odkryta mapa.' }),
-      new Button(520, 506, 190, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
+      new Button(520, 506, 190, 46, 'Wróć', () => G.go(this.online ? 'online' : 'menu'), { key: 'escape', size: 19 }));
     this.buttons = B;
   },
   nextColor(i) {
@@ -233,6 +235,13 @@ G.screens.setup = {
     if (n > cap) { showDialog(`Na tej mapie zmieści się najwyżej ${cap} graczy, a wybranych jest ${n}. Wybierz większą mapę albo zwolnij miejsca.`, [{ label: 'OK', key: 'enter' }]); return; }
     const hu = G.settings.slots.find(o => o.type === 'human'); G.settings.color = hu.color; if (hu.faction !== 'random') G.settings.faction = hu.faction;
     G.settings.opponents = G.settings.slots.filter(o => o.type === 'ai').length;
+    if (this.online) { // gra online: ludzi tylu, ilu graczy w pokoju (gospodarz + połączeni goście)
+      const need = 1 + Net.guests.filter(g => g.conn).length, hu = G.settings.slots.filter(o => o.type === 'human').length;
+      if (hu !== need) { showDialog(`W pokoju jest ${need} graczy, a miejsc „Człowiek” jest ${hu}. Ustaw tyle samo.`, [{ label: 'OK', key: 'enter' }]); return; }
+      Net.guests = Net.guests.filter(g => g.conn); saveSettings(); const st = G.state = createNewGame(G.settings);
+      Net.startGame(st).then(() => G.go('adventure', { welcome: st.cur === ME }));
+      return;
+    }
     startNewGame();
   },
   draw(ctx) {
@@ -243,7 +252,7 @@ G.screens.setup = {
     dimmedMenuScene(ctx, 0.5);
     drawParchment(ctx, 40, 22, 720, 556);
     text(ctx, 'Nowa gra', W / 2, 58, { size: 30, align: 'center', color: '#3a1e08', fam: 'title' });
-    text(ctx, 'Losowa mapa, do 8 graczy: ludzie na zmianę przy jednym ekranie i komputer', W / 2, 88, { size: 17, align: 'center', color: '#5a3814', italic: true, weight: 500 });
+    text(ctx, this.online ? `Gra online: ${1 + Net.guests.filter(g => g.conn).length} graczy w pokoju ${Net.code} – tyle miejsc „Człowiek”` : 'Losowa mapa, do 8 graczy: ludzie na zmianę przy jednym ekranie i komputer', W / 2, 88, { size: 17, align: 'center', color: '#5a3814', italic: true, weight: 500 });
     divider(ctx, 80, 720, 102);
     const L = (s, y, x = 80) => text(ctx, s, x, y, { size: 17, color: '#3a1e08', fam: 'title' });
     L('Mapa', 136); L('Trudność', 190); L('Zasoby', 234); L('Bonus', 272);

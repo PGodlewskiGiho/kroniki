@@ -72,7 +72,7 @@ const human = st => st.players[ME];
 const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
 const humanCount = st => st.players.filter(p => p.human).length;
 const hotseat = st => humanCount(st) > 1; // gra hot-seat (zwycięzca = ostatni gracz na placu)
-const sharedScreen = st => st.players.filter(p => p.human && !p.out).length > 1; // zasłona między turami: przy ekranie więcej niż jeden człowiek
+const sharedScreen = st => !st.online && st.players.filter(p => p.human && !p.out).length > 1; // zasłona między turami: przy ekranie więcej niż jeden człowiek
 // Imię gracza wpisane na ekranie nowej gry (hot-seat), inaczej „gracz <kolor>”
 const playerName = (st, id) => st.players[id].name || `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[id].color) || PLAYER_COLORS[0]).name.toLowerCase()}`;
 const playerOf = (st, owner) => st.players[owner]; // gracz o danym numerze (surowce, frakcja, odkryta mapa)
