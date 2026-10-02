@@ -87,6 +87,21 @@ test('bitwa na żywo: każdy dowodzi swoją stroną, obaj liczą to samo', async
   await until(B.page, () => G.screenName === 'adventure' && !G.state.heroes.some(h => h.owner === 1 && h.army.some(x => x && x.cid === 'pikeman' && x.n === 6)), null, 20000);
 });
 
+test('Auto w bitwie online: komputer dowodzi za gracza, obie strony liczą to samo', async () => {
+  await A.page.evaluate(() => {
+    G.modal = null; const st = G.state, a = st.heroes.find(h => h.owner === 0), b = st.heroes.find(h => h.owner === 1) || createHero(st, 1, a.x + 1, a.y);
+    a.army = [{ cid: 'swordsman', n: 30 }, null, null, null, null, null, null]; b.army = [{ cid: 'pikeman', n: 8 }, null, null, null, null, null, null];
+    b.x = a.x + 1; b.y = a.y; rebuildObjIndex(st); netBattle(st, a, b);
+  });
+  await until(A.page, () => G.screenName === 'battle'); await until(B.page, () => G.screenName === 'battle');
+  for (const g of [A, B]) await g.page.evaluate(() => { const s = G.screens.battle; s.myAuto = true; if (s.phase === 'input') s.order({ a: 'ai' }); });
+  await until(A.page, () => ['over', 'done'].includes(G.screens.battle.phase), null, 60000); await until(B.page, () => ['over', 'done'].includes(G.screens.battle.phase), null, 60000);
+  const sum = page => page.evaluate(() => G.screens.battle.B.units.map(u => `${u.cid}:${u.n}:${u.dead ? 1 : 0}`).join(','));
+  assert.equal(await sum(A.page), await sum(B.page));
+  await A.page.evaluate(() => { const s = G.screens.battle; if (s.phase === 'over') s.finish(false); }); await until(A.page, () => !!G.modal); await A.page.evaluate(() => G.modal.buttons[0].action());
+  await until(B.page, () => !!G.modal && G.screenName === 'battle'); await B.page.evaluate(() => G.modal.buttons[0].action()); await until(B.page, () => G.screenName === 'adventure');
+});
+
 test('rozłączenie gościa: wraca sam i dostaje aktualny stan', async () => {
   await A.page.evaluate(() => { G.modal = null; G.state.players[0].resources.gold = 4242; });
   await until(B.page, () => G.state.players[0].resources.gold === 4242);

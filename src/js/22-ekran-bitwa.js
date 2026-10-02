@@ -149,14 +149,14 @@ G.screens.battle = {
     const bx = 470, mk = (i, j, label, act, o) => new Button(bx + i * 108, 500 + j * 46, 100, 38, label, act, Object.assign({ size: 15 }, o));
     this.bWait = mk(0, 0, 'Czekaj', () => this.order({ a: 'wait' }), { key: 'w', tip: 'Oddział ruszy na końcu tej rundy (klawisz W).' });
     this.bDef = mk(1, 0, 'Obrona', () => this.order({ a: 'def' }), { key: 'd', tip: 'Oddział broni się: wyższa obrona do jego następnego ruchu (klawisz D).' });
-    this.bAuto = mk(0, 1, 'Auto', () => { B.auto = !B.auto; if (B.auto && this.phase === 'input') this.startTurnFor(B.active); }, { key: 'a', selected: () => B.auto, tip: 'Walka automatyczna: twoje oddziały dowodzą się same (klawisz A).' });
+    this.myAuto = false;
+    this.bAuto = mk(0, 1, 'Auto', () => { if (this.net) { this.myAuto = !this.myAuto; if (this.myAuto && this.phase === 'input') this.order({ a: 'ai' }); return; } B.auto = !B.auto; if (B.auto && this.phase === 'input') this.startTurnFor(B.active); }, { key: 'a', selected: () => (this.net ? this.myAuto : B.auto), tip: 'Walka automatyczna: twoje oddziały dowodzą się same (klawisz A).' });
     this.bFlee = mk(1, 1, 'Ucieczka', () => this.onBack(), { key: 'u', tip: 'Wycofanie się z bitwy: ocalałe oddziały zostają, ale bohater traci resztę ruchu na dziś (klawisz U).' });
     this.bCast = mk(2, 0, 'Czar', () => this.openBook(), { key: 'c', tip: 'Księga czarów bohatera: jeden czar na rundę, przed ruchem oddziału (klawisz C).' });
     this.bInfo = mk(2, 1, 'Mana', null, { disabled: true, display: true, tip: 'Mana bohatera. Odnawia się o 1 dziennie, a w pełni w mieście z gildią magów.' });
     this.casting = null; this.resume = false;
     this.fleeTip = this.bFlee.tip;
     if (this.me === 1) { this.bFlee.disabled = true; this.bFlee.tip = 'Obrońca nie może uciec z pola bitwy.'; }
-    if (this.net) { this.bAuto.disabled = true; this.bAuto.tip = 'W bitwie online każdy dowodzi sam.'; }
     this.buttons = [this.bWait, this.bDef, this.bAuto, this.bFlee, this.bCast, this.bInfo];
     this.phase = 'intro';
   },
@@ -179,6 +179,7 @@ G.screens.battle = {
     if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
     if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
     if (this.net && B.sides[u.side].owner !== ME) { this.phase = 'remote'; this.reach = null; return; } // online: ruch przeciwnika-człowieka przyjdzie siecią
+    if (this.net && this.myAuto) { this.phase = 'input'; this.order({ a: 'ai' }); return; } // online Auto: rozkaz „decyduje komputer” – obie strony liczą ten sam ruch SI
     this.phase = 'input'; this.reach = battleDist(B, u, unitSpd(u));
     if (this.me !== u.side) { this.me = u.side; this.bFlee.disabled = u.side === 1; this.bFlee.tip = u.side ? 'Obrońca nie może uciec z pola bitwy.' : this.fleeTip; } // hot-seat: dowodzą na zmianę dwaj ludzie
     this.bWait.disabled = u.waited; this.onPointerMove(G.mouse.x, G.mouse.y);
@@ -196,6 +197,7 @@ G.screens.battle = {
     this.casting = null; this.preview = null; this.touchKey = null;
     if (c.a === 'cast') { castBattle(B, c.id, c.x, c.y); this.phase = 'play'; this.resume = true; return; }
     if (c.a === 'flee') { this.finish(true); return; }
+    if (c.a === 'ai') { if (aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } aiAct(B, u); this.phase = 'play'; return; } // ruch SI za gracza (Auto online): ten sam u obu, bo bitwa jest powtarzalna
     if (c.a === 'wait') actWait(B, u); else if (c.a === 'def') actDefend(B, u); else if (c.a === 'shoot') actShoot(B, u, T);
     else if (c.a === 'heal') actFirstAid(B, u, T); else actMoveAttack(B, u, c.p, T);
     this.phase = 'play';
