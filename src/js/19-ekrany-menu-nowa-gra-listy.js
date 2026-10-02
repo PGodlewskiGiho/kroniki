@@ -104,7 +104,22 @@ function menuRider(b, t) {
 // Scena menu w stylu gry: rysunek w buforze o połowie rozdzielczości, paleta z ditheringiem (pixelQuantize, wypalona raz w nieruchomym niebie i lądzie)
 // i powiększenie bez wygładzania, tak jak mapa przygody i sceny miast.
 // Scenę przeliczamy raz na klatkę (kilka ułamków milisekundy), a przy ponownym rysowaniu tej samej klatki wklejamy gotową
+// Gładko: tłem menu jest w pełni rozbudowane miasto (malowane tło i budowle 3D), co uruchomienie innej frakcji;
+// kamera powoli płynie (przybliżenie i przesunięcie), u góry przyciemnienie pod tytuł, na brzegach winieta
+const MENU_FAC = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'dungeon', 'stronghold'][Math.floor(Math.random() * 8)];
+function menuTownScene() {
+  return Layers.get(`menuTown_${MENU_FAC}`, 592, 438, c => {
+    const t = { id: -1, name: '', faction: MENU_FAC, owner: 0, x: 0, y: 0, built: Object.keys(BUILD_BY_ID).filter(id => id !== 'grail'), garrison: [], avail: {}, guild: {} };
+    c.imageSmoothingEnabled = true; try { paintTownScene(c, t, colorHex(G.settings.color)); } catch (e) { c.fillStyle = '#1a1420'; c.fillRect(0, 0, 592, 438); }
+  }, TOWN_ART_SCALE);
+}
 function drawMenuScene(ctx) {
+  if (!PIXEL_ART && typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART && TOWN_BUILD_ART[MENU_FAC]) return viewportDraw(ctx, c => {
+    const sc = menuTownScene(), sw = 576, sh = 422, t = G.time, k = Math.max(VW / sw, VH / sh) * (1.08 + 0.04 * Math.sin(t * 0.05)), dx = Math.sin(t * 0.031) * 0.03 * VW, dy = Math.cos(t * 0.023) * 0.02 * VH;
+    c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.translate(VW / 2 + dx, VH / 2 + dy); c.scale(k, k); c.drawImage(sc, 8 * TOWN_ART_SCALE, 8 * TOWN_ART_SCALE, sw * TOWN_ART_SCALE, sh * TOWN_ART_SCALE, -sw / 2, -sh / 2, sw, sh); c.restore();
+    const tg = c.createLinearGradient(0, 0, 0, VH * 0.4); tg.addColorStop(0, 'rgba(8,5,3,.75)'); tg.addColorStop(1, 'rgba(8,5,3,0)'); c.fillStyle = tg; c.fillRect(0, 0, VW, VH * 0.4);
+    const vg = c.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * 0.35, VW / 2, VH / 2, Math.max(VW, VH) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.6)'); c.fillStyle = vg; c.fillRect(0, 0, VW, VH);
+  });
   const pb = pixBuf('menuScene', VW / PIX, VH / PIX);
   if (pb._t !== G.time) { paintMenuScene(pb); pb._t = G.time; }
   viewportDraw(ctx, c => { c.imageSmoothingEnabled = !PIXEL_ART; c.drawImage(pb, 0, 0, VW, VH); });
