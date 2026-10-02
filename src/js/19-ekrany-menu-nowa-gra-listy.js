@@ -304,7 +304,10 @@ G.screens.load = {
   ROW: { x: 180, y: 132, w: 440, h: 44, gap: 50 },
   enter(p) {
     this.mode = p.mode || 'load'; this.fromGame = !!p.fromGame; this.slots = null; this.err = null; this.busy = false; this.hover = -1;
-    this.buttons = [new Button(300, 478, 200, 46, 'Wróć', () => this.back(), { key: 'escape', size: 19 })];
+    const file = this.mode === 'save'
+      ? new Button(200, 478, 190, 46, 'Do pliku', () => this.toFile(), { key: 'f', size: 19, tip: 'Zapisz grę do pliku na dysku: kopia zapasowa albo przeniesienie na inny komputer (klawisz F).' })
+      : new Button(200, 478, 190, 46, 'Z pliku', () => this.fromFile(), { key: 'f', size: 19, tip: 'Wczytaj grę z pliku zapisanego przyciskiem „Do pliku” (klawisz F).' });
+    this.buttons = [file, new Button(410, 478, 190, 46, 'Wróć', () => this.back(), { key: 'escape', size: 19 })];
     const tok = ++this.token;
     SaveStore.list().then(s => { if (tok === this.token) this.slots = s; }, e => { if (tok === this.token) { this.slots = {}; this.err = 'Nie udało się odczytać listy zapisów.'; } });
   },
@@ -325,6 +328,14 @@ G.screens.load = {
     this.busy = true; this.err = null;
     SaveStore.write(slot, G.state).then(() => { this.busy = false; G.go('adventure', { flash: `Zapisano grę (${slotName(slot).toLowerCase()})` }); },
       () => { this.busy = false; this.err = 'Zapis się nie udał. Spróbuj ponownie za chwilę.'; });
+  },
+  toFile() {
+    try { const n = exportGameFile(G.state); G.go('adventure', { flash: `Zapisano grę do pliku ${n}` }); } catch (e) { this.err = 'Nie udało się zapisać pliku.'; }
+  },
+  fromFile() {
+    if (this.busy) return; this.err = null;
+    pickGameFile().then(st => { if (!st) return; G.state = st; G.go('adventure', { flash: 'Wczytano grę z pliku' }); },
+      e => { this.err = `Nie można wczytać pliku: ${e && e.message ? e.message : 'nieznany błąd'}.`; });
   },
   doLoad(slot) {
     this.busy = true; this.err = null;

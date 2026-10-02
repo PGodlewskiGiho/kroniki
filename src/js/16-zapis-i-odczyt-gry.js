@@ -126,6 +126,27 @@ const SaveStore = {
     this.queue = job.catch(() => {}); return job;
   },
 };
+// Zapis w pliku (przenoszenie gry między komputerami, kopia na wypadek wyczyszczenia przeglądarki): ten sam rekord co w slocie.
+function exportGameFile(st) {
+  const rec = { kroniki: 1, meta: saveMeta(st), game: serializeGame(st) }, m = rec.meta;
+  const slug = t => (t || '').toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); // nazwa pliku tylko z ASCII: polskie litery bywają gubione
+  const name = `kroniki-${slug(m.hero) || 'gra'}-${slug(m.date)}.json`;
+  // adres data: (nie blob:), bo przy grze otwartej z dysku (file://) przeglądarka ignoruje nazwę pliku dla blob:
+  const a = document.createElement('a'); a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(rec)); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000); return name;
+}
+function gameFromFileText(txt) {
+  let rec; try { rec = JSON.parse(txt); } catch (e) { throw new Error('to nie jest plik zapisu gry'); }
+  if (!rec || !rec.game) throw new Error('to nie jest plik zapisu gry');
+  return deserializeGame(rec.game);
+}
+function pickGameFile() { // okno wyboru pliku -> obietnica stanu gry (null, gdy gracz nic nie wybrał)
+  return new Promise((ok, fail) => {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json';
+    inp.onchange = () => { const f = inp.files && inp.files[0]; if (!f) return ok(null); f.text().then(t => { try { ok(gameFromFileText(t)); } catch (e) { fail(e); } }, fail); };
+    inp.click();
+  });
+}
 async function loadGameFrom(slot) {
   const rec = await SaveStore.read(slot);
   if (!rec || !rec.game) throw new Error('ten slot jest pusty');
