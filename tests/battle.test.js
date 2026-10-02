@@ -164,3 +164,21 @@ test('zapis po pokonaniu bohatera: nowe id nie powtarzają się', async () => {
   assert.equal(r.heroes, 3);
   assert.equal(r.sel, 0);
 });
+
+test('machiny pod rozkazami bohatera: namiot medyka leczy wskazany oddział, bez umiejętności działa sam', async () => {
+  await twoPlayers();
+  const r = await page.evaluate(() => {
+    const st = G.state, me = TX.me(), foe = TX.foe();
+    me.army = TX.army([['archer', 10], ['swordsman', 5]]); foe.army = TX.army([['ghoul', 8]]); me.machines = ['firstAid', 'ballista'];
+    me.skills = me.skills.filter(s => !['firstAid', 'artillery'].includes(s.id)).concat([{ id: 'firstAid', lv: 2 }, { id: 'artillery', lv: 1 }]);
+    const B = createBattle(st, me, foe); setScreen('battle', { battle: B }); const scr = G.screen;
+    const tent = B.units.find(u => u.cid === 'firstAid'), sw = B.units.find(u => u.cid === 'swordsman' && u.side === 0), bal = B.units.find(u => u.cid === 'ballista');
+    sw.hp = 5; const out = { ctrlTent: machineControlled(B, tent), ctrlBal: machineControlled(B, bal) };
+    B.active = tent; scr.startTurnFor(tent); out.phase = scr.phase;
+    scr.onPointerMove(sw.px, sw.py - 10); out.kind = scr.preview && scr.preview.kind;
+    scr.onClick(sw.px, sw.py - 10); out.healed = sw.hp > 5;
+    me.skills = me.skills.filter(s => s.id !== 'firstAid'); out.auto = machineControlled(B, tent);
+    return out;
+  });
+  assert.deepEqual(r, { ctrlTent: true, ctrlBal: true, phase: 'input', kind: 'heal', healed: true, auto: false });
+});

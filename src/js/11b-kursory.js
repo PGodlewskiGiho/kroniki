@@ -94,5 +94,5 @@ function battleCursor(scr) {
     const [fx, fy] = hexCenter(...p.from), a = Math.atan2(p.target.py - fy, p.target.px - fx);
     return 'attack' + ((Math.round(a / (Math.PI / 6)) + 12) % 12);
   }
-  return { attack: 'attack', shoot: 'shoot', cast: 'spell', nocast: 'no', far: 'no', info: 'arrow' }[p.kind] || 'arrow';
+  return { attack: 'attack', shoot: 'shoot', cast: 'spell', heal: 'spell', nocast: 'no', far: 'no', info: 'arrow' }[p.kind] || 'arrow';
 }

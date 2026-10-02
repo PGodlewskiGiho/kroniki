@@ -290,12 +290,16 @@ function actShoot(B, u, target) {
   if (hasAb(u, 'doubleShot') && u.shots > 0 && !target.dead) { use(); strike(B, u, target, true); }
 }
 // Namiot medyka: leczy pierwszego stwora w najbardziej rannym oddziale (1–25 życia, bez wskrzeszania)
-function actFirstAid(B, u) {
+// Bohater z umiejętnością (Artyleria: balista, Pierwsza pomoc: namiot) sam wskazuje cel machiny, jak w Heroes 3; bez niej machina działa sama.
+const MACHINE_SKILL = { ballista: 'artillery', firstAid: 'firstAid' };
+const machineControlled = (B, u) => !!MACHINE_SKILL[u.cid] && heroSkill(sideHero(B, u.side), MACHINE_SKILL[u.cid]) > 0;
+const firstAidTargets = (B, u) => alive(B, u.side).filter(v => !isMachine(v) && v.hp < CREATURES[v.cid].hp);
+function actFirstAid(B, u, target = null) {
   u.acted = true;
-  const hurt = alive(B, u.side).filter(v => !isMachine(v) && v.hp < CREATURES[v.cid].hp);
+  const hurt = firstAidTargets(B, u);
   if (!hurt.length) { B.log.push('Namiot medyka: nikt nie potrzebuje pomocy.'); return; }
   const most = skillVal(sideHero(B, u.side), 'firstAid') || 25; // Pierwsza pomoc: do 50/75/100 zamiast 25
-  const v = hurt.reduce((a, b) => (CREATURES[b.cid].hp - b.hp > CREATURES[a.cid].hp - a.hp ? b : a)), amt = Math.min(CREATURES[v.cid].hp - v.hp, 1 + Math.floor(B.rng() * most));
+  const v = target && hurt.includes(target) ? target : hurt.reduce((a, b) => (CREATURES[b.cid].hp - b.hp > CREATURES[a.cid].hp - a.hp ? b : a)), amt = Math.min(CREATURES[v.cid].hp - v.hp, 1 + Math.floor(B.rng() * most));
   v.hp += amt; B.log.push(`Namiot medyka leczy: ${CREATURES[v.cid].plural.toLowerCase()} (+${amt}).`);
   if (B.fx) B.fx.push({ kind: 'heal', u: v, amount: amt });
 }
