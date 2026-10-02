@@ -153,7 +153,7 @@ function visitObject(st, h, ob) {
     showDialog(`Ołtarz ofiarny. Złożyć w ofierze wszystkie artefakty z plecaka (${arts.length}: ${arts.map(id => ARTIFACTS[id].name).join(', ')}) za ${exp} doświadczenia? Założonych nie rusza.`, [
       { label: 'Poświęć', key: 'enter', action: () => { const r = useSite(st, h, ob); advFloat(r.float, h.x, h.y); gainExp(st, h, r.exp); } }, { label: 'Nie', key: 'escape' },
     ], { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_sacrifice', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('sacrifice'), cx, cy + 30, 1.5) });
-  } else if (ob.type === 'site' && ['arena', 'school', 'market', 'hillFort'].includes(ob.kind) && !siteUsed(st, ob, h)) siteChoice(st, h, ob);
+  } else if (ob.type === 'site' && ['arena', 'school', 'market', 'hillFort', 'dwarfForge'].includes(ob.kind) && !siteUsed(st, ob, h)) siteChoice(st, h, ob);
   else if (ob.type === 'site') {
     const r = useSite(st, h, ob), S = SITES[ob.kind]; snd(r.res === 'gold' ? 'coins' : 'shrine');
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
@@ -244,6 +244,8 @@ function siteChoice(st, h, ob) {
     if (R.gold < S.cost) return showDialog(`${S.name}: mistrzowie uczą za ${S.cost} złota, a masz ${R.gold}. Wróć, gdy uzbierasz.`, [{ label: 'OK', key: 'enter' }], icon);
     return showDialog(`${S.name}: za ${S.cost} złota mistrzowie nauczą ${h.name}…`, [{ label: 'Moc czarów +1', key: 'm', action: take('sp') }, { label: 'Wiedza +1', key: 'w', action: take('kn') }, { label: 'Nie', key: 'escape' }], icon);
   }
+  if (ob.kind === 'dwarfForge') return showDialog(`${S.name}: za ${S.cost} złota i 5 rudy krasnoludy wykują artefakt (masz ${R.gold} złota, ${R.ore} rudy).`,
+    [{ label: 'Zamów', key: 'enter', action: take() }, { label: 'Nie', key: 'escape' }], icon);
   if (ob.kind === 'market') { G.marketMin = 2; return showMarket(st, h.owner, () => { G.marketMin = 0; }); }
   const plan = hillFortPlan(h); // fort na wzgórzu
   if (!plan.length) return showDialog(`${S.name}: kowale nie mają czego ulepszyć w armii ${h.name}.`, [{ label: 'OK', key: 'enter' }], icon);
@@ -1024,6 +1026,11 @@ function useSite(st, h, ob, choice) {
       removeObject(st, ob); R.gold += gold; R[res] += k; return { text: `Przy wygasłym ognisku ktoś zostawił zapasy: ${gold} złota i ${k} (${resName(res).toLowerCase()}).`, float: `+${gold}`, res: 'gold' }; }
     case 'hillFort': { const d = hillFortUpgrade(st, h); return { text: d.length ? `Kowale ulepszają: ${d.map(p => `${CREATURES[p.from].plural.toLowerCase()} → ${CREATURES[p.to].plural.toLowerCase()} (${p.n})`).join(', ')}.` : 'Kowale nie mają czego ulepszyć albo brakuje surowców.' }; }
     case 'market': return { text: 'Targowisko: wymiana surowców.' };
+    case 'mushroomRing': mark(); h.boost = { ...(h.boost || {}), luck: 1 }; return { text: 'Taniec w grzybowym kręgu przynosi szczęście: +1 do następnej bitwy.', float: 'szczęście +1' };
+    case 'crystalCave': { const a = 3 + thash(ob.id, weekIndex(st), st.seed) % 3; mark(); R.crystal += a; return { text: `Z groty udaje się wydobyć ${a} kryształów.`, float: `+${a}`, res: 'crystal' }; }
+    case 'dwarfForge': { if (R.gold < S.cost || R.ore < 5) return { text: `Krasnoludy chcą ${S.cost} złota i 5 rudy, a masz ${R.gold} złota i ${R.ore} rudy.` };
+      const r = mulberry32(st.seed ^ (ob.id * 613) ^ (h.id * 97)), pool = ARTS_BY_RARITY(r() < 0.3 ? 'minor' : 'treasure'), art = pool[Math.floor(r() * pool.length)];
+      mark(); R.gold -= S.cost; R.ore -= 5; giveArtifact(h, art); return { text: `Krasnoludy wykuwają dla ${h.name}: ${ARTIFACTS[art].name}.`, float: ARTIFACTS[art].name }; }
     case 'oasis': case 'buoy': { mark(); h.boost = { ...(h.boost || {}), morale: 1 }; if (ob.kind === 'oasis') h.mp += 300;
       return { text: ob.kind === 'oasis' ? 'Chłodna woda i cień palm: +1 do morale do następnej bitwy i +300 punktów ruchu.' : 'Marynarze biją w dzwon boi na szczęście: +1 do morale do następnej bitwy.', float: 'morale +1' }; }
     case 'magicSpring': { const max = heroMaxMana(h) * 2; if (h.mana >= max) return { text: 'Źródło lśni, ale mana bohatera jest już przepełniona.' }; mark(); h.mana = max; return { text: `Magiczne źródło przepełnia bohatera mocą: mana ${max} (dwa razy więcej niż zwykle).`, float: `mana ${max}` }; }

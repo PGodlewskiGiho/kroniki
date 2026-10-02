@@ -244,6 +244,8 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'prison' && st.heroes.filter(o => o.owner === h.owner).length >= heroLimit(st)) return 0;
   if ((ob.kind === 'oasis' || ob.kind === 'buoy') && h.boost && h.boost.morale) return 0;
   if (ob.kind === 'magicSpring' && h.mana >= heroMaxMana(h)) return 0;
+  if (ob.kind === 'mushroomRing' && h.boost && h.boost.luck) return 0;
+  if (ob.kind === 'dwarfForge' && (playerOf(st, h.owner).resources.gold < 4000 || playerOf(st, h.owner).resources.ore < 8)) return 0;
   if (ob.kind === 'school' && playerOf(st, h.owner).resources.gold < SITES.school.cost + 2000) return 0; // szkoła: gdy złota starczy z zapasem
   if (ob.kind === 'hillFort') { const R = playerOf(st, h.owner).resources, plan = hillFortPlan(h).filter(p => canPay(R, p.cost) && R.gold - (p.cost.gold || 0) >= 1500); return plan.length ? 1500 + plan.reduce((s, p) => s + p.n * (CREATURES[p.to].value - CREATURES[p.from].value), 0) * 0.5 : 0; }
   if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
@@ -284,6 +286,7 @@ function* aiMoveHero(st, h, news) {
     if (!path.length) return;
     for (const [nx, ny] of path) {
       const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
+      const blocker = heroAt(st, nx, ny); if (blocker && blocker !== h && blocker.owner === h.owner && blocker.garrison == null) return; // pole zajmuje własny bohater (np. stoi w kapliczce): nie wchodzimy na niego
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
       reveal(st, nx, ny, heroSight(h), h.owner);
       yield { kind: 'step', h, fx, fy };
