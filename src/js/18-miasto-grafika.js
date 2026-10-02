@@ -884,7 +884,7 @@ function paintTown3D(c, t, col, Wd, T3) {
     const B = slotBuilding(t, i), e = B ? T3.b[groupOf(B).join('')] : null, r = e || top(i);
     if (r) fx.rects[i] = { x: r.o[0], y: r.o[1], w: r.f[2] / d, h: r.f[3] / d, z: S.Z };
     if (!e) return; put(e.f, e.o[0], e.o[1]);
-    for (const [nm, mx, my] of e.m || []) { const [kind, rr, gc] = nm.split('|'), sc = S.k / S.Z; if (kind === 'smoke') fx.smokes.push([mx, my, sc]); else if (kind === 'flag') fx.flags.push([mx, my, col, sc]); else if (kind === 'glow') fx.glows.push([mx, my, +rr * sc, gc]); }
+    // znaczniki efektów (dym, flagi, poświaty) pomijane: namalowane miasto ma być spokojne, bez nakładanych detali
   });
   const vg = c.createRadialGradient(296, 230, 180, 296, 230, 420); vg.addColorStop(0, 'rgba(6,6,14,0)'); vg.addColorStop(1, 'rgba(6,6,14,.45)'); c.fillStyle = vg; c.fillRect(8, 8, 576, 422);
   c.restore(); return fx;
