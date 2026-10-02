@@ -116,6 +116,7 @@ function heroStep(st, h) {
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h));
+  if (h.owner === ME || human(st).explored[ni]) Sfx.play(h.boat ? 'oar' : st.map.terrain[ni] === TER.SNOW ? 'hoofsnow' : 'hoof', { vol: h.owner === ME ? 0.5 : 0.25, gap: 0.08 }); // kroki konia (łódź: wiosła)
   if (!h.path.length) { h.path = null; h.dest = null; }
   if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); return true; }
   if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; } // wysiadka: łódź zostaje przy brzegu
@@ -131,17 +132,19 @@ function showDwelling(st, h, ob) {
     { iconH: 70, icon: (ctx, cx, cy) => drawCreatureIcon(ctx, ob.cid, cx, cy + 26, 2) });
 }
 function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); }
+// Dźwięk tylko dla akcji człowieka (komputer gra po cichu)
+const sfxFor = (st, owner, n, o) => { const P = playerOf(st, owner); if (P && P.human && !(G.screens.adventure && G.screens.adventure.aiRun)) Sfx.play(n, o); };
 function visitObject(st, h, ob) {
-  const R = playerOf(st, h.owner).resources;
-  if (ob.type === 'res') { R[ob.res] += ob.amount; advFloat(`+${ob.amount}`, h.x, h.y, ob.res); removeObject(st, ob); }
+  const R = playerOf(st, h.owner).resources, snd = (n, o) => { if (playerOf(st, h.owner).human) Sfx.play(n, o); };
+  if (ob.type === 'res') { snd(ob.res === 'gold' ? 'coins' : 'pickup'); R[ob.res] += ob.amount; advFloat(`+${ob.amount}`, h.x, h.y, ob.res); removeObject(st, ob); }
   else if (ob.type === 'chest') {
-    removeObject(st, ob);
+    removeObject(st, ob); snd('chest');
     showDialog('Znajdujesz skrzynię ze skarbem. Możesz zatrzymać złoto albo rozdać je chłopom w zamian za doświadczenie.', [
       { label: `${ob.gold} złota`, key: 'enter', action: () => { R.gold += ob.gold; advFloat(`+${ob.gold}`, h.x, h.y, 'gold'); } },
       { label: `${ob.exp} dośw.`, action: () => { advFloat(`+${ob.exp} dośw.`, h.x, h.y); gainExp(st, h, ob.exp); } },
     ], { locked: true, iconH: 56, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'chest', cx, cy, 70, 52) || drawSprite(ctx, chestSprite(), cx, cy + 4, 2) });
   } else if (ob.type === 'art') {
-    removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
+    removeObject(st, ob); snd('artifact'); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
     showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}${assemblable(h).length ? ` Masz komplet części relikwii: ${ARTIFACTS[assemblable(h)[0]].name}! Złóż ją na ekranie bohatera.` : ''}`, [{ label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art, true), cx, cy, 2) });
   } else if (ob.type === 'site' && ob.kind === 'dwelling') showDwelling(st, h, ob);
@@ -151,7 +154,7 @@ function visitObject(st, h, ob) {
       { label: 'Poświęć', key: 'enter', action: () => { const r = useSite(st, h, ob); advFloat(r.float, h.x, h.y); gainExp(st, h, r.exp); } }, { label: 'Nie', key: 'escape' },
     ], { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_sacrifice', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('sacrifice'), cx, cy + 30, 1.5) });
   } else if (ob.type === 'site') {
-    const r = useSite(st, h, ob), S = SITES[ob.kind];
+    const r = useSite(st, h, ob), S = SITES[ob.kind]; snd(r.res === 'gold' ? 'coins' : 'shrine');
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
     showDialog(`${S.name}. ${r.text}`, [{ label: r.puzzle ? 'Mapa zagadki' : 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); if (r.puzzle) showPuzzle(st); } }],
       { iconH: 76, icon: (ctx, cx, cy) => { drawMap3dIcon(ctx, 'site_' + ob.kind, cx, cy, 90, 74) || drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5); if (ob.kind === 'witchHut') skillIcon(ctx, ob.skill, cx + 64, cy + 8, 48); } });
@@ -171,7 +174,7 @@ function visitObject(st, h, ob) {
   } else if (ob.type === 'mine') {
     const M = MINES[ob.kind];
     if (ob.owner === h.owner) { G.screens.adventure.flash(`${M.name} już należy do ciebie`); return; }
-    ob.owner = h.owner; MapRender.miniDirty = true;
+    ob.owner = h.owner; MapRender.miniDirty = true; snd('flag');
     showDialog(`${M.name} należy teraz do ciebie. Dochód dzienny: ${M.income} (${resName(ob.kind).toLowerCase()}).`, [{ label: 'OK', key: 'enter' }],
       { iconH: 66, icon: (ctx, cx, cy) => { if (drawMap3dIcon(ctx, 'mine_' + ob.kind, cx, cy, 110, 64)) return drawSprite(ctx, flagSprite(ownerColor(st, ob.owner), 12, 7), cx + 30, cy - 34, 1); drawSprite(ctx, mineSprite(ob.kind), cx - 33, cy - 31, 1); drawSprite(ctx, flagSprite(ownerColor(st, ob.owner), 12, 7), cx + 23, cy - 33, 1); } });
   }
@@ -548,7 +551,7 @@ function recruit(st, t, L, cid, n) {
   const g = garrisonHero(st, t), h = heroInTown(st, t), dest = g && armyHasRoom(g.army, cid) ? g.army : armyHasRoom(t.garrison, cid) ? t.garrison : (h && armyHasRoom(h.army, cid) ? h.army : null);
   if (!dest) return 'Brak miejsca w garnizonie';
   const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id] * n;
-  armyAdd(dest, cid, n); t.avail[L] -= n; return null;
+  armyAdd(dest, cid, n); t.avail[L] -= n; sfxFor(st, t.owner, 'recruit'); return null;
 }
 // Szybki werbunek (jak „Kup wszystko” w Heroes 3): od najwyższego poziomu w dół kupuje najlepszą formę stwora z siedliska,
 // ile jest dostępnych, na ile starczy zasobów i miejsca. Zwraca { n: liczba stworów, text: podsumowanie }.
@@ -644,7 +647,7 @@ function slotBuilding(t, slot) { let best = null; for (const B of BUILDINGS) if 
 function buildIn(st, t, B) {
   const R = playerOf(st, t.owner).resources;
   for (const r of RESOURCES) if (B.cost[r.id]) R[r.id] -= B.cost[r.id];
-  t.built.push(B.id); t.builtToday = true;
+  t.built.push(B.id); t.builtToday = true; sfxFor(st, t.owner, 'build');
   const gm = /^guild(\d)$/.exec(B.id); if (gm) rollGuildLevel(st, t, +gm[1]);
   if (B.id === 'special' && t.faction === 'academy') for (let L = 1; L <= guildLevel(t); L++) rollGuildLevel(st, t, L); // Biblioteka: czar więcej na każdym poziomie
   const m = /^dw(\d)$/.exec(B.id); if (m) t.avail[+m[1]] = (t.avail[+m[1]] || 0) + weeklyGrowth(t, +m[1], st); // nowe siedlisko od razu daje przyrost
@@ -785,7 +788,7 @@ function hireHero(st, t, k) {
   if (!o) return { error: 'Nikt więcej nie czeka w tawernie' };
   if (P.resources.gold < HERO_COST) return { error: `Najem kosztuje ${HERO_COST} złota` };
   P.resources.gold -= HERO_COST; P.tavern.offers[k] = null; P.tavern.hired++;
-  const h = tavernHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner);
+  const h = tavernHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner); sfxFor(st, owner, 'coins');
   return { hero: h };
 }
 
@@ -796,7 +799,7 @@ function buyMachine(st, t, h, id) {
   if (h.machines.includes(id)) return 'Bohater ma już tę machinę';
   const cost = CREATURES[id].cost; if (!canAfford(st, cost, h.owner)) return 'Brakuje złota';
   const R = playerOf(st, h.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id];
-  h.machines.push(id); return null;
+  h.machines.push(id); sfxFor(st, h.owner, 'coins'); return null;
 }
 // --- miejsca na mapie (SITES) ---
 // Znacznik odwiedzin: dla kogo (bohater, gracz albo cały świat) i do kiedy nagroda jest wykorzystana
@@ -811,7 +814,7 @@ function dwellRefresh(st, ob) { const wk = weekIndex(st), g = CREATURES[ob.cid].
 function dwellMax(st, h, ob) { dwellRefresh(st, ob); const R = playerOf(st, h.owner).resources, c = CREATURES[ob.cid].cost; return Object.entries(c).reduce((m, [r, v]) => Math.min(m, Math.floor(R[r] / v)), ob.avail); }
 function dwellHire(st, h, ob, k) {
   if (k <= 0) return 'Nikogo nie zwerbowano'; if (!armyAdd(h.army, ob.cid, k)) return 'W armii nie ma miejsca na nowy oddział';
-  const R = playerOf(st, h.owner).resources; for (const [r, v] of Object.entries(CREATURES[ob.cid].cost)) R[r] -= v * k; ob.avail -= k; return null;
+  const R = playerOf(st, h.owner).resources; for (const [r, v] of Object.entries(CREATURES[ob.cid].cost)) R[r] -= v * k; ob.avail -= k; sfxFor(st, h.owner, 'recruit'); return null;
 }
 // Więzienie: uwolniony bohater (losowy, z doświadczeniem) staje obok. Zwraca nowego bohatera albo tekst przeszkody.
 function freePrisoner(st, h, ob) {

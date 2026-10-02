@@ -136,7 +136,7 @@ const endRank = score => END_RANKS.filter(([s]) => score >= s).pop()[1];
 function showGameEnd(st, r, msg, opts) {
   const pid = hotseat(st) && r === 'win' ? st.winner : ME, P = st.players[pid], col = ownerColor(st, pid), t0 = G.time;
   const town = st.towns.find(t => t.owner === pid) || st.towns.find(t => t.faction === P.faction) || st.towns[0];
-  const scene = document.createElement('canvas'); scene.width = 592; scene.height = 440;
+  const SK = PIXEL_ART ? 1 : 2, scene = document.createElement('canvas'); scene.width = 592 * SK; scene.height = 440 * SK; scene.getContext('2d').scale(SK, SK); // gładko: scena w podwójnej rozdzielczości (ostra na pełnym ekranie)
   if (town) paintTownScene(scene.getContext('2d'), { ...town, owner: pid, built: BUILDINGS.filter(B => B.slot !== undefined).map(B => B.id) }, col); // miasto w pełnej krasie (albo w ruinie)
   const heroes = st.heroes.filter(h => h.owner === pid), army = heroes.reduce((s, h) => s + h.army.reduce((a, x) => a + (x ? x.n * (CREATURES[x.cid].value || 0) : 0), 0), 0);
   const score = r === 'win' ? (st.scoreRow ? st.scoreRow.score : 0) : 0;
@@ -149,7 +149,7 @@ function showGameEnd(st, r, msg, opts) {
     msg, buttons, locked: true, gameEnd: r,
     draw(ctx) {
       const t = G.time - t0; G.dirty = true;
-      ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(scene, 30, 20, 534, 400, 0, 0, W, H); ctx.restore(); // piksel sceny = 3 px ekranu (równe piksele)
+      ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(scene, 30 * SK, 20 * SK, 534 * SK, 400 * SK, 0, 0, W, H); ctx.restore(); // piksel sceny = 3 px ekranu (równe piksele)
       if (win) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,120,${(0.08 + 0.04 * Math.sin(t)).toFixed(3)})`; ctx.fillRect(0, 0, W, H); ctx.restore(); } // ciepłe światło: gładkie (dithering dałby siatkę kropek)
       if (win) pixLayer('endFx', ctx, 0, 0, W, H, ctx => {
         ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -170,7 +170,9 @@ function showGameEnd(st, r, msg, opts) {
       const k = ease(clamp(t / 0.8, 0, 1)); // wstęga z napisem opada z góry
       ctx.save(); ctx.translate(W / 2, -60 + 130 * k); const cloth = win ? '#8a1e1a' : '#2e2a30', trim = win ? '#e0b24a' : '#6a6268';
       for (const sd of [-1, 1]) fillPoly(ctx, [[sd * 190, -30], [sd * 240, -26], [sd * 222, 0], [sd * 240, 34], [sd * 190, 30]], shadeHex(cloth, -0.3));
-      ctx.fillStyle = cloth; ctx.fillRect(-200, -42, 400, 84); ctx.fillStyle = trim; ctx.fillRect(-200, -42, 400, 4); ctx.fillRect(-200, 38, 400, 4);
+      if (PIXEL_ART) { ctx.fillStyle = cloth; ctx.fillRect(-200, -42, 400, 84); ctx.fillStyle = trim; ctx.fillRect(-200, -42, 400, 4); ctx.fillRect(-200, 38, 400, 4); }
+      else { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(-196, -36, 400, 84); leatherFill(ctx, -200, -42, 400, 84, 31); ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = win ? '#c84030' : '#8a8090'; ctx.fillRect(-200, -42, 400, 84); ctx.restore(); goldRim(ctx, -200, -42, 400, 84, 4);
+        drawCorners(ctx, -200, -42, 400, 84); } // tablica: skóra w barwie wyniku w złotej listwie
       goldText(ctx, win ? 'Zwycięstwo!' : 'Porażka', 0, -8, 40); text(ctx, win ? (hotseat(st) ? `${cap1(playerName(st, pid))} włada krainą` : 'Kraina należy do ciebie') : 'Twoje królestwo upadło', 0, 24, { size: 16, align: 'center', italic: true, weight: 500, color: '#f4e2a8' });
       ctx.restore();
       if (t > 0.6) { // kronika królestwa na pergaminie
