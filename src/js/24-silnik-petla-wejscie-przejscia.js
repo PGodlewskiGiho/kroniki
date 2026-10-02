@@ -173,10 +173,10 @@ function showGfxSettings(back) {
   const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); setPixelSize(id === 'low' ? 2 : PIX_DEFAULT); resize(); showGfxSettings(back); };
   const fontBtn = { label: pixelFont() ? 'Czcionka: piksele' : 'Czcionka: klasyczna', sub: 'zmień', tip: 'Czcionka interfejsu: pikselowa (pasuje do grafiki) albo klasyczna szeryfowa.',
     action: () => { S.font = pixelFont() ? 'classic' : 'pixel'; saveSettings(); Layers.cache = {}; showGfxSettings(back); } };
-  const wxBtn = { label: weatherOn() ? 'Pogoda: tak' : 'Pogoda: nie', sub: 'zmień', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
+  const wxBtn = { label: 'Pogoda', sub: weatherOn() ? 'włączona' : 'wyłączona', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
     action: () => { S.weather = weatherOn() ? 'off' : 'on'; saveSettings(); showGfxSettings(back); } };
   showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało. Klawisz F pokazuje licznik klatek.`,
-    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id) })), fontBtn, wxBtn, { label: 'OK', key: 'escape', action: () => { if (back) back(); } }], { bw: 100 });
+    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id), selected: q.id === (S.quality || 'auto') })), ...(PIXEL_ART ? [fontBtn] : []), wxBtn, { label: 'OK', key: 'escape', primary: true, action: () => { if (back) back(); } }], { bw: PIXEL_ART ? 100 : 128 });
 }
 function init() {
   loadSettings(); loadUnitArt(); // arkusze jednostek dekodują się w tle (do tego czasu dawne rysunki)
@@ -186,7 +186,7 @@ function init() {
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)
   setScreen('menu'); G.fade.a = 1; G.fade.target = 0;
   // wbudowana czcionka ładuje się chwilę: potem odświeżamy obrazy z napisami trzymane w pamięci (tytuły, przyciski)
-  if (document.fonts) document.fonts.load(`16px ${FONT_PIXEL}`).then(() => { Layers.cache = {}; G.dirty = true; }, () => {});
+  if (document.fonts) Promise.all([`16px ${FONT_PIXEL}`, `700 16px Cinzel`, `600 16px Cinzel`, `700 16px 'Cinzel Decorative'`, `500 16px 'Cormorant Garamond'`, `700 16px 'Cormorant Garamond'`, `italic 500 16px 'Cormorant Garamond'`].map(f => document.fonts.load(f))).then(() => { Layers.cache = {}; G.dirty = true; }, () => {}); // wbudowane czcionki: po wczytaniu napisy od nowa
   requestAnimationFrame(frame);
 }
 init();

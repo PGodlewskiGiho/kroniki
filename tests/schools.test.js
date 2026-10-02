@@ -97,7 +97,7 @@ test('przywołanie łodzi na brzegu; księga czarów pokazuje szkołę i koszt p
     let spot = null; for (let i = 0; i < n * n && !spot; i++) { const x = i % n, y = (i / n) | 0; if (T[i] !== TER.WATER && !st.objAt[i] && !heroAt(st, x, y) && !st.map.obst[i] && x > 1 && y > 1 && x < n - 2 && y < n - 2 && [...Array(8).keys()].some(d => T[(y + DY8[d]) * n + x + DX8[d]] === TER.WATER)) spot = [x, y]; }
     h.x = spot[0]; h.y = spot[1]; h.mana = 50; h.spells = ['summonBoat', 'lightningBolt']; h.skills = [{ id: 'waterMagic', lv: 1 }];
     const boats0 = st.objects.filter(o => o.type === 'boat').length, err = castAdventure(st, h, 'summonBoat'), boats1 = st.objects.filter(o => o.type === 'boat').length;
-    h.skills = [{ id: "airMagic", lv: 2 }]; showSpellbook(h, "view"); const tip = G.modal.rightInfo(140, 180); G.modal = null;
+    h.skills = [{ id: "airMagic", lv: 2 }]; showSpellbook(h, "view"); const tip = G.modal.rightInfo(160, 185); G.modal = null;
     return { err, added: boats1 - boats0, mana: h.mana, tip };
   });
   assert.equal(r.err, null); assert.equal(r.added, 1); assert.equal(r.mana, 50 - 6);

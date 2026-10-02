@@ -15,12 +15,12 @@ function build() {
   const shell = fs.readFileSync(path.join(SRC, 'szablon.html'), 'utf8');
   if (!shell.includes('@@SKRYPT@@\n')) throw new Error('src/szablon.html: brak linii @@SKRYPT@@');
   // Czcionki z src/czcionki (np. pikselowa) wbudowane w plik jako @font-face z danymi base64: gra działa bez internetu.
-  // Plik „nazwa-rodziny__zakres.woff2”: rodzina z myślnikami zamiast spacji, zakres = latin albo latin-ext.
+  // Plik „nazwa-rodziny__zakres[__grubość[-italic]].woff2”: rodzina z myślnikami zamiast spacji, zakres = latin albo latin-ext.
   const RANGES = { latin: 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD',
     'latin-ext': 'U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF' };
   const fdir = path.join(SRC, 'czcionki'), faces = fs.existsSync(fdir) ? fs.readdirSync(fdir).filter(f => f.endsWith('.woff2')).sort().map(f => {
-    const [fam, range] = f.replace('.woff2', '').split('__'), data = fs.readFileSync(path.join(fdir, f)).toString('base64');
-    return `@font-face{font-family:'${fam.replace(/-/g, ' ')}';font-style:normal;font-weight:400 800;font-display:block;src:url(data:font/woff2;base64,${data}) format('woff2');unicode-range:${RANGES[range]}}`;
+    const [fam, range, wt] = f.replace('.woff2', '').split('__'), data = fs.readFileSync(path.join(fdir, f)).toString('base64'), [w, it] = (wt || '400 800').split('-');
+    return `@font-face{font-family:'${fam.replace(/-/g, ' ')}';font-style:${it ? 'italic' : 'normal'};font-weight:${w};font-display:block;src:url(data:font/woff2;base64,${data}) format('woff2');unicode-range:${RANGES[range]}}`;
   }).join('\n') : '';
   // Grafiki jednostek wypalone z modeli 3D (tools/grafika3d/wypal.js): opis klatek i arkusze PNG jako dane base64
   const gdir = path.join(SRC, 'grafika'), gmeta = path.join(gdir, 'jednostki.json');
@@ -41,7 +41,8 @@ function build() {
   // Tła bitew malowane przez AI (tools/tla-ai, szkice: szkic-bitwy.js): nazwa terenu -> WebP pola bitwy
   const bdir = path.join(gdir, 'bitwy'), bart = {}; if (fs.existsSync(bdir)) for (const f of fs.readdirSync(bdir)) if (f.endsWith('.webp')) bart[f.replace('.webp', '')] = { png: fs.readFileSync(path.join(bdir, f)).toString('base64'), webp: 1 };
   const smeta = path.join(gdir, 'umiejetnosci.json'), simg = path.join(gdir, 'umiejetnosci.webp'), sart = fs.existsSync(smeta) && fs.existsSync(simg) ? { ...JSON.parse(fs.readFileSync(smeta, 'utf8')), png: fs.readFileSync(simg).toString('base64'), webp: 1 } : null;
-  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\nconst TOWN_BUILD_ART = ${JSON.stringify(tart)};\nconst ARTIFACT_ART = ${JSON.stringify(aart)};\nconst MAP3D_ART = ${JSON.stringify(mart)};\nconst BATTLE_BG_ART = ${JSON.stringify(bart)};\nconst SKILL_ART = ${JSON.stringify(sart)};\n`;
+  const umeta = path.join(gdir, 'interfejs.json'), uimg = path.join(gdir, 'interfejs.webp'), uiart = fs.existsSync(umeta) && fs.existsSync(uimg) ? { ...JSON.parse(fs.readFileSync(umeta, 'utf8')), png: fs.readFileSync(uimg).toString('base64'), webp: 1 } : null;
+  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\nconst TOWN_BUILD_ART = ${JSON.stringify(tart)};\nconst ARTIFACT_ART = ${JSON.stringify(aart)};\nconst MAP3D_ART = ${JSON.stringify(mart)};\nconst BATTLE_BG_ART = ${JSON.stringify(bart)};\nconst SKILL_ART = ${JSON.stringify(sart)};\nconst UI_ART = ${JSON.stringify(uiart)};\n`;
   return shell.replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => artJs + js);
 }
 

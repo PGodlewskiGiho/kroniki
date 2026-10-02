@@ -156,7 +156,7 @@ G.screens.town = {
   },
   draw(ctx) {
     const st = G.state, t = this.town(), fac = t.faction, col = ownerColor(st, t.owner);
-    drawLayer(ctx, Layers.get('townChrome', W, H, paintTownChrome), 0, 0);
+    drawLayer(ctx, Layers.get(`townChrome_${uiArtReady() ? 1 : 0}`, W, H, paintTownChrome), 0, 0);
     const key = `tw_${fac}_${townLayout(t).seed}_${[...t.built].sort().join('.')}_${col}`;
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
@@ -185,7 +185,7 @@ G.screens.town = {
     // garnizon i armia bohatera stojącego w mieście
     // u góry garnizon (z bohaterem w murach: jego armia), u dołu bohater w bramie; między nimi przycisk zamiany jak w Heroes 3
     const hh = heroInTown(st, t), gh = garrisonHero(st, t), gar = gh ? gh.army : t.garrison, selOf = a => (this.sel && this.sel.a === a ? this.sel.i : -1);
-    if (gh) drawHeroPortrait(ctx, 38, 449, gh, ownerColor(st, gh.owner)); else text(ctx, 'Garnizon', 56, 471, { size: 15, align: 'center', color: '#f0e4c0', fam: 'title' });
+    if (gh) drawHeroPortrait(ctx, 38, 449, gh, ownerColor(st, gh.owner)); else text(ctx, 'Garnizon', 56, 471, { size: 15, align: 'center', color: PIXEL_ART ? '#f0e4c0' : UI.goldHi, fam: 'title' });
     this.garRects = drawArmyRow(ctx, gar, 100, 446, { sel: selOf(gar), w: 58 });
     if (hh) { drawHeroPortrait(ctx, 38, 505, hh, ownerColor(st, hh.owner)); this.heroRects = drawArmyRow(ctx, hh.army, 100, 498, { sel: selOf(hh.army), w: 58 }); }
     else { this.heroRects = []; text(ctx, gh ? 'Brama wolna: możesz nająć bohatera w tawernie.' : 'Brak bohatera w mieście. Wejdź bohaterem, aby przekazać mu wojsko.', 321, 523, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.55)' }); }
@@ -193,9 +193,9 @@ G.screens.town = {
     if (this.sel && !this.sel.a[this.sel.i]) this.sel = null;
     const rb = this.baseButtons[0]; rb.disabled = !dwellingLevels(t).length;
     rb.tip = rb.disabled ? 'Najpierw zbuduj siedlisko jednostek (np. z listy budowli po prawej).' : 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).';
-    text(ctx, t.name, 692, 28, { size: 20, align: 'center', color: '#f3e2b0', fam: 'title' });
-    text(ctx, `${factionOf(fac).name}, ${townGold(t)} złota dziennie`, 692, 50, { size: 14, weight: 500, align: 'center', color: '#d8c8a0' });
-    text(ctx, t.builtToday ? 'Budowa: wykorzystana dziś' : 'Budowa: dostępna', 692, 70, { size: 14, weight: 500, align: 'center', color: t.builtToday ? '#e0a070' : '#8ad080' });
+    text(ctx, t.name, 692, 34, { size: 20, align: 'center', color: PIXEL_ART ? '#f3e2b0' : UI.goldHi, fam: 'title' });
+    text(ctx, `${factionOf(fac).name}, ${townGold(t)} złota dziennie`, 692, 54, { size: 15, weight: 600, align: 'center', color: UI.txt2 });
+    text(ctx, t.builtToday ? 'Budowa: wykorzystana dziś' : 'Budowa: dostępna', 692, 72, { size: 15, weight: 600, align: 'center', color: t.builtToday ? '#e0a070' : UI.good });
     // lista budowania: dostępne, a pod nimi zablokowane (szare, z kłódką i brakującymi budowlami); najechanie wskazuje w scenie,
     // gdzie stanie budowla (złota ramka) i co trzeba postawić wcześniej (czerwone ramki)
     const list = buildList(t, st), N = this.LIST_ROWS; this.rows = [];
@@ -205,14 +205,14 @@ G.screens.town = {
       const y = 88 + i * 50, afford = !locked && canAfford(st, B.cost) && !t.builtToday, info = bInfo(B, fac);
       const row = { B, locked, miss, x: 596, y, w: 192, h: 46 }; this.rows.push(row);
       const hot = !G.modal && G.mouse.x >= 596 && G.mouse.x <= 788 && G.mouse.y >= y && G.mouse.y <= y + 46; if (hot) hotRow = row;
-      ctx.fillStyle = hot ? 'rgba(210,160,60,.3)' : locked ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.3)'; rr(ctx, 596, y, 192, 46, 3); ctx.fill();
-      ctx.strokeStyle = afford ? '#b8913f' : locked ? '#4a3e2a' : '#6a5a3a'; ctx.lineWidth = 1.2; ctx.stroke();
+      if (PIXEL_ART) { ctx.fillStyle = hot ? 'rgba(210,160,60,.3)' : locked ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.3)'; rr(ctx, 596, y, 192, 46, 3); ctx.fill(); ctx.strokeStyle = afford ? '#b8913f' : locked ? '#4a3e2a' : '#6a5a3a'; ctx.lineWidth = 1.2; ctx.stroke(); }
+      else slotBox(ctx, 598, y, 188, 46, hot ? 'hover' : locked ? 'off' : '');
       ctx.font = font(14, 700, 'title'); let fs = 14; const maxW = locked ? 160 : 180; while (fs > 10 && ctx.measureText(info.name).width > maxW) { fs--; ctx.font = font(fs, 700, 'title'); }
       text(ctx, info.name, 604, y + 14, { size: fs, color: afford ? '#f3e2b0' : locked ? '#8a7e68' : '#a89a80', fam: 'title' });
       if (!locked) { drawCost(ctx, B.cost, 604, y + 32, { size: 18, font: 13, color: '#e8dcb8', missing: '#e07a6a', free: '#8ad080', have: human(st).resources }); return; }
       padlock(ctx, 776, y + 13, '#a89a80');
-      ctx.font = font(11, 500, 'body'); let req = `Wymaga: ${reqNames(miss, fac)}`; if (ctx.measureText(req).width > 178) { while (req.length > 10 && ctx.measureText(req + '…').width > 178) req = req.slice(0, -1); req += '…'; }
-      text(ctx, req, 604, y + 33, { size: 11, weight: 500, color: '#d08a6a' });
+      ctx.font = font(13, 600, 'body'); let req = `Wymaga: ${reqNames(miss, fac)}`; if (ctx.measureText(req).width > 178) { while (req.length > 10 && ctx.measureText(req + '…').width > 178) req = req.slice(0, -1); req += '…'; }
+      text(ctx, req, 604, y + 33, { size: 13, weight: 600, color: '#d08a6a' });
     });
     if (hotRow) { // ramki w scenie miasta
       const RR = (TownFXCache[lastTownKey] || {}).rects || {}, mark = (slot, col) => { const r = RR[slot]; if (!r) return; ctx.save(); ctx.setLineDash([5, 3]); ctx.strokeStyle = col; ctx.lineWidth = 2; rr(ctx, r.x - 2, r.y - 4, r.w + 4, r.h + 8, 5); ctx.stroke(); ctx.restore(); };
@@ -246,9 +246,9 @@ function padlock(ctx, cx, cy, col) {
 function paintTownChrome(c) {
   stoneFill(c, 0, 0, W, H);
   goldFrame(c, 8, 8, 576, 422);
-  c.fillStyle = 'rgba(0,0,0,.45)'; rr(c, 12, 440, 568, 112, 4); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1.2; c.stroke();
-  rr(c, 592, 12, 200, 528, 4); c.fill(); c.stroke();
-  c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, 8, 569, 784, 27, 3); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1; c.stroke();
+  if (PIXEL_ART) { c.fillStyle = 'rgba(0,0,0,.45)'; rr(c, 12, 440, 568, 112, 4); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1.2; c.stroke(); rr(c, 592, 12, 200, 528, 4); c.fill(); c.stroke(); }
+  else { insetBox(c, 12, 440, 568, 112); paintPanelAt(c, 592, 12, 200, 528); }
+  insetBox(c, 8, 569, 784, 27, 7);
 }
 
 // --- gildia magów: wnętrze w stylu frakcji, okno z żywym widokiem na miasto, półki z czarami poziomów 1–5 (na górze 5) ---
