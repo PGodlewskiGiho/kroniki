@@ -182,3 +182,22 @@ test('machiny pod rozkazami bohatera: namiot medyka leczy wskazany oddział, bez
   });
   assert.deepEqual(r, { ctrlTent: true, ctrlBal: true, phase: 'input', kind: 'heal', healed: true, auto: false });
 });
+
+test('SI w bitwie: leczy rannych, czeka na ruch wroga i nie wchodzi pod cios', async () => {
+  await twoPlayers();
+  const r = await page.evaluate(() => {
+    const st = G.state, me = TX.me(), foe = TX.foe();
+    me.army = TX.army([['swordsman', 10]]); foe.army = TX.army([['ghoul', 12], ['wraith', 3]]);
+    foe.spells = ['cure']; foe.mana = 30; foe.equip.book = foe.equip.book || null;
+    const B = createBattle(st, me, foe), g = B.units.find(u => u.side === 1 && u.cid === 'ghoul'); g.hp = 1;
+    B.active = g; const cast = aiSupportOptions(B, 1, foe, 'cure', heroStat(foe, 'sp'));
+    const out = { heal: cast.some(c => c.val > 0 && c.x === g.x && c.y === g.y) };
+    // czekanie: wróg (strona 0) jeszcze nie ruszył w tej rundzie
+    B.order = B.units.filter(u => u.side === 0 && !u.dead); g.waited = false; out.wait = aiHoldBack(B, g) && g.waited;
+    // poza zasięgiem: pola zagrożone przez piechotę wroga
+    const th = enemyThreat(B, 1), sw = B.units.find(u => u.side === 0 && !isMachine(u));
+    out.threat = th.has(hexKey(sw.x + 1, sw.y)) && !th.has(hexKey(BCOLS - 1, sw.y));
+    return out;
+  });
+  assert.deepEqual(r, { heal: true, wait: true, threat: true });
+});
