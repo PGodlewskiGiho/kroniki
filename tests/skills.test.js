@@ -56,7 +56,7 @@ test('działanie umiejętności w bitwie: atak, łucznictwo, zbroja, czary, przy
   assert.equal(r.morale, 3, 'jedna frakcja +1, przywództwo +2'); assert.equal(r.luck, 3);
 });
 
-test('propozycja przy awansie: ulepszenie i nowa umiejętność, bez nekromancji poza Kurhanem, limit 8', async () => {
+test('propozycja przy awansie: ulepszenie, nowa i trzecia umiejętność, bez nekromancji poza Kurhanem, limit 8', async () => {
   await newGame(page);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), offers = [];
@@ -69,7 +69,7 @@ test('propozycja przy awansie: ulepszenie i nowa umiejętność, bez nekromancji
     return { sizes: [...new Set(offers.map(o => o.length))], noNecro: !offers.flat().includes('necromancy'), again,
       firstUp: known.includes(first[0]), firstNew: !known.includes(first[1]), fullOnlyUp: fullOffer.every(id => full.skills.some(s => s.id === id)), maxed: skillOffer(st, maxed, 3), necroSeen };
   });
-  assert.deepEqual(r.sizes, [2]); assert.ok(r.noNecro); assert.ok(r.again);
+  assert.deepEqual(r.sizes, [3]); assert.ok(r.noNecro); assert.ok(r.again);
   assert.ok(r.firstUp, 'pierwsza opcja ulepsza znaną'); assert.ok(r.firstNew, 'druga jest nowa');
   assert.ok(r.fullOnlyUp, 'przy 8 umiejętnościach tylko ulepszenia'); assert.deepEqual(r.maxed, []); assert.ok(r.necroSeen);
 });

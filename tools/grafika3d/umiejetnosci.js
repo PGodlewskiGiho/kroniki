@@ -2,11 +2,11 @@
 // Każda umiejętność: plakietka (złota rama, płyta w barwie grupy albo szkoły magii) z przedmiotem-znakiem z przodu (SK3[id] -> THREE.Group).
 // Wypalanie: tools/grafika3d/wypal-umiejetnosci.js -> src/grafika/umiejetnosci.webp + umiejetnosci.json.
 /* global THREE, G3, mat, mesh, sph, cap, cyl, cone, box, rbox, torus, lathe, tube, sheet, slab, chunk, decal, DK, LT, rng, arGrp, arRot, arGem, arSword, arBow, arArmor, arBoots, arBanner, arBook, arShield, arCloth */
-const SK_PANEL = { might: '#7a2e22', magic: '#2a3e7a', land: '#2e5a2e', gold: '#7a5a1a', dark: '#3a2a4a', fire: '#7a2a12', air: '#2a5a7a', water: '#1a3a7a', earth: '#4a3a1a' };
+const SK_PANEL = { talent: '#4a2450', might: '#7a2e22', magic: '#2a3e7a', land: '#2e5a2e', gold: '#7a5a1a', dark: '#3a2a4a', fire: '#7a2a12', air: '#2a5a7a', water: '#1a3a7a', earth: '#4a3a1a' };
 const SK_GROUP = { leadership: 'might', offense: 'might', archery: 'might', armorer: 'might', artillery: 'might', ballistics: 'might', firstAid: 'might', resistance: 'might',
   sorcery: 'magic', intelligence: 'magic', mysticism: 'magic', wisdom: 'magic', eagleSight: 'magic', learning: 'magic',
   logistics: 'land', pathfinding: 'land', scouting: 'land', navigation: 'land', luck: 'gold', estates: 'gold', necromancy: 'dark',
-  fireMagic: 'fire', airMagic: 'air', waterMagic: 'water', earthMagic: 'earth' };
+  fireMagic: 'fire', airMagic: 'air', waterMagic: 'water', earthMagic: 'earth', tactics: 'might', triage: 'might', plunder: 'gold', diplomacy: 'gold', interference: 'magic' };
 const skFlame = (g, x, y, s, cols = ['#e8401a', '#ff9a2a', '#ffe070']) => cols.forEach((c, i) => { const k = 1 - i * 0.3; g.add(mesh(new THREE.ConeGeometry(0.55 * s * k, 1.7 * s * k, 16), c, 'fire', [x, y + 0.85 * s * k - 0.1 * i * s, 0.12 * i], null, [1, 1, 0.6])); g.add(sph(0.55 * s * k, c, 'fire', [x, y, 0.12 * i], [1, 0.9, 0.6])); });
 const skLeaf = (col, a) => { const g = new THREE.Group(), L = slab([[0, 0], [0.45, 0.35], [0.5, 0.75], [0.25, 0.95], [0, 0.75], [-0.25, 0.95], [-0.5, 0.75], [-0.45, 0.35]], 0.08, col, 'skin'); g.add(L); g.add(box(0.03, 0.7, 0.03, LT(col, 0.3), 'skin', [0, 0.38, 0.07])); g.rotation.z = a; return g; };
 const SK3 = {
@@ -84,9 +84,66 @@ const SK3 = {
     for (const s of [-1, 1]) { g.add(cyl(0.06, 0.05, 0.3, '#e8b020', 'skin', [s * 0.16, -0.62, 0.3])); for (let k = -1; k <= 1; k++) g.add(cone(0.03, 0.18, '#2a2018', 'horn', [s * 0.16 + k * 0.07, -0.82, 0.34], [0.3, 0, k * 0.4 + Math.PI], 6)); } // nogi i szpony
     return arRot(g, 0.05, -0.12, 0); },
 };
+// --- nowe umiejętności ---
+const skCoin = (g, x, y, z, rx = Math.PI / 2, ry = 0) => g.add(cyl(0.34, 0.34, 0.1, '#f0c040', 'gold', [x, y, z], [rx, ry, 0], null, 24));
+const skArrow = (g, a, col = '#e8e0c8') => { const q = new THREE.Group(); q.add(cyl(0.05, 0.05, 3.0, '#8a5a2a', 'wood', [0, 0, 0])); q.add(cone(0.16, 0.45, '#dfe3ea', 'steel', [0, 1.65, 0], null, 4));
+  for (const s of [-1, 1]) q.add(slab([[0, 0], [s * 0.25, 0.1], [s * 0.25, 0.55], [0, 0.45]], 0.02, col, 'feather', [0, -1.45, 0])); q.rotation.z = a; g.add(q); };
+const skPotion = (col, cross) => { const g = new THREE.Group(), b = lathe([[0.01, -1.3], [0.85, -1.15], [1.0, -0.5], [0.8, 0.1], [0.3, 0.45], [0.28, 1.0], [0.36, 1.1]], '#d8e8f0', 'gem'); b.material = b.material.clone(); Object.assign(b.material, { transparent: true, opacity: 0.3 }); g.add(b);
+  g.add(lathe([[0.01, -1.22], [0.8, -1.08], [0.94, -0.5], [0.76, 0.0], [0.01, 0.0]], col, 'gem')); g.add(cyl(0.24, 0.28, 0.35, '#8a5a2a', 'wood', [0, 1.25, 0]));
+  if (cross) { g.add(box(0.16, 0.6, 0.06, '#ffffff', 'cloth', [0, -0.55, 0.92])); g.add(box(0.6, 0.16, 0.06, '#ffffff', 'cloth', [0, -0.55, 0.92])); } return g; };
+Object.assign(SK3, {
+  tactics: () => { const g = new THREE.Group(); g.add(rbox(3.0, 0.2, 2.2, 0.06, '#c8a870', 'wood', [0, -0.6, 0])); for (let i = -1; i <= 1; i++) g.add(box(3.0, 0.02, 0.03, '#6a4a2a', 'wood', [0, -0.49, i * 0.6]));
+    const pawn = (x, z, c) => g.add(lathe([[0.01, 0], [0.3, 0], [0.28, 0.12], [0.14, 0.25], [0.12, 0.6], [0.2, 0.72], [0.01, 0.95]], c, 'stone', [x, -0.5, z]));
+    pawn(-1.0, 0.5, '#c8302a'); pawn(-0.6, -0.4, '#c8302a'); pawn(0.9, -0.5, '#2a4ac8'); pawn(1.1, 0.4, '#2a4ac8');
+    g.add(tube([[-0.8, -0.3, 0.4], [-0.1, 0.4, 0.2], [0.6, 0.05, -0.2]], 0.07, 0.07, '#ffd060', 'gold')); g.add(cone(0.18, 0.4, '#ffd060', 'gold', [0.75, -0.05, -0.3], [0, 0, -2.2], 4));
+    g.add(cyl(0.04, 0.04, 1.6, '#5a3a20', 'wood', [-1.2, 0.3, -0.6])); g.add(arCloth(0.6, 0.4, '#c8302a', 'cloth', [-0.9, 0.9, -0.6], 0.06)); return arRot(g, 0.55, -0.3, 0); },
+  diplomacy: () => { const g = new THREE.Group(); g.add(cyl(0.38, 0.38, 2.6, '#f0e2b8', 'cloth', [0, 0, 0], [0, 0, Math.PI / 2], null, 24)); for (const x of [-1.35, 1.35]) g.add(cyl(0.42, 0.42, 0.12, '#c8a040', 'gold', [x, 0, 0], [0, 0, Math.PI / 2], null, 24));
+    g.add(box(0.2, 0.9, 0.04, '#c8302a', 'cloth', [0.3, -0.55, 0.36], [0, 0, 0.15])); g.add(cyl(0.3, 0.3, 0.1, '#a01a1a', 'gem', [0.3, -0.95, 0.42], [Math.PI / 2, 0, 0], null, 18));
+    const f = arFeather({ col: '#f4f0e6', gem: '#c8a040' }); f.position.set(-0.5, 0.9, 0.3); f.rotation.z = -0.6; f.scale.setScalar(0.6); g.add(f); return arRot(g, 0.1, -0.2, 0.15); },
+  interference: () => { const g = new THREE.Group(), P = []; for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 0.55 : 1.4; P.push([Math.cos(a) * r, Math.sin(a) * r]); }
+    g.add(slab(P, 0.2, '#8a6ac0', 'gem', [0, 0, 0], null, null, 0.8)); for (const a of [0.8, -0.8]) g.add(rbox(3.2, 0.32, 0.3, 0.1, '#2a2a34', 'iron', [0, 0, 0.3], [0, 0, a]));
+    for (const [x, y] of [[1.3, 1.2], [-1.2, -1.1], [1.0, -1.3]]) g.add(chunk(0.14, 0.12, 0.1, '#c8b0ff', 'gem', [x, y, 0.1], null, 7)); return arRot(g, 0.1, -0.25, 0); },
+  plunder: () => { const g = arBag({ col: '#8a5a2a', gem: '#c8a040' }); g.position.set(-0.35, 0.2, -0.3); const w = new THREE.Group(); w.add(g);
+    for (const [x, y, z, r] of [[0.7, -1.1, 0.4, 1.4], [1.1, -1.15, 0.0, 1.5], [0.4, -1.2, 0.8, 1.6], [0.9, -0.95, 0.6, 1.0], [1.3, -1.0, 0.5, 1.2]]) skCoin(w, x, y, z, r, x);
+    w.add(arGem(0.18, '#3aa060', [0.2, -1.05, 1.0])); return arRot(w, 0.25, -0.35, 0); },
+  triage: () => { const g = new THREE.Group(); g.add(cyl(0.75, 0.75, 1.1, '#f4f0e6', 'cloth', [0, 0.2, 0], [0, 0, 0.2], null, 28)); g.add(cyl(0.25, 0.25, 1.14, '#d8d0c0', 'cloth', [0, 0.2, 0], [0, 0, 0.2], null, 16));
+    g.add(tube([[0.65, -0.2, 0.3], [0.9, -0.8, 0.5], [0.4, -1.3, 0.6], [-0.4, -1.4, 0.5]], 0.28, 0.24, '#f4f0e6', 'cloth'));
+    g.add(box(0.2, 0.7, 0.06, '#d83a3a', 'cloth', [0.1, 0.2, 0.78], [0, 0, 0.2])); g.add(box(0.7, 0.2, 0.06, '#d83a3a', 'cloth', [0.1, 0.2, 0.78], [0, 0, 0.2])); return arRot(g, 0.4, -0.3, 0); },
+  // --- talenty (plakietka w barwie talentu) ---
+  t_veteran: () => arHelm({ col: '#b8c0cc', gem: '#c8302a' }),
+  t_archmage: () => { const g = new THREE.Group(); g.add(cyl(1.5, 1.5, 0.12, '#3a2a7a', 'cloth', [0, -0.9, 0], null, null, 32)); g.add(lathe([[0.95, 0], [0.8, 0.6], [0.55, 1.3], [0.3, 1.9], [0.12, 2.3], [0.01, 2.5]], '#3a2a7a', 'cloth', [0, -0.9, 0]));
+    g.add(torus(0.92, 0.08, '#c8a040', 'gold', [0, -0.75, 0], [Math.PI / 2, 0, 0])); for (const [x, y, z] of [[0.4, 0.0, 0.55], [-0.2, 0.6, 0.4], [0.15, 1.1, 0.3]]) g.add(sph(0.08, '#ffe890', 'glow', [x, y, z])); return arRot(g, 0.15, 0, 0.1); },
+  t_counter: () => { const g = new THREE.Group(); for (const s of [-1, 1]) { const w = arSword({ col: '#dfe3ea', gem: '#d84a3a' }, { guardCol: '#c8a040' }); w.rotation.z = s * 0.7; g.add(w); } return g; },
+  t_volley: () => { const g = new THREE.Group(); for (const a of [-0.45, 0, 0.45]) skArrow(g, a); return arRot(g, 0, 0, -0.3); },
+  t_giantSlayer: () => { const g = arAxe({ col: '#dfe3ea', gem: '#6a4426' }); g.add(arGem(0.2, '#d83a3a', [0, 1.0, 0.25])); return arRot(g, 0, 0.2, -0.35); },
+  t_ambush: () => { const g = new THREE.Group(); for (let i = 0; i < 5; i++) { const l = skLeaf(i % 2 ? '#2e6a2a' : '#3e8a3a', i * 1.25); l.scale.setScalar(1.6); l.position.z = -0.3; g.add(l); }
+    const d = arDagger({ col: '#dfe3ea', gem: '#3a2a1a' }); d.rotation.z = -0.5; g.add(d); return g; },
+  t_warlord: () => arBanner({ col: '#e0b030', gem: '#c8302a' }),
+  t_fortunate: () => { const g = new THREE.Group(); for (let i = 0; i < 4; i++) g.add(skLeaf(i % 2 ? '#e8c040' : '#f0d060', i * Math.PI / 2 + Math.PI / 4)); g.add(sph(0.16, '#fff0a0', 'glow', [0, 0, 0.08]));
+    g.add(tube([[0, 0, -0.02], [0.3, -0.6, 0], [0.55, -1.2, 0]], 0.07, 0.05, '#c8a040', 'gold')); skCoin(g, -0.9, -0.9, 0.2, 0.3); return g; },
+  t_fieldMedic: () => skPotion('#d83a3a', true),
+  t_doubleCast: () => { const g = new THREE.Group(); skFlame(g, -0.7, -0.5, 0.9, ['#2a5ae8', '#5aa0ff', '#c8e8ff']); skFlame(g, 0.7, -0.5, 0.9, ['#e8401a', '#ff9a2a', '#ffe070']); g.add(torus(1.5, 0.05, '#e0c8ff', 'glow', [0, 0, -0.3])); return g; },
+  t_spellWard: () => { const g = arShield({ col: '#c8a040', gem: '#8ac8ff' }, { rim: '#f0d070', gem: true, gemY: 0.2 }); for (const r of [1.75, 1.95]) g.add(torus(r, 0.05, '#9ad8ff', 'glow', [0, 0, -0.2])); return g; },
+  t_manaSiphon: () => { const g = new THREE.Group(); g.add(lathe([[0.01, -1.5], [0.7, -1.45], [0.2, -1.2], [0.15, -0.5], [0.8, -0.2], [1.0, 0.4], [0.95, 0.5]], '#c8a040', 'gold'));
+    const P = []; for (let i = 0; i <= 40; i++) { const t = i / 40, a = t * Math.PI * 5; P.push([Math.cos(a) * (0.2 + t * 0.7), 0.4 + t * 1.5, Math.sin(a) * (0.2 + t * 0.7) * 0.6]); } g.add(tube(P, 0.1, 0.03, '#5aa0ff', 'glow')); g.add(sph(0.35, '#8ac8ff', 'glow', [0, 0.45, 0])); return g; },
+  t_scholar: () => { const g = arBook({ col: '#3a5a8a', gem: '#c8a040' }); const f = arFeather({ col: '#f4f0e6', gem: '#c8a040' }); f.position.set(0.8, 0.3, 0.5); f.rotation.z = -0.5; f.scale.setScalar(0.7); g.add(f); return arRot(g, 0.1, -0.35, 0); },
+  t_deathLord: () => { const g = SK3.necromancy(), c = arCrown({ col: '#c8a040', gem: '#5ae07a' }); c.scale.setScalar(0.55); c.position.set(0, 1.2, 0); g.add(c); return g; },
+  t_forcedMarch: () => { const g = new THREE.Group(), gl = lathe([[0.01, -1.2], [0.75, -1.1], [0.7, -0.5], [0.12, 0], [0.7, 0.5], [0.75, 1.1], [0.01, 1.2]], '#d8e8f0', 'gem'); gl.material = gl.material.clone(); Object.assign(gl.material, { transparent: true, opacity: 0.3 }); g.add(gl);
+    g.add(lathe([[0.01, -1.1], [0.68, -1.0], [0.5, -0.6], [0.01, -0.45]], '#e8c070', 'stone')); g.add(lathe([[0.01, 0.2], [0.45, 0.45], [0.62, 0.85], [0.01, 0.85]], '#e8c070', 'stone'));
+    for (const y of [-1.3, 1.3]) g.add(cyl(1.0, 1.0, 0.18, '#6a4426', 'wood', [0, y, 0], null, null, 28)); for (const a of [0, 2.1, 4.2]) g.add(cyl(0.07, 0.07, 2.6, '#6a4426', 'wood', [Math.cos(a) * 0.85, 0, Math.sin(a) * 0.85])); return arRot(g, 0.1, 0, 0.25); },
+  t_treasurer: () => { const g = new THREE.Group(); g.add(rbox(2.6, 1.3, 1.5, 0.08, '#7a4a26', 'wood', [0, -0.5, 0])); g.add(mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.6, 24, 1, false, 0, Math.PI), '#8a5a2e', 'wood', [0, 0.15, 0], [0, 0, Math.PI / 2], [1, 1, 1]));
+    for (const x of [-0.9, 0.9]) g.add(rbox(0.16, 1.36, 1.56, 0.04, '#c8a040', 'gold', [x, -0.5, 0])); g.add(rbox(0.4, 0.5, 0.1, 0.04, '#c8a040', 'gold', [0, -0.2, 0.78]));
+    for (const [x, z] of [[-0.6, 0.9], [0.2, 1.0], [0.9, 0.85]]) skCoin(g, x, -1.15, z); g.add(arGem(0.18, '#e03a3a', [-0.3, -1.05, 1.1])); return arRot(g, 0.3, -0.4, 0); },
+  t_explorer: () => { const g = new THREE.Group(); g.add(cyl(1.3, 1.3, 0.2, "#c8a040", "gold", [0, 0, 0], [Math.PI / 2, 0, 0], null, 40)); g.add(cyl(1.1, 1.1, 0.06, "#f0e2b8", "cloth", [0, 0, 0.12], [Math.PI / 2, 0, 0], null, 40));
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, r = i % 2 ? 0.45 : 0.95; g.add(cone(0.12, r, i % 2 ? "#6a4a2a" : "#3a2a1a", "iron", [Math.cos(a) * r / 2, Math.sin(a) * r / 2, 0.2], [0, 0, a - Math.PI / 2], 4)); }
+    g.add(cone(0.2, 1.0, "#c8302a", "iron", [0, 0.5, 0.3], null, 4)); g.add(sph(0.12, "#c8a040", "gold", [0, 0, 0.3])); return arRot(g, 0.1, -0.2, 0); },
+  t_diplomat: () => { const g = new THREE.Group(); g.add(tube([[-1.3, -1.2, 0], [-0.4, -0.3, 0.1], [0.5, 0.6, 0.1], [1.2, 1.3, 0]], 0.07, 0.04, '#6a5a2a', 'wood'));
+    for (let i = 0; i < 7; i++) { const t = 0.15 + i * 0.12, x = -1.3 + t * 2.5, y = -1.2 + t * 2.5, s = i % 2 ? 1 : -1, l = skLeaf('#7aa04a', s * 0.9 - 0.8); l.scale.set(0.6, 1.0, 1); l.position.set(x, y, 0.05); g.add(l); }
+    for (const [x, y] of [[-0.2, 0.0], [0.6, 0.85]]) g.add(sph(0.12, '#4a5a2a', 'gem', [x + 0.25, y - 0.2, 0.1])); return g; },
+});
 // Plakietka z przedmiotem: rama 3×3 jednostki, przedmiot dopasowany do koła o promieniu 1.15 przed płytą
 function renderSkill(id, S = 192) {
-  const f = SK3[id]; if (!f) return null; const col = SK_PANEL[SK_GROUP[id]] || '#4a3e2c', w = new THREE.Group();
+  const f = SK3[id]; if (!f) return null; const col = id.startsWith('t_') ? SK_PANEL.talent : SK_PANEL[SK_GROUP[id]] || '#4a3e2c', w = new THREE.Group();
   w.add(rbox(3.0, 3.0, 0.3, 0.1, '#c8a050', 'gold', [0, 0, -0.15])); w.add(rbox(2.62, 2.62, 0.22, 0.06, col, 'leather', [0, 0, 0.0])); w.add(rbox(2.66, 0.08, 0.05, 0.02, LT(col, 0.25), 'leather', [0, 1.26, 0.1]));
   for (const [x, y] of [[-1.32, 1.32], [1.32, 1.32], [-1.32, -1.32], [1.32, -1.32]]) w.add(sph(0.12, '#e8c070', 'gold', [x, y, 0.02]));
   const g = f(), b = new THREE.Box3().setFromObject(g), c = b.getCenter(new THREE.Vector3()), R = b.getBoundingSphere(new THREE.Sphere()).radius, z = b.getSize(new THREE.Vector3()), k = Math.min(2.2 / Math.max(z.x, z.y), 1.5 / R);

@@ -22,7 +22,7 @@ const heroExpText = (h, exp) => (h && exp ? ` Za odwagę ${h.name} otrzymuje ${e
 function attackReport(st, h, res) {
   if (res.outcome === 'win') {
     const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.${res.loot ? ` Zdobyte artefakty: ${res.loot}.` : ''}` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
-    return { me: 0, kind: 'win', title: 'Zwycięstwo!', body: `${flavorOf(st, 'win')}${extra}${raisedText(res.raised)}${heroExpText(h, res.exp)}` };
+    return { me: 0, kind: 'win', title: 'Zwycięstwo!', body: `${flavorOf(st, 'win')}${extra}${raisedText(res.raised)}${spoilsText(res.spoils)}${heroExpText(h, res.exp)}` };
   }
   if (res.outcome === 'fled') return { me: 0, kind: 'fled', title: 'Odwrót', body: `${h.name} ucieka z pola bitwy, a armia się rozprasza. ${flavorOf(st, 'fled')} ${h.female ? 'Czeka' : 'Czeka'} w twojej tawernie: możesz ${h.female ? 'ją' : 'go'} znów nająć (z poziomem, umiejętnościami i artefaktami).` };
   const tail = `${h.name} ${h.female ? 'znika' : 'znika'} z mapy${res.foeLoot ? ', a artefakty przejmuje zwycięzca' : ''}. Za tydzień ${h.female ? 'pojawi się' : 'pojawi się'} w tawernach — może ${h.female ? 'ją' : 'go'} nająć każdy, także przeciwnik.`;
@@ -31,7 +31,7 @@ function attackReport(st, h, res) {
 // Opis wyniku obrony (gracz to strona 1)
 function defenseReport(st, a, D, res) {
   const held = res.outcome !== 'win';
-  if (held) return { me: 1, kind: 'win', title: 'Obrona udana!', body: `${a.h.name} zostaje odparty. ${flavorOf(st, 'win')}${raisedText(res.foeRaised)}${D ? heroExpText(D, res.foeExp) : ''}` };
+  if (held) return { me: 1, kind: 'win', title: 'Obrona udana!', body: `${a.h.name} zostaje odparty. ${flavorOf(st, 'win')}${raisedText(res.foeRaised)}${spoilsText(res.foeSpoils)}${D ? heroExpText(D, res.foeExp) : ''}` };
   return { me: 1, kind: 'lose', title: 'Porażka w obronie.', body: `${res.captured ? `Miasto ${res.captured} przepada. ` : ''}${res.heroDefeated ? `${res.heroDefeated.name} ${res.heroDefeated.female ? 'poległa' : 'poległ'}. ` : ''}${flavorOf(st, 'lose')}` };
 }
 // Okno wyniku. R: { me, kind, title, body }; res.sides z resolveBattle. onOk po zamknięciu.

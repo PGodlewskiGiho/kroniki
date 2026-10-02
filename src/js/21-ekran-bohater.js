@@ -95,6 +95,7 @@ G.screens.hero = {
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
     if (inRect(x, y, SPEC_BOX)) return heroSpec(h) ? `Specjalność: ${specText(h)}.` : null;
     if (x >= 32 && x <= 310 && y >= 32 && y <= 104) { const f = heroFaction(h); return f ? `${heroTitle(h)}. Cecha frakcji (${factionOf(f).name}) — ${traitText(f)}.` : null; }
+    const tr = hitRect(this.talentRects || [], x, y); if (tr) return `Talent — ${talentText(tr.id)}.`;
     const si = this.skillAt(x, y);
     if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
@@ -134,8 +135,10 @@ G.screens.hero = {
      `Zasięg widzenia: ${heroSight(h)}${sB ? ` (+${sB})` : ''} · mana ${h.mana} / ${heroMaxMana(h)} · czary: ${(h.spells || []).length}`,
      `Siła armii: ${Math.round(armyPower(h.army) * heroFactor(h))} (premia bohatera +${Math.round((heroFactor(h) - 1) * 100)}%)`,
      `Morale: ${signed(armyMorale(armyStacks(h.army).map(s => s.cid), h, null))} · Szczęście: ${signed(heroLuck(h))}`,
-     gold ? `Złoto z artefaktów: +${gold} dziennie` : null].filter(Boolean)
-      .forEach((l, i) => text(ctx, l, 32, 286 + i * 22, { size: 15, weight: 500, color: '#2a1606' }));
+     gold ? `Złoto z artefaktów: +${gold} dziennie` : null, (h.talents || []).length ? 'Talenty:' : null].filter(Boolean)
+      .forEach((l, i, L) => { const y = L.length > 4 && (h.talents || []).length ? 276 + i * 19 : 286 + i * 22; text(ctx, l, 32, y, { size: 15, weight: 500, color: '#2a1606' });
+        if (l === 'Talenty:') this.talentRects = h.talents.map((id, k) => { const r = { x: 100 + k * 26, y: y - 12, w: 24, h: 24, id }; skillIcon(ctx, 't_' + id, r.x + 12, y, 24); return r; }); });
+    if (!(h.talents || []).length) this.talentRects = [];
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });
     if (h.machines.length) text(ctx, `Machiny wojenne: ${h.machines.map(id => CREATURES[id].name.toLowerCase()).join(', ')}`, 210, 480, { size: 13, weight: 700, align: 'center', color: '#5a3814' });

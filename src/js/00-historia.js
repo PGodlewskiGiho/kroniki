@@ -121,6 +121,9 @@
    bez kar machiny i sharpshooter; licznik strzał przy oddziale. Kliknięcie w wieże miasta na mapie: drawnObjectAt.
    Garnizon z bohaterem (h.garrison = id miasta): swapGarrison (przycisk „Zamień”, klawisz Z) wprowadza bohatera z bramy do murów
    (przejmuje wojsko garnizonu) i wyprowadza tego z murów; heroAt go pomija (brama wolna na najem), townHero broni miasta.
+   Rozwój bohatera 2: nowe umiejętności (Taktyka: u.tac w 1. rundzie; Dyplomacja w neutralReaction; Zakłócanie: interfMul;
+   Grabież i Opatrywanie ran: victorySpoils po zwycięstwie), awans proponuje trzy umiejętności, a co TALENT_EVERY poziomów
+   talent z trzech (TALENTS, talentOffer, learnTalent, heroPerk; h.talents) z wymaganiami umiejętności; ikony 3D t_<id>.
    Kronika tygodnia (20b): ogłoszenie astrologów z rysunkiem na początku tygodnia (st.weekNews, p.seenWeek, chronicleIconOpts),
    nowe tygodnie Żniw (+HARVEST drewna i rudy) i Magii (pełna mana), Kronika tawerny (showChronicle: ranking graczy jak Gildia
    Złodziei, rubryki CHRONICLE_ROWS odkrywane liczbą własnych tawern).
