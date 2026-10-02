@@ -536,6 +536,23 @@ function dwellingUnits(t, L) {
   const F = factionOf(t.faction);
   return DW_TIERS.filter(s => !s || hasB(t, 'dw' + L + s)).map(s => F.dw['dw' + L + s][1]); // zwykła jednostka zawsze (także przed budową)
 }
+// Ulepszanie kupionych stworów w mieście (jak w Heroes 3): stwór tej frakcji przechodzi na najwyższy zbudowany stopień
+// swojego siedliska (zwykły -> ulepszony -> elitarny); koszt = różnica cen × liczba stworów.
+function townUpgradeTarget(t, cid) {
+  const F = factionOf(t.faction);
+  for (const L of DW_LEVELS) { const ids = DW_TIERS.map(s => (F.dw['dw' + L + s] || [])[1]), k = ids.indexOf(cid); if (k < 0) continue;
+    for (let j = DW_TIERS.length - 1; j > k; j--) if (ids[j] && hasB(t, 'dw' + L + DW_TIERS[j])) return ids[j];
+    return null; }
+  return null;
+}
+function upgradeCostFor(from, to, n) { const a = CREATURES[from].cost || {}, b = CREATURES[to].cost || {}, c = {}; for (const r of RESOURCES) { const d = ((b[r.id] || 0) - (a[r.id] || 0)) * n; if (d > 0) c[r.id] = d; } return c; }
+// Ulepsza oddział a[i] w mieście t; zwraca błąd (napis) albo null
+function townUpgrade(st, t, a, i) {
+  const x = a[i]; if (!x) return 'Pusty oddział'; const to = townUpgradeTarget(t, x.cid); if (!to) return 'Tego oddziału nie da się tu ulepszyć';
+  const R = playerOf(st, t.owner).resources, cost = upgradeCostFor(x.cid, to, x.n); if (!Object.entries(cost).every(([k, v]) => R[k] >= v)) return 'Brakuje surowców na ulepszenie';
+  for (const [k, v] of Object.entries(cost)) R[k] -= v;
+  const same = a.find(y => y && y !== x && y.cid === to); if (same) { same.n += x.n; a[i] = null; } else x.cid = to; return null;
+}
 // Przyrost tygodniowy: bazowy z jednostki, +50% z Cytadelą, +100% z Zamkiem (opisy w BUILDINGS)
 // Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
 function weeklyGrowth(t, L, st) {

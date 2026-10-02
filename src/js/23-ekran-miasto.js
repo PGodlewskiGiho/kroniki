@@ -117,6 +117,19 @@ G.screens.town = {
     const t = this.town(), hh = heroInTown(G.state, t), gh = garrisonHero(G.state, t), g = hitRect(this.garRects, x, y); if (g) return { a: gh ? gh.army : t.garrison, i: g.i };
     const r = hh && hitRect(this.heroRects, x, y); return r ? { a: hh.army, i: r.i } : null;
   },
+  // Okno ulepszenia oddziału (drugie kliknięcie w zaznaczony oddział); „Ulepsz wszystkie” = każdy oddział w mieście, na który starczy
+  showUpgrade(a, i) {
+    const st = G.state, t = this.town(), x = a[i], to = x && townUpgradeTarget(t, x.cid), R = playerOf(st, t.owner).resources; if (!x) return;
+    const C = CREATURES[x.cid];
+    if (!to) return showDialog(`${C.plural} (${x.n}): ${townUpgradeTarget(t, x.cid) === null && C.faction === t.faction ? 'zbuduj wyższy stopień ich siedliska, aby je ulepszyć (albo to już najwyższy stopień).' : 'tych stworów nie da się ulepszyć w tym mieście.'}`, [{ label: 'OK', key: 'enter' }],
+      { iconH: 70, icon: (ctx, cx, cy) => drawCreatureIcon(ctx, x.cid, cx, cy + 30, 2) });
+    const cost = upgradeCostFor(x.cid, to, x.n), ok = Object.entries(cost).every(([k, v]) => R[k] >= v), all = () => { let n = 0; for (const arr of [garrisonHero(st, t) ? garrisonHero(st, t).army : t.garrison, (heroInTown(st, t) || {}).army].filter(Boolean)) for (let j = 0; j < arr.length; j++) if (arr[j] && townUpgradeTarget(t, arr[j].cid) && !townUpgrade(st, t, arr, j)) n++; return n; };
+    showDialog(`${C.plural} (${x.n}) → ${CREATURES[to].plural.toLowerCase()}. Koszt: ${costText(cost) || 'bez opłaty'}${ok ? '' : ' (brakuje surowców)'}. Po ulepszeniu: ${unitStats(CREATURES[to])}.`, [
+      { label: 'Ulepsz', key: 'enter', primary: ok, action: () => { const e = townUpgrade(st, t, a, i); Sfx.play(e ? 'click' : 'build'); this.say(e || `Ulepszono: ${CREATURES[to].plural.toLowerCase()} (${x.n})`); } },
+      { label: 'Ulepsz wszystkie', key: 'w', tip: 'Ulepsza każdy oddział garnizonu i bohatera w mieście, na który starczy surowców.', action: () => { const n = all(); Sfx.play(n ? 'build' : 'click'); this.say(n ? `Ulepszono oddziałów: ${n}` : 'Nie ma czego ulepszyć albo brakuje surowców'); } },
+      { label: 'Nie', key: 'escape' },
+    ], { iconH: 76, icon: (ctx, cx, cy) => { drawCreatureIcon(ctx, x.cid, cx - 50, cy + 32, 2); drawCreatureIcon(ctx, to, cx + 50, cy + 32, 2); iconArrowSide(1)(ctx, cx, cy, '#5a3814'); } });
+  },
   onClick(x, y) {
     if (clickButtons(this.buttons, x, y)) return;
     const st = G.state, t = this.town(), fac = t.faction, row = this.rows.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
@@ -124,7 +137,8 @@ G.screens.town = {
     const hh0 = heroInTown(st, t); if (hh0 && x >= 38 && x <= 74 && y >= 505 && y <= 541) return G.go('hero', { heroId: st.heroes.indexOf(hh0), back: { name: 'town', params: { townId: this.townId } } });
     const slot = this.armySlotAt(x, y);
     if (slot) { // zaznacz oddział, potem wskaż miejsce: przeniesienie, połączenie albo zamiana
-      if (!this.sel) { if (slot.a[slot.i]) this.sel = slot; return; }
+      if (!this.sel) { if (slot.a[slot.i]) { this.sel = slot; if (townUpgradeTarget(t, slot.a[slot.i].cid)) this.say('Kliknij oddział jeszcze raz, aby go ulepszyć'); } return; }
+      if (this.sel.a === slot.a && this.sel.i === slot.i && !this.split) { this.sel = null; this.showUpgrade(slot.a, slot.i); return; } // drugie kliknięcie: okno ulepszenia
       const hh = heroInTown(st, t), gh = garrisonHero(st, t), from = this.sel, heroes = [hh, gh].filter(Boolean).map(o => o.army); this.sel = null;
       if (this.split || G.keys.has('shift')) { this.split = false; showSplit(from.a, from.i, slot.a, slot.i, heroes, err => { if (err) this.say(err); }); return; }
       const err = armyMove(from.a, from.i, slot.a, slot.i, heroes); if (err) this.say(err); return;

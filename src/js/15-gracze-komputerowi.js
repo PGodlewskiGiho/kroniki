@@ -94,7 +94,13 @@ function aiManageTown(st, p, t) {
       const n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), p.id)); if (n > 0) { recruit(st, t, L, cid, n); break; }
     }
   }
-  const h = heroInTown(st, t); if (!h) return;
+  const h = heroInTown(st, t);
+  // ulepszanie kupionych stworów (garnizon i bohater w mieście), gdy po opłacie zostaje zapas złota
+  for (const a of [t.garrison, h && h.army].filter(Boolean)) for (let i = 0; i < a.length; i++) {
+    const x = a[i], to = x && townUpgradeTarget(t, x.cid); if (!to) continue; const c = upgradeCostFor(x.cid, to, x.n);
+    if (p.resources.gold - (c.gold || 0) >= 2000) townUpgrade(st, t, a, i);
+  }
+  if (!h) return;
   armyTransfer(t.garrison, h.army);
   // kuźnia: machiny po werbunku, gdy zostaje zapas złota
   if (hasB(t, 'smith')) for (const id of MACHINES) if (!h.machines.includes(id) && p.resources.gold >= CREATURES[id].cost.gold + 3000) buyMachine(st, t, h, id);

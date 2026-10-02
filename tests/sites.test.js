@@ -35,3 +35,21 @@ test('targowisko na mapie daje kurs jak dwa rynki, także bez rynku w mieście',
   const r = await page.evaluate(() => { const st = G.state; G.marketMin = 2; const L = marketLot(st, ME, 'gold', 'wood'); G.marketMin = 0; return [L && L.give, marketLot(st, ME, 'gold', 'wood')]; });
   assert.ok(r[0] > 0); assert.equal(r[1], null);
 });
+
+test('miasto: ulepszanie kupionych stworów (zwykłe -> ulepszone -> elitarne), koszt = różnica cen', async () => {
+  const r = await page.evaluate(() => {
+    const st = G.state, t = st.towns.find(t => t.owner === ME), F = factionOf(t.faction), base = F.dw.dw1[1], up = F.dw.dw1u[1], el = F.dw.dw1x[1], R = st.players[ME].resources;
+    t.garrison = [{ cid: base, n: 10 }, null, null, null, null, null, null]; t.built = t.built.filter(b => !['dw1u', 'dw1x'].includes(b));
+    const out = { none: townUpgradeTarget(t, base) };
+    t.built.push('dw1', 'dw1u'); out.toUp = townUpgradeTarget(t, base) === up;
+    R.gold = 100000; for (const k of Object.keys(R)) if (k !== 'gold') R[k] = 100;
+    const g0 = R.gold, cost = upgradeCostFor(base, up, 10); out.err = townUpgrade(st, t, t.garrison, 0); out.cid = t.garrison[0].cid === up; out.paid = g0 - R.gold === (cost.gold || 0);
+    t.built.push('dw1x'); out.toElite = townUpgradeTarget(t, up) === el; townUpgrade(st, t, t.garrison, 0); out.elite = t.garrison[0].cid === el;
+    // drugie kliknięcie w zaznaczony oddział otwiera okno ulepszenia
+    G.go('town', { townId: t.id }); return out;
+  });
+  assert.deepEqual(r, { none: null, toUp: true, err: null, cid: true, paid: true, toElite: true, elite: true });
+  await page.waitForFunction(() => G.screenName === 'town');
+  const dlg = await page.evaluate(() => { const s = G.screen, t = s.town(); t.garrison[0] = { cid: factionOf(t.faction).dw.dw2[1], n: 5 }; t.built.push('dw2', 'dw2u'); s.showUpgrade(t.garrison, 0); return G.modal && G.modal.buttons.map(b => b.label); });
+  assert.deepEqual(dlg, ['Ulepsz', 'Ulepsz wszystkie', 'Nie']);
+});
