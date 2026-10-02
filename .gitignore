@@ -7,3 +7,4 @@ node_modules
 tools/portrety-ai/venv/
 tools/tla-ai/.cache/
 tools/dzwieki/.cache/
+tools/muzyka/.cache/

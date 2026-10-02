@@ -191,7 +191,7 @@ G.screens.battle = {
   // Koniec bitwy: zwycięzcy wiwatują przez chwilę, potem okno wyniku nad polem bitwy (jak w Heroes 3). Klik albo klawisz przyspiesza.
   startEnding() {
     const B = this.B, winner = fighters(B, 0).length ? 0 : 1;
-    this.phase = 'over'; this.preview = null; this.casting = null; this.ending = { t: 0, dur: 1.1, winner }; Sfx.play(winner === this.me ? 'victory' : 'defeat', { vol: 0.9, jit: 0 });
+    this.phase = 'over'; this.preview = null; this.casting = null; this.ending = { t: 0, dur: 1.1, winner }; Sfx.play(winner === this.me ? 'victory' : 'defeat', { vol: 0.9, jit: 0 }); Music.stop(0.8);
   },
   finish(fled) {
     const B = this.B, st = B.st, h = B.h, res = resolveBattle(B, fled), f = this.onDone; this.onDone = null; this.phase = 'done';
