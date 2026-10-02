@@ -1,0 +1,468 @@
+{
+ "click": [
+  {
+   "freesound": 54405,
+   "title": "Button Click.",
+   "user": "KorgMS2000B",
+   "license": "CC0-1.0"
+  }
+ ],
+ "page": [
+  {
+   "freesound": 353110,
+   "title": "Book Page Turn 5x.",
+   "user": "Kinoton",
+   "license": "CC0-1.0"
+  }
+ ],
+ "book": [
+  {
+   "freesound": 393844,
+   "title": "Book open.",
+   "user": "envirOmaniac2",
+   "license": "CC0-1.0"
+  }
+ ],
+ "hoof": [
+  {
+   "freesound": 434804,
+   "title": "Hooves, Hard Muddy Surface / Layer 03.",
+   "user": "kalhan",
+   "license": "CC0-1.0"
+  }
+ ],
+ "oar": [
+  {
+   "freesound": 478973,
+   "title": "Oarsmanship SS 1 HQ.",
+   "user": "SkibkaMusic",
+   "license": "CC0-1.0"
+  }
+ ],
+ "coins": [
+  {
+   "freesound": 573351,
+   "title": "Coins30.",
+   "user": "doudar41",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 575572,
+   "title": "One or Two Gold Coins Slide on Wood Surface.",
+   "user": "The_Frisbee_of_Peace",
+   "license": "CC0-1.0"
+  }
+ ],
+ "pickup": [
+  {
+   "freesound": 435534,
+   "title": "Leather bag being dropped and picked up.",
+   "user": "vintage2005",
+   "license": "CC0-1.0"
+  }
+ ],
+ "chest": [
+  {
+   "freesound": 573648,
+   "title": "Wooden Chest Lid Close.",
+   "user": "The_Frisbee_of_Peace",
+   "license": "CC0-1.0"
+  }
+ ],
+ "artifact": [
+  {
+   "freesound": 351408,
+   "title": "GLEAM-GLOW-SFX-CHIME.",
+   "user": "newagesoup",
+   "license": "CC0-1.0"
+  }
+ ],
+ "shrine": [
+  {
+   "freesound": 633208,
+   "title": "Old Church Bell (no noise).",
+   "user": "igroglaz",
+   "license": "CC0-1.0"
+  }
+ ],
+ "flag": [
+  {
+   "freesound": 244981,
+   "title": "Wing Flap (Flag Flapping) 6a.",
+   "user": "ani_music",
+   "license": "CC0-1.0"
+  }
+ ],
+ "build": [
+  {
+   "freesound": 513346,
+   "title": "Hammering Nail.",
+   "user": "se2001",
+   "license": "CC0-1.0"
+  }
+ ],
+ "recruit": [
+  {
+   "freesound": 545675,
+   "title": "HEAVY ARMOUR.",
+   "user": "Bandslam33",
+   "license": "CC0-1.0"
+  }
+ ],
+ "battlestart": [
+  {
+   "freesound": 539956,
+   "title": "war horn.",
+   "user": "adharca",
+   "license": "CC0-1.0"
+  }
+ ],
+ "victory": [
+  {
+   "freesound": 413201,
+   "title": "Clean Trumpet Fanfare .",
+   "user": "joepayne",
+   "license": "CC0-1.0"
+  }
+ ],
+ "defeat": [
+  {
+   "freesound": 573245,
+   "title": "Dark Timpani 1.",
+   "user": "Sorinious_Genious",
+   "license": "CC0-1.0"
+  }
+ ],
+ "march": [
+  {
+   "freesound": 571952,
+   "title": "Footsteps Gravel+Dirt 4.",
+   "user": "Joao_Janz",
+   "license": "CC0-1.0"
+  }
+ ],
+ "wings": [
+  {
+   "freesound": 386706,
+   "title": "wings flapping.",
+   "user": "tommy_mooney",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 389634,
+   "title": "Wing Flap 1.",
+   "user": "_stubb",
+   "license": "CC0-1.0"
+  }
+ ],
+ "stomp": [
+  {
+   "freesound": 622737,
+   "title": "GiantStompFootsteps.",
+   "user": "RobHorror240",
+   "license": "CC0-1.0"
+  }
+ ],
+ "paws": [
+  {
+   "freesound": 461522,
+   "title": "dog running on stone tiles 2.",
+   "user": "15GPanskaBokstefflova_Nicola",
+   "license": "CC0-1.0"
+  }
+ ],
+ "roar": [
+  {
+   "freesound": 85568,
+   "title": "DRAGON ROAR.",
+   "user": "JoelAudio",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 315804,
+   "title": "dragon roar breathy 7.",
+   "user": "bevibeldesign",
+   "license": "CC0-1.0"
+  }
+ ],
+ "growl": [
+  {
+   "freesound": 449820,
+   "title": "Monster Growl.",
+   "user": "DylanTheFish",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 442815,
+   "title": "Goblin Snarl.",
+   "user": "qubodup",
+   "license": "CC0-1.0"
+  }
+ ],
+ "swing": [
+  {
+   "freesound": 327963,
+   "title": "short swish swoosh whoosh reverbed.",
+   "user": "MadMaxSFX",
+   "license": "CC0-1.0"
+  }
+ ],
+ "clash": [
+  {
+   "freesound": 326846,
+   "title": "Sword Clash (24).",
+   "user": "JohnBuhr",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 326858,
+   "title": "Sword Clash (56).",
+   "user": "JohnBuhr",
+   "license": "CC0-1.0"
+  }
+ ],
+ "hit": [
+  {
+   "freesound": 439747,
+   "title": "Punch Hit 1.",
+   "user": "joe_anderson22",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 369326,
+   "title": "CLARKS BIG Punches  Hits Impacts.",
+   "user": "cryanrautha",
+   "license": "CC0-1.0"
+  }
+ ],
+ "arrowhit": [
+  {
+   "freesound": 534945,
+   "title": "ARROW TARGET IMPACT SINGLE ARCHERY 02.",
+   "user": "JoeDinesSound",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 205938,
+   "title": "Arrow Impact.",
+   "user": "Twisted_Euphoria",
+   "license": "CC0-1.0"
+  }
+ ],
+ "death": [
+  {
+   "freesound": 266346,
+   "title": "body falls.",
+   "user": "Ephisus",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 339114,
+   "title": "thud.",
+   "user": "GWMX_YOUTUBE03",
+   "license": "CC0-1.0"
+  }
+ ],
+ "bow": [
+  {
+   "freesound": 263675,
+   "title": "Bow release.",
+   "user": "PorkMuncher",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 384908,
+   "title": "Arrow Whoosh 1.",
+   "user": "Ali_6868",
+   "license": "CC0-1.0"
+  }
+ ],
+ "zap": [
+  {
+   "freesound": 375162,
+   "title": "zap (zap14.",
+   "user": "Samulis",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 375164,
+   "title": "zap (zap3.",
+   "user": "Samulis",
+   "license": "CC0-1.0"
+  }
+ ],
+ "zaphit": [
+  {
+   "freesound": 413224,
+   "title": "Energy impact 4.",
+   "user": "ihitokage",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 413218,
+   "title": "Energy impact 2.",
+   "user": "ihitokage",
+   "license": "CC0-1.0"
+  }
+ ],
+ "cast": [
+  {
+   "freesound": 455206,
+   "title": "Magic Spell 01.",
+   "user": "MATRIXXX_",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 442774,
+   "title": "Magic Spell.",
+   "user": "qubodup",
+   "license": "CC0-1.0"
+  }
+ ],
+ "thunder": [
+  {
+   "freesound": 534023,
+   "title": "Thunderclap.",
+   "user": "Fission9",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 505113,
+   "title": "Thunder, Close.",
+   "user": "Fission9",
+   "license": "CC0-1.0"
+  }
+ ],
+ "fireball": [
+  {
+   "freesound": 267887,
+   "title": "Short-Fireball-Woosh.",
+   "user": "wjl",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 105016,
+   "title": "JM FX Fireball 01.",
+   "user": "Julien Matthey",
+   "license": "CC0-1.0"
+  }
+ ],
+ "explode": [
+  {
+   "freesound": 523783,
+   "title": "Boom Explosion.",
+   "user": "BennettFilmTeacher",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 516914,
+   "title": "Explosion, Medium Blast.",
+   "user": "Kinoton",
+   "license": "CC0-1.0"
+  }
+ ],
+ "firebreath": [
+  {
+   "freesound": 592572,
+   "title": "Flame Burst.",
+   "user": "magnuswaker",
+   "license": "CC0-1.0"
+  }
+ ],
+ "ice": [
+  {
+   "freesound": 177216,
+   "title": "Ice Crack 6.",
+   "user": "ecfike",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 177211,
+   "title": "Ice Crack 3.",
+   "user": "ecfike",
+   "license": "CC0-1.0"
+  }
+ ],
+ "heal": [
+  {
+   "freesound": 483608,
+   "title": "Improvement/Healing Chime.",
+   "user": "Raclure",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 562292,
+   "title": "Heal - Rpg.",
+   "user": "colorsCrimsonTears",
+   "license": "CC0-1.0"
+  }
+ ],
+ "buff": [
+  {
+   "freesound": 381861,
+   "title": "Magic Enchant.",
+   "user": "cribbler",
+   "license": "CC0-1.0"
+  }
+ ],
+ "curse": [
+  {
+   "freesound": 556953,
+   "title": "Horror sfx 01.",
+   "user": "Sami_Hiltunen",
+   "license": "CC0-1.0"
+  }
+ ],
+ "catapult": [
+  {
+   "freesound": 479921,
+   "title": "R01-03-Catapult Launch and Hit Target.",
+   "user": "craigsmith",
+   "license": "CC0-1.0"
+  }
+ ],
+ "crash": [
+  {
+   "freesound": 569507,
+   "title": "Stone Impact Rubble Debris 11.",
+   "user": "Sheyvan",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 569502,
+   "title": "Stone Impact Rubble Debris 6.",
+   "user": "Sheyvan",
+   "license": "CC0-1.0"
+  }
+ ],
+ "thud": [
+  {
+   "freesound": 508575,
+   "title": "BoulderReset.",
+   "user": "Wdomino",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 569503,
+   "title": "Stone Impact Rubble Debris 7.",
+   "user": "Sheyvan",
+   "license": "CC0-1.0"
+  }
+ ],
+ "hoofsnow": [
+  {
+   "freesound": 434804,
+   "title": "Hooves, Hard Muddy Surface / Layer 03.",
+   "user": "kalhan",
+   "license": "CC0-1.0"
+  }
+ ],
+ "gallop": [
+  {
+   "freesound": 434804,
+   "title": "Hooves, Hard Muddy Surface / Layer 03.",
+   "user": "kalhan",
+   "license": "CC0-1.0"
+  }
+ ]
+}

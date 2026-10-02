@@ -41,9 +41,13 @@ def env(x, win=256):
     e = np.sqrt(np.convolve(x * x, np.ones(win) / win, mode='same') + 1e-12); return 20 * np.log10(e + 1e-9)
 
 def onsets(x, min_gap=0.09):
-    e = env(x, 128); de = np.diff(e, prepend=e[0]); thr = e.max() - 30; out = []; last = -1e9
-    for i in np.where((de > 1.2) & (e > thr))[0]:
-        if i - last > min_gap * SR: out.append(i); last = i
+    # obwiednia w ramkach 5 ms; początek uderzenia = skok o >= 8 dB względem minimum z ostatnich 40 ms, powyżej progu ciszy
+    hop = int(0.005 * SR); n = len(x) // hop
+    if n < 3: return []
+    e = 20 * np.log10(np.sqrt((x[: n * hop].reshape(n, hop) ** 2).mean(axis=1)) + 1e-9); thr = e.max() - 32; out = []; last = -1e9
+    for i in range(1, n):
+        lo = e[max(0, i - 8): i].min()
+        if e[i] > thr and e[i] - lo >= 8 and (i - last) * hop > min_gap * SR: out.append(i * hop); last = i
     return out
 
 def shape(seg, dur, gain=0.0, lp=None):
