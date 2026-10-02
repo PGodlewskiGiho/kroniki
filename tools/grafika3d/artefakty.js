@@ -16,8 +16,10 @@ function arCloth(w, h, col, kind, pos, wave = 0.12, n = 2, tatter = 0) {
 // --- broń ---
 function arSword(A, o = {}) {
   const L = o.len || 3.2, W = o.w || 0.26, g = new THREE.Group(), bl = o.blade || A.col;
-  const pts = o.curve ? [[-W, 0], [W, 0], [W * 1.3, L * 0.5], [W * 0.6, L * 0.9], [-W * 0.4, L], [-W * 0.2, L * 0.6]] : [[-W, 0], [W, 0], [W * 0.9, L * 0.82], [0, L], [-W * 0.9, L * 0.82]];
-  g.add(slab(pts, 0.06, bl, o.bladeKind || 'steel', [0, 0.25, 0])); g.add(box(W * 0.35, L * 0.75, 0.075, DK(bl, 0.3), 'steel', [0, 0.25 + L * 0.4, 0]));
+  const pts = o.curve ? [[-W, 0], [W, 0], [W * 1.25, L * 0.45], [W * 0.7, L * 0.78], [-W * 0.15, L * 1.02], [-W * 0.3, L * 0.6]] : [[-W, 0], [W, 0], [W * 0.82, L * 0.72], [W * 0.35, L * 0.9], [0, L * 1.04], [-W * 0.35, L * 0.9], [-W * 0.82, L * 0.72]];
+  /* ostrze: jasna, cienka krawędź (szlif) pod grubszym środkiem z wyżłobieniem – ostre, połyskujące brzegi i spiczasty sztych */
+  g.add(slab(pts, 0.012, LT(bl, 0.55), o.bladeKind || 'steel', [0, 0.25, 0], null, null, 0.1)); g.add(slab(pts.map(([x, y]) => [x * 0.62, y * 0.97]), 0.07, LT(bl, 0.15), o.bladeKind || 'steel', [0, 0.25, 0], null, null, 0.6));
+  if (!o.curve) g.add(box(W * 0.18, L * 0.62, 0.085, DK(bl, 0.35), 'steel', [0, 0.25 + L * 0.34, 0]));
   const gw = o.guard || 1.1; g.add(o.wing ? arGrp(slab([[0, 0], [gw * 0.6, 0.3], [gw, 0.05], [gw * 0.7, -0.12]], 0.1, o.guardCol || '#c8a040', 'gold', [0, 0.18, 0]), slab([[0, 0], [-gw * 0.6, 0.3], [-gw, 0.05], [-gw * 0.7, -0.12]], 0.1, o.guardCol || '#c8a040', 'gold', [0, 0.18, 0]))
     : rbox(gw, 0.16, 0.2, 0.05, o.guardCol || '#8a8e98', 'iron', [0, 0.2, 0]));
   g.add(cyl(0.09, 0.08, 0.75, o.grip || '#5a3a20', 'leather', [0, -0.25, 0])); for (let i = 0; i < 4; i++) g.add(torus(0.095, 0.022, DK(o.grip || '#5a3a20', 0.3), 'leather', [0, -0.5 + i * 0.17, 0], [Math.PI / 2, 0, 0]));
@@ -45,12 +47,12 @@ function arHammer(A, o = {}) {
     g.add(slab([[0.1, 0.35], [-0.12, 0.02], [0.06, 0.02], [-0.1, -0.35], [0.16, -0.04], [-0.02, -0.04]], 0.04, A.gem, 'glow', [0, 1.4, 0.42])); }
   return arRot(g, 0, 0, -Math.PI / 5);
 }
-function arBow(A) {
-  const g = new THREE.Group(), lim = s => [[0.05, s * 0.15, 0], [-0.35, s * 1.0, 0], [-0.3, s * 1.8, 0], [0.05, s * 2.25, 0]];
-  for (const s of [-1, 1]) { g.add(tube(lim(s), 0.1, 0.05, A.col, 'wood')); g.add(cone(0.07, 0.18, A.gem, 'bone', [0.07, s * 2.3, 0], s < 0 ? [Math.PI, 0, 0] : null)); }
-  g.add(cyl(0.12, 0.12, 0.45, '#3a2414', 'leather', [0.05, 0, 0])); g.add(cyl(0.012, 0.012, 4.5, A.gem, 'cloth', [0.08, 0, 0]));
+function arBow(A) { // łuk naciągnięty do strzału: majdan z przodu (+x), ramiona wygięte do tyłu, cięciwa między końcami, strzała grotem do przodu
+  const g = new THREE.Group(), lim = s => [[0.4, s * 0.2, 0], [0.32, s * 1.0, 0], [0.0, s * 1.75, 0], [-0.45, s * 2.2, 0]];
+  for (const s of [-1, 1]) { g.add(tube(lim(s), 0.1, 0.05, A.col, 'wood')); g.add(tube([[-0.45, s * 2.2, 0], [-0.4, s * 2.4, 0]], 0.05, 0.03, A.gem, 'bone')); }
+  g.add(cyl(0.12, 0.12, 0.5, '#3a2414', 'leather', [0.4, 0, 0])); for (const s of [-1, 1]) g.add(tube([[-0.42, s * 2.2, 0], [-0.9, 0, 0]], 0.012, 0.012, A.gem, 'cloth'));
   const ar = new THREE.Group(); ar.add(cyl(0.035, 0.035, 3.2, '#8a6a40', 'wood', [0, 0, 0])); ar.add(cone(0.09, 0.3, '#b8c0cc', 'steel', [0, 1.7, 0], null, 4)); for (const s of [-1, 1]) ar.add(slab([[0, 0], [s * 0.18, -0.1], [s * 0.18, -0.5], [0, -0.4]], 0.01, '#e8e0c8', 'feather', [0, -1.15, 0]));
-  ar.rotation.z = -Math.PI / 2; ar.position.set(0.5, 0, 0.05); g.add(ar); return arRot(g, 0, 0, -Math.PI / 6);
+  ar.rotation.z = -Math.PI / 2; ar.position.set(0.7, 0, 0.05); g.add(ar); return arRot(g, 0, 0, Math.PI / 5);
 }
 function arStaff(A) {
   const g = new THREE.Group(), R = rng(3), pts = []; for (let i = 0; i <= 8; i++) pts.push([Math.sin(i * 1.3) * 0.06, -2.2 + i * 0.5, Math.cos(i * 1.3) * 0.06]);
@@ -89,7 +91,7 @@ function arHelm(A, o = {}) {
   else if (o.type === 'bone') { g.add(lathe([[0.9, -0.6], [1.0, 0], [0.95, 0.5], [0.7, 0.95], [0.3, 1.15], [0, 1.2]], c, 'bone')); g.add(box(1.3, 0.16, 0.2, '#100c0a', 'skin', [0, 0.05, 0.85]));
     for (const s of [-1, 1]) g.add(tube([[s * 0.85, 0.5, 0], [s * 1.5, 0.8, 0.1], [s * 1.8, 1.5, 0.2], [s * 1.6, 2.0, 0.1]], 0.2, 0.03, '#d8ccb0', 'horn'));
     for (let i = 0; i < 5; i++) g.add(cone(0.1, 0.4, c, 'bone', [0, 0.6 + i * 0.12, -0.6 + i * 0.3], [-0.5 + i * 0.25, 0, 0], 6)); g.add(arGem(0.15, A.gem, [0, 0.7, 0.92])); }
-  else if (o.type === 'titan') { g.add(lathe([[0.95, -0.5], [1.0, 0.1], [0.9, 0.6], [0.55, 1.0], [0, 1.12]], c, 'steel')); g.add(slab([[-0.08, 0], [0.08, 0], [0.06, 1.3], [-0.06, 1.3]], 1.6, '#c8a040', 'gold', [0, 0.1, 0], [0, Math.PI / 2, 0]));
+  else if (o.type === 'titan') { g.add(lathe([[0.95, -0.5], [1.0, 0.1], [0.9, 0.6], [0.55, 1.0], [0, 1.12]], c, 'steel')); g.add(slab([[-1.0, 0.75], [-0.6, 1.35], [0.2, 1.5], [0.95, 1.05], [0.6, 0.95], [0, 1.15], [-0.6, 0.85]], 0.12, '#c8a040', 'gold', [0, 0, 0], [0, Math.PI / 2, 0]));
     for (const s of [-1, 1]) g.add(slab([[0, 0], [0.9, 0.5], [1.3, 1.2], [0.8, 0.9], [0.4, 0.6]], 0.05, '#e8ecf0', 'feather', [s * 0.9, 0.4, 0], [0, s < 0 ? Math.PI : 0, 0]));
     g.add(box(0.9, 0.12, 0.2, '#0a0a10', 'iron', [0, 0.25, 0.9])); g.add(arGem(0.17, A.gem, [0, 0.62, 0.9])); }
   else { g.add(lathe([[0.95, -0.4], [0.98, 0.1], [0.85, 0.6], [0.5, 1.0], [0.1, 1.2], [0, 1.22]], c, 'iron')); g.add(torus(0.97, 0.07, DK(c, 0.2), 'iron', [0, -0.35, 0], [Math.PI / 2, 0, 0]));
@@ -115,9 +117,9 @@ function arHood(A) {
   g.add(torus(0.18, 0.04, '#5a3a1a', 'wood', [0, -1.2, 1.0])); return arRot(g, 0.1, -0.3, 0);
 }
 // --- szyja ---
-function arChain(g, col, y0 = 1.0, r = 0.9, kind = 'gold') { for (let i = 0; i <= 16; i++) { const a = Math.PI * (0.15 + 0.7 * i / 16), x = Math.cos(a) * r, y = y0 - Math.sin(a) * -r + 0.4; g.add(torus(0.07, 0.02, col, kind, [x, y - r * 0.4, 0], [0, i % 2 ? Math.PI / 2 : 0, a])); } }
+function arChain(g, col, y0 = 0, r = 0.85, kind = 'gold', bead = false) { for (let i = 0; i <= 22; i++) { const t = i / 22, a = Math.PI * (0.95 + t * 1.1), x = Math.cos(a) * r, y = y0 + r * 1.25 + Math.sin(a) * r * 1.25; if (Math.abs(x) < 0.12 && t > 0.4 && t < 0.6) continue; g.add(bead ? sph(0.06, col, kind, [x, y, 0]) : torus(0.075, 0.022, col, kind, [x, y, 0], [0, i % 2 ? Math.PI / 2 : 0, a + Math.PI / 2])); } }
 function arAmulet(A, o = {}) {
-  const g = new THREE.Group(); arChain(g, o.chain || '#c8a040', 0.6, 1.0, o.chainKind || 'gold');
+  const g = new THREE.Group(); arChain(g, o.chain || '#c8a040', o.type === 'phoenix' ? 0.1 : -0.05, 0.85, o.chainKind || 'gold');
   if (o.type === 'phoenix') { g.add(arGem(0.3, A.gem, [0, -0.3, 0.1])); for (const s of [-1, 1]) g.add(slab([[0, 0], [s * 0.5, 0.35], [s * 1.0, 0.55], [s * 0.85, 0.1], [s * 1.0, -0.1], [s * 0.6, -0.15], [s * 0.7, -0.4], [s * 0.2, -0.2]], 0.06, A.col, 'gold', [0, -0.25, 0]));
     g.add(slab([[-0.15, 0], [0.15, 0], [0.3, -0.6], [0, -0.45], [-0.3, -0.6]], 0.06, A.col, 'gold', [0, -0.5, 0])); g.add(sph(0.14, A.col, 'gold', [0, 0.05, 0.05])); g.add(cone(0.06, 0.15, '#c87a1a', 'gold', [0, 0.05, 0.2], [Math.PI / 2, 0, 0])); }
   else if (o.type === 'raven') { g.add(cyl(0.55, 0.55, 0.1, A.col, 'iron', [0, -0.35, 0], [Math.PI / 2, 0, 0], null, 6)); g.add(torus(0.55, 0.05, '#8a8e98', 'steel', [0, -0.35, 0], null, null)); g.add(sph(0.2, A.gem, 'gem', [0, -0.35, 0.06], [1.5, 1, 0.6]));
@@ -126,7 +128,7 @@ function arAmulet(A, o = {}) {
   return arRot(g, 0.1, -0.2, 0);
 }
 function arFang(A, o = {}) {
-  const g = new THREE.Group(); for (let i = 0; i <= 12; i++) { const a = Math.PI * (0.1 + 0.8 * i / 12); g.add(sph(0.06, A.gem, 'leather', [Math.cos(a) * 1.0, -Math.sin(a) * -1.0 - 0.4, 0])); }
+  const g = new THREE.Group(); arChain(g, A.gem, o.type === 'vamp' ? 0.4 : 0.15, 0.85, 'leather', true);
   if (o.type === 'vamp') { g.add(tube([[0, 0.2, 0], [0.05, -0.5, 0.05], [-0.05, -1.3, 0]], 0.2, 0.02, A.col, 'bone')); g.add(cyl(0.24, 0.22, 0.25, '#c8ccd4', 'steel', [0, 0.25, 0])); g.add(sph(0.11, A.gem, 'gem', [0.02, -1.4, 0.04], [1, 1.4, 1])); }
   else for (const [x, a] of [[-0.45, 0.4], [0, 0], [0.45, -0.4]]) { g.add(tube([[x, 0.1, 0], [x * 1.1, -0.4, 0.1], [x * 1.4 + a * 0.3, -0.9, 0.05]], 0.13, 0.02, A.col, 'bone')); g.add(torus(0.12, 0.03, '#5a3a1a', 'leather', [x, 0.1, 0], [Math.PI / 2, 0, 0])); }
   return arRot(g, 0.1, -0.2, 0);
@@ -231,11 +233,11 @@ function arFeather(A) {
   for (let i = 0; i < 8; i++) g.add(box(0.02, 0.36, 0.03, A.gem, 'feather', [(i % 2 ? 0.25 : -0.25), -1.0 + i * 0.32, 0.03], [0, 0, i % 2 ? -0.9 : 0.9]));
   g.add(cyl(0.03, 0.015, 3.6, '#f0e8d0', 'bone', [0, 0.1, 0.02])); return arRot(g, 0, 0.3, -Math.PI / 5);
 }
-function arCoin(A) {
-  const g = new THREE.Group(); g.add(cyl(1.1, 1.1, 0.16, A.col, 'gold', [0, 0, 0], [Math.PI / 2, 0, 0], null, 40)); g.add(torus(1.04, 0.05, LT(A.col, 0.2), 'gold', [0, 0, 0.08]));
-  for (let i = 0; i < 40; i++) { const a = i / 40 * Math.PI * 2; g.add(box(0.03, 0.14, 0.1, DK(A.col, 0.3), 'gold', [Math.cos(a) * 1.1, Math.sin(a) * 1.1, 0], [0, 0, a])); }
-  g.add(sph(0.36, A.col, 'gold', [0.05, 0.1, 0.05], [1, 1.15, 0.25])); g.add(slab([[-0.35, -0.2], [0.35, -0.2], [0.25, -0.55], [-0.25, -0.55]], 0.04, A.col, 'gold', [0.05, 0, 0.06]));
-  for (let i = 0; i < 5; i++) g.add(cone(0.05, 0.16, A.col, 'gold', [-0.2 + i * 0.1, 0.5, 0.08], null, 4));
+function arCoin(A0) {
+  const A = { ...A0, col: LT(A0.col, 0.3) }, g = new THREE.Group(); g.add(cyl(1.1, 1.1, 0.16, A.col, 'iron', [0, 0, 0], [Math.PI / 2, 0, 0], null, 40)); g.add(torus(1.04, 0.05, LT(A.col, 0.2), 'iron', [0, 0, 0.08]));
+  for (let i = 0; i < 40; i++) { const a = i / 40 * Math.PI * 2; g.add(box(0.03, 0.14, 0.1, DK(A.col, 0.3), 'iron', [Math.cos(a) * 1.1, Math.sin(a) * 1.1, 0], [0, 0, a])); }
+  g.add(sph(0.36, A.col, 'iron', [0.05, 0.1, 0.05], [1, 1.15, 0.25])); g.add(slab([[-0.35, -0.2], [0.35, -0.2], [0.25, -0.55], [-0.25, -0.55]], 0.04, A.col, 'iron', [0.05, 0, 0.06]));
+  for (let i = 0; i < 5; i++) g.add(cone(0.05, 0.16, A.col, 'iron', [-0.2 + i * 0.1, 0.5, 0.08], null, 4));
   return arRot(g, 0.2, -0.45, 0.1);
 }
 function arBanner(A) {
