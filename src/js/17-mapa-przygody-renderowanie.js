@@ -220,10 +220,15 @@ function renderChunkPixel(map, cx, cy) {
   const SN = MapRender.season || 0;
   // D = gęstość pikseli (PXD): teren liczony w drobnych pikselach, współrzędne tekstur (ax, ay) w dawnych pikselach grafiki
   const n = map.n, S = CHUNK * AP, SF = Math.round(S * MapRender.D), D = SF / S, M = 5, MF = Math.round(M * D), R = SF + 2 * MF, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
-  for (let y = 0; y < R; y++) for (let x = 0; x < R; x++) {
-    const ax = bx + (x - MF) / D, ay = by + (y - MF) / D, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
-    tid[y * R + x] = map.terrain[clamp(Math.floor((ay + jy) / AP), 0, n - 1) * n + clamp(Math.floor((ax + jx) / AP), 0, n - 1)];
-  }
+  // przesunięcie granic terenów szumem: szum jest gładki (skala 7 pikseli grafiki), więc liczymy go co piksel grafiki i interpolujemy
+  const GW = Math.ceil(R / D) + 2, gx0 = bx - M, gy0 = by - M, JX = new Float32Array(GW * GW), JY = new Float32Array(GW * GW);
+  for (let j = 0; j < GW; j++) for (let i = 0; i < GW; i++) { const ax = gx0 + i, ay = gy0 + j; JX[j * GW + i] = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9; JY[j * GW + i] = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9; }
+  for (let y = 0; y < R; y++) { const ay = by + (y - MF) / D, v = ay - gy0, j = Math.min(GW - 2, Math.floor(v)), fy = v - j;
+    for (let x = 0; x < R; x++) {
+      const ax = bx + (x - MF) / D, u = ax - gx0, i = Math.min(GW - 2, Math.floor(u)), fx = u - i, k = j * GW + i;
+      const jx = (JX[k] * (1 - fx) + JX[k + 1] * fx) * (1 - fy) + (JX[k + GW] * (1 - fx) + JX[k + GW + 1] * fx) * fy, jy = (JY[k] * (1 - fx) + JY[k + 1] * fx) * (1 - fy) + (JY[k + GW] * (1 - fx) + JY[k + GW + 1] * fx) * fy;
+      tid[y * R + x] = map.terrain[clamp(Math.floor((ay + jy) / AP), 0, n - 1) * n + clamp(Math.floor((ax + jx) / AP), 0, n - 1)];
+    } }
   // podziemia: lita skała (ściana jaskini) to ciemność jak w Heroes 3, z miękkim, poszarpanym brzegiem (pola skały interpolowane i przesunięte szumem)
   const under = map.ln && cx * CHUNK >= map.ln && cy * CHUNK >= map.ln, rk = under ? new Float32Array(R * R) : null;
   if (under) { const rock = (x, y) => { x = clamp(x, 0, n - 1); y = clamp(y, 0, n - 1); return map.obst[y * n + x] === OBST.MOUNT ? 1 : 0; };
@@ -340,9 +345,9 @@ function buildMinimap(map, ex) {
 // Pamięć podręczna wyrenderowanych fragmentów mapy (8×8 pól)
 const MapRender = {
   map: null, explored: null, season: 0, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
-  // D: gęstość terenu (pikseli fragmentu na piksel grafiki); gładko: tyle, ile bufora świata na piksel (ostro, bez zbędnego pomniejszania)
+  // D: gęstość terenu (pikseli fragmentu na piksel grafiki = 2 px logiczne); gładko: tyle, ile bufora świata (ostro, bez powiększania)
   D: PXD,
-  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; this.warmed = false; this.D = PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 4) / 4, PXD, 3); },
+  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; this.warmed = false; this.D = PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * 4) / 4, PXD, 6); },
   // Pora roku: po zmianie wszystkie kawałki terenu rysują się od nowa
   setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); this.warmed = false; } },
   // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
@@ -461,7 +466,7 @@ function fogChunk(ex, n, cx, cy) {
   let c = null;
   if (any) {
     const w = pixBuf('fogWork', S, S, true), f = w._ctx, ox = -cx * CHUNK * T, oy = -cy * CHUNK * T; f.setTransform(1, 0, 0, 1, 0, 0); f.clearRect(0, 0, S, S);
-    f.setTransform(1 / PIX, 0, 0, 1 / PIX, 0, 0);
+    const fk = S / (CHUNK * T); f.setTransform(fk, 0, 0, fk, 0, 0); // px logiczne → piksele kawałka (gęstość terenu)
     for (const [alpha, extra] of [[0.45, 7], [1, 0]]) {
       f.fillStyle = `rgba(0,0,0,${alpha})`; f.beginPath();
       for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) {
@@ -530,7 +535,7 @@ function drawWorldPixel(b, st) {
     else if (ob.type === 'town') {
       const t = st.towns[ob.townId], lvl = townLevel(t), mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, fc = ownerColor(st, ob.owner);
       const k3 = `town_${t.faction}_${lvl}`, s3 = map3dSprite(k3);
-      if (s3) { bl(s3, px, py + 10); for (const [fx, fy] of map3dFlags(k3)) bl(flagSprite(fc, 10, 6), px + fx, py + 10 + fy - 22); continue; } // 3D: brama na polu wejścia, flagi na masztach modelu
+      if (s3) { const gy = py - 14; bl(s3, px, gy); for (const [fx, fy] of map3dFlags(k3)) bl(flagSprite(fc, 10, 6), px + fx, gy + fy - 22); continue; } // 3D: brama tuż za polem wejścia (bohater stoi przed nią), flagi na masztach modelu
       bl(townSprite(t.faction, lvl), mx, my);
       for (const [fx, fy] of townFlagPoints(t.faction, lvl)) bl(flagSprite(fc, 10, 6), mx + fx, my + fy - 20); // drzewce stoi na szczycie dachu
     }
@@ -590,8 +595,8 @@ function mapLight(w, h) {
     c.putImageData(img, 0, 0);
   }, 1);
 }
-// Gładko: bufor świata w rozdzielczości ekranu, ale najwyżej 1,5 piksela na piksel logiczny (ekrany o dużej gęstości: 2–3 razy mniej pracy, wciąż ostro)
-const mapBufScale = () => Math.min(G.rs, 1.5);
+// Gładko: bufor świata w rozdzielczości ekranu (najwyżej 3 piksele na piksel logiczny), żeby świat był ostry
+const mapBufScale = () => Math.min(G.rs, 3);
 function drawMapView(ctx, st, scr) {
   MapRender.setSeason(seasonIdx(st));
   // Przybliżenie: świat rysujemy w widoku „wirtualnym” (VIEW o rozmiarze viewW × viewH), potem skalujemy do prawdziwego

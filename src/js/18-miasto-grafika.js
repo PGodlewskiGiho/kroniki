@@ -973,6 +973,7 @@ function drawTownFX(ctx, t, fx) {
     ctx.closePath(); ctx.fill(); ctx.restore();
   }
   if (!fx.painted) { drawCreaturesFX(ctx, LL, tm); drawTownFolk(ctx, LL, tm, fx.rects); } // na namalowanym tle nie ma ścieżek sceny 2D
+  if (!PIXEL_ART) { ctx.restore(); return; } // gładko: bez ptaków, świetlików, mgły, żaru, opadów, zarodników, pyłu i nietoperzy (czysty widok miasta)
   if (LL.birds) for (let i = 0; i < 4; i++) {
     const x = ((tm * 18 + i * 170) % 720) - 60, y = 46 + i * 15 + Math.sin(tm * 0.8 + i) * 6, f = Math.sin(tm * 9 + i * 2) * 3;
     ctx.strokeStyle = LL.birdCol || 'rgba(40,40,60,.8)'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(x - 5, y - f); ctx.quadraticCurveTo(x - 2, y - 1, x, y + 1); ctx.quadraticCurveTo(x + 2, y - 1, x + 5, y - f); ctx.stroke();
