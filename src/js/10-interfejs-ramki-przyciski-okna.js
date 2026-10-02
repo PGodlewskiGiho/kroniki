@@ -119,6 +119,8 @@ function paintPanel(c, w, h) {
   if (w >= 60 && h >= 40) for (const [px, py] of [[2, 2], [w - 12, 2], [2, h - 12], [w - 12, h - 12]]) drawUiPiece(c, 'rivet', px, py, 10, 10);
   c.restore();
 }
+// Panel w już rysowanej warstwie (np. rama ekranu miasta): bez osobnej warstwy
+function paintPanelAt(c, x, y, w, h) { c.save(); c.translate(x - 2, y - 2); paintPanel(c, w, h); c.restore(); }
 // Pergamin (tło okien i paneli): pixel art z pamięci (uiLayer): jasny środek, przypalone brzegi w ditheringu, włókna papieru
 function drawParchment(ctx, x, y, w, h) { drawUi(ctx, uiLayer(`parch_${w}x${h}`, w + 16, h + 16, c => paintParchment(c, 4, 4, w, h)), x - 4, y - 4); drawCorners(ctx, x, y, w, h); }
 function paintParchment(ctx, x, y, w, h) {
@@ -151,6 +153,26 @@ function paintParchmentSmooth(c, x, y, w, h) {
   c.beginPath(); c.rect(x, y, w, h); c.rect(x + B, y + B, w - 2 * B, h - 2 * B); c.fillStyle = '#2a1c11'; c.fill('evenodd'); // drewniana oprawa
   goldRim(c, x, y, w, h, 3); goldRim(c, x + B - 2, y + B - 2, w - 2 * B + 4, h - 2 * B + 4, 2);
   c.restore();
+}
+// Rozłożona księga (czary): oprawa z czerwonej skóry w złotej listwie, dwie strony pergaminu z cieniem grzbietu i krawędziami kart
+function drawBook(ctx, x, y, w, h) { drawUi(ctx, uiLayer(`book_${w}x${h}_${uiArtReady() ? 1 : 0}`, w + 16, h + 16, c => paintBook(c, 4, 4, w, h)), x - 4, y - 4); }
+function paintBook(c, x, y, w, h) {
+  c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(x + 6, y + 9, w, h);
+  leatherFill(c, x, y, w, h, 21, -0.05); c.save(); c.globalCompositeOperation = 'multiply'; c.fillStyle = '#b0402c'; c.fillRect(x, y, w, h); c.restore(); goldRim(c, x, y, w, h, 3);
+  const P = 18, pw = (w - 2 * P) / 2, py = y + P - 4, ph = h - 2 * P + 4;
+  for (const [sx, dir] of [[x + P, -1], [x + w / 2, 1]]) {
+    for (let k = 3; k > 0; k--) { c.fillStyle = k % 2 ? '#d8c494' : '#bfa978'; c.fillRect(sx + (dir < 0 ? -k * 1.5 : k * 1.5), py + k, pw, ph); } // krawędzie kart pod stroną
+    paintParchmentSmoothPage(c, sx, py, pw, ph, dir);
+  }
+  const g = c.createLinearGradient(x + w / 2 - 26, 0, x + w / 2 + 26, 0); g.addColorStop(0, 'rgba(60,35,12,0)'); g.addColorStop(0.45, 'rgba(60,35,12,.45)'); g.addColorStop(0.5, 'rgba(30,15,5,.6)'); g.addColorStop(0.55, 'rgba(60,35,12,.45)'); g.addColorStop(1, 'rgba(60,35,12,0)'); c.fillStyle = g; c.fillRect(x + w / 2 - 26, py, 52, ph); // grzbiet
+  if (uiArtReady()) for (const [px, pyy] of [[x + 2, y + 2], [x + w - 16, y + 2], [x + 2, y + h - 16], [x + w - 16, y + h - 16]]) drawUiPiece(c, 'rivet', px, pyy, 14, 14);
+}
+function paintParchmentSmoothPage(c, x, y, w, h, dir) {
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); const g = c.createLinearGradient(x, 0, x + w, 0);
+  if (dir < 0) { g.addColorStop(0, '#d9c393'); g.addColorStop(0.15, '#efe0b6'); g.addColorStop(0.85, '#e6d3a5'); g.addColorStop(1, '#c4a872'); } else { g.addColorStop(0, '#c4a872'); g.addColorStop(0.15, '#e6d3a5'); g.addColorStop(0.85, '#efe0b6'); g.addColorStop(1, '#d9c393'); }
+  c.fillStyle = g; c.fillRect(x, y, w, h); const r = mulberry32(Math.round(w) * 17 + (dir > 0 ? 3 : 1));
+  for (let i = 0; i < w * h / 2200 + 4; i++) { const px = x + r() * w, py = y + r() * h, rad = 10 + r() * 50, gg = c.createRadialGradient(px, py, 0, px, py, rad), a = 0.03 + r() * 0.05; gg.addColorStop(0, `rgba(140,95,45,${a})`); gg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gg; c.fillRect(px - rad, py - rad, rad * 2, rad * 2); }
+  c.fillStyle = noise(c); c.globalAlpha = 0.4; c.fillRect(x, y, w, h); c.restore();
 }
 function divider(ctx, x1, x2, y) {
   if (!PIXEL_ART && uiArtReady()) { const cx = (x1 + x2) / 2, g = ctx.createLinearGradient(x1, 0, x2, 0); g.addColorStop(0, 'rgba(120,82,30,0)'); g.addColorStop(0.2, 'rgba(120,82,30,.75)'); g.addColorStop(0.8, 'rgba(120,82,30,.75)'); g.addColorStop(1, 'rgba(120,82,30,0)');
@@ -210,13 +232,14 @@ function paintButton(c, w, h, st) {
 class Button {
   constructor(x, y, w, h, label, action, o = {}) {
     Object.assign(this, { x, y, w, h, label, action, key: o.key || null, size: o.size || 18, disabled: !!o.disabled,
-      selected: o.selected || null, sub: o.sub || null, swatch: o.swatch || null, icon: o.icon || null, lead: o.lead || null, tip: o.tip || null, primary: !!o.primary });
+      selected: o.selected || null, sub: o.sub || null, swatch: o.swatch || null, icon: o.icon || null, lead: o.lead || null, tip: o.tip || null, primary: !!o.primary, display: !!o.display });
   }
   hit(px, py) { return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h; }
   isSel() { return typeof this.selected === 'function' ? this.selected() : !!this.selected; }
   draw(ctx) {
     const hover = G.hover === this, pressed = hover && G.mouse.down, sel = this.isSel(), st = this.disabled ? 'd' : sel ? 's' : this.primary && !PIXEL_ART ? (hover ? 'ph' : 'p') : hover ? 'h' : 'n';
     const { x, w, h } = this, y = this.y + (pressed ? 2 : 0);
+    if (this.display && !PIXEL_ART) { slotBox(ctx, x, this.y, w, h, hover ? 'hover' : ''); text(ctx, this.label, x + w / 2, this.y + h / 2 + 1, { size: 16, align: 'center', color: this.dispCol || UI.txt, fam: 'title' }); return; } // pole z wartością (np. mana), nie przycisk
     ctx.save();
     drawUi(ctx, uiLayer(`btn_${w}x${h}_${st}`, w + 4, h + 6, c => paintButton(c, w, h, st)), x, y);
     const col = PIXEL_ART ? (this.disabled ? '#8d857a' : (hover ? '#fff3c4' : '#ecd08a')) : this.disabled ? UI.txtOff : hover || sel ? '#fff4cc' : '#f0dca6';
@@ -250,7 +273,7 @@ function showDialog(msg, opts, extra = {}) {
   const w = Math.max(400, opts.length * (bw + gap) + 36); G.ctx.font = font(20, 500, 'body'); const lines = wrapText(G.ctx, msg, w - 70);
   const iconH = extra.icon ? (extra.iconH || 56) : 0, h = 120 + bh + lines.length * 26 + iconH, x = (W - w) / 2, y = (H - h) / 2;
   const total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
-  const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip, lead: o.lead, primary: o.primary ?? (o.key === 'enter' && opts.length > 1) }); bx += bw + gap; return b; });
+  const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip, lead: o.lead, selected: o.selected, primary: o.primary ?? (o.key === 'enter' && opts.length > 1) }); bx += bw + gap; return b; });
   G.modal = {
     msg, buttons, locked: !!extra.locked, hasIcon: !!extra.icon, // msg, hasIcon: treść okna i czy ma rysunek (podgląd w testach)
     draw(ctx) {

@@ -5,7 +5,7 @@
 const path = require('path'), fs = require('fs');
 const { ROOT, CACHE, openStudio } = require('./wspolne');
 const ITEMS = [['corner_tl', 112, 112], ['corner_tr', 112, 112, [-1, 1]], ['corner_bl', 112, 112, [1, -1]], ['corner_br', 112, 112, [-1, -1]], ['rivet', 40, 40], ['medal', 112, 112], ['divider', 320, 64],
-  ...['crown', 'next', 'move', 'sleep', 'book', 'gear', 'dig', 'puzzle', 'stairs', 'hourglass', 'sword', 'shield'].map(k => ['ic_' + k, 96, 96])];
+  ...['crown', 'next', 'move', 'sleep', 'book', 'gear', 'dig', 'puzzle', 'stairs', 'hourglass', 'sword', 'shield', 'orb', 'scroll'].map(k => ['ic_' + k, 96, 96])];
 (async () => {
   const st = await openStudio({ width: 400, height: 300 });
   const out = await st.page.evaluate(ITEMS => {

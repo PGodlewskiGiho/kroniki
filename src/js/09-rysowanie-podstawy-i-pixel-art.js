@@ -8,7 +8,7 @@ const FONT_BODY = "'Cormorant Garamond', Georgia, 'Times New Roman', serif";
 // i powiększania bez wygładzania (dawny styl pikselowy wraca po ustawieniu na true).
 const PIXEL_ART = false;
 const FONT_PIXEL = "'Jersey 10', 'Courier New', monospace", PIXEL_FONT_K = { title: 1.12, body: 1.1 };
-const pixelFont = () => G.settings.font !== 'classic';
+const pixelFont = () => PIXEL_ART && G.settings.font !== 'classic'; // gładka grafika: zawsze czcionki klasyczne (Cinzel, Cormorant)
 function font(size, weight = 700, fam = 'title', italic = false) {
   if (pixelFont()) return `400 ${Math.max(13, Math.round(size * PIXEL_FONT_K[fam === 'title' ? 'title' : 'body']))}px ${FONT_PIXEL}`; // jedna grubość (pogrubienie rozmywa piksele), najmniej 13 px
   return `${italic ? 'italic ' : ''}${weight} ${size}px ${fam === 'title' ? FONT_TITLE : FONT_BODY}`;

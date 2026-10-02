@@ -58,7 +58,11 @@ test('interfejs gładki: pergamin, kamień i przyciski w pełnej rozdzielczości
   assert.equal(r.arcs, 4, 'rogi rr to łuki');
 });
 
-test('czcionka pikselowa wbudowana w plik gry (także polskie znaki) i przełącznik w ustawieniach grafiki', async () => {
+test('czcionki wbudowane w plik gry (także polskie znaki); gładka grafika: zawsze Cinzel i Cormorant, bez przełącznika', async () => {
+  const s = await page.evaluate(async () => { if (PIXEL_ART) return null; await Promise.all(['700 16px Cinzel', "600 16px 'Cormorant Garamond'"].map(f => document.fonts.load(f, 'Aąęśćżźółń')));
+    showGfxSettings(); const labels = G.modal.buttons.map(b => b.label); G.modal = null;
+    return { cinzel: document.fonts.check('700 16px Cinzel', 'ąęśćżźółń'), body: document.fonts.check("600 16px 'Cormorant Garamond'", 'ąęśćżźółń'), title: font(16), text: font(16, 500, 'body'), labels }; });
+  if (s) { assert.ok(s.cinzel && s.body, 'Cinzel i Cormorant z pliku gry'); assert.match(s.title, /Cinzel/); assert.match(s.text, /Cormorant/); assert.ok(!s.labels.some(l => /Czcionka/.test(l)), 'bez przełącznika czcionki'); return; }
   const r = await page.evaluate(async () => {
     await document.fonts.load(`16px ${FONT_PIXEL}`, 'Aąęśćżźółń'); const S = G.settings, f0 = S.font; S.font = 'classic';
     const ok = document.fonts.check(`16px ${FONT_PIXEL}`, 'ąęśćżźółń'), classic = font(16);

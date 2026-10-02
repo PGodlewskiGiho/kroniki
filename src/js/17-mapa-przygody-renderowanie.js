@@ -216,7 +216,10 @@ function seasonLand(col, t, ax, ay, hh, S) {
   if (!PIXEL_ART) return mixRgb(col, mixRgb(SNOWC[1], SNOWC[2], vnoise2(ax / 2, ay / 2, 99)), 0.55 + clamp((v - 0.2) * 3, 0, 1) * 0.35); // gładki śnieg
   return mixRgb(col, SNOWC[hh < 0.3 ? 1 : hh > 0.97 ? 2 : 0], v > 0.3 ? 0.9 : 0.55);
 }
-function renderChunkPixel(map, cx, cy) {
+// Gotowy kawałek od razu (widoczny kawałek, pierwsza klatka); w tle MapRender.warm maluje go porcjami (renderChunkSteps)
+function renderChunkPixel(map, cx, cy) { const it = renderChunkSteps(map, cx, cy); let r; do r = it.next(); while (!r.done); return r.value; }
+// Malowanie kawałka jako generator: przerwy co kilka rzędów pikseli, żeby praca w tle nie zabierała czasu klatkom
+function* renderChunkSteps(map, cx, cy) {
   const SN = MapRender.season || 0;
   // D = gęstość pikseli (PXD): teren liczony w drobnych pikselach, współrzędne tekstur (ax, ay) w dawnych pikselach grafiki
   const n = map.n, S = CHUNK * AP, SF = Math.round(S * MapRender.D), D = SF / S, M = 5, MF = Math.round(M * D), R = SF + 2 * MF, bx = cx * S, by = cy * S, lim = n * AP, tid = new Uint8Array(R * R);
@@ -228,7 +231,7 @@ function renderChunkPixel(map, cx, cy) {
       const ax = bx + (x - MF) / D, u = ax - gx0, i = Math.min(GW - 2, Math.floor(u)), fx = u - i, k = j * GW + i;
       const jx = (JX[k] * (1 - fx) + JX[k + 1] * fx) * (1 - fy) + (JX[k + GW] * (1 - fx) + JX[k + GW + 1] * fx) * fy, jy = (JY[k] * (1 - fx) + JY[k + 1] * fx) * (1 - fy) + (JY[k + GW] * (1 - fx) + JY[k + GW + 1] * fx) * fy;
       tid[y * R + x] = map.terrain[clamp(Math.floor((ay + jy) / AP), 0, n - 1) * n + clamp(Math.floor((ax + jx) / AP), 0, n - 1)];
-    } }
+    } if ((y & 15) === 15) yield; }
   // podziemia: lita skała (ściana jaskini) to ciemność jak w Heroes 3, z miękkim, poszarpanym brzegiem (pola skały interpolowane i przesunięte szumem)
   const under = map.ln && cx * CHUNK >= map.ln && cy * CHUNK >= map.ln, rk = under ? new Float32Array(R * R) : null;
   if (under) { const rock = (x, y) => { x = clamp(x, 0, n - 1); y = clamp(y, 0, n - 1); return map.obst[y * n + x] === OBST.MOUNT ? 1 : 0; };
@@ -242,9 +245,18 @@ function renderChunkPixel(map, cx, cy) {
     for (let d = 0; d < 8; d++) { const dx = DX8[d], dy = DY8[d]; if (!at(x + dx, y + dy) || (dx && dy && (at(x + dx, y) || at(x, y + dy)))) continue; segs.push([px, py, px + dx * 8, py + dy * 8, t]); any = true; }
     if (!any) segs.push([px, py, px, py, t]);
   }
+  // odcinki dróg w siatce pól kawałka: piksel sprawdza tylko odcinki z pól 3×3 wokół siebie (odcinek ma najwyżej pół pola)
+  const SG = CHUNK + 3, sgrid = segs.length ? Array.from({ length: SG * SG }, () => []) : null;
+  if (sgrid) for (const sg of segs) { const lx = Math.floor((sg[0] + bx) / AP) - x0, ly = Math.floor((sg[1] + by) / AP) - y0; if (lx >= 0 && ly >= 0 && lx < SG && ly < SG) sgrid[ly * SG + lx].push(sg); }
+  // gładko: barwa lądu (szum, pora roku) liczona w węzłach siatki pikseli grafiki i interpolowana między nimi (szum jest gładki,
+  // a liczenia jest D² razy mniej); węzły per teren liczone w miarę potrzeby
+  const LW = S + 2, lat = {}, lnode = (t, gx, gy) => { let A = lat[t]; if (!A) { A = lat[t] = new Float32Array(LW * LW * 3); A.fill(-1); } const i = ((gy - by) * LW + gx - bx) * 3;
+    if (A[i] < 0) { const c0 = seasonLand(landColorSmooth(t, gx, gy), t, gx, gy, 0.5, SN); A[i] = c0[0]; A[i + 1] = c0[1]; A[i + 2] = c0[2]; } return i; };
+  const landLerp = (t, ax, ay) => { const gx = Math.floor(ax), gy = Math.floor(ay), u = ax - gx, v = ay - gy, A = (lnode(t, gx, gy), lat[t]), i00 = lnode(t, gx, gy), i10 = lnode(t, gx + 1, gy), i01 = lnode(t, gx, gy + 1), i11 = lnode(t, gx + 1, gy + 1);
+    const w00 = (1 - u) * (1 - v), w10 = u * (1 - v), w01 = (1 - u) * v, w11 = u * v; return [A[i00] * w00 + A[i10] * w10 + A[i01] * w01 + A[i11] * w11, A[i00 + 1] * w00 + A[i10 + 1] * w10 + A[i01 + 1] * w01 + A[i11 + 1] * w11, A[i00 + 2] * w00 + A[i10 + 2] * w10 + A[i01 + 2] * w01 + A[i11 + 2] * w11]; };
   const c = document.createElement('canvas'); c.width = c.height = SF; const g = c.getContext('2d'), img = g.createImageData(SF, SF), d = img.data;
   const wm = new Uint8Array(SF * SF); let wet = false; // maska wody: 1 = głębia (fale), 2 = pas przy brzegu (piana)
-  for (let fy = 0; fy < SF; fy++) for (let fx = 0; fx < SF; fx++) {
+  for (let fy = 0; fy < SF; fy++) { if (fy && (fy & 7) === 0) yield; for (let fx = 0; fx < SF; fx++) {
     const k = (fy * SF + fx) * 4, px = fx / D, py = fy / D, ax = bx + px, ay = by + py, ia = Math.floor(ax), ja = Math.floor(ay), wi = fy * SF + fx; let col;
     if (ax >= lim || ay >= lim) col = PC.void;
     else {
@@ -256,7 +268,7 @@ function renderChunkPixel(map, cx, cy) {
         else if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
         else { const P = TPAL[0]; if (!PIXEL_ART) col = mixRgb(P[1], P[0], clamp((vnoise2(ax / 8, ay / 8, 61) - 0.2) * 2.2, 0, 1)); else { col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; } }
       } else {
-        col = seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN);
+        col = PIXEL_ART ? seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN) : landLerp(t, ax, ay);
         const below = TT(fx, fy + D); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
       }
       if (rk) { const q = (fy + MF) * R + fx + MF, k = rk[q];
@@ -266,13 +278,15 @@ function renderChunkPixel(map, cx, cy) {
           col = mixRgb(col, rc, Math.min(1, rim * 1.2)); const kk = clamp((k - 0.55) / 0.45, 0, 1); col = mixRgb(col, [9, 8, 13], kk * kk * (3 - 2 * kk)); } }
       if (segs.length) {
         let best = 99, bt = 0;
-        for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5 / D, py + 0.5 / D, s); if (dd < best) { best = dd; bt = s[4]; } }
+        const tx = Math.floor(ax / AP) - x0, ty = Math.floor(ay / AP) - y0;
+        for (let gy = Math.max(0, ty - 1); gy <= Math.min(SG - 1, ty + 1); gy++) for (let gx = Math.max(0, tx - 1); gx <= Math.min(SG - 1, tx + 1); gx++)
+          for (const s of sgrid[gy * SG + gx]) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5 / D, py + 0.5 / D, s); if (dd < best) { best = dd; bt = s[4]; } }
         if (best <= 4.3) wm[wi] = 0;
         if (best <= 3.3) col = SN === 3 ? mixRgb(roadColor(bt, ia, ja, hh), SNOWC[0], 0.3) : roadColor(bt, ia, ja, hh); else if (best <= 4.3) col = PC.edge;
       }
     }
     d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2]; d[k + 3] = 255;
-  }
+  } }
   g.putImageData(img, 0, 0);
   if (map.ln && cx * CHUNK >= map.ln && cy * CHUNK >= map.ln) { g.globalCompositeOperation = 'multiply'; g.fillStyle = '#6e6a84'; g.fillRect(0, 0, SF, SF); g.globalCompositeOperation = 'source-over'; } // podziemia: mroczne dno jaskini (ściany i świecące ozdoby mają własne barwy)
   g.setTransform(D, 0, 0, D, 0, 0); // sprite'y ozdób i przeszkód w dawnych jednostkach
@@ -347,15 +361,19 @@ const MapRender = {
   map: null, explored: null, season: 0, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
   // D: gęstość terenu (pikseli fragmentu na piksel grafiki = 2 px logiczne); gładko: tyle, ile bufora świata (ostro, bez powiększania)
   D: PXD,
-  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; this.warmed = false; this.D = PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * 4) / 4, PXD, 6); },
+  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.job = null; this.fog.clear(); this.mini = null; this.warmed = false; this.D = PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * 4) / 4, PXD, 6); },
   // Pora roku: po zmianie wszystkie kawałki terenu rysują się od nowa
-  setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); this.warmed = false; } },
+  setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); this.job = null; this.warmed = false; } },
   // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
   get(cx, cy, allow = true) {
     const key = cx + ',' + cy; let c = this.cache.get(key);
     if (c) { this.cache.delete(key); this.cache.set(key, c); return c; }
     if (!allow) return null;
-    c = renderChunkPixel(this.map, cx, cy); this.cache.set(key, c); this.lastGen = performance.now();
+    if (this.job && this.job.key === key) this.job = null; // kawałek malowany w tle jest potrzebny teraz: od razu w całości
+    return this.store(key, renderChunkPixel(this.map, cx, cy));
+  },
+  store(key, c) {
+    this.cache.set(key, c); this.lastGen = performance.now();
     const nC = Math.ceil(this.map.n / CHUNK); if (this.cache.size > Math.max(160, nC * nC)) this.cache.delete(this.cache.keys().next().value); // mieści całą mapę (olbrzymia: 324 kawałki, ~21 MB)
     return c;
   },
@@ -371,9 +389,14 @@ const MapRender = {
       for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!this.has(cx, cy) && !voidChunk(this.map, cx, cy)) todo.push([cx, cy, Math.hypot(cx + 0.5 - mx, cy + 0.5 - my)]);
       if (!todo.length) { this.warmed = true; return; }
       todo.sort((a, b) => a[2] - b[2]);
-      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(3, dl.timeRemaining() - 2) : 6), vis = Math.hypot(viewW(), viewH()) / CP / 2 + 1;
+      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(6, dl.timeRemaining() - 2) : 6), vis = Math.hypot(viewW(), viewH()) / CP / 2 + 1;
       // tyle kawałków, ile zmieści się w wolnym czasie (wg średniego czasu jednego), ale co najmniej jeden
       for (const [cx, cy, d] of todo) {
+        if (d >= vis) { // poza widokiem: porcjami, najwyżej do końca wolnego czasu (kawałek dokończy się w następnych chwilach)
+          const key = cx + ',' + cy; if (!this.job || this.job.key !== key || this.job.map !== this.map) this.job = { key, map: this.map, it: renderChunkSteps(this.map, cx, cy) };
+          let r; do r = this.job.it.next(); while (!r.done && performance.now() < end);
+          if (!r.done) break; this.job = null; this.store(key, r.value); if (performance.now() >= end) break; continue;
+        }
         const t0 = performance.now(); this.get(cx, cy); const dt = performance.now() - t0; this.avgGen = this.avgGen ? this.avgGen * 0.8 + dt * 0.2 : dt;
         if (d < vis) G.dirty = true; if (performance.now() + this.avgGen > end) break;
       }

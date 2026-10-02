@@ -7,10 +7,10 @@ function paintAdvChrome(c) {
   insetBox(c, 8, VH - 31, VW - 16, 27, 7);
 }
 function showKingdom(st) {
-  const R = human(st).resources, x = 150, y = 84, w = 500, h = 444, mines = {};
+  const R = human(st).resources, x = 150, y = 62, w = 500, h = 480, mines = {};
   for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === ME) mines[ob.kind] = (mines[ob.kind] || 0) + 1;
   const total = Object.values(mines).reduce((a, b) => a + b, 0);
-  const btn = new Button(W / 2 - 70, y + h - 48, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
+  const btn = new Button(W / 2 - 70, y + h - 58, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   G.modal = {
     buttons: [btn],
     draw(ctx) {
@@ -31,7 +31,7 @@ function showKingdom(st) {
       });
       divider(ctx, x + 40, x + w - 40, y + 330);
       text(ctx, `Bohaterowie: ${myHeroes(st).length}    Kopalnie: ${total}    Miasta: ${myTowns(st).length}`, W / 2, y + 348, { size: 17, align: 'center', weight: 500, color: '#3a1e08' });
-      text(ctx, `Obeliski: ${obelisksSeen(st, ME)} z ${obelisksTotal(st)}${st.grail && st.grail.found === ME ? ', Graal odnaleziony' : ''}`, W / 2, y + 396, { size: 15, align: 'center', weight: 500, color: '#5a3814' });
+      text(ctx, `Obeliski: ${obelisksSeen(st, ME)} z ${obelisksTotal(st)}${st.grail && st.grail.found === ME ? ', Graal odnaleziony' : ''}`, W / 2, y + 398, { size: 15, align: 'center', weight: 500, color: '#5a3814' });
       text(ctx, `${dateText(st)} (Tydzień ${weekName(st)})`, W / 2, y + 372, { size: 16, align: 'center', italic: true, weight: 500, color: '#5a3814' });
       btn.draw(ctx);
     },
@@ -416,7 +416,7 @@ G.screens.adventure = {
   draw(ctx) {
     const st = G.state; if (!st || !st.map) return;
     this.layout();
-    drawLayer(ctx, Layers.get(`advChrome_${VW}x${VH}`, VW, VH, paintAdvChrome), 0, 0);
+    drawLayer(ctx, Layers.get(`advChrome_${VW}x${VH}_${uiArtReady() ? 1 : 0}`, VW, VH, paintAdvChrome), 0, 0);
     drawMapView(ctx, st, this); drawPanel(ctx, st, this);
     this.buttons.forEach(b => b.draw(ctx));
     drawResourceBar(ctx, st, VH - H, VW);

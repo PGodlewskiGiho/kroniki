@@ -97,8 +97,8 @@ G.screens.hero = {
   },
   draw(ctx) {
     const st = G.state, h = this.hero(), col = ownerColor(st, h.owner);
-    stoneFill(ctx, 0, 0, W, H); drawParchment(ctx, 12, 12, 396, 548);
-    ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(ctx, 416, 12, 372, 548, 4); ctx.fill(); ctx.strokeStyle = '#8a6d32'; ctx.lineWidth = 1.2; ctx.stroke();
+    stoneFill(ctx, 0, 0, W, H); drawParchment(ctx, 12, 12, 396, PIXEL_ART ? 548 : 576);
+    if (PIXEL_ART) { ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(ctx, 416, 12, 372, 548, 4); ctx.fill(); ctx.strokeStyle = '#8a6d32'; ctx.lineWidth = 1.2; ctx.stroke(); } else drawStone(ctx, 416, 12, 372, 584);
     // nagłówek i doświadczenie
     drawHeroPortrait(ctx, 32, 32, h, col, 2);
     text(ctx, h.name, 120, 50, { size: 25, color: '#3a1e08', fam: 'title' });
@@ -112,8 +112,8 @@ G.screens.hero = {
     // cechy
     PRIMARY.forEach((p, i) => {
       const bx = 32 + i * 90, b = heroBonus(h, p.id);
-      ctx.fillStyle = 'rgba(90,55,20,.12)'; rr(ctx, bx, 164, 84, 80, 4); ctx.fill();
-      iconStat(ctx, p.id, bx + 42, 184, '#6a4418');
+      ctx.fillStyle = 'rgba(90,55,20,.12)'; rr(ctx, bx, 164, 84, 80, 4); ctx.fill(); if (!PIXEL_ART) { ctx.strokeStyle = 'rgba(120,80,30,.35)'; ctx.lineWidth = 1; ctx.stroke(); }
+      if (PIXEL_ART || !drawUiPiece(ctx, { att: 'ic_sword', def: 'ic_shield', sp: 'ic_orb', kn: 'ic_scroll' }[p.id], bx + 28, 168, 28, 28)) iconStat(ctx, p.id, bx + 42, 184, '#6a4418');
       text(ctx, p.name, bx + 42, 208, { size: 12, weight: 500, align: 'center', color: '#5a3814' });
       text(ctx, String(h.stats[p.id] + b), bx + 42, 230, { size: 20, align: 'center', color: '#2a1606', fam: 'title' });
       if (b) text(ctx, `+${b}`, bx + 78, 230, { size: 12, weight: 700, align: 'right', color: '#2a6a1e' });
@@ -131,24 +131,23 @@ G.screens.hero = {
     if (h.machines.length) text(ctx, `Machiny wojenne: ${h.machines.map(id => CREATURES[id].name.toLowerCase()).join(', ')}`, 210, 480, { size: 13, weight: 700, align: 'center', color: '#5a3814' });
     else text(ctx, this.preview ? `Kandydat z tawerny: podgląd przed najęciem (${HERO_COST} złota).` : 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
     // ekwipunek
-    text(ctx, 'Ekwipunek', 602, 38, { size: 20, align: 'center', color: '#f0e4c0', fam: 'title' });
-    ctx.fillStyle = 'rgba(240,228,192,.07)'; circ(ctx, 599, 89, 26, 'rgba(240,228,192,.07)'); rr(ctx, 560, 118, 78, 170, 20); ctx.fill(); ctx.fillRect(566, 280, 26, 70); ctx.fillRect(606, 280, 26, 70);
+    text(ctx, 'Ekwipunek', 602, 38, { size: 20, align: 'center', color: PIXEL_ART ? '#f0e4c0' : UI.goldHi, fam: 'title' }); if (!PIXEL_ART) divider(ctx, 470, 734, 56);
+    { const a = 'rgba(214,174,88,.09)'; circ(ctx, 599, 89, 26, a); ctx.fillStyle = a; rr(ctx, 560, 118, 78, 170, 20); ctx.fill(); ctx.fillRect(566, 280, 26, 70); ctx.fillRect(606, 280, 26, 70); } // sylwetka bohatera pod gniazdami
     const hot = !G.modal ? this.equipAt(G.mouse.x, G.mouse.y) : null;
     for (const s of EQUIP_SLOTS) {
       const id = h.equip[s.id];
-      ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(ctx, s.x, s.y, SLOT_BOX, SLOT_BOX, 4); ctx.fill();
-      ctx.strokeStyle = hot === s ? '#ffd970' : id ? '#b8913f' : '#5a4a32'; ctx.lineWidth = hot === s ? 2 : 1.2; ctx.stroke();
+      slotBox(ctx, s.x, s.y, SLOT_BOX, SLOT_BOX, hot === s ? 'hover' : '');
       const lk = (h.locked || {})[s.id];
       if (id) drawSprite(ctx, artSprite(id, true), s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, 1.5);
       else if (lk) { ctx.globalAlpha = 0.35; drawSprite(ctx, artSprite(lk, true), s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, 1.5); ctx.globalAlpha = 1; // zajęte przez relikwię
         ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s.x + 5, s.y + 5); ctx.lineTo(s.x + SLOT_BOX - 5, s.y + SLOT_BOX - 5); ctx.moveTo(s.x + SLOT_BOX - 5, s.y + 5); ctx.lineTo(s.x + 5, s.y + SLOT_BOX - 5); ctx.stroke(); }
-      else text(ctx, s.name, s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, { size: 10, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.35)' });
+      else text(ctx, s.name, s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, { size: 12, italic: true, weight: 500, align: 'center', color: 'rgba(214,190,140,.4)' });
     }
-    text(ctx, `Plecak (${h.bag.length})`, 432, 372, { size: 15, color: '#f0e4c0', fam: 'title' });
+    text(ctx, `Plecak (${h.bag.length})`, 432, 372, { size: 15, color: PIXEL_ART ? '#f0e4c0' : UI.goldHi, fam: 'title' });
     const pages = Math.max(1, Math.ceil(h.bag.length / BAG_VIEW)); this.bagPage = clamp(this.bagPage, 0, pages - 1);
     for (let i = 0; i < BAG_VIEW; i++) {
       const bx = 432 + i * 58, id = h.bag[this.bagPage * BAG_VIEW + i];
-      ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(ctx, bx, 386, SLOT_BOX, SLOT_BOX, 4); ctx.fill(); ctx.strokeStyle = '#5a4a32'; ctx.lineWidth = 1; ctx.stroke();
+      slotBox(ctx, bx, 386, SLOT_BOX, SLOT_BOX);
       if (id) drawSprite(ctx, artSprite(id, true), bx + SLOT_BOX / 2, 386 + SLOT_BOX / 2, 1.5);
     }
     this.bPrev.disabled = this.bagPage === 0; this.bNext.disabled = this.bagPage >= pages - 1;
@@ -156,15 +155,14 @@ G.screens.hero = {
     const all = {}; for (const id of Object.values(h.equip)) if (id) for (const [k, v] of Object.entries(ARTIFACTS[id].bonus)) all[k] = (all[k] || 0) + v;
     ctx.font = font(13, 500, 'body');
     wrapText(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 236).slice(0, 2)
-      .forEach((l, i) => text(ctx, l, 602, 453 + i * 14, { size: 11, weight: 500, align: 'center', color: '#c8b68a' })); // między strzałkami plecaka
+      .forEach((l, i) => text(ctx, l, 602, 453 + i * 14, { size: 13, weight: 600, align: 'center', color: UI.txt2 })); // między strzałkami plecaka
     for (let i = 0; i < MAX_SKILLS; i++) {
       const r = this.skillRect(i), sk = h.skills[i], hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
-      ctx.fillStyle = sk ? 'rgba(90,60,20,.45)' : 'rgba(0,0,0,.3)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
-      ctx.strokeStyle = hot ? '#ffd970' : sk ? '#b8913f' : '#4a3e2c'; ctx.lineWidth = hot ? 1.8 : 1; ctx.stroke();
+      slotBox(ctx, r.x, r.y, r.w, r.h, hot ? 'hover' : sk ? '' : 'off');
       if (!sk) continue;
       skillIcon(ctx, sk.id, r.x + r.w / 2, r.y + 19); // ikona 32 px, obok niej poziom (kreski od dołu)
       for (let k = 0; k < 3; k++) { ctx.fillStyle = k < sk.lv ? '#ffd970' : 'rgba(240,228,192,.2)'; ctx.fillRect(r.x + r.w / 2 + 20, r.y + 27 - k * 8, 5, 6); }
-      text(ctx, SKILLS[sk.id].name, r.x + r.w / 2, r.y + 44, { size: SKILLS[sk.id].name.length > 13 ? 10 : 11, weight: 700, align: 'center', color: '#f0e4c0' });
+      text(ctx, SKILLS[sk.id].name, r.x + r.w / 2, r.y + 44, { size: SKILLS[sk.id].name.length > 13 ? 12 : 13, weight: 700, align: 'center', color: UI.txt });
     }
     if (!this.preview && assemblable(h).length) { const r = RELIC_BTN, hot = inRect(G.mouse.x, G.mouse.y, r); ctx.fillStyle = hot ? 'rgba(200,150,40,.55)' : 'rgba(200,150,40,.35)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
       ctx.strokeStyle = '#ffd970'; ctx.lineWidth = 1.2; ctx.stroke(); text(ctx, 'Złóż relikwię', r.x + r.w / 2, r.y + 15, { size: 12, weight: 700, align: 'center', color: '#fff4c8' }); }

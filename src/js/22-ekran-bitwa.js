@@ -47,7 +47,10 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
   if (bare) return;
   c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1;
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { hexPath(c, x, y, 1); c.stroke(); }
-  stoneFill(c, 0, 490, W, 110); c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, W, 38);
+  if (PIXEL_ART) { stoneFill(c, 0, 490, W, 110); c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, W, 38); return; }
+  stoneFill(c, 0, 490, W, 110); insetBox(c, 10, 498, 456, 94, 11); // panel dowodzenia: drewno, wnęka na podpowiedź i dziennik
+  const tg = c.createLinearGradient(0, 0, 0, 40); tg.addColorStop(0, 'rgba(10,6,3,.92)'); tg.addColorStop(1, 'rgba(10,6,3,.7)'); c.fillStyle = tg; c.fillRect(0, 0, W, 38); // pasek górny
+  for (const y0 of [38, 487]) { const g = c.createLinearGradient(0, y0, 0, y0 + 3); g.addColorStop(0, '#f0d080'); g.addColorStop(1, '#6a4814'); c.fillStyle = g; c.fillRect(0, y0, W, 3); c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(0, y0 + 3, W, 1); } // złote listwy
 }
 // Tło bitwy zależne od terenu (w połowie rozdzielczości, przed powiększeniem): horyzont pod paskiem u góry
 // i drobne malowane szczegóły na polu (kępki, kamyki, kałuże, pęknięcia z żarem). Nie wpływają na walkę.
@@ -100,10 +103,13 @@ G.screens.battle = {
       const bg = this.bg(), k = bg.width / W, sw = Math.min(OX, W);
       stoneFill(c, 0, 0, VW, VH);
       if (sw > 0) {
-        c.save(); c.translate(OX, OY); c.scale(-1, 1); c.drawImage(bg, 0, 0, sw * k, bg.height, 0, 0, sw, H); c.restore();
-        c.save(); c.translate(OX + W, OY); c.scale(-1, 1); c.drawImage(bg, (W - sw) * k, 0, sw * k, bg.height, -sw, 0, sw, H); c.restore();
+        const fh = PIXEL_ART ? H : 490, sh = bg.height * fh / H; // gładko: odbijamy samo pole (bez panelu dowodzenia)
+        c.save(); c.translate(OX, OY); c.scale(-1, 1); c.drawImage(bg, 0, 0, sw * k, sh, 0, 0, sw, fh); c.restore();
+        c.save(); c.translate(OX + W, OY); c.scale(-1, 1); c.drawImage(bg, (W - sw) * k, 0, sw * k, sh, -sw, 0, sw, fh); c.restore();
       }
       c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(0, 0, VW, VH);
+      if (!PIXEL_ART) { const tg = c.createLinearGradient(0, OY, 0, OY + 40); tg.addColorStop(0, 'rgba(10,6,3,.92)'); tg.addColorStop(1, 'rgba(10,6,3,.7)'); c.fillStyle = tg; c.fillRect(0, OY, VW, 38);
+        for (const y0 of [OY + 38, OY + 487]) { const g = c.createLinearGradient(0, y0, 0, y0 + 3); g.addColorStop(0, '#f0d080'); g.addColorStop(1, '#6a4814'); c.fillStyle = g; c.fillRect(0, y0, VW, 3); c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(0, y0 + 3, VW, 1); } }
     }), 0, 0);
   },
   bg() { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}`, W, H, c => paintBattleBg(c, this.terr, f)); },
@@ -122,7 +128,7 @@ G.screens.battle = {
     this.bAuto = mk(0, 1, 'Auto', () => { B.auto = !B.auto; if (B.auto && this.phase === 'input') this.startTurnFor(B.active); }, { key: 'a', selected: () => B.auto, tip: 'Walka automatyczna: twoje oddziały dowodzą się same (klawisz A).' });
     this.bFlee = mk(1, 1, 'Ucieczka', () => this.onBack(), { key: 'u', tip: 'Wycofanie się z bitwy: ocalałe oddziały zostają, ale bohater traci resztę ruchu na dziś (klawisz U).' });
     this.bCast = mk(2, 0, 'Czar', () => this.openBook(), { key: 'c', tip: 'Księga czarów bohatera: jeden czar na rundę, przed ruchem oddziału (klawisz C).' });
-    this.bInfo = mk(2, 1, 'Mana', null, { disabled: true, tip: 'Mana bohatera. Odnawia się o 1 dziennie, a w pełni w mieście z gildią magów.' });
+    this.bInfo = mk(2, 1, 'Mana', null, { disabled: true, display: true, tip: 'Mana bohatera. Odnawia się o 1 dziennie, a w pełni w mieście z gildią magów.' });
     this.casting = null; this.resume = false;
     this.fleeTip = this.bFlee.tip;
     if (this.me === 1) { this.bFlee.disabled = true; this.bFlee.tip = 'Obrońca nie może uciec z pola bitwy.'; }
@@ -386,11 +392,11 @@ G.screens.battle = {
     ctx.restore(); // koniec wstrząsu
     BattleFX.drawFlash(ctx);
     // pasek górny
-    drawHeroPortrait(ctx, 6, 1, B.h, col); text(ctx, heroTitle(B.h), 50, 19, { size: 15, color: '#ecd9a8', fam: 'title' });
-    text(ctx, `Runda ${B.round}`, W / 2, 19, { size: 16, align: 'center', color: '#f0e4c0', fam: 'title' });
+    drawHeroPortrait(ctx, 6, 1, B.h, col); text(ctx, heroTitle(B.h), 50, 19, { size: 15, color: UI.txt, fam: 'title' });
+    text(ctx, `Runda ${B.round}`, W / 2, 19, { size: 17, align: 'center', color: UI.goldHi, fam: 'title' });
     const D = B.sides[1], foeCol = ownerColor(st, D.owner), right = D.hero ? W - 50 : W - 12;
     if (D.hero) drawHeroPortrait(ctx, W - 44, 1, D.hero, foeCol);
-    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: '#ecd9a8', fam: 'title' });
+    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: UI.txt, fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
@@ -399,8 +405,8 @@ G.screens.battle = {
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';
     let tfs = 15; ctx.font = font(tfs, 700, 'body'); while (tfs > 11 && ctx.measureText(tip).width > 440) { tfs--; ctx.font = font(tfs, 700, 'body'); }
     text(ctx, tip, 20, 508, { size: tfs, weight: 700, color: '#ffd970' });
-    B.log.slice(-4).forEach((l, i) => text(ctx, l, 20, 532 + i * 18, { size: 13, weight: 500, color: 'rgba(236,217,168,.85)' }));
-    this.bCast.disabled = this.phase !== 'input' || !canCastNow(B); this.bInfo.label = sideHero(B, this.me) ? `Mana ${sideHero(B, this.me).mana}` : 'Bez bohatera';
+    B.log.slice(-4).forEach((l, i) => text(ctx, l, 20, 532 + i * 18, { size: 14, weight: 600, color: i === Math.min(3, B.log.length - 1) ? UI.txt : UI.txt2 }));
+    this.bCast.disabled = this.phase !== 'input' || !canCastNow(B); this.bInfo.label = sideHero(B, this.me) ? `Mana ${sideHero(B, this.me).mana}` : 'Bez bohatera'; this.bInfo.dispCol = UI.mana;
     this.buttons.forEach(b => b.draw(ctx));
   },
 };

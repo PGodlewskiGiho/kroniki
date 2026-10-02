@@ -116,3 +116,19 @@ Zasady:
 - Wszystkie stany przycisków są odróżnialne bez czytania napisu.
 - Tekst ciągły co najmniej 16 px (opisy 18 px), kontrast tekstu do tła co najmniej 4,5:1.
 - Płynność ekranów menu, miasta i bohatera bez zmian (gotowe obrazy z pamięci), testy zielone.
+
+## 6. Zrobione (etap 1 przebudowy)
+- Czcionki Cinzel, Cinzel Decorative i Cormorant Garamond wbudowane w plik gry; w Cormorant cyfry równej wysokości.
+- Ozdoby i ikony z modeli 3D (`tools/grafika3d/interfejs.js`, arkusz `src/grafika/interfejs.webp`): narożniki,
+  nity, separator, ikony panelu mapy, ikony cech bohatera.
+- Prymitywy w `10-interfejs-ramki-przyciski-okna.js`: drewniana rama (`stoneFill`), skórzany panel (`drawStone`),
+  pergamin w oprawie (`drawParchment`), przyciski z brązu ze stanami i wariantem głównym, wnęki (`insetBox`),
+  gniazda (`slotBox`), separator, dymek ze skóry, rozłożona księga (`drawBook`), pole wartości (np. mana).
+- Ekrany: menu, nowa gra, mapa (panel, lista, pasek zasobów), miasto, bohater, bitwa (paski, panel dowodzenia,
+  szeroki ekran bez powielonego panelu), księga czarów, królestwo, werbunek, rynek, ustawienia.
+- Teren mapy malowany w tle porcjami (bez szarpnięć przy pierwszym oglądaniu mapy), drogi liczone z siatki odcinków.
+
+## 7. Następne kroki
+- Kolejka ruchów w bitwie i portrety w medalionach.
+- Okna miast (tawerna, gildia, stocznia) i ekrany wyniku bitwy w nowym stylu.
+- Ikony 3D zamiast wektorowych w pozostałych przyciskach (strzałki, plus/minus, zamiana armii).

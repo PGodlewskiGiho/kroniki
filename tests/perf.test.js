@@ -47,11 +47,11 @@ test('jakość grafiki: niska 0,5, wysoka jak ekran; ustawienie w menu', async (
     S.quality = 'low'; resize(); out.low = G.dpr;
     S.quality = 'high'; resize(); out.high = G.dpr === Math.min(window.devicePixelRatio || 1, 2);
     S.quality = q0; resize();
-    showGfxSettings(); out.labels = G.modal.buttons.map(b => b.label); G.modal = null;
+    showGfxSettings(); out.labels = G.modal.buttons.map(b => b.label); out.pix = PIXEL_ART; G.modal = null;
     return out;
   });
   assert.equal(r.low, 0.5); assert.ok(r.high);
-  assert.deepEqual(r.labels, ['Automatyczna', 'Wysoka', 'Niska', 'Czcionka: klasyczna', 'Pogoda: tak', 'OK']);
+  assert.deepEqual(r.labels, r.pix ? ['Automatyczna', 'Wysoka', 'Niska', 'Czcionka: klasyczna', 'Pogoda: tak', 'OK'] : ['Automatyczna', 'Wysoka', 'Niska', 'Pogoda', 'OK']);
 });
 
 test('mgła w kawałkach: odkrycie pola odświeża tylko potrzebny kawałek', async () => {
@@ -79,7 +79,7 @@ test('teren mapy maluje się w tle aż po całą mapę; przewijanie nie maluje g
   await newGame(page, { mapSize: 'M' });
   await page.evaluate(() => { setScreen('adventure', {}); G.modal = null; });
   await noMouse(); await frames(page, 3);
-  await page.waitForFunction(() => MapRender.warmed, null, { timeout: 20000 });
+  await page.waitForFunction(() => MapRender.warmed, null, { timeout: 40000 }); // tło maluje porcjami po kilka ms na klatkę
   const r = await page.evaluate(() => {
     const nC = Math.ceil(G.state.map.n / CHUNK), full = MapRender.cache.size, g0 = MapRender.lastGen;
     for (let i = 0; i < 20; i++) { G.state.cam.x += 40; camClamp(G.state); render(); }

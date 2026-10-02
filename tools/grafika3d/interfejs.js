@@ -51,6 +51,10 @@ const UI3 = {
     g.add(lathe([[0.01, -0.92], [0.4, -0.88], [0.32, -0.45], [0.01, -0.3]], '#e8c060', 'cloth')); g.add(lathe([[0.01, 0.12], [0.18, 0.3], [0.3, 0.55], [0.01, 0.55]], '#e8c060', 'cloth')); return arRot(g, 0.15, 0.4, 0); },
   ic_sword: () => arRot(arSwordIcon(), 0, 0, 0), ic_shield: () => arShield({ col: '#4a6aa0', gem: '#e8c050' }, { rim: '#c8a040', gem: true, gemY: 0.2 }),
 };
+UI3.ic_orb = () => arOrb({ col: '#7aa8ff', gem: '#e8c050' }, { ring: true });
+UI3.ic_scroll = () => { const g = new THREE.Group(), pg = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.0, 1, 12), mat('#f0e2b8', 'cloth').clone()); pg.material.side = THREE.DoubleSide; g.add(pg);
+  for (const y of [1.05, -1.05]) { g.add(cyl(0.18, 0.18, 1.8, '#e8d8a8', 'cloth', [0, y, 0.06], [0, 0, Math.PI / 2], null, 20)); for (const x of [-1.0, 1.0]) g.add(sph(0.14, '#c8a040', 'gold', [x, y, 0.06])); }
+  for (let i = 0; i < 5; i++) g.add(box(i === 4 ? 0.7 : 1.1, 0.05, 0.02, '#6a5434', 'cloth', [i === 4 ? -0.2 : 0, 0.6 - i * 0.28, 0.03])); g.add(arCab(0.13, '#c83a2a', [0.45, -0.75, 0.05])); return arRot(g, 0, -0.3, 0.1); };
 function arSwordIcon() { return arSword({ col: '#dfe3ea', gem: '#d84a3a' }, { guardCol: '#c8a040' }); }
 // Render: bryła wyśrodkowana i dopasowana do prostokąta w×h (pikseli), z marginesem
 function renderUi(key, w, h, mirror) {

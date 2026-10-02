@@ -870,11 +870,12 @@ function drawArmyRow(ctx, army, x, y, o = {}) {
   const w = o.w || 62, h = o.h || 50, gap = o.gap || 6, rects = [];
   army.forEach((s, i) => {
     const sx = x + i * (w + gap); rects.push({ x: sx, y, w, h, i });
-    ctx.fillStyle = o.light ? 'rgba(90,55,20,.14)' : 'rgba(0,0,0,.35)'; rr(ctx, sx, y, w, h, 3); ctx.fill();
-    const sel = o.sel === i; ctx.strokeStyle = sel ? '#ffd970' : (o.light ? 'rgba(90,55,20,.45)' : '#6a5a3a'); ctx.lineWidth = sel ? 2.4 : 1; ctx.stroke();
+    const sel = o.sel === i;
+    if (PIXEL_ART) { ctx.fillStyle = o.light ? 'rgba(90,55,20,.14)' : 'rgba(0,0,0,.35)'; rr(ctx, sx, y, w, h, 3); ctx.fill(); ctx.strokeStyle = sel ? '#ffd970' : (o.light ? 'rgba(90,55,20,.45)' : '#6a5a3a'); ctx.lineWidth = sel ? 2.4 : 1; ctx.stroke(); }
+    else slotBox(ctx, sx, y, w, h, sel ? 'sel' : '');
     if (!s) return;
-    ctx.save(); rr(ctx, sx + 1, y + 1, w - 2, h - 2, 3); ctx.clip(); drawCreatureIcon(ctx, s.cid, sx + w / 2, y + h - 7, 1); ctx.restore();
-    const n = String(s.n); ctx.save(); ctx.font = font(13, 700, 'body'); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+    ctx.save(); rr(ctx, sx + 1, y + 1, w - 2, h - 2, 3); ctx.clip(); drawCreatureIcon(ctx, s.cid, sx + w / 2, y + h - 7, !PIXEL_ART && h >= 50 ? 1.5 : 1); ctx.restore(); // gładko: ostra klatka bitewna
+    const n = String(s.n); ctx.save(); ctx.font = font(13, 700, PIXEL_ART ? 'body' : 'title'); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
     ctx.lineWidth = 3; ctx.strokeStyle = '#120a03'; ctx.strokeText(n, sx + w - 4, y + h - 4); ctx.fillStyle = '#f3e2b0'; ctx.fillText(n, sx + w - 4, y + h - 4); ctx.restore();
   });
   return rects;
@@ -1074,8 +1075,9 @@ function showRecruitList(st, t, onDone) {
         else {
           const need = BUILD_BY_ID['dw' + L].req.filter(r => !hasB(t, r)).map(r => bInfo(BUILD_BY_ID[r], t.faction).name);
           text(ctx, 'Nie zbudowano', x + cw / 2, y + 222, { size: 13, weight: 700, align: 'center', color: '#8a2a1a' });
-          wrapText(ctx, need.length ? `Wymaga: ${need.join(', ')}` : `Można zbudować (${costTxt(BUILD_BY_ID['dw' + L].cost)})`, cw - 14).slice(0, 2)
-            .forEach((l, i) => text(ctx, l, x + cw / 2, y + 237 + i * 13, { size: 11, weight: 500, align: 'center', color: '#6a4a2a' }));
+          ctx.font = font(12, 600, 'body'); let req = need.length ? `Wymaga: ${need.join(', ')}` : `Można zbudować (${costTxt(BUILD_BY_ID['dw' + L].cost)})`;
+          if (ctx.measureText(req).width > cw - 12) { while (req.length > 8 && ctx.measureText(req + '…').width > cw - 12) req = req.slice(0, -1); req += '…'; } // jeden wiersz (pełna lista w dymku)
+          text(ctx, req, x + cw / 2, y + 238, { size: 12, weight: 600, align: 'center', color: '#6a4a2a' });
         }
       }
       const sx = x0 + 3 * (cw + gap), sy = y0 + ch + gap;
@@ -1273,11 +1275,12 @@ function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id,
 function showSpellbook(h, mode, onPick) {
   // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły
   const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
-  const cols = 3, cw = (w - 48) / cols, rh = 44, PER = 18, tabs = [null, ...Object.keys(SCHOOLS)];
+  const BOOK = !PIXEL_ART, cols = BOOK ? 4 : 3, cw = BOOK ? (w - 96) / 4 : (w - 48) / cols, rh = 44, PER = BOOK ? 20 : 18, tabs = [null, ...Object.keys(SCHOOLS)];
   let school = null, page = 0, hover = -1;
   const side = d => (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 4 * d, cy - 8); ctx.lineTo(cx - 4 * d, cy + 8); ctx.lineTo(cx + 5 * d, cy); ctx.closePath(); ctx.fill(); };
   const list = () => all.filter(id => !school || SPELLS[id].school === school), pages = () => Math.max(1, Math.ceil(list().length / PER)), shown = () => list().slice(page * PER, page * PER + PER);
-  const cell = i => ({ x: x + 24 + (i % cols) * cw, y: y + 104 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
+  const cell = i => BOOK ? (k => ({ x: x + 34 + (k >= 10 ? (w - 68) / 2 + 14 : 0) + (k % 2) * cw, y: y + 108 + Math.floor((k % 10) / 2) * rh, w: cw - 10, h: rh - 4 }))(i) // księga: 2 kolumny na stronę, lewa strona, potem prawa
+    : ({ x: x + 24 + (i % cols) * cw, y: y + 104 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
   const usable = id => mode !== 'view' && SPELLS[id].kind === mode && spellCost(h, id) <= h.mana;
   const close = new Button(W / 2 - 70, y + hh - 54, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const prev = new Button(W / 2 - 124, y + hh - 50, 44, 32, 'Poprzednia strona', () => { page = Math.max(0, page - 1); }, { icon: side(-1), key: 'arrowleft', tip: 'Poprzednia strona księgi.' });
@@ -1292,7 +1295,7 @@ function showSpellbook(h, mode, onPick) {
     draw(ctx) {
       page = Math.min(page, pages() - 1); prev.disabled = page === 0; next.disabled = page >= pages() - 1;
       const L = shown(); hover = at(G.mouse.x, G.mouse.y);
-      dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
+      dimScreen(ctx, 0.5); if (BOOK) drawBook(ctx, x, y, w, hh); else drawParchment(ctx, x, y, w, hh);
       text(ctx, 'Księga czarów', W / 2, y + 30, { size: 26, align: 'center', color: '#3a1e08', fam: 'title' });
       text(ctx, `${h.name} · mana ${h.mana} / ${heroMaxMana(h)} · moc czarów ${sp}`, W / 2, y + 54, { size: 14, weight: 500, align: 'center', color: '#5a3814' });
       tabBtns.forEach((b, i) => { b.draw(ctx); if (tabs[i]) { ctx.fillStyle = SCHOOLS[tabs[i]].col; ctx.fillRect(b.x + 6, b.y + b.h - 5, b.w - 12, 2); } });
@@ -1300,19 +1303,19 @@ function showSpellbook(h, mode, onPick) {
       else if (!L.length) text(ctx, `Bohater nie zna czarów magii ${SCHOOLS[school].name}.`, W / 2, y + 220, { size: 15, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
       L.forEach((id, i) => {
         const r = cell(i), S = SPELLS[id], ok = usable(id);
-        ctx.fillStyle = ok && hover === i ? 'rgba(160,100,30,.3)' : 'rgba(90,55,20,.12)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
+        ctx.fillStyle = ok && hover === i ? 'rgba(160,100,30,.3)' : BOOK ? 'rgba(90,55,20,.07)' : 'rgba(90,55,20,.12)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
         ctx.fillStyle = SCHOOLS[S.school].col; ctx.fillRect(r.x, r.y + 4, 3, r.h - 8);
         ctx.save(); if (mode !== 'view' && !ok) ctx.globalAlpha = 0.45;
-        drawSprite(ctx, spellSprite(id), r.x + 24, r.y + r.h / 2, 1);
+        drawSprite(ctx, spellSprite(id), r.x + 24, r.y + r.h / 2, BOOK ? 1.1 : 1);
         ctx.font = font(13, 700, 'title'); let fs = 13; while (fs > 10 && ctx.measureText(S.name).width > r.w - 50) { fs--; ctx.font = font(fs, 700, 'title'); }
         text(ctx, S.name, r.x + 46, r.y + r.h / 2 - 7, { size: fs, color: '#2a1606', fam: 'title' });
         const c0 = spellCost(h, id);
-        text(ctx, `${S.level} poz. · ${c0} many${c0 < S.cost ? ' ↓' : ''}`, r.x + 46, r.y + r.h / 2 + 11, { size: 12, weight: 500, color: c0 < S.cost ? '#2a6a1e' : '#5a3814' });
+        text(ctx, `${S.level} poz. · ${c0} many${c0 < S.cost ? ' ↓' : ''}`, r.x + 46, r.y + r.h / 2 + 11, { size: BOOK ? 14 : 12, weight: 600, color: c0 < S.cost ? '#2a6a1e' : '#5a3814' });
         ctx.restore();
       });
       const hs = hover >= 0 ? L[hover] : null;
       text(ctx, hs ? `${SPELLS[hs].name}: ${SPELLS[hs].desc(sp)}.` : mode === 'view' ? 'Prawy przycisk na czarze: pełny opis.' : `Kliknij czar, aby go rzucić (${mode === 'battle' ? 'jeden na rundę' : 'na mapie'}).`,
-        W / 2, y + hh - 76, { size: 13, italic: true, weight: 500, align: 'center', color: '#6a4418' });
+        W / 2, y + hh - 76, { size: BOOK ? 15 : 13, italic: true, weight: 500, align: 'center', color: '#6a4418' });
       if (pages() > 1) { prev.draw(ctx); next.draw(ctx); text(ctx, `strona ${page + 1}/${pages()}`, W / 2 + 170, y + hh - 34, { size: 12, weight: 600, align: 'center', color: '#5a3814' }); }
       close.draw(ctx);
     },
