@@ -106,7 +106,7 @@ function drawPanel(ctx, st, scr) {
       text(ctx, `${h.mp} / ${max}`, LIST.x + 186, y + 14, { size: 12, align: 'right', color: '#c8b68a' });
     } else {
       const t = r.town;
-      drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), LIST.x + 6, y + 2, 1);
+      if (!drawMap3dIcon(ctx, `town_${t.faction}_${townLevel(t)}`, LIST.x + 26, y + 22, 42, 38)) drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), LIST.x + 6, y + 2, 1); // miniatura z modelu 3D
       text(ctx, t.name, LIST.x + 52, y + 16, { size: 14, color: '#ecd9a8', fam: 'title' });
       text(ctx, `${townGold(t)} złota dziennie`, LIST.x + 52, y + 32, { size: 12, weight: 500, color: '#c8b68a' });
       iconHammer(ctx, LIST.x + 178, y + 14, !t.builtToday); // czy dziś można jeszcze budować

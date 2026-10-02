@@ -127,6 +127,25 @@ for (const k of MP_TREES) for (let s = 0; s < 4; s++) { if (!MP_SEASONAL[k] && s
 for (const p of Object.keys(MP_ROCK)) for (let v = 0; v < 8; v++) { MAP3[`mount_${p}_${v}`] = () => mpMountain(p, v); MAP3[`rock_${p}_${v}`] = () => mpRock(p, v); }
 for (const r of ['wood', 'ore', 'mercury', 'sulfur', 'crystal', 'gems', 'gold']) MAP3[`res_${r}`] = () => mpRes(r);
 MAP3.chest = () => mpChest();
+// --- drobne ozdoby terenu (ok. 0,3 pola): kępki trawy, kwiaty, kamyki, krzaczek, kaktus, kość, zaspa, trzcina, grzyby, żar ---
+function mpTuft(cols, n = 7, h = 0.16, seed = 1) { const g = new THREE.Group(), R = rng(seed); for (let i = 0; i < n; i++) { const a = R() * 6.28, r = R() * 0.05, l = h * (0.6 + R() * 0.5);
+  g.add(tube([[Math.cos(a) * r, 0, Math.sin(a) * r], [Math.cos(a) * (r + 0.02), l * 0.6, Math.sin(a) * (r + 0.02)], [Math.cos(a) * (r + 0.05), l, Math.sin(a) * (r + 0.05)]], 0.012, 0.003, cols[i % cols.length], 'feather')); } return g; }
+function mpPebbles(pal, seed = 1) { const g = new THREE.Group(), R = rng(seed); for (let i = 0; i < 3; i++) { const m = mpRockMesh(0.05 + R() * 0.03, 0.04 + R() * 0.02, 0.045, MP_ROCK[pal], seed * 5 + i, 9, pal === 'snow' ? 0.2 : null, false); m.position.set((R() - 0.5) * 0.25, 0, (R() - 0.5) * 0.12); g.add(m); } return g; }
+function mpDecor(t, v) {
+  const g = new THREE.Group();
+  if (t === 'leaves') { const R = rng(v + 3); for (let i = 0; i < 6; i++) g.add(mesh(new THREE.CircleGeometry(0.03, 5), ['#c8501e', '#e0a030', '#8a3a14', '#d87a2a'][i % 4], 'cloth', [(R() - 0.5) * 0.25, 0.004, (R() - 0.5) * 0.15], [-Math.PI / 2, 0, R() * 3], [1, 0.6, 1])); return g; }
+  if (t === 'grass') { if (v === 0) g.add(mpTuft(['#4a8a30', '#78b848'], 8, 0.16, 1)); else if (v === 1) { g.add(mpTuft(['#4a8a30', '#78b848'], 6, 0.13, 2)); for (const [x, z, c] of [[-0.06, 0.02, '#e8d040'], [0.03, -0.03, '#f4f4f0'], [0.07, 0.03, '#d84a3a']]) { g.add(cyl(0.004, 0.004, 0.14, '#4a8a30', 'cloth', [x, 0.07, z])); g.add(sph(0.018, c, 'cloth', [x, 0.14, z], [1, 0.5, 1], 8)); } }
+    else if (v === 2) g.add(mpPebbles('def', 3)); else { g.add(leafClump(0.09, '#3c7c2c', [0, 0.08, 0], 2)); g.add(sph(0.015, '#d84a3a', 'gem', [0.03, 0.09, 0.07], null, 8)); } }
+  else if (t === 'dirt') { if (v === 0) g.add(mpTuft(['#9a8a40', '#ccb45a'], 7, 0.14, 4)); else if (v === 1) g.add(mpPebbles('def', 5)); else if (v === 2) { g.add(mpTuft(['#9a8a40', '#ccb45a'], 5, 0.12, 6)); const p = mpPebbles('def', 7); p.position.x = 0.1; g.add(p); } else g.add(tube([[-0.15, 0.01, 0.03], [0, 0.02, 0], [0.1, 0.015, 0.02], [0.17, 0.03, -0.02]], 0.012, 0.008, '#5a4028', 'bark')); }
+  else if (t === 'sand') { if (v === 0) g.add(mpPebbles('sand', 9)); else if (v === 1) { g.add(cap(0.025, 0.16, '#4a8a3a', 'leather', [0, 0.11, 0])); g.add(cap(0.017, 0.06, '#4a8a3a', 'leather', [-0.045, 0.12, 0], [0, 0, 0.2])); g.add(cap(0.017, 0.04, '#4a8a3a', 'leather', [-0.06, 0.16, 0])); } else if (v === 2) g.add(mpTuft(['#9a8a40', '#ccb45a'], 6, 0.12, 8)); else { g.add(cyl(0.012, 0.012, 0.2, '#eee6d0', 'bone', [0, 0.012, 0], [0, 0.3, Math.PI / 2])); g.add(sph(0.022, '#eee6d0', 'bone', [0.1, 0.02, -0.03], null, 10)); } }
+  else if (t === 'snow') { if (v === 0 || v === 3) g.add(mpPebbles('snow', 11 + v)); else if (v === 1) g.add(mpTuft(['#8a8a6a', '#aaa888'], 6, 0.12, 12)); else g.add(sph(0.14, '#f4f8fc', 'cloth', [0, 0, 0], [1.2, 0.35, 0.8], 14)); }
+  else if (t === 'swamp') { if (v === 0) for (const dx of [-0.06, 0, 0.06]) { g.add(cyl(0.004, 0.004, 0.26, '#4a6a34', 'cloth', [dx, 0.13, 0], [0, 0, dx * 0.6])); g.add(cap(0.012, 0.05, '#6a4424', 'leather', [dx + dx * 0.08, 0.22, 0])); }
+    else if (v === 1) for (const [x, c] of [[-0.05, '#c83a2a'], [0.05, '#b8a060']]) { g.add(cyl(0.01, 0.012, 0.06, '#e8e0cc', 'skin', [x, 0.03, 0])); g.add(sph(0.035, c, 'skin', [x, 0.06, 0], [1, 0.55, 1], 12)); } else if (v === 2) g.add(mpTuft(['#3a5a2c', '#5a7a40'], 8, 0.16, 14)); else g.add(mpPebbles('def', 15)); }
+  else if (t === 'lava') { g.add(mpPebbles('lava', 16 + v)); if (v === 1) for (const x of [-0.06, 0.08]) g.add(sph(0.012, '#ffb040', 'glow', [x, 0.01, 0.04], null, 8)); if (v === 2) g.add(cone(0.02, 0.1, '#ff7a2a', 'glow', [0, 0.05, 0.06], null, 6)); }
+  return g;
+}
+for (const t of ['grass', 'dirt', 'sand', 'snow', 'swamp', 'lava']) for (let v = 0; v < 4; v++) MAP3[`decor_${t}_${v}`] = () => mpDecor(t, v);
+MAP3.decor_leaves_0 = () => mpDecor('leaves', 0); MAP3.decor_leaves_1 = () => mpDecor('leaves', 1);
 // artefakty dopisuje wypal-mape.js (dane z gry): MAP3['art_' + id] = () => mpArt(id, A)
 // Render obiektu mapy: płótno w×h, ziemia środka pola w (ax, ay); cień na ziemi
 const MP_SHADOW = new THREE.ShadowMaterial({ opacity: 0.38 });

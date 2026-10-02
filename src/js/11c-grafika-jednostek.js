@@ -26,6 +26,11 @@ function map3dFlags(key) {
   const k = 2 / A.d, fl = (f[6] || []).filter(([, y]) => y * k < -16).slice(0, 2).map(([x, y]) => [x * k, y * k]);
   return fl.length ? fl : [[0, -s.ay * s.u + 6]];
 }
+// Obiekt mapy 3D w oknie albo na liście: wpasowany w prostokąt (środek cx, cy; najwyżej maxW × maxH px), gładko; false = brak grafiki
+function drawMap3dIcon(ctx, key, cx, cy, maxW, maxH) {
+  const s = map3dSprite(key); if (!s) return false; const w = s.c.width * s.u, h = s.c.height * s.u, k = Math.min(maxW / w, maxH / h);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(s.c, cx - w * k / 2, cy - h * k / 2, w * k, h * k); ctx.restore(); return true;
+}
 function map3dSprite(key) {
   const A = typeof MAP3D_ART !== 'undefined' && MAP3D_ART, im = MAP3D_IMG.sheet, f = A && A.f[key]; if (!f || !im || !im._ok) return null;
   const sk = `m3_${key}`; let s = SPR.get(sk); if (s) return s; const [x, y, w, h, ax, ay] = f, k = PXD / A.d, cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
