@@ -758,7 +758,14 @@ function townFlagPoints(fac, lvl) {
 
 // --- sprite'y (cache): mapa rysuje je w buforze pikselowym, interfejs przez drawSprite() -------
 // season: pora roku (0 wiosna … 3 zima) zmienia drzewa i szczyty; pole bitwy rysuje przeszkody zawsze wiosenne
-const obstacleSprite = (o, t, v, season = 0) => sprite(`ob${o}_${t}_${v}_${season}`, 40, 38, 20, 26, p => { SEASON_DRAW = season; drawObstacle(p, o, t, 0, 0, mulberry32(v * 7919 + o * 31 + t * 7)); SEASON_DRAW = 0; });
+// Klucz obiektu 3D dla przeszkody: drzewa wg terenu (pory roku: dąb, mieszany las, świerki), góry i skały wg palety terenu (zimą śnieg)
+const MAP3_TREE = { [TER.SNOW]: 'snow', [TER.ROUGH]: 'pine', [TER.SAND]: 'palm', [TER.LAVA]: 'lava', [TER.SWAMP]: 'swamp', [TER.DIRT]: 'dirt' }, MAP3_SEAS = { oak: 1, dirt: 1, pine: 1 };
+function obstacle3dKey(o, t, v, season) {
+  if (o === OBST.TREE) { const k = MAP3_TREE[t] || 'oak'; return `tree_${k}_${MAP3_SEAS[k] ? season : 0}_${v % 4}`; }
+  const pal = t === TER.LAVA ? 'lava' : t === TER.SAND ? 'sand' : t === TER.SNOW || season === 3 ? 'snow' : 'def';
+  return `${o === OBST.MOUNT ? 'mount' : 'rock'}_${pal}_${v % 8}`;
+}
+const obstacleSprite = (o, t, v, season = 0) => map3dSprite(obstacle3dKey(o, t, v, season)) || sprite(`ob${o}_${t}_${v}_${season}`, 40, 38, 20, 26, p => { SEASON_DRAW = season; drawObstacle(p, o, t, 0, 0, mulberry32(v * 7919 + o * 31 + t * 7)); SEASON_DRAW = 0; });
 const decorSprite = (t, v, season = 0) => sprite(`dec${t}_${v}_${season}`, 12, 10, 6, 7, p => { SEASON_DRAW = season; drawDecor(p, t, v); SEASON_DRAW = 0; }, null);
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));

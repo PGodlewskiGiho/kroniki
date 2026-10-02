@@ -468,11 +468,11 @@ function drawWorldPixel(b, st) {
     if (it.caravan) { const x = ox + it.cx * T + 16, y = oy + it.cy * T + 16; shadow(12, x, y + 10); blitG(b, caravanSprite(ownerColor(st, it.caravan.owner), Math.floor(G.time * 3) % 2), x, y + 8); continue; }
     const ob = it.ob, px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
     if (ob.type === 'monster') { shadow(10, px, py + 10); blitG(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
-    else if (ob.type === 'res') { shadow(10, px, py + 9); blitG(b, resSprite(ob.res), px, py + 2); }
-    else if (ob.type === 'chest') { shadow(10, px, py + 9); blitG(b, chestSprite(), px, py + 2); }
+    else if (ob.type === 'res') { const s3 = map3dSprite('res_' + ob.res); if (s3) blitG(b, s3, px, py + 6); else { shadow(10, px, py + 9); blitG(b, resSprite(ob.res), px, py + 2); } } // 3D: własny cień na ziemi
+    else if (ob.type === 'chest') { const s3 = map3dSprite('chest'); if (s3) blitG(b, s3, px, py + 6); else { shadow(10, px, py + 9); blitG(b, chestSprite(), px, py + 2); } }
     else if (ob.type === 'boat') blitG(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py);
     else if (ob.type === 'site') { shadow(14, px, py + 12); blitG(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
-    else if (ob.type === 'art') { shadow(9, px, py + 10); blitG(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
+    else if (ob.type === 'art') { const s3 = map3dSprite('art_' + ob.art); if (s3) blitG(b, s3, px, py + 6); else { shadow(9, px, py + 10); blitG(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); } }
     else if (ob.type === 'bank') blitG(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
     else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blitG(b, mineSprite(ob.kind), mx, my); blitG(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
     else if (ob.type === 'town') {
@@ -495,6 +495,7 @@ function gradeCanvas(c, ox = 0, oy = 0, step = 18) {
   for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k += 4) {
     if (!d[k + 3]) continue;
     const r = d[k] * mr, gg = d[k + 1] * mg, b = d[k + 2] * mb, l = 0.3 * r + 0.59 * gg + 0.11 * b, o = (BAYER4[((y + oy) & 3) * 4 + ((x + ox) & 3)] / 16 - 0.5) * step;
+    if (!PIXEL_ART) { d[k] = r + (l - r) * ds; d[k + 1] = gg + (l - gg) * ds; d[k + 2] = b + (l - b) * ds; continue; } // gładko: sama korekcja barw, bez palety i ditheringu
     d[k] = clamp(Math.round((r + (l - r) * ds + o) / step) * step, 0, 255); d[k + 1] = clamp(Math.round((gg + (l - gg) * ds + o) / step) * step, 0, 255); d[k + 2] = clamp(Math.round((b + (l - b) * ds + o) / step) * step, 0, 255);
   }
   g.putImageData(img, 0, 0); return c;
