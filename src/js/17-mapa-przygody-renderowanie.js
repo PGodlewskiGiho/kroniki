@@ -224,6 +224,12 @@ function renderChunkPixel(map, cx, cy) {
     const ax = bx + (x - MF) / D, ay = by + (y - MF) / D, jx = (vnoise2(ax / 7, ay / 7, 11) - 0.5) * 9, jy = (vnoise2(ax / 7, ay / 7, 23) - 0.5) * 9;
     tid[y * R + x] = map.terrain[clamp(Math.floor((ay + jy) / AP), 0, n - 1) * n + clamp(Math.floor((ax + jx) / AP), 0, n - 1)];
   }
+  // podziemia: lita skała (ściana jaskini) to ciemność jak w Heroes 3, z miękkim, poszarpanym brzegiem (pola skały interpolowane i przesunięte szumem)
+  const under = map.ln && cx * CHUNK >= map.ln && cy * CHUNK >= map.ln, rk = under ? new Float32Array(R * R) : null;
+  if (under) { const rock = (x, y) => { x = clamp(x, 0, n - 1); y = clamp(y, 0, n - 1); return map.obst[y * n + x] === OBST.MOUNT ? 1 : 0; };
+    for (let y = 0; y < R; y++) for (let x = 0; x < R; x++) { const ax = bx + (x - MF) / D, ay = by + (y - MF) / D, gx = (ax + (vnoise2(ax / 5, ay / 5, 13) - 0.5) * 10) / AP - 0.5, gy = (ay + (vnoise2(ax / 5, ay / 5, 29) - 0.5) * 10) / AP - 0.5;
+      const ix = Math.floor(gx), iy = Math.floor(gy), fx = gx - ix, fy = gy - iy, v = (rock(ix, iy) * (1 - fx) + rock(ix + 1, iy) * fx) * (1 - fy) + (rock(ix, iy + 1) * (1 - fx) + rock(ix + 1, iy + 1) * fx) * fy;
+      rk[y * R + x] = clamp((v - 0.32) / 0.3, 0, 1); } }
   const TT = (x, y) => tid[(Math.round(y) + MF) * R + Math.round(x) + MF], TO = (x, y) => TT(Math.floor(x * D), Math.floor(y * D)), rd = map.road, at = (x, y) => (x >= 0 && y >= 0 && x < n && y < n) ? rd[y * n + x] : 0;
   const segs = [], x0 = cx * CHUNK - 1, y0 = cy * CHUNK - 1;
   for (let y = y0; y <= y0 + CHUNK + 1; y++) for (let x = x0; x <= x0 + CHUNK + 1; x++) {
@@ -248,6 +254,7 @@ function renderChunkPixel(map, cx, cy) {
         col = seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN);
         const below = TT(fx, fy + D); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
       }
+      if (rk) { const k = rk[(fy + MF) * R + fx + MF]; if (k > 0) col = mixRgb(col, [9, 8, 13], k * k * (3 - 2 * k)); }
       if (segs.length) {
         let best = 99, bt = 0;
         for (const s of segs) { if (Math.abs(px - s[0]) > 14 || Math.abs(py - s[1]) > 14) continue; const dd = segDist(px + 0.5 / D, py + 0.5 / D, s); if (dd < best) { best = dd; bt = s[4]; } }
@@ -270,7 +277,7 @@ function renderChunkPixel(map, cx, cy) {
     const s = decorSprite(t, (h >>> 16) % (ug ? 6 : 4), SN, ug); put(g, s, lx, ly);
   }
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
-    const o = map.obst[y * n + x]; if (!o) continue;
+    const o = map.obst[y * n + x]; if (!o || (o === OBST.MOUNT && levelOf(map, x, y))) continue; // podziemia: ściany jaskini to ciemność, bez brył
     const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y)); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     put(g, s, x * AP + 8 - bx, y * AP + 8 - by);
   }
@@ -279,7 +286,7 @@ function renderChunkPixel(map, cx, cy) {
     const mk = v => { const m = document.createElement('canvas'); m.width = m.height = SF; const mg = m.getContext('2d'), mi = mg.createImageData(SF, SF);
       for (let i = 0; i < SF * SF; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out'; mg.setTransform(D, 0, 0, D, 0, 0);
       for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
-        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y)); put(mg, s, x * AP + 8 - bx, y * AP + 8 - by);
+        const o = map.obst[y * n + x]; if (!o || (o === OBST.MOUNT && levelOf(map, x, y))) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y)); put(mg, s, x * AP + 8 - bx, y * AP + 8 - by);
       }
       return m; };
     c._deep = mk(1); c._shore = mk(2);
@@ -321,7 +328,7 @@ function buildMinimap(map, ex) {
   const g = c.getContext('2d'), img = g.createImageData(n, n);
   const ter = TPAL.map(p => gradeRgb(p[1])), obst = TPAL.map(p => gradeRgb(p[0]).map(v => v * 0.62)), road = RPAL.map(p => p && gradeRgb(p[1]));
   for (let i = 0; i < n * n; i++) {
-    const [r, gg, b] = (ex && !ex[i]) ? [0, 0, 0] : map.obst[i] ? obst[map.terrain[i]] : map.road[i] ? road[map.road[i]] : ter[map.terrain[i]];
+    const [r, gg, b] = (ex && !ex[i]) || (map.ln && map.obst[i] === OBST.MOUNT && levelOf(map, i % n, (i / n) | 0)) ? [0, 0, 0] : map.obst[i] ? obst[map.terrain[i]] : map.road[i] ? road[map.road[i]] : ter[map.terrain[i]];
     const o = i * 4; img.data[o] = r; img.data[o + 1] = gg; img.data[o + 2] = b; img.data[o + 3] = 255;
   }
   g.putImageData(img, 0, 0); return c;
@@ -495,7 +502,7 @@ function drawWorldPixel(b, st) {
   // (1–2 rzędy niżej), rysujemy jeszcze raz w kolejności głębi, żeby zasłaniały to, co jest za nimi
   if (!PIXEL_ART) { const seenO = new Set(), map = st.map, n = map.n, SN = MapRender.season || 0;
     for (const it of list.slice()) { const ox0 = it.hero ? Math.round(it.hx) : it.caravan ? Math.round(it.cx) : it.ob.x, oy0 = it.hero ? Math.round(it.hy) : it.caravan ? Math.round(it.cy) : it.ob.y, wide = it.ob && (it.ob.type === 'town' || it.ob.type === 'mine' || it.ob.type === 'bank') ? 2 : 1;
-      for (let dy = 1; dy <= 2; dy++) for (let dx = -wide; dx <= wide; dx++) { const x = ox0 + dx, y = oy0 + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; if (!map.obst[i] || seenO.has(i)) continue; seenO.add(i);
+      for (let dy = 1; dy <= 2; dy++) for (let dx = -wide; dx <= wide; dx++) { const x = ox0 + dx, y = oy0 + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; if (!map.obst[i] || seenO.has(i) || (map.obst[i] === OBST.MOUNT && levelOf(map, x, y))) continue; seenO.add(i);
         list.push({ y: y + 0.45, occ: i, s: obstacleSprite(map.obst[i], map.terrain[i], thash(x, y, map.seed + 2) % (map.obst[i] === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y)), x, ty: y, ug: levelOf(map, x, y) }); } } }
   list.sort((a, c) => a.y - c.y);
   const shadow = (w, x, y) => { b.globalAlpha = 0.3; blitG(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
