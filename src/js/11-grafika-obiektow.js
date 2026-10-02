@@ -1187,6 +1187,16 @@ function drawSpellIcon(c, id) {
   c.fillStyle = dk; c.beginPath(); c.arc(0, 0, 11, 0, TAU); c.fill(); c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round';
   const poly = pts => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); };
   switch (id) {
+    case 'dispel': for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; c.fillRect(Math.cos(a) * 6 - 1.5, Math.sin(a) * 6 - 1.5, 3, 3); } c.beginPath(); c.arc(0, 0, 2.5, 0, TAU); c.fill(); break;
+    case 'blind': c.beginPath(); c.ellipse(0, 0, 8, 4.5, 0, 0, TAU); c.fill(); c.fillStyle = dk; c.fillRect(-9, -1.5, 18, 3); break;
+    case 'poison': c.beginPath(); c.arc(0, 2, 5.5, 0, TAU); c.fill(); c.fillRect(-1.5, -8, 3, 6); c.fillStyle = dk; c.fillRect(-2, 1, 1.5, 1.5); c.fillRect(1, 1, 1.5, 1.5); break;
+    case 'tailwind': c.lineWidth = 1.8; for (const y of [-4, 0, 4]) { c.beginPath(); c.moveTo(-8, y); c.quadraticCurveTo(0, y - 3, 7, y); c.stroke(); } break;
+    case 'vampirism': poly([[-9, -2], [-4, -5], [0, -2], [4, -5], [9, -2], [5, 1], [0, 4], [-5, 1]]); break;
+    case 'fireWall': for (const x of [-5, 0, 5]) poly([[x - 3, 7], [x, -6], [x + 3, 7]]); break;
+    case 'lifeSteal': for (const [x, y] of [[-3, -2], [3, 2]]) { c.beginPath(); c.arc(x - 1.5, y - 1, 2, 0, TAU); c.arc(x + 1.5, y - 1, 2, 0, TAU); c.fill(); poly([[x - 3.4, y - 0.5], [x + 3.4, y - 0.5], [x, y + 4]]); } break;
+    case 'teleport': c.lineWidth = 1.8; for (const r of [3, 6]) { c.beginPath(); c.ellipse(0, 0, r + 2, r * 0.6, 0, 0, TAU); c.stroke(); } break;
+    case 'holyLight': for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; c.lineWidth = 1.4; c.beginPath(); c.moveTo(Math.cos(a) * 3, Math.sin(a) * 3); c.lineTo(Math.cos(a) * 9, Math.sin(a) * 9); c.stroke(); } c.beginPath(); c.arc(0, 0, 3, 0, TAU); c.fill(); break;
+    case 'clone': for (const x of [-4, 4]) { c.beginPath(); c.arc(x, -4, 2.5, 0, TAU); c.fill(); c.fillRect(x - 3, -1, 6, 8); } break;
     case 'magicArrow': c.lineWidth = 2; c.beginPath(); c.moveTo(-6, 6); c.lineTo(5, -5); c.stroke(); poly([[7, -7], [1, -5], [5, -1]]); break;
     case 'bless': for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; c.lineWidth = 1.6; c.beginPath(); c.moveTo(Math.cos(a) * 4, Math.sin(a) * 4); c.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); c.stroke(); } c.beginPath(); c.arc(0, 0, 3.5, 0, TAU); c.fill(); break;
     case 'stoneSkin': poly([[-7, -6], [7, -6], [7, 1], [0, 8], [-7, 1]]); c.fillStyle = dk; c.fillRect(-3, -3, 2, 2); c.fillRect(2, 0, 2, 2); break;
