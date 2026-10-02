@@ -4,7 +4,7 @@ function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = na
 G.go = function (name, params) { if (G.fade.next) return; G.fade.next = { name, params }; G.fade.target = 1; };
 function activeButtons() { return G.modal ? G.modal.buttons : (G.screen.buttons || []); }
 function updateHover() {
-  G.hover = G.fade.next ? null : (activeButtons().find(b => !b.disabled && b.hit(G.mouse.x, G.mouse.y)) || null);
+  G.hover = G.fade.next ? null : buttonAt(activeButtons(), G.mouse.x, G.mouse.y);
   G.wantCursor = G.hover ? 'hand' : 'arrow'; // ekran może to zmienić w update (np. miecz nad wrogiem); ustawia pętla
 }
 function handleClick(x, y) {
@@ -38,7 +38,30 @@ function bindInput() {
     const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; G.mouse.type = e.pointerType;
     if (!G.modal && G.screen && G.screen.onPointerMove) G.screen.onPointerMove(p.x, p.y, e);
   });
+  // Dwa palce na ekranie: szczypanie (przybliżanie i oddalanie mapy). Pojedynczy dotyk działa jak mysz.
+  const touches = new Map(), pinchDist = () => { const [a, b] = [...touches.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+  const touchEnd = e => { if (!touches.delete(e.pointerId)) return; if (touches.size < 2 && G.pinch) { G.pinch.done = true; if (!touches.size) G.pinch = null; } };
   c.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch') {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 2) { // drugi palec: koniec przeciągania i dotknięcia, zaczyna się szczypanie
+        clearTimeout(G.pressTimer); G.mouse.down = false; G.downTarget = null; if (G.screen && G.screen.drag) G.screen.drag = null;
+        G.pinch = { d0: pinchDist() }; return;
+      }
+      if (G.pinch) return;
+    }
+  });
+  window.addEventListener('pointermove', e => {
+    if (!touches.has(e.pointerId)) return; touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size !== 2 || !G.pinch || G.pinch.done) return;
+    const d = pinchDist(), k = d / G.pinch.d0; if (k > 0.8 && k < 1.25) return;
+    const [a, b] = [...touches.values()], mid = toLogical({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
+    if (!G.modal && G.screen && G.screen.onPinch) G.screen.onPinch(k > 1 ? 1 : -1, mid.x, mid.y);
+    G.pinch.d0 = d; G.dirty = true;
+  });
+  window.addEventListener('pointerup', touchEnd); window.addEventListener('pointercancel', touchEnd);
+  c.addEventListener('pointerdown', e => {
+    if (G.pinch) return;
     G.dirty = true; Sfx.unlock(); // dźwięk: kontekst audio dopiero po geście gracza
     if (e.button === 2) {
       e.preventDefault(); const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; updateHover();
@@ -55,7 +78,7 @@ function bindInput() {
     if (!G.hover && !G.modal && !G.fade.next && G.screen.onPointerDown) G.screen.onPointerDown(p.x, p.y, e);
   });
   window.addEventListener('pointerup', e => {
-    G.dirty = true;
+    G.dirty = true; if (G.pinch && e.pointerType === 'touch') { G.mouse.down = false; return; } // koniec szczypania to nie kliknięcie
     if (e.button === 2) { G.popup = null; return; }
     clearTimeout(G.pressTimer);
     if (!G.mouse.down) return; G.mouse.down = false; const p = toLogical(e);

@@ -199,6 +199,7 @@ G.screens.adventure = {
     const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
     setListTab(this, 'heroes'); const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
   },
+  onPinch(dir, x, y) { if (G.state && inRect(x, y, VIEW)) { const i = ZOOMS.indexOf(ZOOM); setZoom(G.state, ZOOMS[clamp(i + dir, 0, ZOOMS.length - 1)], x, y); } }, // dwa palce: rozsunięcie przybliża
   onWheel(d) {
     if (inRect(G.mouse.x, G.mouse.y, LIST)) this.listScroll = clamp((this.listScroll || 0) + Math.sign(d), 0, Math.max(0, panelItems(G.state).length - LIST_ROWS));
     else if (inRect(G.mouse.x, G.mouse.y, VIEW) && G.state) { const i = ZOOMS.indexOf(ZOOM); setZoom(G.state, ZOOMS[clamp(i - Math.sign(d), 0, ZOOMS.length - 1)], G.mouse.x, G.mouse.y); } // kółko: przybliż / oddal wokół kursora

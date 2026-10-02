@@ -172,7 +172,7 @@ G.screens.battle = {
     this.startTurnFor(u);
   },
   startTurnFor(u) {
-    const B = this.B; this.casting = null;
+    const B = this.B; this.casting = null; this.touchKey = null;
     const mach = isMachine(u) && humanSide(B, u.side) && !B.auto && !(machineControlled(B, u) && (u.cid !== 'firstAid' || firstAidTargets(B, u).length)); // machiny gracza działają same, chyba że bohater zna ich umiejętność
     const ai = mach || B.auto || !humanSide(B, u.side);
     if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
@@ -351,6 +351,11 @@ G.screens.battle = {
   onClick(x, y) {
     if (this.phase === 'over') { if (this.ending.t > 0.3) this.finish(false); return; }
     if (clickButtons(this.buttons, x, y)) return;
+    if (this.phase === 'input' && G.mouse.type && G.mouse.type !== 'mouse') { // dotyk: pierwsze stuknięcie pokazuje akcję i jej skutek, drugie w to samo pole ją wykonuje
+      const hx = hexAt(x, y), key = hx ? hexKey(hx.x, hx.y) + (this.casting || '') : null, again = key && key === this.touchKey;
+      if (!again) { this.onPointerMove(x, y); this.touchKey = this.preview && this.preview.kind !== 'info' && this.preview.kind !== 'far' && this.preview.kind !== 'nocast' ? key : null; return; }
+      this.touchKey = null;
+    }
     const B = this.B, p = this.preview; if (this.phase !== 'input' || !p) return;
     if (p.kind === 'cast') { this.casting = null; castBattle(B, p.id, p.x, p.y); this.phase = 'play'; this.resume = true; return; }
     if (p.kind === 'heal') this.player(u => actFirstAid(B, u, p.target));
@@ -435,6 +440,7 @@ G.screens.battle = {
     if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(heroStat(sideHero(B, this.me) || B.h, 'sp'))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
     else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots}${shotPenaltyText(B, u0, pv.target)})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';
+    if (this.touchKey && pv && G.mouse.type !== 'mouse') tip += ' Stuknij jeszcze raz, aby wykonać.';
     else if (pv && pv.kind === 'heal') tip = `Namiot medyka: wyleczy ${CREATURES[pv.target.cid].plural.toLowerCase()} o 1–${Math.min(pv.most, CREATURES[pv.target.cid].hp - pv.target.hp)} życia.`;
     else if (this.phase === 'input' && u0 && u0.cid === 'firstAid') tip = 'Namiot medyka: wskaż rannego oddział do leczenia (Obrona = pomiń).';
     else if (this.phase === 'input' && u0 && u0.cid === 'ballista') tip = `Balista (${CREATURES.ballista.name}): wskaż cel strzału.`;
