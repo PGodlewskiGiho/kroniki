@@ -4,6 +4,9 @@ const FONT_TITLE = "Cinzel, Georgia, 'Times New Roman', serif";
 const FONT_BODY = "'Cormorant Garamond', Georgia, 'Times New Roman', serif";
 // Pikselowa czcionka (domyślna; ustawienie Grafika → Czcionka): Jersey 10 wbudowana w plik gry. Rozmiary są przeskalowane
 // (PIXEL_FONT_K), żeby napisy zajmowały tyle miejsca co w czcionce klasycznej; kursywy nie ma (pochyłe piksele wyglądają źle).
+// PIXEL_ART = false: grafika gładka – bez ograniczonej palety, ditheringu, twardych krawędzi, schodkowych rogów
+// i powiększania bez wygładzania (dawny styl pikselowy wraca po ustawieniu na true).
+const PIXEL_ART = false;
 const FONT_PIXEL = "'Jersey 10', 'Courier New', monospace", PIXEL_FONT_K = { title: 1.12, body: 1.1 };
 const pixelFont = () => G.settings.font !== 'classic';
 function font(size, weight = 700, fam = 'title', italic = false) {
@@ -13,7 +16,7 @@ function font(size, weight = 700, fam = 'title', italic = false) {
 // Prostokąt z rogami: przy promieniu od 2 px róg jest schodkowy (stopnie po 2 px jak w pixel arcie), mniejsze zaokrąglenia zostają łukiem
 function rr(ctx, x, y, w, h, r) {
   r = Math.min(r, w / 2, h / 2);
-  if (r < 2) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); return; }
+  if (r < 2 || !PIXEL_ART) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); return; }
   const S = rrStairs(r), R = S.slice().reverse();
   ctx.beginPath(); ctx.moveTo(x + S[0][0], y);
   for (const [dx, dy] of S) ctx.lineTo(x + w - dx, y + dy);
@@ -93,7 +96,7 @@ function shadowAt(g, x, y, w) { g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); 
 const AP = 16, OUTLINE = [24, 16, 10];
 // Rozmiar piksela grafiki w px logicznych: PIX_DEFAULT (1,8: niewiele drobniejszy od dawnego), 1 (drobny) albo 2 (dawny; niska jakość grafiki).
 // PXD = gęstość względem dawnej grafiki (ile pikseli na dawny piksel). Zmiana czyści wszystkie gotowe obrazy (setPixelSize).
-const PIX_DEFAULT = 1.8;
+const PIX_DEFAULT = PIXEL_ART ? 1.8 : 1;
 let PIX = PIX_DEFAULT, PXD = 2 / PIX_DEFAULT;
 const PIX_CLEAR = []; // funkcje czyszczące pamięci podręczne obrazów (rejestrują je moduły grafiki)
 function setPixelSize(p) {
@@ -123,6 +126,7 @@ function recordingCtx(g, colors) {
   });
 }
 function crispify(c, colors, outline) {
+  if (!PIXEL_ART) return; // grafika gładka: miękkie krawędzie i pełna paleta rysunku
   const g = c._ctx, w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data, A = new Uint8Array(w * h), cache = new Map();
   const snap = (r, gg, b) => {
     const key = (r << 16) | (gg << 8) | b; let v = cache.get(key); if (v) return v; let bd = 1e9;
@@ -156,13 +160,13 @@ function sprite(key, w, h, ax, ay, draw, outline = OUTLINE, sc = 0.5) {
 // Sprite w interfejsie: (x, y) = punkt zaczepienia w px logicznych; k = 1 to rozmiar jak na mapie
 // (1 piksel grafiki = 2 px logiczne), k = 2 dwa razy większy itd.
 function drawSprite(ctx, s, x, y, k = 1) {
-  const f = (s.u || 2) * k; ctx.save(); ctx.imageSmoothingEnabled = !!s.raw; if (s.raw) ctx.imageSmoothingQuality = 'high'; // grafika bez pikselizacji: gładkie skalowanie
+  const f = (s.u || 2) * k; ctx.save(); ctx.imageSmoothingEnabled = !!s.raw || !PIXEL_ART; if (s.raw || !PIXEL_ART) ctx.imageSmoothingQuality = 'high'; // grafika bez pikselizacji: gładkie skalowanie
   ctx.drawImage(s.c, x - s.ax * f, y - s.ay * f, s.c.width * f, s.c.height * f); ctx.restore();
 }
 // To samo, ale (x, y) = lewy górny róg sprite'a
 const drawSpriteBox = (ctx, s, x, y, k = 1) => drawSprite(ctx, s, x + s.ax * (s.u || 2) * k, y + s.ay * (s.u || 2) * k, k);
 // Sprite w buforze mapy (bufor ma rozdzielczość pikseli grafiki, więc 1 piksel sprite'a = 1 piksel bufora)
-function blit(b, s, lx, ly) { const u = s.u || 2; b.drawImage(s.c, Math.round(lx / u) * u - s.ax * u, Math.round(ly / u) * u - s.ay * u, s.c.width * u, s.c.height * u); }
+function blit(b, s, lx, ly) { const u = s.u || 2; if (!PIXEL_ART) return b.drawImage(s.c, lx - s.ax * u, ly - s.ay * u, s.c.width * u, s.c.height * u); b.drawImage(s.c, Math.round(lx / u) * u - s.ax * u, Math.round(ly / u) * u - s.ay * u, s.c.width * u, s.c.height * u); }
 const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 // Warstwa pixel art dla rysunków ruchomych (efekty czarów, sceny okien wyniku): rysunek trafia do bufora o rozdzielczości
 // 1/px (px = ile pikseli ekranu na piksel grafiki; 2 jak mapa i jednostki w bitwie), dostaje ograniczoną paletę z ditheringiem
@@ -171,10 +175,11 @@ function pixLayer(key, ctx, x, y, w, h, draw, o = {}) {
   const px = o.px || PIX, bw = Math.ceil(w / px), bh = Math.ceil(h / px), c = pixBuf(key, bw, bh, true), g = c._ctx;
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, bw, bh);
   g.save(); g.setTransform(1 / px, 0, 0, 1 / px, -x / px, -y / px); draw(g); g.restore();
-  crispLayer(c, o.step || 24);
-  ctx.save(); ctx.imageSmoothingEnabled = false; if (o.add) ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(c, x, y, bw * px, bh * px); ctx.restore();
+  if (PIXEL_ART) crispLayer(c, o.step || 24);
+  ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; if (o.add) ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(c, x, y, bw * px, bh * px); ctx.restore();
 }
 function crispLayer(c, step) {
+  if (!PIXEL_ART) return;
   const g = c._ctx, w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data;
   for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k += 4) {
     const a = d[k + 3]; if (!a) continue; const b = BAYER4[(y & 3) * 4 + (x & 3)] / 16, lv = Math.min(2, Math.floor(a / 255 * 2 + b));
@@ -185,7 +190,7 @@ function crispLayer(c, step) {
 }
 // Ograniczona paleta z ditheringiem (styl pikselowy jak na mapie)
 function pixelQuantize(cv, step = 18) {
-  if (!cv || !cv.getContext) return;
+  if (!PIXEL_ART || !cv || !cv.getContext) return;
   const g = cv.getContext('2d'), w = cv.width, h = cv.height, img = g.getImageData(0, 0, w, h), d = img.data;
   for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k += 4) {
     const o = (BAYER4[(y & 3) * 4 + (x & 3)] / 16 - 0.5) * step;
