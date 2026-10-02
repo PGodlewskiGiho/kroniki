@@ -530,7 +530,7 @@ function drawWorldPixel(b, st) {
     else if (ob.type === 'town') {
       const t = st.towns[ob.townId], lvl = townLevel(t), mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, fc = ownerColor(st, ob.owner);
       const k3 = `town_${t.faction}_${lvl}`, s3 = map3dSprite(k3);
-      if (s3) { bl(s3, px, py + 10); for (const [fx, fy] of map3dFlags(k3)) bl(flagSprite(fc, 10, 6), px + fx, py + 10 + fy - 22); continue; } // 3D: brama na polu wejścia, flagi na masztach modelu
+      if (s3) { const gy = py - 14; bl(s3, px, gy); for (const [fx, fy] of map3dFlags(k3)) bl(flagSprite(fc, 10, 6), px + fx, gy + fy - 22); continue; } // 3D: brama tuż za polem wejścia (bohater stoi przed nią), flagi na masztach modelu
       bl(townSprite(t.faction, lvl), mx, my);
       for (const [fx, fy] of townFlagPoints(t.faction, lvl)) bl(flagSprite(fc, 10, 6), mx + fx, my + fy - 20); // drzewce stoi na szczycie dachu
     }
