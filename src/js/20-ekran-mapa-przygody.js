@@ -3,8 +3,8 @@
 function paintAdvChrome(c) {
   stoneFill(c, 0, 0, VW, VH);
   goldFrame(c, VIEW.x, VIEW.y, VIEW.w, VIEW.h); goldFrame(c, MINI.x, MINI.y, MINI.s, MINI.s);
-  for (const r of [LIST, INFOBOX]) { c.fillStyle = 'rgba(0,0,0,.45)'; rr(c, r.x, r.y, r.w, r.h, 4); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1.2; c.stroke(); }
-  c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, 8, VH - 31, VW - 16, 27, 3); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1; c.stroke();
+  for (const r of [LIST, INFOBOX]) insetBox(c, r.x, r.y, r.w, r.h);
+  insetBox(c, 8, VH - 31, VW - 16, 27, 7);
 }
 function showKingdom(st) {
   const R = human(st).resources, x = 150, y = 84, w = 500, h = 444, mines = {};
@@ -65,7 +65,7 @@ function buildPanelButtons(scr, st) {
     mk(5, iconGear, 'Menu', () => scr.systemMenu(), { key: 'escape', tip: 'Menu systemowe: powrót do menu głównego (klawisz Esc).' }),
     new Button(LIST.x + 2, 212, 30, 40, 'Mapa zagadki', () => showPuzzle(G.state), { icon: iconPuzzle, key: 'p', tip: 'Mapa zagadki: obeliski odsłaniają miejsce, gdzie zakopano Graala (klawisz P).' }),
     new Button(LIST.x + 34, 212, 30, 40, 'Kop', () => digHere(scr, G.state), { icon: iconShovel, key: 'd', tip: 'Kop w poszukiwaniu Graala na polu bohatera. Tylko z pełnymi punktami ruchu; zużywa cały dzień (klawisz D).' }),
-    new Button(LIST.x + 66, 212, st.map.ln ? 92 : 126, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
+    new Button(LIST.x + 66, 212, st.map.ln ? 92 : 126, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, primary: true, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
     scr.tabHeroes = new Button(LIST.x + 4, LIST.y + 3, 92, 22, 'Bohaterowie', () => setListTab(scr, 'heroes'), { size: 12, selected: () => listTab() === 'heroes', tip: 'Lista twoich bohaterów (klawisz B przełącza zakładki).' }),
     scr.tabTowns = new Button(LIST.x + 100, LIST.y + 3, 92, 22, 'Miasta', () => setListTab(scr, 'towns'), { size: 12, selected: () => listTab() === 'towns', tip: 'Lista twoich miast; młotek: czy dziś można jeszcze budować (klawisz B przełącza zakładki).' }),
   ];
@@ -97,29 +97,28 @@ function drawPanel(ctx, st, scr) {
   if (!items) text(ctx, listTab() === 'towns' ? 'Nie masz miast' : 'Nie masz bohaterów', LIST.x + LIST.w / 2, LY + 30, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(236,217,168,.6)' });
   for (const r of panelRows(st, scr.listScroll)) {
     const y = r.y, on = r.hero && r.hero === hero(st);
-    ctx.fillStyle = on ? 'rgba(210,160,60,.25)' : 'rgba(0,0,0,.25)'; rr(ctx, LIST.x + 4, y, 188, 44, 3); ctx.fill();
-    ctx.strokeStyle = on ? '#e0b24a' : '#6a5a3a'; ctx.lineWidth = 1.2; ctx.stroke();
+    slotBox(ctx, LIST.x + 4, y, 188, 44, on ? 'sel' : '');
     if (r.hero) {
       const h = r.hero, max = heroMaxMP(h), frac = clamp(h.mp / max, 0, 1);
       drawHeroPortrait(ctx, LIST.x + 8, y + 4, h, ownerColor(st, h.owner));
-      text(ctx, h.name, LIST.x + 52, y + 14, { size: 15, color: '#ecd9a8', fam: 'title' });
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(LIST.x + 52, y + 27, 132, 9);
-      ctx.fillStyle = h.asleep || h.garrison != null ? '#7a7466' : '#3aa14a'; ctx.fillRect(LIST.x + 52, y + 27, 132 * frac, 9);
+      text(ctx, h.name, LIST.x + 52, y + 14, { size: 15, color: UI.txt, fam: 'title' });
+      ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(LIST.x + 52, y + 27, 132, 9);
+      const mg = ctx.createLinearGradient(0, y + 27, 0, y + 36); mg.addColorStop(0, h.asleep || h.garrison != null ? '#9a9486' : '#7ad06a'); mg.addColorStop(1, h.asleep || h.garrison != null ? '#5a5650' : '#2a7a2e'); ctx.fillStyle = mg; ctx.fillRect(LIST.x + 52, y + 27, 132 * frac, 9);
       if (h.garrison != null) text(ctx, 'w garnizonie', LIST.x + 118, y + 32, { size: 10, weight: 700, align: 'center', color: '#f0e4c0' });
       ctx.strokeStyle = '#8a6d32'; ctx.lineWidth = 1; ctx.strokeRect(LIST.x + 52.5, y + 27.5, 131, 8);
-      text(ctx, `${h.mp} / ${max}`, LIST.x + 186, y + 14, { size: 12, align: 'right', color: '#c8b68a' });
+      text(ctx, `${h.mp} / ${max}`, LIST.x + 186, y + 14, { size: 13, weight: 600, align: 'right', color: UI.txt2 });
     } else {
       const t = r.town;
       if (!drawMap3dIcon(ctx, `town_${t.faction}_${townLevel(t)}`, LIST.x + 26, y + 22, 42, 38)) drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), LIST.x + 6, y + 2, 1); // miniatura z modelu 3D
-      text(ctx, t.name, LIST.x + 52, y + 16, { size: 14, color: '#ecd9a8', fam: 'title' });
-      text(ctx, `${townGold(t)} złota dziennie`, LIST.x + 52, y + 32, { size: 12, weight: 500, color: '#c8b68a' });
+      text(ctx, t.name, LIST.x + 52, y + 16, { size: 14, color: UI.txt, fam: 'title' });
+      text(ctx, `${townGold(t)} złota dziennie`, LIST.x + 52, y + 32, { size: 14, weight: 600, color: UI.txt2 });
       iconHammer(ctx, LIST.x + 178, y + 14, !t.builtToday); // czy dziś można jeszcze budować
     }
   }
-  text(ctx, `Tydzień ${weekName(st)}`, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 18, { size: 15, align: 'center', color: '#f0e4c0', fam: 'title' });
+  text(ctx, `Tydzień ${weekName(st)}`, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 18, { size: 15, align: 'center', color: UI.goldHi, fam: 'title' });
   divider(ctx, INFOBOX.x + 16, INFOBOX.x + INFOBOX.w - 16, INFOBOX.y + 32);
-  const info = panelInfoText(st, scr); ctx.font = font(14, 500, 'body');
-  wrapText(ctx, info.text, INFOBOX.w - 24).slice(0, 4).forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18, { size: 14, weight: 500, align: 'center', color: info.col }));
+  const info = panelInfoText(st, scr); ctx.font = font(15, 600, 'body');
+  wrapText(ctx, info.text, INFOBOX.w - 24).slice(0, 4).forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18, { size: 15, weight: 600, align: 'center', color: info.col }));
 }
 G.screens.adventure = {
   // Płynnie (60 klatek): gdy coś się rusza, zawsze; w spoczynku (woda, stwory) przy niskiej jakości grafiki 30

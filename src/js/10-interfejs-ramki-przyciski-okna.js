@@ -7,12 +7,52 @@ function uiLayer(key, w, h, paint) {
   return Layers.get('ui_' + key, w, h, c => { c.imageSmoothingEnabled = !PIXEL_ART; paint(c, w, h); c.canvas._ctx = c; crispLayer(c.canvas, 12); }, PIXEL_ART ? 1 / PIX : undefined); // gładki styl: w pełnej rozdzielczości ekranu
 }
 function drawUi(ctx, c, x, y) { ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(c, Math.round(x), Math.round(y), c.width / c._s, c.height / c._s); ctx.restore(); }
+// --- system wizualny „oprawiona kronika” (docs/interfejs.md): drewno ramy, skóra paneli, pergamin dokumentów, złote okucia 3D ---
+const UI = { txt: '#ecdcb4', txt2: '#b9a47a', txtOff: '#7d6c52', ink: '#2a1808', ink2: '#5b4126', goldHi: '#ffe7a3', gold: '#c9a14a', goldLo: '#6a4814', good: '#7fbf5a', bad: '#d0503a', mana: '#6a9ae8' };
+// Ozdoba z arkusza interfejsu (tools/grafika3d/wypal-interfejs.js); false, gdy arkusz jeszcze się nie wczytał
+const uiArtReady = () => typeof UI_ART !== 'undefined' && UI_ART && UI_IMG.sheet && UI_IMG.sheet._ok;
+function drawUiPiece(ctx, key, x, y, w, h) {
+  if (!uiArtReady() || !UI_ART.f[key]) return false; const [sx, sy, sw, sh] = UI_ART.f[key];
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(UI_IMG.sheet, sx, sy, sw, sh, x, y, w ?? sw / 2, h ?? sh / 2); ctx.restore(); return true;
+}
+// Złota listwa (rama) o grubości t wokół prostokąta: światło z góry, cień na dole, ciemne obrysy z obu stron
+function goldRim(c, x, y, w, h, t = 4) {
+  c.save(); const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#fff0b8'); g.addColorStop(0.08, '#d9b45c'); g.addColorStop(0.5, '#a07a30'); g.addColorStop(0.92, '#6a4814'); g.addColorStop(1, '#c9a14a');
+  c.beginPath(); c.rect(x, y, w, h); c.rect(x + t, y + t, w - 2 * t, h - 2 * t); c.fillStyle = g; c.fill('evenodd');
+  c.lineWidth = 1; c.strokeStyle = 'rgba(255,240,190,.55)'; c.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3); // połysk na grzbiecie listwy
+  c.strokeStyle = '#0e0905'; c.lineWidth = 1.5; c.strokeRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5); c.strokeRect(x + t - 0.25, y + t - 0.25, w - 2 * t + 0.5, h - 2 * t + 0.5); c.restore();
+}
+// Ciemna skóra (wnętrze paneli): ciepłe plamy, drobne ziarno, przyciemnione brzegi
+function leatherFill(c, x, y, w, h, seed = 1, tone = 0) {
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); const r = mulberry32(seed * 977 + Math.round(w) * 7 + Math.round(h));
+  const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, shadeHex('#3a291c', tone)); g.addColorStop(1, shadeHex('#24180f', tone)); c.fillStyle = g; c.fillRect(x, y, w, h);
+  for (let i = 0; i < w * h / 2500 + 4; i++) { const px = x + r() * w, py = y + r() * h, rad = 20 + r() * 70, gg = c.createRadialGradient(px, py, 0, px, py, rad), a = 0.05 + r() * 0.07;
+    gg.addColorStop(0, r() < 0.5 ? `rgba(120,80,45,${a})` : `rgba(0,0,0,${a * 1.4})`); gg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gg; c.fillRect(px - rad, py - rad, rad * 2, rad * 2); }
+  c.fillStyle = noise(c); c.globalAlpha = 0.5; c.fillRect(x, y, w, h); c.globalAlpha = 1;
+  const e = Math.min(26, w / 4, h / 4); for (const [x0, y0, x1, y1] of [[x, y, x, y + e], [x, y + h, x, y + h - e], [x, y, x + e, y], [x + w, y, x + w - e, y]]) { const eg = c.createLinearGradient(x0, y0, x1, y1); eg.addColorStop(0, 'rgba(0,0,0,.45)'); eg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = eg; c.fillRect(x, y, w, h); }
+  c.restore();
+}
+// Ciemne drewno ramy ekranu: poziome deski ze słojami i sękami, szczeliny, winieta
+function paintWood(c, w, h, seed = 1) {
+  const r = mulberry32(seed * 7919 + Math.round(w) * 31 + Math.round(h)), PH = 72; c.fillStyle = '#140d08'; c.fillRect(0, 0, w, h);
+  for (let y0 = -((seed * 13) % PH), k = 0; y0 < h; y0 += PH, k++) {
+    const t = r(), base = shadeHex('#2a1c11', (t - 0.5) * 0.12), g = c.createLinearGradient(0, y0, 0, y0 + PH); g.addColorStop(0, shadeHex(base, 0.05)); g.addColorStop(0.5, base); g.addColorStop(1, shadeHex(base, -0.12));
+    c.fillStyle = g; c.fillRect(0, y0 + 1, w, PH - 2); c.save(); c.beginPath(); c.rect(0, y0 + 1, w, PH - 2); c.clip();
+    for (let i = 0; i < 34; i++) { const yy = y0 + 3 + r() * (PH - 6), amp = 1 + r() * 3, f = 0.004 + r() * 0.01, ph = r() * 9; c.strokeStyle = r() < 0.55 ? `rgba(0,0,0,${0.08 + r() * 0.12})` : `rgba(160,110,60,${0.03 + r() * 0.05})`; c.lineWidth = 0.6 + r() * 1.2;
+      c.beginPath(); for (let x = -10; x <= w + 10; x += 12) { const yv = yy + Math.sin(x * f + ph) * amp + Math.sin(x * f * 3.1 + ph * 2) * amp * 0.3; x < 0 ? c.moveTo(x, yv) : c.lineTo(x, yv); } c.stroke(); }
+    if (r() < 0.6) { const kx = r() * w, ky = y0 + PH * (0.3 + r() * 0.4); for (let j = 4; j > 0; j--) { c.strokeStyle = `rgba(0,0,0,${0.1 + j * 0.04})`; c.lineWidth = 1; c.beginPath(); c.ellipse(kx, ky, j * 5, j * 1.8, 0, 0, TAU); c.stroke(); } }
+    c.restore(); c.fillStyle = 'rgba(255,220,170,.04)'; c.fillRect(0, y0 + 1, w, 1); c.fillStyle = 'rgba(0,0,0,.4)'; c.fillRect(0, y0 + PH - 1, w, 1.5);
+  }
+  c.fillStyle = noise(c); c.globalAlpha = 0.35; c.fillRect(0, 0, w, h); c.globalAlpha = 1;
+  const vg = c.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); c.fillStyle = vg; c.fillRect(0, 0, w, h);
+}
 // Romb z pikseli (ozdoba rogów i przerywników): rzędy po 2 px
 function pixDiamond(ctx, cx, cy, col, n = 3) {
   cx = Math.round(cx / 2) * 2; cy = Math.round(cy / 2) * 2; ctx.fillStyle = col;
   for (let i = -n + 1; i < n; i++) { const hw = (n - Math.abs(i)) * 2; ctx.fillRect(cx - hw, cy + i * 2 - 1, hw * 2, 2); }
 }
 function drawCorners(ctx, x, y, w, h) {
+  if (!PIXEL_ART && uiArtReady()) { const S = Math.min(46, Math.max(26, Math.min(w, h) * 0.16)), o = S * 0.2; drawUiPiece(ctx, 'corner_tl', x - o, y - o, S, S); drawUiPiece(ctx, 'corner_tr', x + w - S + o, y - o, S, S); drawUiPiece(ctx, 'corner_bl', x - o, y + h - S + o, S, S); drawUiPiece(ctx, 'corner_br', x + w - S + o, y + h - S + o, S, S); return; }
   for (const [cx, cy] of [[x + 7, y + 7], [x + w - 7, y + 7], [x + 7, y + h - 7], [x + w - 7, y + h - 7]]) { pixDiamond(ctx, cx, cy, '#6a4a14', 4); pixDiamond(ctx, cx, cy - 1, '#e0b44c', 3); pixDiamond(ctx, cx - 1, cy - 2, '#fff0b0', 1); }
 }
 // Cegły kamiennego tła: każda w nieco innym odcieniu, jaśniejsza krawędź u góry, cień u dołu, fuga 2 px
@@ -62,6 +102,7 @@ function paintBricks(c, w, h, seed = 1) {
   }
 }
 function drawStone(ctx, x, y, w, h) {
+  if (!PIXEL_ART) { drawUi(ctx, uiLayer(`panel_${w}x${h}_${uiArtReady() ? 1 : 0}`, w + 10, h + 12, c => paintPanel(c, w, h)), x - 2, y - 2); return; }
   drawUi(ctx, uiLayer(`stonebox_${w}x${h}`, w + 8, h + 10, c => {
     c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, 4, 6, w, h, 6); c.fill();
     c.save(); rr(c, 0, 0, w, h, 6); c.clip(); paintBricks(c, w, h, 3); c.restore();
@@ -70,9 +111,18 @@ function drawStone(ctx, x, y, w, h) {
   }), x, y);
   drawCorners(ctx, x, y, w, h);
 }
+// Panel informacyjny: cień, ciemna skóra, przeszycie, złota listwa, nity w rogach (rysowany z przesunięciem 2 px na cień)
+function paintPanel(c, w, h) {
+  c.save(); c.translate(2, 2); c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(2, 4, w, h);
+  leatherFill(c, 0, 0, w, h, 3); c.save(); c.setLineDash([5, 4]); c.lineWidth = 1.2; c.strokeStyle = 'rgba(176,134,72,.5)'; c.strokeRect(9.5, 9.5, w - 19, h - 19); c.restore();
+  goldRim(c, 0, 0, w, h, 4);
+  if (w >= 60 && h >= 40) for (const [px, py] of [[2, 2], [w - 12, 2], [2, h - 12], [w - 12, h - 12]]) drawUiPiece(c, 'rivet', px, py, 10, 10);
+  c.restore();
+}
 // Pergamin (tło okien i paneli): pixel art z pamięci (uiLayer): jasny środek, przypalone brzegi w ditheringu, włókna papieru
 function drawParchment(ctx, x, y, w, h) { drawUi(ctx, uiLayer(`parch_${w}x${h}`, w + 16, h + 16, c => paintParchment(c, 4, 4, w, h)), x - 4, y - 4); drawCorners(ctx, x, y, w, h); }
 function paintParchment(ctx, x, y, w, h) {
+  if (!PIXEL_ART) return paintParchmentSmooth(ctx, x, y, w, h);
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,.6)'; rr(ctx, x + 6, y + 8, w, h, 8); ctx.fill();
   rr(ctx, x, y, w, h, 8); ctx.fillStyle = '#d8bf88'; ctx.fill();
@@ -87,17 +137,67 @@ function paintParchment(ctx, x, y, w, h) {
   ctx.lineWidth = 2; ctx.strokeStyle = '#a07a32'; rr(ctx, x + 8, y + 8, w - 16, h - 16, 4); ctx.stroke();
   ctx.restore();
 }
+function paintParchmentSmooth(c, x, y, w, h) {
+  c.save(); const B = 7; // oprawa: ciemne drewno + złota listwa
+  c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(x + 5, y + 8, w, h); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x + 2, y + 3, w + 6, h + 8);
+  c.fillStyle = '#e4cf9e'; c.fillRect(x, y, w, h); c.save(); c.beginPath(); c.rect(x + B, y + B, w - 2 * B, h - 2 * B); c.clip();
+  const rg = c.createRadialGradient(x + w * 0.45, y + h * 0.4, Math.min(w, h) * 0.1, x + w / 2, y + h / 2, Math.hypot(w, h) * 0.6); rg.addColorStop(0, '#f2e3bb'); rg.addColorStop(0.6, '#dcc391'); rg.addColorStop(1, '#a87e48'); c.fillStyle = rg; c.fillRect(x, y, w, h);
+  const r = mulberry32(Math.round(w) * 131 + Math.round(h));
+  for (let i = 0; i < w * h / 1800 + 6; i++) { const px = x + r() * w, py = y + r() * h, rad = 10 + r() * 60, gg = c.createRadialGradient(px, py, 0, px, py, rad), a = 0.03 + r() * 0.06; gg.addColorStop(0, `rgba(${r() < 0.6 ? '140,95,45' : '255,248,225'},${a})`); gg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gg; c.fillRect(px - rad, py - rad, rad * 2, rad * 2); } // plamy i przetarcia
+  c.strokeStyle = 'rgba(120,85,40,.12)'; c.lineWidth = 0.7; for (let i = 0; i < w * h / 700; i++) { const px = x + r() * w, py = y + r() * h, L = 4 + r() * 14, a = (r() - 0.5) * 0.6; c.beginPath(); c.moveTo(px, py); c.lineTo(px + Math.cos(a) * L, py + Math.sin(a) * L); c.stroke(); } // włókna
+  c.fillStyle = noise(c); c.globalAlpha = 0.45; c.fillRect(x, y, w, h); c.globalAlpha = 1;
+  const e = 22; for (const [x0, y0, x1, y1] of [[x + B, y, x + B + e, y], [x + w - B, y, x + w - B - e, y], [x, y + B, x, y + B + e], [x, y + h - B, x, y + h - B - e]]) { const eg = c.createLinearGradient(x0, y0, x1, y1); eg.addColorStop(0, 'rgba(96,58,22,.55)'); eg.addColorStop(1, 'rgba(96,58,22,0)'); c.fillStyle = eg; c.fillRect(x, y, w, h); } // przypalony brzeg
+  c.restore();
+  c.beginPath(); c.rect(x, y, w, h); c.rect(x + B, y + B, w - 2 * B, h - 2 * B); c.fillStyle = '#2a1c11'; c.fill('evenodd'); // drewniana oprawa
+  goldRim(c, x, y, w, h, 3); goldRim(c, x + B - 2, y + B - 2, w - 2 * B + 4, h - 2 * B + 4, 2);
+  c.restore();
+}
 function divider(ctx, x1, x2, y) {
+  if (!PIXEL_ART && uiArtReady()) { const cx = (x1 + x2) / 2, g = ctx.createLinearGradient(x1, 0, x2, 0); g.addColorStop(0, 'rgba(120,82,30,0)'); g.addColorStop(0.2, 'rgba(120,82,30,.75)'); g.addColorStop(0.8, 'rgba(120,82,30,.75)'); g.addColorStop(1, 'rgba(120,82,30,0)');
+    ctx.save(); ctx.fillStyle = g; ctx.fillRect(x1, y - 1, x2 - x1, 2); ctx.restore(); const dw = Math.min(150, (x2 - x1) * 0.5); drawUiPiece(ctx, 'divider', cx - dw / 2, y - dw / 10, dw, dw / 5); return; }
   y = Math.round(y / 2) * 2; ctx.fillStyle = 'rgba(90,55,20,.55)'; ctx.fillRect(Math.round(x1), y - 1, Math.round(x2 - x1), 2);
   pixDiamond(ctx, (x1 + x2) / 2, y, '#8a5a1e', 3);
 }
 // Kamienne tło z cegieł w pixel arcie; gotowy obraz danego rozmiaru z pamięci (uiLayer)
-function stoneFill(c, x, y, w, h) { drawUi(c, uiLayer(`stone_${w}x${h}`, w, h, paintStone), x, y); }
+function stoneFill(c, x, y, w, h) { drawUi(c, uiLayer(`${PIXEL_ART ? 'stone' : 'wood'}_${w}x${h}`, w, h, PIXEL_ART ? paintStone : paintWood), x, y); }
 function paintStone(c, w, h) { paintBricks(c, w, h); const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.3)'); c.fillStyle = g; c.fillRect(0, 0, w, h); }
-function goldFrame(c, x, y, w, h) { c.fillStyle = '#000'; c.fillRect(x - 4, y - 4, w + 8, h + 8); c.strokeStyle = '#b8913f'; c.lineWidth = 2; c.strokeRect(x - 5, y - 5, w + 10, h + 10); }
+// Wnęka: wpuszczone pole w ramie (lista, opis, pasek zasobów): ciemniejsza skóra, wewnętrzny cień, cienka złota krawędź
+function insetBox(c, x, y, w, h, seed = 5) {
+  if (PIXEL_ART) { c.fillStyle = 'rgba(0,0,0,.45)'; rr(c, x, y, w, h, 4); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1.2; c.stroke(); return; }
+  leatherFill(c, x, y, w, h, seed, -0.35); c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); c.shadowColor = 'rgba(0,0,0,.85)'; c.shadowBlur = 10; c.shadowOffsetY = 3; c.lineWidth = 6; c.strokeStyle = '#000'; c.strokeRect(x - 3, y - 3, w + 6, h + 6); c.restore();
+  c.lineWidth = 1; c.strokeStyle = 'rgba(214,174,88,.55)'; c.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1); c.strokeStyle = 'rgba(0,0,0,.8)'; c.strokeRect(x - 1.5, y - 1.5, w + 3, h + 3);
+}
+// Gniazdo (oddział, artefakt, umiejętność, wiersz listy): ciemna wnęka z fazą z brązu; st: '' | 'hover' | 'sel' | 'off'
+function slotBox(c, x, y, w, h, st = '') {
+  if (PIXEL_ART) { c.fillStyle = st === 'sel' ? 'rgba(210,160,60,.25)' : 'rgba(0,0,0,.25)'; rr(c, x, y, w, h, 3); c.fill(); c.strokeStyle = st === 'sel' ? '#e0b24a' : '#6a5a3a'; c.lineWidth = 1.2; c.stroke(); return; }
+  c.save(); const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, st === 'sel' ? '#3e2a12' : '#120c07'); g.addColorStop(1, st === 'sel' ? '#2a1c0c' : '#21170e'); c.fillStyle = g; c.fillRect(x, y, w, h);
+  const ig = c.createLinearGradient(0, y, 0, y + Math.min(14, h / 2)); ig.addColorStop(0, 'rgba(0,0,0,.6)'); ig.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = ig; c.fillRect(x, y, w, Math.min(14, h / 2)); // cień od górnej krawędzi
+  c.lineWidth = 1; c.strokeStyle = 'rgba(255,220,150,.10)'; c.beginPath(); c.moveTo(x + 1, y + h - 0.5); c.lineTo(x + w - 1, y + h - 0.5); c.stroke(); // odblask dolnej krawędzi
+  c.lineWidth = st === 'sel' ? 2 : 1.2; c.strokeStyle = st === 'sel' ? '#f0c860' : st === 'hover' ? '#c9a14a' : st === 'off' ? '#3e3226' : '#6e5228'; c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  if (st === 'sel') { c.shadowColor = 'rgba(255,200,90,.6)'; c.shadowBlur = 8; c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); }
+  c.restore();
+}
+function goldFrame(c, x, y, w, h) {
+  if (!PIXEL_ART) { c.fillStyle = '#000'; c.fillRect(x - 1, y - 1, w + 2, h + 2); goldRim(c, x - 6, y - 6, w + 12, h + 12, 5); return; }
+  c.fillStyle = '#000'; c.fillRect(x - 4, y - 4, w + 8, h + 8); c.strokeStyle = '#b8913f'; c.lineWidth = 2; c.strokeRect(x - 5, y - 5, w + 10, h + 10); }
 // Tło przycisku w pixel arcie: dwa pasy koloru (jaśniejszy u góry), fazka, czarny obrys, złota ramka; stan: n, h (najechany), s (wybrany), d (wyłączony)
 const BTN_COLS = { n: ['#62431f', '#46301a', '#2c1c0c', '#b8913f'], h: ['#7e5a2e', '#5a3e1e', '#3a2610', '#ffd970'], s: ['#a2442a', '#7a2c18', '#4c160a', '#ffd970'], d: ['#4e4a44', '#3a3733', '#2a2724', '#6d665c'] };
+// Gładko: tabliczka w złotej listwie; środek: skóra (zwykły), cieplejszy i jaśniejszy (najechany), złocisty (wybrany),
+// czerwona emalia (główna akcja: st 'p'), przygaszony bez złota (wyłączony)
+const BTN_FILL = { n: ['#4a3220', '#2a1a0e'], h: ['#6a4828', '#3a2512'], s: ['#8a6224', '#4e3410'], p: ['#9a2e1e', '#561208'], ph: ['#b83a24', '#6a1a0c'], d: ['#2c241d', '#1c1712'] };
+function paintButtonSmooth(c, w, h, st) {
+  const [top, low] = BTN_FILL[st], dis = st === 'd', R = 3;
+  c.fillStyle = 'rgba(0,0,0,.5)'; rr(c, 1, 3, w, h, R); c.fill();
+  c.save(); rr(c, 0, 0, w, h, R); c.clip();
+  if (dis) { c.fillStyle = '#4a3f33'; c.fillRect(0, 0, w, h); } else { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#ffeab0'); g.addColorStop(0.15, '#d6ae58'); g.addColorStop(0.6, '#9a7430'); g.addColorStop(1, '#5a3c10'); c.fillStyle = g; c.fillRect(0, 0, w, h); } // złota listwa (fazka)
+  const t = 3, g2 = c.createLinearGradient(0, t, 0, h - t); g2.addColorStop(0, top); g2.addColorStop(1, low); c.fillStyle = g2; rr(c, t, t, w - 2 * t, h - 2 * t, 2); c.fill();
+  c.fillStyle = noise(c); c.globalAlpha = 0.35; c.fillRect(t, t, w - 2 * t, h - 2 * t); c.globalAlpha = 1;
+  const hl = c.createLinearGradient(0, t, 0, t + (h - 2 * t) * 0.5); hl.addColorStop(0, `rgba(255,236,190,${dis ? 0.04 : st === 'n' ? 0.12 : 0.2})`); hl.addColorStop(1, 'rgba(255,236,190,0)'); c.fillStyle = hl; c.fillRect(t, t, w - 2 * t, (h - 2 * t) * 0.5); // światło na górze
+  c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineWidth = 1; rr(c, t + 0.5, t + 0.5, w - 2 * t - 1, h - 2 * t - 1, 2); c.stroke();
+  c.restore(); c.strokeStyle = '#0c0703'; c.lineWidth = 1.5; rr(c, 0.75, 0.75, w - 1.5, h - 1.5, R); c.stroke();
+}
 function paintButton(c, w, h, st) {
+  if (!PIXEL_ART) return paintButtonSmooth(c, w, h, st);
   const [top, mid, low, rim] = BTN_COLS[st];
   c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, 2, 4, w, h, 4); c.fill();
   c.save(); rr(c, 0, 0, w, h, 4); c.clip();
@@ -110,29 +210,32 @@ function paintButton(c, w, h, st) {
 class Button {
   constructor(x, y, w, h, label, action, o = {}) {
     Object.assign(this, { x, y, w, h, label, action, key: o.key || null, size: o.size || 18, disabled: !!o.disabled,
-      selected: o.selected || null, sub: o.sub || null, swatch: o.swatch || null, icon: o.icon || null, lead: o.lead || null, tip: o.tip || null });
+      selected: o.selected || null, sub: o.sub || null, swatch: o.swatch || null, icon: o.icon || null, lead: o.lead || null, tip: o.tip || null, primary: !!o.primary });
   }
   hit(px, py) { return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h; }
   isSel() { return typeof this.selected === 'function' ? this.selected() : !!this.selected; }
   draw(ctx) {
-    const hover = G.hover === this, pressed = hover && G.mouse.down, sel = this.isSel(), st = this.disabled ? 'd' : sel ? 's' : hover ? 'h' : 'n';
+    const hover = G.hover === this, pressed = hover && G.mouse.down, sel = this.isSel(), st = this.disabled ? 'd' : sel ? 's' : this.primary && !PIXEL_ART ? (hover ? 'ph' : 'p') : hover ? 'h' : 'n';
     const { x, w, h } = this, y = this.y + (pressed ? 2 : 0);
     ctx.save();
     drawUi(ctx, uiLayer(`btn_${w}x${h}_${st}`, w + 4, h + 6, c => paintButton(c, w, h, st)), x, y);
-    const col = this.disabled ? '#8d857a' : (hover ? '#fff3c4' : '#ecd08a');
+    const col = PIXEL_ART ? (this.disabled ? '#8d857a' : (hover ? '#fff3c4' : '#ecd08a')) : this.disabled ? UI.txtOff : hover || sel ? '#fff4cc' : '#f0dca6';
     let cx = x + w / 2;
     if (this.swatch) {
       ctx.fillStyle = typeof this.swatch === 'function' ? this.swatch() : this.swatch; ctx.fillRect(x + 10, y + h / 2 - 8, 16, 16);
       ctx.lineWidth = 2; ctx.strokeStyle = '#e0b24a'; ctx.strokeRect(x + 10, y + h / 2 - 8, 16, 16); cx = x + (w + 26) / 2;
     }
     if (this.lead) { this.lead(ctx, x + 24, y + h / 2); cx = x + (w + 34) / 2; } // mała ikona przed napisem (np. umiejętność)
+    const k3 = !PIXEL_ART && this.icon && ICON3.get(this.icon);
+    if (k3 && uiArtReady()) { const S = Math.min(w, h) - 4; if (this.disabled) ctx.globalAlpha = 0.4; drawUiPiece(ctx, k3, cx - S / 2, y + h / 2 - S / 2, S, S); ctx.restore(); return; } // ikona z modelu 3D
     if (this.icon) { this.icon(ctx, cx + 2, y + h / 2 + 2, '#120a03'); this.icon(ctx, cx, y + h / 2, col); ctx.restore(); return; } // twardy cień zamiast poświaty
     let fs = this.size; const maxW = w - (this.swatch ? 40 : this.lead ? 48 : 14);
     ctx.font = font(fs, 700, 'title'); while (fs > 9 && ctx.measureText(this.label).width > maxW) { fs--; ctx.font = font(fs, 700, 'title'); }
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const ly = this.sub ? y + h / 2 - 7 : y + h / 2 + 1;
-    ctx.fillStyle = '#120a03'; ctx.fillText(this.label, cx + 2, ly + 2); ctx.fillStyle = col; ctx.fillText(this.label, cx, ly);
-    if (this.sub) { ctx.font = font(13, 500, 'body', true); ctx.fillStyle = this.disabled ? '#7a746a' : '#d4bd90'; ctx.fillText(this.sub, cx, y + h / 2 + 11); }
+    if (PIXEL_ART) { ctx.fillStyle = '#120a03'; ctx.fillText(this.label, cx + 2, ly + 2); } else { ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1; }
+    ctx.fillStyle = col; ctx.fillText(this.label, cx, ly);
+    if (this.sub) { ctx.font = font(PIXEL_ART ? 13 : 14, PIXEL_ART ? 500 : 600, 'body', true); ctx.fillStyle = this.disabled ? '#7a746a' : '#d8c08e'; ctx.fillText(this.sub, cx, y + h / 2 + 11); }
     ctx.restore();
   }
 }
@@ -147,7 +250,7 @@ function showDialog(msg, opts, extra = {}) {
   const w = Math.max(400, opts.length * (bw + gap) + 36); G.ctx.font = font(20, 500, 'body'); const lines = wrapText(G.ctx, msg, w - 70);
   const iconH = extra.icon ? (extra.iconH || 56) : 0, h = 120 + bh + lines.length * 26 + iconH, x = (W - w) / 2, y = (H - h) / 2;
   const total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
-  const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip, lead: o.lead }); bx += bw + gap; return b; });
+  const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip, lead: o.lead, primary: o.primary ?? (o.key === 'enter' && opts.length > 1) }); bx += bw + gap; return b; });
   G.modal = {
     msg, buttons, locked: !!extra.locked, hasIcon: !!extra.icon, // msg, hasIcon: treść okna i czy ma rysunek (podgląd w testach)
     draw(ctx) {
@@ -185,8 +288,9 @@ function drawPopup(ctx, p) {
   const lines = wrapText(ctx, p.text, 250), tw = Math.max(...lines.map(l => ctx.measureText(l).width));
   const w = clamp(tw + 36, 140, 286), h = 26 + lines.length * 20;
   const x = clamp(p.x + 14, 8, VW - w - 8), y = clamp(p.y + 14, 8, VH - h - 8);
-  drawParchment(ctx, x, y, w, h);
-  lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 21 + i * 20, { size: 16, weight: 500, align: 'center', color: '#2a1606' }));
+  if (PIXEL_ART) { drawParchment(ctx, x, y, w, h); lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 21 + i * 20, { size: 16, weight: 500, align: 'center', color: '#2a1606' })); return; }
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x + 3, y + 5, w, h); leatherFill(ctx, x, y, w, h, 9, -0.1); goldRim(ctx, x, y, w, h, 2); ctx.restore(); // podpowiedź: ciemna skóra (okno to pergamin)
+  lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 22 + i * 20, { size: 17, weight: 600, align: 'center', color: UI.txt }));
 }
 function rightInfoAt(x, y) {
   const list = G.modal ? G.modal.buttons : (G.screen.buttons || []), b = list.find(b => b.hit(x, y));
@@ -228,6 +332,8 @@ function iconGear(ctx, cx, cy, col) {
   ctx.beginPath(); ctx.arc(cx, cy, 6.5, 0, TAU); ctx.fill();
   ctx.globalCompositeOperation = 'destination-out'; ctx.beginPath(); ctx.arc(cx, cy, 2.6, 0, TAU); ctx.fill(); ctx.globalCompositeOperation = 'source-over';
 }
+// Ikony przycisków z modeli 3D (arkusz interfejsu); funkcje wektorowe zostają jako zapas i w stylu pikselowym
+const ICON3 = new Map([[iconCrown, 'ic_crown'], [iconNext, 'ic_next'], [iconBoot, 'ic_move'], [iconSleep, 'ic_sleep'], [iconSpell, 'ic_book'], [iconGear, 'ic_gear'], [iconStairs, 'ic_stairs'], [iconPuzzle, 'ic_puzzle'], [iconShovel, 'ic_dig']]);
 // Koszt jako rząd ikon surowców z liczbami. have = zasoby gracza: brakujące liczby na czerwono.
 function drawCost(ctx, cost, x, y, o = {}) {
   const size = o.size || 18, fs = o.font || 14, col = o.color || '#2a1606', entries = RESOURCES.filter(r => cost[r.id]); let cx = x;
@@ -242,8 +348,8 @@ function drawCost(ctx, cost, x, y, o = {}) {
 const RESBAR = { x: 18, y: 582, step: 78 };
 function drawResourceBar(ctx, st, dy = 0, w = W) {
   const R = human(st).resources, y = RESBAR.y + dy;
-  RESOURCES.forEach((r, i) => { const x = RESBAR.x + i * RESBAR.step; resIcon(ctx, r.id, x + 10, y, 24); text(ctx, String(R[r.id]), x + 25, y + 1, { size: 16, color: '#ecd9a8' }); });
-  text(ctx, dateText(st), w - 18, y + 1, { size: 15, weight: 500, align: 'right', color: '#ecd9a8' });
+  RESOURCES.forEach((r, i) => { const x = RESBAR.x + i * RESBAR.step; resIcon(ctx, r.id, x + 10, y, 24); text(ctx, String(R[r.id]), x + 25, y + 1, { size: 15, color: UI.txt, fam: PIXEL_ART ? 'body' : 'title' }); });
+  text(ctx, dateText(st), w - 18, y + 1, { size: 16, weight: 600, align: 'right', color: UI.txt2 });
   drawSeasonIcon(ctx, seasonIdx(st), w - 30 - ctx.measureText(dateText(st)).width, y);
 }
 // Znaczek pory roku przy dacie: kwiat, słońce, liść, płatek śniegu

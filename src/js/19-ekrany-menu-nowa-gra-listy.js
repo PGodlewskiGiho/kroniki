@@ -195,7 +195,7 @@ G.screens.setup = {
       Object.defineProperty(fa, 'tip', { get: () => { const f = col().faction; return f === 'random' ? 'Frakcja gracza: losowa (kliknij, aby zmienić).' : `${factionOf(f).name}: ${factionOf(f).desc} Cecha: ${traitText(f)}. Magia: ${magicText(f)}. Kliknij, aby zmienić.`; }, set() {} });
       B.push(sw, ty, nm, fa); return { sw, ty, nm, fa };
     });
-    this.bStart = new Button(90, 506, 190, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19 });
+    this.bStart = new Button(90, 506, 190, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19, primary: true });
     B.push(this.bStart, new Button(305, 506, 190, 46, 'Zasady…', () => G.go('rules'), { key: 'z', size: 19, sub: rulesSummary(G.settings.rules), tip: 'Limit bohaterów, rozejm z komputerem, siła potworów, skarby i odkryta mapa.' }),
       new Button(520, 506, 190, 46, 'Wróć', () => G.go('menu'), { key: 'escape', size: 19 }));
     this.buttons = B;
