@@ -42,11 +42,22 @@ const SPELLS = {
   implosion: { name: 'Implozja', school: 'earth', level: 5, cost: 30, kind: 'battle', target: 'enemy', col: '#c05aff', dmg: sp => 100 + 75 * sp, desc: sp => `${100 + 75 * sp} obrażeń jednemu wrogowi` },
   armageddon: { name: 'Armagedon', school: 'fire', level: 5, cost: 24, kind: 'battle', target: 'all', col: '#ff4a1a', dmg: sp => 30 + 50 * sp, desc: sp => `${30 + 50 * sp} obrażeń każdemu oddziałowi na polu bitwy, także swoim` },
   massHaste: { name: 'Przyspieszenie armii', school: 'air', level: 5, cost: 20, kind: 'battle', target: 'allies', col: '#a8f0ff', buff: 'haste', desc: sp => `+3 do szybkości wszystkich sojuszników przez ${SPELL_ROUNDS(sp)} rund` },
+  // --- nowe czary: rozproszenie, oślepienie, trucizna, wampiryzm, ściana ognia, kradzież życia, teleportacja, święte światło, klon, wiatr w plecy ---
+  dispel: { name: 'Rozproszenie', school: 'water', level: 1, cost: 5, kind: 'battle', target: 'any', col: '#c8e8ff', dispel: true, desc: () => 'zdejmuje z oddziału wszystkie czary, dobre i złe (także truciznę i oślepienie)' },
+  blind: { name: 'Oślepienie', school: 'fire', level: 2, cost: 10, kind: 'battle', target: 'enemy', col: '#f0e0a0', buff: 'blind', desc: sp => `wróg stoi bezczynnie i nie oddaje ciosów przez ${SPELL_ROUNDS(sp)} rund albo do pierwszego trafienia` },
+  poison: { name: 'Trucizna', school: 'earth', level: 2, cost: 8, kind: 'battle', target: 'enemy', col: '#8ac83a', buff: 'poison', dot: sp => 10 + 10 * sp, desc: sp => `wróg traci ${10 + 10 * sp} życia na początku każdej rundy przez ${SPELL_ROUNDS(sp)} rund` },
+  tailwind: { name: 'Wiatr w plecy', school: 'air', level: 2, cost: 8, kind: 'adv', target: 'none', col: '#c8f0ff', desc: sp => `+${400 + 100 * sp} punktów ruchu dziś (raz dziennie)` },
+  vampirism: { name: 'Wampiryzm', school: 'earth', level: 3, cost: 12, kind: 'battle', target: 'ally', col: '#c83a4a', buff: 'vampiric', desc: sp => `sojusznik wysysa życie: zadane obrażenia leczą go i wskrzeszają polegle (${SPELL_ROUNDS(sp)} rund)` },
+  fireWall: { name: 'Ściana ognia', school: 'fire', level: 3, cost: 12, kind: 'battle', target: 'wall', col: '#ff7a2a', wall: true, dmg: sp => 10 + 10 * sp, desc: sp => `trzy pola płoną przez ${SPELL_ROUNDS(sp)} rund: ${10 + 10 * sp} obrażeń od razu i połowa tego co rundę każdemu, kto w nich stoi` },
+  lifeSteal: { name: 'Kradzież życia', school: 'earth', level: 3, cost: 14, kind: 'battle', target: 'enemy', col: '#d84a6a', drain: true, dmg: sp => 20 + 15 * sp, desc: sp => `${20 + 15 * sp} obrażeń wrogowi; zabrane życie leczy twój najbardziej poraniony oddział` },
+  teleport: { name: 'Teleportacja', school: 'water', level: 3, cost: 12, kind: 'battle', target: 'ally', col: '#9ab0ff', teleport: true, desc: () => 'przenosi sojusznika na dowolne wolne pole (najpierw wskaż oddział, potem miejsce; w oblężeniu nie przez mur)' },
+  holyLight: { name: 'Święte światło', school: 'water', level: 4, cost: 18, kind: 'battle', target: 'enemies', holy: true, col: '#fff4c0', dmg: sp => 15 + 15 * sp, desc: sp => `${15 + 15 * sp} obrażeń każdemu wrogowi (nieumarłym podwójnie); swoich nie rani` },
+  clone: { name: 'Klon', school: 'air', level: 4, cost: 20, kind: 'battle', target: 'ally', col: '#b8e0ff', clone: true, desc: () => 'tworzy obok kopię oddziału, która walczy, ale znika po pierwszym trafieniu (jeden klon na raz)' },
   massCure: { name: 'Źródło życia', school: 'water', level: 5, cost: 22, kind: 'battle', target: 'allies', col: '#7ae8c8', heal: sp => 20 + 15 * sp, desc: sp => `leczy ${20 + 15 * sp} życia wszystkim sojusznikom i zdejmuje z nich złe czary` },
 };
 const BUFF_NAMES = { bless: 'błogosławieństwo', stoneSkin: 'kamienna skóra', haste: 'przyspieszenie', slow: 'spowolnienie', weakness: 'osłabienie', bloodlust: 'żądza krwi', prayer: 'modlitwa',
-  shield: 'tarcza', fortune: 'fortuna', curse: 'klątwa', airShield: 'tarcza powietrza', fireShield: 'ognista tarcza' };
-const BAD_BUFFS = ['slow', 'weakness', 'curse'];
+  shield: 'tarcza', fortune: 'fortuna', curse: 'klątwa', airShield: 'tarcza powietrza', fireShield: 'ognista tarcza', blind: 'oślepienie', poison: 'trucizna', vampiric: 'wampiryzm' };
+const BAD_BUFFS = ['slow', 'weakness', 'curse', 'blind', 'poison'];
 // Ile czarów danego poziomu oferuje gildia
 const GUILD_OFFER = { 1: 3, 2: 2, 3: 2, 4: 2, 5: 1 };
 const GUILD_MAX = 5;

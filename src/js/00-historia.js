@@ -124,6 +124,9 @@
    Rozwój bohatera 2: nowe umiejętności (Taktyka: u.tac w 1. rundzie; Dyplomacja w neutralReaction; Zakłócanie: interfMul;
    Grabież i Opatrywanie ran: victorySpoils po zwycięstwie), awans proponuje trzy umiejętności, a co TALENT_EVERY poziomów
    talent z trzech (TALENTS, talentOffer, learnTalent, heroPerk; h.talents) z wymaganiami umiejętności; ikony 3D t_<id>.
+   Nowe czary: Rozproszenie (target any), Oślepienie (buff blind: bez tury i odwetu do trafienia), Trucizna (u.psn co rundę), Wampiryzm,
+   Ściana ognia (target wall, B.fire), Kradzież życia (drain), Teleportacja (dwa kliknięcia, x2/y2 w rozkazie), Święte światło (enemies),
+   Klon (src clone, ginie od trafienia, nie wraca do armii) i Wiatr w plecy (ruch, raz dziennie).
    Kronika tygodnia (20b): ogłoszenie astrologów z rysunkiem na początku tygodnia (st.weekNews, p.seenWeek, chronicleIconOpts),
    nowe tygodnie Żniw (+HARVEST drewna i rudy) i Magii (pełna mana), Kronika tawerny (showChronicle: ranking graczy jak Gildia
    Złodziei, rubryki CHRONICLE_ROWS odkrywane liczbą własnych tawern).

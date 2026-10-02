@@ -533,6 +533,10 @@ function castAdventure(st, h, id) {
     if (h.boat) { h.boat = false; addBoat(st, h.x, h.y); } // łódź zostaje na wodzie
     h.x = t.x; h.y = t.y; h.mp -= 300; h.path = null; h.dest = null; reveal(st, h.x, h.y, heroSight(h)); centerCam(st, h.x, h.y);
   }
+  else if (id === 'tailwind') { // Wiatr w plecy: dodatkowy ruch na dziś, raz dziennie
+    if (h.windDay === st.dayTotal) return 'Wiatr już dziś wieje w plecy bohatera';
+    h.windDay = st.dayTotal; h.mp += 400 + 100 * sp;
+  }
   h.mana -= spellCost(h, id); return null;
 }
 
