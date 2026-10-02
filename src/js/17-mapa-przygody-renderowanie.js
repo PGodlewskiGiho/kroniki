@@ -464,14 +464,15 @@ function drawWorldPixel(b, st) {
   list.sort((a, c) => a.y - c.y);
   const shadow = (w, x, y) => { b.globalAlpha = 0.3; blitG(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
   for (const it of list) {
-    if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16, h3 = heroMap3d(it.hero, ownerColor(st, it.hero.owner)); shadow(14, x, y + 13); if (h3) blitG(b, h3, x, y + 13); else blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
-    if (it.caravan) { const x = ox + it.cx * T + 16, y = oy + it.cy * T + 16; shadow(12, x, y + 10); blitG(b, caravanSprite(ownerColor(st, it.caravan.owner), Math.floor(G.time * 3) % 2), x, y + 8); continue; }
+    if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16, h3 = heroMap3d(it.hero, ownerColor(st, it.hero.owner)); shadow(14, x, y + 13); const hb = it.hero.boat && map3dTinted(`boatHero_${Math.floor(G.time * 4) % 4}`, ownerColor(st, it.hero.owner), it.hero.dir < 0); // łódź z bohaterem: żagiel w barwie gracza, kołysanie
+      if (hb) blitG(b, hb, x, y + 8 + Math.round(Math.sin(G.time * 2) * 1.2)); else if (h3) blitG(b, h3, x, y + 13); else blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
+    if (it.caravan) { const x = ox + it.cx * T + 16, y = oy + it.cy * T + 16, c3 = map3dTinted(`caravan_${Math.floor(G.time * 6) % 4}`, ownerColor(st, it.caravan.owner)); if (c3) { blitG(b, c3, x, y + 8); continue; } shadow(12, x, y + 10); blitG(b, caravanSprite(ownerColor(st, it.caravan.owner), Math.floor(G.time * 3) % 2), x, y + 8); continue; }
     const ob = it.ob, px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
     if (ob.type === 'monster') { shadow(10, px, py + 10); blitG(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
     else if (ob.type === 'res') { const s3 = map3dSprite('res_' + ob.res); if (s3) blitG(b, s3, px, py + 6); else { shadow(10, px, py + 9); blitG(b, resSprite(ob.res), px, py + 2); } } // 3D: własny cień na ziemi
     else if (ob.type === 'chest') { const s3 = map3dSprite('chest'); if (s3) blitG(b, s3, px, py + 6); else { shadow(10, px, py + 9); blitG(b, chestSprite(), px, py + 2); } }
     else if (ob.type === 'boat') { const s3 = map3dSprite('boat'); if (s3) blitG(b, s3, px, py + 4 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.2)); else blitG(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py); }
-    else if (ob.type === 'site') { const s3 = map3dSprite('site_' + ob.kind); if (s3) blitG(b, s3, px, py + 6); else { shadow(14, px, py + 12); blitG(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); } }
+    else if (ob.type === 'site') { const f3 = siteFrame(ob), s3 = (f3 && map3dSprite(`site_${ob.kind}_${f3}`)) || map3dSprite('site_' + ob.kind); // klatki ruchu (wiatrak, młyn, ogień, portal) if (s3) blitG(b, s3, px, py + 6); else { shadow(14, px, py + 12); blitG(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); } }
     else if (ob.type === 'art') { const s3 = map3dSprite('art_' + ob.art); if (s3) blitG(b, s3, px, py + 6); else { shadow(9, px, py + 10); blitG(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); } }
     else if (ob.type === 'bank') { const s3 = map3dSprite(`bank_${ob.kind}_${ob.cleared ? 1 : 0}`); if (s3) blitG(b, s3, px - 8, py - 4); else blitG(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T); } // 3D: środek bloku 2×2, wejście z przodu
     else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, s3 = map3dSprite('mine_' + ob.kind); if (s3) blitG(b, s3, px + 6, py); else blitG(b, mineSprite(ob.kind), mx, my); blitG(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
