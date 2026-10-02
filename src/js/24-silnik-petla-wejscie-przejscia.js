@@ -1,6 +1,6 @@
 // ==================== SILNIK: pętla, wejście, przejścia =================================
 // Nie zawiera logiki gry. Ekran to obiekt z metodami enter/draw/update/onClick/... (patrz nagłówek).
-function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; G.dirty = true; if (G.screen.enter) G.screen.enter(params || {}); }
+function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; G.dirty = true; if (G.screen.enter) G.screen.enter(params || {}); Music.screen(name, params || {}); }
 G.go = function (name, params) { if (G.fade.next) return; G.fade.next = { name, params }; G.fade.target = 1; };
 function activeButtons() { return G.modal ? G.modal.buttons : (G.screen.buttons || []); }
 function updateHover() {
@@ -168,13 +168,25 @@ function drawPerfInfo(ctx) {
   ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.72)'; ctx.fillRect(4, 4, 390, 58);
   lines.forEach((l, i) => text(ctx, l, 10, 20 + i * 17, { size: 12, weight: 600, color: '#ffe9a0' })); ctx.restore();
 }
+// Dźwięk: osobno efekty i muzyka; każde kliknięcie przełącza poziom głośności (wyłączony → … → 100%).
+function showSoundSettings(back) {
+  const S = G.settings, sv = Sfx.vol(), mv = Music.vol(), pct = v => v ? `${Math.round(v * 100)}%` : 'wyłączona';
+  const next = (vals, v) => vals[(vals.findIndex(x => x >= v - 0.01) + 1) % vals.length];
+  showDialog('Głośność efektów dźwiękowych i muzyki. Kliknięcie zmienia poziom.', [
+    { label: 'Efekty', sub: sv ? `${Math.round(sv * 100)}%` : 'wyłączone', tip: 'Kroki, ciosy, czary, złoto, przyciski (wyłączone, 40%, 70%, 100%).',
+      action: () => { Sfx.setVol(next([0, 0.4, 0.7, 1], sv)); saveSettings(); Sfx.unlock(); Sfx.play('click'); showSoundSettings(back); } },
+    { label: 'Muzyka', sub: pct(mv), tip: 'Muzyka orkiestrowa: menu, mapa, miasta i bitwy (wyłączona, 25%, 50%, 75%, 100%).',
+      action: () => { Sfx.unlock(); Music.setVol(next([0, 0.25, 0.5, 0.75, 1], mv)); saveSettings(); showSoundSettings(back); } },
+    { label: 'OK', key: 'escape', primary: true, action: () => { if (back) back(); } }], { bw: 130 });
+}
 function showGfxSettings(back) {
   const S = G.settings, cur = (QUALITIES.find(q => q.id === S.quality) || QUALITIES[0]).name;
   const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); setPixelSize(id === 'low' ? 2 : PIX_DEFAULT); resize(); showGfxSettings(back); };
   const fontBtn = { label: pixelFont() ? 'Czcionka: piksele' : 'Czcionka: klasyczna', sub: 'zmień', tip: 'Czcionka interfejsu: pikselowa (pasuje do grafiki) albo klasyczna szeryfowa.',
     action: () => { S.font = pixelFont() ? 'classic' : 'pixel'; saveSettings(); Layers.cache = {}; showGfxSettings(back); } };
-  const vols = [0, 0.4, 0.7, 1], sv = Sfx.vol(), sndBtn = { label: 'Dźwięk', sub: sv ? `${Math.round(sv * 100)}%` : 'wyłączony', tip: 'Głośność efektów dźwiękowych (kliknięcie zmienia: wyłączony, 40%, 70%, 100%).',
-    action: () => { Sfx.setVol(vols[(vols.findIndex(v => v >= sv - 0.01) + 1) % vols.length]); saveSettings(); Sfx.unlock(); Sfx.play('click'); showGfxSettings(back); } };
+  const sv = Sfx.vol(), mv = Music.vol(), pct = v => v ? `${Math.round(v * 100)}%` : 'wyłączony';
+  const sndBtn = { label: 'Dźwięk', sub: `${sv ? 'efekty ' + Math.round(sv * 100) + '%' : 'bez efektów'}`, tip: `Głośność efektów (${pct(sv)}) i muzyki (${pct(mv)}).`,
+    action: () => showSoundSettings(() => showGfxSettings(back)) };
   const wxBtn = { label: 'Pogoda', sub: weatherOn() ? 'włączona' : 'wyłączona', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
     action: () => { S.weather = weatherOn() ? 'off' : 'on'; saveSettings(); showGfxSettings(back); } };
   showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało. Klawisz F pokazuje licznik klatek.`,
