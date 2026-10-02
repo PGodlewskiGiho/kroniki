@@ -5,6 +5,13 @@
 const BCOLS = 13, BROWS = 9;
 const hexKey = (x, y) => y * BCOLS + x;
 const inField = (x, y) => x >= 0 && y >= 0 && x < BCOLS && y < BROWS;
+// Kolejka ruchów do pokazania: działający oddział, reszta tej rundy, czekający, potem następna runda (wg szybkości)
+function battleQueue(B, n) {
+  const ok = u => u && !u.dead && u.cid !== 'ammoCart', q = [], seen = new Set(), put = u => { if (ok(u) && !seen.has(u)) { seen.add(u); q.push(u); } };
+  put(B.active); (B.order || []).forEach(put); [...(B.waitQ || [])].filter(ok).sort((a, b) => unitSpd(a) - unitSpd(b)).forEach(put);
+  const next = (B.units || []).filter(ok).sort((a, b) => unitSpd(b) - unitSpd(a) || a.side - b.side); for (let k = 0; q.length < n && k < next.length * 2; k++) q.push(next[k % next.length]); // kolejne rundy
+  return q.slice(0, n);
+}
 function hexNeighbors(x, y) {
   const d = y & 1 ? [[1, 0], [-1, 0], [0, -1], [1, -1], [0, 1], [1, 1]] : [[1, 0], [-1, 0], [-1, -1], [0, -1], [-1, 1], [0, 1]];
   return d.map(([dx, dy]) => [x + dx, y + dy]).filter(([a, b]) => inField(a, b));

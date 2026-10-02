@@ -392,10 +392,10 @@ G.screens.battle = {
     ctx.restore(); // koniec wstrząsu
     BattleFX.drawFlash(ctx);
     // pasek górny
-    drawHeroPortrait(ctx, 6, 1, B.h, col); text(ctx, heroTitle(B.h), 50, 19, { size: 15, color: UI.txt, fam: 'title' });
+    if (PIXEL_ART) drawHeroPortrait(ctx, 6, 1, B.h, col); else drawHeroMedal(ctx, 24, 21, 19, B.h, col); text(ctx, heroTitle(B.h), 50, 19, { size: 15, color: UI.txt, fam: 'title' });
     text(ctx, `Runda ${B.round}`, W / 2, 19, { size: 17, align: 'center', color: UI.goldHi, fam: 'title' });
     const D = B.sides[1], foeCol = ownerColor(st, D.owner), right = D.hero ? W - 50 : W - 12;
-    if (D.hero) drawHeroPortrait(ctx, W - 44, 1, D.hero, foeCol);
+    if (D.hero) { if (PIXEL_ART) drawHeroPortrait(ctx, W - 44, 1, D.hero, foeCol); else drawHeroMedal(ctx, W - 26, 21, 19, D.hero, foeCol); }
     text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: UI.txt, fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
@@ -404,8 +404,13 @@ G.screens.battle = {
     else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots}${shotPenaltyText(B, u0, pv.target)})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';
     let tfs = 15; ctx.font = font(tfs, 700, 'body'); while (tfs > 11 && ctx.measureText(tip).width > 440) { tfs--; ctx.font = font(tfs, 700, 'body'); }
-    text(ctx, tip, 20, 508, { size: tfs, weight: 700, color: '#ffd970' });
-    B.log.slice(-4).forEach((l, i) => text(ctx, l, 20, 532 + i * 18, { size: 14, weight: 600, color: i === Math.min(3, B.log.length - 1) ? UI.txt : UI.txt2 }));
+    if (PIXEL_ART) { text(ctx, tip, 20, 508, { size: tfs, weight: 700, color: '#ffd970' }); B.log.slice(-4).forEach((l, i) => text(ctx, l, 20, 532 + i * 18, { size: 14, weight: 600, color: UI.txt2 })); }
+    else { // kolejka ruchów (jak w Heroes 3 HD): oddział, który teraz działa, i następne; pod nią podpowiedź i ostatnie wpisy dziennika
+      battleQueue(B, 11).forEach((u, i) => { const qx = 16 + i * 41, qy = 503, own = u.side === 0 ? col : foeCol;
+        slotBox(ctx, qx, qy, 38, 36, i === 0 ? 'sel' : ''); ctx.save(); ctx.beginPath(); ctx.rect(qx + 1, qy + 1, 36, 34); ctx.clip(); { const bs = battleSprite(u.cid, u.side === 0 ? 1 : -1, 'idle', 0), k = clamp(30 / (bs.c.height * bs.u), 0.3, 0.6); drawSprite(ctx, bs, qx + 19, qy + 35, k); } /* cała postać w kratce */ ctx.restore();
+        ctx.fillStyle = own; ctx.fillRect(qx + 2, qy + 32, 34, 3); text(ctx, String(u.n), qx + 36, qy + 25, { size: 11, align: 'right', color: '#fff4cc', fam: 'title' }); });
+      text(ctx, tip, 18, 554, { size: Math.min(tfs, 15), weight: 700, color: UI.goldHi });
+      B.log.slice(-2).forEach((l, i, a) => text(ctx, l, 18, 572 + i * 16, { size: 13, weight: 600, color: i === a.length - 1 ? UI.txt : UI.txt2 })); }
     this.bCast.disabled = this.phase !== 'input' || !canCastNow(B); this.bInfo.label = sideHero(B, this.me) ? `Mana ${sideHero(B, this.me).mana}` : 'Bez bohatera'; this.bInfo.dispCol = UI.mana;
     this.buttons.forEach(b => b.draw(ctx));
   },

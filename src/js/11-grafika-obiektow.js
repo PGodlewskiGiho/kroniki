@@ -883,6 +883,7 @@ function drawArmyRow(ctx, army, x, y, o = {}) {
 const hitRect = (rects, x, y) => rects.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) || null;
 const iconMinus = (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.fillRect(cx - 7, cy - 1.5, 14, 3); };
 const iconPlus = (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.fillRect(cx - 7, cy - 1.5, 14, 3); ctx.fillRect(cx - 1.5, cy - 7, 3, 14); };
+iconMinus.k3 = 'ic_minus'; iconPlus.k3 = 'ic_plus'; // ikony 3D z arkusza interfejsu
 // Werbunek z jednego poziomu siedliska (zwykła i ulepszona jednostka mają wspólną pulę)
 function showRecruit(st, t, L, onDone, backToList) {
   const units = dwellingUnits(t, L), x = 170, y = 100, w = 460, hh = 390, F = factionOf(t.faction);
@@ -1221,7 +1222,14 @@ function drawSpellIcon(c, id) {
 // Dopisek do opisu czaru: co daje umiejętność szkoły bohatera
 const schoolNote = (h, id) => { const L = spellSchoolLv(h, id); return L ? ` ${SKILLS[SCHOOLS[SPELLS[id].school].skill].name} (${SKILL_LEVELS[L]}): koszt −${SCHOOL_COST[L]}%, moc +${SCHOOL_POWER[L]}%${SPELLS[id].buff ? `, +${L} ${L === 1 ? 'runda' : 'rundy'}` : ''}${massBuffable(id) && L >= 3 ? ', działa na całą armię' : ''}.` : ''; };
 const massBuffable = id => !!(SPELLS[id].buff && (SPELLS[id].target === 'ally' || SPELLS[id].target === 'enemy'));
-const spellSprite = id => sprite(`sp_${id}`, 16, 16, 8, 8, p => drawSpellIcon(p, id));
+// Ikona czaru z modelu 3D (tools/grafika3d/wypal-czary.js): plakietka w barwie szkoły; bez arkusza dawny rysunek
+function spellSprite(id) {
+  const A = typeof SPELL_ART !== 'undefined' && SPELL_ART, im = SPELL_IMG.sheet, p = A && A.f[id];
+  if (PIXEL_ART || !p || !im || !im._ok) return sprite(`sp_${id}`, 16, 16, 8, 8, q => drawSpellIcon(q, id));
+  const n = Math.min(A.s, Math.ceil(56 * Math.min(G.rs || 1, 2.5) / 16) * 16), key = `sp3_${id}_${n}`; let s = SPR.get(key); if (s) return s;
+  const c = document.createElement('canvas'); c.width = c.height = n; const g = c.getContext('2d'); c._ctx = g; g.imageSmoothingQuality = 'high'; g.drawImage(im, p[0], p[1], A.s, A.s, 0, 0, n, n);
+  s = { c, ax: n / 2, ay: n / 2, u: 32 / n, raw: true }; SPR.set(key, s); return s;
+}
 // --- umiejętności drugorzędne: ikony (kwadratowa plakietka w kolorze grupy, jasny znak) ---
 const SKILL_TINT = { might: '#7a2e22', magic: '#2a3e7a', land: '#2e5a2e', gold: '#7a5a1a', dark: '#3a2a4a' };
 const SKILL_GROUP = { leadership: 'might', offense: 'might', archery: 'might', armorer: 'might', artillery: 'might', ballistics: 'might', firstAid: 'might', resistance: 'might',
@@ -1277,7 +1285,7 @@ function showSpellbook(h, mode, onPick) {
   const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
   const BOOK = !PIXEL_ART, cols = BOOK ? 4 : 3, cw = BOOK ? (w - 96) / 4 : (w - 48) / cols, rh = 44, PER = BOOK ? 20 : 18, tabs = [null, ...Object.keys(SCHOOLS)];
   let school = null, page = 0, hover = -1;
-  const side = d => (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 4 * d, cy - 8); ctx.lineTo(cx - 4 * d, cy + 8); ctx.lineTo(cx + 5 * d, cy); ctx.closePath(); ctx.fill(); };
+  const side = d => iconArrowSide(d), _side = d => (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 4 * d, cy - 8); ctx.lineTo(cx - 4 * d, cy + 8); ctx.lineTo(cx + 5 * d, cy); ctx.closePath(); ctx.fill(); };
   const list = () => all.filter(id => !school || SPELLS[id].school === school), pages = () => Math.max(1, Math.ceil(list().length / PER)), shown = () => list().slice(page * PER, page * PER + PER);
   const cell = i => BOOK ? (k => ({ x: x + 34 + (k >= 10 ? (w - 68) / 2 + 14 : 0) + (k % 2) * cw, y: y + 108 + Math.floor((k % 10) / 2) * rh, w: cw - 10, h: rh - 4 }))(i) // księga: 2 kolumny na stronę, lewa strona, potem prawa
     : ({ x: x + 24 + (i % cols) * cw, y: y + 104 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });

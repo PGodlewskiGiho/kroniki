@@ -42,6 +42,14 @@ function showBattleReport(st, res, R, onOk) {
   const ok = new Button(W / 2 - 60, y + h - 56, 120, 40, 'OK', () => { G.modal = null; if (onOk) onOk(); }, { key: 'enter' });
   const colOf = s => (s && s.owner >= 0 ? ownerColor(st, s.owner) : '#8a8478');
   const portrait = (ctx, s, px, py, dir, winner) => {
+    if (!PIXEL_ART && uiArtReady()) { // medalion: portret bohatera albo stwór na tle nieba
+      if (s.hero) drawHeroMedal(ctx, px + 40, py + 40, 42, s.hero, colOf(s));
+      else { ctx.save(); ctx.beginPath(); ctx.arc(px + 40, py + 40, 37, 0, TAU); ctx.clip(); const g = ctx.createLinearGradient(0, py, 0, py + 80); g.addColorStop(0, '#4a5a6a'); g.addColorStop(1, '#2a2a22'); ctx.fillStyle = g; ctx.fillRect(px, py, 80, 80);
+        if (s.cid) { const bs = battleSprite(s.cid, dir, 'idle', 0), k = clamp(66 / (bs.c.height * bs.u), 0.4, 1.1); drawSprite(ctx, bs, px + 40, py + 74, k); } ctx.restore(); drawUiPiece(ctx, 'ring', px - 5, py - 5, 90, 90); }
+      const name = s.hero ? s.hero.name : s.town ? `Garnizon: ${s.town}` : s.cid ? CREATURES[s.cid].plural : '—';
+      text(ctx, name, px + 40, py + 100, { size: 14, align: 'center', color: '#2a1606', fam: 'title' });
+      text(ctx, winner ? 'Zwycięzca' : 'Pokonany', px + 40, py + 118, { size: 14, align: 'center', italic: true, weight: 600, color: winner ? '#2a6a1a' : '#8a1a14' }); return;
+    }
     ctx.fillStyle = '#1a1208'; ctx.fillRect(px - 2, py - 2, 84, 84); ctx.strokeStyle = '#b8913f'; ctx.lineWidth = 2; ctx.strokeRect(px - 2, py - 2, 84, 84);
     if (s.hero) drawHeroPortrait(ctx, px + 4, py + 4, s.hero, colOf(s), 2);
     else if (s.cid) { ctx.save(); ctx.beginPath(); ctx.rect(px, py, 80, 80); ctx.clip(); const g = ctx.createLinearGradient(0, py, 0, py + 80); g.addColorStop(0, '#4a5a6a'); g.addColorStop(1, '#2a2a22'); ctx.fillStyle = g; ctx.fillRect(px, py, 80, 80); drawSprite(ctx, battleSprite(s.cid, dir, 'idle', 0), px + 40, py + 74, 0.42); ctx.restore(); }
@@ -52,7 +60,7 @@ function showBattleReport(st, res, R, onOk) {
   const lossRow = (ctx, label, list, ry, dir) => {
     text(ctx, label, x + 34, ry + 30, { size: 15, color: '#3a1e08', fam: 'title' });
     if (!list.length) return text(ctx, 'bez strat', x + 190, ry + 30, { size: 15, italic: true, weight: 500, color: '#5a3814' });
-    list.slice(0, 8).forEach((L, i) => { const cx = x + 190 + i * 50; ctx.fillStyle = 'rgba(60,36,12,.12)'; ctx.fillRect(cx - 23, ry, 46, 52);
+    list.slice(0, 8).forEach((L, i) => { const cx = x + 190 + i * 50; if (PIXEL_ART) { ctx.fillStyle = 'rgba(60,36,12,.12)'; ctx.fillRect(cx - 23, ry, 46, 52); } else slotBox(ctx, cx - 23, ry, 46, 52);
       ctx.save(); ctx.beginPath(); ctx.rect(cx - 23, ry, 46, 52); ctx.clip(); drawSprite(ctx, battleSprite(L.cid, dir, 'idle', 0), cx, ry + 50, 0.5); ctx.restore(); text(ctx, String(L.n), cx, ry + 64, { size: 14, align: 'center', color: '#2a1606', fam: 'title' }); });
     if (list.length > 8) text(ctx, `+${list.length - 8}`, x + 190 + 8 * 50, ry + 30, { size: 14, color: '#3a1e08' });
   };
@@ -89,7 +97,8 @@ function drawReportScene(ctx, x, y, w, h, kind, me, col, t, st) {
     for (const [dx, k] of [[-58, 0], [58, 1.3]]) { ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(hx + dx, hy + 16); ctx.lineTo(hx + dx, hy - 48); ctx.stroke(); // sztandary na drzewcach
       ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(hx + dx, hy - 47); for (let i = 1; i <= 8; i++) ctx.lineTo(hx + dx + i * 4, hy - 46 + Math.sin(t * 5 - i * 0.7 + k) * 2.2 * i / 8); for (let i = 8; i >= 0; i--) ctx.lineTo(hx + dx + i * 4, hy - 30 - i * 0.6 + Math.sin(t * 5 - i * 0.7 + k) * 2.2 * i / 8); ctx.fill();
       ctx.fillStyle = '#f0d060'; ctx.fillRect(hx + dx - 2, hy - 51, 4, 4); }
-    if (me && me.hero) { ctx.save(); ctx.translate(hx, hy + 14); ctx.scale(3, 3); drawHeroSprite(ctx, 0, 0, 1, col, t, false, heroClass(me.hero).look); ctx.restore(); }
+    if (me && me.hero && !PIXEL_ART) drawSprite(ctx, heroBattleSprite(me.hero, col, 1, Math.floor(t * 6) % 4), hx, hy + 16, 0.75); // bohater z modelu 3D
+    else if (me && me.hero) { ctx.save(); ctx.translate(hx, hy + 14); ctx.scale(3, 3); drawHeroSprite(ctx, 0, 0, 1, col, t, false, heroClass(me.hero).look); ctx.restore(); }
     else { ctx.fillStyle = '#4a4040'; ctx.fillRect(hx - 30, hy - 30, 60, 44); for (let i = 0; i < 5; i++) ctx.fillRect(hx - 30 + i * 13, hy - 38, 8, 8); ctx.fillStyle = '#1a1010'; ctx.fillRect(hx - 8, hy - 6, 16, 20); } // obroniony gród
     for (let i = 0; i < 26; i++) { const u = (t * 0.12 + R()) % 1, px = x + R() * w + Math.sin(t + i) * 6; ctx.fillStyle = `rgba(255,230,140,${(0.8 * Math.sin(u * Math.PI)).toFixed(2)})`; ctx.fillRect(px, y + h - u * h, 2, 2); }
     for (let i = 0; i < 3; i++) { const bx = x + ((t * 22 + i * 90) % (w + 40)) - 20, by = y + 26 + i * 12 + Math.sin(t * 2 + i) * 4, f = Math.sin(t * 9 + i) * 3; ctx.strokeStyle = 'rgba(40,30,40,.8)'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(bx - 5, by - f); ctx.quadraticCurveTo(bx - 2, by, bx, by + 1); ctx.quadraticCurveTo(bx + 2, by, bx + 5, by - f); ctx.stroke(); }
@@ -112,7 +121,8 @@ function drawReportScene(ctx, x, y, w, h, kind, me, col, t, st) {
     fillPoly(ctx, [[x, gy - 6], [x + w * 0.35, gy - 22], [x + w * 0.7, gy - 10], [x + w, gy - 26], [x + w, y + h], [x, y + h]], '#3a3448');
     fillPoly(ctx, [[x + w * 0.3, y + h], [x + w * 0.46, gy], [x + w * 0.5, gy], [x + w * 0.9, y + h]], '#8a7058');
     const u = (t * 0.12) % 1, hx = x + w * (0.82 - u * 0.4), hy = gy + 6 + (1 - u) * 26, k = 2.6 - u * 1.6;
-    if (me && me.hero) { ctx.save(); ctx.translate(hx, hy); ctx.scale(k, k); drawHeroSprite(ctx, 0, 0, -1, col, t, true, heroClass(me.hero).look); ctx.restore(); }
+    if (me && me.hero && !PIXEL_ART) drawSprite(ctx, heroBattleSprite(me.hero, col, -1, Math.floor(t * 8) % 8, 'walk'), hx, hy, k * 0.25); // odjeżdża (3D)
+    else if (me && me.hero) { ctx.save(); ctx.translate(hx, hy); ctx.scale(k, k); drawHeroSprite(ctx, 0, 0, -1, col, t, true, heroClass(me.hero).look); ctx.restore(); }
     for (let i = 0; i < 20; i++) { const sx2 = x + (i * 97) % w, sy2 = y + (i * 37) % (h * 0.4); ctx.fillStyle = `rgba(240,230,255,${(0.3 + 0.3 * Math.sin(t * 2 + i)).toFixed(2)})`; ctx.fillRect(sx2, sy2, 1, 1); }
   }
   ctx.fillStyle = 'rgba(0,0,0,.25)'; const vg = ctx.createRadialGradient(cx, y + h / 2, h * 0.3, cx, y + h / 2, w * 0.7); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)'); ctx.fillStyle = vg; ctx.fillRect(x, y, w, h);

@@ -55,6 +55,13 @@ UI3.ic_orb = () => arOrb({ col: '#7aa8ff', gem: '#e8c050' }, { ring: true });
 UI3.ic_scroll = () => { const g = new THREE.Group(), pg = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.0, 1, 12), mat('#f0e2b8', 'cloth').clone()); pg.material.side = THREE.DoubleSide; g.add(pg);
   for (const y of [1.05, -1.05]) { g.add(cyl(0.18, 0.18, 1.8, '#e8d8a8', 'cloth', [0, y, 0.06], [0, 0, Math.PI / 2], null, 20)); for (const x of [-1.0, 1.0]) g.add(sph(0.14, '#c8a040', 'gold', [x, y, 0.06])); }
   for (let i = 0; i < 5; i++) g.add(box(i === 4 ? 0.7 : 1.1, 0.05, 0.02, '#6a5434', 'cloth', [i === 4 ? -0.2 : 0, 0.6 - i * 0.28, 0.03])); g.add(arCab(0.13, '#c83a2a', [0.45, -0.75, 0.05])); return arRot(g, 0, -0.3, 0.1); };
+// Pierścień portretu (medalion bez środka) i ikony przycisków: strzałki, plus, minus, zamiana
+UI3.ring = () => { const g = new THREE.Group(); g.add(torus(1.0, 0.13, UI_GOLD, 'gold', [0, 0, 0])); g.add(torus(0.86, 0.04, UI_GOLD_D, 'gold', [0, 0, 0.03])); for (let i = 0; i < 4; i++) { const a = Math.PI / 2 + i * Math.PI / 2; g.add(sph(0.08, LT(UI_GOLD, 0.25), 'gold', [Math.cos(a) * 1.0, Math.sin(a) * 1.0, 0.12])); } return g; };
+const uiArrow = () => slab([[0, 1.0], [0.9, 0.05], [0.35, 0.05], [0.35, -0.9], [-0.35, -0.9], [-0.35, 0.05], [-0.9, 0.05]], 0.25, '#f0cc66', 'gold', [0, 0, 0], null, null, 0.45);
+UI3.ic_up = () => uiArrow(); UI3.ic_down = () => arRot(uiArrow(), 0, 0, Math.PI); UI3.ic_left = () => arRot(uiArrow(), 0, 0, Math.PI / 2); UI3.ic_right = () => arRot(uiArrow(), 0, 0, -Math.PI / 2);
+UI3.ic_plus = () => arGrp(rbox(1.8, 0.5, 0.3, 0.1, '#f0cc66', 'gold', [0, 0, 0]), rbox(0.5, 1.8, 0.3, 0.1, '#f0cc66', 'gold', [0, 0, 0]));
+UI3.ic_minus = () => arGrp(rbox(1.8, 0.5, 0.3, 0.1, '#f0cc66', 'gold', [0, 0, 0]), rbox(0.02, 1.8, 0.02, 0.005, '#000', 'gold', [0, 0, -0.3]));
+UI3.ic_swap = () => { const g = new THREE.Group(), a = uiArrow(), b = arRot(uiArrow(), 0, 0, Math.PI); a.scale.setScalar(0.7); b.scale.setScalar(0.7); a.position.set(-0.45, 0.1, 0); b.position.set(0.45, -0.1, 0); g.add(a, b); return g; };
 function arSwordIcon() { return arSword({ col: '#dfe3ea', gem: '#d84a3a' }, { guardCol: '#c8a040' }); }
 // Render: bryła wyśrodkowana i dopasowana do prostokąta w×h (pikseli), z marginesem
 function renderUi(key, w, h, mirror) {
