@@ -97,6 +97,13 @@ const SITES = {
   portal: { name: 'Portal', use: 'free', per: 0, ai: 0, desc: 'przenosi bohatera do drugiego portalu z pary' },
   gate: { name: 'Brama podziemi', use: 'free', per: 0, ai: 600, desc: 'schody prowadzące między powierzchnią a podziemiami' },
   wreck: { name: 'Wrak statku', use: 'once', per: 0, ai: 1600, desc: 'zatopiony ładunek: złoto, czasem artefakt (dostępny łodzią)' },
+  arena: { name: 'Arena', use: 'hero', per: 2400, ai: 3500, guard: true, desc: '+2 do ataku albo +2 do obrony bohatera (do wyboru)' },
+  school: { name: 'Szkoła magii', use: 'hero', per: 2600, ai: 2200, cost: 1000, desc: 'za 1000 złota +1 do mocy czarów albo do wiedzy (do wyboru)' },
+  tree: { name: 'Drzewo wiedzy', use: 'hero', per: 3200, ai: 4000, guard: true, desc: 'bohater od razu awansuje o jeden poziom' },
+  market: { name: 'Targowisko', use: 'free', per: 2800, ai: 0, desc: 'wymiana surowców jak na rynku w mieście (kurs jak przy dwóch rynkach)' },
+  garden: { name: 'Magiczny ogród', use: 'week', per: 1600, ai: 900, desc: 'co tydzień 5 klejnotów albo 500 złota dla pierwszego gościa' },
+  campfire: { name: 'Ognisko', use: 'once', per: 1000, ai: 900, desc: 'porzucony obóz: 400–600 złota i 4–6 jednostek surowca (jednorazowo)' },
+  hillFort: { name: 'Fort na wzgórzu', use: 'free', per: 3000, ai: 0, desc: 'kowale ulepszają stwory w armii bohatera za różnicę w cenie' },
 };
 // Nowe miejsca: portale w parach (PORTAL_PAIRS wg rozmiaru mapy), wraki na wodzie (jeden na WRECK_PER pól wody),
 // siedlisko: tygodniowy przyrost stworów (DWELL_WEEKS tygodni zapasu), ołtarz: doświadczenie za artefakt wg rzadkości.

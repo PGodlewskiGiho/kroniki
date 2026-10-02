@@ -236,6 +236,8 @@ function aiSiteValue(st, h, ob) {
   if ((ob.kind === 'temple' || ob.kind === 'fountain') && h.boost && h.boost[ob.kind === 'temple' ? 'morale' : 'luck']) return 0;
   if (ob.kind === 'witchHut' && (heroSkill(h, ob.skill) || h.skills.length >= MAX_SKILLS)) return 0;
   if (ob.kind === 'prison' && st.heroes.filter(o => o.owner === h.owner).length >= heroLimit(st)) return 0;
+  if (ob.kind === 'school' && playerOf(st, h.owner).resources.gold < SITES.school.cost + 2000) return 0; // szkoła: gdy złota starczy z zapasem
+  if (ob.kind === 'hillFort') { const R = playerOf(st, h.owner).resources, plan = hillFortPlan(h).filter(p => canPay(R, p.cost) && R.gold - (p.cost.gold || 0) >= 1500); return plan.length ? 1500 + plan.reduce((s, p) => s + p.n * (CREATURES[p.to].value - CREATURES[p.from].value), 0) * 0.5 : 0; }
   if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
   return S.ai;
 }
