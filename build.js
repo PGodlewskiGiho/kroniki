@@ -27,14 +27,18 @@ function build() {
   const art = fs.existsSync(gmeta) ? JSON.parse(fs.readFileSync(gmeta, 'utf8')) : {};
   for (const id of Object.keys(art)) { const fw = path.join(gdir, 'jednostki', id + '.webp'), f = path.join(gdir, 'jednostki', id + '.png'); if (fs.existsSync(fw)) { art[id].png = fs.readFileSync(fw).toString('base64'); art[id].webp = 1; } else if (fs.existsSync(f)) art[id].png = fs.readFileSync(f).toString('base64'); else delete art[id]; } // arkusz WebP (grafika bez pikselizacji) albo PNG
   const hmeta = path.join(gdir, 'bohaterowie.json'), hart = fs.existsSync(hmeta) ? JSON.parse(fs.readFileSync(hmeta, 'utf8')) : {};
-  for (const id of Object.keys(hart)) { const f = path.join(gdir, 'bohaterowie', id + '.png'); if (fs.existsSync(f)) hart[id].png = fs.readFileSync(f).toString('base64'); else delete hart[id]; }
+  for (const id of Object.keys(hart)) { const fw = path.join(gdir, 'bohaterowie', id + '.webp'), f = path.join(gdir, 'bohaterowie', id + '.png'); if (fs.existsSync(fw)) { hart[id].png = fs.readFileSync(fw).toString('base64'); hart[id].webp = 1; } else if (fs.existsSync(f)) hart[id].png = fs.readFileSync(f).toString('base64'); else delete hart[id]; }
   // Portrety bohaterów (tools/portrety-ai): imię -> PNG 72×72
   const pmeta = path.join(gdir, 'portrety.json'), port = {};
   if (fs.existsSync(pmeta)) for (const [name, f] of Object.entries(JSON.parse(fs.readFileSync(pmeta, 'utf8')))) { const pf = path.join(gdir, 'portrety', f); if (fs.existsSync(pf)) port[name] = fs.readFileSync(pf).toString('base64'); }
   // Sceny miast wypalone z 3D (tools/grafika3d/wypal-miasta.js): frakcja -> { d, bg, b: klatki budowli, png: arkusz WebP }
   const tmeta = path.join(gdir, 'miasta.json'), tart = {};
   if (fs.existsSync(tmeta)) for (const [fac, m] of Object.entries(JSON.parse(fs.readFileSync(tmeta, 'utf8')))) { const f = path.join(gdir, 'miasta', fac + '.webp'); if (fs.existsSync(f)) tart[fac] = { ...m, png: fs.readFileSync(f).toString('base64'), webp: 1 }; }
-  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\nconst TOWN_BUILD_ART = ${JSON.stringify(tart)};\n`;
+  // Artefakty wypalone z 3D (tools/grafika3d/wypal-artefakty.js): { s: bok kratki, f: id -> [x, y], png: arkusz WebP }
+  const ameta = path.join(gdir, 'artefakty.json'), aimg = path.join(gdir, 'artefakty.webp'), aart = fs.existsSync(ameta) && fs.existsSync(aimg) ? { ...JSON.parse(fs.readFileSync(ameta, 'utf8')), png: fs.readFileSync(aimg).toString('base64'), webp: 1 } : null;
+  // Obiekty mapy wypalone z 3D (tools/grafika3d/wypal-mape.js): { d, f: klucz -> [x, y, w, h, ax, ay], png: arkusz WebP }
+  const mmeta = path.join(gdir, 'mapa.json'), mimg = path.join(gdir, 'mapa.webp'), mart = fs.existsSync(mmeta) && fs.existsSync(mimg) ? { ...JSON.parse(fs.readFileSync(mmeta, 'utf8')), png: fs.readFileSync(mimg).toString('base64'), webp: 1 } : null;
+  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\nconst TOWN_BUILD_ART = ${JSON.stringify(tart)};\nconst ARTIFACT_ART = ${JSON.stringify(aart)};\nconst MAP3D_ART = ${JSON.stringify(mart)};\n`;
   return shell.replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => artJs + js);
 }
 

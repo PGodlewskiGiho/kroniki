@@ -45,17 +45,17 @@ test('mury: jeden sprite zamku, nowy rysunek po trafieniu i wyłomie', async () 
   await frames(page, 4);
 });
 
-test('interfejs w pixel arcie: pergamin, kamień i przyciski w buforze pikseli grafiki z twardymi krawędziami, rogi schodkowe', async () => {
+test('interfejs gładki: pergamin, kamień i przyciski w pełnej rozdzielczości ekranu, miękkie krawędzie, rogi zaokrąglone', async () => {
   const r = await page.evaluate(() => {
-    const b = new Button(0, 0, 120, 40, 'Test', null); const c = document.createElement('canvas').getContext('2d'); b.draw(c);
     const L = [uiLayer('btn_120x40_n', 124, 46, cc => paintButton(cc, 120, 40, 'n')), uiLayer('parch_200x100', 216, 116, cc => paintParchment(cc, 4, 4, 200, 100))];
     const alphas = new Set(); for (const l of L) { const d = l.getContext('2d').getImageData(0, 0, l.width, l.height).data; for (let i = 3; i < d.length; i += 4) alphas.add(d[i]); }
-    const p = []; const rec = { beginPath() {}, moveTo(x, y) { p.push([x, y]); }, lineTo(x, y) { p.push([x, y]); }, closePath() {} }; rr(rec, 0, 0, 40, 20, 6);
-    return { w: L[0].width === Math.ceil(124 / PIX), alphas: [...alphas].sort((a, b) => a - b), axis: p.every(([x, y], i) => { const [x2, y2] = p[(i + 1) % p.length]; return x === x2 || y === y2; }) };
+    const p = []; const rec = { beginPath() {}, moveTo(x, y) { p.push(['m', x, y]); }, lineTo(x, y) { p.push(['l', x, y]); }, arcTo() { p.push(['a']); }, closePath() {} }; rr(rec, 0, 0, 40, 20, 6);
+    return { pix: PIXEL_ART, w: L[0].width === Math.ceil(124 * G.rs), levels: alphas.size, arcs: p.filter(q => q[0] === 'a').length };
   });
-  assert.ok(r.w, 'bufor przycisku w pikselach grafiki (124 px logicznych / PIX)');
-  assert.deepEqual(r.alphas.filter(a => ![0, 150, 255].includes(a)), [], 'tylko 3 stopnie krycia');
-  assert.ok(r.axis, 'róg rr to schodki (same odcinki poziome i pionowe)');
+  assert.equal(r.pix, false, 'grafika bez pikselizacji');
+  assert.ok(r.w, 'bufor przycisku w rozdzielczości ekranu');
+  assert.ok(r.levels > 3, 'miękkie krawędzie (więcej niż 3 stopnie krycia)');
+  assert.equal(r.arcs, 4, 'rogi rr to łuki');
 });
 
 test('czcionka pikselowa wbudowana w plik gry (także polskie znaki) i przełącznik w ustawieniach grafiki', async () => {

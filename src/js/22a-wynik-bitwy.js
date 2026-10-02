@@ -139,7 +139,7 @@ function showGameEnd(st, r, msg, opts) {
     msg, buttons, locked: true, gameEnd: r,
     draw(ctx) {
       const t = G.time - t0; G.dirty = true;
-      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(scene, 30, 20, 534, 400, 0, 0, W, H); ctx.restore(); // piksel sceny = 3 px ekranu (równe piksele)
+      ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(scene, 30, 20, 534, 400, 0, 0, W, H); ctx.restore(); // piksel sceny = 3 px ekranu (równe piksele)
       if (win) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,120,${(0.08 + 0.04 * Math.sin(t)).toFixed(3)})`; ctx.fillRect(0, 0, W, H); ctx.restore(); } // ciepłe światło: gładkie (dithering dałby siatkę kropek)
       if (win) pixLayer('endFx', ctx, 0, 0, W, H, ctx => {
         ctx.save(); ctx.globalCompositeOperation = 'lighter';

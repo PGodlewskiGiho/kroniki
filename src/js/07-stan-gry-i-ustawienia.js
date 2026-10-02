@@ -6,7 +6,7 @@ const G = {
   mouse: { x: -1, y: -1, down: false },
   hover: null, downTarget: null, modal: null, keys: new Set(), popup: null, pressTimer: 0, longPress: false,
   fade: { a: 1, target: 0, next: null },
-  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, quality: 'auto', font: 'pixel', aiMoves: 'fast' }, rs: 1,
+  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, quality: 'auto', font: 'classic', fontV: 2, aiMoves: 'fast' }, rs: 1,
   state: null,
 };
 function loadSettings() {
@@ -20,7 +20,7 @@ function loadSettings() {
   if (!FACTIONS.some(f => f.id === S.faction)) S.faction = 'haven';
   delete S.sfx; delete S.mus; // głośności z czasów, gdy gra miała dźwięk
   if (!['auto', 'high', 'low'].includes(S.quality)) S.quality = 'auto';
-  if (!['pixel', 'classic'].includes(S.font)) S.font = 'pixel'; // czcionka: pikselowa (domyślna) albo klasyczna (szeryfowa)
+  if (!['pixel', 'classic'].includes(S.font) || !S.fontV) { S.font = 'classic'; S.fontV = 2; } // czcionka: klasyczna szeryfowa (domyślna) albo pikselowa
   if (!AI_MOVES.some(m => m.id === S.aiMoves)) S.aiMoves = 'fast';
   S.rules = validRules(S.rules);
   if (!(S.autoDpr >= 0.5 && S.autoDpr <= 2)) delete S.autoDpr;

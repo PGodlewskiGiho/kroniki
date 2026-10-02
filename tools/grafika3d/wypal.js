@@ -59,7 +59,7 @@ async function bakeGroup(ids, done) {
 }
 
 // Bohaterowie w bitwie: jeździec z chorągwią dla każdej klasy; części w barwie gracza w kolorze-kluczu (magenta), który gra
-// podmienia na kolor właściciela. Klatki: spoczynek (4) i rzucanie czaru (7, jak atak).
+// podmienia na kolor właściciela. Klatki: spoczynek, rzucanie czaru (jak atak) i chód (ruch na mapie).
 const HERO_DIR = path.join(ROOT, 'src', 'grafika', 'bohaterowie'), HERO_META = path.join(ROOT, 'src', 'grafika', 'bohaterowie.json');
 async function bakeHeroes(fresh) {
   const meta = fs.existsSync(HERO_META) ? JSON.parse(fs.readFileSync(HERO_META, 'utf8')) : {}; fs.mkdirSync(HERO_DIR, { recursive: true });
@@ -76,13 +76,14 @@ async function bakeHeroes(fresh) {
         frames.push({ pose, c, sx: x0, sy: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, ax: AX - x0, ay: AY - y0 }); };
       for (let i = 0; i < F.idle; i++) add('idle', i, { t: i / F.idle * Math.PI * 2 / 2.4 });
       for (let i = 0; i < F.attack; i++) add('cast', i, { t: 0, atk: i / (F.attack - 1) });
+      for (let i = 0; i < F.walk; i++) add('walk', i, { t: i * 0.2, walk: i / F.walk }); // chód konia: bohater w ruchu na mapie przygody
       const rows = {}; for (const f of frames) (rows[f.pose] = rows[f.pose] || []).push(f);
       let sw = 0, sh = 0; for (const rr of Object.values(rows)) { sw = Math.max(sw, rr.reduce((a, f) => a + f.w + 1, 0)); sh += Math.max(...rr.map(f => f.h)) + 1; }
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = sh; const g = sheet.getContext('2d'), m = {};
       let y = 0; for (const [pose, rr] of Object.entries(rows)) { let x = 0; m[pose] = rr.map(f => { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, x, y, f.w, f.h); const q = [x, y, f.w, f.h, f.ax, f.ay]; x += f.w + 1; return q; }); y += Math.max(...rr.map(f => f.h)) + 1; }
-      return { png: sheet.toDataURL('image/png').split(',')[1], f: m, u: UB };
+      return { png: (RAW ? sheet.toDataURL('image/webp', 0.9) : sheet.toDataURL('image/png')).split(',')[1], f: m, u: UB };
     }, [cls, KB, UB, DS, RAW]);
-    fs.writeFileSync(path.join(HERO_DIR, cls + '.png'), Buffer.from(r.png, 'base64')); meta[cls] = { u: r.u, f: r.f, ...(RAW ? { raw: 1 } : {}) }; fs.writeFileSync(HERO_META, JSON.stringify(meta)); process.stdout.write('h');
+    const ext = RAW ? '.webp' : '.png', other = path.join(HERO_DIR, cls + (RAW ? '.png' : '.webp')); if (fs.existsSync(other)) fs.unlinkSync(other); fs.writeFileSync(path.join(HERO_DIR, cls + ext), Buffer.from(r.png, 'base64')); meta[cls] = { u: r.u, f: r.f, ...(RAW ? { raw: 1 } : {}) }; fs.writeFileSync(HERO_META, JSON.stringify(meta)); process.stdout.write('h');
   }
   await browser.close();
 }

@@ -119,9 +119,9 @@ test('gildie frakcji: różny najwyższy poziom i różne szkoły magii (Inferno
     return out;
   });
   assert.deepEqual(r.haven.list, ['guild4'], 'Przystań: gildia do IV');
-  assert.deepEqual(r.stronghold.list, [], 'Cytadela: gildia do III');
+  assert.deepEqual(r.stronghold.list, [], 'Twierdza: gildia do III');
   assert.deepEqual(r.sylvan.list, ['guild4', 'guild5']);
   assert.ok(r.fire[0] > r.fire[1] * 1.8, `ogień: Inferno ${r.fire[0]} vs Przystań ${r.fire[1]}`);
-  assert.ok(r.earth[0] > r.earth[1] * 1.3, `ziemia: Kurhan ${r.earth[0]} vs Cytadela ${r.earth[1]}`);
+  assert.ok(r.earth[0] > r.earth[1] * 1.3, `ziemia: Kurhan ${r.earth[0]} vs Twierdza ${r.earth[1]}`);
   assert.match(r.text, /poziomu V, najczęściej magia Ognia/); assert.ok(r.noDup);
 });

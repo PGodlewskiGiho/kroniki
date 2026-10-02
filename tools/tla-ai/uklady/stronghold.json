@@ -1,0 +1,306 @@
+{
+ "_opis": "Miejsca budowli na namalowanym tle: s = podstawa na ekranie, z = głębokość (budowle na mesie/tarasach), k = skala.",
+ "tlo": "stronghold-polana.png",
+ "pj": {
+  "hor": 142,
+  "d": 440,
+  "f": 500
+ },
+ "slots": [
+  {
+   "s": [
+    250,
+    336
+   ],
+   "k": 1.2
+  },
+  {
+   "s": [
+    330,
+    214
+   ],
+   "z": 2.444,
+   "k": 0.95
+  },
+  {
+   "s": [
+    444,
+    284
+   ]
+  },
+  {
+   "s": [
+    516,
+    262
+   ],
+   "k": 1.2
+  },
+  {
+   "s": [
+    206,
+    222
+   ],
+   "z": 2.2,
+   "k": 1.3
+  },
+  {
+   "s": [
+    150,
+    264
+   ],
+   "k": 0.85
+  },
+  {
+   "s": [
+    440,
+    222
+   ],
+   "z": 2.2,
+   "k": 1.0
+  },
+  {
+   "s": [
+    420,
+    384
+   ],
+   "z": 0.868
+  },
+  {
+   "s": [
+    220,
+    414
+   ]
+  },
+  {
+   "s": [
+    470,
+    418
+   ],
+   "z": 0.761
+  },
+  {
+   "s": [
+    70,
+    412
+   ]
+  },
+  {
+   "s": [
+    330,
+    350
+   ]
+  },
+  {
+   "s": [
+    290,
+    416
+   ]
+  },
+  {
+   "s": [
+    380,
+    412
+   ],
+   "z": 0.778
+  },
+  {
+   "s": [
+    204,
+    384
+   ]
+  },
+  {
+   "s": [
+    76,
+    254
+   ],
+   "k": 1.4,
+   "zaslona": false
+  }
+ ],
+ "_analiza": "Horyzont 142 (styk równiny z dalekimi buttes, y~178 obrazu). Mesa w środku: krawędź przodu sy 234, podstawa sy 257 → H = d*(257-234)/(257-142) ≈ 88; budowle na mesie z = f*(d-88)/(sy-hor). Tarasy z prawej niskie (H~20-30). Oaza z lewej (x 8-175, sy 280-362) i turnie przy brzegach wyłączone.",
+ "polana": {
+  "zrodlo": "stronghold.png",
+  "obszar": [
+   [
+    40,
+    262
+   ],
+   [
+    584,
+    262
+   ],
+   [
+    584,
+    432
+   ],
+   [
+    40,
+    432
+   ]
+  ],
+  "bez": [
+   [
+    [
+     8,
+     278
+    ],
+    [
+     176,
+     300
+    ],
+    [
+     176,
+     366
+    ],
+    [
+     8,
+     366
+    ]
+   ]
+  ],
+  "obszar_tyl": 262,
+  "woda": [
+   0,
+   0
+  ],
+  "pnie": false,
+  "trawa": [
+   [
+    226,
+    192,
+    146
+   ],
+   [
+    206,
+    164,
+    116
+   ]
+  ],
+  "ziemia": [
+   196,
+   150,
+   104
+  ],
+  "trakt": [
+   [
+    300,
+    434
+   ],
+   [
+    300,
+    400
+   ],
+   [
+    300,
+    340
+   ],
+   [
+    300,
+    290
+   ],
+   [
+    300,
+    266
+   ]
+  ],
+  "trakt_w": 14,
+  "zachowaj": true,
+  "opis": "detailed fantasy matte painting, desert town ground at sunset, packed red sand and flat clay plots, scattered stones, dry grass tufts, warm light, painterly, rich detail, crisp"
+ },
+ "swiatlo": {
+  "niebo": 10531040,
+  "ziemia": 14721136,
+  "hemi": 0.6,
+  "slonce": 16763024,
+  "moc": 4.4,
+  "wypelnienie": 8425672,
+  "wypelnienie_moc": 0.4,
+  "kontra": 16751184,
+  "kontra_moc": 1.6
+ },
+ "haze": "#d8a888",
+ "grade": "saturate(1.05) brightness(1.0) contrast(1.08)",
+ "ozdoby": [
+  {
+   "o": 1,
+   "s": [
+    280,
+    300
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 1,
+   "s": [
+    322,
+    300
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 2,
+   "s": [
+    300,
+    380
+   ],
+   "k": 1.4
+  },
+  {
+   "o": 4,
+   "s": [
+    256,
+    384
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 5,
+   "s": [
+    350,
+    380
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 3,
+   "s": [
+    30,
+    420
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 1,
+   "s": [
+    200,
+    300
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 4,
+   "s": [
+    410,
+    350
+   ],
+   "k": 1.4
+  },
+  {
+   "o": 3,
+   "s": [
+    120,
+    400
+   ],
+   "k": 1.4
+  },
+  {
+   "o": 5,
+   "s": [
+    200,
+    404
+   ],
+   "k": 1.5
+  }
+ ]
+}

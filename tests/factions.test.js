@@ -1,4 +1,4 @@
-// Frakcje: kompletność danych, rysunki stworów i miast, bitwy i tura SI z Twierdzą, Infernem, Akademią, Lochem i Cytadelą. Uruchom: npm test
+// Frakcje: kompletność danych, rysunki stworów i miast, bitwy i tura SI z Cytadelą, Infernem, Akademią, Lochem i Twierdzą. Uruchom: npm test
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openGame, newGame, frames } = require('./harness');
@@ -32,7 +32,7 @@ test('każda frakcja ma komplet danych: siedliska, stwory, bohaterów, grafikę 
   assert.deepEqual(bad, []);
 });
 
-test('stwory Twierdzy, Inferna, Akademii, Lochu i Cytadeli rysują się w każdej pozie, na mapie i jako zwłoki', async () => {
+test('stwory Cytadely, Inferna, Akademii, Lochu i Twierdzi rysują się w każdej pozie, na mapie i jako zwłoki', async () => {
   const r = await page.evaluate(() => {
     const ids = Object.keys(CREATURES).filter(k => ['fortress', 'inferno', 'academy', 'dungeon', 'stronghold'].includes(CREATURES[k].faction)), empty = [];
     for (const id of ids) {
@@ -46,7 +46,7 @@ test('stwory Twierdzy, Inferna, Akademii, Lochu i Cytadeli rysują się w każde
   assert.deepEqual(r.empty, [], 'każdy stwór jest widoczny na mapie');
 });
 
-test('miasta Twierdzy, Inferna, Akademii, Lochu i Cytadeli: pusty i w pełni rozbudowany, ekran rysuje się bez błędów', async () => {
+test('miasta Cytadely, Inferna, Akademii, Lochu i Twierdzi: pusty i w pełni rozbudowany, ekran rysuje się bez błędów', async () => {
   for (const fac of ['fortress', 'inferno', 'academy', 'dungeon', 'stronghold']) for (const full of [false, true]) {
     await newGame(page, { mapSize: 'M', faction: fac }, 8);
     await page.evaluate(([full]) => { const t = G.state.towns[0]; if (full) t.built = BUILDINGS.map(b => b.id); setScreen('town', { townId: t.id }); }, [full]);
@@ -55,7 +55,7 @@ test('miasta Twierdzy, Inferna, Akademii, Lochu i Cytadeli: pusty i w pełni roz
   }
 });
 
-test('bitwa Twierdza kontra Inferno kończy się, a SI Inferna rozgrywa turę', async () => {
+test('bitwa Cytadela kontra Inferno kończy się, a SI Inferna rozgrywa turę', async () => {
   await newGame(page, { mapSize: 'M', faction: 'fortress', opponents: 2 }, 8);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), t = st.towns[1], army = (fac, lv) => { const F = factionOf(fac), a = emptyArmy(); lv.forEach((d, i) => { a[i] = { cid: F.dw[d][1], n: 12 - i * 2 }; }); return a; };
@@ -83,7 +83,7 @@ test('Akademia kontra Przystań: bitwa się kończy, tytani i starsze gremliny s
   assert.deepEqual(r.shooters, [true, true, true]); assert.ok(r.naga); assert.ok(r.town);
 });
 
-test('Loch kontra Cytadela: bitwa się kończy, strzelcy i latacze mają swoje zdolności, frakcje mają własny teren', async () => {
+test('Loch kontra Twierdza: bitwa się kończy, strzelcy i latacze mają swoje zdolności, frakcje mają własny teren', async () => {
   await newGame(page, { mapSize: 'M', faction: 'dungeon', opponents: 1 }, 8);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), t = st.towns[1], army = (fac, lv) => { const F = factionOf(fac), a = emptyArmy(); lv.forEach((d, i) => { a[i] = { cid: F.dw[d][1], n: 12 - i * 2 }; }); return a; };

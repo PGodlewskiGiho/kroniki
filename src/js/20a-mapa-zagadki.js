@@ -17,7 +17,7 @@ function puzzleOrder(st) {
 // Obraz wycinka mapy (teren i stałe obiekty, bez bohaterów i potworów, bez mgły) w połowie rozdzielczości, z krzyżykiem
 function puzzleImage(st) {
   const [x0, y0] = puzzleOrigin(st), c = document.createElement('canvas'); c.width = PUZZLE_W * T / PIX; c.height = PUZZLE_H * T / PIX;
-  const b = c.getContext('2d'), CP = CHUNK * T; b.imageSmoothingEnabled = false; b.setTransform(1 / PIX, 0, 0, 1 / PIX, 0, 0);
+  const b = c.getContext('2d'), CP = CHUNK * T; b.imageSmoothingEnabled = !PIXEL_ART; b.setTransform(1 / PIX, 0, 0, 1 / PIX, 0, 0);
   for (let cy = Math.floor(y0 / CHUNK); cy <= Math.floor((y0 + PUZZLE_H - 1) / CHUNK); cy++) for (let cx = Math.floor(x0 / CHUNK); cx <= Math.floor((x0 + PUZZLE_W - 1) / CHUNK); cx++)
     b.drawImage(MapRender.get(cx, cy), (cx * CHUNK - x0) * T, (cy * CHUNK - y0) * T, CP, CP);
   const ox = -x0 * T, oy = -y0 * T;
@@ -58,7 +58,7 @@ function puzzleCover(st, w, h) {
   g.fillStyle = 'rgba(0,0,0,.14)'; for (let i = 0; i < cw * ch / 90; i++) g.fillRect(Math.floor(r() * cw), hor + 10 + Math.floor(r() * (ch - hor)), 2, 1); // źdźbła i kamyki
   g.fillStyle = shadeHex(A.ground, 0.25); g.beginPath(); g.moveTo(cw / 2 - 30, ch); g.bezierCurveTo(cw / 2 - 40, ch * 0.85, cw / 2 + 14, ch * 0.8, cw / 2 - 2, hor + 26); // droga
   g.lineTo(cw / 2 + 6, hor + 26); g.bezierCurveTo(cw / 2 + 26, ch * 0.8, cw / 2 - 12, ch * 0.85, cw / 2 + 30, ch); g.fill();
-  const ts = townSprite(fac, 3), tk = 2; g.imageSmoothingEnabled = false; const tw = ts.c.width * ts.u / 2 * tk, th = ts.c.height * ts.u / 2 * tk; g.drawImage(ts.c, cw / 2 - tw / 2 + 10, hor + 30 - th + 16, tw, th);
+  const ts = townSprite(fac, 3), tk = 2; g.imageSmoothingEnabled = !PIXEL_ART; const tw = ts.c.width * ts.u / 2 * tk, th = ts.c.height * ts.u / 2 * tk; g.drawImage(ts.c, cw / 2 - tw / 2 + 10, hor + 30 - th + 16, tw, th);
   for (let i = 0; i < 14; i++) { // kępy drzew po bokach
     const side = i % 2 ? 1 : -1, x = cw / 2 + side * (cw * 0.26 + r() * cw * 0.22), y = hor + 18 + r() * (ch - hor - 30), s2 = 5 + r() * 5, dk = shadeHex(A.ground, -0.3);
     g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(x, y + s2, s2, s2 * 0.35, 0, 0, TAU); g.fill();
@@ -94,7 +94,7 @@ function showPuzzle(st) {
     draw(ctx) {
       dimScreen(ctx, 0.55); drawParchment(ctx, x, y, W0, H0);
       text(ctx, 'Mapa zagadki', W / 2, y + 30, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
-      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(img, mx, my, mw * k, mh * k);
+      ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(img, mx, my, mw * k, mh * k);
       ctx.beginPath(); ctx.rect(mx - 12, my - 12, mw * k + 24, mh * k + 24); ctx.clip();
       for (let j = 0; j < PUZZLE_ROWS; j++) for (let i = 0; i < PUZZLE_COLS; i++) {
         const px = mx + i * pw, py = my + j * ph; piecePath(ctx, i, j, px, py, pw, ph, st.seed);
@@ -114,7 +114,7 @@ function digHere(scr, st) {
   const r = digGrail(st, h); if (r.error) { scr.flash(r.error); return; }
   scr.mapFx = scr.mapFx || []; scr.mapFx.push({ kind: 'ring', x: h.x, y: h.y, r: 1.2, col: 'rgba(150,110,60,.8)', t: G.time });
   if (r.found) showDialog(`${h.name} wykopuje Graala! Święty kielich trafia do plecaka. Zanieś go do jednego ze swoich miast, aby wznieść tam budowlę Graala: +${GRAIL_GOLD} złota dziennie i +50% przyrostu stworów.`,
-    [{ label: 'Wspaniale', key: 'enter' }], { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite('grail'), cx, cy, 3) });
+    [{ label: 'Wspaniale', key: 'enter' }], { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite('grail', true), cx, cy, 3) });
   else showDialog(`${h.name} kopie przez cały dzień, ale nic tu nie ma. ${st.grail && st.grail.found < 0 ? 'Mapa zagadki podpowie, gdzie szukać.' : ''}`, [{ label: 'OK', key: 'enter' }]);
 }
 // Dołki po kopaniu na mapie: ciemna jama z wałem ziemi

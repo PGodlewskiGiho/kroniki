@@ -160,18 +160,18 @@ G.screens.town = {
     const key = `tw_${fac}_${townLayout(t).seed}_${[...t.built].sort().join('.')}_${col}`;
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
-    const scene = Layers.get(key, 592, 438, c => { c.imageSmoothingEnabled = false; TownFXCache[key] = paintTownScene(c, t, col); }, TOWN_ART_SCALE);
+    const scene = Layers.get(key, 592, 438, c => { c.imageSmoothingEnabled = !PIXEL_ART; TownFXCache[key] = paintTownScene(c, t, col); }, TOWN_ART_SCALE);
     const fxs = TownFXCache[key] || { wins: [], smokes: [] };
-    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(scene, 0, 0, scene.width / TOWN_ART_SCALE, scene.height / TOWN_ART_SCALE);
+    ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(scene, 0, 0, scene.width / TOWN_ART_SCALE, scene.height / TOWN_ART_SCALE);
     // dym, ptaki, śnieg i żar w pełnej rozdzielczości ekranu: w buforze o połowie rozdzielczości wolny ruch skakał co 2 piksele
     if (!G.modal) drawTownFX(ctx, t, fxs); ctx.restore();
     if (G.modal) { // widok z okna gildii: scena z efektami w buforze sceny
       const fb = pixBuf('townFx', scene.width, scene.height), fbx = fb._ctx;
       if (fb._key !== key || fb._t !== G.time) {
-        fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = false; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
+        fbx.setTransform(1, 0, 0, 1, 0, 0); fbx.imageSmoothingEnabled = !PIXEL_ART; fbx.clearRect(0, 0, fb.width, fb.height); fbx.drawImage(scene, 0, 0);
         fbx.setTransform(TOWN_ART_SCALE, 0, 0, TOWN_ART_SCALE, 0, 0); drawTownFX(fbx, t, fxs); fb._key = key; fb._t = G.time;
       }
-      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(fb, 0, 0, fb.width / TOWN_ART_SCALE, fb.height / TOWN_ART_SCALE); ctx.restore();
+      ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(fb, 0, 0, fb.width / TOWN_ART_SCALE, fb.height / TOWN_ART_SCALE); ctx.restore();
       this.fb = fb;
     }
     if (this.hoverSlot !== null && !G.modal) {
@@ -332,7 +332,7 @@ function showGuildView(st, t, scr) {
       const fb = scr.fb; // żywy widok na miasto (bufor sceny z dymem i światłami)
       ctx.save(); guildWinPath(ctx, L0.win, Wn.x, Wn.y, Wn.w, Wn.h, 0); ctx.clip(); ctx.fillStyle = '#10121a'; ctx.fillRect(Wn.x, Wn.y, Wn.w, Wn.h);
       if (fb) { const hall = ((TownFXCache[lastTownKey] || {}).rects || {})[0], k = TOWN_ART_SCALE, sh3 = 422 * k, sw = sh3 * Wn.w / Wn.h, hx = hall ? (hall.x + hall.w / 2) * k : fb.width / 2;
-        const sx = clamp(hx - sw / 2, 8 * k, fb.width - 8 * k - sw); ctx.imageSmoothingEnabled = false; ctx.drawImage(fb, sx, 8 * k, sw, sh3, Wn.x, Wn.y, Wn.w, Wn.h); }
+        const sx = clamp(hx - sw / 2, 8 * k, fb.width - 8 * k - sw); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(fb, sx, 8 * k, sw, sh3, Wn.x, Wn.y, Wn.w, Wn.h); }
       const vg = ctx.createRadialGradient(Wn.x + Wn.w / 2, Wn.y + Wn.h / 2, Wn.h * 0.3, Wn.x + Wn.w / 2, Wn.y + Wn.h / 2, Wn.h * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)'); ctx.fillStyle = vg; ctx.fillRect(Wn.x, Wn.y, Wn.w, Wn.h);
       ctx.strokeStyle = 'rgba(20,14,8,.85)'; ctx.lineWidth = 3; if (L0.win === 'pointed' || L0.win === 'arch') { ctx.beginPath(); ctx.moveTo(Wn.x + Wn.w / 2, Wn.y + 8); ctx.lineTo(Wn.x + Wn.w / 2, Wn.y + Wn.h); ctx.moveTo(Wn.x, Wn.y + Wn.h * 0.55); ctx.lineTo(Wn.x + Wn.w, Wn.y + Wn.h * 0.55); ctx.stroke(); } // szprosy
       ctx.restore();

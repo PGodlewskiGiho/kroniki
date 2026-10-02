@@ -64,7 +64,7 @@ function cursorDef(kind) {
 function cursorCss(kind) {
   if (CURSOR_CSS[kind]) return CURSOR_CSS[kind];
   const C = cursorDef(kind), s = sprite(`cursor_${kind}`, 16, 16, 0, 0, C.draw, OUTLINE, 0.5);
-  const cv = document.createElement('canvas'); cv.width = cv.height = 32; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(s.c, 0, 0, 32, 32);
+  const cv = document.createElement('canvas'); cv.width = cv.height = 32; const g = cv.getContext('2d'); g.imageSmoothingEnabled = !PIXEL_ART; g.drawImage(s.c, 0, 0, 32, 32);
   return (CURSOR_CSS[kind] = `url(${cv.toDataURL()}) ${C.hot[0]} ${C.hot[1]}, ${C.fb}`);
 }
 // Ustawia kursor (tylko gdy się zmienił: podmiana obrazu kursora co klatkę kosztowałaby przeglądarkę)

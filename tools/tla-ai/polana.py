@@ -5,10 +5,15 @@
 import json, os, sys, numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 fac, out = sys.argv[1], sys.argv[2]; strength = float(sys.argv[3]) if len(sys.argv) > 3 else 0.45; seed = int(sys.argv[4]) if len(sys.argv) > 4 else 7
-U = json.load(open(f'uklady/{fac}.json')); M = json.load(open(f'uklady/{fac}-wymiary.json')); P = U['polana']
+U = json.load(open(f'uklady/{fac}.json')); M = json.load(open(f'uklady/{fac}-wymiary.json')); P = U[os.environ.get('KLUCZ', 'polana')]  # KLUCZ=polana_tyl: drugie przejście (np. dalszy plan)
 hor, d, f = U['pj']['hor'], U['pj']['d'], U['pj']['f']
 im = Image.open('tla/' + P['zrodlo']).convert('RGB'); W, H = im.size; S = W / 576.0; a0 = np.asarray(im).astype(np.float32)
 def I(x, y): return ((x - 8) * S, (y - 8) * S)  # kadr gry -> piksele obrazu
+if P.get('zwegl'):  # zwęglenie: wszystko poniżej linii (skały, urwiska, ziemia) w czarny spieczony węgiel, lawa zostaje jasna
+    Z = P['zwegl']; r0, g0, b0 = a0[..., 0], a0[..., 1], a0[..., 2]; lawa = (r0 > 130) & (r0 > g0 * 1.3) & (r0 > b0 * 1.8)
+    lm = np.asarray(Image.fromarray((lawa * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(2 * S))).astype(np.float32)[..., None] / 255
+    ramp = np.clip((np.mgrid[0:H, 0:W][0] / S + 8 - Z['od']) / 30, 0, 1)[..., None]; ciemne = a0 * Z['k'] + np.array(Z.get('kolor', [16, 12, 12]), np.float32) * (1 - Z['k']) * 0.5
+    a0 = a0 * (1 - ramp) + (ciemne * (1 - lm) + a0 * lm) * ramp; im = Image.fromarray(a0.clip(0, 255).astype(np.uint8))
 def scr(X, Z): return (296 + f * X / Z, hor + f * d / Z)
 rng = np.random.default_rng(seed); yy, xx = np.mgrid[0:H, 0:W]
 # obszar polany: wielokąt z układu minus woda (niebieskawe piksele) i pnie ramy (ciemny brąz przy krawędziach)
@@ -36,12 +41,16 @@ ziemia = np.array(P['ziemia'], np.float32)
 place = Image.new('L', (W, H), 0); pd = ImageDraw.Draw(place)
 fronty = []
 for i, o in enumerate(U['slots']):
+    if o.get('z'): fronty.append(None); continue  # budowla na płaskowyżu (podniesiona): wierzch maluje samo tło
     m = M[str(i)]; sx, sy = o['s']; zw = o['z'] * 1000 if o.get('z') else f * d / (sy - hor); X = (sx - 296) * zw / f; k = o.get('k', 1)
     w, back, front = m['w'] * k * 0.62, m['back'] * k * 0.62, m['front'] * k * 0.62 + 18  # plac odrobinę większy od podstawy, z przedpolem
     pts = []
     for a in np.linspace(0, 2 * np.pi, 40, endpoint=False):  # elipsa w świecie: plac, nie prostokąt
         ex, ez = np.cos(a), np.sin(a); pts.append(I(*scr(X + ex * w, zw + (ez * back if ez > 0 else ez * front))))
     pd.polygon(pts, fill=255); fronty.append(scr(X, zw - m['front'] * k - 6))
+for o in U.get('ozdoby', []):  # małe place pod ozdobami (żeby nie stały w wodzie)
+    sx, sy = o['s']; zw = f * d / (sy - hor); X = (sx - 296) * zw / f; r0 = 16 * o.get('k', 1)
+    pd.polygon([I(*scr(X + np.cos(a) * r0, zw + np.sin(a) * r0 * 0.8)) for a in np.linspace(0, 2 * np.pi, 24, endpoint=False)], fill=255)
 # ścieżki: trakt z układu + odnoga do frontu każdej budowli od najbliższego punktu traktu
 def spline(pts, n=20):
     Q = [pts[0]] + pts + [pts[-1]]; o = []
@@ -52,7 +61,7 @@ def spline(pts, n=20):
 trakt = spline(P['trakt'])
 sciezki = [(trakt, P['trakt_w'])]
 for i, fp in enumerate(fronty):
-    if i in P.get('bez_sciezki', []): continue
+    if fp is None or i in P.get('bez_sciezki', []): continue
     q = min(trakt, key=lambda p: (p[0] - fp[0]) ** 2 + (p[1] - fp[1]) ** 2 * 3); mid = ((q[0] + fp[0]) / 2, max(q[1], fp[1]) + 4)
     sciezki.append((spline([list(q), list(mid), list(fp)], 12), P['trakt_w'] * 0.6))
 for pts, wd in sciezki:
@@ -61,7 +70,38 @@ for pts, wd in sciezki:
         pd.ellipse([X0 - rr * S, Y0 - kk * S, X0 + rr * S, Y0 + kk * S], fill=255)
 place = place.filter(ImageFilter.GaussianBlur(2 * S)); pa = (np.asarray(place).astype(np.float32) / 255)[..., None]
 tx = (0.75 + 0.5 * (0.6 * noise(6) + 0.4 * noise(2)))[..., None]
-teren = np.asarray(L).astype(np.float32); teren = teren * (1 - pa * 0.85) + ziemia * tx * pa * 0.85
+teren = a0.copy() if P.get('zachowaj') else np.asarray(L).astype(np.float32); teren = teren * (1 - pa * 0.85) + ziemia * tx * pa * 0.85  # zachowaj: rzeźba terenu z tła, malowane tylko place, ścieżki i ciecz
+if P.get('bagno'):  # bagno: woda między placami (rozlewiska i kanały), brzeg z mułu, trzciny na brzegu
+    pm = Image.fromarray((np.asarray(place) > 40).astype(np.uint8) * 255).filter(ImageFilter.MaxFilter(int(9 * S) | 1)).filter(ImageFilter.GaussianBlur(3 * S))
+    gy = np.maximum(yy / S + 8 - hor, 2.0); Zw = f * d / gy; Xw = (xx / S + 8 - 296) * Zw / f  # szum w świecie (X, Z): rozlewiska spłaszczone perspektywą
+    def wnoise(cell, sd):
+        R2 = np.random.default_rng(sd).random((400, 400)); u = Xw / cell + 200; v = Zw / cell; i0 = np.floor(u).astype(int) % 399; j0 = np.floor(v).astype(int) % 399; fu = u - np.floor(u); fv = v - np.floor(v)
+        fu, fv = fu * fu * (3 - 2 * fu), fv * fv * (3 - 2 * fv); return (R2[j0, i0] * (1 - fu) + R2[j0, i0 + 1] * fu) * (1 - fv) + (R2[j0 + 1, i0] * (1 - fu) + R2[j0 + 1, i0 + 1] * fu) * fv
+    nz = 0.6 * wnoise(P.get('bagno_skala', 150), seed) + 0.3 * wnoise(P.get('bagno_skala', 150) / 2.6, seed + 1) + 0.1 * wnoise(P.get('bagno_skala', 150) / 7, seed + 2)
+    tt = np.clip((yy / S + 8 - P['obszar_tyl']) / (430 - P['obszar_tyl']), 0, 1); prog = P['bagno'] - P.get('bagno_tyl', 0.15) * (1 - tt)  # z tyłu więcej wody
+    wm = G & (np.asarray(pm) < 60) & (nz > prog)
+    wm = np.asarray(Image.fromarray(wm.astype(np.uint8) * 255).filter(ImageFilter.GaussianBlur(2.5 * S))) > 128  # gładki brzeg
+    brzeg = (np.asarray(Image.fromarray(wm.astype(np.uint8) * 255).filter(ImageFilter.MaxFilter(int(5 * S) | 1))) > 128) & ~wm
+    wk = np.array(P.get('woda_kolor', [[150, 170, 140], [40, 60, 48]]), np.float32); tw = np.clip((yy / S + 8 - P['obszar_tyl']) / (430 - P['obszar_tyl']), 0, 1)[..., None] ** 0.6
+    wc = wk[0] * (1 - tw) + wk[1] * tw; wc = wc * (0.92 + 0.16 * noise(3)[..., None] * (0.5 + 0.5 * np.sin(yy / S * 1.7))[..., None])
+    teren = np.where(wm[..., None], wc, teren); teren = np.where(brzeg[..., None], np.array(P.get('brzeg_kolor', ziemia * 0.7), np.float32) * tx, teren)
+    T = Image.fromarray(teren.clip(0, 255).astype(np.uint8)); td = ImageDraw.Draw(T); by, bx = np.nonzero(brzeg)
+    for j in (rng.choice(len(bx), size=min(len(bx), int(900 * S)), replace=False) if P.get('trzciny', True) else []):  # trzciny
+        x, y = bx[j], by[j]; k = 0.4 + (y / S + 8 - hor) / 260; hgt = (4 + 8 * rng.random()) * k * S
+        td.line([(x, y), (x + (rng.random() - 0.5) * 2 * S, y - hgt)], fill=tuple(int(v) for v in np.array([70, 90, 40]) * (0.7 + 0.6 * rng.random())), width=max(1, int(0.9 * k * S)))
+    teren = np.asarray(T).astype(np.float32)
+if P.get('pekniecia'):  # sieć pęknięć w spieczonej skorupie: ciemna szczelina z żarzącym się środkiem, spłaszczona perspektywą
+    T = Image.fromarray(teren.clip(0, 255).astype(np.uint8)); td = ImageDraw.Draw(T); Gy, Gx = np.nonzero(G)
+    for _ in range(P['pekniecia']):
+        j = rng.integers(len(Gx)); x, y = float(Gx[j]), float(Gy[j]); a = rng.random() * np.pi * 2; pts = [(x, y)]
+        for _k in range(rng.integers(4, 12)):
+            k = 0.3 + (y / S + 8 - hor) / 300; a += (rng.random() - 0.5) * 1.2; x += np.cos(a) * 9 * k * S; y += np.sin(a) * 3 * k * S; pts.append((x, y))
+        k = 0.3 + (y / S + 8 - hor) / 300; td.line(pts, fill=(14, 8, 8), width=max(1, int(2.4 * k * S))); td.line(pts, fill=tuple(P.get('pekniecia_kolor', [255, 110, 30])), width=max(1, int(0.9 * k * S)))
+    teren = np.asarray(T).astype(np.float32)
+if P.get('wyostrz'):  # dalszy plan bez mgły: lokalny kontrast i wyostrzenie przed AI
+    r_, pc = P['wyostrz']; gr = Image.fromarray(teren.mean(-1).clip(0, 255).astype(np.uint8))  # tylko jasność (bez barwnych obwódek)
+    teren = teren + (np.asarray(gr.filter(ImageFilter.UnsharpMask(radius=r_ * S, percent=pc, threshold=0))).astype(np.float32) - np.asarray(gr).astype(np.float32))[..., None]
+    if P.get('odmglij'): m = np.asarray(Image.fromarray(teren.clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(30 * S))).astype(np.float32); teren = teren * (1 + P['odmglij']) - m * P['odmglij']
 szkic = np.where(G[..., None], teren, a0)
 sz = Image.fromarray(szkic.clip(0, 255).astype(np.uint8)); sz.save(out.replace('.png', '-szkic.png'))
 if os.environ.get('SZKIC'): print(out.replace('.png', '-szkic.png')); sys.exit()

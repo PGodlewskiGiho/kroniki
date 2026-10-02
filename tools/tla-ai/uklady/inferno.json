@@ -1,0 +1,424 @@
+{
+ "_opis": "Miejsca budowli na namalowanym tle: s = podstawa na ekranie, z = głębokość (budowle na płaskowyżu), k = skala.",
+ "tlo": "inferno-polana-tyl.png",
+ "pj": {
+  "hor": 135,
+  "d": 440,
+  "f": 500
+ },
+ "slots": [
+  {
+   "s": [
+    380,
+    334
+   ],
+   "k": 1.2
+  },
+  {
+   "s": [
+    300,
+    208
+   ],
+   "z": 1.925,
+   "k": 1.1
+  },
+  {
+   "s": [
+    398,
+    198
+   ],
+   "z": 2.23,
+   "k": 1.4
+  },
+  {
+   "s": [
+    484,
+    206
+   ],
+   "z": 1.979,
+   "k": 1.2
+  },
+  {
+   "s": [
+    206,
+    196
+   ],
+   "z": 2.303,
+   "k": 1.4
+  },
+  {
+   "s": [
+    190,
+    300
+   ]
+  },
+  {
+   "s": [
+    118,
+    352
+   ]
+  },
+  {
+   "s": [
+    456,
+    292
+   ]
+  },
+  {
+   "s": [
+    250,
+    414
+   ]
+  },
+  {
+   "s": [
+    456,
+    414
+   ]
+  },
+  {
+   "s": [
+    56,
+    404
+   ]
+  },
+  {
+   "s": [
+    214,
+    368
+   ]
+  },
+  {
+   "s": [
+    140,
+    414
+   ]
+  },
+  {
+   "s": [
+    352,
+    414
+   ]
+  },
+  {
+   "s": [
+    468,
+    352
+   ]
+  },
+  {
+   "s": [
+    112,
+    206
+   ],
+   "z": 1.979,
+   "k": 1.4,
+   "zaslona": false
+  }
+ ],
+ "_analiza": "Horyzont 135 (podstawa wulkanu, y ~168 obrazu). Płaskowyż z tyłu: krawędź urwiska sy 213, podnóże (fosa lawy) sy 257 → wysokość 159 jednostek; budowle na płaskowyżu mają z = f*(d-159)/(sy-hor). Przód: równina popiołu od 262, rzeka lawy po prawej (x 500-560) wyłączona.",
+ "polana": {
+  "zrodlo": "inferno.png",
+  "obszar": [
+   [
+    8,
+    262
+   ],
+   [
+    150,
+    262
+   ],
+   [
+    300,
+    264
+   ],
+   [
+    450,
+    262
+   ],
+   [
+    500,
+    264
+   ],
+   [
+    500,
+    432
+   ],
+   [
+    8,
+    432
+   ]
+  ],
+  "bez": [
+   [
+    [
+     488,
+     262
+    ],
+    [
+     584,
+     262
+    ],
+    [
+     584,
+     432
+    ],
+    [
+     516,
+     432
+    ],
+    [
+     494,
+     400
+    ],
+    [
+     488,
+     347
+    ],
+    [
+     500,
+     309
+    ]
+   ]
+  ],
+  "obszar_tyl": 262,
+  "woda": [
+   0,
+   0
+  ],
+  "pnie": false,
+  "trawa": [
+   [
+    84,
+    66,
+    60
+   ],
+   [
+    56,
+    44,
+    44
+   ]
+  ],
+  "ziemia": [
+   46,
+   34,
+   30
+  ],
+  "trakt": [
+   [
+    300,
+    434
+   ],
+   [
+    302,
+    400
+   ],
+   [
+    300,
+    340
+   ],
+   [
+    300,
+    290
+   ],
+   [
+    300,
+    266
+   ]
+  ],
+  "trakt_w": 16,
+  "bagno": 0.74,
+  "bagno_tyl": 0.0,
+  "bagno_skala": 120,
+  "woda_kolor": [
+   [
+    255,
+    140,
+    40
+   ],
+   [
+    230,
+    90,
+    24
+   ]
+  ],
+  "brzeg_kolor": [
+   20,
+   14,
+   14
+  ],
+  "trzciny": false,
+  "opis": "detailed fantasy matte painting, hell town ground, black charred coal and sintered cinder crust, cracked with thin glowing lava cracks, small lava pools, dark flat stone plots, painterly, rich detail, crisp",
+  "zachowaj": true,
+  "zwegl": {
+   "od": 118,
+   "k": 0.42,
+   "kolor": [
+    14,
+    10,
+    10
+   ]
+  },
+  "pekniecia": 0,
+  "pekniecia_kolor": [
+   210,
+   70,
+   20
+  ]
+ },
+ "ozdoby": [
+  {
+   "o": 1,
+   "s": [
+    276,
+    296
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 1,
+   "s": [
+    326,
+    296
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 3,
+   "s": [
+    254,
+    330
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 3,
+   "s": [
+    346,
+    318
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 5,
+   "s": [
+    300,
+    382
+   ],
+   "k": 1.4
+  },
+  {
+   "o": 4,
+   "s": [
+    262,
+    374
+   ],
+   "k": 1.8
+  },
+  {
+   "o": 1,
+   "s": [
+    424,
+    388
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 4,
+   "s": [
+    160,
+    330
+   ],
+   "k": 1.8
+  },
+  {
+   "o": 3,
+   "s": [
+    90,
+    300
+   ],
+   "k": 1.5
+  }
+ ],
+ "polana_tyl": {
+  "zrodlo": "inferno-polana.png",
+  "obszar": [
+   [
+    8,
+    156
+   ],
+   [
+    584,
+    156
+   ],
+   [
+    584,
+    262
+   ],
+   [
+    8,
+    262
+   ]
+  ],
+  "bez": [],
+  "obszar_tyl": 156,
+  "woda": [
+   0,
+   0
+  ],
+  "pnie": false,
+  "trawa": [
+   [
+    30,
+    24,
+    24
+   ],
+   [
+    30,
+    24,
+    24
+   ]
+  ],
+  "ziemia": [
+   40,
+   30,
+   28
+  ],
+  "trakt": [
+   [
+    300,
+    434
+   ],
+   [
+    300,
+    433
+   ]
+  ],
+  "trakt_w": 1,
+  "zachowaj": true,
+  "wyostrz": [
+   5,
+   120
+  ],
+  "opis": "detailed sharp fantasy matte painting, black charred basalt plateau with crisp cliffs and rock ledges, glowing lava falls into a lava river, dark volcanic rock texture, clear air, painterly, crisp",
+  "odmglij": 0.45
+ },
+ "swiatlo": {
+  "niebo": 5910568,
+  "ziemia": 16734746,
+  "hemi": 0.4,
+  "slonce": 16752752,
+  "moc": 2.2,
+  "wypelnienie": 16738864,
+  "wypelnienie_moc": 0.15,
+  "kontra": 16752704,
+  "kontra_moc": 4.5,
+  "dol": 16734736,
+  "dol_moc": 2.6
+ },
+ "haze": "#5a2416",
+ "grade": "saturate(1.12) brightness(1.0) contrast(1.2)",
+ "blendOpts": {
+  "color": 0.2
+ }
+}

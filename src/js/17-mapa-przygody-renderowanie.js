@@ -464,19 +464,22 @@ function drawWorldPixel(b, st) {
   list.sort((a, c) => a.y - c.y);
   const shadow = (w, x, y) => { b.globalAlpha = 0.3; blitG(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
   for (const it of list) {
-    if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16; shadow(14, x, y + 13); blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
-    if (it.caravan) { const x = ox + it.cx * T + 16, y = oy + it.cy * T + 16; shadow(12, x, y + 10); blitG(b, caravanSprite(ownerColor(st, it.caravan.owner), Math.floor(G.time * 3) % 2), x, y + 8); continue; }
+    if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16, h3 = heroMap3d(it.hero, ownerColor(st, it.hero.owner)); shadow(14, x, y + 13); const hb = it.hero.boat && map3dTinted(`boatHero_${Math.floor(G.time * 4) % 4}`, ownerColor(st, it.hero.owner), it.hero.dir < 0); // łódź z bohaterem: żagiel w barwie gracza, kołysanie
+      if (hb) blitG(b, hb, x, y + 8 + Math.round(Math.sin(G.time * 2) * 1.2)); else if (h3) blitG(b, h3, x, y + 13); else blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
+    if (it.caravan) { const x = ox + it.cx * T + 16, y = oy + it.cy * T + 16, c3 = map3dTinted(`caravan_${Math.floor(G.time * 6) % 4}`, ownerColor(st, it.caravan.owner)); if (c3) { blitG(b, c3, x, y + 8); continue; } shadow(12, x, y + 10); blitG(b, caravanSprite(ownerColor(st, it.caravan.owner), Math.floor(G.time * 3) % 2), x, y + 8); continue; }
     const ob = it.ob, px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
     if (ob.type === 'monster') { shadow(10, px, py + 10); blitG(b, creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
-    else if (ob.type === 'res') { shadow(10, px, py + 9); blitG(b, resSprite(ob.res), px, py + 2); }
-    else if (ob.type === 'chest') { shadow(10, px, py + 9); blitG(b, chestSprite(), px, py + 2); }
-    else if (ob.type === 'boat') blitG(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py);
-    else if (ob.type === 'site') { shadow(14, px, py + 12); blitG(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); }
-    else if (ob.type === 'art') { shadow(9, px, py + 10); blitG(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); }
-    else if (ob.type === 'bank') blitG(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T);
-    else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T; blitG(b, mineSprite(ob.kind), mx, my); blitG(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
+    else if (ob.type === 'res') { const s3 = map3dSprite('res_' + ob.res); if (s3) blitG(b, s3, px, py + 6); else { shadow(10, px, py + 9); blitG(b, resSprite(ob.res), px, py + 2); } } // 3D: własny cień na ziemi
+    else if (ob.type === 'chest') { const s3 = map3dSprite('chest'); if (s3) blitG(b, s3, px, py + 6); else { shadow(10, px, py + 9); blitG(b, chestSprite(), px, py + 2); } }
+    else if (ob.type === 'boat') { const s3 = map3dSprite('boat'); if (s3) blitG(b, s3, px, py + 4 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.2)); else blitG(b, boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py); }
+    else if (ob.type === 'site') { const f3 = siteFrame(ob), s3 = (f3 && map3dSprite(`site_${ob.kind}_${f3}`)) || map3dSprite('site_' + ob.kind); /* klatki ruchu: wiatrak, młyn, ogień, portal */ if (s3) blitG(b, s3, px, py + 6); else { shadow(14, px, py + 12); blitG(b, siteSprite(ob.kind, siteFrame(ob)), px, py + 14); } }
+    else if (ob.type === 'art') { const s3 = map3dSprite('art_' + ob.art); if (s3) blitG(b, s3, px, py + 6); else { shadow(9, px, py + 10); blitG(b, artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); } }
+    else if (ob.type === 'bank') { const s3 = map3dSprite(`bank_${ob.kind}_${ob.cleared ? 1 : 0}`); if (s3) blitG(b, s3, px - 8, py - 4); else blitG(b, bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T); } // 3D: środek bloku 2×2, wejście z przodu
+    else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, s3 = map3dSprite('mine_' + ob.kind); if (s3) blitG(b, s3, px + 6, py); else blitG(b, mineSprite(ob.kind), mx, my); blitG(b, flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
     else if (ob.type === 'town') {
       const t = st.towns[ob.townId], lvl = townLevel(t), mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, fc = ownerColor(st, ob.owner);
+      const k3 = `town_${t.faction}_${lvl}`, s3 = map3dSprite(k3);
+      if (s3) { blitG(b, s3, px, py + 10); for (const [fx, fy] of map3dFlags(k3)) blitG(b, flagSprite(fc, 10, 6), px + fx, py + 10 + fy - 22); continue; } // 3D: brama na polu wejścia, flagi na masztach modelu
       blitG(b, townSprite(t.faction, lvl), mx, my);
       for (const [fx, fy] of townFlagPoints(t.faction, lvl)) blitG(b, flagSprite(fc, 10, 6), mx + fx, my + fy - 20); // drzewce stoi na szczycie dachu
     }
@@ -495,6 +498,7 @@ function gradeCanvas(c, ox = 0, oy = 0, step = 18) {
   for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k += 4) {
     if (!d[k + 3]) continue;
     const r = d[k] * mr, gg = d[k + 1] * mg, b = d[k + 2] * mb, l = 0.3 * r + 0.59 * gg + 0.11 * b, o = (BAYER4[((y + oy) & 3) * 4 + ((x + ox) & 3)] / 16 - 0.5) * step;
+    if (!PIXEL_ART) { d[k] = r + (l - r) * ds; d[k + 1] = gg + (l - gg) * ds; d[k + 2] = b + (l - b) * ds; continue; } // gładko: sama korekcja barw, bez palety i ditheringu
     d[k] = clamp(Math.round((r + (l - r) * ds + o) / step) * step, 0, 255); d[k + 1] = clamp(Math.round((gg + (l - gg) * ds + o) / step) * step, 0, 255); d[k + 2] = clamp(Math.round((b + (l - b) * ds + o) / step) * step, 0, 255);
   }
   g.putImageData(img, 0, 0); return c;
@@ -527,8 +531,8 @@ function drawMapView(ctx, st, scr) {
     // bufor świata: przy oddaleniu ma rozmiar ekranu (świat rysowany pomniejszony, z wygładzaniem), inaczej piksele grafiki
     const sc = Math.min(1, ZOOM) / PIX, bw = Math.round(VIEW.w * sc), bh = Math.round(VIEW.h * sc);
     const wb = pixBuf('world', bw, bh), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
-    b.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); b.imageSmoothingEnabled = ZOOM < 1; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore();
-    ctx.save(); ctx.imageSmoothingEnabled = ZOOM < 1; ctx.drawImage(wb, VIEW.x, VIEW.y, RW, RH); ctx.restore(); // oddalenie: pomniejszenie z wygładzaniem
+    b.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); b.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore();
+    ctx.save(); ctx.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; ctx.drawImage(wb, VIEW.x, VIEW.y, RW, RH); ctx.restore(); // oddalenie: pomniejszenie z wygładzaniem
   ox = VIEW.x - Math.round(st.cam.x / PIX) * PIX; oy = VIEW.y - Math.round(st.cam.y / PIX) * PIX; // to samo zaokrąglenie co w drawWorldPixel
   ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, RW, RH); ctx.clip();
   ctx.translate(VIEW.x, VIEW.y); ctx.scale(ZOOM, ZOOM); ctx.translate(-VIEW.x, -VIEW.y); // napisy i efekty czarów w skali świata

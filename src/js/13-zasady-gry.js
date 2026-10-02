@@ -143,7 +143,7 @@ function visitObject(st, h, ob) {
   } else if (ob.type === 'art') {
     removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
     showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}${assemblable(h).length ? ` Masz komplet części relikwii: ${ARTIFACTS[assemblable(h)[0]].name}! Złóż ją na ekranie bohatera.` : ''}`, [{ label: 'OK', key: 'enter' }],
-      { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art), cx, cy, 2) });
+      { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(ob.art, true), cx, cy, 2) });
   } else if (ob.type === 'site' && ob.kind === 'dwelling') showDwelling(st, h, ob);
   else if (ob.type === 'site' && ob.kind === 'sacrifice' && h.bag.some(id => id !== 'grail' && SACRIFICE_EXP[ARTIFACTS[id].rarity])) {
     const arts = h.bag.filter(id => id !== 'grail' && SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
@@ -163,7 +163,7 @@ function visitObject(st, h, ob) {
       showDialog(`${h.name} przynosi Graala do miasta ${t.name}. Wznieść tu ${name}? (+${GRAIL_GOLD} złota dziennie, +50% przyrostu stworów; Graal zostaje w mieście na zawsze.)`, [
         { label: 'Zbuduj', key: 'enter', action: () => { buildGrail(st, t, h); G.go('town', { townId: t.id }); } },
         { label: 'Nie teraz', key: 'escape', action: () => G.go('town', { townId: t.id }) },
-      ], { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite('grail'), cx, cy, 3) });
+      ], { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite('grail', true), cx, cy, 3) });
     } else G.go('town', { townId: ob.townId });
   } else if (ob.type === 'bank') {
     if (ob.cleared) { G.screens.adventure.flash(`${BANKS[ob.kind].name}: splądrowane, nic tu już nie ma`); return; }

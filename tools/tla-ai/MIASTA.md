@@ -1,7 +1,7 @@
 # Jak robimy miasto: tło AI + budowle 3D (instrukcja krok po kroku)
 
-Gotowe: **Przystań** (haven), **Knieja** (sylvan), **Kurhan** (barrow). Kolejność dalej: Twierdza (fortress), Inferno, Akademia (academy), Loch (dungeon), Cytadela (stronghold).
-Wzorce do podglądania: `uklady/sylvan.json`, `uklady/barrow.json`, `../grafika3d/budowle-knieja.js`, `../grafika3d/budowle-kurhan.js`.
+Gotowe: **Przystań** (haven), **Knieja** (sylvan), **Kurhan** (barrow), **Cytadela** (fortress), **Inferno**, **Akademia** (academy), **Loch** (dungeon), **Twierdza** (stronghold) — wszystkie miasta zrobione.
+Wzorce do podglądania: `uklady/sylvan.json`, `uklady/barrow.json`, `uklady/fortress.json` (bagno), `../grafika3d/budowle-knieja.js`, `../grafika3d/budowle-kurhan.js`, `../grafika3d/budowle-twierdza.js`.
 
 ## Zasady od użytkownika (obowiązkowe)
 
@@ -39,10 +39,12 @@ Python: `tools/portrety-ai/venv/bin/python`; skrypty z AI przez `LD_PRELOAD=../p
    - Uwaga: pliki modeli to jedna przestrzeń globalna — **unikalne nazwy funkcji** (kolizje typu `tent`, `mushroom3` nadpisywały cudze).
    - Komentarze w środku linii kodu tylko `/* */` (komentarz `//` zjadł kiedyś `w.scene.add(b)`).
    - Stworzenia w budowlach: `creature('cid', x, y, z, skala, obrót)`.
+   - Galeria jest wysoka (~13000 px) — do wysłania użytkownikowi pociąć na 4 JPG (inaczej wysyłka pada).
    - Graal: kolosalny, charakterystyczny (Przystań: anioł-kolos; Knieja: król drzewców; Kurhan: czaszka + klatka + słup dusz).
    - `node galeria-miast.js <frakcja> plik.png` → **pokazać użytkownikowi**, poprawić, aż zaakceptuje.
 3. **Tło**: dopisać do `opisy.json` wpis frakcji: `opis` (bez drzew ramy, „wide flat open plain/ground…”) i `szkic` (barwy: `niebo`, `ziemia`, `gory`, `ksiezyc`/`ksiezyc_kolor` opcjonalnie, `rama`, `skaly`, `mgla`).
    `BEZ_RAMY=1 python szkic-rownina.py <frakcja> tla/szkic-<frakcja>-bez.png`, potem `./uruchom.sh <frakcja> tla/szkic-<frakcja>-bez.png <ziarno> 0.58–0.65` — **jedno**. Pokazać. Zapisać wybrane jako `tla/<frakcja>.png`.
+   - **Opis max ~77 tokenów CLIP** (opis frakcji + `_styl` razem) — dłuższy jest ucinany (log: „truncated”), wtedy wypada styl i tło wychodzi mgliste. Opis frakcji krótki (~25 słów).
    - Zbyt wysoka siła daje przypadkowe skały/kratery na środku; wklejanie starego środka do szkicu dawało kolce. Najlepiej: czysty szkic równiny + opis z „huge perfectly flat open plain … only near the edges”.
 4. **Analiza kątów**: horyzont = wiersz styku ziemi z górami (w kadrze gry 8–584 × 8–430; obraz 768×560 → `sy = 8 + y·422/560`). Kąt z elipsy na ziemi (np. wydeptany krąg/jezioro): proporcja wys/szer ≈ sin(kąt) w wierszu `sy` → `f = (sy − hor) / tan(kąt)`. Typowo `hor 140, f 500–540, d 440` (d = wysokość kamery → rozmiar budowli: px/jednostkę = (sy − hor)/d). Mapa głębi (Depth Anything) na malowanych tłach **nie działa** — nie używać do geometrii.
 5. **Wymiary i plan**: `JSON=1 node wymiary.js <frakcja> > ../tla-ai/uklady/<frakcja>-wymiary.json`; napisać `uklady/<frakcja>.json`:
@@ -50,10 +52,21 @@ Python: `tools/portrety-ai/venv/bin/python`; skrypty z AI przez `LD_PRELOAD=../p
    Kolejność slotów: 0 hall, 1 fort, 2 guild, 3 dw7, 4 dw6, 5 dw5, 6 dw4, 7 dw3, 8 smith, 9 silo, 10 dw1, 11 dw2, 12 tavern, 13 market, 14 special, 15 grail.
    Kompozycja jak w H3: olbrzymy z tyłu (fort pośrodku, brama na trakcie, Graal i siedlisko 7 duże, z tyłu po bokach), średnie w środku, małe z przodu; nic nie zasłania bram/fortu; budynki nie wychodzą za kadr. `python3 plan.py <frakcja> tla/<frakcja>.png` aż `kolizje: []`.
 6. **Ziemia pod plan**: w układzie `polana`: `zrodlo` (tło), `obszar` (wielokąt w kadrze gry, od linii za tylnym rzędem do dołu), `bez` (wycięcia, np. wodospad), `obszar_tyl`, `woda` ([od, do] wierszy z wodą do zachowania; `[0,0]` = brak), `pnie: false` (gdy brak pni ramy), `trawa` [tył, przód], `ziemia`, `trakt` (punkty od dołu do bramy fortu), `trakt_w`, `opis` (prompt). `polana.py <frakcja> tla/<frakcja>-polana.png 0.42–0.5 <ziarno>`; usunąć `tla/*-polana-szkic.png`. Po każdej zmianie pozycji budowli — przemalować ziemię ponownie.
-7. **Podgląd**: `node podglad-tla.js <frakcja> ../tla-ai/tla/<frakcja>-polana.png wynik.png` (`ETYKIETY=1` z numerami). Sprawdzić: nic nie lata, nic nie zasłania kluczowych budowli, środek nie pusty (dodać `ozdoby`: `TOWN3.<frakcja>.ozd(t)`; typowe `k` 2.4–3.2), smoki/duże siedliska wyraźnie duże. **Pokazać użytkownikowi.**
-8. **Wypalenie i gra**: `node tools/grafika3d/wypal-miasta.js <frakcja>` (w tle), `npm run build`, zrzut w grze (`node tools/grafika3d/zrzut-miasta.js <frakcja> plik.png` — nowa gra frakcją, wszystkie budowle, ekran `town`), `npm test` (229 testów), commit + push (`src/grafika/miasta/<frakcja>.webp`, `miasta.json`, `Kroniki Królestw.html`, narzędzia, `tla/`, `uklady/`).
+   - Pod ozdobami też są malowane małe place (nie stoją w wodzie).
+   - **Woda między budynkami** (np. bagno): `bagno: 0.5` (próg; mniej = więcej wody), `bagno_tyl: 0.13` (o ile więcej wody z tyłu), `bagno_skala: 150` (wielkość rozlewisk w jednostkach świata), `woda_kolor: [[tył], [przód]]`. Szum liczony w świecie (X, Z), więc rozlewiska są spłaszczone perspektywą. Żeby woda sięgała do horyzontu, `obszar` zaczyna się tuż pod horyzontem (Twierdza: 160).
+   - Kształt wody **najpierw pokazać użytkownikowi bez budynków** (`SZKIC=1`, potem wynik AI), dopiero potem budynki.
+7. **Podgląd**: `node podglad-tla.js <frakcja> ../tla-ai/tla/<frakcja>-polana.png wynik.png` (`ETYKIETY=1` z numerami). Sprawdzić: nic nie lata, nic nie zasłania kluczowych budowli, środek nie pusty (dodać `ozdoby`: `TOWN3.<frakcja>.ozd(t)`; `k` zależy od modelu ozdoby: Kurhan 2.4–3.2, Twierdza 1.5–1.7 — ozdoby nie mogą przerastać budynków), unikać powtarzania tych samych elementów (rogi, totemy) na wielu budowlach, smoki/duże siedliska wyraźnie duże. **Pokazać użytkownikowi.**
+8. **Wypalenie i gra**: `node tools/grafika3d/wypal-miasta.js <frakcja>` (w tle), `npm run build`, zrzut w grze (`node tools/grafika3d/zrzut-miasta.js <frakcja> plik.png` — nowa gra frakcją, wszystkie budowle, bohaterowie z księgą czarów, ekran `town`), `npm test` (229 testów), commit + push (`src/grafika/miasta/<frakcja>.webp`, `miasta.json`, `Kroniki Królestw.html`, narzędzia, `tla/`, `uklady/`).
 
 ## Jak to działa w grze (dla pewności)
 
 - `paintedBg` (tło), `paintedDecor` (ozdoby wtapiane w tło), `renderTownBuilding(..., bare)` + `paintedFinish` (placyk, cień styku, dopasowanie barw, mgła) w `tools/grafika3d/scena.js`. Bryły poniżej gruntu są obcinane (płaszczyzna przycinania), żeby nic nie wisiało.
 - Arkusz miasta: `{d, bg, bgo, b: {klucz: {f, o, m}}}`; gra (`src/js/18-miasto-grafika.js`) rysuje tło zamiast nieba i pomija postacie 2D, gdy `fx.painted`.
+
+## Teren z rzeźbą (od Inferna) i światło
+
+- Użytkownik nie chce już płaskich równin z górami: ma być **ciekawa topografia z płaskimi miejscami** (płaskowyże, urwiska, rzeki, lawospady/lodospady). Szkic: `szkic-teren.py <frakcja> tla/szkic-<frakcja>.png` ze specem `opisy.json → <frakcja>.teren` (plyty, rzeki, wulkan, gory, turnie, ciecz, `urwisko: 'warstwy'` dla skał zamiast kolumn bazaltu — kolumny AI potrafi zamienić w drewniane domy).
+- Budowle na płaskowyżu: slot z `z` = f·(d−H)/(sy−hor)/1000, gdzie H = wysokość płaskowyżu z pomiaru (krawędź urwiska i jego podnóże na obrazie). Polana pomija place slotów z `z`.
+- Polana: `zachowaj: true` (rzeźba z tła, malowane tylko place/ścieżki/ciecz), `zwegl` (przyciemnienie poniżej linii, lawa zostaje), `bagno` z `trzciny: false` i `brzeg_kolor` dla kałuż lawy, drugie przejście dla dalszego planu: `KLUCZ=polana_tyl` z `wyostrz: [r, %]` (tylko jasność) i `odmglij`; wtedy `tlo: <frakcja>-polana-tyl.png`.
+- **Światło z układu** `swiatlo`: `niebo`, `ziemia` (półkula), `hemi`, `slonce`, `moc`, `wypelnienie`, `wypelnienie_moc`, `kontra` (zza sceny), `dol` (łuna od dołu); do tego `haze` (mgła na dalszych budowlach), `grade` (filtr CSS), `blendOpts.color`. Inferno: ciepła łuna, mocny kontrast; Akademia: zimne niebo, odbicie od śniegu.
+- Każda budowla ma mieć **własną bryłę** (bez jednego domku z dodatkami), bez elementów wiszących w powietrzu (rogi/kości/obłoki muszą być osadzone w bryle). Portale z głębią (tunel, warstwy wiru).

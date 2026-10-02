@@ -88,7 +88,7 @@ test('ekran bitwy pokazuje morale i szczęście bez błędów', async () => {
   assert.match(info || '', /Morale \+3, szczęście \+1/);
 });
 
-test('cechy frakcji: morale Przystani, szczęście Kniei, wzrok Lochu, bagna Twierdzy, siarka Inferna, horda Cytadeli', async () => {
+test('cechy frakcji: morale Przystani, szczęście Kniei, wzrok Lochu, bagna Cytadely, siarka Inferna, horda Twierdzi', async () => {
   await newGame(page, { mapSize: 'M' }, 8);
   const r = await page.evaluate(() => {
     const st = G.state, t = st.towns[0], mk = cls => ({ cls, equip: {}, skills: [], sight: 5, army: emptyArmy() });

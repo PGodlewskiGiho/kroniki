@@ -1,0 +1,287 @@
+{
+ "_opis": "Miejsca budowli na namalowanym tle: s = podstawa na ekranie, z = głębokość (budowle na tarasie), k = skala.",
+ "tlo": "dungeon-polana.png",
+ "pj": {
+  "hor": 151,
+  "d": 440,
+  "f": 500
+ },
+ "slots": [
+  {
+   "s": [
+    270,
+    332
+   ],
+   "k": 1.1
+  },
+  {
+   "s": [
+    300,
+    206
+   ],
+   "z": 2.382,
+   "k": 1.5
+  },
+  {
+   "s": [
+    430,
+    302
+   ]
+  },
+  {
+   "s": [
+    470,
+    202
+   ],
+   "z": 2.569,
+   "k": 1.5
+  },
+  {
+   "s": [
+    190,
+    196
+   ],
+   "z": 2.911,
+   "k": 2.2
+  },
+  {
+   "s": [
+    150,
+    298
+   ]
+  },
+  {
+   "s": [
+    400,
+    194
+   ],
+   "z": 3.047,
+   "k": 2.2
+  },
+  {
+   "s": [
+    450,
+    362
+   ]
+  },
+  {
+   "s": [
+    130,
+    412
+   ]
+  },
+  {
+   "s": [
+    440,
+    416
+   ]
+  },
+  {
+   "s": [
+    70,
+    358
+   ]
+  },
+  {
+   "s": [
+    370,
+    352
+   ]
+  },
+  {
+   "s": [
+    210,
+    414
+   ]
+  },
+  {
+   "s": [
+    330,
+    416
+   ]
+  },
+  {
+   "s": [
+    180,
+    352
+   ]
+  },
+  {
+   "s": [
+    100,
+    204
+   ],
+   "z": 2.472,
+   "k": 1.7,
+   "zaslona": false
+  }
+ ],
+ "_analiza": "Pieczara: horyzont 151 (podnóże dalekich skał, y~190 obrazu). Górny taras: krawędź sy 213, podnóże (świecące jezioro) sy 255 → H 178; z = f*(d-H)/(sy-hor). Przód: dno jaskini od 262, rzeka po prawej (x>480) i ściany (x<23, x>565) wyłączone.",
+ "polana": {
+  "zrodlo": "dungeon.png",
+  "obszar": [
+   [
+    24,
+    262
+   ],
+   [
+    480,
+    262
+   ],
+   [
+    480,
+    432
+   ],
+   [
+    24,
+    432
+   ]
+  ],
+  "bez": [],
+  "obszar_tyl": 262,
+  "woda": [
+   0,
+   0
+  ],
+  "pnie": false,
+  "trawa": [
+   [
+    66,
+    58,
+    78
+   ],
+   [
+    84,
+    76,
+    98
+   ]
+  ],
+  "ziemia": [
+   66,
+   58,
+   76
+  ],
+  "trakt": [
+   [
+    300,
+    434
+   ],
+   [
+    302,
+    400
+   ],
+   [
+    300,
+    340
+   ],
+   [
+    300,
+    290
+   ],
+   [
+    300,
+    266
+   ]
+  ],
+  "trakt_w": 14,
+  "zachowaj": false,
+  "opis": "detailed fantasy matte painting, underground cavern floor, flat dark stone and cracked rock, flat stone plots, faint teal glow, small glowing mushrooms, painterly, rich detail, crisp"
+ },
+ "swiatlo": {
+  "niebo": 5917322,
+  "ziemia": 3186848,
+  "hemi": 0.8,
+  "slonce": 13160703,
+  "moc": 2.2,
+  "wypelnienie": 8413376,
+  "wypelnienie_moc": 0.4,
+  "kontra": 6349008,
+  "kontra_moc": 2.2,
+  "dol": 4243632,
+  "dol_moc": 1.0
+ },
+ "haze": "#3a3a5a",
+ "grade": "saturate(1.05) brightness(0.96) contrast(1.1)",
+ "ozdoby": [
+  {
+   "o": 1,
+   "s": [
+    60,
+    300
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 1,
+   "s": [
+    240,
+    292
+   ],
+   "k": 1.4
+  },
+  {
+   "o": 1,
+   "s": [
+    344,
+    300
+   ],
+   "k": 1.4
+  },
+  {
+   "o": 4,
+   "s": [
+    284,
+    300
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 4,
+   "s": [
+    316,
+    300
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 5,
+   "s": [
+    300,
+    376
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 2,
+   "s": [
+    110,
+    384
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 2,
+   "s": [
+    250,
+    384
+   ],
+   "k": 1.4
+  },
+  {
+   "o": 3,
+   "s": [
+    40,
+    420
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 1,
+   "s": [
+    470,
+    330
+   ],
+   "k": 1.3
+  }
+ ]
+}

@@ -74,7 +74,7 @@ G.screens.hero = {
     const r = assemblable(h)[0]; if (!r) return; const A = ARTIFACTS[r];
     showDialog(`Masz komplet części: ${A.name}! Złożona relikwia daje: ${artBonusText(A.bonus)}. Złożyć ją?`, [
       { label: 'Złóż relikwię', key: 'enter', action: () => { assembleRelic(h, r); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(`Złożono: ${A.name}`); } },
-      { label: 'Nie teraz', key: 'escape', action: () => {} }], { iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(r), cx, cy, 3) });
+      { label: 'Nie teraz', key: 'escape', action: () => {} }], { iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(r, true), cx, cy, 3) });
   },
   rightInfo(x, y) {
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y), p = this.statAt(x, y);
@@ -139,8 +139,8 @@ G.screens.hero = {
       ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(ctx, s.x, s.y, SLOT_BOX, SLOT_BOX, 4); ctx.fill();
       ctx.strokeStyle = hot === s ? '#ffd970' : id ? '#b8913f' : '#5a4a32'; ctx.lineWidth = hot === s ? 2 : 1.2; ctx.stroke();
       const lk = (h.locked || {})[s.id];
-      if (id) drawSprite(ctx, artSprite(id), s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, 1.5);
-      else if (lk) { ctx.globalAlpha = 0.35; drawSprite(ctx, artSprite(lk), s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, 1.5); ctx.globalAlpha = 1; // zajęte przez relikwię
+      if (id) drawSprite(ctx, artSprite(id, true), s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, 1.5);
+      else if (lk) { ctx.globalAlpha = 0.35; drawSprite(ctx, artSprite(lk, true), s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, 1.5); ctx.globalAlpha = 1; // zajęte przez relikwię
         ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s.x + 5, s.y + 5); ctx.lineTo(s.x + SLOT_BOX - 5, s.y + SLOT_BOX - 5); ctx.moveTo(s.x + SLOT_BOX - 5, s.y + 5); ctx.lineTo(s.x + 5, s.y + SLOT_BOX - 5); ctx.stroke(); }
       else text(ctx, s.name, s.x + SLOT_BOX / 2, s.y + SLOT_BOX / 2, { size: 10, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.35)' });
     }
@@ -149,7 +149,7 @@ G.screens.hero = {
     for (let i = 0; i < BAG_VIEW; i++) {
       const bx = 432 + i * 58, id = h.bag[this.bagPage * BAG_VIEW + i];
       ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(ctx, bx, 386, SLOT_BOX, SLOT_BOX, 4); ctx.fill(); ctx.strokeStyle = '#5a4a32'; ctx.lineWidth = 1; ctx.stroke();
-      if (id) drawSprite(ctx, artSprite(id), bx + SLOT_BOX / 2, 386 + SLOT_BOX / 2, 1.5);
+      if (id) drawSprite(ctx, artSprite(id, true), bx + SLOT_BOX / 2, 386 + SLOT_BOX / 2, 1.5);
     }
     this.bPrev.disabled = this.bagPage === 0; this.bNext.disabled = this.bagPage >= pages - 1;
     if (pages > 1) text(ctx, `${this.bagPage + 1} / ${pages}`, 602, 461, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });

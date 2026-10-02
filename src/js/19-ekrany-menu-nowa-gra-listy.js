@@ -107,12 +107,12 @@ function menuRider(b, t) {
 function drawMenuScene(ctx) {
   const pb = pixBuf('menuScene', VW / PIX, VH / PIX);
   if (pb._t !== G.time) { paintMenuScene(pb); pb._t = G.time; }
-  viewportDraw(ctx, c => { c.imageSmoothingEnabled = false; c.drawImage(pb, 0, 0, VW, VH); });
+  viewportDraw(ctx, c => { c.imageSmoothingEnabled = !PIXEL_ART; c.drawImage(pb, 0, 0, VW, VH); });
 }
 function paintMenuScene(pb) {
   const t = G.time, b = pb._ctx, span = VW + 300;
   const layer = paint => c => { c.translate(OX, OY); paint(c); pixelQuantize(c.canvas, 14); };
-  b.setTransform(1 / PIX, 0, 0, 1 / PIX, OX / PIX, OY / PIX); b.imageSmoothingEnabled = false;
+  b.setTransform(1 / PIX, 0, 0, 1 / PIX, OX / PIX, OY / PIX); b.imageSmoothingEnabled = !PIXEL_ART;
   b.drawImage(Layers.get(`menuSky_${VW}x${VH}`, VW, VH, layer(paintSky), 1 / PIX), -OX, -OY, VW, VH);
   for (const c of CLOUDS) drawCloud(b, ((c.x * span / 1100 + t * c.v) % span) - 150 - OX, c.y, c.s, c.a);
   b.drawImage(Layers.get(`menuLand_${VW}x${VH}`, VW, VH, layer(paintLand), 1 / PIX), -OX, -OY, VW, VH);

@@ -83,7 +83,7 @@
   "opis_bez_ramy": "haunted necropolis valley at night, wide open view, a wide flat open barren plain of grey earth and dead grass, ancient burial mounds and rocky outcrops at the sides, jagged dark mountains in the distance, open purple stormy sky with a pale moon, eerie mist low on the far ground"
  },
  "fortress": {
-  "opis": "misty swamp lowland in warm afternoon light, a huge perfectly flat open plain of firm green-brown moss and short marsh grass filling the whole foreground and middle, muddy dirt paths, a few reeds and small dark ponds only near the edges, distant misty hills with low jungle on the horizon, hazy green-gold sky",
+  "opis": "sunny swamp lowland, huge flat open plain of green-brown moss and marsh grass, muddy paths, reeds and small ponds only at the edges, distant jungle hills",
   "szkic": {
    "niebo": [
     [
@@ -143,6 +143,731 @@
     190,
     206,
     170
+   ]
+  }
+ },
+ "inferno": {
+  "opis": "volcanic hell valley, flat basalt plateaus and ash plains with cliffs, glowing rivers and falls of lava, erupting volcano far away, red smoky sky",
+  "teren": {
+   "hor": 130,
+   "niebo": [
+    [
+     46,
+     16,
+     14
+    ],
+    [
+     170,
+     74,
+     36
+    ]
+   ],
+   "dym": [
+    60,
+    44,
+    44
+   ],
+   "ziemia": [
+    [
+     92,
+     70,
+     62
+    ],
+    [
+     54,
+     42,
+     42
+    ]
+   ],
+   "skala": [
+    46,
+    36,
+    38
+   ],
+   "ciecz": [
+    [
+     255,
+     150,
+     40
+    ],
+    [
+     226,
+     70,
+     20
+    ]
+   ],
+   "mgla": [
+    150,
+    80,
+    50
+   ],
+   "gory": [
+    [
+     14,
+     34,
+     [
+      90,
+      50,
+      46
+     ]
+    ]
+   ],
+   "wulkan": {
+    "x": 330,
+    "szczyt": 34,
+    "szer": 330,
+    "kolor": [
+     62,
+     40,
+     40
+    ]
+   },
+   "plyty": [
+    {
+     "x": [
+      140,
+      470
+     ],
+     "tyl": 140,
+     "przod": 214,
+     "dol": 252,
+     "wodospady": [
+      196,
+      420
+     ],
+     "kolor": [
+      100,
+      76,
+      66
+     ]
+    },
+    {
+     "x": [
+      8,
+      196
+     ],
+     "tyl": 250,
+     "przod": 302,
+     "dol": 326,
+     "wodospady": [
+      70
+     ],
+     "kolor": [
+      96,
+      72,
+      64
+     ]
+    }
+   ],
+   "rzeki": [
+    {
+     "pkt": [
+      [
+       8,
+       262
+      ],
+      [
+       140,
+       257
+      ],
+      [
+       300,
+       259
+      ],
+      [
+       470,
+       256
+      ],
+      [
+       584,
+       264
+      ]
+     ],
+     "w": [
+      14,
+      20
+     ]
+    },
+    {
+     "pkt": [
+      [
+       528,
+       262
+      ],
+      [
+       548,
+       300
+      ],
+      [
+       512,
+       345
+      ],
+      [
+       536,
+       392
+      ],
+      [
+       556,
+       436
+      ]
+     ],
+     "w": [
+      14,
+      30
+     ]
+    }
+   ],
+   "turnie": [
+    [
+     582,
+     150,
+     60
+    ],
+    [
+     10,
+     200,
+     30
+    ]
+   ]
+  }
+ },
+ "academy": {
+  "opis": "painted snowy mountain pass at golden hour, granite plateau and cliffs, frozen icefalls and river, scattered dark rocks, distant pine forest, pink sunlit peaks",
+  "teren": {
+   "hor": 128,
+   "ziarno": 7,
+   "niebo": [
+    [
+     52,
+     84,
+     150
+    ],
+    [
+     246,
+     206,
+     168
+    ]
+   ],
+   "ziemia": [
+    [
+     248,
+     236,
+     226
+    ],
+    [
+     190,
+     200,
+     226
+    ]
+   ],
+   "skala": [
+    70,
+    72,
+    86
+   ],
+   "ciecz": [
+    [
+     214,
+     240,
+     255
+    ],
+    [
+     160,
+     206,
+     236
+    ]
+   ],
+   "mgla": [
+    236,
+    214,
+    200
+   ],
+   "lune": [
+    40,
+    60,
+    80
+   ],
+   "gory": [
+    [
+     70,
+     120,
+     [
+      244,
+      222,
+      212
+     ]
+    ],
+    [
+     34,
+     74,
+     [
+      150,
+      160,
+      196
+     ]
+    ],
+    [
+     12,
+     36,
+     [
+      96,
+      106,
+      140
+     ]
+    ]
+   ],
+   "plyty": [
+    {
+     "x": [
+      180,
+      560
+     ],
+     "tyl": 148,
+     "przod": 210,
+     "dol": 246,
+     "wodospady": [
+      262,
+      470
+     ],
+     "kolor": [
+      244,
+      232,
+      222
+     ]
+    },
+    {
+     "x": [
+      400,
+      584
+     ],
+     "tyl": 252,
+     "przod": 298,
+     "dol": 318,
+     "wodospady": [],
+     "kolor": [
+      236,
+      226,
+      220
+     ]
+    }
+   ],
+   "rzeki": [
+    {
+     "pkt": [
+      [
+       8,
+       254
+      ],
+      [
+       120,
+       250
+      ],
+      [
+       300,
+       252
+      ],
+      [
+       584,
+       250
+      ]
+     ],
+     "w": [
+      12,
+      16
+     ]
+    },
+    {
+     "pkt": [
+      [
+       90,
+       252
+      ],
+      [
+       60,
+       300
+      ],
+      [
+       96,
+       350
+      ],
+      [
+       60,
+       436
+      ]
+     ],
+     "w": [
+      14,
+      28
+     ]
+    }
+   ],
+   "turnie": [
+    [
+     10,
+     160,
+     46
+    ]
+   ],
+   "urwisko": "warstwy",
+   "lasy": [
+    46,
+    62,
+    64
+   ],
+   "kamienie": 45,
+   "cienie": [
+    176,
+    190,
+    222
+   ]
+  }
+ },
+ "dungeon": {
+  "opis": "huge underground cavern, wide flat rocky cave floor in the foreground, raised rock terrace behind, glowing teal lake and waterfalls, stalactites, violet crystals, light shaft",
+  "teren": {
+   "hor": 150,
+   "ziarno": 4,
+   "niebo": [
+    [
+     20,
+     16,
+     30
+    ],
+    [
+     60,
+     50,
+     80
+    ]
+   ],
+   "ziemia": [
+    [
+     56,
+     50,
+     68
+    ],
+    [
+     104,
+     94,
+     118
+    ]
+   ],
+   "skala": [
+    40,
+    36,
+    50
+   ],
+   "ciecz": [
+    [
+     110,
+     240,
+     220
+    ],
+    [
+     60,
+     170,
+     180
+    ]
+   ],
+   "mgla": [
+    70,
+    80,
+    110
+   ],
+   "lune": [
+    40,
+    140,
+    140
+   ],
+   "urwisko": "warstwy",
+   "gory": [
+    [
+     40,
+     90,
+     [
+      52,
+      46,
+      66
+     ]
+    ],
+    [
+     14,
+     44,
+     [
+      40,
+      36,
+      52
+     ]
+    ]
+   ],
+   "sufit": {
+    "y": 70,
+    "kolor": [
+     30,
+     26,
+     38
+    ],
+    "stalaktyty": 26
+   },
+   "promien": {
+    "x": 250,
+    "x2": 300,
+    "od": 8,
+    "do": 250,
+    "w": [
+     14,
+     46
+    ],
+    "kolor": [
+     200,
+     220,
+     255
+    ],
+    "a": 70
+   },
+   "plyty": [
+    {
+     "x": [
+      120,
+      480
+     ],
+     "tyl": 160,
+     "przod": 214,
+     "dol": 250,
+     "wodospady": [
+      210,
+      400
+     ],
+     "kolor": [
+      86,
+      78,
+      100
+     ]
+    }
+   ],
+   "rzeki": [
+    {
+     "pkt": [
+      [
+       8,
+       258
+      ],
+      [
+       150,
+       254
+      ],
+      [
+       320,
+       256
+      ],
+      [
+       584,
+       252
+      ]
+     ],
+     "w": [
+      16,
+      20
+     ]
+    },
+    {
+     "pkt": [
+      [
+       500,
+       256
+      ],
+      [
+       524,
+       300
+      ],
+      [
+       498,
+       350
+      ],
+      [
+       530,
+       436
+      ]
+     ],
+     "w": [
+      16,
+      30
+     ]
+    }
+   ],
+   "turnie": [
+    [
+     10,
+     150,
+     50
+    ],
+    [
+     582,
+     160,
+     46
+    ]
+   ],
+   "kamienie": 70,
+   "cienie": [
+    44,
+    40,
+    56
+   ],
+   "cienie_n": 70
+  }
+ },
+ "stronghold": {
+  "opis": "painted desert canyon town site at sunset, flat sandy plain and red sandstone mesa terraces with cliffs, small palm oasis pond, distant buttes, dramatic orange sky",
+  "teren": {
+   "hor": 140,
+   "ziarno": 9,
+   "niebo": [
+    [
+     70,
+     90,
+     150
+    ],
+    [
+     250,
+     170,
+     100
+    ]
+   ],
+   "ziemia": [
+    [
+     226,
+     190,
+     140
+    ],
+    [
+     196,
+     150,
+     100
+    ]
+   ],
+   "skala": [
+    160,
+    86,
+    58
+   ],
+   "ciecz": [
+    [
+     110,
+     190,
+     200
+    ],
+    [
+     60,
+     140,
+     160
+    ]
+   ],
+   "mgla": [
+    240,
+    190,
+    150
+   ],
+   "lune": [
+    30,
+    60,
+    70
+   ],
+   "urwisko": "warstwy",
+   "gory": [
+    [
+     40,
+     90,
+     [
+      200,
+      120,
+      90
+     ]
+    ],
+    [
+     14,
+     40,
+     [
+      170,
+      96,
+      70
+     ]
+    ]
+   ],
+   "kamienie": 40,
+   "cienie": [
+    200,
+    160,
+    116
+   ],
+   "cienie_n": 40,
+   "plyty": [
+    {
+     "x": [
+      170,
+      500
+     ],
+     "tyl": 150,
+     "przod": 206,
+     "dol": 246,
+     "wodospady": [],
+     "kolor": [
+      214,
+      160,
+      110
+     ]
+    },
+    {
+     "x": [
+      430,
+      584
+     ],
+     "tyl": 256,
+     "przod": 292,
+     "dol": 314,
+     "wodospady": [],
+     "kolor": [
+      220,
+      170,
+      120
+     ]
+    }
+   ],
+   "rzeki": [
+    {
+     "pkt": [
+      [
+       40,
+       296
+      ],
+      [
+       90,
+       310
+      ],
+      [
+       130,
+       330
+      ],
+      [
+       150,
+       356
+      ]
+     ],
+     "w": [
+      34,
+      44
+     ]
+    }
+   ],
+   "turnie": [
+    [
+     14,
+     150,
+     56
+    ],
+    [
+     578,
+     170,
+     40
+    ]
    ]
   }
  }
