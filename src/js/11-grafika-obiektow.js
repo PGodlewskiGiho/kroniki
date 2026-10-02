@@ -1260,8 +1260,15 @@ function drawSkillIcon(c, id) {
     case 'eagleSight': poly([[-11, -2], [-6, -6], [-2, -3], [0, -7], [2, -3], [6, -6], [11, -2], [5, 0], [2, 6], [0, 9], [-2, 6], [-5, 0]], '#c8a060'); dot(0, -2, 2, gd); poly([[-1, -1], [1, -1], [0, 2]], '#e8c070'); break;
   }
 }
-const skillSprite = id => sprite(`sk_${id}`, 16, 16, 8, 8, p => drawSkillIcon(p, id));
-function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id), cx, cy, size / 32); }
+// Ikona z modelu 3D (tools/grafika3d/wypal-umiejetnosci.js) pomniejszona raz do potrzebnej wielkości; bez arkusza dawny rysunek
+function skillSprite(id, size = 32) {
+  const A = typeof SKILL_ART !== 'undefined' && SKILL_ART, im = SKILL_IMG.sheet, p = A && A.f[id];
+  if (!p || !im || !im._ok) return sprite(`sk_${id}`, 16, 16, 8, 8, q => drawSkillIcon(q, id));
+  const n = Math.min(A.s, Math.ceil(size * Math.min(G.rs || 1, 2.5) / 16) * 16), key = `sk3_${id}_${n}`; let s = SPR.get(key); if (s) return s;
+  const c = document.createElement('canvas'); c.width = c.height = n; const g = c.getContext('2d'); c._ctx = g; g.imageSmoothingQuality = 'high'; g.drawImage(im, p[0], p[1], A.s, A.s, 0, 0, n, n);
+  s = { c, ax: n / 2, ay: n / 2, u: 32 / n, raw: true }; SPR.set(key, s); return s;
+}
+function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id, size), cx, cy, size / 32); }
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
 function showSpellbook(h, mode, onPick) {
   // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły
