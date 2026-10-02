@@ -1,5 +1,5 @@
 // ==================== DŹWIĘK: EFEKTY ======================================================
-// Próbki CC0 (Freesound, wybrane i obrobione przez tools/dzwieki) wbudowane przez build.js jako SOUND_ART: { nazwa_wariant: mp3 base64 }.
+// Próbki CC0 (Freesound, wybrane i obrobione przez tools/dzwieki) wbudowane przez build.js jako SOUND_ART: { nazwa_wariant: mp3 (kod 85-znakowy) }.
 // Sfx.play('hoof') losuje jeden z wariantów (hoof_1, hoof_2, …, bez powtórzenia poprzedniego), lekko zmienia wysokość i głośność
 // (jak w dobrych grach: ten sam dźwięk nigdy nie brzmi identycznie), ustawia go w panoramie (pan: -1 lewo … 1 prawo).
 // Kontekst audio powstaje dopiero po pierwszym kliknięciu albo klawiszu (wymóg przeglądarek); próbki dekodują się w tle.
@@ -13,8 +13,7 @@ const Sfx = {
     this.comp = comp; this.out = this.ctx.createGain(); this.out.gain.value = this.vol(); this.out.connect(comp); comp.connect(this.ctx.destination);
     for (const [k, b64] of Object.entries(SOUND_ART)) {
       const g = k.replace(/_\d+$/, ''); (this.groups[g] = this.groups[g] || []).push(k);
-      const bin = atob(b64), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-      this.ctx.decodeAudioData(a.buffer).then(b => { this.buf[k] = b; }, () => {});
+      this.ctx.decodeAudioData(unpackBin(b64).slice().buffer).then(b => { this.buf[k] = b; }, () => {});
     }
     Music.resume();
   },
@@ -38,7 +37,7 @@ const Sfx = {
 const sfxPan = x => clamp((x / W - 0.5) * 1.2, -0.6, 0.6);
 
 // ==================== MUZYKA ===============================================================
-// Utwory orkiestrowe (tools/muzyka: kompozycje MIDI renderowane bankiem GeneralUser GS) wbudowane jako MUSIC_ART: { nazwa: { d: mp3 base64, loop: s } }.
+// Utwory orkiestrowe (tools/muzyka: kompozycje MIDI renderowane bankiem GeneralUser GS) wbudowane jako MUSIC_ART: { nazwa: { d: mp3 (kod 85-znakowy), loop: s } }.
 // Każdy ekran ma swój utwór (Music.forScreen); zmiana utworu to płynne przenikanie. Pliki są pętlami bez szwu (ogon pogłosu
 // dodany na początek), więc grają w kółko. Zdekodowany utwór zajmuje ok. 30 MB, dlatego w pamięci trzymamy tylko bieżący i poprzedni.
 const MUSIC_DARK = ['barrow', 'inferno', 'dungeon'];
@@ -66,8 +65,7 @@ const Music = {
     const e = name && MUSIC_ART[name]; if (!e || !this.vol()) return;
     if (this.buf[name]) return this.begin(name);
     if (this.buf[name] === false) return; this.buf[name] = false; // dekodowanie w toku
-    const bin = atob(e.d), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-    ctx.decodeAudioData(a.buffer).then(b => { this.buf[name] = b; this.keep(name); if (this.cur === name && !this.node) this.begin(name); }, () => { delete this.buf[name]; });
+    ctx.decodeAudioData(unpackBin(e.d).slice().buffer).then(b => { this.buf[name] = b; this.keep(name); if (this.cur === name && !this.node) this.begin(name); }, () => { delete this.buf[name]; });
   },
   keep(name) { this.order = [name, ...this.order.filter(n => n !== name)]; for (const n of this.order.slice(2)) delete this.buf[n]; this.order = this.order.slice(0, 2); },
   begin(name) {

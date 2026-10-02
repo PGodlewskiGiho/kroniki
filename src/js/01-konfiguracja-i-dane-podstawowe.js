@@ -42,3 +42,15 @@ const BONUSES = [
 ];
 const WEEK_NAMES = ['Jelenia', 'Sowy', 'Borsuka', 'Sokoła', 'Niedźwiedzia', 'Lisa', 'Wilka', 'Kruka', 'Żubra', 'Bociana'];
 
+// Dane binarne wbudowane przez build.js (grafiki, dźwięki) w kodzie 85-znakowym: 5 znaków = 4 bajty, pierwszy znak = dopełnienie.
+const B85 = Array.from({ length: 94 }, (_, i) => String.fromCharCode(33 + i)).filter(c => !'"$%&\'<>\\`'.includes(c)).join('');
+const B85I = new Uint8Array(128); for (let i = 0; i < 85; i++) B85I[B85.charCodeAt(i)] = i;
+function unpackBin(s) {
+  const pad = B85I[s.charCodeAt(0)], out = new Uint8Array((s.length - 1) / 5 * 4);
+  for (let i = 1, o = 0; i < s.length; i += 5) {
+    const v = (((B85I[s.charCodeAt(i)] * 85 + B85I[s.charCodeAt(i + 1)]) * 85 + B85I[s.charCodeAt(i + 2)]) * 85 + B85I[s.charCodeAt(i + 3)]) * 85 + B85I[s.charCodeAt(i + 4)];
+    out[o++] = v >>> 24; out[o++] = (v >>> 16) & 255; out[o++] = (v >>> 8) & 255; out[o++] = v & 255;
+  }
+  return pad ? out.subarray(0, out.length - pad) : out;
+}
+const binUrl = (s, type) => URL.createObjectURL(new Blob([unpackBin(s)], { type })); // adres obrazka bez kopii w base64
