@@ -219,7 +219,8 @@ function placeObjects(st) {
   for (const [kind, B] of Object.entries(BANKS)) {
     const want = NL / B.per, cnt = Math.max(B.min, Math.floor(want) + (rng() < want % 1 ? 1 : 0));
     for (let k = 0; k < cnt; k++) {
-      let p = null; for (let dd = B.dd; !p && dd >= 0; dd -= 0.1) p = footprint(map.start, 6, n * 2, (x, y) => d01(x, y) >= dd);
+      const pref = (x, y) => (!B.terr || map.terrain[y * n + x] === TER[B.terr]) && (!B.ug || !map.ln || levelOf(map, x, y) === 1); // piramida na piasku, warsztat golemów w podziemiach (gdy są)
+      let p = null; for (let dd = B.dd; !p && dd >= 0; dd -= 0.1) p = footprint(map.start, 6, n * 2, (x, y) => d01(x, y) >= dd && pref(x, y)) || (dd < 0.15 ? footprint(map.start, 6, n * 2, (x, y) => d01(x, y) >= dd) : null);
       if (!p) continue; const [x, y] = p, blocks = [y * n + x - 1, (y - 1) * n + x - 1, (y - 1) * n + x];
       add({ type: 'bank', kind, x, y, blocks, guards: bankGuards(kind, st.settings.difficulty), cleared: false }, [y * n + x, ...blocks]); occ[(y + 1) * n + x] = 1;
     }
@@ -235,7 +236,8 @@ function placeObjects(st) {
     if (!S.per) continue; // obeliski rozmieszcza placeGrail
     const want = NL / S.per, cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);
     for (let k = 0; k < cnt; k++) {
-      const p = pick((x, y) => dStart(x, y) >= (S.guard ? 7 : 4) && (!S.terr || map.terrain[y * n + x] === TER[S.terr])); if (!p) continue; // terr: tylko na danym terenie (oaza na piasku)
+      const base = (x, y) => dStart(x, y) >= (S.guard ? 7 : 4) && (!S.terr || map.terrain[y * n + x] === TER[S.terr]); // terr: tylko na danym terenie (oaza na piasku)
+      const p = (S.ug && map.ln ? pick((x, y) => base(x, y) && levelOf(map, x, y) === 1) : null) || pick(base); if (!p) continue; // ug: najchętniej w podziemiach
       const o = { type: 'site', kind, x: p[0], y: p[1], seen: {} };
       if (kind === 'shrine') { const L = d01(p[0], p[1]) > 0.5 ? 2 : 1, pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L); o.spell = pool[Math.floor(rng() * pool.length)]; }
       if (kind === 'windmill') o.res = RARE[Math.floor(rng() * RARE.length)];

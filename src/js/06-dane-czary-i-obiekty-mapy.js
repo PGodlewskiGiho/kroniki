@@ -109,6 +109,9 @@ const SITES = {
   buoy: { name: 'Boja', use: 'day', per: 0, wper: 900, ai: 300, desc: '+1 do morale do następnej bitwy (raz dziennie, dostępna łodzią)' },
   flotsam: { name: 'Dryfujące szczątki', use: 'once', per: 0, wper: 700, ai: 700, desc: 'ładunek z rozbitego statku: drewno albo złoto (jednorazowo, dostępne łodzią)' },
   sirens: { name: 'Skała syren', use: 'hero', per: 0, wper: 1400, ai: 1200, desc: 'śpiew syren: +1500 doświadczenia, ale co dziesiąty żołnierz rzuca się w fale (raz na bohatera, dostępna łodzią)' },
+  mushroomRing: { name: 'Grzybowy krąg', use: 'day', per: 2200, ai: 300, ug: true, desc: '+1 do szczęścia do następnej bitwy (raz dziennie)' },
+  crystalCave: { name: 'Kryształowa grota', use: 'week', per: 2400, ai: 1000, ug: true, desc: 'co tydzień 3–5 kryształów dla pierwszego gościa' },
+  dwarfForge: { name: 'Kuźnia krasnoludów', use: 'hero', per: 3200, ai: 1500, ug: true, cost: 2000, desc: 'za 2000 złota i 5 rudy krasnoludy wykuwają bohaterowi artefakt (raz na bohatera)' },
   hillFort: { name: 'Fort na wzgórzu', use: 'free', per: 3000, ai: 0, desc: 'kowale ulepszają stwory w armii bohatera za różnicę w cenie' },
 };
 // Nowe miejsca: portale w parach (PORTAL_PAIRS wg rozmiaru mapy), wraki na wodzie (jeden na WRECK_PER pól wody),
@@ -133,6 +136,12 @@ const BANKS = {
     loot: { gold: 3000 }, units: ['champion', 3], desc: 'gryfy bronią gniazd; w podziemiach czekają uwięzieni czempioni' },
   hydraLair: { name: 'Leże hydr', per: 3600, min: 0, dd: 0.5, guards: [['hydra', 5], ['basilisk', 12], ['gorgon', 6]],
     loot: { gold: 8000, mercury: 5, sulfur: 5, crystal: 5, gems: 5 }, arts: [['minor', 1]], desc: 'hydry z bagien strzegą zatopionych skarbów' },
+  pyramid: { name: 'Piramida', per: 4200, min: 0, dd: 0.5, terr: 'SAND', guards: [['mummy', 30], ['nomad', 12], ['goldGolem', 4]],
+    loot: { gold: 6000 }, arts: [['major', 1]], desc: 'mumie i koczownicy strzegą grobowca dawnego króla pustyni' },
+  banditHideout: { name: 'Kryjówka zbójców', per: 2200, min: 0, dd: 0.2, guards: [['rogue', 30], ['nomad', 14], ['sharpshooter', 6]],
+    loot: { gold: 5000, wood: 8, ore: 8 }, desc: 'zbójcy chowają tu łupy z napadów na kupców' },
+  golemWorks: { name: 'Warsztat golemów', per: 3200, min: 0, dd: 0.4, ug: true, guards: [['stoneGolem', 16], ['ironGolem', 10], ['goldGolem', 4], ['diamondGolem', 2]],
+    loot: { gold: 4000, mercury: 10 }, units: ['ironGolem', 6], desc: 'golemy pilnują pracowni magów; uruchomione golemy przyłączą się do zwycięzcy' },
   dragonUtopia: { name: 'Smocza Utopia', per: 6000, min: 1, dd: 0.6, guards: [['emeraldDragon', 4], ['jadeDragon', 2], ['ghostWyvern', 3], ['archDevil', 2], ['chaosHydra', 1]],
     loot: { gold: 20000 }, arts: [['major', 2], ['minor', 1]], desc: 'legowisko smoków: ogromne skarby dla najsilniejszych armii' },
 };

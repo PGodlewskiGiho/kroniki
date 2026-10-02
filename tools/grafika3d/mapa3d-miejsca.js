@@ -138,6 +138,21 @@ const SITE3 = {
     const g = new THREE.Group(); g.add(cyl3(20, 22, 6, '#7a7a88', 'ashlar', 0, 0, 0, 20)); const w = cyl(17 / PXU, 17 / PXU, 1 / PXU, '#60c0ff', 'glow', P(0, 6, 0), null, null, 20); w.material = lightMat('#7ad0ff'); g.add(w);
     g.add(mqGlow(5, '#a0e0ff', 0, 10, 0)); for (let i = 0; i < 5; i++) { const a = i / 5 * 6.28 + 0.4; g.add(arGem(3.5 / PXU, '#80c8ff', P(Math.cos(a) * 21, 8, Math.sin(a) * 21))); }
     for (const [x, z] of [[-24, -12], [24, -10]]) { g.add(blk(5, 18, 4, '#6a6a78', 'ashlar', x, 0, z)); for (let k = 0; k < 3; k++) g.add(box(2 / PXU, 1.4 / PXU, 0.4 / PXU, '#9ae0ff', 'glow', P(x, 5 + k * 4, z + 2.1))); } return g; },
+  mushroomRing() { // grzybowy krąg: wielkie świecące grzyby w kręgu, mech, zarodniki
+    const g = new THREE.Group(); g.add(cyl3(24, 24, 1, '#3a4a2a', 'thatch'));
+    for (let i = 0; i < 9; i++) { const a = i / 9 * 6.28, x = Math.cos(a) * 18, z = Math.sin(a) * 13, h = 8 + (i % 3) * 5, c = ['#c84a8a', '#4ab0c8', '#c8a03a'][i % 3];
+      g.add(cyl3(1.6, 2, h, '#e8dcc0', 'plaster', x, 1, z, 8)); g.add(sph((4 + (i % 3)) / PXU, c, 'cloth', P(x, h + 1, z), [1, 0.55, 1])); g.add(mqGlow(1.2, c, x, h + 2, z)); }
+    g.add(cyl3(3, 4, 18, '#e8dcc0', 'plaster', 0, 1, 0, 10)); g.add(sph(10 / PXU, '#9a4ac8', 'cloth', P(0, 19, 0), [1, 0.5, 1])); g.add(mqGlow(3, '#d080ff', 0, 22, 0));
+    for (let i = 0; i < 8; i++) { const a = i * 0.8; g.add(mqGlow(0.8, '#e0ffb0', Math.cos(a) * (6 + i), 26 + i * 2, Math.sin(a) * 5)); } return g; },
+  crystalCave() { // kryształowa grota: skała z wejściem, z której wyrastają kolorowe kryształy
+    const g = new THREE.Group(); g.add(mqRock('def', 0, -8, 30, 30, 22, 191, false)); g.add(opening(14, 16, 0, 0, 12, { frame: '#4a4454', frameKind: 'rubble', sill: false, inner: '#0a0810' }));
+    for (const [x, y, z, s, c] of [[-16, 18, 2, 1.2, '#80c8ff'], [14, 24, -2, 1.4, '#c080ff'], [-4, 30, -8, 1.6, '#80ffd0'], [20, 8, 10, 0.9, '#80c8ff'], [-22, 4, 10, 0.8, '#c080ff']]) { g.add(cone(3 * s / PXU, 14 * s / PXU, c, 'gem', P(x, y, z), [0.2, x, -x * 0.01], 6)); g.add(cone(2 * s / PXU, 9 * s / PXU, c, 'gem', P(x + 3, y - 2, z + 1), [0.4, 0, 0.3], 6)); }
+    g.add(mqGlow(3, '#a0d8ff', 0, 8, 10)); g.add(mqRes('crystal', 16, 18, 0.7)); return g; },
+  dwarfForge(f = 0) { // kuźnia krasnoludów: kamienny warsztat wpuszczony w skałę, palenisko (4 klatki), kowadło, beczki
+    const g = new THREE.Group(); g.add(mqRock('def', 0, -16, 34, 30, 16, 201, false)); g.add(blk(36, 22, 18, '#6a6058', 'ashlar', 0, 0, 2)); g.add(blk(40, 4, 22, '#4a443e', 'ashlar', 0, 22, 2));
+    g.add(opening(14, 14, -8, 0, 11, { frame: '#3a342e', frameKind: 'ashlar', inner: '#2a0a02', glow: '#ff7a2a' })); g.add(mqGlow(3 + [0, 0.6, -0.3, 0.4][f], '#ff8a30', -8, 6, 12));
+    g.add(blk(8, 6, 5, '#3a3a40', 'iron', 12, 0, 16)); g.add(blk(12, 2, 5, '#4a4a52', 'iron', 12, 6, 16)); g.add(chimney(10, 26, -2));
+    for (const [x, z] of [[-24, 14], [24, 6]]) g.add(cyl3(4, 4, 8, '#7a4a24', 'wood', x, 0, z, 12)); return g; },
 };
 // --- kopalnie (2×2 pola) ---
 function mqCave(g, pal, x, z, w = 18, h = 22) { /* wejście sztolni wpuszczone w zbocze: ciemny otwór, belki obudowy, tory wychodzące przed górę */
@@ -177,6 +192,23 @@ const BANK3 = {
   dragonUtopia(c) { const g = new THREE.Group(); g.add(mqRock('lava', 0, -24, 50, 110, 34, 91, true)); g.add(mqRock('lava', -46, -4, 30, 60, 26, 92, true)); g.add(mqRock('lava', 46, -8, 30, 70, 26, 93, true));
     g.add(opening(30, 30, 0, 0, 10, { frame: '#3a1a14', frameKind: 'rubble', sill: false, inner: '#0a0402' })); if (!c) { g.add(mqRes('gold', -10, 24, 1.3)); g.add(mqRes('gold', 14, 26, 1.1)); g.add(mqGlow(3, '#ff5a2a', -6, 22, 11)); g.add(mqGlow(3, '#ff5a2a', 6, 22, 11)); }
     for (const [x, y] of [[-20, 40], [24, 50], [-44, 24]]) g.add(tube([[x / 30, y / 30, 0.6], [(x + 4) / 30, (y - 18) / 30, 0.7]], 0.04, 0.05, c ? '#4a2a22' : '#ff8a2a', c ? 'stone' : 'glow')); return g; },
+  pyramid(c) { // piramida na piasku: schodkowa, z wejściem i złotym szczytem; splądrowana: bez złota, wejście rozbite
+    const g = new THREE.Group(), st = c ? '#a8946a' : '#c8b07a'; for (let i = 0; i < 6; i++) g.add(blk(92 - i * 15, 13, 80 - i * 13, DK(st, i * 0.03), 'ashlar', 6, i * 13, -8));
+    if (!c) g.add(cone(7 / PXU, 10 / PXU, '#e8c040', 'gold', P(6, 80, -8), [0, Math.PI / 4, 0], 4)); g.add(opening(14, 18, 6, 0, 33, { frame: '#8a7a54', frameKind: 'ashlar', sill: false, inner: '#0a0806' }));
+    for (const x of [-14, 26]) { g.add(blk(8, 6, 14, '#b8a070', 'ashlar', x, 0, 38)); g.add(sph(4 / PXU, '#b8a070', 'stone', P(x, 9, 40), [0.8, 1, 1.3])); }
+    if (!c) g.add(mqRes('gold', 34, 40, 0.8)); return g; },
+  banditHideout(c) { // kryjówka zbójców: palisada, chata z bali, namioty i ognisko; łup w skrzyniach
+    const g = new THREE.Group(), w = c ? '#5a4632' : '#7a5230';
+    for (let i = 0; i < 14; i++) { const a = -0.2 + i / 13 * (Math.PI + 0.4), x = Math.cos(a) * 44 + 4, z = -Math.sin(a) * 34 + 8; g.add(cyl3(2.2, 2.2, 20 + (i % 2) * 4, w, 'bark', x, 0, z, 7)); }
+    g.add(blk(34, 20, 22, w, 'wood', -6, 0, -10)); g.add(gable(36, 24, 12, '#5a5a3a', 'thatch', -6, 20, -10, 3, w, 'wood')); g.add(door(8, 13, -6, 0, 1));
+    for (const [x, z, col] of [[22, -8, '#6a5a3a'], [24, 16, '#8a3a2a']]) { g.add(cone(10 / PXU, 18 / PXU, col, 'cloth', P(x, 9, z), null, 6)); }
+    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28; g.add(sph(2 / PXU, '#5a5a58', 'stone', P(-4 + Math.cos(a) * 5, 1, 22 + Math.sin(a) * 4))); } if (!c) { g.add(cone(3 / PXU, 8 / PXU, '#ff9a30', 'glow', P(-4, 4, 22), null, 6)); g.add(mqRes('gold', 10, 30, 0.7)); g.add(blk(9, 6, 6, '#6a4022', 'wood', -22, 0, 24)); }
+    return g; },
+  golemWorks(c) { // warsztat golemów: kamienna hala z kopułą, kominy, posąg golema przed wejściem, rury z jarzącą się rtęcią
+    const g = new THREE.Group(), st = c ? '#6a6670' : '#8a8694'; g.add(blk(64, 34, 44, st, 'ashlar', 4, 0, -10)); g.add(dome(18, 14, '#6a8ab0', 'tiles', 4, 34, -10)); for (const x of [-18, 26]) g.add(chimney(x, 34, -24));
+    g.add(door(16, 22, 4, 0, 12, '#3a3440')); g.add(blk(10, 4, 10, '#5a5664', 'ashlar', -20, 0, 22)); const gol = new THREE.Group(); gol.add(blk(10, 14, 6, '#9a9488', 'rubble', 0, 8, 0)); gol.add(blk(6, 6, 5, '#9a9488', 'rubble', 0, 22, 0)); for (const s of [-1, 1]) { gol.add(blk(4, 12, 4, '#8a8478', 'rubble', s * 7.5, 9, 0)); gol.add(blk(4, 9, 4, '#8a8478', 'rubble', s * 3, 0, 0)); }
+    gol.position.set(...P(-20, 4, 22)); g.add(gol); if (!c) { g.add(mqGlow(2.4, '#9fe0b0', -20, 30, 25)); for (let i = 0; i < 3; i++) g.add(cyl3(1.5, 1.5, 20, '#9fe0b0', 'glow', 28 + i * 6, 0, 16, 8)); }
+    return g; },
 };
 function mqCaravan(f) { // kryty wóz (plandeka w barwie gracza), koń w zaprzęgu; f: klatka kół i kroku konia
   const g = new THREE.Group(), K = '#ff00ff'; g.add(blk(44, 6, 24, ST.wood, 'wood', 6, 10, 0)); const cover = new THREE.Mesh(new THREE.CylinderGeometry(13 / PXU, 13 / PXU, 40 / PXU, 16, 1, false, 0, Math.PI), new THREE.MeshStandardMaterial({ color: K, roughness: 0.9, side: THREE.DoubleSide }));
@@ -207,7 +239,7 @@ function mqBoat(hero = false) { // łódź żaglowa: kadłub z deskami, ciemne w
   if (hero) g.add(slab([[0, 0], [0.3, -0.03], [0.22, -0.1], [0.3, -0.17], [0, -0.16]], 0.008, '#ff00ff', 'cloth', [0.05, H + 1.52, 0]));
   g.add(cyl(0.012, 0.012, 0.5, '#4a3020', 'wood', [L / 2 + 0.05, H + 0.1, 0], [0, 0, -1.1])); // bukszpryt
   const w = mpGrp(g); w.scale.setScalar(30 / PXU * 0.95); return w; }
-const SITE3_ANIM = ['windmill', 'waterMill', 'camp', 'sacrifice', 'portal', 'campfire', 'buoy']; // klatki 1–3 (klatka 0 = klucz bez numeru)
+const SITE3_ANIM = ['windmill', 'waterMill', 'camp', 'sacrifice', 'portal', 'campfire', 'buoy', 'dwarfForge']; // klatki 1–3 (klatka 0 = klucz bez numeru)
 for (const k of Object.keys(SITE3)) { MAP3['site_' + k] = () => mqWrap(SITE3[k](0)); if (SITE3_ANIM.includes(k)) for (let f = 1; f < 4; f++) MAP3[`site_${k}_${f}`] = () => mqWrap(SITE3[k](f)); }
 for (const k of Object.keys(MINE3)) MAP3['mine_' + k] = () => mqWrap(MINE3[k]());
 for (const k of Object.keys(BANK3)) for (const c of [0, 1]) MAP3[`bank_${k}_${c}`] = () => mqWrap(BANK3[k](!!c));

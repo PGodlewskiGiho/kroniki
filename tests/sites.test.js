@@ -74,3 +74,33 @@ test('druga paczka: oaza na piasku, obiekty wodne na otwartej wodzie, działanie
   for (const k of ['oasis', 'graveyard', 'magicSpring', 'buoy', 'flotsam', 'sirens']) assert.ok(r.kinds[k] > 0, `${k} w świecie`);
   assert.ok(r.okTerrain); assert.ok(r.oasis); assert.ok(r.spring); assert.deepEqual(r.grave, [true, true, true]); assert.deepEqual(r.sirens, [1500, 45]);
 });
+
+test('podziemia i nowe skarbce: grzybowy krąg, kryształowa grota, kuźnia krasnoludów, piramida, kryjówka zbójców, warsztat golemów', async () => {
+  const r = await page.evaluate(() => {
+    const out = { kinds: {}, ugIn: 0, ugAll: 0 };
+    for (const seed of [5, 17, 41]) {
+      const st = createNewGame(Object.assign({}, G.settings, { mapSize: 'L', underground: true }), seed);
+      for (const o of st.objects) {
+        const k = o.kind; if (['mushroomRing', 'crystalCave', 'dwarfForge', 'pyramid', 'banditHideout', 'golemWorks'].includes(k)) out.kinds[k] = (out.kinds[k] || 0) + 1;
+        if (['mushroomRing', 'crystalCave', 'dwarfForge'].includes(k)) { out.ugAll++; if (levelOf(st.map, o.x, o.y) === 1) out.ugIn++; }
+      }
+    }
+    const st = G.state, h = hero(st), R = st.players[h.owner].resources, mk = kind => { const o = { type: 'site', kind, x: 0, y: 0, id: 7000 + Math.floor(Math.random() * 999), seen: {} }; st.objects.push(o); return o; };
+    h.boost = {}; useSite(st, h, mk('mushroomRing')); out.luck = h.boost.luck === 1;
+    const c0 = R.crystal; useSite(st, h, mk('crystalCave')); out.cave = R.crystal - c0 >= 3;
+    R.gold = 5000; R.ore = 10; const a0 = h.bag.length + Object.values(h.equip).filter(Boolean).length; useSite(st, h, mk('dwarfForge')); out.forge = [5000 - R.gold, 10 - R.ore, h.bag.length + Object.values(h.equip).filter(Boolean).length - a0];
+    out.art = ['pyramid', 'banditHideout', 'golemWorks'].every(k => MAP3D_ART.f[`bank_${k}_0`] && MAP3D_ART.f[`bank_${k}_1`]) && ['mushroomRing', 'crystalCave', 'dwarfForge'].every(k => MAP3D_ART.f['site_' + k]);
+    return out;
+  });
+  for (const k of ['mushroomRing', 'crystalCave', 'dwarfForge', 'pyramid', 'banditHideout', 'golemWorks']) assert.ok(r.kinds[k] > 0, `${k} w świecie`);
+  assert.ok(r.ugIn / r.ugAll > 0.8, `w podziemiach ${r.ugIn}/${r.ugAll}`); assert.ok(r.luck); assert.ok(r.cave); assert.deepEqual(r.forge, [2000, 5, 1]); assert.ok(r.art);
+});
+
+test('nowy skarbiec: zwycięstwo daje łup i golemy do armii', async () => {
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), R = st.players[h.owner].resources, ob = { type: 'bank', kind: 'golemWorks', x: 0, y: 0, id: 6999, guards: [], cleared: false };
+    h.army = [{ cid: 'pikeman', n: 5 }, null, null, null, null, null, null]; const g0 = R.gold, m0 = R.mercury; lootBank(st, h, ob);
+    return [R.gold - g0, R.mercury - m0, h.army.some(x => x && x.cid === 'ironGolem' && x.n === 6), ob.cleared];
+  });
+  assert.deepEqual(r, [4000, 10, true, true]);
+});
