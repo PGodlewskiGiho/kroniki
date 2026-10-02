@@ -257,28 +257,29 @@ function renderChunkPixel(map, cx, cy) {
     }
     d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2]; d[k + 3] = 255;
   }
-  g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); // sprite'y ozdób i przeszkód w dawnych jednostkach
-  const put = (gg, sp, x, y) => gg.drawImage(sp.c, x - sp.ax / D, y - sp.ay / D, sp.c.width / D, sp.c.height / D);
+  g.putImageData(img, 0, 0);
+  if (map.ln && cx * CHUNK >= map.ln && cy * CHUNK >= map.ln) { g.globalCompositeOperation = 'multiply'; g.fillStyle = '#6e6a84'; g.fillRect(0, 0, SF, SF); g.globalCompositeOperation = 'source-over'; } // podziemia: mroczne dno jaskini (ściany i świecące ozdoby mają własne barwy)
+  g.setTransform(D, 0, 0, D, 0, 0); // sprite'y ozdób i przeszkód w dawnych jednostkach
+  const put = (gg, sp, x, y) => { const k = (sp.u || 2 / PXD) / 2; gg.drawImage(sp.c, x - sp.ax * k, y - sp.ay * k, sp.c.width * k, sp.c.height * k); }; // skala z gęstości samego obrazka (s.u), nie fragmentu
   // ozdoby: pola bez przeszkody, drogi i obiektu; teren sprawdzany w miejscu ozdoby (brzegi terenu są poszarpane)
   const oa = G.state && G.state.map === map ? G.state.objAt : null;
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x0 + CHUNK + 1); x++) {
-    const i = y * n + x, h = thash(x, y, map.seed + 5); if (map.obst[i] || rd[i] || (oa && oa[i]) || h % 100 >= 22) continue;
+    const i = y * n + x, h = thash(x, y, map.seed + 5), ug = levelOf(map, x, y); if (map.obst[i] || rd[i] || (oa && oa[i]) || h % 100 >= (ug ? 34 : 22)) continue; // podziemia: gęściej (grzyby, kryształy)
     const lx = x * AP + 8 - bx + ((h >>> 8) % 9) - 4, ly = y * AP + 8 - by + ((h >>> 12) % 7) - 3, t = map.terrain[i];
     if (t === TER.WATER || lx < -M || ly < -M || lx >= S + M || ly >= S + M || TO(lx, ly) !== t) continue;
-    const s = decorSprite(t, (h >>> 16) % 4, SN); put(g, s, lx, ly);
+    const s = decorSprite(t, (h >>> 16) % (ug ? 6 : 4), SN, ug); put(g, s, lx, ly);
   }
   for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
     const o = map.obst[y * n + x]; if (!o) continue;
-    const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
+    const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y)); // góry i skały: 8 wariantów, żeby pasmo nie wyglądało jak wzór
     put(g, s, x * AP + 8 - bx, y * AP + 8 - by);
   }
   gradeCanvas(c, Math.round(bx * D), Math.round(by * D));
-  if (map.ln && cx * CHUNK >= map.ln && cy * CHUNK >= map.ln) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'multiply'; g.fillStyle = '#7a7690'; g.fillRect(0, 0, SF, SF); g.globalCompositeOperation = 'source-over'; } // podziemia: mrok jaskini
   if (wet) { // maski do animacji wody (WaterFx); przeszkody stojące nad wodą (drzewa, góry przy brzegu) ją zasłaniają
     const mk = v => { const m = document.createElement('canvas'); m.width = m.height = SF; const mg = m.getContext('2d'), mi = mg.createImageData(SF, SF);
       for (let i = 0; i < SF * SF; i++) if (wm[i] === v) mi.data[i * 4 + 3] = 255; mg.putImageData(mi, 0, 0); mg.globalCompositeOperation = 'destination-out'; mg.setTransform(D, 0, 0, D, 0, 0);
       for (let y = Math.max(0, y0); y <= Math.min(n - 1, y0 + CHUNK + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(n - 1, x0 + CHUNK + 2); x++) {
-        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN); put(mg, s, x * AP + 8 - bx, y * AP + 8 - by);
+        const o = map.obst[y * n + x]; if (!o) continue; const s = obstacleSprite(o, map.terrain[y * n + x], thash(x, y, map.seed + 2) % (o === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y)); put(mg, s, x * AP + 8 - bx, y * AP + 8 - by);
       }
       return m; };
     c._deep = mk(1); c._shore = mk(2);
@@ -490,9 +491,16 @@ function drawWorldPixel(b, st) {
   for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
   for (const h of st.heroes) { if (h.garrison != null) continue; const [hx, hy] = heroDrawPos(h); list.push({ y: hy + 0.5, hero: h, hx, hy }); }
   for (const c of st.caravans || []) { if (c.owner !== ME) continue; const [cx, cy] = caravanPos(st, c); if (cx >= tx0 && cx <= tx1 && cy >= ty0 && cy <= ty1) list.push({ y: cy + 0.4, caravan: c, cx, cy }); } // własne karawany w drodze
+  // drzewa, góry i skały są wtopione w teren (pod obiektami); te, które stoją tuż przed obiektem albo bohaterem
+  // (1–2 rzędy niżej), rysujemy jeszcze raz w kolejności głębi, żeby zasłaniały to, co jest za nimi
+  if (!PIXEL_ART) { const seenO = new Set(), map = st.map, n = map.n, SN = MapRender.season || 0;
+    for (const it of list.slice()) { const ox0 = it.hero ? Math.round(it.hx) : it.caravan ? Math.round(it.cx) : it.ob.x, oy0 = it.hero ? Math.round(it.hy) : it.caravan ? Math.round(it.cy) : it.ob.y, wide = it.ob && (it.ob.type === 'town' || it.ob.type === 'mine' || it.ob.type === 'bank') ? 2 : 1;
+      for (let dy = 1; dy <= 2; dy++) for (let dx = -wide; dx <= wide; dx++) { const x = ox0 + dx, y = oy0 + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; if (!map.obst[i] || seenO.has(i)) continue; seenO.add(i);
+        list.push({ y: y + 0.45, occ: i, s: obstacleSprite(map.obst[i], map.terrain[i], thash(x, y, map.seed + 2) % (map.obst[i] === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y)), x, ty: y, ug: levelOf(map, x, y) }); } } }
   list.sort((a, c) => a.y - c.y);
   const shadow = (w, x, y) => { b.globalAlpha = 0.3; blitG(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
   for (const it of list) {
+    if (it.occ != null) { blitG(b, it.s, ox + it.x * T + 16, oy + it.ty * T + 16); continue; }
     if (it.hero) { const x = ox + it.hx * T + 16, y = oy + it.hy * T + 16, h3 = heroMap3d(it.hero, ownerColor(st, it.hero.owner)); shadow(14, x, y + 13); const hb = it.hero.boat && map3dTinted(`boatHero_${Math.floor(G.time * 4) % 4}`, ownerColor(st, it.hero.owner), it.hero.dir < 0); // łódź z bohaterem: żagiel w barwie gracza, kołysanie
       if (hb) blitG(b, hb, x, y + 8 + Math.round(Math.sin(G.time * 2) * 1.2)); else if (h3) blitG(b, h3, x, y + 13); else blitG(b, heroSprite(it.hero, ownerColor(st, it.hero.owner)), x, y); continue; }
     if (it.caravan) { const x = ox + it.cx * T + 16, y = oy + it.cy * T + 16, c3 = map3dTinted(`caravan_${Math.floor(G.time * 6) % 4}`, ownerColor(st, it.caravan.owner)); if (c3) { blitG(b, c3, x, y + 8); continue; } shadow(12, x, y + 10); blitG(b, caravanSprite(ownerColor(st, it.caravan.owner), Math.floor(G.time * 3) % 2), x, y + 8); continue; }

@@ -116,9 +116,23 @@ function mqCaravan(f) { // kryty wóz (plandeka w barwie gracza), koń w zaprzę
   g.add(mast(-10, 22, 0, 18)); g.add(slab([[0, 0], [10, -1], [8, -5], [10, -9], [0, -8]].map(([a, b]) => [a / PXU, b / PXU]), 0.3 / PXU, K, 'cloth', P(-10, 39, 0)));
   return g; }
 function mqBoatHero(f) { const g = mqBoat(true); g.rotation.z = [0, 0.04, 0, -0.04][f]; return g; }
-function mqBoat(hero = false) { const g = new THREE.Group(), hull = lathe([[0.001, -0.3], [0.45, -0.25], [0.62, 0], [0.6, 0.2]], '#6a4424', 'wood', P(0, 6, 0), [0.6, 0.6, 1.7]); hull.rotation.y = Math.PI / 2; g.add(hull);
-  g.add(blk(56, 2, 14, '#8a6a40', 'wood', 0, 15, 0)); g.add(cyl3(1.4, 1.2, 46, ST.woodD, 'wood', 0, 15, 0, 8)); g.add(slab([[0, 0], [22, 0], [20, -26], [0, -30]].map(([a, b]) => [a / PXU, b / PXU]), 0.3 / PXU, hero ? '#ff00ff' : '#e8dcc0', 'cloth', P(1, 58, 0), [0, -0.5, 0])); g.add(mast(0, 60, 0, 6));
-  if (hero) { const r = rider({ kind: 'rider', horse: '#8a6a4a', mane: '#3a2a1a', skin: '#e0b090', cloth: '#ff00ff', weapon: 'sword', helm: 'helm', helmCol: '#b8c0cc', armor: true, cape: '#ff00ff', barding: '#ff00ff', trim: '#e0b24a' }, { t: 0 }); r.scale.setScalar(0.55); r.position.set(...P(-12, 17, 0)); g.add(r); } return g; }
+// Kadłub łodzi: obrys burty (z boku) wyciągnięty na szerokość, potem zwężony ku dziobowi, rufie i stępce
+function mqHull(L, B, H, col) {
+  const sh = new THREE.Shape(); sh.moveTo(-L / 2, H); sh.quadraticCurveTo(-L * 0.42, H * 0.2, -L * 0.3, 0); sh.lineTo(L * 0.32, 0); sh.quadraticCurveTo(L * 0.46, H * 0.25, L / 2 + L * 0.04, H * 1.15); sh.lineTo(-L / 2, H);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: B, bevelEnabled: false, curveSegments: 10, steps: 6 }); geo.translate(0, 0, -B / 2);
+  const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), t = Math.min(1, Math.abs(x) / (L / 2)), f = Math.sqrt(Math.max(0, 1 - t ** 2.4)) * (0.55 + 0.45 * Math.min(1, y / H)); p.setZ(i, z * f); }
+  geo.computeVertexNormals(); return mesh(geo, col, 'wood');
+}
+function mqBoat(hero = false) { // łódź żaglowa: kadłub z deskami, ciemne wnętrze, ławki, maszt z wybrzuszonym żaglem (bohater: żagiel i proporzec w barwie gracza)
+  const g = new THREE.Group(), L = 2.0, B = 0.62, H = 0.32, hull = mqHull(L, B, H, '#7a4a26'); g.add(hull);
+  const inner = mqHull(L * 0.9, B * 0.82, H * 0.9, '#3a2414'); inner.position.y = 0.05; inner.scale.y = 0.96; g.add(inner);
+  for (const y of [0.1, 0.2]) { const st = mqHull(L * 1.002, B * 1.01, 0.025, '#5a3418'); st.position.y = y; g.add(st); } // pasy desek na burcie
+  g.add(cyl(0.028, 0.022, 1.55, '#4a3020', 'wood', [0.05, H + 0.75, 0])); g.add(cyl(0.015, 0.015, 0.95, '#4a3020', 'wood', [0.1, H + 1.36, 0.02], [0, 0, Math.PI / 2])); /* reja */
+  const sail = new THREE.PlaneGeometry(0.85, 1.0, 8, 8), sp = sail.attributes.position; for (let i = 0; i < sp.count; i++) { const u = sp.getX(i) / 0.425, v = (sp.getY(i) + 0.5) / 1.0; sp.setZ(i, 0.16 * (1 - u * u) * Math.sin(v * Math.PI) ); }
+  sail.computeVertexNormals(); const sm = new THREE.Mesh(sail, new THREE.MeshStandardMaterial({ color: hero ? '#ff00ff' : '#e8dcc0', roughness: 0.9, side: THREE.DoubleSide })); sm.position.set(0.1, H + 0.85, 0.02); /* żagiel w poprzek widoku, wybrzuszony ku kamerze */ g.add(sm);
+  if (hero) g.add(slab([[0, 0], [0.3, -0.03], [0.22, -0.1], [0.3, -0.17], [0, -0.16]], 0.008, '#ff00ff', 'cloth', [0.05, H + 1.52, 0]));
+  g.add(cyl(0.012, 0.012, 0.5, '#4a3020', 'wood', [L / 2 + 0.05, H + 0.1, 0], [0, 0, -1.1])); // bukszpryt
+  const w = mpGrp(g); w.scale.setScalar(30 / PXU * 0.95); return w; }
 const SITE3_ANIM = ['windmill', 'waterMill', 'camp', 'sacrifice', 'portal']; // klatki 1–3 (klatka 0 = klucz bez numeru)
 for (const k of Object.keys(SITE3)) { MAP3['site_' + k] = () => mqWrap(SITE3[k](0)); if (SITE3_ANIM.includes(k)) for (let f = 1; f < 4; f++) MAP3[`site_${k}_${f}`] = () => mqWrap(SITE3[k](f)); }
 for (const k of Object.keys(MINE3)) MAP3['mine_' + k] = () => mqWrap(MINE3[k]());

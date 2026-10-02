@@ -65,7 +65,7 @@ function mpTreeTile(kind, season, v) {
   return g;
 }
 // --- góry i skały: bryły z losowych punktów, barwa zależna od wysokości i nachylenia (śnieg na szczytach i płaskich ściankach) ---
-const MP_ROCK = { def: ['#8a8070', '#b0a48c', '#6a6458'], snow: ['#8a94a4', '#c0c8d4', '#f4f8fc'], lava: ['#3a2e2a', '#5a4a42', '#2a201c'], sand: ['#b08454', '#d8b07a', '#8a6038'] };
+const MP_ROCK = { cave: ['#34303c', '#4c4656', '#201c26'], def: ['#8a8070', '#b0a48c', '#6a6458'], snow: ['#8a94a4', '#c0c8d4', '#f4f8fc'], lava: ['#3a2e2a', '#5a4a42', '#2a201c'], sand: ['#b08454', '#d8b07a', '#8a6038'] };
 function mpPeakGeo(rx, ry, rz, seed, n) { // stożkowaty szczyt: pierścienie punktów zwężające się ku przesuniętemu wierzchołkowi, z poszarpaną granią
   const R = rng(seed * 7919), pts = [], ax = (R() - 0.5) * rx * 0.5, rings = [[0, 1], [0.3, 0.78], [0.58, 0.48], [0.82, 0.2]];
   for (const [t, q] of rings) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + R() * 0.5, j = 0.8 + R() * 0.35; pts.push(new THREE.Vector3(ax * t + Math.cos(a) * rx * q * j, ry * t + (R() - 0.5) * ry * 0.06, Math.sin(a) * rz * q * j)); }
@@ -146,6 +146,34 @@ function mpDecor(t, v) {
 }
 for (const t of ['grass', 'dirt', 'sand', 'snow', 'swamp', 'lava']) for (let v = 0; v < 4; v++) MAP3[`decor_${t}_${v}`] = () => mpDecor(t, v);
 MAP3.decor_leaves_0 = () => mpDecor('leaves', 0); MAP3.decor_leaves_1 = () => mpDecor('leaves', 1);
+// --- podziemia: niskie, poszarpane ściany jaskini (zlewają się z sąsiednimi), stalagmity, kryształy, świecące grzyby ---
+const MP_GLOW = ['#8a6aff', '#40d8c0', '#ff6ab0', '#60b0ff'];
+function mpCaveWall(v) {
+  const R = rng(v * 313 + 7), g = new THREE.Group();
+  for (let i = 0; i < 4 + (v % 3); i++) { const x = (R() - 0.5) * 0.9, z = (R() - 0.5) * 0.7, h = 0.2 + R() * 0.28, m = mpRockMesh(0.26 + R() * 0.16, h, 0.24 + R() * 0.12, MP_ROCK.cave, v * 11 + i, 12, null, false, false); /* niskie, obłe bloki skały */ m.position.set(x, 0, z); m.rotation.y = R() * 6; g.add(m); }
+  for (let i = 0; i < 2 + (v % 2); i++) { const x = (R() - 0.5) * 0.8, z = 0.15 + R() * 0.3; g.add(cone(0.04 + R() * 0.03, 0.18 + R() * 0.2, '#5a5462', 'stone', [x, 0.09, z], [(R() - 0.5) * 0.2, 0, (R() - 0.5) * 0.2], 7)); }
+  if (v % 3 === 0) { const c = MP_GLOW[v % 4]; for (let i = 0; i < 3; i++) { const k = cone(0.035, 0.18 + R() * 0.1, c, 'gem', [(R() - 0.5) * 0.5, 0.35 + R() * 0.15, 0.22 + R() * 0.1], [(R() - 0.5) * 0.8, 0, (R() - 0.5) * 0.8], 6); k.material = k.material.clone(); k.material.emissiveIntensity = 1.4; g.add(k); } }
+  return g;
+}
+function mpStalag(v) {
+  const R = rng(v * 97 + 3), g = new THREE.Group(), kind = v % 4;
+  if (kind === 0 || kind === 2) for (let i = 0; i < 4; i++) { const h = 0.2 + R() * 0.35; g.add(cone(0.05 + h * 0.15, h, i % 2 ? '#6e6878' : '#5a5462', 'stone', [(R() - 0.5) * 0.35, h / 2, (R() - 0.5) * 0.2], null, 8)); }
+  else if (kind === 1) { const c = MP_GLOW[(v >> 1) % 4]; for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28, q = i ? 1 : 0, h = i ? 0.15 + R() * 0.12 : 0.38; const k = cone(i ? 0.035 : 0.06, h, c, 'gem', [Math.cos(a) * 0.08 * q, h / 2, Math.sin(a) * 0.06 * q], [Math.sin(a) * 0.4 * q, 0, -Math.cos(a) * 0.4 * q], 6); k.material = k.material.clone(); k.material.emissiveIntensity = 1.3; g.add(k); }
+    g.add(mpRockMesh(0.16, 0.06, 0.13, MP_ROCK.cave, v + 40, 10, null, false)); }
+  else { const c = MP_GLOW[(v >> 1) % 4]; for (let i = 0; i < 3; i++) { const x = (R() - 0.5) * 0.3, z = (R() - 0.5) * 0.2, h = 0.15 + R() * 0.25, r = 0.07 + R() * 0.06; g.add(cyl(0.022, 0.03, h, '#d8d0c0', 'skin', [x, h / 2, z])); const cap = sph(r, c, 'gem', [x, h, z], [1, 0.45, 1], 14); cap.material = cap.material.clone(); cap.material.emissiveIntensity = 1.1; g.add(cap); } } // olbrzymie świecące grzyby
+  return g;
+}
+function mpCaveDecor(v) {
+  const R = rng(v * 59 + 5), g = new THREE.Group(), c = MP_GLOW[v % 4];
+  if (v === 0 || v === 4) for (let i = 0; i < 4; i++) { const x = (R() - 0.5) * 0.22, z = (R() - 0.5) * 0.12, h = 0.04 + R() * 0.05; g.add(cyl(0.008, 0.01, h, '#d8d0c0', 'skin', [x, h / 2, z])); const m = sph(0.025 + R() * 0.015, c, 'gem', [x, h, z], [1, 0.5, 1], 10); m.material = m.material.clone(); m.material.emissiveIntensity = 1.2; g.add(m); }
+  else if (v === 1) for (let i = 0; i < 4; i++) { const a = i / 4 * 6.28, h = 0.06 + R() * 0.07, k = cone(0.016, h, c, 'gem', [Math.cos(a) * 0.04, h / 2, Math.sin(a) * 0.03], [Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4], 6); k.material = k.material.clone(); k.material.emissiveIntensity = 1.3; g.add(k); }
+  else if (v === 2) { g.add(sph(0.035, '#e8e0c8', 'bone', [0, 0.03, 0], [1.1, 0.9, 1], 12)); for (const x of [-0.012, 0.012]) g.add(sph(0.009, '#100c0c', 'skin', [x, 0.035, 0.03], null, 8)); g.add(cyl(0.008, 0.008, 0.14, '#e8e0c8', 'bone', [0.08, 0.01, 0.02], [0, 0.4, Math.PI / 2])); }
+  else if (v === 3) { const p = cyl(0.12, 0.12, 0.004, '#1a2a3a', 'win', [0, 0.003, 0], null, [1, 1, 0.65], 20); p.material = new THREE.MeshStandardMaterial({ color: '#1e3448', roughness: 0.05, metalness: 0.5 }); g.add(p); g.add(mpPebbles('cave', 21)); }
+  else { g.add(mpPebbles('cave', 23)); g.add(cone(0.03, 0.12, '#5a5462', 'stone', [0.05, 0.06, 0], null, 7)); }
+  return g;
+}
+for (let v = 0; v < 8; v++) { MAP3[`cave_${v}`] = () => mpCaveWall(v); MAP3[`stalag_${v}`] = () => mpStalag(v); }
+for (let v = 0; v < 6; v++) MAP3[`decor_cave_${v}`] = () => mpCaveDecor(v);
 // artefakty dopisuje wypal-mape.js (dane z gry): MAP3['art_' + id] = () => mpArt(id, A)
 // Render obiektu mapy: płótno w×h, ziemia środka pola w (ax, ay); cień na ziemi
 const MP_SHADOW = new THREE.ShadowMaterial({ opacity: 0.38 });

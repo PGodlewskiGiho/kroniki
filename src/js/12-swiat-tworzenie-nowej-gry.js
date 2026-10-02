@@ -122,11 +122,11 @@ function generateCave(n, seed) {
   const rng = mulberry32(seed ^ 0x2c1b3c6d), nW = makeNoise(rng), nW2 = makeNoise(rng), nT = makeNoise(rng), N = n * n;
   const terrain = new Uint8Array(N).fill(TER.DIRT), obst = new Uint8Array(N), road = new Uint8Array(N), wall = new Float32Array(N), kind = new Float32Array(N);
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const i = y * n + x; wall[i] = nW(x / 7, y / 7) * 0.7 + nW2(x / 3, y / 3) * 0.3; kind[i] = nT(x / 10, y / 10); }
-  const qW = quantile(wall, 0.42), qL = quantile(kind, 0.86), qS = quantile(kind, 0.12), qR = quantile(kind, 0.55);
+  const qW = quantile(wall, 0.33), qL = quantile(kind, 0.86), qS = quantile(kind, 0.12), qR = quantile(kind, 0.55);
   for (let i = 0; i < N; i++) { const x = i % n, y = (i / n) | 0, edge = Math.min(x, y, n - 1 - x, n - 1 - y);
     if (edge < 1 || wall[i] > qW) obst[i] = OBST.MOUNT;
     terrain[i] = kind[i] > qL ? TER.LAVA : kind[i] < qS ? TER.SWAMP : kind[i] > qR ? TER.ROUGH : TER.DIRT;
-    if (!obst[i] && rng() < 0.02) obst[i] = OBST.ROCK; }
+    if (!obst[i] && rng() < 0.035) obst[i] = OBST.ROCK; } // stalagmity i kryształy
   const comp = new Int32Array(N).fill(-1); let best = -1, bestSize = 0, cid = 0; // największa sieć pieczar
   for (let s = 0; s < N; s++) { if (obst[s] === OBST.MOUNT || comp[s] >= 0) continue; let size = 0; const stack = [s]; comp[s] = cid;
     while (stack.length) { const i = stack.pop(); size++; const x = i % n, y = (i / n) | 0;
