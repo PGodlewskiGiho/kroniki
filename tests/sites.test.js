@@ -53,3 +53,24 @@ test('miasto: ulepszanie kupionych stworów (zwykłe -> ulepszone -> elitarne), 
   const dlg = await page.evaluate(() => { const s = G.screen, t = s.town(); t.garrison[0] = { cid: factionOf(t.faction).dw.dw2[1], n: 5 }; t.built.push('dw2', 'dw2u'); s.showUpgrade(t.garrison, 0); return G.modal && G.modal.buttons.map(b => b.label); });
   assert.deepEqual(dlg, ['Ulepsz', 'Ulepsz wszystkie', 'Nie']);
 });
+
+test('druga paczka: oaza na piasku, obiekty wodne na otwartej wodzie, działanie', async () => {
+  const r = await page.evaluate(() => {
+    const out = { kinds: {}, okTerrain: true };
+    for (const seed of [3, 11, 29]) {
+      const st = createNewGame(Object.assign({}, G.settings, { mapSize: 'L' }), seed);
+      for (const o of st.objects) if (o.type === 'site' && ['oasis', 'graveyard', 'magicSpring', 'buoy', 'flotsam', 'sirens'].includes(o.kind)) {
+        out.kinds[o.kind] = (out.kinds[o.kind] || 0) + 1; const t = st.map.terrain[o.y * st.map.n + o.x];
+        if (o.kind === 'oasis' && t !== TER.SAND || ['buoy', 'flotsam', 'sirens'].includes(o.kind) && t !== TER.WATER) out.okTerrain = false;
+      }
+    }
+    const st = G.state, h = hero(st), R = st.players[h.owner].resources, mk = kind => { const o = { type: 'site', kind, x: 0, y: 0, id: 8000 + Math.floor(Math.random() * 999), seen: {} }; st.objects.push(o); return o; };
+    h.boost = {}; useSite(st, h, mk('oasis')); out.oasis = h.boost.morale === 1;
+    h.mana = 0; useSite(st, h, mk('magicSpring')); out.spring = h.mana === heroMaxMana(h) * 2;
+    const b0 = h.bag.length + Object.values(h.equip).filter(Boolean).length, g0 = R.gold; const gy = mk('graveyard'); useSite(st, h, gy); out.grave = [R.gold > g0, h.bag.length + Object.values(h.equip).filter(Boolean).length > b0, !!gy.dead];
+    h.army = [{ cid: 'pikeman', n: 50 }, null, null, null, null, null, null]; const s = useSite(st, h, mk('sirens')); out.sirens = [s.exp, h.army[0].n];
+    return out;
+  });
+  for (const k of ['oasis', 'graveyard', 'magicSpring', 'buoy', 'flotsam', 'sirens']) assert.ok(r.kinds[k] > 0, `${k} w świecie`);
+  assert.ok(r.okTerrain); assert.ok(r.oasis); assert.ok(r.spring); assert.deepEqual(r.grave, [true, true, true]); assert.deepEqual(r.sirens, [1500, 45]);
+});

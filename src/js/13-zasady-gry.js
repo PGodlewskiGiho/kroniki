@@ -1024,6 +1024,16 @@ function useSite(st, h, ob, choice) {
       removeObject(st, ob); R.gold += gold; R[res] += k; return { text: `Przy wygasłym ognisku ktoś zostawił zapasy: ${gold} złota i ${k} (${resName(res).toLowerCase()}).`, float: `+${gold}`, res: 'gold' }; }
     case 'hillFort': { const d = hillFortUpgrade(st, h); return { text: d.length ? `Kowale ulepszają: ${d.map(p => `${CREATURES[p.from].plural.toLowerCase()} → ${CREATURES[p.to].plural.toLowerCase()} (${p.n})`).join(', ')}.` : 'Kowale nie mają czego ulepszyć albo brakuje surowców.' }; }
     case 'market': return { text: 'Targowisko: wymiana surowców.' };
+    case 'oasis': case 'buoy': { mark(); h.boost = { ...(h.boost || {}), morale: 1 }; if (ob.kind === 'oasis') h.mp += 300;
+      return { text: ob.kind === 'oasis' ? 'Chłodna woda i cień palm: +1 do morale do następnej bitwy i +300 punktów ruchu.' : 'Marynarze biją w dzwon boi na szczęście: +1 do morale do następnej bitwy.', float: 'morale +1' }; }
+    case 'magicSpring': { const max = heroMaxMana(h) * 2; if (h.mana >= max) return { text: 'Źródło lśni, ale mana bohatera jest już przepełniona.' }; mark(); h.mana = max; return { text: `Magiczne źródło przepełnia bohatera mocą: mana ${max} (dwa razy więcej niż zwykle).`, float: `mana ${max}` }; }
+    case 'graveyard': { const r = mulberry32(st.seed ^ (ob.id * 389)), gold = 1000 + Math.floor(r() * 3) * 500, pool = ARTS_BY_RARITY(r() < 0.35 ? 'minor' : 'treasure'), art = pool[Math.floor(r() * pool.length)];
+      removeObject(st, ob); R.gold += gold; giveArtifact(h, art); return { text: `W rozkopanym grobie leżą ${gold} złota i artefakt: ${ARTIFACTS[art].name}.`, float: `+${gold}`, res: 'gold' }; }
+    case 'flotsam': { const r = mulberry32(st.seed ^ (ob.id * 211)), wood = r() < 0.5; removeObject(st, ob);
+      if (wood) { const k = 5 + Math.floor(r() * 6); R.wood += k; return { text: `Z wody udaje się wyłowić ${k} drewna.`, float: `+${k}`, res: 'wood' }; }
+      const g = 500 + Math.floor(r() * 3) * 250; R.gold += g; return { text: `W dryfującej skrzyni jest ${g} złota.`, float: `+${g}`, res: 'gold' }; }
+    case 'sirens': { mark(); let lost = 0; for (const x of h.army) if (x && x.n > 1) { const d = Math.floor(x.n / 10); x.n -= d; lost += d; }
+      return { text: `Śpiew syren porusza serca: +1500 doświadczenia.${lost ? ` Niestety ${lost} żołnierzy rzuca się w fale.` : ''}`, float: '+1500 dośw.', exp: 1500 }; }
     case 'obelisk': { mark(); const k = obelisksSeen(st, h.owner), N = obelisksTotal(st);
       return { puzzle: true, text: k >= N ? 'Ostatni obelisk! Mapa zagadki jest kompletna: krzyżyk wskazuje, gdzie zakopano Graala.' : `Runy na obelisku odsłaniają kolejny fragment mapy zagadki (${k} z ${N}).` }; }
   }

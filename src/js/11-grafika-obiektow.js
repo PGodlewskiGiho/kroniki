@@ -790,7 +790,7 @@ const caravanSprite = (col, fr) => sprite(`caravan_${col}_${fr}`, 26, 22, 13, 18
 const boatSprite = fr => sprite(`boat_${fr}`, 26, 26, 13, 17, p => { p.translate(0, 4); drawBoat(p, fr * TAU / 12, null); });
 const chestSprite = () => sprite('chest', 16, 16, 8, 9, p => drawChest(p, 0, 0, 0));
 // Miejsce na mapie; animowane (młyny, ogień, woda) mają 4 klatki
-const SITE_ANIM = { campfire: 1, windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1, obelisk: 1, witchHut: 1, portal: 1, dwelling: 1, sacrifice: 1, wreck: 1 };
+const SITE_ANIM = { buoy: 1, campfire: 1, windmill: 1, waterMill: 1, camp: 1, fountain: 1, altar: 1, obelisk: 1, witchHut: 1, portal: 1, dwelling: 1, sacrifice: 1, wreck: 1 };
 const siteSprite = (k, i = 0) => sprite(`site_${k}_${i}`, 26, 26, 13, 24, p => drawSite(p, k, i / 4));
 const siteFrame = (ob) => (SITE_ANIM[ob.kind] ? Math.floor(G.time * 5 + ob.id) % 4 : 0);
 const mineSprite = k => sprite(`mine_${k}`, 36, 38, 2, 4, p => drawMine(p, { kind: k }, 0, 0, 0, null));

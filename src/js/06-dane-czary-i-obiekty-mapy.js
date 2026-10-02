@@ -103,6 +103,12 @@ const SITES = {
   market: { name: 'Targowisko', use: 'free', per: 2800, ai: 0, desc: 'wymiana surowców jak na rynku w mieście (kurs jak przy dwóch rynkach)' },
   garden: { name: 'Magiczny ogród', use: 'week', per: 1600, ai: 900, desc: 'co tydzień 5 klejnotów albo 500 złota dla pierwszego gościa' },
   campfire: { name: 'Ognisko', use: 'once', per: 1000, ai: 900, desc: 'porzucony obóz: 400–600 złota i 4–6 jednostek surowca (jednorazowo)' },
+  oasis: { name: 'Oaza', use: 'day', per: 1800, ai: 600, terr: 'SAND', desc: '+1 do morale do następnej bitwy i +300 punktów ruchu (raz dziennie)' },
+  graveyard: { name: 'Stary cmentarz', use: 'once', per: 2600, ai: 2200, guard: true, desc: 'zakopane skarby: 1000–2000 złota i artefakt (jednorazowo, pilnują go umarli)' },
+  magicSpring: { name: 'Magiczne źródło', use: 'day', per: 2800, ai: 800, desc: 'napełnia manę bohatera do dwukrotności zwykłego maksimum (raz dziennie)' },
+  buoy: { name: 'Boja', use: 'day', per: 0, wper: 900, ai: 300, desc: '+1 do morale do następnej bitwy (raz dziennie, dostępna łodzią)' },
+  flotsam: { name: 'Dryfujące szczątki', use: 'once', per: 0, wper: 700, ai: 700, desc: 'ładunek z rozbitego statku: drewno albo złoto (jednorazowo, dostępne łodzią)' },
+  sirens: { name: 'Skała syren', use: 'hero', per: 0, wper: 1400, ai: 1200, desc: 'śpiew syren: +1500 doświadczenia, ale co dziesiąty żołnierz rzuca się w fale (raz na bohatera, dostępna łodzią)' },
   hillFort: { name: 'Fort na wzgórzu', use: 'free', per: 3000, ai: 0, desc: 'kowale ulepszają stwory w armii bohatera za różnicę w cenie' },
 };
 // Nowe miejsca: portale w parach (PORTAL_PAIRS wg rozmiaru mapy), wraki na wodzie (jeden na WRECK_PER pól wody),
