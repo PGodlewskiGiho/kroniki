@@ -206,7 +206,10 @@ function landColor(t, ax, ay, hh) {
 }
 // Tekstury terenu (TERRAIN_ART, malowane przez AI, bezszwowe): piksele w tablicy + średnia barwa. Teren bierze z tekstury strukturę
 // (kępy trawy, szczeliny, kamienie), a barwę z palety i pory roku: kolor = tekstura × (barwa terenu / średnia tekstury).
-const TERRAIN_TEX = {}, TEX_NAME = ['', 'grass', 'dirt', 'sand', 'snow', 'swamp', 'rough', 'lava'], TEX_TILES = 6; // tekstura na 6×6 pól
+const TERRAIN_TEX = {}, TEX_NAME = ['water', 'grass', 'dirt', 'sand', 'snow', 'swamp', 'rough', 'lava'], TEX_TILES = 6; // tekstura na 6×6 pól
+// faktura z tekstury AI w barwie terenu (pora roku, paleta): kolor × (tekstura / jej średnia); powtarza się co TEX_TILES pól
+function texShade(TX, col, ax, ay, w) { const sx = ((Math.floor(ax * TX.w / (TEX_TILES * AP)) % TX.w) + TX.w) % TX.w, sy = ((Math.floor(ay * TX.h / (TEX_TILES * AP)) % TX.h) + TX.h) % TX.h, q = (sy * TX.w + sx) * 4, M = TX.mean, d = TX.d, u = 1 - w;
+  return [Math.min(255, col[0] * (d[q] / M[0] * w + u)), Math.min(255, col[1] * (d[q + 1] / M[1] * w + u)), Math.min(255, col[2] * (d[q + 2] / M[2] * w + u))]; }
 function texData(im) {
   const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, c.width, c.height).data;
   let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4;
@@ -274,14 +277,11 @@ function* renderChunkSteps(map, cx, cy) {
         wm[wi] = near <= 2 ? 2 : 1; wet = true;
         if (SN === 3 && near <= 4) { wm[wi] = 0; col = near === 1 ? SNOWC[2] : (thash(ax >> 1, ay >> 2, 81) % 23 === 0) ? [150, 186, 214] : near <= 2 ? [206, 226, 240] : [184, 212, 232]; } // zimą lód przy brzegu
         else if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
-        else { const P = TPAL[0]; if (!PIXEL_ART) col = mixRgb(P[1], P[0], clamp((vnoise2(ax / 8, ay / 8, 61) - 0.2) * 2.2, 0, 1)); else { col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; } }
+        else { const P = TPAL[0]; if (!PIXEL_ART) { col = mixRgb(P[1], P[0], clamp((vnoise2(ax / 8, ay / 8, 61) - 0.2) * 2.2, 0, 1)); if (TERRAIN_TEX.water) col = texShade(TERRAIN_TEX.water, col, ax, ay, 0.6); } else { col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; } }
       } else {
         col = PIXEL_ART ? seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN) : landLerp(t, ax, ay);
-        const TX = !PIXEL_ART && TERRAIN_TEX[TEX_NAME[t]];
-        if (TX) { // faktura z tekstury AI w barwie terenu (pora roku, paleta); próbka w pikselach tekstury (powtarza się co TEX_TILES pól)
-          const sx = ((Math.floor(ax * TX.w / (TEX_TILES * AP)) % TX.w) + TX.w) % TX.w, sy = ((Math.floor(ay * TX.h / (TEX_TILES * AP)) % TX.h) + TX.h) % TX.h, q = (sy * TX.w + sx) * 4, M = TX.mean, tdd = TX.d;
-          col = [Math.min(255, tdd[q] * col[0] / M[0] * 0.85 + col[0] * 0.15), Math.min(255, tdd[q + 1] * col[1] / M[1] * 0.85 + col[1] * 0.15), Math.min(255, tdd[q + 2] * col[2] / M[2] * 0.85 + col[2] * 0.15)];
-        }
+        const TX = !PIXEL_ART && ((under && (t === TER.DIRT || t === TER.ROUGH) && TERRAIN_TEX.cave) || TERRAIN_TEX[TEX_NAME[t]]); // podziemia: dno jaskini
+        if (TX) col = texShade(TX, col, ax, ay, 0.85);
         const below = TT(fx, fy + D); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
       }
       if (rk) { const q = (fy + MF) * R + fx + MF, k = rk[q];
