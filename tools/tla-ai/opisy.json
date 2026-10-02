@@ -870,5 +870,45 @@
     ]
    ]
   }
+ },
+ "bitwa_woda": {
+  "opis": "shallow sea water with gentle waves and foam, a few rocks",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_trawa": {
+  "opis": "lush green meadow with grass tufts, small flowers and a few stones",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_ziemia": {
+  "opis": "brown dirt field with dry grass patches, pebbles and cart ruts",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_piasek": {
+  "opis": "golden desert sand with wind ripples, small stones and bleached bones",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_snieg": {
+  "opis": "snowy field with drifts, ice patches and frozen grass",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_bagno": {
+  "opis": "murky swamp ground with dark puddles, moss, reeds and mud",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_nierowny": {
+  "opis": "rough rocky highland ground with scattered boulders, gravel and dry tufts",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_lawa": {
+  "opis": "black volcanic ash ground with glowing lava cracks and embers",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
  }
 }

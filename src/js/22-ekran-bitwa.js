@@ -26,7 +26,8 @@ function hexAt(px, py) {
 }
 const PAVE_X = 572; // bruk dziedzińca od tej kolumny pikseli (px logiczne) w prawo
 // Tło bitwy w stylu mapy: teren z palety TERRAINS, piksele 2×2, ta sama korekcja barw
-function paintBattleBg(c, terr, fac) {
+const BATTLE_BG_NAMES = ['woda', 'trawa', 'ziemia', 'piasek', 'snieg', 'bagno', 'nierowny', 'lawa'];
+function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siatki i panelu (szkic dla tła malowanego, tools/tla-ai/szkic-bitwy.js)
   // D = gęstość pikseli: teren liczony w drobnych pikselach (fx, fy), wzory w dawnych pikselach (x, y = połowa px logicznych)
   const w = W / 2, h = H / 2, fw = Math.round(w * PXD), fh = Math.round(h * PXD), D = fw / w, off = document.createElement('canvas'); off.width = fw; off.height = fh;
   const g = off.getContext('2d'), img = g.createImageData(fw, fh), P = TPAL[terr].map(gradeRgb), sky = [[40, 44, 62], [70, 72, 92]];
@@ -41,6 +42,9 @@ function paintBattleBg(c, terr, fac) {
     img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
   }
   g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = !PIXEL_ART; c.drawImage(off, 0, 0, W, H);
+  const pim = !bare && !fac && BATTLE_BG_IMG[BATTLE_BG_NAMES[terr]]; // tło malowane przez AI (pole bitwy bez siatki); oblężenie: dawny rysunek z brukiem dziedzińca
+  if (pim && pim._ok) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(pim, 0, 0, W, 490); }
+  if (bare) return;
   c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1;
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { hexPath(c, x, y, 1); c.stroke(); }
   stoneFill(c, 0, 490, W, 110); c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, W, 38);

@@ -3,11 +3,12 @@
 // opis klatek i obrazek base64). Klatka = [x, y, w, h, ax, ay] w arkuszu, (ax, ay) = stopy. Bitwa: 1 piksel arkusza = u px
 // logicznych (1,3), mapa: mu (1,8). Dla dir = -1 klatka jest odbita w poziomie. Jednostka bez arkusza (albo zanim obrazek
 // się wczyta) korzysta z dawnego rysunku wektorowego (battleSprite2D, creatureSprite2D).
-const UNIT_IMG = {}, HERO_IMG = {}, PORTRAIT_IMG = {}, TOWN_IMG = {}, ARTIFACT_IMG = {}, MAP3D_IMG = {};
+const UNIT_IMG = {}, HERO_IMG = {}, PORTRAIT_IMG = {}, TOWN_IMG = {}, ARTIFACT_IMG = {}, SKILL_IMG = {}, MAP3D_IMG = {}, BATTLE_BG_IMG = {};
 function loadUnitArt() {
   if (typeof UNIT_ART === 'undefined') return;
   const load = (set, store) => { for (const [id, A] of Object.entries(set)) { const png = typeof A === 'string' ? A : A.png; if (store[id] || !png) continue; const im = new Image(); im.onload = () => { im._ok = true; G.dirty = true; }; im.src = `data:image/${A.webp ? 'webp' : 'png'};base64,` + png; store[id] = im; } };
-  load(UNIT_ART, UNIT_IMG); if (typeof HERO_ART !== 'undefined') load(HERO_ART, HERO_IMG); if (typeof HERO_PORTRAITS !== 'undefined') load(HERO_PORTRAITS, PORTRAIT_IMG); if (typeof TOWN_BUILD_ART !== 'undefined') load(TOWN_BUILD_ART, TOWN_IMG); if (typeof ARTIFACT_ART !== 'undefined' && ARTIFACT_ART) load({ sheet: ARTIFACT_ART }, ARTIFACT_IMG); if (typeof MAP3D_ART !== 'undefined' && MAP3D_ART) { load({ sheet: MAP3D_ART }, MAP3D_IMG); // teren z drzewami i górami malowany wcześniej dawnymi rysunkami: od nowa
+  load(UNIT_ART, UNIT_IMG); if (typeof HERO_ART !== 'undefined') load(HERO_ART, HERO_IMG); if (typeof HERO_PORTRAITS !== 'undefined') load(HERO_PORTRAITS, PORTRAIT_IMG); if (typeof TOWN_BUILD_ART !== 'undefined') load(TOWN_BUILD_ART, TOWN_IMG); if (typeof ARTIFACT_ART !== 'undefined' && ARTIFACT_ART) load({ sheet: ARTIFACT_ART }, ARTIFACT_IMG); if (typeof SKILL_ART !== 'undefined' && SKILL_ART) load({ sheet: SKILL_ART }, SKILL_IMG); if (typeof BATTLE_BG_ART !== 'undefined') load(BATTLE_BG_ART, BATTLE_BG_IMG);
+  if (typeof MAP3D_ART !== 'undefined' && MAP3D_ART) { load({ sheet: MAP3D_ART }, MAP3D_IMG); // teren z drzewami i górami malowany wcześniej dawnymi rysunkami: od nowa
     MAP3D_IMG.sheet.addEventListener('load', () => { if (typeof MapRender !== 'undefined' && MapRender.map) MapRender.reset(MapRender.map, MapRender.explored); }); }
 }
 // Portret bohatera z obrazu (tools/portrety-ai), gdy jest wbudowany i wczytany
@@ -17,7 +18,9 @@ const unitArtReady = () => (typeof UNIT_ART === 'undefined' || Object.keys(UNIT_
   && (typeof HERO_PORTRAITS === 'undefined' || Object.keys(HERO_PORTRAITS).every(n => PORTRAIT_IMG[n] && PORTRAIT_IMG[n]._ok))
   && (typeof TOWN_BUILD_ART === 'undefined' || Object.keys(TOWN_BUILD_ART).every(f => TOWN_IMG[f] && TOWN_IMG[f]._ok))
   && (typeof ARTIFACT_ART === 'undefined' || !ARTIFACT_ART || (ARTIFACT_IMG.sheet && ARTIFACT_IMG.sheet._ok))
-  && (typeof MAP3D_ART === 'undefined' || !MAP3D_ART || (MAP3D_IMG.sheet && MAP3D_IMG.sheet._ok));
+  && (typeof SKILL_ART === 'undefined' || !SKILL_ART || (SKILL_IMG.sheet && SKILL_IMG.sheet._ok))
+  && (typeof MAP3D_ART === 'undefined' || !MAP3D_ART || (MAP3D_IMG.sheet && MAP3D_IMG.sheet._ok))
+  && (typeof BATTLE_BG_ART === 'undefined' || Object.keys(BATTLE_BG_ART).every(k => BATTLE_BG_IMG[k] && BATTLE_BG_IMG[k]._ok));
 // Obiekt mapy wypalony z 3D (tools/grafika3d/wypal-mape.js) jako sprite w gęstości grafiki (PXD pikseli na piksel grafiki),
 // pomniejszony raz z wygładzaniem; null, gdy brak klatki albo arkusz jeszcze się nie wczytał (wtedy dawny rysunek)
 // Maszty flag właściciela obiektu 3D (px logiczne względem punktu zaczepienia); bez masztów w modelu: szczyt środka rysunku
@@ -26,15 +29,20 @@ function map3dFlags(key) {
   const k = 2 / A.d, fl = (f[6] || []).filter(([, y]) => y * k < -16).slice(0, 2).map(([x, y]) => [x * k, y * k]);
   return fl.length ? fl : [[0, -s.ay * s.u + 6]];
 }
+// Obiekt mapy 3D w oknie albo na liście: wpasowany w prostokąt (środek cx, cy; najwyżej maxW × maxH px), gładko; false = brak grafiki
+function drawMap3dIcon(ctx, key, cx, cy, maxW, maxH) {
+  const s = map3dSprite(key); if (!s) return false; const w = s.c.width * s.u, h = s.c.height * s.u, k = Math.min(maxW / w, maxH / h);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(s.c, cx - w * k / 2, cy - h * k / 2, w * k, h * k); ctx.restore(); return true;
+}
 function map3dSprite(key) {
   const A = typeof MAP3D_ART !== 'undefined' && MAP3D_ART, im = MAP3D_IMG.sheet, f = A && A.f[key]; if (!f || !im || !im._ok) return null;
-  const sk = `m3_${key}`; let s = SPR.get(sk); if (s) return s; const [x, y, w, h, ax, ay] = f, k = PXD / A.d, cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+  const sk = `m3_${key}`; let s = SPR.get(sk); if (s) return s; const [x, y, w, h, ax, ay] = f, k = PIXEL_ART ? PXD / A.d : Math.min(1, 2 * Math.min(G.rs, 2.5) / A.d), /* gładko: gęstość ekranu */ cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
   const c = document.createElement('canvas'); c.width = cw; c.height = ch; const g = c.getContext('2d'); c._ctx = g; g.imageSmoothingQuality = 'high'; g.drawImage(im, x, y, w, h, 0, 0, cw, ch);
-  s = { c, ax: ax * cw / w, ay: ay * ch / h, u: 2 / PXD, raw: true }; SPR.set(sk, s); return s;
+  s = { c, ax: ax * cw / w, ay: ay * ch / h, u: 2 * w / A.d / cw, raw: true }; SPR.set(sk, s); return s;
 }
 // Klatka arkusza jako sprite ({ c, ax, ay, u }); odbicie dla dir = -1. Pozy: idle, walk, fly (latające), attack, hurt, dead, map
 function artFrame(cid, pose, i, dir, u) {
-  const key = `u3_${cid}_${pose}_${i}_${dir}`; let s = SPR.get(key); if (s) return s;
+  const key = `u3_${cid}_${pose}_${i}_${dir}`; let s = SPR.get(key); if (s) { if (s.u === u) return s; const k2 = key + '_' + u; let t = SPR.get(k2); if (!t) SPR.set(k2, t = { ...s, u }); return t; } // ta sama klatka w innej skali (bitwa i mapa)
   const A = UNIT_ART[cid], row = A.f[pose] || (pose === 'fly' && A.f.walk) || A.f.idle, [x, y, w, h, ax, ay] = row[i % row.length]; // lot bez własnych klatek: chód
   const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); c._ctx = g;
   if (dir < 0) { g.translate(w, 0); g.scale(-1, 1); } g.drawImage(UNIT_IMG[cid], x, y, w, h, 0, 0, w, h);
@@ -43,7 +51,7 @@ function artFrame(cid, pose, i, dir, u) {
 // Sprite bitewny jednostki w pozie i klatce animacji
 function battleSprite(cid, dir, pose, i = 0) { const A = unitArt(cid); return A ? artFrame(cid, pose, i, dir, A.u) : battleSprite2D(cid, dir, pose, i); }
 // Mała figurka na mapie przygody (4 klatki spoczynku)
-function creatureSprite(cid, dir, i = 0) { const A = unitArt(cid); return A ? artFrame(cid, 'map', i, dir, A.mu) : creatureSprite2D(cid, dir, i); }
+function creatureSprite(cid, dir, i = 0) { const A = unitArt(cid); return A ? (PIXEL_ART || !A.raw ? artFrame(cid, 'map', i, dir, A.mu) : artFrame(cid, 'idle', i, dir, A.u * 0.48)) : creatureSprite2D(cid, dir, i); } // gładko: ostra klatka bitewna w skali mapy
 // Jednostka w oknach i panelach: k = powiększenie jak dla figurki mapy (k ≥ 1,4: klatka bitewna, ostrzejsza)
 function drawCreatureIcon(ctx, cid, x, y, k = 1) {
   if (unitArt(cid) && k >= 1.4) drawSprite(ctx, battleSprite(cid, 1, 'idle', 0), x, y, k / 2);

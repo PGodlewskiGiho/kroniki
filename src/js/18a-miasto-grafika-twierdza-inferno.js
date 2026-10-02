@@ -181,5 +181,5 @@ TOWN_LAYOUTS.inferno = {
     ['spike', -110, 0.95], ['spike', 110, 0.98], ['spike', 96, 1.12], ['spike', -90, 1.9], ['spike', -60, 2.0, 0, 1.4], ['spike', 60, 2.05, 0, 1.4],
     ['brazier', -85, 1.42], ['brazier', 85, 1.42], ['brazier', -100, 1.95], ['brazier', 100, 1.95], ['fence', 330, 1.05], ['fence', -390, 1.3], ['rock', -200, 1.1],
   ],
-  floaters: [{ kind: 'ember', X: 0, Z: 1.3, e: 10, n: 10, spread: 90, spreadZ: 0.4 }], birds: true, birdCol: 'rgba(20,4,2,.9)', embers: true,
+  floaters: [{ kind: 'ember', X: 0, Z: 1.3, e: 10, n: 10, spread: 90, spreadZ: 0.4 }], birds: false, embers: true, /* w piekle bez ptaków */
 };

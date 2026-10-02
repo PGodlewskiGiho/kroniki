@@ -94,6 +94,10 @@ function drawSite(ctx, kind, f) {
   const stone = (x, y, w, h, c = '#8a8478') => { box(x, y, w, h, c); box(x, y, w, 2, LT(c)); box(x + w - 2, y, 2, h, DK(c, 0.2)); };
   const roof = (x, y, w, h, c) => { poly([[x - 2, y], [x + w / 2, y - h], [x + w + 2, y]], c); poly([[x + w / 2, y - h], [x + w + 2, y], [x + w / 2, y]], DK(c, 0.18)); };
   switch (kind) {
+    case 'gate': { // brama podziemi (dawny rysunek): kamienny łuk w pagórku, schody w dół
+      poly([[-20, 0], [-14, -22], [0, -30], [14, -22], [20, 0]], '#7a7468'); poly([[-20, 0], [-14, -22], [0, -30], [-4, -12], [-10, 0]], '#9a948a');
+      stone(-13, -24, 26, 24, '#6a6474'); ctx.fillStyle = '#050406'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-8, -12); ctx.arc(0, -12, 8, Math.PI, 0); ctx.lineTo(8, 0); ctx.fill();
+      for (let i = 0; i < 3; i++) box(-7 + i, -3 - i * 3, 14 - i * 2, 2, '#4a4454'); circ(ctx, -16, -20, 2.4, '#ffb040'); circ(ctx, 16, -20, 2.4, '#ffb040'); break; }
     case 'shrine': {
       stone(-11, -6, 22, 6, '#6e6a62'); stone(-8, -24, 16, 18, '#9a948a'); roof(-8, -24, 16, 10, '#4a5a8a');
       box(-3, -20, 6, 12, '#1e1a24'); const a = 0.6 + 0.4 * Math.sin(t);
@@ -760,13 +764,20 @@ function townFlagPoints(fac, lvl) {
 // season: pora roku (0 wiosna … 3 zima) zmienia drzewa i szczyty; pole bitwy rysuje przeszkody zawsze wiosenne
 // Klucz obiektu 3D dla przeszkody: drzewa wg terenu (pory roku: dąb, mieszany las, świerki), góry i skały wg palety terenu (zimą śnieg)
 const MAP3_TREE = { [TER.SNOW]: 'snow', [TER.ROUGH]: 'pine', [TER.SAND]: 'palm', [TER.LAVA]: 'lava', [TER.SWAMP]: 'swamp', [TER.DIRT]: 'dirt' }, MAP3_SEAS = { oak: 1, dirt: 1, pine: 1 };
-function obstacle3dKey(o, t, v, season) {
+function obstacle3dKey(o, t, v, season, under) {
+  if (under) return o === OBST.MOUNT ? `cave_${v % 8}` : `stalag_${v % 8}`; // podziemia: skalne ściany jaskini, stalagmity i kryształy
   if (o === OBST.TREE) { const k = MAP3_TREE[t] || 'oak'; return `tree_${k}_${MAP3_SEAS[k] ? season : 0}_${v % 4}`; }
   const pal = t === TER.LAVA ? 'lava' : t === TER.SAND ? 'sand' : t === TER.SNOW || season === 3 ? 'snow' : 'def';
   return `${o === OBST.MOUNT ? 'mount' : 'rock'}_${pal}_${v % 8}`;
 }
-const obstacleSprite = (o, t, v, season = 0) => map3dSprite(obstacle3dKey(o, t, v, season)) || sprite(`ob${o}_${t}_${v}_${season}`, 40, 38, 20, 26, p => { SEASON_DRAW = season; drawObstacle(p, o, t, 0, 0, mulberry32(v * 7919 + o * 31 + t * 7)); SEASON_DRAW = 0; });
-const decorSprite = (t, v, season = 0) => sprite(`dec${t}_${v}_${season}`, 12, 10, 6, 7, p => { SEASON_DRAW = season; drawDecor(p, t, v); SEASON_DRAW = 0; }, null);
+const obstacleSprite = (o, t, v, season = 0, under = 0) => map3dSprite(obstacle3dKey(o, t, v, season, under)) || (under && map3dSprite(obstacle3dKey(o, t, v, season, 0))) || sprite(`ob${o}_${t}_${v}_${season}`, 40, 38, 20, 26, p => { SEASON_DRAW = season; drawObstacle(p, o, t, 0, 0, mulberry32(v * 7919 + o * 31 + t * 7)); SEASON_DRAW = 0; });
+// Ozdoba terenu z modelu 3D: rodzaj wg terenu (zimą śnieg poza lawą i piaskiem, jesienią na trawie liście)
+function decor3dKey(t, v, season, under) {
+  if (under) return `decor_cave_${v % 6}`;
+  if (season === 3 && t !== TER.LAVA && t !== TER.SAND) t = TER.SNOW; if (season === 2 && t === TER.GRASS && v % 2) return `decor_leaves_${(v >> 1) & 1}`;
+  const k = { [TER.GRASS]: 'grass', [TER.DIRT]: 'dirt', [TER.ROUGH]: 'dirt', [TER.SAND]: 'sand', [TER.SNOW]: 'snow', [TER.SWAMP]: 'swamp', [TER.LAVA]: 'lava' }[t]; return k ? `decor_${k}_${v % 4}` : null;
+}
+const decorSprite = (t, v, season = 0, under = 0) => (map3dSprite(decor3dKey(t, v, season, under) || '')) || (decor3dKey(t, v % 4, season) && map3dSprite(decor3dKey(t, v % 4, season))) || sprite(`dec${t}_${v % 4}_${season}`, 12, 10, 6, 7, p => { SEASON_DRAW = season; drawDecor(p, t, v % 4); SEASON_DRAW = 0; }, null);
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
 // Karawana na mapie: kryty wóz z koniem i chorągiewką koloru gracza (fr: klatka kół)
@@ -1249,8 +1260,15 @@ function drawSkillIcon(c, id) {
     case 'eagleSight': poly([[-11, -2], [-6, -6], [-2, -3], [0, -7], [2, -3], [6, -6], [11, -2], [5, 0], [2, 6], [0, 9], [-2, 6], [-5, 0]], '#c8a060'); dot(0, -2, 2, gd); poly([[-1, -1], [1, -1], [0, 2]], '#e8c070'); break;
   }
 }
-const skillSprite = id => sprite(`sk_${id}`, 16, 16, 8, 8, p => drawSkillIcon(p, id));
-function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id), cx, cy, size / 32); }
+// Ikona z modelu 3D (tools/grafika3d/wypal-umiejetnosci.js) pomniejszona raz do potrzebnej wielkości; bez arkusza dawny rysunek
+function skillSprite(id, size = 32) {
+  const A = typeof SKILL_ART !== 'undefined' && SKILL_ART, im = SKILL_IMG.sheet, p = A && A.f[id];
+  if (!p || !im || !im._ok) return sprite(`sk_${id}`, 16, 16, 8, 8, q => drawSkillIcon(q, id));
+  const n = Math.min(A.s, Math.ceil(size * Math.min(G.rs || 1, 2.5) / 16) * 16), key = `sk3_${id}_${n}`; let s = SPR.get(key); if (s) return s;
+  const c = document.createElement('canvas'); c.width = c.height = n; const g = c.getContext('2d'); c._ctx = g; g.imageSmoothingQuality = 'high'; g.drawImage(im, p[0], p[1], A.s, A.s, 0, 0, n, n);
+  s = { c, ax: n / 2, ay: n / 2, u: 32 / n, raw: true }; SPR.set(key, s); return s;
+}
+function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id, size), cx, cy, size / 32); }
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
 function showSpellbook(h, mode, onPick) {
   // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły

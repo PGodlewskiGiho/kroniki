@@ -57,6 +57,10 @@ const SITE3 = {
   portal(f = 0) { const g = new THREE.Group(); g.add(cyl3(24, 26, 4, ST.stoneD, 'ashlar')); const arch = torus(20 / PXU, 4 / PXU, '#6a6474', 'stone', P(0, 24, 0), null, [1, 1.15, 1]); g.add(arch); for (const s of [-1, 1]) g.add(blk(9, 8, 9, '#5a5464', 'ashlar', s * 20, 0, 0));
     const disc = cyl(17 / PXU, 17 / PXU, 1 / PXU, '#60a0ff', 'glow', P(0, 24, 0), [Math.PI / 2, 0, 0], [1, 1, 1.15], 28); disc.material = lightMat('#7ab4ff'); disc.material.transparent = true; disc.material.opacity = 0.85; g.add(disc); g.add(mqGlow(6, '#e0f0ff', 0, 24, 1));
     for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + f * Math.PI / 12; g.add(sph(1.6 / PXU, '#bfe0ff', 'gem', P(Math.cos(a) * 20, 24 + Math.sin(a) * 23, 3))); } disc.material.opacity = 0.7 + 0.08 * f; return g; },
+  gate() { /* brama podziemi: kamienny portal w skalnym pagórku, schody w dół w ciemność, pochodnie */ const g = new THREE.Group(); g.add(mqRock('def', 0, -10, 34, 34, 22, 101, false));
+    g.add(blk(34, 30, 12, '#6a6474', 'ashlar', 0, 0, 6)); g.add(opening(20, 24, 0, 0, 12.5, { frame: '#4a4454', frameKind: 'ashlar', sill: false, inner: '#050406', frameW: 4 })); g.add(blk(38, 5, 14, '#5a5464', 'ashlar', 0, 30, 6));
+    for (let i = 0; i < 4; i++) g.add(blk(20, 1.5, 4, '#7a7484', 'ashlar', 0, -0.5 - i * 0.2, 13 + i * 4)); for (const s of [-1, 1]) { g.add(cyl3(1, 1, 12, '#3a2a1a', 'wood', s * 16, 14, 13, 6)); g.add(cone(2 / PXU, 5 / PXU, '#ffa040', 'glow', P(s * 16, 28, 13), null, 6)); g.add(mqGlow(1.6, '#ffd060', s * 16, 27, 14)); }
+    g.add(sph(3 / PXU, '#8a6ac0', 'gem', P(0, 36, 12))); return g; },
   wreck() { const g = new THREE.Group(), hull = lathe([[0.001, -0.5], [0.5, -0.45], [0.75, -0.2], [0.8, 0.1], [0.7, 0.35]].map(([r, y]) => [r, y]), '#5a3a22', 'wood', P(0, 2, 0), [0.55, 0.9, 1.6]); hull.rotation.set(0.3, 0.4, 0.5); g.add(hull);
     const m = cyl3(1.4, 1.2, 40, ST.woodD, 'wood', 0, 0, 0, 8); m.rotation.z = -0.6; m.position.set(...P(4, 10, -4)); g.add(m); g.add(slab([[0, 0], [14, 2], [12, -14], [2, -16]].map(([a, b]) => [a / PXU, b / PXU]), 0.3 / PXU, '#c8b890', 'cloth', P(12, 22, -4), [0, 0.3, -0.3]));
     for (let i = 0; i < 3; i++) g.add(blk(6, 4, 5, ST.wood, 'wood', -18 + i * 8, -1, 14 + (i % 2) * 4, [0.2, i, 0.3])); return g; },
@@ -112,9 +116,23 @@ function mqCaravan(f) { // kryty wóz (plandeka w barwie gracza), koń w zaprzę
   g.add(mast(-10, 22, 0, 18)); g.add(slab([[0, 0], [10, -1], [8, -5], [10, -9], [0, -8]].map(([a, b]) => [a / PXU, b / PXU]), 0.3 / PXU, K, 'cloth', P(-10, 39, 0)));
   return g; }
 function mqBoatHero(f) { const g = mqBoat(true); g.rotation.z = [0, 0.04, 0, -0.04][f]; return g; }
-function mqBoat(hero = false) { const g = new THREE.Group(), hull = lathe([[0.001, -0.3], [0.45, -0.25], [0.62, 0], [0.6, 0.2]], '#6a4424', 'wood', P(0, 6, 0), [0.6, 0.6, 1.7]); hull.rotation.y = Math.PI / 2; g.add(hull);
-  g.add(blk(56, 2, 14, '#8a6a40', 'wood', 0, 15, 0)); g.add(cyl3(1.4, 1.2, 46, ST.woodD, 'wood', 0, 15, 0, 8)); g.add(slab([[0, 0], [22, 0], [20, -26], [0, -30]].map(([a, b]) => [a / PXU, b / PXU]), 0.3 / PXU, hero ? '#ff00ff' : '#e8dcc0', 'cloth', P(1, 58, 0), [0, -0.5, 0])); g.add(mast(0, 60, 0, 6));
-  if (hero) { const r = rider({ kind: 'rider', horse: '#8a6a4a', mane: '#3a2a1a', skin: '#e0b090', cloth: '#ff00ff', weapon: 'sword', helm: 'helm', helmCol: '#b8c0cc', armor: true, cape: '#ff00ff', barding: '#ff00ff', trim: '#e0b24a' }, { t: 0 }); r.scale.setScalar(0.55); r.position.set(...P(-12, 17, 0)); g.add(r); } return g; }
+// Kadłub łodzi: obrys burty (z boku) wyciągnięty na szerokość, potem zwężony ku dziobowi, rufie i stępce
+function mqHull(L, B, H, col) {
+  const sh = new THREE.Shape(); sh.moveTo(-L / 2, H); sh.quadraticCurveTo(-L * 0.42, H * 0.2, -L * 0.3, 0); sh.lineTo(L * 0.32, 0); sh.quadraticCurveTo(L * 0.46, H * 0.25, L / 2 + L * 0.04, H * 1.15); sh.lineTo(-L / 2, H);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: B, bevelEnabled: false, curveSegments: 10, steps: 6 }); geo.translate(0, 0, -B / 2);
+  const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), t = Math.min(1, Math.abs(x) / (L / 2)), f = Math.sqrt(Math.max(0, 1 - t ** 2.4)) * (0.55 + 0.45 * Math.min(1, y / H)); p.setZ(i, z * f); }
+  geo.computeVertexNormals(); return mesh(geo, col, 'wood');
+}
+function mqBoat(hero = false) { // łódź żaglowa: kadłub z deskami, ciemne wnętrze, ławki, maszt z wybrzuszonym żaglem (bohater: żagiel i proporzec w barwie gracza)
+  const g = new THREE.Group(), L = 2.0, B = 0.62, H = 0.32, hull = mqHull(L, B, H, '#7a4a26'); g.add(hull);
+  const inner = mqHull(L * 0.9, B * 0.82, H * 0.9, '#3a2414'); inner.position.y = 0.05; inner.scale.y = 0.96; g.add(inner);
+  for (const y of [0.1, 0.2]) { const st = mqHull(L * 1.002, B * 1.01, 0.025, '#5a3418'); st.position.y = y; g.add(st); } // pasy desek na burcie
+  g.add(cyl(0.028, 0.022, 1.55, '#4a3020', 'wood', [0.05, H + 0.75, 0])); g.add(cyl(0.015, 0.015, 0.95, '#4a3020', 'wood', [0.1, H + 1.36, 0.02], [0, 0, Math.PI / 2])); /* reja */
+  const sail = new THREE.PlaneGeometry(0.85, 1.0, 8, 8), sp = sail.attributes.position; for (let i = 0; i < sp.count; i++) { const u = sp.getX(i) / 0.425, v = (sp.getY(i) + 0.5) / 1.0; sp.setZ(i, 0.16 * (1 - u * u) * Math.sin(v * Math.PI) ); }
+  sail.computeVertexNormals(); const sm = new THREE.Mesh(sail, new THREE.MeshStandardMaterial({ color: hero ? '#ff00ff' : '#e8dcc0', roughness: 0.9, side: THREE.DoubleSide })); sm.position.set(0.1, H + 0.85, 0.02); /* żagiel w poprzek widoku, wybrzuszony ku kamerze */ g.add(sm);
+  if (hero) g.add(slab([[0, 0], [0.3, -0.03], [0.22, -0.1], [0.3, -0.17], [0, -0.16]], 0.008, '#ff00ff', 'cloth', [0.05, H + 1.52, 0]));
+  g.add(cyl(0.012, 0.012, 0.5, '#4a3020', 'wood', [L / 2 + 0.05, H + 0.1, 0], [0, 0, -1.1])); // bukszpryt
+  const w = mpGrp(g); w.scale.setScalar(30 / PXU * 0.95); return w; }
 const SITE3_ANIM = ['windmill', 'waterMill', 'camp', 'sacrifice', 'portal']; // klatki 1–3 (klatka 0 = klucz bez numeru)
 for (const k of Object.keys(SITE3)) { MAP3['site_' + k] = () => mqWrap(SITE3[k](0)); if (SITE3_ANIM.includes(k)) for (let f = 1; f < 4; f++) MAP3[`site_${k}_${f}`] = () => mqWrap(SITE3[k](f)); }
 for (const k of Object.keys(MINE3)) MAP3['mine_' + k] = () => mqWrap(MINE3[k]());

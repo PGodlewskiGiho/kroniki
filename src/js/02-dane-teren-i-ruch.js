@@ -24,4 +24,11 @@ const ROADS = [null,
 const DX8 = [1, -1, 0, 0, 1, 1, -1, -1], DY8 = [0, 0, 1, -1, 1, -1, 1, -1];
 const SITE_COUNT = { 36: 4, 72: 6, 108: 8, 144: 10 }; // miejsca pod miasta = najwięcej graczy na mapie
 const STEP_TIME = 0.14, HERO_SIGHT = 5;
+// Podziemia (opcja nowej gry): mapa ma bok 2·ln; powierzchnia w lewej górnej ćwiartce (0..ln-1), podziemia w prawej dolnej
+// (ln..2ln-1); pozostałe dwie ćwiartki to lita skała, której nie widać. Przejścia między poziomami: pary bram (SITES.gate).
+// Bez podziemi ln nie istnieje i poziom jest jeden (cała mapa).
+const UNDER_GATES = { S: 2, M: 3, L: 4, XL: 5 };
+const levelSize = map => map.ln || map.n;
+const levelOf = (map, x, y) => (map.ln && x >= map.ln && y >= map.ln ? 1 : 0);
+const levelOrigin = (map, L) => (L ? map.ln : 0);
 

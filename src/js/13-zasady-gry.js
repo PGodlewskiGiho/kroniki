@@ -139,7 +139,7 @@ function visitObject(st, h, ob) {
     showDialog('Znajdujesz skrzynię ze skarbem. Możesz zatrzymać złoto albo rozdać je chłopom w zamian za doświadczenie.', [
       { label: `${ob.gold} złota`, key: 'enter', action: () => { R.gold += ob.gold; advFloat(`+${ob.gold}`, h.x, h.y, 'gold'); } },
       { label: `${ob.exp} dośw.`, action: () => { advFloat(`+${ob.exp} dośw.`, h.x, h.y); gainExp(st, h, ob.exp); } },
-    ], { locked: true, iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, chestSprite(), cx, cy + 4, 2) });
+    ], { locked: true, iconH: 56, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'chest', cx, cy, 70, 52) || drawSprite(ctx, chestSprite(), cx, cy + 4, 2) });
   } else if (ob.type === 'art') {
     removeObject(st, ob); const on = giveArtifact(h, ob.art); h.mp = Math.min(h.mp + (on ? ARTIFACTS[ob.art].bonus.mp || 0 : 0), heroMaxMP(h));
     showDialog(`Znajdujesz artefakt: ${artInfo(ob.art)} ${on ? `${h.name} od razu go zakłada.` : 'Trafia do plecaka: załóż go na ekranie bohatera.'}${assemblable(h).length ? ` Masz komplet części relikwii: ${ARTIFACTS[assemblable(h)[0]].name}! Złóż ją na ekranie bohatera.` : ''}`, [{ label: 'OK', key: 'enter' }],
@@ -149,12 +149,12 @@ function visitObject(st, h, ob) {
     const arts = h.bag.filter(id => id !== 'grail' && SACRIFICE_EXP[ARTIFACTS[id].rarity]), exp = arts.reduce((s, id) => s + SACRIFICE_EXP[ARTIFACTS[id].rarity], 0);
     showDialog(`Ołtarz ofiarny. Złożyć w ofierze wszystkie artefakty z plecaka (${arts.length}: ${arts.map(id => ARTIFACTS[id].name).join(', ')}) za ${exp} doświadczenia? Założonych nie rusza.`, [
       { label: 'Poświęć', key: 'enter', action: () => { const r = useSite(st, h, ob); advFloat(r.float, h.x, h.y); gainExp(st, h, r.exp); } }, { label: 'Nie', key: 'escape' },
-    ], { iconH: 76, icon: (ctx, cx, cy) => drawSprite(ctx, siteSprite('sacrifice'), cx, cy + 30, 1.5) });
+    ], { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_sacrifice', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('sacrifice'), cx, cy + 30, 1.5) });
   } else if (ob.type === 'site') {
     const r = useSite(st, h, ob), S = SITES[ob.kind];
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
     showDialog(`${S.name}. ${r.text}`, [{ label: r.puzzle ? 'Mapa zagadki' : 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); if (r.puzzle) showPuzzle(st); } }],
-      { iconH: 76, icon: (ctx, cx, cy) => { drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5); if (ob.kind === 'witchHut') skillIcon(ctx, ob.skill, cx + 64, cy + 8, 48); } });
+      { iconH: 76, icon: (ctx, cx, cy) => { drawMap3dIcon(ctx, 'site_' + ob.kind, cx, cy, 90, 74) || drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5); if (ob.kind === 'witchHut') skillIcon(ctx, ob.skill, cx + 64, cy + 8, 48); } });
   } else if (ob.type === 'town') {
     const t = st.towns[ob.townId];
     if (ob.owner !== h.owner) startTownAssault(st, h, t);
@@ -173,7 +173,7 @@ function visitObject(st, h, ob) {
     if (ob.owner === h.owner) { G.screens.adventure.flash(`${M.name} już należy do ciebie`); return; }
     ob.owner = h.owner; MapRender.miniDirty = true;
     showDialog(`${M.name} należy teraz do ciebie. Dochód dzienny: ${M.income} (${resName(ob.kind).toLowerCase()}).`, [{ label: 'OK', key: 'enter' }],
-      { iconH: 66, icon: (ctx, cx, cy) => { drawSprite(ctx, mineSprite(ob.kind), cx - 33, cy - 31, 1); drawSprite(ctx, flagSprite(ownerColor(st, ob.owner), 12, 7), cx + 23, cy - 33, 1); } });
+      { iconH: 66, icon: (ctx, cx, cy) => { if (drawMap3dIcon(ctx, 'mine_' + ob.kind, cx, cy, 110, 64)) return drawSprite(ctx, flagSprite(ownerColor(st, ob.owner), 12, 7), cx + 30, cy - 34, 1); drawSprite(ctx, mineSprite(ob.kind), cx - 33, cy - 31, 1); drawSprite(ctx, flagSprite(ownerColor(st, ob.owner), 12, 7), cx + 23, cy - 33, 1); } });
   }
 }
 function startEncounter(st, h, m) {
@@ -194,7 +194,7 @@ function bankLootText(kind) {
 function startBankAssault(st, h, ob) {
   const B = BANKS[ob.kind];
   offerBattle(st, h, ob, `${B.name}: ${B.desc}. Załoga: ${bankGuardText(ob)}. Łup: ${bankLootText(ob.kind)}.`, bankPower(ob),
-    (ctx, cx, cy) => { const sp = bankSprite(ob.kind, false), H2 = sp.c.height * sp.u / 2, k = Math.min(1.1, 40 / H2); drawSpriteBox(ctx, sp, cx - sp.c.width * sp.u / 2 * k, cy - H2 * k, k); });
+    (ctx, cx, cy) => { if (drawMap3dIcon(ctx, `bank_${ob.kind}_0`, cx, cy, 120, 84)) return; const sp = bankSprite(ob.kind, false), H2 = sp.c.height * sp.u / 2, k = Math.min(1.1, 40 / H2); drawSpriteBox(ctx, sp, cx - sp.c.width * sp.u / 2 * k, cy - H2 * k, k); });
 }
 // Łup ze skarbca dla zwycięzcy (człowieka albo SI); zwraca opis do okna wyniku
 function lootBank(st, h, ob) {
@@ -225,7 +225,7 @@ function startTownAssault(st, h, t) {
     return;
   }
   const who = `${t.name} (${t.owner < 0 ? 'miasto niezależne' : `miasto: ${ownerName(st, t.owner)}`}) ${hh ? `ma w murach bohatera: ${heroTitle(hh)}` : 'broni się garnizonem'}.${walls}`;
-  offerBattle(st, h, t, who, townPower(st, t), (ctx, cx, cy) => drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), cx - 40, cy - 40, 2));
+  offerBattle(st, h, t, who, townPower(st, t), (ctx, cx, cy) => drawMap3dIcon(ctx, `town_${t.faction}_${townLevel(t)}`, cx, cy, 110, 84) || drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), cx - 40, cy - 40, 2));
 }
 // Okno przed bitwą: porównanie sił i wybór (walka, walka automatyczna, odwrót)
 function offerBattle(st, h, foe, who, foePower, icon) {
@@ -878,8 +878,11 @@ function useSite(st, h, ob) {
     }
     case 'prison': { const p = freePrisoner(st, h, ob); if (typeof p === 'string') return { text: p }; removeObject(st, ob);
       return { text: `${h.name} otwiera celę. ${heroTitle(p)} (poziom ${p.level}) wychodzi na wolność i przyłącza się do twojej sprawy.`, freed: p }; }
-    case 'portal': {
-      const to = st.objects[ob.pair]; if (!to || to.dead) return { text: 'Portal gaśnie: jego drugi koniec zniknął.' };
+    case 'gate': case 'portal': {
+      const to = st.objects[ob.pair], gate = ob.kind === 'gate'; if (!to || to.dead) return { text: 'Portal gaśnie: jego drugi koniec zniknął.' };
+      if (gate && heroAt(st, to.x, to.y)) return { text: 'Wyjście z bramy zajmuje inny bohater. Spróbuj później.' };
+      if (gate) { h.x = to.x; h.y = to.y; h.path = null; h.dest = null; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); MapRender.miniDirty = true;
+        if (h.owner === ME && G.state === st) centerCam(st, h.x, h.y); return { text: levelOf(st.map, h.x, h.y) ? 'Armia schodzi kamiennymi schodami w mrok podziemi.' : 'Armia wychodzi z podziemi na światło dnia.' }; }
       if (heroAt(st, to.x, to.y)) return { text: 'Drugi koniec portalu zajmuje inny bohater. Spróbuj później.' };
       h.x = to.x; h.y = to.y; h.path = null; h.dest = null; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); MapRender.miniDirty = true;
       if (h.owner === ME && G.state === st) centerCam(st, h.x, h.y); return { text: 'Wir światła porywa armię i wyrzuca ją w drugim portalu, daleko stąd.' };
@@ -910,7 +913,7 @@ function siteInfo(st, ob, h) {
   if (ob.kind === 'dwelling') dwellRefresh(st, ob);
   const what = ob.kind === 'shrine' ? `uczy czaru „${SPELLS[ob.spell].name}” (poziom ${SPELLS[ob.spell].level})` : ob.kind === 'windmill' ? `co tydzień 3–6 jednostek surowca (${resName(ob.res).toLowerCase()}) dla pierwszego gościa`
     : ob.kind === 'witchHut' ? `uczy umiejętności ${skillText(ob.skill, 1)}` : ob.kind === 'dwelling' ? `${CREATURES[ob.cid].plural.toLowerCase()} do werbunku: ${ob.avail} (po ${costText(CREATURES[ob.cid].cost)}), co tydzień przybywa ${CREATURES[ob.cid].growth}`
-    : ob.kind === 'portal' && st.objects[ob.pair] ? `${S.desc} (pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})` : S.desc;
+    : ob.kind === 'portal' && st.objects[ob.pair] ? `${S.desc} (pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})` : ob.kind === 'gate' ? `${S.desc}: ${levelOf(st.map, ob.x, ob.y) ? 'wyjście na powierzchnię' : 'zejście do podziemi'}` : S.desc;
   const used = h && siteUsed(st, ob, h) ? { hero: ' Ten bohater już tu był.', day: ' Dziś już wykorzystane.', heroWeek: ' W tym tygodniu już wykorzystane.', week: ' Plon z tego tygodnia już zebrany.', player: ' Już odwiedzone.' }[S.use] : '';
   return `${S.name}: ${what}.${used}${st.guard[ob.y * st.map.n + ob.x] ? ' Pilnuje go potwór.' : ''}`;
 }

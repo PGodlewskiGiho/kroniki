@@ -95,6 +95,7 @@ const SITES = {
   dwelling: { name: 'Siedlisko najemników', use: 'free', per: 1500, ai: 1500, desc: 'co tydzień przybywają stwory do werbunku' },
   sacrifice: { name: 'Ołtarz ofiarny', use: 'free', per: 2500, ai: 0, desc: 'artefakty z plecaka zamienia na doświadczenie' },
   portal: { name: 'Portal', use: 'free', per: 0, ai: 0, desc: 'przenosi bohatera do drugiego portalu z pary' },
+  gate: { name: 'Brama podziemi', use: 'free', per: 0, ai: 600, desc: 'schody prowadzące między powierzchnią a podziemiami' },
   wreck: { name: 'Wrak statku', use: 'once', per: 0, ai: 1600, desc: 'zatopiony ładunek: złoto, czasem artefakt (dostępny łodzią)' },
 };
 // Nowe miejsca: portale w parach (PORTAL_PAIRS wg rozmiaru mapy), wraki na wodzie (jeden na WRECK_PER pól wody),

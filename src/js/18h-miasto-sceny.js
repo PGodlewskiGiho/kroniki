@@ -144,7 +144,7 @@ TOWN_SCENES.inferno = {
   ],
   props: [['spike', -60, 1.95, 1.3], ['spike', 60, 1.95, 1.3], ['brazier', -40, 0.92], ['brazier', 50, 0.92]],
   floaters: [{ kind: 'ember', X: 0, Z: 1.55, e: 10, n: 12, spread: 120, spreadZ: 0.25 }],
-  weather: { embers: true }, birds: true, birdCol: 'rgba(20,4,2,.9)',
+  weather: { embers: true }, birds: false, /* w piekle bez ptaków */
 };
 
 // --- Akademia: ośnieżone tarasy z kamiennymi schodami, zamek magów na najwyższym ---
