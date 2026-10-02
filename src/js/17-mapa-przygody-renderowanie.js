@@ -281,7 +281,7 @@ function* renderChunkSteps(map, cx, cy) {
         wm[wi] = near <= 2 ? 2 : 1; wet = true;
         if (SN === 3 && near <= 4) { wm[wi] = 0; col = near === 1 ? SNOWC[2] : (thash(ax >> 1, ay >> 2, 81) % 23 === 0) ? [150, 186, 214] : near <= 2 ? [206, 226, 240] : [184, 212, 232]; } // zimą lód przy brzegu
         else if (near === 1) col = PC.foam; else if (near === 2) col = PC.sh1; else if (near <= 4) col = PC.sh2;
-        else { const P = TPAL[0]; if (!PIXEL_ART) { col = mixRgb(P[1], P[0], clamp((vnoise2(ax / 8, ay / 8, 61) - 0.2) * 2.2, 0, 1)); if (TERRAIN_TEX.water) col = texShade(TERRAIN_TEX.water, col, ax, ay, 0.6); } else { col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; } }
+        else { const P = TPAL[0]; if (!PIXEL_ART) { col = mixRgb(P[1], P[0], clamp((vnoise2(ax / 8, ay / 8, 61) - 0.2) * 2.2, 0, 1)); if (TERRAIN_TEX.water) col = texShade(TERRAIN_TEX.water, col, ax, ay, 0.45); } else { col = vnoise2(ax / 8, ay / 8, 61) < 0.33 ? P[0] : P[1]; if ((thash(ax >> 2, ay, 71) % 100) < 3 && (ax & 3) !== 3) col = P[2]; else if (hh > 0.998) col = P[3]; } }
       } else {
         col = PIXEL_ART ? seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN) : landLerp(t, ax, ay);
         const TX = !PIXEL_ART && ((under && (t === TER.DIRT || t === TER.ROUGH) && TERRAIN_TEX.cave) || TERRAIN_TEX[TEX_NAME[t]]); // podziemia: dno jaskini
