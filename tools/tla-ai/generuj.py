@@ -10,14 +10,14 @@ from diffusers import StableDiffusionImg2ImgPipeline, DPMSolverMultistepSchedule
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL = os.environ.get('MODEL', 'Lykon/dreamshaper-8')
-STEPS, CFG, W, H = int(os.environ.get('STEPS', 30)), float(os.environ.get('CFG', 7)), 768, 560
+STEPS, CFG, W, H = int(os.environ.get('STEPS', 30)), float(os.environ.get('CFG', 7)), int(os.environ.get('W', 768)), int(os.environ.get('H', 560))
 
 def main():
     fac, sketch = sys.argv[1], sys.argv[2]
     seeds = [int(s) for s in (sys.argv[3] if len(sys.argv) > 3 else '1,2').split(',')]
     strengths = [float(s) for s in (sys.argv[4] if len(sys.argv) > 4 else '0.55').split(',')]
     data = json.load(open(os.path.join(HERE, 'opisy.json'), encoding='utf-8'))
-    d = data[fac]; prompt = data['_styl'].format(opis=d['opis']); neg = data['_negatyw'] + ', ' + d.get('negatyw', '')
+    d = data[fac]; prompt = d.get('styl', data['_styl']).format(opis=d['opis']); neg = d.get('negatyw_pelny') or data['_negatyw'] + ', ' + d.get('negatyw', '') # tła bitew: własny styl i negatyw
     torch.set_num_threads(os.cpu_count())
     pipe = StableDiffusionImg2ImgPipeline.from_pretrained(MODEL, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, algorithm_type='dpmsolver++', use_karras_sigmas=True)

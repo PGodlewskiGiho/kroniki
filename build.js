@@ -38,7 +38,9 @@ function build() {
   const ameta = path.join(gdir, 'artefakty.json'), aimg = path.join(gdir, 'artefakty.webp'), aart = fs.existsSync(ameta) && fs.existsSync(aimg) ? { ...JSON.parse(fs.readFileSync(ameta, 'utf8')), png: fs.readFileSync(aimg).toString('base64'), webp: 1 } : null;
   // Obiekty mapy wypalone z 3D (tools/grafika3d/wypal-mape.js): { d, f: klucz -> [x, y, w, h, ax, ay], png: arkusz WebP }
   const mmeta = path.join(gdir, 'mapa.json'), mimg = path.join(gdir, 'mapa.webp'), mart = fs.existsSync(mmeta) && fs.existsSync(mimg) ? { ...JSON.parse(fs.readFileSync(mmeta, 'utf8')), png: fs.readFileSync(mimg).toString('base64'), webp: 1 } : null;
-  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\nconst TOWN_BUILD_ART = ${JSON.stringify(tart)};\nconst ARTIFACT_ART = ${JSON.stringify(aart)};\nconst MAP3D_ART = ${JSON.stringify(mart)};\n`;
+  // Tła bitew malowane przez AI (tools/tla-ai, szkice: szkic-bitwy.js): nazwa terenu -> WebP pola bitwy
+  const bdir = path.join(gdir, 'bitwy'), bart = {}; if (fs.existsSync(bdir)) for (const f of fs.readdirSync(bdir)) if (f.endsWith('.webp')) bart[f.replace('.webp', '')] = { png: fs.readFileSync(path.join(bdir, f)).toString('base64'), webp: 1 };
+  const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\nconst TOWN_BUILD_ART = ${JSON.stringify(tart)};\nconst ARTIFACT_ART = ${JSON.stringify(aart)};\nconst MAP3D_ART = ${JSON.stringify(mart)};\nconst BATTLE_BG_ART = ${JSON.stringify(bart)};\n`;
   return shell.replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => artJs + js);
 }
 
