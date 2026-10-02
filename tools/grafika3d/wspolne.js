@@ -8,7 +8,7 @@ function threeBundle() {
   require('esbuild').buildSync({ entryPoints: [path.join(__dirname, 'three-entry.js')], bundle: true, minify: true, format: 'iife', globalName: 'THREE', outfile: out, logLevel: 'warning' });
   return out;
 }
-const MODEL_FILES = ['modele.js', 'postacie.js', 'zwierzeta.js', 'maszyny.js', 'budowle.js', 'budowle-knieja.js', 'budowle-kurhan.js', 'budowle-twierdza.js', 'budowle-inferno.js', 'budowle-akademia.js', 'budowle-loch.js', 'budowle-cytadela.js', 'scena.js'].map(f => path.join(__dirname, f)).filter(f => fs.existsSync(f));
+const MODEL_FILES = ['modele.js', 'artefakty.js', 'postacie.js', 'zwierzeta.js', 'maszyny.js', 'budowle.js', 'budowle-knieja.js', 'budowle-kurhan.js', 'budowle-twierdza.js', 'budowle-inferno.js', 'budowle-akademia.js', 'budowle-loch.js', 'budowle-cytadela.js', 'scena.js'].map(f => path.join(__dirname, f)).filter(f => fs.existsSync(f));
 // Dane jednostek (look, klatki animacji) z gry, a modele na osobnej, pustej stronie (nazwy funkcji gry i narzędzia nie kolidują)
 async function openStudio(viewport = { width: 1440, height: 900 }) {
   const { chromium } = require('playwright');

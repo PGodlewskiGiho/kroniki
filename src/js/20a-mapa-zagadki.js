@@ -114,7 +114,7 @@ function digHere(scr, st) {
   const r = digGrail(st, h); if (r.error) { scr.flash(r.error); return; }
   scr.mapFx = scr.mapFx || []; scr.mapFx.push({ kind: 'ring', x: h.x, y: h.y, r: 1.2, col: 'rgba(150,110,60,.8)', t: G.time });
   if (r.found) showDialog(`${h.name} wykopuje Graala! Święty kielich trafia do plecaka. Zanieś go do jednego ze swoich miast, aby wznieść tam budowlę Graala: +${GRAIL_GOLD} złota dziennie i +50% przyrostu stworów.`,
-    [{ label: 'Wspaniale', key: 'enter' }], { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite('grail'), cx, cy, 3) });
+    [{ label: 'Wspaniale', key: 'enter' }], { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite('grail', true), cx, cy, 3) });
   else showDialog(`${h.name} kopie przez cały dzień, ale nic tu nie ma. ${st.grail && st.grail.found < 0 ? 'Mapa zagadki podpowie, gdzie szukać.' : ''}`, [{ label: 'OK', key: 'enter' }]);
 }
 // Dołki po kopaniu na mapie: ciemna jama z wałem ziemi

@@ -1150,7 +1150,15 @@ function drawArtifact(c, id) {
       c.fillStyle = gem; c.fillRect(-8, -10, 16, 1.6); c.fillStyle = '#c83a3a'; c.fillRect(-4, -6, 2, 2); c.fillStyle = '#3a8ae0'; c.fillRect(1, -6, 2, 2); break;
   }
 }
-const artSprite = id => sprite(`art_${id}`, 16, 16, 8, 8, p => drawArtifact(p, id));
+// Artefakt wypalony z modelu 3D (src/grafika/artefakty.webp): kratka s×s, wyświetlana jak dawny sprite 16×16 (32 px logiczne przy k = 1).
+// Mała wersja (mapa, plecak) jest pomniejszona raz z wygładzaniem; hi = pełna kratka do powiększeń (ekran bohatera, okna).
+function artSprite(id, hi = false) {
+  const A = typeof ARTIFACT_ART !== 'undefined' && ARTIFACT_ART, im = ARTIFACT_IMG.sheet, p = A && A.f[id];
+  if (!p || !im || !im._ok) return sprite(`art_${id}`, 16, 16, 8, 8, q => drawArtifact(q, id));
+  const n = hi ? A.s : A.s / 2, key = `art3_${id}_${n}`; let s = SPR.get(key); if (s) return s;
+  const c = document.createElement('canvas'); c.width = c.height = n; const g = c.getContext('2d'); c._ctx = g; g.imageSmoothingQuality = 'high'; g.drawImage(im, p[0], p[1], A.s, A.s, 0, 0, n, n);
+  s = { c, ax: n / 2, ay: n / 2, u: 32 / n, raw: true }; SPR.set(key, s); return s;
+}
 
 // --- czary: ikony i księga czarów (mapa, bitwa, ekran bohatera) ---
 function drawSpellIcon(c, id) {
