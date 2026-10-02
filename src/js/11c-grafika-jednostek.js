@@ -50,7 +50,7 @@ function artFrame(cid, pose, i, dir, u) {
 // Sprite bitewny jednostki w pozie i klatce animacji
 function battleSprite(cid, dir, pose, i = 0) { const A = unitArt(cid); return A ? artFrame(cid, pose, i, dir, A.u) : battleSprite2D(cid, dir, pose, i); }
 // Mała figurka na mapie przygody (4 klatki spoczynku)
-function creatureSprite(cid, dir, i = 0) { const A = unitArt(cid); return A ? (PIXEL_ART || !A.raw ? artFrame(cid, 'map', i, dir, A.mu) : artFrame(cid, 'idle', i, dir, A.u * 0.48)) : creatureSprite2D(cid, dir, i); } // gładko: ostra klatka bitewna w skali mapy
+function creatureSprite(cid, dir, i = 0) { const A = unitArt(cid); return A ? (PIXEL_ART || !A.raw ? artFrame(cid, 'map', i, dir, A.mu) : artFrame(cid, 'idle', i, dir, A.u * 0.42)) : creatureSprite2D(cid, dir, i); } // gładko: ostra klatka bitewna w skali mapy
 // Jednostka w oknach i panelach: k = powiększenie jak dla figurki mapy (k ≥ 1,4: klatka bitewna, ostrzejsza)
 function drawCreatureIcon(ctx, cid, x, y, k = 1) {
   if (unitArt(cid) && k >= 1.4) drawSprite(ctx, battleSprite(cid, 1, 'idle', 0), x, y, k / 2);
