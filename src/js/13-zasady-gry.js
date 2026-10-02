@@ -179,7 +179,56 @@ function visitObject(st, h, ob) {
       { iconH: 66, icon: (ctx, cx, cy) => { if (drawMap3dIcon(ctx, 'mine_' + ob.kind, cx, cy, 110, 64)) return drawSprite(ctx, flagSprite(ownerColor(st, ob.owner), 12, 7), cx + 30, cy - 34, 1); drawSprite(ctx, mineSprite(ob.kind), cx - 33, cy - 31, 1); drawSprite(ctx, flagSprite(ownerColor(st, ob.owner), 12, 7), cx + 23, cy - 33, 1); } });
   }
 }
+// Usposobienie potworów neutralnych (jak w H3): przyjazne i neutralne mogą dołączyć do silnej armii (czasem za złoto),
+// wrogie tylko walczą albo uciekają, dzikie walczą zawsze. Ustalone raz na stałe (zapisuje się z obiektem).
+const MONSTER_MOODS = { friendly: 'przyjazne', neutral: 'neutralne', hostile: 'wrogie', savage: 'dzikie' };
+function monsterMood(m) {
+  if (!MONSTER_MOODS[m.mood]) { const r = mulberry32(((m.id + 1) * 2654435761) ^ (m.x * 73856093) ^ (m.y * 19349663))(); m.mood = r < 0.2 ? 'friendly' : r < 0.62 ? 'neutral' : r < 0.9 ? 'hostile' : 'savage'; }
+  return m.mood;
+}
+// Co zrobią potwory na widok bohatera: { kind: 'join', cost } | { kind: 'flee' } | null (walka).
+// Decyduje stosunek sił (armia i cechy bohatera), Przywództwo bohatera i to, czy ma już takich żołnierzy w armii.
+function neutralReaction(st, h, m) {
+  const c = CREATURES[m.cid], mood = monsterMood(m), ratio = armyPower(h.army) * heroFactor(h) / Math.max(1, m.count * c.value);
+  const lead = heroSkill(h, 'leadership'), same = h.army.some(x => x && x.cid === m.cid);
+  if ((mood === 'friendly' || mood === 'neutral') && (same || h.army.includes(null))) {
+    const need = (mood === 'friendly' ? 1.5 : 3) - 0.4 * lead - (same ? 0.5 : 0);
+    if (ratio >= need) {
+      const free = ratio >= need * 1.8 || (mood === 'friendly' && lead >= 2);
+      return { kind: 'join', cost: free ? 0 : Math.round(m.count * ((c.cost && c.cost.gold) || 100) * (1 - 0.15 * lead) / 10) * 10 };
+    }
+  }
+  if (mood !== 'savage' && ratio >= 6 - 0.5 * lead) return { kind: 'flee' };
+  return null;
+}
+function joinMonsters(st, h, m, cost) {
+  const R = playerOf(st, h.owner).resources; if (cost > R.gold || !armyAdd(h.army, m.cid, m.count)) return false;
+  R.gold -= cost; removeObject(st, m); MapRender.miniDirty = true; return true;
+}
+function offerNeutral(st, h, m, re, fight) {
+  const c = CREATURES[m.cid], q = `${qtyName(m.count)} ${c.gen}`, back = () => { if (h.prev) { h.x = h.prev[0]; h.y = h.prev[1]; h.prev = null; } };
+  const icon = (ctx, cx, cy) => drawCreatureIcon(ctx, m.cid, cx, cy + 34, 2);
+  if (re.kind === 'join') {
+    const gold = playerOf(st, h.owner).resources.gold, poor = re.cost > gold;
+    showDialog(`${q} ${m.mood === 'friendly' ? 'wita twoją armię' : 'z podziwem patrzy na twoją armię'} i chce do niej dołączyć${re.cost ? ` za ${re.cost} złota${poor ? ' (masz za mało)' : ''}` : ' bez zapłaty'}.`, [
+      { label: re.cost ? `Przyjmij (${re.cost})` : 'Przyjmij', key: 'enter', primary: !poor, action: () => { if (joinMonsters(st, h, m, re.cost)) { Sfx.play('recruit'); h.prev = null; } else { showDialog(poor ? 'Brakuje złota.' : 'Brak miejsca w armii.', [{ label: 'OK', key: 'enter', action: () => offerNeutral(st, h, m, re, fight) }]); } } },
+      { label: 'Walcz', key: 'w', action: fight },
+      { label: 'Odejdź', key: 'escape', action: back },
+    ], { locked: true, iconH: 84, icon });
+  } else {
+    showDialog(`${q} ucieka w popłochu na widok twojej armii.`, [
+      { label: 'Pozwól odejść', key: 'enter', primary: true, action: () => { removeObject(st, m); MapRender.miniDirty = true; } },
+      { label: 'Ścigaj', key: 'w', action: fight },
+    ], { locked: true, iconH: 84, icon });
+  }
+}
 function startEncounter(st, h, m) {
+  if (m.dead) return; const c = CREATURES[m.cid];
+  const re = neutralReaction(st, h, m);
+  if (re) return offerNeutral(st, h, m, re, () => startEncounterFight(st, h, m));
+  startEncounterFight(st, h, m);
+}
+function startEncounterFight(st, h, m) {
   if (m.dead) return; const c = CREATURES[m.cid];
   // h.prev jest puste, gdy bohater sam wszedł na potwora; ustawione, gdy wszedł w strefę strażnika
   const who = h.prev ? `${qtyName(m.count)} ${c.gen} atakuje twojego bohatera!` : `${h.name} atakuje: ${qtyName(m.count).toLowerCase()} ${c.gen}.`;
