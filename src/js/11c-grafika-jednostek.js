@@ -42,7 +42,7 @@ function map3dSprite(key) {
 }
 // Klatka arkusza jako sprite ({ c, ax, ay, u }); odbicie dla dir = -1. Pozy: idle, walk, fly (latające), attack, hurt, dead, map
 function artFrame(cid, pose, i, dir, u) {
-  const key = `u3_${cid}_${pose}_${i}_${dir}`; let s = SPR.get(key); if (s) return s;
+  const key = `u3_${cid}_${pose}_${i}_${dir}`; let s = SPR.get(key); if (s) { if (s.u === u) return s; const k2 = key + '_' + u; let t = SPR.get(k2); if (!t) SPR.set(k2, t = { ...s, u }); return t; } // ta sama klatka w innej skali (bitwa i mapa)
   const A = UNIT_ART[cid], row = A.f[pose] || (pose === 'fly' && A.f.walk) || A.f.idle, [x, y, w, h, ax, ay] = row[i % row.length]; // lot bez własnych klatek: chód
   const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); c._ctx = g;
   if (dir < 0) { g.translate(w, 0); g.scale(-1, 1); } g.drawImage(UNIT_IMG[cid], x, y, w, h, 0, 0, w, h);

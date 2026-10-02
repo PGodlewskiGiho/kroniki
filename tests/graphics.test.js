@@ -126,9 +126,9 @@ test('rozmiar piksela: 2 (niska jakość), 1 (drobny) i domyślny, bez błędów
     const w = s => s.c.width; setPixelSize(2); const a = w(battleSprite2D('ballista', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx); // zapasowy rysunek wektorowy
     setPixelSize(1); const b = w(battleSprite2D('ballista', 1, 'idle', 0)); G.screens.adventure.draw(G.ctx);
     const out = { a, b, u: battleSprite2D('ballista', 1, 'idle', 0).u, unit: battleSprite('pikeman', 1, 'idle', 0).u, raw: !!UNIT_ART.pikeman.raw, world: PixBufs.world.width, view: VIEW.w }; setPixelSize(PIX_DEFAULT); G.screens.adventure.draw(G.ctx);
-    return { ...out, mid: PixBufs.world.width === Math.round(VIEW.w / PIX_DEFAULT) };
+    return { ...out, mid: PIXEL_ART ? PixBufs.world.width === Math.round(VIEW.w / PIX_DEFAULT) : PixBufs.world.width >= VIEW.w };
   });
-  assert.equal(r.b, r.a * 2); assert.equal(r.u, 1); assert.equal(r.unit, r.raw ? 0.6 : 0.9, 'jednostki z arkuszy: stały piksel 0,9 (bez pikselizacji: 0,6)'); assert.equal(r.world, r.view, 'bufor mapy: 1 piksel grafiki = 1 px logiczny'); assert.ok(r.mid, 'domyślny piksel PIX_DEFAULT');
+  assert.equal(r.b, r.a * 2); assert.equal(r.u, 1); assert.equal(r.unit, r.raw ? 0.6 : 0.9, 'jednostki z arkuszy: stały piksel 0,9 (bez pikselizacji: 0,6)'); assert.equal(r.world, r.view, 'bufor mapy: 1 piksel grafiki = 1 px logiczny'); assert.ok(r.mid, 'domyślny piksel PIX_DEFAULT (gładko: bufor mapy w rozdzielczości ekranu)');
 });
 
 test('kursor zmienia się wg celu: mapa (ruch, atak, odwiedziny, zakaz), przyciski, bitwa (miecz, strzała)', async () => {
@@ -169,8 +169,8 @@ test('jednostki z modeli 3D: wbudowane arkusze dają klatki bitwy i mapy, odbici
     const ids = Object.keys(UNIT_ART), a = battleSprite('pikeman', 1, 'idle', 0), b = battleSprite('pikeman', -1, 'idle', 0), m = creatureSprite('pikeman', 1, 2);
     const poses = ['idle', 'walk', 'attack', 'hurt', 'dead', 'map'].every(p => UNIT_ART.pikeman.f[p].length === (BATTLE_FRAMES[p] || 4));
     const mach = [...MACHINES, ...SIEGE_UNITS].every(c => UNIT_ART[c] && battleSprite(c, 1, 'attack', 3).u === (UNIT_ART[c].raw ? 0.6 : 0.9)), all = Object.keys(CREATURES).filter(c => !UNIT_ART[c]); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 2); drawCreatureIcon(G.ctx, 'pikeman', 100, 100, 1);
-    return { n: ids.length, u: a.u, mu: m.u, raw: !!UNIT_ART.pikeman.raw, mirror: a.c.width === b.c.width && a.ax + b.ax === a.c.width, poses, mach, all, tall: a.c.height };
+    return { n: ids.length, u: a.u, mu: m.u, raw: !!UNIT_ART.pikeman.raw, mirror: a.c.width === b.c.width && a.ax + b.ax === a.c.width, poses, mach, all, tall: a.c.height, pix: PIXEL_ART };
   });
-  assert.ok(r.n >= 70, `arkuszy: ${r.n}`); assert.equal(r.u, r.raw ? 0.6 : 0.9); assert.equal(r.mu, 1.8); assert.ok(r.mirror, 'odbicie w poziomie'); assert.ok(r.poses); assert.ok(r.mach, 'machiny z arkuszy'); assert.deepEqual(r.all, [], 'każda jednostka ma arkusz');
+  assert.ok(r.n >= 70, `arkuszy: ${r.n}`); assert.equal(r.u, r.raw ? 0.6 : 0.9); assert.ok(Math.abs(r.mu - (r.pix || !r.raw ? 1.8 : r.u * 0.48)) < 1e-9, 'na mapie: klatki mapy (gładko: klatki bitwy w skali mapy)'); assert.ok(r.mirror, 'odbicie w poziomie'); assert.ok(r.poses); assert.ok(r.mach, 'machiny z arkuszy'); assert.deepEqual(r.all, [], 'każda jednostka ma arkusz');
   assert.ok(r.tall * r.u > 35 && r.tall * r.u < 90, `wysokość klatki na ekranie: ${r.tall * r.u}`); // piksele arkusza × rozmiar piksela
 });
