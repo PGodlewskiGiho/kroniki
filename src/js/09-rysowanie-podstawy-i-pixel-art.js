@@ -96,7 +96,7 @@ function shadowAt(g, x, y, w) { g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); 
 const AP = 16, OUTLINE = [24, 16, 10];
 // Rozmiar piksela grafiki w px logicznych: PIX_DEFAULT (1,8: niewiele drobniejszy od dawnego), 1 (drobny) albo 2 (dawny; niska jakość grafiki).
 // PXD = gęstość względem dawnej grafiki (ile pikseli na dawny piksel). Zmiana czyści wszystkie gotowe obrazy (setPixelSize).
-const PIX_DEFAULT = PIXEL_ART ? 1.8 : 1;
+const PIX_DEFAULT = PIXEL_ART ? 1.8 : 1.25;
 let PIX = PIX_DEFAULT, PXD = 2 / PIX_DEFAULT;
 const PIX_CLEAR = []; // funkcje czyszczące pamięci podręczne obrazów (rejestrują je moduły grafiki)
 function setPixelSize(p) {
