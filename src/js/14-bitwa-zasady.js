@@ -290,12 +290,16 @@ function actShoot(B, u, target) {
   if (hasAb(u, 'doubleShot') && u.shots > 0 && !target.dead) { use(); strike(B, u, target, true); }
 }
 // Namiot medyka: leczy pierwszego stwora w najbardziej rannym oddziale (1–25 życia, bez wskrzeszania)
-function actFirstAid(B, u) {
+// Bohater z umiejętnością (Artyleria: balista, Pierwsza pomoc: namiot) sam wskazuje cel machiny, jak w Heroes 3; bez niej machina działa sama.
+const MACHINE_SKILL = { ballista: 'artillery', firstAid: 'firstAid' };
+const machineControlled = (B, u) => !!MACHINE_SKILL[u.cid] && heroSkill(sideHero(B, u.side), MACHINE_SKILL[u.cid]) > 0;
+const firstAidTargets = (B, u) => alive(B, u.side).filter(v => !isMachine(v) && v.hp < CREATURES[v.cid].hp);
+function actFirstAid(B, u, target = null) {
   u.acted = true;
-  const hurt = alive(B, u.side).filter(v => !isMachine(v) && v.hp < CREATURES[v.cid].hp);
+  const hurt = firstAidTargets(B, u);
   if (!hurt.length) { B.log.push('Namiot medyka: nikt nie potrzebuje pomocy.'); return; }
   const most = skillVal(sideHero(B, u.side), 'firstAid') || 25; // Pierwsza pomoc: do 50/75/100 zamiast 25
-  const v = hurt.reduce((a, b) => (CREATURES[b.cid].hp - b.hp > CREATURES[a.cid].hp - a.hp ? b : a)), amt = Math.min(CREATURES[v.cid].hp - v.hp, 1 + Math.floor(B.rng() * most));
+  const v = target && hurt.includes(target) ? target : hurt.reduce((a, b) => (CREATURES[b.cid].hp - b.hp > CREATURES[a.cid].hp - a.hp ? b : a)), amt = Math.min(CREATURES[v.cid].hp - v.hp, 1 + Math.floor(B.rng() * most));
   v.hp += amt; B.log.push(`Namiot medyka leczy: ${CREATURES[v.cid].plural.toLowerCase()} (+${amt}).`);
   if (B.fx) B.fx.push({ kind: 'heal', u: v, amount: amt });
 }
@@ -338,16 +342,19 @@ function aiAct(B, u) {
     actShoot(B, u, t); return;
   }
   const spd = unitSpd(u), reach = battleDist(B, u, spd), hold = holdWalls(B, u, reach); let best = null;
+  const gang = !B.walls ? enemyThreatCount(B, u.side) : null, uval = u.n * CREATURES[u.cid].value;
   for (const e of foes) for (const [nx, ny] of [[u.x, u.y], ...attackSpots(u, e)]) {
     if (!hexAdjacent({ ...u, x: nx, y: ny }, e)) continue; const d = reach.dist.get(hexKey(nx, ny)); if (d == null) continue;
     if (hold && nx < SIEGE_X) continue; // obrońca bije tylko zza muru (z bramy, wyłomu albo ze środka)
-    const score = tradeValue(B, u, e, false, d) - d * 0.01; if (!best || score > best.score) best = { score, e, nx, ny };
+    const exposed = gang ? Math.max(0, (gang.get(hexKey(nx, ny)) || 0) - 1) * uval * 0.04 : 0; // pole, do którego dobiegnie wielu wrogów naraz, jest gorsze
+    const score = tradeValue(B, u, e, false, d) - d * 0.01 - exposed; if (!best || score > best.score) best = { score, e, nx, ny };
   }
   // strzelec z sąsiadem obok: bije wręcz tylko, gdy to się opłaca; inaczej broni się
   if (best && (best.score > 0 || u.shots === 0 || foes.every(e => !e.shots))) { actMoveAttack(B, u, pathTo(reach, u, best.nx, best.ny), best.e); return; }
   if (best) { actDefend(B, u); return; }
   // nikt w zasięgu: strzelcy czekają na miejscu, reszta idzie w stronę najcenniejszego wroga
   if (u.shots > 0 || hold) { actDefend(B, u); return; } // obrońca czeka za murami, aż napastnik podejdzie
+  if (aiHoldBack(B, u)) return;
   const target = foes.reduce((a, b) => (b.n * CREATURES[b.cid].value > a.n * CREATURES[a.cid].value ? b : a));
   const far = battleDist(B, u, reach.fly ? spd : Infinity); let goal = null;
   if (reach.fly) { for (const k of far.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS), d = hexDistance({ x, y }, target); if (!goal || d < goal.d) goal = { d, nx: x, ny: y }; } }
@@ -357,8 +364,37 @@ function aiAct(B, u) {
     if (goal && goal.nx === u.x && goal.ny === u.y) goal = null;
   }
   if (!goal) { actDefend(B, u); return; }
-  const path = reach.fly ? [[goal.nx, goal.ny]] : pathTo(far, u, goal.nx, goal.ny).slice(0, spd);
+  let path = reach.fly ? [[goal.nx, goal.ny]] : pathTo(far, u, goal.nx, goal.ny).slice(0, spd);
+  if (!B.walls && B.round <= 4) { // nie wchodzimy pod cios: zatrzymaj się tuż poza zasięgiem wroga (on podejdzie, my uderzymy pierwsi)
+    const threat = enemyThreat(B, u.side), safe = ([x, y]) => !threat.has(hexKey(x, y));
+    if (reach.fly) { if (!safe(path[0])) { let alt = null; for (const k of reach.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS); if (threat.has(k)) continue; const d = hexDistance({ x, y }, target); if (!alt || d < alt.d) alt = { d, x, y }; } path = alt && hexDistance(alt, target) < hexDistance(u, target) ? [[alt.x, alt.y]] : []; } }
+    else { let cut = path.length; while (cut > 0 && !safe(path[cut - 1])) cut--; path = path.slice(0, cut); }
+    if (!path.length) { actDefend(B, u); return; }
+  }
   actMoveAttack(B, u, path, null);
+}
+// Pola, na które wróg (piechota i latacze) może uderzyć w swojej następnej turze: sąsiedzi pól, do których dojdzie
+function enemyThreat(B, side) {
+  const out = new Set();
+  for (const e of fighters(B, 1 - side)) {
+    if (e.shots > 0 && !hasAb(e, 'noMeleePenalty')) continue; // strzelec i tak trafi z daleka; liczymy tych, co biją wręcz
+    const r = battleDist(B, e, unitSpd(e)); for (const k of [hexKey(e.x, e.y), ...r.dist.keys()]) { const x = k % BCOLS, y = Math.floor(k / BCOLS); for (const [nx, ny] of hexNeighbors(x, y)) out.add(hexKey(nx, ny)); }
+  }
+  return out;
+}
+function enemyThreatCount(B, side) {
+  const out = new Map();
+  for (const e of fighters(B, 1 - side)) {
+    if (e.shots > 0) continue; const seen = new Set(), r = battleDist(B, e, unitSpd(e));
+    for (const k of [hexKey(e.x, e.y), ...r.dist.keys()]) { const x = k % BCOLS, y = Math.floor(k / BCOLS); for (const [nx, ny] of hexNeighbors(x, y)) { const j = hexKey(nx, ny); if (!seen.has(j)) { seen.add(j); out.set(j, (out.get(j) || 0) + 1); } } }
+  }
+  return out;
+}
+// Taktyka oddziału bez celu w zasięgu: gdy wróg jeszcze nie ruszył w tej rundzie, czekamy (ruszymy na końcu rundy,
+// a w następnej uderzymy pierwsi). Pomiar SI kontra SI (600 bitew): ok. 2 pkt proc. mniejsze straty.
+function aiHoldBack(B, u) {
+  if (B.walls || u.waited || !B.order.some(v => v.side !== u.side && !v.dead && !isMachine(v))) return false;
+  actWait(B, u); return true;
 }
 // Kolejka: w każdej rundzie od najszybszych; kto czekał, rusza na końcu (najwolniejsi pierwsi)
 // Kolejny oddział. Morale: po ataku albo ruchu oddział z dodatnim morale M ma szansę M/24 na drugi ruch
@@ -471,6 +507,29 @@ function castBattle(B, id, x, y) {
     for (const u of targets) { if (u.side !== s && resists(B, u, s)) { B.log.push(`${CREATURES[u.cid].plural}: odporność, czar nie działa.`); continue; } u.buffs[S.buff] = SPELL_ROUNDS(sp) + spellSchoolLv(h, id); if (B.fx) B.fx.push({ kind: 'heal', u, amount: 0, label: SPELLS[id].name }); }
   }
 }
+// Ile wart jest czar wsparcia (w punktach wartości stworów, jak obrażenia): uleczenie albo wskrzeszenie strat, wzmocnienie silnego
+// oddziału, klątwa na groźnego wroga. Waga = jaką część siły oddziału czar zmienia na kilka rund.
+const AI_BUFF_W = { haste: 0.22, bloodlust: 0.18, bless: 0.18, prayer: 0.3, stoneSkin: 0.14, shield: 0.14, airShield: 0.14, fortune: 0.08, fireShield: 0.1, slow: 0.25, weakness: 0.18, curse: 0.18 };
+function aiSupportOptions(B, s, h, id, sp) {
+  const S = SPELLS[id], out = [], val = u => u.n * CREATURES[u.cid].value, foeShots = alive(B, 1 - s).some(u => u.shots > 0), foeMelee = alive(B, 1 - s).some(u => !u.shots && !isMachine(u));
+  if (S.buff) {
+    let w = (AI_BUFF_W[S.buff] || 0.1) * 0.12; // pomiary SI kontra SI: wzmocnienia opłacają się mniej niż czar bojowy, więc tylko gdy nie ma lepszego
+    if (S.buff === 'airShield' && !foeShots) w *= 0.2; if (S.buff === 'shield' && !foeMelee) w *= 0.2;
+    const enemy = S.target === 'enemy', side = enemy ? 1 - s : s;
+    const pool = alive(B, side).filter(u => targetable(u) && !isMachine(u) && !u.buffs[S.buff]);
+    const rounds = SPELL_ROUNDS(sp) + spellSchoolLv(h, id), soon = u => u === B.active || B.order.includes(u) || B.waitQ.includes(u); // czy oddział jeszcze działa w tej rundzie
+    const fit = u => (S.buff === 'bloodlust' && u.shots > 0 ? 0.3 : S.buff === 'haste' && u.shots > 0 ? 0.5 : S.buff === 'slow' && u.shots > 0 ? 0.4 : 1) * Math.min(1.5, Math.max(0, rounds - (soon(u) ? 0 : 1)) / 3);
+    if (MASS_TARGETS.includes(S.target) || massBuff(B, id)) { const v = pool.reduce((t, u) => t + val(u) * fit(u), 0) * w; if (pool.length) out.push({ val: v, x: pool[0].x, y: pool[0].y }); }
+    else for (const u of pool) out.push({ val: val(u) * fit(u) * w, x: u.x, y: u.y });
+  } else if (S.heal) {
+    const amt = Math.floor(S.heal(sp) * specSpellMul(h, id) * schoolMul(h, id));
+    const pool = B.units.filter(u => u.side === s && !isMachine(u) && u.src !== 'siege' && spellTargetOk(B, id, u));
+    const gain = u => { const hp = CREATURES[u.cid].hp, lostHp = S.raise ? (u.n0 - (u.dead ? 0 : u.n)) * hp + (u.dead ? 0 : hp - u.hp) : hp - u.hp; return Math.min(amt, lostHp) / hp * CREATURES[u.cid].value + (Object.keys(u.buffs).some(b => BAD_BUFFS.includes(b)) ? val(u) * 0.1 : 0); };
+    if (MASS_TARGETS.includes(S.target)) out.push({ val: pool.filter(u => !u.dead).reduce((t, u) => t + gain(u), 0), x: 0, y: 0 });
+    else for (const u of pool) out.push({ val: gain(u), x: u.x, y: u.y });
+  }
+  return out;
+}
 // SI bohatera (tryb Auto i walka automatyczna): czar zadający najwięcej wartości, jeśli jakiś się opłaca
 function aiHeroCast(B) {
   if (!canCastNow(B)) return false;
@@ -486,6 +545,10 @@ function aiHeroCast(B) {
       }
       if (val > 0 && (!best || val > best.val)) best = { val, id, x, y };
     }
+  }
+  for (const id of battleSpells(h)) { // czary wsparcia: wzmocnienia, klątwy, leczenie, wskrzeszanie
+    const S = SPELLS[id]; if (S.dmg || spellCost(h, id) > h.mana) continue;
+    for (const c of aiSupportOptions(B, s, h, id, sp)) if (c.val > 0 && (!best || c.val > best.val)) best = { ...c, id };
   }
   if (!best) return false; castBattle(B, best.id, best.x, best.y); return true;
 }

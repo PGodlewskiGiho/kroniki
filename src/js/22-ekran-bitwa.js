@@ -172,8 +172,8 @@ G.screens.battle = {
     this.startTurnFor(u);
   },
   startTurnFor(u) {
-    const B = this.B; this.casting = null;
-    const mach = isMachine(u) && humanSide(B, u.side) && !B.auto; // machiny gracza działają same
+    const B = this.B; this.casting = null; this.touchKey = null;
+    const mach = isMachine(u) && humanSide(B, u.side) && !B.auto && !(machineControlled(B, u) && (u.cid !== 'firstAid' || firstAidTargets(B, u).length)); // machiny gracza działają same, chyba że bohater zna ich umiejętność
     const ai = mach || B.auto || !humanSide(B, u.side);
     if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
     if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
@@ -330,6 +330,12 @@ G.screens.battle = {
       this.preview = spellTargetOk(B, id, tu) ? { kind: 'cast', id, x: hx.x, y: hx.y, target: tu } : { kind: 'nocast', id }; return;
     }
     const occ = unitAt(B, hx.x, hx.y), k = hexKey(hx.x, hx.y);
+    if (u.cid === 'firstAid') { // namiot medyka pod rozkazami: wskazujemy rannego oddział
+      if (occ && firstAidTargets(B, u).includes(occ)) this.preview = { kind: 'heal', target: occ, most: skillVal(sideHero(B, u.side), 'firstAid') || 25 };
+      else if (occ) this.preview = { kind: 'info', target: occ };
+      return;
+    }
+    if (isMachine(u) && !(occ && occ.side !== u.side && targetable(occ))) { if (occ) this.preview = { kind: 'info', target: occ }; return; } // balista nie chodzi
     if (occ && occ.side !== u.side && targetable(occ)) {
       if (canShoot(B, u)) { this.preview = { kind: 'shoot', target: occ, est: estimateStrike(B, u, occ, true) }; return; }
       let best = null;
@@ -345,9 +351,15 @@ G.screens.battle = {
   onClick(x, y) {
     if (this.phase === 'over') { if (this.ending.t > 0.3) this.finish(false); return; }
     if (clickButtons(this.buttons, x, y)) return;
+    if (this.phase === 'input' && G.mouse.type && G.mouse.type !== 'mouse') { // dotyk: pierwsze stuknięcie pokazuje akcję i jej skutek, drugie w to samo pole ją wykonuje
+      const hx = hexAt(x, y), key = hx ? hexKey(hx.x, hx.y) + (this.casting || '') : null, again = key && key === this.touchKey;
+      if (!again) { this.onPointerMove(x, y); this.touchKey = this.preview && this.preview.kind !== 'info' && this.preview.kind !== 'far' && this.preview.kind !== 'nocast' ? key : null; return; }
+      this.touchKey = null;
+    }
     const B = this.B, p = this.preview; if (this.phase !== 'input' || !p) return;
     if (p.kind === 'cast') { this.casting = null; castBattle(B, p.id, p.x, p.y); this.phase = 'play'; this.resume = true; return; }
-    if (p.kind === 'shoot') this.player(u => actShoot(B, u, p.target));
+    if (p.kind === 'heal') this.player(u => actFirstAid(B, u, p.target));
+    else if (p.kind === 'shoot') this.player(u => actShoot(B, u, p.target));
     else if (p.kind === 'attack') this.player(u => actMoveAttack(B, u, pathTo(this.reach, u, ...p.from), p.target));
     else if (p.kind === 'move') this.player(u => actMoveAttack(B, u, pathTo(this.reach, u, ...p.to), null));
   },
@@ -428,6 +440,10 @@ G.screens.battle = {
     if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(heroStat(sideHero(B, this.me) || B.h, 'sp'))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
     else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots}${shotPenaltyText(B, u0, pv.target)})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';
+    if (this.touchKey && pv && G.mouse.type !== 'mouse') tip += ' Stuknij jeszcze raz, aby wykonać.';
+    else if (pv && pv.kind === 'heal') tip = `Namiot medyka: wyleczy ${CREATURES[pv.target.cid].plural.toLowerCase()} o 1–${Math.min(pv.most, CREATURES[pv.target.cid].hp - pv.target.hp)} życia.`;
+    else if (this.phase === 'input' && u0 && u0.cid === 'firstAid') tip = 'Namiot medyka: wskaż rannego oddział do leczenia (Obrona = pomiń).';
+    else if (this.phase === 'input' && u0 && u0.cid === 'ballista') tip = `Balista (${CREATURES.ballista.name}): wskaż cel strzału.`;
     let tfs = 15; ctx.font = font(tfs, 700, 'body'); while (tfs > 11 && ctx.measureText(tip).width > 440) { tfs--; ctx.font = font(tfs, 700, 'body'); }
     if (PIXEL_ART) { text(ctx, tip, 20, 508, { size: tfs, weight: 700, color: '#ffd970' }); B.log.slice(-4).forEach((l, i) => text(ctx, l, 20, 532 + i * 18, { size: 14, weight: 600, color: UI.txt2 })); }
     else { // kolejka ruchów (jak w Heroes 3 HD): oddział, który teraz działa, i następne; pod nią podpowiedź i ostatnie wpisy dziennika

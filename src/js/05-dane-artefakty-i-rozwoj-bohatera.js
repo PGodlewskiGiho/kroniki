@@ -23,7 +23,7 @@ const SCHOOL_COST = [0, 15, 25, 35], SCHOOL_POWER = [0, 10, 20, 30];
 const schoolDesc = v => `czary szkoły tańsze o ${SCHOOL_COST[v]}%, mocniejsze o ${SCHOOL_POWER[v]}%, dłuższe o ${v} ${v === 1 ? 'rundę' : 'rundy'}${v >= 3 ? '; czary na jeden oddział działają na całą armię' : ''}`;
 const MAX_SKILLS = 8, SKILL_LEVELS = ['', 'podstawowe', 'zaawansowane', 'eksperckie'];
 const SKILLS = {
-  leadership: { name: 'Przywództwo', v: [1, 2, 3], desc: v => `+${v} do morale armii` },
+  leadership: { name: 'Przywództwo', v: [1, 2, 3], desc: v => `+${v} do morale armii; potwory chętniej dołączają i biorą mniej złota` },
   luck: { name: 'Szczęście', v: [1, 2, 3], desc: v => `+${v} do szczęścia armii` },
   offense: { name: 'Atak', v: [10, 20, 30], desc: v => `+${v}% obrażeń w walce wręcz` },
   archery: { name: 'Łucznictwo', v: [10, 25, 50], desc: v => `+${v}% obrażeń strzelców` },

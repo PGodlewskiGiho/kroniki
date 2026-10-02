@@ -216,6 +216,10 @@ function aiPickTarget(st, h, R) {
 // Bez ekranu (testy, symulacje, szybka tura) generator rozgrywa runAiSync: obrona jest wtedy automatyczna.
 function* aiBattle(st, h, foe, news) {
   const defOwner = foe.type === 'monster' || foe.type === 'bank' ? -1 : foe.owner, defName = foe.type === 'monster' || foe.type === 'bank' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
+  if (foe.type === 'monster') { // potwory chcą dołączyć: komputer bierze je za darmo albo gdy złota starczy z zapasem
+    const re = neutralReaction(st, h, foe);
+    if (re && re.kind === 'join' && re.cost * 2 + 500 <= playerOf(st, h.owner).resources.gold && joinMonsters(st, h, foe, re.cost)) return true;
+  }
   let res;
   if (defOwner >= 0 && playerOf(st, defOwner).human) {
     const act = { kind: 'defend', h, foe, owner: defOwner }; res = yield act;

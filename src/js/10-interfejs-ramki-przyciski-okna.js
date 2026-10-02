@@ -234,7 +234,7 @@ class Button {
     Object.assign(this, { x, y, w, h, label, action, key: o.key || null, size: o.size || 18, disabled: !!o.disabled,
       selected: o.selected || null, sub: o.sub || null, swatch: o.swatch || null, icon: o.icon || null, lead: o.lead || null, tip: o.tip || null, primary: !!o.primary, display: !!o.display });
   }
-  hit(px, py) { return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h; }
+  hit(px, py, pad = 0) { return px >= this.x - pad && px <= this.x + this.w + pad && py >= this.y - pad && py <= this.y + this.h + pad; }
   isSel() { return typeof this.selected === 'function' ? this.selected() : !!this.selected; }
   draw(ctx) {
     const hover = G.hover === this, pressed = hover && G.mouse.down, sel = this.isSel(), st = this.disabled ? 'd' : sel ? 's' : this.primary && !PIXEL_ART ? (hover ? 'ph' : 'p') : hover ? 'h' : 'n';
@@ -262,8 +262,17 @@ class Button {
     ctx.restore();
   }
 }
+// Przycisk pod palcem albo kursorem. Dotyk: palec jest gruby, więc trafia też tuż obok przycisku (do 10 px), a z kilku
+// pobliskich wygrywa ten, którego środek jest najbliżej.
+const TOUCH_PAD = 10;
+function buttonAt(list, x, y) {
+  const exact = list.find(b => !b.disabled && b.hit(x, y)); if (exact || !G.mouse.type || G.mouse.type === 'mouse') return exact || null;
+  let best = null, bd = Infinity;
+  for (const b of list) if (!b.disabled && b.hit(x, y, TOUCH_PAD)) { const d = Math.hypot(x - (b.x + b.w / 2), y - (b.y + b.h / 2)); if (d < bd) { bd = d; best = b; } }
+  return best;
+}
 function clickButtons(list, x, y) {
-  const b = list.find(b => !b.disabled && b.hit(x, y));
+  const b = buttonAt(list, x, y);
   if (b && b === G.downTarget) { Sfx.play('click', { vol: 0.5 }); if (b.action) b.action(); return true; }
   return false;
 }
