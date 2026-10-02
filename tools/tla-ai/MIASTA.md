@@ -1,6 +1,6 @@
 # Jak robimy miasto: tło AI + budowle 3D (instrukcja krok po kroku)
 
-Gotowe: **Przystań** (haven), **Knieja** (sylvan), **Kurhan** (barrow), **Twierdza** (fortress), **Inferno**, **Akademia** (academy), **Loch** (dungeon), **Cytadela** (stronghold) — wszystkie miasta zrobione.
+Gotowe: **Przystań** (haven), **Knieja** (sylvan), **Kurhan** (barrow), **Cytadela** (fortress), **Inferno**, **Akademia** (academy), **Loch** (dungeon), **Twierdza** (stronghold) — wszystkie miasta zrobione.
 Wzorce do podglądania: `uklady/sylvan.json`, `uklady/barrow.json`, `uklady/fortress.json` (bagno), `../grafika3d/budowle-knieja.js`, `../grafika3d/budowle-kurhan.js`, `../grafika3d/budowle-twierdza.js`.
 
 ## Zasady od użytkownika (obowiązkowe)

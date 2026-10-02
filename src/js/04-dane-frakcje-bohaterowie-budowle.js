@@ -68,7 +68,7 @@ const FACTIONS = [
     },
   },
   {
-    id: 'fortress', name: 'Twierdza', terrain: TER.SWAMP,
+    id: 'fortress', name: 'Cytadela', terrain: TER.SWAMP,
     desc: 'Bagienna warownia: gnolle, jaszczuroludzie, ważki, bazyliszki, gorgony, wywerny i hydry.',
     heroes: [['Borzywoj', 'beastmaster'], ['Wilga', 'witch', 1], ['Mszar', 'witch'], ['Dobrawa', 'beastmaster', 1], ['Skrzek', 'beastmaster'], ['Rusałka', 'witch', 1]],
     towns: ['Mokradła', 'Trzcinowy Gród', 'Czarny Staw', 'Grząski Bród', 'Żabi Kamień', 'Olszowa Warownia', 'Sitowie'],
@@ -128,7 +128,7 @@ const FACTIONS = [
     },
   },
   {
-    id: 'stronghold', name: 'Cytadela', terrain: TER.SAND,
+    id: 'stronghold', name: 'Twierdza', terrain: TER.SAND,
     desc: 'Stepowa warownia barbarzyńców: hobgobliny, wargi, orkowie, tury, roki, cyklopi i behemoty.',
     heroes: [['Gromisław', 'barbarian'], ['Wojsława', 'barbarian', 1], ['Ognisław', 'battleMage'], ['Jarogniewa', 'battleMage', 1], ['Warg', 'barbarian'], ['Iskra', 'battleMage', 1]],
     towns: ['Kamienny Kieł', 'Suchy Jar', 'Czerwona Wydma', 'Wilcza Skała', 'Sępia Grań', 'Gorące Piaski', 'Obóz Gromu'],
@@ -151,11 +151,11 @@ const FACTION_TRAITS = {
   haven: { name: 'Rycerski duch', desc: 'armia bohatera Przystani ma +1 do morale' },
   sylvan: { name: 'Łaska lasu', desc: 'armia bohatera Kniei ma +1 do szczęścia' },
   barrow: { name: 'Wieczny zastęp', desc: 'bohaterowie Kurhanu wskrzeszają po bitwie o 10% więcej poległych' },
-  fortress: { name: 'Bagienne ścieżki', desc: 'bohaterowie Twierdzy chodzą po bagnach i nierównym terenie bez kary' },
+  fortress: { name: 'Bagienne ścieżki', desc: 'bohaterowie Cytadely chodzą po bagnach i nierównym terenie bez kary' },
   inferno: { name: 'Siarkowe źródła', desc: 'każde miasto Inferna daje dziennie +1 siarki' },
   academy: { name: 'Dzieci zimy', desc: 'bohaterowie Akademii nie tracą ruchu zimą ani na śniegu' },
   dungeon: { name: 'Oczy ciemności', desc: 'bohaterowie Lochu widzą o 2 pola dalej' },
-  stronghold: { name: 'Horda', desc: 'siedliska w miastach Cytadeli dają o 25% więcej jednostek' },
+  stronghold: { name: 'Horda', desc: 'siedliska w miastach Twierdzi dają o 25% więcej jednostek' },
 };
 const CLASS_FACTION = {}; for (const F of FACTIONS) for (const [, cls] of F.heroes) CLASS_FACTION[cls] = F.id;
 const heroFaction = h => (h && CLASS_FACTION[h.cls]) || null;
