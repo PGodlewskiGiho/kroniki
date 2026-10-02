@@ -340,9 +340,9 @@ function buildMinimap(map, ex) {
 // Pamięć podręczna wyrenderowanych fragmentów mapy (8×8 pól)
 const MapRender = {
   map: null, explored: null, season: 0, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
-  // D: gęstość terenu (pikseli fragmentu na piksel grafiki); gładko: tyle, ile bufora świata na piksel (ostro, bez zbędnego pomniejszania)
+  // D: gęstość terenu (pikseli fragmentu na piksel grafiki = 2 px logiczne); gładko: tyle, ile bufora świata (ostro, bez powiększania)
   D: PXD,
-  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; this.warmed = false; this.D = PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 4) / 4, PXD, 3); },
+  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; this.warmed = false; this.D = PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * 4) / 4, PXD, 6); },
   // Pora roku: po zmianie wszystkie kawałki terenu rysują się od nowa
   setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); this.warmed = false; } },
   // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
@@ -590,8 +590,8 @@ function mapLight(w, h) {
     c.putImageData(img, 0, 0);
   }, 1);
 }
-// Gładko: bufor świata w rozdzielczości ekranu, ale najwyżej 1,5 piksela na piksel logiczny (ekrany o dużej gęstości: 2–3 razy mniej pracy, wciąż ostro)
-const mapBufScale = () => Math.min(G.rs, 1.5);
+// Gładko: bufor świata w rozdzielczości ekranu (najwyżej 3 piksele na piksel logiczny), żeby świat był ostry
+const mapBufScale = () => Math.min(G.rs, 3);
 function drawMapView(ctx, st, scr) {
   MapRender.setSeason(seasonIdx(st));
   // Przybliżenie: świat rysujemy w widoku „wirtualnym” (VIEW o rozmiarze viewW × viewH), potem skalujemy do prawdziwego
