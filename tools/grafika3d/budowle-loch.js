@@ -7,8 +7,9 @@ const LC = { rock: '#4a4252', rockD: '#2e2834', rockL: '#6a6074', moss: '#3e5a46
   cap: '#7a3a9a', capL: '#a060c0', stem: '#d8d0c0', bone: '#d8ccb0', iron: '#2a2a30', cloth: '#5a1a4a' };
 // --- drobne bryły ---
 const lcWin = (w, h, x, y, z, glow = LC.glow) => opening(w, h, x, y, z, { glow, frame: LC.rockD, frameKind: 'rubble' });
-function lcCrystals(x, y, z, s = 1, n = 5, seed = 3, col = LC.violet) { const g = new THREE.Group(), R = rng(seed); for (let i = 0; i < n; i++) { const h = s * (8 + R() * 16);
-  const c = cone(s * (2 + R() * 2.4) / PXU, h / PXU, col, 'gem', P(x + (R() - 0.5) * s * 12, y + h / 2, z + (R() - 0.5) * s * 8), [(R() - 0.5) * 0.6, 0, (R() - 0.5) * 0.6], 6); c.material = lightMat(col); c.material.transparent = true; c.material.opacity = 0.85; g.add(c); }
+function lcCrystals(x, y, z, s = 1, n = 5, seed = 3, col = LC.violet) { const g = new THREE.Group(), R = rng(seed); for (let i = 0; i < n; i++) { /* kiść kryształów: środkowy pionowy i najwyższy, boczne niższe, odchylone równo na zewnątrz */
+  const a = i / Math.max(1, n - 1) * Math.PI * 2 + R() * 0.3, q = i ? 1 : 0, dx = Math.cos(a) * s * 4 * q, dz = Math.sin(a) * s * 2.6 * q, h = s * (i ? 9 + R() * 5 : 20);
+  const c = cone(s * (i ? 2 : 3) / PXU, h / PXU, col, 'gem', P(x + dx, y + h / 2 - 0.5, z + dz), [Math.sin(a) * 0.22 * q, 0, -Math.cos(a) * 0.22 * q], 6); c.material = lightMat(col); c.material.transparent = true; c.material.opacity = 0.85; g.add(c); }
   glowMark(g, x, y + 8 * s, z, 12 * s, col); return g; }
 // Wieża-stalagmit: trzy nałożone, nieregularne stożki skały, pierścienie okien, kryształ na czubku
 function lcSpire(r, h, x, z, { y = 0, col = LC.rock, glow = LC.glow, tip = LC.violet, seed = 1 } = {}) { const g = new THREE.Group(), R = rng(seed);
