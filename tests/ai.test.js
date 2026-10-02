@@ -237,3 +237,15 @@ test('SI omija pola, do których w jeden dzień dojdzie silniejszy wróg; limit 
   await days(14);
   assert.equal(await page.evaluate(() => G.state.heroes.filter(h => h.owner === 1).length <= 1), true);
 });
+
+test('komputer przejmuje neutralną kopalnię: gracz nie dostaje o tym wiadomości, a za swoją kopalnię dostaje', async () => {
+  await newGame(page, { mapSize: 'S', opponents: 1 }, 5);
+  const r = await page.evaluate(() => {
+    const st = G.state, me = st.players.find(p => p.human), ai = st.players.find(p => !p.human), h = st.heroes.find(x => x.owner === ai.id);
+    const mine = st.objects.find(o => o.type === 'mine'); me.inbox = [];
+    mine.owner = -1; const i = mine.y * st.map.n + mine.x; h.x = mine.x; h.y = mine.y; st.guard[i] = 0; [...aiVisit(st, h, i, [])]; const neutral = takeInbox(me).length, took = mine.owner === ai.id;
+    mine.owner = me.id; [...aiVisit(st, h, i, [])]; const mineMsg = takeInbox(me).length;
+    return { neutral, took, mineMsg };
+  });
+  assert.equal(r.took, true); assert.equal(r.neutral, 0); assert.equal(r.mineMsg, 1);
+});
