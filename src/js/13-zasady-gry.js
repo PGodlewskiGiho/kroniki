@@ -153,7 +153,8 @@ function visitObject(st, h, ob) {
     showDialog(`Ołtarz ofiarny. Złożyć w ofierze wszystkie artefakty z plecaka (${arts.length}: ${arts.map(id => ARTIFACTS[id].name).join(', ')}) za ${exp} doświadczenia? Założonych nie rusza.`, [
       { label: 'Poświęć', key: 'enter', action: () => { const r = useSite(st, h, ob); advFloat(r.float, h.x, h.y); gainExp(st, h, r.exp); } }, { label: 'Nie', key: 'escape' },
     ], { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_sacrifice', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('sacrifice'), cx, cy + 30, 1.5) });
-  } else if (ob.type === 'site') {
+  } else if (ob.type === 'site' && ['arena', 'school', 'market', 'hillFort'].includes(ob.kind) && !siteUsed(st, ob, h)) siteChoice(st, h, ob);
+  else if (ob.type === 'site') {
     const r = useSite(st, h, ob), S = SITES[ob.kind]; snd(r.res === 'gold' ? 'coins' : 'shrine');
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
     showDialog(`${S.name}. ${r.text}`, [{ label: r.puzzle ? 'Mapa zagadki' : 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); if (r.puzzle) showPuzzle(st); } }],
@@ -233,6 +234,22 @@ function startEncounterFight(st, h, m) {
   // h.prev jest puste, gdy bohater sam wszedł na potwora; ustawione, gdy wszedł w strefę strażnika
   const who = h.prev ? `${qtyName(m.count)} ${c.gen} atakuje twojego bohatera!` : `${h.name} atakuje: ${qtyName(m.count).toLowerCase()} ${c.gen}.`;
   offerBattle(st, h, m, who, m.count * c.value, (ctx, cx, cy) => drawCreatureIcon(ctx, m.cid, cx, cy + 34, 2));
+}
+// Miejsca z wyborem gracza: arena (atak albo obrona), szkoła magii (moc albo wiedza za złoto), targowisko, fort na wzgórzu
+function siteChoice(st, h, ob) {
+  const S = SITES[ob.kind], R = playerOf(st, h.owner).resources, icon = { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_' + ob.kind, cx, cy, 90, 74) };
+  const take = c => () => { const r = useSite(st, h, ob, c); Sfx.play(ob.kind === 'school' ? 'shrine' : 'coins'); if (r.float) advFloat(r.float, h.x, h.y, r.res); showDialog(`${S.name}. ${r.text}`, [{ label: 'OK', key: 'enter' }], icon); };
+  if (ob.kind === 'arena') return showDialog(`${S.name}: walki z mistrzami areny. Co ćwiczy ${h.name}?`, [{ label: 'Atak +2', key: 'a', action: take('att') }, { label: 'Obrona +2', key: 'o', action: take('def') }], { ...icon, locked: true });
+  if (ob.kind === 'school') {
+    if (R.gold < S.cost) return showDialog(`${S.name}: mistrzowie uczą za ${S.cost} złota, a masz ${R.gold}. Wróć, gdy uzbierasz.`, [{ label: 'OK', key: 'enter' }], icon);
+    return showDialog(`${S.name}: za ${S.cost} złota mistrzowie nauczą ${h.name}…`, [{ label: 'Moc czarów +1', key: 'm', action: take('sp') }, { label: 'Wiedza +1', key: 'w', action: take('kn') }, { label: 'Nie', key: 'escape' }], icon);
+  }
+  if (ob.kind === 'market') { G.marketMin = 2; return showMarket(st, h.owner, () => { G.marketMin = 0; }); }
+  const plan = hillFortPlan(h); // fort na wzgórzu
+  if (!plan.length) return showDialog(`${S.name}: kowale nie mają czego ulepszyć w armii ${h.name}.`, [{ label: 'OK', key: 'enter' }], icon);
+  const tot = {}; for (const p of plan) for (const [k, v] of Object.entries(p.cost)) tot[k] = (tot[k] || 0) + v;
+  showDialog(`${S.name}: kowale ulepszą ${plan.map(p => `${CREATURES[p.from].plural.toLowerCase()} (${p.n}) → ${CREATURES[p.to].plural.toLowerCase()}`).join(', ')}. Razem: ${costText(tot)}${canPay(R, tot) ? '' : ' (nie na wszystko cię stać: ulepszą to, na co wystarczy)'}.`,
+    [{ label: 'Ulepsz', key: 'enter', action: take() }, { label: 'Nie', key: 'escape' }], icon);
 }
 // Skarbiec: opis załogi i łupu, potem zwykłe okno przed bitwą (odwrót cofa bohatera o pole)
 const bankPower = ob => ob.guards.reduce((s, [cid, n]) => s + n * CREATURES[cid].value, 0);
@@ -519,6 +536,23 @@ function dwellingUnits(t, L) {
   const F = factionOf(t.faction);
   return DW_TIERS.filter(s => !s || hasB(t, 'dw' + L + s)).map(s => F.dw['dw' + L + s][1]); // zwykła jednostka zawsze (także przed budową)
 }
+// Ulepszanie kupionych stworów w mieście (jak w Heroes 3): stwór tej frakcji przechodzi na najwyższy zbudowany stopień
+// swojego siedliska (zwykły -> ulepszony -> elitarny); koszt = różnica cen × liczba stworów.
+function townUpgradeTarget(t, cid) {
+  const F = factionOf(t.faction);
+  for (const L of DW_LEVELS) { const ids = DW_TIERS.map(s => (F.dw['dw' + L + s] || [])[1]), k = ids.indexOf(cid); if (k < 0) continue;
+    for (let j = DW_TIERS.length - 1; j > k; j--) if (ids[j] && hasB(t, 'dw' + L + DW_TIERS[j])) return ids[j];
+    return null; }
+  return null;
+}
+function upgradeCostFor(from, to, n) { const a = CREATURES[from].cost || {}, b = CREATURES[to].cost || {}, c = {}; for (const r of RESOURCES) { const d = ((b[r.id] || 0) - (a[r.id] || 0)) * n; if (d > 0) c[r.id] = d; } return c; }
+// Ulepsza oddział a[i] w mieście t; zwraca błąd (napis) albo null
+function townUpgrade(st, t, a, i) {
+  const x = a[i]; if (!x) return 'Pusty oddział'; const to = townUpgradeTarget(t, x.cid); if (!to) return 'Tego oddziału nie da się tu ulepszyć';
+  const R = playerOf(st, t.owner).resources, cost = upgradeCostFor(x.cid, to, x.n); if (!Object.entries(cost).every(([k, v]) => R[k] >= v)) return 'Brakuje surowców na ulepszenie';
+  for (const [k, v] of Object.entries(cost)) R[k] -= v;
+  const same = a.find(y => y && y !== x && y.cid === to); if (same) { same.n += x.n; a[i] = null; } else x.cid = to; return null;
+}
 // Przyrost tygodniowy: bazowy z jednostki, +50% z Cytadelą, +100% z Zamkiem (opisy w BUILDINGS)
 // Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
 function weeklyGrowth(t, L, st) {
@@ -790,7 +824,7 @@ const marketCount = (st, owner) => st.towns.filter(t => t.owner === owner && has
 const MARKET_BUY = [0, 1, 0.85, 0.75, 0.65], MARKET_SELL = [0, 0.2, 0.3, 0.4, 0.5];
 // Najmniejsza transakcja: oddajesz give sztuk `from`, dostajesz get sztuk `to` (null bez rynku albo dla tej samej rzeczy)
 function marketLot(st, owner, from, to) {
-  const m = Math.min(4, marketCount(st, owner)); if (!m || from === to) return null;
+  const m = Math.min(4, Math.max(G.marketMin || 0, marketCount(st, owner))); if (!m || from === to) return null; // G.marketMin: targowisko na mapie
   const val = from === 'gold' ? 1 : RES_VALUE[from] * MARKET_SELL[m], cost = to === 'gold' ? 1 : RES_VALUE[to] * MARKET_BUY[m], r = cost / val;
   return r >= 1 ? { give: Math.ceil(r - 1e-9), get: 1 } : { give: 1, get: Math.floor(1 / r + 1e-9) };
 }
@@ -904,9 +938,27 @@ function buildGrail(st, t, h) {
   if (!hasGrail(h) || t.owner !== h.owner || hasB(t, 'grail')) return false;
   h.bag.splice(h.bag.indexOf('grail'), 1); t.built.push('grail'); return true;
 }
+// Fort na wzgórzu: oddziały, które da się ulepszyć (stwór ma wersję ulepszoną), z kosztem = różnica cen × liczba
+function hillFortPlan(h) {
+  const out = [];
+  h.army.forEach((x, i) => { if (!x) return; const C = CREATURES[x.cid], U = C.up && CREATURES[C.up]; if (!U || !U.cost) return;
+    const cost = {}; for (const r of RESOURCES) { const d = ((U.cost[r.id] || 0) - ((C.cost || {})[r.id] || 0)) * x.n; if (d > 0) cost[r.id] = d; }
+    out.push({ slot: i, from: x.cid, to: C.up, n: x.n, cost }); });
+  return out;
+}
+const canPay = (R, cost) => Object.entries(cost).every(([k, v]) => R[k] >= v);
+// Ulepsza po kolei (najcenniejsze oddziały pierwsze), na ile starcza surowców; zwraca listę ulepszonych
+function hillFortUpgrade(st, h) {
+  const R = playerOf(st, h.owner).resources, done = [];
+  for (const p of hillFortPlan(h).sort((a, b) => b.n * CREATURES[b.to].value - a.n * CREATURES[a.to].value)) {
+    if (!canPay(R, p.cost)) continue; for (const [k, v] of Object.entries(p.cost)) R[k] -= v;
+    const x = h.army[p.slot], same = h.army.find(y => y && y !== x && y.cid === p.to); if (same) { same.n += x.n; h.army[p.slot] = null; } else x.cid = p.to; done.push(p);
+  }
+  return done;
+}
 const siteUsed = (st, ob, h) => { const [k, v] = siteStamp(st, ob, h); return (ob.seen || {})[k] === v; };
 // Skutek odwiedzin (człowiek i SI). Zwraca { text, float?, res?, exp? }; doświadczenie dolicza wołający (okno awansu).
-function useSite(st, h, ob) {
+function useSite(st, h, ob, choice) {
   const S = SITES[ob.kind], R = playerOf(st, h.owner).resources;
   if (siteUsed(st, ob, h)) return { text: { hero: `${h.name} już tu był${h.female ? 'a' : ''}.`, day: 'Dziś już stąd korzystano. Wróć jutro.', heroWeek: 'W tym tygodniu już stąd korzystano.', week: 'W tym tygodniu plon już zebrano. Wróć w następnym.', player: 'Okolica jest już odsłonięta.' }[S.use] };
   const [k, v] = siteStamp(st, ob, h); const mark = () => { ob.seen = ob.seen || {}; ob.seen[k] = v; };
@@ -960,6 +1012,28 @@ function useSite(st, h, ob) {
       removeObject(st, ob); R.gold += gold; if (art) giveArtifact(h, art);
       return { text: `Z wraku udaje się wyłowić ${gold} złota${art ? ` i artefakt: ${ARTIFACTS[art].name}` : ''}.`, float: `+${gold}`, res: 'gold' };
     }
+    case 'arena': { const s = choice || (heroStat(h, 'att') <= heroStat(h, 'def') ? 'att' : 'def'); mark(); h.stats[s] += 2; const P = PRIMARY.find(p => p.id === s);
+      return { text: `Walki na arenie hartują: ${P.name.toLowerCase()} +2 (teraz ${h.stats[s]}).`, float: `${P.name} +2` }; }
+    case 'school': { if (R.gold < S.cost) return { text: `Mistrzowie uczą za ${S.cost} złota, a masz tylko ${R.gold}.` };
+      const s = choice || (MAGE_CLASSES.includes(h.cls) ? 'sp' : 'kn'); mark(); R.gold -= S.cost; h.stats[s]++; if (s === 'kn') h.mana = Math.min(heroMaxMana(h), h.mana + 10); const P = PRIMARY.find(p => p.id === s);
+      return { text: `Nauki w szkole magii: ${P.name.toLowerCase()} +1 (teraz ${h.stats[s]}), −${S.cost} złota.`, float: `${P.name} +1` }; }
+    case 'tree': { mark(); const exp = Math.max(1, expForLevel(h.level + 1) - h.exp); return { text: `Owoc z drzewa wiedzy: ${h.name} od razu awansuje (+${exp} doświadczenia).`, float: `+${exp} dośw.`, exp }; }
+    case 'garden': { mark(); const gems = thash(ob.id, weekIndex(st), st.seed) % 2 === 0; if (gems) { R.gems += 5; return { text: 'Ogrodnicy oddają tygodniowy zbiór: 5 klejnotów.', float: '+5', res: 'gems' }; }
+      R.gold += 500; return { text: 'Ogrodnicy oddają tygodniowy utarg: 500 złota.', float: '+500', res: 'gold' }; }
+    case 'campfire': { const r = mulberry32(st.seed ^ (ob.id * 977)), gold = 400 + Math.floor(r() * 3) * 100, k = 4 + Math.floor(r() * 3), res = ob.res || 'wood';
+      removeObject(st, ob); R.gold += gold; R[res] += k; return { text: `Przy wygasłym ognisku ktoś zostawił zapasy: ${gold} złota i ${k} (${resName(res).toLowerCase()}).`, float: `+${gold}`, res: 'gold' }; }
+    case 'hillFort': { const d = hillFortUpgrade(st, h); return { text: d.length ? `Kowale ulepszają: ${d.map(p => `${CREATURES[p.from].plural.toLowerCase()} → ${CREATURES[p.to].plural.toLowerCase()} (${p.n})`).join(', ')}.` : 'Kowale nie mają czego ulepszyć albo brakuje surowców.' }; }
+    case 'market': return { text: 'Targowisko: wymiana surowców.' };
+    case 'oasis': case 'buoy': { mark(); h.boost = { ...(h.boost || {}), morale: 1 }; if (ob.kind === 'oasis') h.mp += 300;
+      return { text: ob.kind === 'oasis' ? 'Chłodna woda i cień palm: +1 do morale do następnej bitwy i +300 punktów ruchu.' : 'Marynarze biją w dzwon boi na szczęście: +1 do morale do następnej bitwy.', float: 'morale +1' }; }
+    case 'magicSpring': { const max = heroMaxMana(h) * 2; if (h.mana >= max) return { text: 'Źródło lśni, ale mana bohatera jest już przepełniona.' }; mark(); h.mana = max; return { text: `Magiczne źródło przepełnia bohatera mocą: mana ${max} (dwa razy więcej niż zwykle).`, float: `mana ${max}` }; }
+    case 'graveyard': { const r = mulberry32(st.seed ^ (ob.id * 389)), gold = 1000 + Math.floor(r() * 3) * 500, pool = ARTS_BY_RARITY(r() < 0.35 ? 'minor' : 'treasure'), art = pool[Math.floor(r() * pool.length)];
+      removeObject(st, ob); R.gold += gold; giveArtifact(h, art); return { text: `W rozkopanym grobie leżą ${gold} złota i artefakt: ${ARTIFACTS[art].name}.`, float: `+${gold}`, res: 'gold' }; }
+    case 'flotsam': { const r = mulberry32(st.seed ^ (ob.id * 211)), wood = r() < 0.5; removeObject(st, ob);
+      if (wood) { const k = 5 + Math.floor(r() * 6); R.wood += k; return { text: `Z wody udaje się wyłowić ${k} drewna.`, float: `+${k}`, res: 'wood' }; }
+      const g = 500 + Math.floor(r() * 3) * 250; R.gold += g; return { text: `W dryfującej skrzyni jest ${g} złota.`, float: `+${g}`, res: 'gold' }; }
+    case 'sirens': { mark(); let lost = 0; for (const x of h.army) if (x && x.n > 1) { const d = Math.floor(x.n / 10); x.n -= d; lost += d; }
+      return { text: `Śpiew syren porusza serca: +1500 doświadczenia.${lost ? ` Niestety ${lost} żołnierzy rzuca się w fale.` : ''}`, float: '+1500 dośw.', exp: 1500 }; }
     case 'obelisk': { mark(); const k = obelisksSeen(st, h.owner), N = obelisksTotal(st);
       return { puzzle: true, text: k >= N ? 'Ostatni obelisk! Mapa zagadki jest kompletna: krzyżyk wskazuje, gdzie zakopano Graala.' : `Runy na obelisku odsłaniają kolejny fragment mapy zagadki (${k} z ${N}).` }; }
   }
@@ -972,7 +1046,7 @@ function siteInfo(st, ob, h) {
   if (ob.kind === 'dwelling') dwellRefresh(st, ob);
   const what = ob.kind === 'shrine' ? `uczy czaru „${SPELLS[ob.spell].name}” (poziom ${SPELLS[ob.spell].level})` : ob.kind === 'windmill' ? `co tydzień 3–6 jednostek surowca (${resName(ob.res).toLowerCase()}) dla pierwszego gościa`
     : ob.kind === 'witchHut' ? `uczy umiejętności ${skillText(ob.skill, 1)}` : ob.kind === 'dwelling' ? `${CREATURES[ob.cid].plural.toLowerCase()} do werbunku: ${ob.avail} (po ${costText(CREATURES[ob.cid].cost)}), co tydzień przybywa ${CREATURES[ob.cid].growth}`
-    : ob.kind === 'portal' && st.objects[ob.pair] ? `${S.desc} (pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})` : ob.kind === 'gate' ? `${S.desc}: ${levelOf(st.map, ob.x, ob.y) ? 'wyjście na powierzchnię' : 'zejście do podziemi'}` : S.desc;
+    : ob.kind === 'campfire' ? `porzucony obóz: 400–600 złota i 4–6 jednostek surowca (${resName(ob.res || 'wood').toLowerCase()})` : ob.kind === 'portal' && st.objects[ob.pair] ? `${S.desc} (pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})` : ob.kind === 'gate' ? `${S.desc}: ${levelOf(st.map, ob.x, ob.y) ? 'wyjście na powierzchnię' : 'zejście do podziemi'}` : S.desc;
   const used = h && siteUsed(st, ob, h) ? { hero: ' Ten bohater już tu był.', day: ' Dziś już wykorzystane.', heroWeek: ' W tym tygodniu już wykorzystane.', week: ' Plon z tego tygodnia już zebrany.', player: ' Już odwiedzone.' }[S.use] : '';
   return `${S.name}: ${what}.${used}${st.guard[ob.y * st.map.n + ob.x] ? ' Pilnuje go potwór.' : ''}`;
 }

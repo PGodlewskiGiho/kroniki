@@ -235,10 +235,11 @@ function placeObjects(st) {
     if (!S.per) continue; // obeliski rozmieszcza placeGrail
     const want = NL / S.per, cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);
     for (let k = 0; k < cnt; k++) {
-      const p = pick((x, y) => dStart(x, y) >= (S.guard ? 7 : 4)); if (!p) continue;
+      const p = pick((x, y) => dStart(x, y) >= (S.guard ? 7 : 4) && (!S.terr || map.terrain[y * n + x] === TER[S.terr])); if (!p) continue; // terr: tylko na danym terenie (oaza na piasku)
       const o = { type: 'site', kind, x: p[0], y: p[1], seen: {} };
       if (kind === 'shrine') { const L = d01(p[0], p[1]) > 0.5 ? 2 : 1, pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L); o.spell = pool[Math.floor(rng() * pool.length)]; }
       if (kind === 'windmill') o.res = RARE[Math.floor(rng() * RARE.length)];
+      if (kind === 'campfire') { const pool = RESOURCES.filter(r => r.id !== 'gold'); o.res = pool[Math.floor(rng() * pool.length)].id; }
       if (kind === 'witchHut') { const pool = Object.keys(SKILLS).filter(id => id !== 'necromancy'); o.skill = pool[Math.floor(rng() * pool.length)]; }
       if (kind === 'dwelling') { const lv = 2 + Math.floor(rng() * 3), pool = NEUTRALS_BY_LEVEL[lv].filter(c => CREATURES[c].cost); o.cid = pool[Math.floor(rng() * pool.length)]; o.avail = CREATURES[o.cid].growth; o.week = 0; }
       add(o, [p[1] * n + p[0]]); if (S.guard) guard(o, kind === 'prison' ? 1 : 0);
@@ -256,6 +257,12 @@ function placeObjects(st) {
     const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x; if (map.terrain[i] !== TER.WATER || occ[i]) continue;
     let wet = 0; for (let d = 0; d < 8; d++) if (map.terrain[(y + DY8[d]) * n + x + DX8[d]] === TER.WATER) wet++; if (wet < 7) continue;
     add({ type: 'site', kind: 'wreck', x, y, seen: {} }, [i]); k--;
+  }
+  // miejsca na wodzie (wper: jedno na tyle pól wody): boja, szczątki, skała syren – na otwartej wodzie, dostępne łodzią
+  for (const [kind, S] of Object.entries(SITES)) if (S.wper) for (let k = Math.floor(water / S.wper) + (rng() < (water / S.wper) % 1 ? 1 : 0), tries = 0; k > 0 && tries < 4000; tries++) {
+    const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x; if (map.terrain[i] !== TER.WATER || occ[i]) continue;
+    let wet = 0; for (let d = 0; d < 8; d++) if (map.terrain[(y + DY8[d]) * n + x + DX8[d]] === TER.WATER && !occ[(y + DY8[d]) * n + x + DX8[d]]) wet++; if (wet < 6) continue;
+    add({ type: 'site', kind, x, y, seen: {} }, [i]); k--;
   }
   return objs;
 }

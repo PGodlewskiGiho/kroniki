@@ -94,7 +94,13 @@ function aiManageTown(st, p, t) {
       const n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), p.id)); if (n > 0) { recruit(st, t, L, cid, n); break; }
     }
   }
-  const h = heroInTown(st, t); if (!h) return;
+  const h = heroInTown(st, t);
+  // ulepszanie kupionych stworów (garnizon i bohater w mieście), gdy po opłacie zostaje zapas złota
+  for (const a of [t.garrison, h && h.army].filter(Boolean)) for (let i = 0; i < a.length; i++) {
+    const x = a[i], to = x && townUpgradeTarget(t, x.cid); if (!to) continue; const c = upgradeCostFor(x.cid, to, x.n);
+    if (p.resources.gold - (c.gold || 0) >= 2000) townUpgrade(st, t, a, i);
+  }
+  if (!h) return;
   armyTransfer(t.garrison, h.army);
   // kuźnia: machiny po werbunku, gdy zostaje zapas złota
   if (hasB(t, 'smith')) for (const id of MACHINES) if (!h.machines.includes(id) && p.resources.gold >= CREATURES[id].cost.gold + 3000) buyMachine(st, t, h, id);
@@ -236,6 +242,10 @@ function aiSiteValue(st, h, ob) {
   if ((ob.kind === 'temple' || ob.kind === 'fountain') && h.boost && h.boost[ob.kind === 'temple' ? 'morale' : 'luck']) return 0;
   if (ob.kind === 'witchHut' && (heroSkill(h, ob.skill) || h.skills.length >= MAX_SKILLS)) return 0;
   if (ob.kind === 'prison' && st.heroes.filter(o => o.owner === h.owner).length >= heroLimit(st)) return 0;
+  if ((ob.kind === 'oasis' || ob.kind === 'buoy') && h.boost && h.boost.morale) return 0;
+  if (ob.kind === 'magicSpring' && h.mana >= heroMaxMana(h)) return 0;
+  if (ob.kind === 'school' && playerOf(st, h.owner).resources.gold < SITES.school.cost + 2000) return 0; // szkoła: gdy złota starczy z zapasem
+  if (ob.kind === 'hillFort') { const R = playerOf(st, h.owner).resources, plan = hillFortPlan(h).filter(p => canPay(R, p.cost) && R.gold - (p.cost.gold || 0) >= 1500); return plan.length ? 1500 + plan.reduce((s, p) => s + p.n * (CREATURES[p.to].value - CREATURES[p.from].value), 0) * 0.5 : 0; }
   if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
   return S.ai;
 }

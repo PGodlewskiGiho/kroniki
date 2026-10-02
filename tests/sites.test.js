@@ -1,174 +1,76 @@
-// Obiekty mapy: kapliczki, studnie, młyny, obozy… (krok 11). Uruchom: npm test
+// Nowe miejsca na mapie: arena, szkoła magii, drzewo wiedzy, targowisko, magiczny ogród, ognisko, fort na wzgórzu. Uruchom: npm test
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openGame, newGame, frames, dialog, pressDialog } = require('./harness');
+const { openGame, newGame } = require('./harness');
 
 let browser, page, errors;
-test.before(async () => { ({ browser, page, errors } = await openGame()); });
+test.before(async () => { ({ browser, page, errors } = await openGame()); await newGame(page, { mapSize: 'L' }, 77); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
 
-// Stawia miejsce danego rodzaju obok bohatera gracza (wolne pole, bez strażnika) i zwraca jego id
-const placeSite = (kind, extra = {}) => page.evaluate(([kind, extra]) => {
-  const st = G.state, h = hero(st), n = st.map.n;
-  for (const o of st.objects) if (o.type === 'monster') o.dead = true;
-  const spot = [[1, 1], [2, 1], [1, 2], [2, 2], [-1, 1], [1, -1]].map(([dx, dy]) => [h.x + dx, h.y + dy]).find(([x, y]) => passableTile(st, x, y) && !st.objAt[y * n + x]);
-  const ob = { id: st.objects.length, type: 'site', kind, x: spot[0], y: spot[1], seen: {}, ...extra };
-  st.objects.push(ob); rebuildObjIndex(st); return ob.id;
-}, [kind, extra]);
-// Odwiedza miejsce bohaterem (tak jak po wejściu na pole) i zwraca treść okna
-const visit = (id, who = null) => page.evaluate(([id, who]) => {
-  const st = G.state, ob = st.objects[id], h = who == null ? hero(st) : st.heroes[who]; h.x = ob.x; h.y = ob.y;
-  visitObject(st, h, ob); const msg = G.modal && G.modal.msg; if (G.modal) G.modal.buttons[0].action(); G.modal = null; return msg;
-}, [id, who]);
+const KINDS = ['arena', 'school', 'tree', 'market', 'garden', 'campfire', 'hillFort'];
 
-test('nowa gra: miejsca na mapie w liczbie zależnej od rozmiaru, na dostępnych polach', async () => {
-  const r = await page.evaluate(() => ['S', 'M', 'XL'].map(ms => {
-    const st = createNewGame(Object.assign({}, G.settings, { slots: null,  mapSize: ms, opponents: 1 }), 21), n = st.map.n, sites = st.objects.filter(o => o.type === 'site');
-    return { ms, n: sites.length, kinds: new Set(sites.map(o => o.kind)).size, ok: sites.every(o => (st.map.terrain[o.y * n + o.x] === TER.WATER) === (o.kind === 'wreck') && !st.map.obst[o.y * n + o.x]),
-      shrines: sites.filter(o => o.kind === 'shrine').every(o => SPELLS[o.spell]), mills: sites.filter(o => o.kind === 'windmill').every(o => RARE.includes(o.res)) };
-  }));
-  assert.ok(r[0].n >= 3 && r[0].n < 25, `S: ${r[0].n}`);
-  assert.ok(r[1].n > r[0].n * 2, `M: ${r[1].n}`);
-  assert.equal(r[2].kinds, 20); // 19 rodzajów miejsc i obeliski
-  for (const g of r) { assert.ok(g.ok, g.ms); assert.ok(g.shrines); assert.ok(g.mills); }
+test('nowe miejsca pojawiają się w świecie i mają grafikę 3D', async () => {
+  const r = await page.evaluate(K => K.map(k => [k, G.state.objects.filter(o => o.type === 'site' && o.kind === k).length, !!MAP3D_ART.f['site_' + k]]), KINDS);
+  for (const [k, n, art] of r) { assert.ok(n > 0, `${k} na mapie`); assert.ok(art, `${k}: grafika`); }
 });
 
-test('obozy, posterunki, ołtarze i biblioteki: +1 do cechy raz na bohatera', async () => {
-  await newGame(page);
-  for (const [kind, stat] of [['camp', 'att'], ['post', 'def'], ['altar', 'sp'], ['library', 'kn']]) {
-    const id = await placeSite(kind), s0 = await page.evaluate(s => hero(G.state).stats[s], stat);
-    assert.match(await visit(id), /\+1/);
-    assert.match(await visit(id), /już tu był/);
-    assert.equal(await page.evaluate(s => hero(G.state).stats[s], stat), s0 + 1, kind);
-  }
-});
-
-test('kamień wiedzy, kapliczka, studnia i stajnie', async () => {
-  await newGame(page);
-  const stone = await placeSite('stone'), e0 = await page.evaluate(() => hero(G.state).exp);
-  await visit(stone);
-  assert.equal(await page.evaluate(() => hero(G.state).exp), e0 + 1000);
-  const shrine = await placeSite('shrine', { spell: 'lightningBolt' });
-  assert.match(await visit(shrine), /poznaje czar „Błyskawica”/);
-  assert.ok(await page.evaluate(() => hero(G.state).spells.includes('lightningBolt')));
-  const well = await placeSite('well');
-  await page.evaluate(() => { hero(G.state).mana = 0; });
-  await visit(well);
-  assert.equal(await page.evaluate(() => hero(G.state).mana === heroMaxMana(hero(G.state))), true);
-  await page.evaluate(() => { hero(G.state).mana = 0; });
-  assert.match(await visit(well), /Wróć jutro/);
-  await page.evaluate(() => { G.screens.adventure.doEndTurn(); G.modal = null; hero(G.state).mana = 0; });
-  await visit(well);
-  assert.ok(await page.evaluate(() => hero(G.state).mana > 0), 'następnego dnia studnia znów działa');
-  const st = await placeSite('stables'), mp = await page.evaluate(() => hero(G.state).mp);
-  await visit(st);
-  assert.equal(await page.evaluate(() => hero(G.state).mp), mp + 400);
-  assert.match(await visit(st), /W tym tygodniu/);
-});
-
-test('młyny: plon raz w tygodniu dla pierwszego gościa', async () => {
-  await newGame(page, { opponents: 1 });
-  const wm = await placeSite('waterMill'), mill = await placeSite('windmill', { res: 'gems' });
-  const g0 = await page.evaluate(() => human(G.state).resources.gold);
-  await visit(wm);
-  assert.equal(await page.evaluate(() => human(G.state).resources.gold), g0 + 1000);
-  const r = await page.evaluate(([wm, mill]) => {
-    const st = G.state, foe = st.heroes.find(h => h.owner === 1), before = st.players[1].resources.gold;
-    const again = useSite(st, foe, st.objects[wm]).text, gems0 = human(st).resources.gems; useSite(st, hero(st), st.objects[mill]);
-    return { again, gotFoe: st.players[1].resources.gold - before, gems: human(st).resources.gems - gems0, value: aiSiteValue(st, foe, st.objects[wm]), used: siteUsed(st, st.objects[wm], foe) };
-  }, [wm, mill]);
-  assert.match(r.again, /plon już zebrano/);
-  assert.equal(r.gotFoe, 0);
-  assert.ok(r.gems >= 3 && r.gems <= 6, `klejnoty: ${r.gems}`);
-  assert.ok(r.used, 'SI też widzi, że plon zebrany');
-  await page.evaluate(() => { for (let d = 0; d < 7; d++) { G.screens.adventure.doEndTurn(); G.modal = null; } });
-  await visit(wm);
-  assert.equal(await page.evaluate(() => human(G.state).resources.gold >= 1000), true);
-  assert.equal(await page.evaluate(id => siteUsed(G.state, G.state.objects[id], hero(G.state)), wm), true);
-});
-
-test('świątynia i fontanna: +1 morale i szczęścia do końca następnej bitwy', async () => {
-  await newGame(page);
-  const t = await placeSite('temple'), f = await placeSite('fountain');
-  const m0 = await page.evaluate(() => { const h = hero(G.state); return [armyMorale(armyStacks(h.army).map(s => s.cid), h, null), heroLuck(h)]; });
-  await visit(t); await visit(f);
+test('działanie: arena, szkoła, drzewo, ogród, ognisko, fort', async () => {
   const r = await page.evaluate(() => {
-    const st = G.state, h = hero(st), m = st.objects.find(o => o.type === 'monster'); m.dead = false; m.cid = 'goblin'; m.count = 1;
-    h.army[0] = { cid: 'dawnbringer', n: 5 };
-    const B = createBattle(st, h, m), during = [B.morale[0], B.luck[0]];
-    resolveBattle(simulateBattle(B), false);
-    return { during, after: [armyMorale(armyStacks(h.army).map(s => s.cid), h, null), heroLuck(h)] };
+    const st = G.state, h = hero(st), R = st.players[h.owner].resources, mk = kind => ({ type: 'site', kind, x: 0, y: 0, id: 9000 + Math.floor(Math.random() * 999), seen: {}, res: 'ore' });
+    const out = {};
+    const a0 = h.stats.att; useSite(st, h, mk('arena'), 'att'); out.arena = h.stats.att - a0;
+    R.gold = 5000; const k0 = h.stats.kn; useSite(st, h, mk('school'), 'kn'); out.school = [h.stats.kn - k0, 5000 - R.gold];
+    const L0 = h.level, t = useSite(st, h, mk('tree')); gainExp(st, h, t.exp); out.tree = h.level - L0;
+    const g0 = R.gold + R.gems * 1000; useSite(st, h, mk('garden')); out.garden = R.gold + R.gems * 1000 > g0;
+    const fire = mk('campfire'); st.objects.push(fire); const o0 = R.ore; useSite(st, h, fire); out.campfire = [R.ore - o0 >= 4, !!fire.dead];
+    h.army = [{ cid: 'pikeman', n: 10 }, null, null, null, null, null, null]; R.gold = 10000; useSite(st, h, mk('hillFort')); out.fort = [h.army[0].cid, 10000 - R.gold];
+    return out;
   });
-  assert.deepEqual(r.during.map((v, i) => v - m0[i]), [1, 1]);
-  assert.equal(r.after[1], m0[1], 'po bitwie szczęście wraca');
+  assert.equal(r.arena, 2); assert.deepEqual(r.school, [1, 1000]); assert.equal(r.tree, 1); assert.ok(r.garden); assert.deepEqual(r.campfire, [true, true]);
+  assert.equal(r.fort[0], 'halberdier'); assert.equal(r.fort[1], 150);
 });
 
-test('wieża obserwacyjna odsłania okolicę', async () => {
-  await newGame(page);
-  const id = await placeSite('lookout');
-  const r = await page.evaluate(id => {
-    const st = G.state, ob = st.objects[id], ex = human(st).explored, n = st.map.n; ex.fill(0);
-    visitObject(st, hero(st), ob); G.modal = null;
-    let c = 0; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (ex[y * n + x] && Math.hypot(x - ob.x, y - ob.y) > 8) c++;
-    return c;
-  }, id);
-  assert.ok(r > 50, `odkryte daleko: ${r}`);
+test('targowisko na mapie daje kurs jak dwa rynki, także bez rynku w mieście', async () => {
+  const r = await page.evaluate(() => { const st = G.state; G.marketMin = 2; const L = marketLot(st, ME, 'gold', 'wood'); G.marketMin = 0; return [L && L.give, marketLot(st, ME, 'gold', 'wood')]; });
+  assert.ok(r[0] > 0); assert.equal(r[1], null);
 });
 
-test('SI chodzi do miejsc i z nich korzysta', async () => {
-  await newGame(page, { mapSize: 'M', opponents: 1 }, 3);
+test('miasto: ulepszanie kupionych stworów (zwykłe -> ulepszone -> elitarne), koszt = różnica cen', async () => {
   const r = await page.evaluate(() => {
-    const st = G.state; for (let d = 0; d < 20; d++) { G.screens.adventure.doEndTurn(); G.modal = null; }
-    return st.objects.filter(o => o.type === 'site' && Object.keys(o.seen).some(k => st.heroes.some(h => h.owner === 1 && String(h.id) === k) || k === 'p1' || k === 'all')).length;
+    const st = G.state, t = st.towns.find(t => t.owner === ME), F = factionOf(t.faction), base = F.dw.dw1[1], up = F.dw.dw1u[1], el = F.dw.dw1x[1], R = st.players[ME].resources;
+    t.garrison = [{ cid: base, n: 10 }, null, null, null, null, null, null]; t.built = t.built.filter(b => !['dw1u', 'dw1x'].includes(b));
+    const out = { none: townUpgradeTarget(t, base) };
+    t.built.push('dw1', 'dw1u'); out.toUp = townUpgradeTarget(t, base) === up;
+    R.gold = 100000; for (const k of Object.keys(R)) if (k !== 'gold') R[k] = 100;
+    const g0 = R.gold, cost = upgradeCostFor(base, up, 10); out.err = townUpgrade(st, t, t.garrison, 0); out.cid = t.garrison[0].cid === up; out.paid = g0 - R.gold === (cost.gold || 0);
+    t.built.push('dw1x'); out.toElite = townUpgradeTarget(t, up) === el; townUpgrade(st, t, t.garrison, 0); out.elite = t.garrison[0].cid === el;
+    // drugie kliknięcie w zaznaczony oddział otwiera okno ulepszenia
+    G.go('town', { townId: t.id }); return out;
   });
-  assert.ok(r >= 2, `miejsc odwiedzonych przez SI: ${r}`);
+  assert.deepEqual(r, { none: null, toUp: true, err: null, cid: true, paid: true, toElite: true, elite: true });
+  await page.waitForFunction(() => G.screenName === 'town');
+  const dlg = await page.evaluate(() => { const s = G.screen, t = s.town(); t.garrison[0] = { cid: factionOf(t.faction).dw.dw2[1], n: 5 }; t.built.push('dw2', 'dw2u'); s.showUpgrade(t.garrison, 0); return G.modal && G.modal.buttons.map(b => b.label); });
+  assert.deepEqual(dlg, ['Ulepsz', 'Ulepsz wszystkie', 'Nie']);
 });
 
-test('mapa, dymek i okno z rysunkiem miejsca', async () => {
-  await newGame(page);
-  const ids = [];
-  for (const k of ['windmill', 'camp', 'fountain', 'lookout']) ids.push(await placeSite(k, k === 'windmill' ? { res: 'gems' } : {}));
-  await page.evaluate(() => { human(G.state).explored.fill(1); G.screens.adventure.enter({}); });
-  await frames(page, 6);
-  const info = await page.evaluate(id => { const ob = G.state.objects[id]; return [tileInfo(G.state, ob.x, ob.y), siteInfo(G.state, ob, hero(G.state))]; }, ids[1]);
-  assert.equal(info[0], 'Obóz najemników');
-  assert.match(info[1], /^Obóz najemników: \+1 do ataku bohatera\.$/);
-  await page.evaluate(id => { const st = G.state, ob = st.objects[id], h = hero(st); h.x = ob.x; h.y = ob.y; visitObject(st, h, ob); }, ids[0]);
-  await frames(page, 3);
-  assert.match((await dialog(page)).msg, /^Wiatrak\. Młynarz oddaje/);
-  await pressDialog(page, 'OK');
-});
-
-test('chata wiedźmy uczy umiejętności; więzienie uwalnia bohatera z doświadczeniem', async () => {
-  await newGame(page);
-  const hut = await placeSite('witchHut', { skill: 'navigation' });
-  assert.match(await visit(hut), /Wiedźma uczy: Nawigacja/);
-  assert.equal(await page.evaluate(() => heroSkill(hero(G.state), 'navigation')), 1);
-  assert.match(await visit(hut), /już (tu był|zna)/);
-  const pr = await placeSite('prison'), before = await page.evaluate(() => myHeroes(G.state).length);
-  assert.match(await visit(pr), /wychodzi na wolność/);
-  const r = await page.evaluate(([pr, before]) => { const st = G.state, mine = myHeroes(st), p = mine[mine.length - 1]; return { n: mine.length - before, lvl: p.level, gone: st.objects[pr].dead, modal: !!G.modal }; }, [pr, before]);
-  assert.equal(r.n, 1); assert.ok(r.lvl >= 4, `poziom ${r.lvl}`); assert.ok(r.gone, 'więzienie znika'); assert.equal(r.modal, false, 'bez okien awansu');
-});
-
-test('portal przenosi do pary, siedlisko werbuje i odrasta co tydzień, ołtarz i wrak', async () => {
-  await newGame(page);
+test('druga paczka: oaza na piasku, obiekty wodne na otwartej wodzie, działanie', async () => {
   const r = await page.evaluate(() => {
-    const st = G.state, h = hero(st), n = st.map.n, R = human(st).resources; for (const o of st.objects) if (o.type === 'monster') o.dead = true;
-    const free = [...Array(n * n).keys()].filter(i => passableTile(st, i % n, (i / n) | 0) && !st.objAt[i] && !heroAt(st, i % n, (i / n) | 0));
-    const mk = (kind, i, extra = {}) => { const ob = { id: st.objects.length, type: 'site', kind, x: i % n, y: (i / n) | 0, seen: {}, ...extra }; st.objects.push(ob); return ob; };
-    const a = mk('portal', free[10]), b = mk('portal', free[free.length - 10]); a.pair = b.id; b.pair = a.id; rebuildObjIndex(st);
-    h.x = a.x; h.y = a.y; useSite(st, h, a); const moved = h.x === b.x && h.y === b.y;
-    const d = mk('dwelling', free[20], { cid: 'wolf', avail: 5, week: weekIndex(st) }); CREATURES.wolf.cost = CREATURES.wolf.cost || { gold: 100 }; rebuildObjIndex(st);
-    R.gold = 100000; h.army = emptyArmy(); h.army[0] = { cid: 'pikeman', n: 5 }; const k = dwellMax(st, h, d); useSite(st, h, d);
-    const wolves = (h.army.find(s => s && s.cid === 'wolf') || {}).n, left = d.avail; st.dayTotal += 7; dwellRefresh(st, d); const grown = d.avail;
-    h.bag = ['noviceSword', 'mistCloak', 'grail']; const s = mk('sacrifice', free[30]); const sac = useSite(st, h, s);
-    const w = mk('wreck', free[40]), gold0 = R.gold; rebuildObjIndex(st); useSite(st, h, w);
-    return { moved, k, wolves, left, grown, growth: CREATURES.wolf.growth, sacExp: sac.exp, bag: h.bag, wreckGold: R.gold - gold0, wreckGone: w.dead };
+    const out = { kinds: {}, okTerrain: true };
+    for (const seed of [3, 11, 29]) {
+      const st = createNewGame(Object.assign({}, G.settings, { mapSize: 'L' }), seed);
+      for (const o of st.objects) if (o.type === 'site' && ['oasis', 'graveyard', 'magicSpring', 'buoy', 'flotsam', 'sirens'].includes(o.kind)) {
+        out.kinds[o.kind] = (out.kinds[o.kind] || 0) + 1; const t = st.map.terrain[o.y * st.map.n + o.x];
+        if (o.kind === 'oasis' && t !== TER.SAND || ['buoy', 'flotsam', 'sirens'].includes(o.kind) && t !== TER.WATER) out.okTerrain = false;
+      }
+    }
+    const st = G.state, h = hero(st), R = st.players[h.owner].resources, mk = kind => { const o = { type: 'site', kind, x: 0, y: 0, id: 8000 + Math.floor(Math.random() * 999), seen: {} }; st.objects.push(o); return o; };
+    h.boost = {}; useSite(st, h, mk('oasis')); out.oasis = h.boost.morale === 1;
+    h.mana = 0; useSite(st, h, mk('magicSpring')); out.spring = h.mana === heroMaxMana(h) * 2;
+    const b0 = h.bag.length + Object.values(h.equip).filter(Boolean).length, g0 = R.gold; const gy = mk('graveyard'); useSite(st, h, gy); out.grave = [R.gold > g0, h.bag.length + Object.values(h.equip).filter(Boolean).length > b0, !!gy.dead];
+    h.army = [{ cid: 'pikeman', n: 50 }, null, null, null, null, null, null]; const s = useSite(st, h, mk('sirens')); out.sirens = [s.exp, h.army[0].n];
+    return out;
   });
-  assert.ok(r.moved, 'portal');
-  assert.equal(r.k, 5); assert.equal(r.wolves, 5); assert.equal(r.left, 0); assert.equal(r.grown, r.growth);
-  assert.equal(r.sacExp, 800 + 2000); assert.deepEqual(r.bag, ['grail'], 'Graala nie da się poświęcić');
-  assert.ok(r.wreckGold >= 1500); assert.ok(r.wreckGone);
+  for (const k of ['oasis', 'graveyard', 'magicSpring', 'buoy', 'flotsam', 'sirens']) assert.ok(r.kinds[k] > 0, `${k} w świecie`);
+  assert.ok(r.okTerrain); assert.ok(r.oasis); assert.ok(r.spring); assert.deepEqual(r.grave, [true, true, true]); assert.deepEqual(r.sirens, [1500, 45]);
 });

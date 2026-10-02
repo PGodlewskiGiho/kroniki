@@ -64,6 +64,80 @@ const SITE3 = {
   wreck() { const g = new THREE.Group(), hull = lathe([[0.001, -0.5], [0.5, -0.45], [0.75, -0.2], [0.8, 0.1], [0.7, 0.35]].map(([r, y]) => [r, y]), '#5a3a22', 'wood', P(0, 2, 0), [0.55, 0.9, 1.6]); hull.rotation.set(0.3, 0.4, 0.5); g.add(hull);
     const m = cyl3(1.4, 1.2, 40, ST.woodD, 'wood', 0, 0, 0, 8); m.rotation.z = -0.6; m.position.set(...P(4, 10, -4)); g.add(m); g.add(slab([[0, 0], [14, 2], [12, -14], [2, -16]].map(([a, b]) => [a / PXU, b / PXU]), 0.3 / PXU, '#c8b890', 'cloth', P(12, 22, -4), [0, 0.3, -0.3]));
     for (let i = 0; i < 3; i++) g.add(blk(6, 4, 5, ST.wood, 'wood', -18 + i * 8, -1, 14 + (i % 2) * 4, [0.2, i, 0.3])); return g; },
+  arena() { // okrągła arena: kamienny pierścień trybun z łukami od frontu, piaszczysty plac, proporce
+    const g = new THREE.Group(), st = '#b0a490'; g.add(cyl3(28, 29, 4, ST.stoneD, 'ashlar')); g.add(cyl3(26, 27, 22, st, 'ashlar', 0, 4, 0, 28, true)); g.add(cyl3(22, 22, 14, DK(st, 0.2), 'ashlar', 0, 4, 0, 28, true)); g.add(cyl3(21, 21, 1.5, '#d8c08a', 'plaster', 0, 4, 0, 28)); /* otwarty pierścień: widać piaszczysty plac */
+    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; g.add(blk(5, 5, 4, DK(st, 0.1), 'ashlar', Math.cos(a) * 26, 22, Math.sin(a) * 26, [0, -a, 0])); }
+    for (const x of [-14, 0, 14]) g.add(opening(8, 12, x, 4, 25 - Math.abs(x) * 0.18, { frame: DK(st, 0.25), frameKind: 'ashlar', inner: '#2a1c10' }));
+    g.add(hangBanner(-20, 24, 18, 7, 14, '#a8302a')); g.add(hangBanner(20, 24, 18, 7, 14, '#a8302a')); g.add(mast(-20, 31, -10, 22)); g.add(mast(20, 31, -10, 22));
+    for (const s of [-1, 1]) { const sw = blk(1.4, 16, 1, '#c8ccd4', 'steel', s * 4, 27, 0, [0, 0, s * 0.6]); g.add(sw); } return g; },
+  school() { // szkoła magii: smukła wieża z niebieskim dachem i gwiazdą, przybudówka z drzwiami, świecące okna
+    const g = new THREE.Group(), w = '#9a94b0'; g.add(cyl3(15, 17, 58, w, 'ashlar', 0, 0, -4, 18)); g.add(coneRoof(19, 30, '#3a4aa0', 'tiles', 0, 58, -4, 18)); g.add(starTop(0, 94, -4, '#bfe0ff', 6));
+    for (const y of [18, 36]) g.add(opening(6, 9, 0, y, 12, { glow: '#8ab8ff', frame: '#5a5470', frameKind: 'ashlar' }));
+    g.add(blk(34, 18, 18, w, 'ashlar', 0, 0, 12)); g.add(gable(34, 18, 10, '#3a4aa0', 'tiles', 0, 18, 12, 3, w, 'ashlar')); g.add(door(9, 13, 0, 0, 21, '#4a3a6a'));
+    g.add(mqGlow(3, '#9ad0ff', -12, 26, 22)); g.add(mqGlow(2.4, '#c8a0ff', 12, 22, 22)); return g; },
+  tree() { // drzewo wiedzy: wielki dąb w kamiennym kręgu, złote owoce wiedzy
+    const g = new THREE.Group(); g.add(cyl3(17, 18, 2, '#8a8478', 'rubble')); g.add(mqTree(0, -2, 1.75, 'oak'));
+    for (let i = 0; i < 9; i++) { const a = i / 9 * 6.28, r = 14 + (i % 3) * 5; g.add(mqGlow(2.8, '#ffd860', Math.cos(a) * r, 40 + (i % 4) * 6, Math.sin(a) * r * 0.7 + 8)); }
+    for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28; g.add(mqRock('def', Math.cos(a) * 19, Math.sin(a) * 15, 3, 4, 3, i + 140)); } return g; },
+  market() { // targowisko: trzy kramy w pasiaste daszki, beczki, worki i towary
+    const g = new THREE.Group();
+    for (const [x, z, c] of [[-18, -8, '#c8302a'], [16, -10, '#2a6ab0'], [0, 14, '#d8a020']]) {
+      for (const [dx, dz] of [[-9, -6], [9, -6], [-9, 6], [9, 6]]) g.add(cyl3(1, 1, 16, ST.woodD, 'wood', x + dx, 0, z + dz, 6));
+      g.add(blk(20, 7, 12, ST.wood, 'wood', x, 0, z)); g.add(gable(22, 14, 6, c, 'cloth', x, 16, z, 2));
+      g.add(sph(2.6 / PXU, ['#e0b040', '#c84030', '#5a9a40'][Math.abs(x) % 3], 'cloth', P(x - 4, 9, z + 2))); g.add(sph(2.2 / PXU, '#d8c890', 'cloth', P(x + 4, 9, z + 1)));
+    }
+    for (const [x, z] of [[30, 16], [-30, 14]]) g.add(cyl3(4, 4, 9, '#7a4a24', 'wood', x, 0, z, 12)); g.add(mqRes('gold', 22, 24, 0.6)); return g; },
+  garden() { // magiczny ogród: żywopłot w kwadracie, krzewy ze świecącymi kwiatami, mała fontanna w środku
+    const g = new THREE.Group(), hedge = '#3a6a2a';
+    g.add(blk(52, 1, 44, '#5a7a3a', 'plaster', 0, 0, 0)); for (const [x, z, w, d] of [[0, -21, 52, 4], [-25, 0, 4, 44], [25, 0, 4, 44], [-17, 21, 18, 4], [17, 21, 18, 4]]) g.add(blk(w, 7, d, hedge, 'thatch', x, 1, z));
+    for (const [x, z] of [[-14, -10], [14, -10], [-14, 8], [14, 8]]) { g.add(leafClump(0.22, '#4a8a3a', P(x, 9, z), (x + z) & 5)); }
+    const cols = ['#ff70c0', '#80d0ff', '#ffe060', '#c080ff']; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28; g.add(mqGlow(1.3, cols[i % 4], Math.cos(a) * 17, 5 + (i % 2) * 3, Math.sin(a) * 13)); }
+    g.add(cyl3(6, 6, 4, '#c8c0b0', 'marble', 0, 1, 0, 16)); g.add(cyl3(5, 5, 0.6, '#4a8ab0', 'win', 0, 5, 0, 16)); g.add(cyl3(1.4, 1.2, 9, '#d8d0c0', 'marble', 0, 5, 0, 8)); g.add(mqGlow(1.8, '#bfe8ff', 0, 15, 0)); return g; },
+  campfire(f = 0) { // ognisko: kamienny krąg, skrzyżowane polana, płomień (4 klatki), kociołek na trójnogu, kłody do siedzenia
+    const g = new THREE.Group();
+    for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28; g.add(sph(2.6 / PXU, ST.stoneD, 'stone', P(Math.cos(a) * 8, 1, Math.sin(a) * 6))); }
+    for (const r of [0.6, -0.6]) { const l = cyl3(1.4, 1.4, 14, '#5a3a20', 'bark', 0, 2, 0, 8); l.rotation.set(0, r, Math.PI / 2); l.position.set(...P(0, 3, 0)); g.add(l); }
+    g.add(cone((7 + [0, 0.9, -0.5, 0.6][f]) / PXU, (18 + [0, 4, -3, 2][f]) / PXU, '#ff8a20', 'glow', P(0, 11 + [0, 2, -1.5, 1][f], 0), [0, f, [0, 0.12, -0.1, 0.06][f]], 8));
+    g.add(cone(4 / PXU, 11 / PXU, '#ffe080', 'glow', P(0, 9, 0), null, 8)); g.add(mqGlow(6, '#ffb050', 0, 12, 0));
+    for (const a of [0, 2.1, 4.2]) { const t = cyl3(0.6, 0.6, 22, '#3a2a1a', 'wood', Math.cos(a) * 8, 0, Math.sin(a) * 6, 6); t.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35); g.add(t); }
+    g.add(sph(3 / PXU, '#2a2a2a', 'iron', P(0, 21, 0), [1, 0.8, 1])); for (const [x, z, r] of [[-20, 6, 0.3], [18, -8, -0.4], [4, 18, 1.4]]) { const l = cyl3(2.6, 2.6, 12, '#7a5230', 'bark', x, 0, z, 10); l.rotation.set(0, r, Math.PI / 2); l.position.set(...P(x, 3, z)); g.add(l); }
+    g.add(sph(4 / PXU, '#b89a60', 'cloth', P(-14, 4, -12), [1, 0.8, 1])); return g; },
+  hillFort() { // fort na wzgórzu: skalny pagórek, palisada w krąg, drewniana wieża, kuźnia z kowadłem (ulepszanie wojsk)
+    const g = new THREE.Group(); g.add(mqRock('def', 0, -4, 30, 16, 24, 151, false));
+    for (let i = 0; i < 18; i++) { const a = i / 18 * 6.28; if (a > 1.2 && a < 1.9) continue; g.add(cyl3(1.8, 1.8, 15 + (i % 2) * 3, '#7a5230', 'bark', Math.cos(a) * 22, 12, -4 + Math.sin(a) * 17, 7)); g.add(cone(1.8 / PXU, 4 / PXU, '#6a4422', 'bark', P(Math.cos(a) * 22, 29 + (i % 2) * 3, -4 + Math.sin(a) * 17), null, 7)); }
+    g.add(blk(14, 34, 14, '#6a4628', 'wood', -6, 12, -10)); g.add(hipRoof(18, 18, 10, '#8a3a22', 'shingle', -6, 46, -10, 3)); g.add(mast(-6, 56, -10, 16));
+    g.add(blk(10, 6, 6, '#3a3a40', 'iron', 10, 12, 4)); g.add(blk(14, 2, 4, '#4a4a52', 'iron', 10, 18, 4)); g.add(mqGlow(2.6, '#ff8a30', 16, 14, -6)); return g; },
+  buoy(f = 0) { // boja na wodzie: pływak w pasy, dzwon i chorągiewka; kołysze się (4 klatki)
+    const g = new THREE.Group(), b = new THREE.Group(); b.rotation.z = [0, 0.12, 0, -0.12][f]; b.rotation.x = [0.06, 0, -0.06, 0][f];
+    b.add(cyl3(9, 7, 7, '#c8302a', 'plaster', 0, -2, 0, 16)); b.add(cyl3(9.2, 9.2, 2.5, '#f0ece0', 'plaster', 0, 1.5, 0, 16)); b.add(cone(6 / PXU, 14 / PXU, '#c8302a', 'plaster', P(0, 12, 0), null, 12));
+    for (const s of [-1, 1]) b.add(cyl3(0.8, 0.8, 16, '#3a3a40', 'iron', s * 4, 12, 0, 6)); b.add(sph(3.4 / PXU, '#c8a040', 'gold', P(0, 24, 0), [1, 1.1, 1])); b.add(mast(0, 28, 0, 12)); b.add(slab([[0, 0], [9, -1], [7, -4], [9, -7], [0, -6]].map(([a, c]) => [a / PXU, c / PXU]), 0.3 / PXU, '#2a6ab0', 'cloth', P(0, 39, 0)));
+    g.add(b); g.add(torus(10 / PXU, 0.8 / PXU, '#d8eaf0', 'cloth', P(0, 0.4, 0), [Math.PI / 2, 0, 0], [1, 1, 0.3])); return g; },
+  flotsam() { // dryfujące szczątki: beczki, deski, skrzynia i lina na wodzie
+    const g = new THREE.Group();
+    for (const [x, z, r] of [[-12, 4, 0.3], [10, -6, 1.2]]) { const c = cyl3(5, 5, 10, '#7a4a24', 'wood', 0, 0, 0, 12); c.rotation.set(Math.PI / 2, r, 0); c.position.set(...P(x, 3, z)); g.add(c); g.add(torus(5.1 / PXU, 0.6 / PXU, '#3a3a40', 'iron', P(x, 3, z), [0, r, 0])); }
+    for (const [x, z, r] of [[0, 14, 0.4], [-18, -10, -0.8], [16, 10, 1.6]]) g.add(blk(18, 1.6, 4, '#8a5a30', 'wood', x, 0, z, [0, r, 0.05]));
+    g.add(blk(10, 7, 8, '#6a4022', 'wood', 2, 0, -2, [0.1, 0.5, 0.15])); g.add(blk(10.5, 1.2, 8.5, '#c8a040', 'gold', 2, 6.5, -2, [0.1, 0.5, 0.15])); return g; },
+  sirens() { // skała syren: omszały głaz pośrodku wody, muszle i świecące perły, wodorosty
+    const g = new THREE.Group(); g.add(mqRock('def', 0, -2, 20, 20, 16, 171, false)); g.add(mqRock('def', 14, 8, 8, 7, 7, 172)); g.add(mqRock('def', -14, 9, 7, 6, 6, 173));
+    for (let i = 0; i < 5; i++) { const a = i / 5 * 6.28; g.add(mqGlow(1.6, '#e8f4ff', Math.cos(a) * 10, 14 + (i % 2) * 4, Math.sin(a) * 7 + 2)); }
+    g.add(sph(4 / PXU, '#f0c8d0', 'bone', P(-4, 22, 6), [1, 0.5, 1])); g.add(cone(1.2 / PXU, 12 / PXU, '#c8a040', 'gold', P(4, 26, 2), [0.3, 0, -0.2], 6)); // lira na szczycie
+    for (const [x, z] of [[-20, 0], [20, -4], [8, 16], [-8, 16]]) g.add(tube([[x / 60, 0, z / 60], [x / 60 + 0.03, 0.18, z / 60], [x / 60 - 0.02, 0.3, z / 60]].map(p => [p[0] * 2, p[1] * 2, p[2] * 2]), 0.025, 0.012, '#2a6a3a', 'hide')); return g; },
+  oasis() { // oaza: oczko wody w piasku, palmy, trawa, kamienie
+    const g = new THREE.Group(), pond = cyl(20 / PXU, 20 / PXU, 1 / PXU, '#3a8ab0', 'win', P(0, 0.6, 2), null, [1, 1, 0.7], 24); pond.material = new THREE.MeshStandardMaterial({ color: '#3a90b8', roughness: 0.08, metalness: 0.4 }); g.add(pond);
+    g.add(torus(20 / PXU, 2.4 / PXU, '#7a9a4a', 'thatch', P(0, 0.5, 2), [Math.PI / 2, 0, 0], [1, 0.7, 0.4]));
+    for (const [x, z, h, lean] of [[-18, -10, 1, 0.2], [16, -12, 1.15, -0.25], [20, 12, 0.85, -0.15]]) { const p = new THREE.Group(); p.add(cyl3(1.8, 2.4, 44 * h, '#8a6a40', 'bark', 0, 0, 0, 8)); for (let i = 0; i < 7; i++) { const a = i / 7 * 6.28; p.add(slab([[0, 0], [16, 2], [24, -6], [14, -2]].map(([u, v]) => [u / PXU, v / PXU]), 0.4 / PXU, '#3a7a2a', 'cloth', P(0, 44 * h, 0), [0.2, a, -0.5])); } p.rotation.z = lean; p.position.set(...P(x, 0, z)); g.add(p); }
+    for (let i = 0; i < 4; i++) g.add(mqRock('sand', -22 + i * 12, 22, 3, 3, 3, 180 + i)); return g; },
+  graveyard() { // stary cmentarz: kamienne płyty i krzyże, zbutwiałe ogrodzenie, krypta z płaskim dachem, martwe drzewo, błędne ogniki
+    const g = new THREE.Group(); g.add(blk(56, 1, 44, '#4a4a3a', 'rubble', 0, 0, 0));
+    for (const [x, z, h] of [[-18, -10, 12], [-6, -12, 10], [6, -10, 13], [-18, 6, 9], [-6, 8, 11], [18, 8, 10]]) { g.add(blk(7, h, 2.4, '#8a8a84', 'ashlar', x, 1, z)); g.add(cyl3(3.5, 3.5, 2.4, '#8a8a84', 'ashlar', x, h + 1, z - 1.2, 10)); }
+    for (const [x, z] of [[0, 14], [12, -2]]) { g.add(blk(2, 14, 2, '#9a968c', 'ashlar', x, 1, z)); g.add(blk(9, 2, 2, '#9a968c', 'ashlar', x, 10, z)); }
+    for (let i = 0; i < 9; i++) g.add(blk(1.4, 9, 1.4, '#3a2a1a', 'wood', -28 + i * 7, 1, 23)); g.add(blk(58, 1.4, 1, '#3a2a1a', 'wood', 0, 7, 23));
+    g.add(blk(16, 14, 14, '#6a6a68', 'ashlar', 18, 1, -12)); g.add(blk(18, 3, 16, '#5a5a58', 'ashlar', 18, 15, -12)); g.add(door(7, 10, 18, 1, -5, '#2a2420')); g.add(mqTree(-26, -16, 0.8, 'dead'));
+    for (const [x, z] of [[-10, 0], [10, 14]]) g.add(mqGlow(1.8, '#8affd0', x, 14, z)); return g; },
+  magicSpring() { // magiczne źródło: kamienna niecka z jarzącą się wodą, kryształy, runiczne kamienie
+    const g = new THREE.Group(); g.add(cyl3(20, 22, 6, '#7a7a88', 'ashlar', 0, 0, 0, 20)); const w = cyl(17 / PXU, 17 / PXU, 1 / PXU, '#60c0ff', 'glow', P(0, 6, 0), null, null, 20); w.material = lightMat('#7ad0ff'); g.add(w);
+    g.add(mqGlow(5, '#a0e0ff', 0, 10, 0)); for (let i = 0; i < 5; i++) { const a = i / 5 * 6.28 + 0.4; g.add(arGem(3.5 / PXU, '#80c8ff', P(Math.cos(a) * 21, 8, Math.sin(a) * 21))); }
+    for (const [x, z] of [[-24, -12], [24, -10]]) { g.add(blk(5, 18, 4, '#6a6a78', 'ashlar', x, 0, z)); for (let k = 0; k < 3; k++) g.add(box(2 / PXU, 1.4 / PXU, 0.4 / PXU, '#9ae0ff', 'glow', P(x, 5 + k * 4, z + 2.1))); } return g; },
 };
 // --- kopalnie (2×2 pola) ---
 function mqCave(g, pal, x, z, w = 18, h = 22) { /* wejście sztolni wpuszczone w zbocze: ciemny otwór, belki obudowy, tory wychodzące przed górę */
@@ -133,7 +207,7 @@ function mqBoat(hero = false) { // łódź żaglowa: kadłub z deskami, ciemne w
   if (hero) g.add(slab([[0, 0], [0.3, -0.03], [0.22, -0.1], [0.3, -0.17], [0, -0.16]], 0.008, '#ff00ff', 'cloth', [0.05, H + 1.52, 0]));
   g.add(cyl(0.012, 0.012, 0.5, '#4a3020', 'wood', [L / 2 + 0.05, H + 0.1, 0], [0, 0, -1.1])); // bukszpryt
   const w = mpGrp(g); w.scale.setScalar(30 / PXU * 0.95); return w; }
-const SITE3_ANIM = ['windmill', 'waterMill', 'camp', 'sacrifice', 'portal']; // klatki 1–3 (klatka 0 = klucz bez numeru)
+const SITE3_ANIM = ['windmill', 'waterMill', 'camp', 'sacrifice', 'portal', 'campfire', 'buoy']; // klatki 1–3 (klatka 0 = klucz bez numeru)
 for (const k of Object.keys(SITE3)) { MAP3['site_' + k] = () => mqWrap(SITE3[k](0)); if (SITE3_ANIM.includes(k)) for (let f = 1; f < 4; f++) MAP3[`site_${k}_${f}`] = () => mqWrap(SITE3[k](f)); }
 for (const k of Object.keys(MINE3)) MAP3['mine_' + k] = () => mqWrap(MINE3[k]());
 for (const k of Object.keys(BANK3)) for (const c of [0, 1]) MAP3[`bank_${k}_${c}`] = () => mqWrap(BANK3[k](!!c));
