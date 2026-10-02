@@ -27,7 +27,7 @@ function build() {
   const art = fs.existsSync(gmeta) ? JSON.parse(fs.readFileSync(gmeta, 'utf8')) : {};
   for (const id of Object.keys(art)) { const fw = path.join(gdir, 'jednostki', id + '.webp'), f = path.join(gdir, 'jednostki', id + '.png'); if (fs.existsSync(fw)) { art[id].png = fs.readFileSync(fw).toString('base64'); art[id].webp = 1; } else if (fs.existsSync(f)) art[id].png = fs.readFileSync(f).toString('base64'); else delete art[id]; } // arkusz WebP (grafika bez pikselizacji) albo PNG
   const hmeta = path.join(gdir, 'bohaterowie.json'), hart = fs.existsSync(hmeta) ? JSON.parse(fs.readFileSync(hmeta, 'utf8')) : {};
-  for (const id of Object.keys(hart)) { const f = path.join(gdir, 'bohaterowie', id + '.png'); if (fs.existsSync(f)) hart[id].png = fs.readFileSync(f).toString('base64'); else delete hart[id]; }
+  for (const id of Object.keys(hart)) { const fw = path.join(gdir, 'bohaterowie', id + '.webp'), f = path.join(gdir, 'bohaterowie', id + '.png'); if (fs.existsSync(fw)) { hart[id].png = fs.readFileSync(fw).toString('base64'); hart[id].webp = 1; } else if (fs.existsSync(f)) hart[id].png = fs.readFileSync(f).toString('base64'); else delete hart[id]; }
   // Portrety bohaterów (tools/portrety-ai): imię -> PNG 72×72
   const pmeta = path.join(gdir, 'portrety.json'), port = {};
   if (fs.existsSync(pmeta)) for (const [name, f] of Object.entries(JSON.parse(fs.readFileSync(pmeta, 'utf8')))) { const pf = path.join(gdir, 'portrety', f); if (fs.existsSync(pf)) port[name] = fs.readFileSync(pf).toString('base64'); }

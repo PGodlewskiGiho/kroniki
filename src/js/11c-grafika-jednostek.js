@@ -74,7 +74,7 @@ function map3dTinted(key, col, flip = false) {
 }
 function heroBattleSprite(h, col, dir, i, cast) {
   const A = typeof HERO_ART !== 'undefined' && HERO_ART[h.cls], im = HERO_IMG[h.cls]; if (!A || !im || !im._ok) return heroBattleSprite2D(h, col, dir, i, cast);
-  const pose = cast === 'walk' && A.f.walk ? 'walk' : cast && cast !== 'walk' ? 'cast' : 'idle', key = `h3_${h.cls}_${col}_${pose}_${i}_${dir}`; // cast = 'walk': chód (mapa) let s = SPR.get(key); if (s) return s;
+  const pose = cast === 'walk' && A.f.walk ? 'walk' : cast && cast !== 'walk' ? 'cast' : 'idle', key = `h3_${h.cls}_${col}_${pose}_${i}_${dir}`; /* cast = walk: chód (mapa) */ let s = SPR.get(key); if (s) return s;
   const fr = A.f[pose][i % A.f[pose].length], [x, y, w, hh, ax, ay] = fr, c = document.createElement('canvas'); c.width = w; c.height = hh; const g = c.getContext('2d', { willReadFrequently: true }); c._ctx = g;
   if (dir < 0) { g.translate(w, 0); g.scale(-1, 1); } g.drawImage(im, x, y, w, hh, 0, 0, w, hh); g.setTransform(1, 0, 0, 1, 0, 0);
   keyTint(g, w, hh, col); s = { c, ax: dir < 0 ? w - ax : ax, ay, u: A.u, raw: !!A.raw }; SPR.set(key, s); return s;

@@ -81,9 +81,9 @@ async function bakeHeroes(fresh) {
       let sw = 0, sh = 0; for (const rr of Object.values(rows)) { sw = Math.max(sw, rr.reduce((a, f) => a + f.w + 1, 0)); sh += Math.max(...rr.map(f => f.h)) + 1; }
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = sh; const g = sheet.getContext('2d'), m = {};
       let y = 0; for (const [pose, rr] of Object.entries(rows)) { let x = 0; m[pose] = rr.map(f => { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, x, y, f.w, f.h); const q = [x, y, f.w, f.h, f.ax, f.ay]; x += f.w + 1; return q; }); y += Math.max(...rr.map(f => f.h)) + 1; }
-      return { png: sheet.toDataURL('image/png').split(',')[1], f: m, u: UB };
+      return { png: (RAW ? sheet.toDataURL('image/webp', 0.9) : sheet.toDataURL('image/png')).split(',')[1], f: m, u: UB };
     }, [cls, KB, UB, DS, RAW]);
-    fs.writeFileSync(path.join(HERO_DIR, cls + '.png'), Buffer.from(r.png, 'base64')); meta[cls] = { u: r.u, f: r.f, ...(RAW ? { raw: 1 } : {}) }; fs.writeFileSync(HERO_META, JSON.stringify(meta)); process.stdout.write('h');
+    const ext = RAW ? '.webp' : '.png', other = path.join(HERO_DIR, cls + (RAW ? '.png' : '.webp')); if (fs.existsSync(other)) fs.unlinkSync(other); fs.writeFileSync(path.join(HERO_DIR, cls + ext), Buffer.from(r.png, 'base64')); meta[cls] = { u: r.u, f: r.f, ...(RAW ? { raw: 1 } : {}) }; fs.writeFileSync(HERO_META, JSON.stringify(meta)); process.stdout.write('h');
   }
   await browser.close();
 }
