@@ -580,11 +580,49 @@ function drawWorldPixel(b, st) {
     });
     if (top) for (const q of top.sp) blit(b, q[0], q[1], q[2]);
   }
+  if (!PIXEL_ART) drawMapAmbient(b, st, ox, oy, tx0, ty0, tx1, ty1);
   drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, { x: VIEW.x, y: VIEW.y, w: VIEW.w * ZOOM, h: VIEW.h * ZOOM })) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
     b.fillStyle = 'rgba(255,240,190,.55)'; const q = PIX; b.fillRect(x, y, T, q); b.fillRect(x, y + T - q, T, q); b.fillRect(x, y + q, q, T - 2 * q); b.fillRect(x + T - q, y + q, q, T - 2 * q);
   }
+}
+// Życie mapy (pod mgłą wojny, więc tylko w odkrytych miejscach): dym z kopalń i kominów miast, błyski słońca na wodzie,
+// iskry nad lawą. Wszystko liczone z czasu i skrótu pola (bez stanu), kilkadziesiąt kółek na klatkę.
+const SMOKE_COL = { sulfur: '216,206,140', mercury: '170,200,170', gold: '200,190,170', ore: '160,156,150', town: '172,168,162' };
+function drawSmoke(b, x, y, seed, rgb, k = 1) {
+  const t = G.time, N = 6;
+  for (let i = 0; i < N; i++) {
+    const p = (t * 0.22 * k + i / N + seed * 0.618) % 1, fade = Math.min(1, p * 5) * (1 - p);
+    b.globalAlpha = 0.55 * fade; b.fillStyle = `rgb(${rgb})`;
+    b.beginPath(); b.arc(x + Math.sin(p * 4 + seed * 7) * 2.5 + p * 9, y - p * 30 * k, (1.6 + p * 5.5) * k, 0, TAU); b.fill();
+  }
+  b.globalAlpha = 1;
+}
+function drawMapAmbient(b, st, ox, oy, tx0, ty0, tx1, ty1) {
+  const map = st.map, n = map.n, t = G.time, low = G.settings.quality === 'low';
+  b.save();
+  for (const ob of st.objects) {
+    if (ob.dead || ob.x < tx0 || ob.x > tx1 || ob.y < ty0 || ob.y > ty1) continue; const px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
+    if (ob.type === 'mine' && ob.owner >= 0 && SMOKE_COL[ob.kind]) drawSmoke(b, px - 2, py - 34, ob.id, SMOKE_COL[ob.kind]); // kopalnia pracuje, gdy ma właściciela
+    else if (ob.type === 'town') { const lvl = townLevel(st.towns[ob.townId]); drawSmoke(b, px - 20, py - 58, ob.id, SMOKE_COL.town, 0.8); if (lvl >= 2) drawSmoke(b, px + 22, py - 52, ob.id + 0.37, SMOKE_COL.town, 0.7); }
+  }
+  if (!low && ZOOM >= 1) {
+    b.globalCompositeOperation = 'lighter';
+    for (let y = Math.max(0, ty0); y <= Math.min(n - 1, ty1); y++) for (let x = Math.max(0, tx0); x <= Math.min(n - 1, tx1); x++) {
+      const i = y * n + x, ter = map.terrain[i]; if (ter !== TER.WATER && ter !== TER.LAVA) continue;
+      const h = thash(x, y, map.seed + 77); if (h % 4) continue;
+      const px = ox + x * T + 4 + (h >> 3) % 24, py = oy + y * T + 4 + (h >> 8) % 24, p = (t * (ter === TER.LAVA ? 0.45 : 0.3) + (h % 997) / 997) % 1;
+      if (ter === TER.WATER) { // błysk: krótko rozbłyska i gaśnie
+        if (p > 0.12) continue; const a = Math.sin(p / 0.12 * Math.PI), r = 1 + a * 2.2;
+        b.globalAlpha = 0.55 * a; b.fillStyle = '#fff6d8'; b.fillRect(px - r, py - 0.5, r * 2, 1); b.fillRect(px - 0.5, py - r, 1, r * 2);
+      } else { // iskra unosi się nad lawą
+        b.globalAlpha = 0.8 * (1 - p) * Math.min(1, p * 6); b.fillStyle = p < 0.4 ? '#ffd070' : '#ff7a30';
+        b.beginPath(); b.arc(px + Math.sin(p * 6 + h) * 3, py - p * 26, 1.3 * (1 - p * 0.5), 0, TAU); b.fill();
+      }
+    }
+  }
+  b.restore();
 }
 // Korekcja barw mapy (przyciemnienie i odbarwienie jak gradeRgb) oraz paleta z ditheringiem są wypalone raz: w kawałkach
 // terenu (renderChunkPixel) i w kopiach sprite'ów (blitG). Co klatkę dochodzi tylko gotowa nakładka światła i winiety.
