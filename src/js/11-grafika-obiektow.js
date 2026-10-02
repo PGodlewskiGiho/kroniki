@@ -1281,6 +1281,7 @@ function skillSprite(id, size = 32) {
 function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id, size), cx, cy, size / 32); }
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
 function showSpellbook(h, mode, onPick) {
+  Sfx.play('book', { vol: 0.6 });
   // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły
   const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
   const BOOK = !PIXEL_ART, cols = BOOK ? 4 : 3, cw = BOOK ? (w - 96) / 4 : (w - 48) / cols, rh = 44, PER = BOOK ? 20 : 18, tabs = [null, ...Object.keys(SCHOOLS)];

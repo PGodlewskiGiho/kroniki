@@ -94,6 +94,29 @@ function estimateStrike(B, a, t, ranged, moved = 0) {
   const kills = d => (d >= pool ? t.n : t.n - Math.ceil((pool - d) / hp));
   return { min: out[0], max: out[1], kmin: kills(out[0]), kmax: kills(out[1]) };
 }
+// --- dźwięki bitwy: rodzaj stwora decyduje o krokach, ciosie i odgłosie ---
+const unitSound = cid => { const C = CREATURES[cid], k = C.look.kind, fly = (C.abil || []).includes('fly');
+  return { fly, step: fly ? 'wings' : ['rider', 'centaur', 'unicorn'].includes(k) ? 'gallop' : ['dragon', 'hydra', 'treant', 'bull', 'tower'].includes(k) ? 'stomp' : ['wolf', 'lizard', 'insect', 'griffin', 'bird'].includes(k) ? 'paws' : 'march',
+    voice: k === 'dragon' || k === 'hydra' ? 'roar' : ['wolf', 'bull', 'lizard', 'insect', 'griffin', 'eye', 'ghost'].includes(k) ? 'growl' : null, weapon: k === 'hum' || k === 'rider' || k === 'centaur' }; };
+function battleSound(fx, sp) {
+  if (fx.kind === 'move') { const S = unitSound(fx.u.cid), x = fx.u.px; if (S.fly) Sfx.play('wings', { vol: 0.7, pan: sfxPan(x) });
+    else { const n = Math.min(6, fx.path.length - 1); for (let i = 0; i < n; i++) Sfx.play(S.step, { vol: 0.55, pan: sfxPan(x), delay: i * 0.17 * sp, gap: 0 }); } }
+  else if (fx.kind === 'hit' && fx.a && !fx.splash) { const S = unitSound(fx.a.cid); if (hasAb(fx.a, 'breath')) Sfx.play('firebreath', { pan: sfxPan(fx.a.px) }); else if (S.voice) Sfx.play(S.voice, { vol: 0.7, pan: sfxPan(fx.a.px) }); if (S.weapon) Sfx.play('swing', { vol: 0.8, pan: sfxPan(fx.a.px), delay: 0.12 * sp }); }
+  else if (fx.kind === 'shot') { const LK = CREATURES[fx.a.cid].look; Sfx.play(LK.weapon === 'staff' || LK.orb ? 'zap' : 'bow', { pan: sfxPan(fx.a.px), delay: 0.3 * sp }); }
+  else if (fx.kind === 'siege') Sfx.play('catapult', { pan: sfxPan(fx.a.px), delay: 0.25 * sp });
+  else if (fx.kind === 'spell') Sfx.play(SPELL_SND[fx.id] ? SPELL_SND[fx.id][0] : 'cast', { vol: 0.8 });
+}
+// Trafienie: cios bronią dzwoni, pazury i kły tępo uderzają, strzała wbija się; zabity oddział pada
+function impactSound(p, tg) {
+  const pan = sfxPan(tg.px), a = p && p.a, shot = p && p.kind === 'shot', S = a ? unitSound(a.cid) : null;
+  Sfx.play(shot ? 'arrowhit' : S && S.weapon ? 'clash' : 'hit', { vol: 0.85, pan });
+  if (tg.dead) Sfx.play('death', { vol: 0.8, pan, delay: 0.15 });
+}
+// Czar: [dźwięk rzucenia, dźwięk trafienia]
+const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thunder'], chainLightning: ['cast', 'thunder'], fireball: ['fireball', 'explode'], meteorShower: ['fireball', 'explode'], armageddon: ['cast', 'explode'],
+  implosion: ['cast', 'explode'], iceBolt: ['cast', 'ice'], frostRing: ['cast', 'ice'], cure: ['cast', 'heal'], massCure: ['cast', 'heal'], resurrection: ['cast', 'heal'], animateDead: ['cast', 'curse'],
+  curse: ['cast', 'curse'], weakness: ['cast', 'curse'], slow: ['cast', 'curse'], deathRipple: ['cast', 'curse'] };
+const spellLandSound = (id, x) => Sfx.play(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff', { vol: 0.9, pan: sfxPan(x) });
 G.screens.battle = {
   fps: smoothFps, // płynnie także czekając na rozkaz (oddychające jednostki, płomienie)
   // Szersze okno: pole walki ciągnie się na boki (lustrzane odbicie brzegów tła, lekko przyciemnione)
@@ -115,6 +138,7 @@ G.screens.battle = {
   bg() { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}`, W, H, c => paintBattleBg(c, this.terr, f)); },
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
+    Sfx.play('battlestart', { vol: 0.8, jit: 0 });
     const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null;
     this.me = B.sides[0].owner === ME ? 0 : 1; this.floats = []; this.preview = null; this.timer = 0; this.ending = null; // strona gracza: 0 gdy atakuje, 1 gdy się broni
     this.terr = B.st.map.terrain[B.h.y * B.st.map.n + B.h.x] || TER.GRASS;
@@ -167,7 +191,7 @@ G.screens.battle = {
   // Koniec bitwy: zwycięzcy wiwatują przez chwilę, potem okno wyniku nad polem bitwy (jak w Heroes 3). Klik albo klawisz przyspiesza.
   startEnding() {
     const B = this.B, winner = fighters(B, 0).length ? 0 : 1;
-    this.phase = 'over'; this.preview = null; this.casting = null; this.ending = { t: 0, dur: 1.1, winner };
+    this.phase = 'over'; this.preview = null; this.casting = null; this.ending = { t: 0, dur: 1.1, winner }; Sfx.play(winner === this.me ? 'victory' : 'defeat', { vol: 0.9, jit: 0 });
   },
   finish(fled) {
     const B = this.B, st = B.st, h = B.h, res = resolveBattle(B, fled), f = this.onDone; this.onDone = null; this.phase = 'done';
@@ -190,6 +214,7 @@ G.screens.battle = {
   },
   // Czasy efektów (w sekundach); walka automatyczna odtwarza się szybciej
   startPlay(fx) {
+    battleSound(fx, this.B.auto ? 0.55 : 1);
     const sp = this.B.auto ? 0.55 : 1, S = fx.kind === 'spell' ? SPELL_FX[fx.id] || {} : null;
     const dur = fx.kind === 'move' ? (fx.fly ? 0.45 + 0.08 * hexDistance({ x: fx.path[0][0], y: fx.path[0][1] }, { x: fx.u.x, y: fx.u.y }) : 0.17 * (fx.path.length - 1))
       : fx.kind === 'hit' ? (fx.a && !fx.splash ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj || S.meteor ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
@@ -204,7 +229,7 @@ G.screens.battle = {
   // Trafienie: błysk, odrzut, iskry, liczba obrażeń; zabity oddział przewraca się
   impact(tg, dmg, killed, col = '#ffe8a0') {
     const now = G.time, [tx, ty] = [tg.px, tg.py];
-    tg.flashT = now; tg.anim = { pose: 'hurt', t0: now, dur: 0.28 }; BattleFX.glow(tx, ty - 10, 26, col, 0.25);
+    tg.flashT = now; tg.anim = { pose: 'hurt', t0: now, dur: 0.28 }; impactSound(this.play, tg); BattleFX.glow(tx, ty - 10, 26, col, 0.25);
     BattleFX.emit(tx, ty - 8, { n: 10 + Math.min(20, Math.round(dmg / 8)), col: [col, '#ffffff', hasAb(tg, 'undead') ? '#e8e2cc' : '#b8302a'], spd: 110, up: -40, g: 260, life: 0.55, size: 3 });
     this.floats.push({ x: tx, y: ty - 44, text: `-${dmg}`, t: now, big: dmg >= 50 });
     if (killed) { this.floats.push({ x: tx, y: ty - 26, text: `†${killed}`, t: now + 0.05, col: '#e8e0cc', small: true }); BattleFX.shake = Math.max(BattleFX.shake, 2 + Math.min(4, killed)); }
@@ -238,12 +263,12 @@ G.screens.battle = {
       const [tx, ty] = hexCenter(p.x, p.y);
       if (!p.launched && f >= 0.4) { p.launched = true; p.pr = BattleFX.proj('rock', p.a.px, p.a.py - 26, tx + (p.hit ? 0 : 20), ty - 20, 0.5 * p.sp, '#8a847a', 90); p.hitAt = p.t + p.pr.dur; }
       if (p.launched && !p.landed && p.t >= p.hitAt) {
-        p.landed = true; BattleFX.emit(tx, ty - 16, { n: p.broken ? 40 : 18, col: ['#9a948a', '#6e6a62', '#c8c0b0'], spd: 120, up: -60, g: 300, life: 0.7, size: 4, jx: 20 });
+        p.landed = true; Sfx.play(p.hit ? 'crash' : 'thud', { vol: p.broken ? 1 : 0.7, pan: sfxPan(tx) }); BattleFX.emit(tx, ty - 16, { n: p.broken ? 40 : 18, col: ['#9a948a', '#6e6a62', '#c8c0b0'], spd: 120, up: -60, g: 300, life: 0.7, size: 4, jx: 20 });
         BattleFX.shake = Math.max(BattleFX.shake, p.broken ? 6 : 3); this.floats.push({ x: tx, y: ty - 50, text: p.hit ? (p.broken ? 'Wyłom!' : 'Trafienie!') : 'Pudło', t: G.time, col: '#e8e0cc', small: true });
       }
       if (p.hitAt) p.dur = Math.max(p.dur, p.hitAt + 0.2);
     } else if (p.kind === 'heal') {
-      if (!p.landed) { p.landed = true; const u = p.u;
+      if (!p.landed) { p.landed = true; const u = p.u; if (!p.label) Sfx.play('heal', { vol: 0.6, pan: sfxPan(u.px) });
         if (p.label) this.floats.push({ x: u.px, y: u.py - 50, text: p.label, t: G.time, col: '#ffe08a', small: true });
         else { this.floats.push({ x: u.px, y: u.py - 44, text: `+${p.amount}`, t: G.time, col: '#8af07a' }); spellAura(u.px, u.py, { aura: 'rise', col: '#8af07a' }); } }
     } else if (p.kind === 'spell') {
@@ -258,7 +283,7 @@ G.screens.battle = {
         else { for (const [ax, ay] of p.area || spellArea(p.id, p.x, p.y, this.B)) { const [cx, cy] = hexCenter(ax, ay); spellAura(cx, cy, S); } p.hitAt = 0.3; }
       }
       if (!p.landed && p.t >= p.hitAt) {
-        p.landed = true;
+        p.landed = true; spellLandSound(p.id, tx);
         if (S.burst) BattleFX.emit(aim[0], aim[1], { n: S.boom ? 60 : 24, col: [S.col, S.burst, '#ffffff'], spd: S.boom ? 170 : 110, life: S.boom ? 0.8 : 0.5, size: S.boom ? 4 : 3, glow: true, drag: 1.5 });
         BattleFX.glow(aim[0], aim[1], S.boom ? 110 : 55, S.col, S.boom ? 0.7 : 0.45);
         if (S.boom) { BattleFX.ring(tx, ty + 10, S.col, 90, 0.6, 6); BattleFX.emit(tx, ty, { n: 40, col: ['#ff8a2a', '#ffd060', '#ff5a1a'], dir: -Math.PI / 2, spread: 2.4, spd: 150, g: 120, life: 0.9, size: 4, glow: true, jx: 50, jy: 20 }); BattleFX.emit(tx, ty, { n: 24, col: ['#5a4e44', '#8a7a6a'], dir: -Math.PI / 2, spread: 1.2, spd: 60, life: 1.1, size: 5, drag: 1 }); }

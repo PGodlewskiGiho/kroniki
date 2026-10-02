@@ -13,13 +13,13 @@ function handleClick(x, y) {
   if (G.screen.onClick) G.screen.onClick(x, y); else clickButtons(G.screen.buttons || [], x, y);
 }
 function onKey(e) {
-  G.dirty = true;
+  G.dirty = true; Sfx.unlock();
   if (e.target && e.target.tagName === 'INPUT') return; // pisanie w polu tekstowym (askText) nie uruchamia skrótów
   const k = e.key.toLowerCase(); G.keys.add(k);
   if (k === 'f' && !e.ctrlKey && !e.metaKey) { G.showPerf = !G.showPerf; return; }
   if (G.fade.next) return;
   const b = activeButtons().find(b => !b.disabled && b.key === k);
-  if (b) { e.preventDefault(); if (b.action) b.action(); return; }
+  if (b) { e.preventDefault(); Sfx.play('click', { vol: 0.5 }); if (b.action) b.action(); return; }
   if (k === 'escape') { if (G.modal) { if (!G.modal.locked) G.modal = null; } else if (G.screen.onBack) G.screen.onBack(); }
   else if (!G.modal && G.screen.onKey) G.screen.onKey(k, e);
 }
@@ -39,7 +39,7 @@ function bindInput() {
     if (!G.modal && G.screen && G.screen.onPointerMove) G.screen.onPointerMove(p.x, p.y, e);
   });
   c.addEventListener('pointerdown', e => {
-    G.dirty = true;
+    G.dirty = true; Sfx.unlock(); // dźwięk: kontekst audio dopiero po geście gracza
     if (e.button === 2) {
       e.preventDefault(); const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; updateHover();
       const txt = rightInfoAt(p.x, p.y); if (txt) G.popup = { text: txt, x: p.vx, y: p.vy };
@@ -173,10 +173,12 @@ function showGfxSettings(back) {
   const set = id => () => { S.quality = id; if (id === 'auto') delete S.autoDpr; saveSettings(); setPixelSize(id === 'low' ? 2 : PIX_DEFAULT); resize(); showGfxSettings(back); };
   const fontBtn = { label: pixelFont() ? 'Czcionka: piksele' : 'Czcionka: klasyczna', sub: 'zmień', tip: 'Czcionka interfejsu: pikselowa (pasuje do grafiki) albo klasyczna szeryfowa.',
     action: () => { S.font = pixelFont() ? 'classic' : 'pixel'; saveSettings(); Layers.cache = {}; showGfxSettings(back); } };
+  const vols = [0, 0.4, 0.7, 1], sv = Sfx.vol(), sndBtn = { label: 'Dźwięk', sub: sv ? `${Math.round(sv * 100)}%` : 'wyłączony', tip: 'Głośność efektów dźwiękowych (kliknięcie zmienia: wyłączony, 40%, 70%, 100%).',
+    action: () => { Sfx.setVol(vols[(vols.findIndex(v => v >= sv - 0.01) + 1) % vols.length]); saveSettings(); Sfx.unlock(); Sfx.play('click'); showGfxSettings(back); } };
   const wxBtn = { label: 'Pogoda', sub: weatherOn() ? 'włączona' : 'wyłączona', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
     action: () => { S.weather = weatherOn() ? 'off' : 'on'; saveSettings(); showGfxSettings(back); } };
   showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało. Klawisz F pokazuje licznik klatek.`,
-    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id), selected: q.id === (S.quality || 'auto') })), ...(PIXEL_ART ? [fontBtn] : []), wxBtn, { label: 'OK', key: 'escape', primary: true, action: () => { if (back) back(); } }], { bw: PIXEL_ART ? 100 : 128 });
+    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id), selected: q.id === (S.quality || 'auto') })), ...(PIXEL_ART ? [fontBtn] : []), wxBtn, sndBtn, { label: 'OK', key: 'escape', primary: true, action: () => { if (back) back(); } }], { bw: PIXEL_ART ? 100 : 112 });
 }
 function init() {
   loadSettings(); loadUnitArt(); // arkusze jednostek dekodują się w tle (do tego czasu dawne rysunki)

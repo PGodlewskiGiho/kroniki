@@ -264,11 +264,12 @@ class Button {
 }
 function clickButtons(list, x, y) {
   const b = list.find(b => !b.disabled && b.hit(x, y));
-  if (b && b === G.downTarget) { if (b.action) b.action(); return true; }
+  if (b && b === G.downTarget) { Sfx.play('click', { vol: 0.5 }); if (b.action) b.action(); return true; }
   return false;
 }
 // opts: [{label, key, action, sub, tip, lead}]; extra: icon, iconH, locked (Esc nie zamyka), bw (szerokość przycisków)
 function showDialog(msg, opts, extra = {}) {
+  Sfx.play('page', { vol: 0.4, gap: 0.3 }); // szelest pergaminu
   const bw = extra.bw || 120, gap = 24, bh = opts.some(o => o.sub) ? 50 : 40;
   const w = Math.max(400, opts.length * (bw + gap) + 36); G.ctx.font = font(20, 500, 'body'); const lines = wrapText(G.ctx, msg, w - 70);
   const iconH = extra.icon ? (extra.iconH || 56) : 0, h = 120 + bh + lines.length * 26 + iconH, x = (W - w) / 2, y = (H - h) / 2;
