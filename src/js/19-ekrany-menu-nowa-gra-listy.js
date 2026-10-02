@@ -314,8 +314,8 @@ G.screens.load = {
   enter(p) {
     this.mode = p.mode || 'load'; this.fromGame = !!p.fromGame; this.slots = null; this.err = null; this.busy = false; this.hover = -1;
     const file = this.mode === 'save'
-      ? new Button(200, 478, 190, 46, 'Do pliku', () => this.toFile(), { key: 'f', size: 19, tip: 'Zapisz grę do pliku na dysku: kopia zapasowa albo przeniesienie na inny komputer (klawisz F).' })
-      : new Button(200, 478, 190, 46, 'Z pliku', () => this.fromFile(), { key: 'f', size: 19, tip: 'Wczytaj grę z pliku zapisanego przyciskiem „Do pliku” (klawisz F).' });
+      ? new Button(200, 478, 190, 46, 'Do pliku', () => this.toFile(), { key: 'p', size: 19, tip: 'Zapisz grę do pliku na dysku: kopia zapasowa albo przeniesienie na inny komputer (klawisz P).' })
+      : new Button(200, 478, 190, 46, 'Z pliku', () => this.fromFile(), { key: 'p', size: 19, tip: 'Wczytaj grę z pliku zapisanego przyciskiem „Do pliku” (klawisz P).' });
     this.buttons = [file, new Button(410, 478, 190, 46, 'Wróć', () => this.back(), { key: 'escape', size: 19 })];
     const tok = ++this.token;
     SaveStore.list().then(s => { if (tok === this.token) this.slots = s; }, e => { if (tok === this.token) { this.slots = {}; this.err = 'Nie udało się odczytać listy zapisów.'; } });

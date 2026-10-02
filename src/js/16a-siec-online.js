@@ -67,7 +67,7 @@ const Net = {
       return;
     }
     if (m.to != null && m.to !== this.me) { const g = this.guests.find(g => g.pid === m.to); if (g && g.conn) g.conn.send(m); return; } // wiadomość do konkretnego gracza: dalej
-    if (m.to == null && (m.t === 'state' || m.t === 'step')) for (const g of this.guests) if (g.conn && g.conn !== conn) g.conn.send(m); // do wszystkich: rozsyłamy pozostałym gościom
+    if (m.to == null && (m.t === 'state' || m.t === 'step' || m.t === 'chat')) for (const g of this.guests) if (g.conn && g.conn !== conn) g.conn.send(m); // do wszystkich: rozsyłamy pozostałym gościom
     if (m.t === 'state') this.lastPacked = m.d;
     this.onData(m);
   },
@@ -123,6 +123,7 @@ const Net = {
   },
   async onData(m) {
     if (m.t === 'lobby') { this.lobby = m; G.dirty = true; return; }
+    if (m.t === 'chat') { netChatAdd(m.from, m.text); return; }
     if (m.t === 'deny') { this.err = m.why; this.close(); G.dirty = true; return; }
     if (m.t === 'step') { netStep(m); return; }
     if (m.t === 'bcmd') { if (this.battleQ) this.battleQ.push(m.c); return; }
@@ -134,6 +135,23 @@ const Net = {
     }
   },
 };
+// Czat: T (albo przycisk w poczekalni) otwiera pole wiadomości; ostatnie wiadomości widać w rogu ekranu przez 15 s
+const NetChat = { lines: [] };
+function netChatAdd(from, txt) { NetChat.lines.push({ from, text: String(txt).slice(0, 120), t: G.time }); NetChat.lines = NetChat.lines.slice(-30); Sfx.play('page', { vol: 0.3 }); G.dirty = true; }
+function netChatOpen() {
+  if (!Net.peer || G.modal) return;
+  askText('Wiadomość do graczy:', '', v => { v = (v || '').trim(); if (!v) return; const from = Net.name || (G.state && G.state.players[ME] ? playerName(G.state, ME) : 'Ty'); Net.send({ t: 'chat', from, text: v }); netChatAdd(from, v); }, 120);
+}
+function drawNetChat(ctx) {
+  if (!Net.peer) return; const now = G.time, show = NetChat.lines.filter(l => now - l.t < 15).slice(-6); if (!show.length) return;
+  ctx.save(); ctx.font = font(14, 600, 'body'); let y = VH - 70 - show.length * 20;
+  for (const l of show) {
+    const a = clamp(15 - (now - l.t), 0, 1), s = `${l.from}: ${l.text}`, w = Math.min(VW * 0.5, ctx.measureText(s).width + 16);
+    ctx.globalAlpha = a * 0.75; ctx.fillStyle = '#140c06'; ctx.fillRect(12, y - 14, w, 19); ctx.globalAlpha = a;
+    text(ctx, s, 20, y, { size: 14, weight: 600, color: '#ffe8b0' }); y += 20;
+  }
+  ctx.restore(); G.dirty = true;
+}
 function netErrText(e) {
   const t = e && e.type;
   return t === 'network' || t === 'server-error' || t === 'socket-error' ? 'Brak połączenia z serwerem gry online. Sprawdź internet.' : t === 'browser-incompatible' ? 'Ta przeglądarka nie obsługuje gry online.' : `Błąd połączenia (${t || e}).`;
@@ -193,9 +211,11 @@ G.screens.online = {
       btn(y, `Imię: ${Net.name || '—'}`, () => askText('Twoje imię w grze online:', Net.name, v => { Net.name = v; G.settings.netName = v; saveSettings(); this.setMode('start'); }), { size: 15 }); y += 52;
       btn(y, 'Wróć', () => { Net.close(); G.go('menu'); }, { key: 'escape' });
     } else if (m === 'host') {
+      btn(368, 'Czat (T)', () => netChatOpen(), { size: 15 });
       btn(420, 'Wybierz mapę i graj', () => G.go('setup', { online: true }), { key: 'enter', primary: true, tip: 'Ustawienia nowej gry. Miejsc „Człowiek” musi być tyle, ilu jest graczy w pokoju.' });
       btn(472, 'Zamknij pokój', () => { Net.close(); this.setMode('start'); }, { key: 'escape' });
     } else {
+      btn(420, 'Czat (T)', () => netChatOpen(), { size: 15 });
       btn(472, 'Rozłącz', () => { Net.close(); this.setMode('start'); }, { key: 'escape' });
     }
     this.buttons = B;

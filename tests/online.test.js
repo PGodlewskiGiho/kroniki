@@ -36,6 +36,11 @@ test('pokój: gospodarz z kodem, gość dołącza i widzi listę graczy', async 
   assert.deepEqual(await B.page.evaluate(() => [Net.lobby.host, Net.lobby.players[0].name]), ['Ala', 'Bob']);
 });
 
+test('czat: wiadomość gospodarza dociera do gościa', async () => {
+  await A.page.evaluate(() => { Net.send({ t: 'chat', from: 'Ala', text: 'Cześć!' }); netChatAdd('Ala', 'Cześć!'); });
+  await until(B.page, () => NetChat.lines.some(l => l.from === 'Ala' && l.text === 'Cześć!'));
+});
+
 test('start gry: gość dostaje świat i ogląda turę gospodarza, podgląd zmian na żywo', async () => {
   await A.page.evaluate(() => {
     const S = G.settings; S.mapSize = 'S'; S.slots.forEach((o, i) => { o.type = i < 2 ? 'human' : 'off'; o.faction = 'haven'; }); S.slots[2].type = 'ai';

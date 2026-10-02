@@ -18,6 +18,7 @@ function onKey(e) {
   const k = e.key.toLowerCase(); G.keys.add(k);
   if (k === 'f' && !e.ctrlKey && !e.metaKey) { G.showPerf = !G.showPerf; return; }
   if (G.fade.next) return;
+  if (k === 't' && Net.peer && !G.modal && (Net.inGame || G.screenName === 'online')) { e.preventDefault(); netChatOpen(); return; } // czat online
   const b = activeButtons().find(b => !b.disabled && b.key === k);
   if (b) { e.preventDefault(); Sfx.play('click', { vol: 0.5 }); if (b.action) b.action(); return; }
   if (k === 'escape') { if (G.modal) { if (!G.modal.locked) G.modal = null; } else if (G.screen.onBack) G.screen.onBack(); }
@@ -122,6 +123,7 @@ function render() {
   if (G.modal) { center(); G.modal.draw(ctx); }
   ctx.setTransform(s, 0, 0, s, 0, 0);
   if (G.popup) drawPopup(ctx, G.popup);
+  drawNetChat(ctx); // czat gry online
   if (G.fade.a > 0) { ctx.fillStyle = `rgba(0,0,0,${G.fade.a.toFixed(3)})`; ctx.fillRect(0, 0, VW, VH); }
   if (G.showPerf) drawPerfInfo(ctx);
 }
