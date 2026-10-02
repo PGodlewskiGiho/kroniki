@@ -340,9 +340,9 @@ function buildMinimap(map, ex) {
 // Pamięć podręczna wyrenderowanych fragmentów mapy (8×8 pól)
 const MapRender = {
   map: null, explored: null, season: 0, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
-  // D: gęstość terenu (pikseli fragmentu na piksel grafiki); gładko: ok. 1,5 piksela ekranu, żeby teren nie był rozmyty, najwyżej 3
+  // D: gęstość terenu (pikseli fragmentu na piksel grafiki); gładko: tyle, ile bufora świata na piksel (ostro, bez zbędnego pomniejszania)
   D: PXD,
-  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; this.warmed = false; this.D = PIXEL_ART ? PXD : clamp(Math.round(G.rs * 1.5 * 4) / 4, PXD, 3); },
+  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.fog.clear(); this.mini = null; this.warmed = false; this.D = PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 4) / 4, PXD, 3); },
   // Pora roku: po zmianie wszystkie kawałki terenu rysują się od nowa
   setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); this.warmed = false; } },
   // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
@@ -590,6 +590,8 @@ function mapLight(w, h) {
     c.putImageData(img, 0, 0);
   }, 1);
 }
+// Gładko: bufor świata w rozdzielczości ekranu, ale najwyżej 1,5 piksela na piksel logiczny (ekrany o dużej gęstości: 2–3 razy mniej pracy, wciąż ostro)
+const mapBufScale = () => Math.min(G.rs, 1.5);
 function drawMapView(ctx, st, scr) {
   MapRender.setSeason(seasonIdx(st));
   // Przybliżenie: świat rysujemy w widoku „wirtualnym” (VIEW o rozmiarze viewW × viewH), potem skalujemy do prawdziwego
@@ -597,7 +599,7 @@ function drawMapView(ctx, st, scr) {
   let ox, oy;
   try {
     // bufor świata: przy oddaleniu ma rozmiar ekranu (świat rysowany pomniejszony, z wygładzaniem), inaczej piksele grafiki
-    const sc = Math.min(1, ZOOM) * (PIXEL_ART ? 1 / PIX : Math.min(G.rs, 2.5)), bw = Math.round(VIEW.w * sc), bh = Math.round(VIEW.h * sc); // gładko: bufor w rozdzielczości ekranu (ostry świat)
+    const sc = Math.min(1, ZOOM) * (PIXEL_ART ? 1 / PIX : mapBufScale()), bw = Math.round(VIEW.w * sc), bh = Math.round(VIEW.h * sc); // gładko: bufor w rozdzielczości ekranu (ostry świat)
     const wb = pixBuf('world', bw, bh), b = wb._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
     b.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); b.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore();
     ctx.save(); ctx.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; ctx.drawImage(wb, VIEW.x, VIEW.y, RW, RH); ctx.restore(); // oddalenie: pomniejszenie z wygładzaniem

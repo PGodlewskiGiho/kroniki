@@ -68,10 +68,21 @@ const SK3 = {
   earthMagic: () => { const g = new THREE.Group(); g.add(chunk(1.6, 0.4, 0.9, '#6a5a3a', 'stone', [0, -1.0, 0], null, 2, 18)); g.add(rbox(3.0, 0.12, 1.6, 0.05, '#5a7a2a', 'skin', [0, -0.75, 0]));
     for (const [x, h, r, c] of [[0, 2.0, 0.42, '#c8a050'], [-0.65, 1.3, 0.3, '#a8864a'], [0.65, 1.5, 0.32, '#d8b060'], [0.25, 0.9, 0.2, '#e8c070']]) g.add(mesh(new THREE.CylinderGeometry(0, r, h, 6), c, 'gem', [x, -0.7 + h / 2, 0.1], [0, x, (x) * -0.15]));
     return arRot(g, 0.15, -0.2, 0); },
-  eagleSight: () => { const g = new THREE.Group(); for (const s of [-1, 1]) { const W = []; for (let i = 0; i <= 6; i++) { const t = i / 6; W.push([s * (0.3 + t * 1.5), 0.2 + Math.sin(t * Math.PI * 0.8) * 0.9 - t * 0.2]); } for (let i = 5; i >= 0; i--) { const t = i / 5; W.push([s * (0.3 + t * 1.5), -0.4 - t * 0.2 - (i % 2) * 0.25]); }
-      g.add(slab(W, 0.08, '#b07a3a', 'feather', [0, 0, -0.1])); } g.add(sph(0.45, '#6a4020', 'feather', [0, -0.2, 0], [0.8, 1.3, 0.7])); g.add(sph(0.4, '#f4f0e4', 'feather', [0, 0.7, 0.1], [0.9, 1, 1]));
-    g.add(cone(0.12, 0.35, '#f0b020', 'horn', [0, 0.55, 0.45], [Math.PI / 2 + 0.4, 0, 0])); for (const s of [-1, 1]) g.add(sph(0.06, '#ffd060', 'glow', [s * 0.15, 0.75, 0.38])); g.add(slab([[-0.3, 0], [0.3, 0], [0.4, -0.6], [0, -0.45], [-0.4, -0.6]], 0.05, '#6a4020', 'feather', [0, -0.75, 0]));
-    return arRot(g, 0.1, -0.15, 0); },
+  eagleSight: () => { const g = new THREE.Group(), fe = (L, w) => [[0, 0], [w, L * 0.12], [w * 0.9, L * 0.85], [0, L], [-w * 0.9, L * 0.85], [-w, L * 0.12]];
+    const add = (pts, d, col, kind, x, y, z, a) => g.add(slab(pts, d, col, kind, [x, y, z], [0, 0, a]));
+    const dirF = (s, x, y, z, th, L, w, col, d = 0.04) => add(fe(L, w), d, col, 'feather', s * x, y, z, s * (th - Math.PI / 2)); // pióro od (x,y) w kierunku th (od +x, w górę)
+    for (const s of [-1, 1]) { // skrzydło: pełny płat, lotki wachlarzem z końca, lotki drugorzędne w dół, pokrywy na wierzchu
+      add([[0, -0.1], [0.4, 0.45], [1.0, 0.95], [1.55, 1.3], [1.75, 1.15], [1.6, 0.55], [1.25, 0.05], [0.75, -0.25], [0.25, -0.35]].map(([x, y]) => [s * x, y]), 0.1, '#5a3418', 'feather', s * 0.2, 0.1, -0.02, 0);
+      for (let k = 0; k < 7; k++) { const t = k / 6; dirF(s, 1.75 + 0.05 * Math.sin(t * 3), 1.4 - t * 1.15, -0.08 + k * 0.012, 1.15 - t * 1.75, 0.95 - t * 0.25, 0.17, k % 2 ? '#3a2210' : '#4a2c16'); }
+      for (let k = 0; k < 6; k++) { const t = k / 5; dirF(s, 1.3 - t * 0.95, 0.2 - t * 0.3, -0.04 + k * 0.01, -0.75 - t * 0.6, 0.6, 0.16, k % 2 ? '#4a2c16' : '#5a3418'); }
+      for (let r = 0; r < 2; r++) for (let k = 0; k < 6; k++) { const t = k / 5; dirF(s, 0.45 + t * 1.15 - r * 0.1, 0.25 + t * 0.85 - r * 0.35, 0.06 + r * 0.04, -0.6 - t * 0.2, 0.42 - r * 0.06, 0.15, r ? '#a06a38' : '#8a5a2e', 0.05); } }
+    g.add(sph(0.48, '#5a3418', 'feather', [0, -0.15, 0.1], [0.85, 1.25, 0.7])); g.add(sph(0.3, '#7a4a24', 'feather', [0, 0.25, 0.25], [1, 0.9, 0.7])); // tułów i pierś
+    for (let k = -2; k <= 2; k++) add(fe(0.75, 0.12), 0.04, '#f4f0e6', 'feather', k * 0.08, -0.65, 0.0, Math.PI + k * 0.22); // ogon
+    g.add(sph(0.34, '#f4f0e6', 'feather', [0, 0.55, 0.25], [0.95, 0.85, 0.85])); g.add(sph(0.38, '#fbf8f0', 'feather', [0.08, 0.86, 0.3], [1.05, 0.9, 0.9])); // szyja i głowa (zwrócona w prawo)
+    g.add(cone(0.11, 0.3, '#f0b020', 'horn', [0.52, 0.82, 0.34], [0, 0, -Math.PI / 2], 12)); g.add(sph(0.08, '#e8a018', 'horn', [0.6, 0.76, 0.34], [1, 1.2, 0.9])); g.add(sph(0.12, '#f0c040', 'horn', [0.4, 0.84, 0.34], [1, 0.8, 0.9])); // dziób z hakiem i woskówka
+    g.add(sph(0.055, '#ffd040', 'glow', [0.26, 0.94, 0.6])); g.add(sph(0.025, '#1a1008', 'cloth', [0.275, 0.94, 0.65])); g.add(box(0.18, 0.04, 0.05, '#e8e0d0', 'feather', [0.24, 1.01, 0.6], [0, 0, -0.2])); // oko i brew
+    for (const s of [-1, 1]) { g.add(cyl(0.06, 0.05, 0.3, '#e8b020', 'skin', [s * 0.16, -0.62, 0.3])); for (let k = -1; k <= 1; k++) g.add(cone(0.03, 0.18, '#2a2018', 'horn', [s * 0.16 + k * 0.07, -0.82, 0.34], [0.3, 0, k * 0.4 + Math.PI], 6)); } // nogi i szpony
+    return arRot(g, 0.05, -0.12, 0); },
 };
 // Plakietka z przedmiotem: rama 3×3 jednostki, przedmiot dopasowany do koła o promieniu 1.15 przed płytą
 function renderSkill(id, S = 192) {
