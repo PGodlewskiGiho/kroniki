@@ -116,20 +116,61 @@ function generateMap(n, seed) {
   });
   return { n, seed, terrain, obst, road, sites, start: sites[0] };
 }
+// Podziemia: korytarze i pieczary w litej skale (ściany = góry), dno jaskiń z ziemi, nierównego terenu, bagien i lawy;
+// zostaje tylko największa spójna sieć pieczar. caves: środki dużych pieczar (kopalnie podziemi).
+function generateCave(n, seed) {
+  const rng = mulberry32(seed ^ 0x2c1b3c6d), nW = makeNoise(rng), nW2 = makeNoise(rng), nT = makeNoise(rng), N = n * n;
+  const terrain = new Uint8Array(N).fill(TER.DIRT), obst = new Uint8Array(N), road = new Uint8Array(N), wall = new Float32Array(N), kind = new Float32Array(N);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const i = y * n + x; wall[i] = nW(x / 7, y / 7) * 0.7 + nW2(x / 3, y / 3) * 0.3; kind[i] = nT(x / 10, y / 10); }
+  const qW = quantile(wall, 0.42), qL = quantile(kind, 0.86), qS = quantile(kind, 0.12), qR = quantile(kind, 0.55);
+  for (let i = 0; i < N; i++) { const x = i % n, y = (i / n) | 0, edge = Math.min(x, y, n - 1 - x, n - 1 - y);
+    if (edge < 1 || wall[i] > qW) obst[i] = OBST.MOUNT;
+    terrain[i] = kind[i] > qL ? TER.LAVA : kind[i] < qS ? TER.SWAMP : kind[i] > qR ? TER.ROUGH : TER.DIRT;
+    if (!obst[i] && rng() < 0.02) obst[i] = OBST.ROCK; }
+  const comp = new Int32Array(N).fill(-1); let best = -1, bestSize = 0, cid = 0; // największa sieć pieczar
+  for (let s = 0; s < N; s++) { if (obst[s] === OBST.MOUNT || comp[s] >= 0) continue; let size = 0; const stack = [s]; comp[s] = cid;
+    while (stack.length) { const i = stack.pop(); size++; const x = i % n, y = (i / n) | 0;
+      for (let d = 0; d < 4; d++) { const nx = x + DX8[d], ny = y + DY8[d]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (obst[j] !== OBST.MOUNT && comp[j] < 0) { comp[j] = cid; stack.push(j); } } }
+    if (size > bestSize) { bestSize = size; best = cid; } cid++; }
+  for (let i = 0; i < N; i++) if (comp[i] !== best) { obst[i] = OBST.MOUNT; }
+  const caves = []; for (let k = 0; k < 400 && caves.length < Math.max(2, Math.round(n / 18)); k++) { const x = 3 + Math.floor(rng() * (n - 6)), y = 3 + Math.floor(rng() * (n - 6)); let open = 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (!obst[(y + dy) * n + x + dx]) open++; if (open >= 22 && caves.every(c => Math.hypot(c.x - x, c.y - y) > n / 4)) caves.push({ x, y }); }
+  return { terrain, obst, road, caves };
+}
+// Mapa z podziemiami: powierzchnia (ln × ln) w lewym górnym rogu, podziemia w prawym dolnym, reszta to lita skała
+function withUnderground(surf, seed) {
+  const ln = surf.n, n = ln * 2, N = n * n, cave = generateCave(ln, seed), terrain = new Uint8Array(N).fill(TER.ROUGH), obst = new Uint8Array(N).fill(OBST.MOUNT), road = new Uint8Array(N);
+  for (let y = 0; y < ln; y++) for (let x = 0; x < ln; x++) { const s = y * ln + x, a = y * n + x, b = (y + ln) * n + x + ln;
+    terrain[a] = surf.terrain[s]; obst[a] = surf.obst[s]; road[a] = surf.road[s]; terrain[b] = cave.terrain[s]; obst[b] = cave.obst[s]; }
+  return { ...surf, n, ln, terrain, obst, road, caves: cave.caves.map(c => ({ x: c.x + ln, y: c.y + ln })) };
+}
+// Bramy podziemi: pary pól (powierzchnia, podziemia) w podobnym miejscu obu poziomów, z dala od miast
+function gatePairs(map, rng, count) {
+  const n = map.n, ln = map.ln, free = (x, y) => x > 1 && y > 1 && x < n - 2 && y < n - 2 && !map.obst[y * n + x] && map.terrain[y * n + x] !== TER.WATER && !map.road[y * n + x], out = [];
+  for (let k = 0, tries = 0; out.length < count && tries < 3000; tries++) {
+    const x = 3 + Math.floor(rng() * (ln - 6)), y = 3 + Math.floor(rng() * (ln - 6)); if (!free(x, y) || map.sites.some(s => Math.hypot(s.x - x, s.y - y) < 7) || out.some(([a]) => Math.hypot(a[0] - x, a[1] - y) < ln / 4)) continue;
+    let b = null; for (let r = 0; r < ln / 3 && !b; r++) for (let dy = -r; dy <= r && !b; dy++) for (let dx = -r; dx <= r; dx++) { const ux = x + ln + dx, uy = y + ln + dy; if (ux >= ln && uy >= ln && free(ux, uy) && free(ux, uy + 1)) { b = [ux, uy]; break; } }
+    if (b && free(x, y + 1)) out.push([[x, y], b]);
+  }
+  return out;
+}
 function placeObjects(st) {
-  const map = st.map, n = map.n, N = n * n, rng = mulberry32(st.seed ^ 0xabcdef), objs = [], occ = new Uint8Array(N);
+  const map = st.map, n = map.n, N = n * n, NL = map.ln ? map.ln * map.ln * 2 : N, rng = mulberry32(st.seed ^ 0xabcdef), objs = [], occ = new Uint8Array(N); // NL: pola obu poziomów (gęstość obiektów)
   for (const s of map.sites) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const x = s.x + dx, y = s.y + dy; if (x >= 0 && y >= 0 && x < n && y < n) occ[y * n + x] = 1; }
   const reach = new Uint8Array(N), q = [map.start.y * n + map.start.x]; reach[q[0]] = 1;
+  const gates = map.ln ? gatePairs(map, rng, UNDER_GATES[(MAP_SIZES.find(m => m.n === map.ln) || MAP_SIZES[1]).id] || 3) : [], gateTo = new Map();
+  for (const [a, b] of gates) { gateTo.set(a[1] * n + a[0], b[1] * n + b[0]); gateTo.set(b[1] * n + b[0], a[1] * n + a[0]); }
   while (q.length) {
-    const i = q.pop(), x = i % n, y = (i / n) | 0;
+    const i = q.pop(), x = i % n, y = (i / n) | 0, g = gateTo.get(i); if (g != null && !reach[g]) { reach[g] = 1; q.push(g); } // przez bramę na drugi poziom
     for (let d = 0; d < 8; d++) { const nx = x + DX8[d], ny = y + DY8[d]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (!reach[j] && map.terrain[j] !== TER.WATER && !map.obst[j]) { reach[j] = 1; q.push(j); } }
   }
   const ok = (x, y) => x >= 1 && y >= 1 && x < n - 1 && y < n - 1 && reach[y * n + x] && !occ[y * n + x];
   // odległość od najbliższego startu gracza (pierwsze miejsca na liście); d01 = 0 przy starcie, 1 daleko od wszystkich graczy
-  const starts = map.sites.slice(0, clamp(playerSlots(st.settings).length, 1, map.sites.length)), spread = n / Math.sqrt(starts.length) * 0.7;
+  const starts = map.sites.slice(0, clamp(playerSlots(st.settings).length, 1, map.sites.length)), spread = levelSize(map) / Math.sqrt(starts.length) * 0.7;
   const dStart = (x, y) => Math.min(...starts.map(s => Math.hypot(x - s.x, y - s.y))), d01 = (x, y) => clamp(dStart(x, y) / spread, 0, 1);
   const pick = (cond, tries = 500) => { for (let k = 0; k < tries; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (ok(x, y) && cond(x, y)) return [x, y]; } return null; };
   const add = (o, tiles) => { o.id = objs.length; objs.push(o); for (const i of tiles) occ[i] = 1; return o; };
+  for (const [a, b] of gates) { const ga = add({ type: 'site', kind: 'gate', x: a[0], y: a[1], seen: {} }, [a[1] * n + a[0], (a[1] + 1) * n + a[0]]), gb = add({ type: 'site', kind: 'gate', x: b[0], y: b[1], seen: {} }, [b[1] * n + b[0], (b[1] + 1) * n + b[0]]); ga.pair = gb.id; gb.pair = ga.id; }
   // Potwór: siła rośnie wykładniczo z odległością od startu (blisko ~armia startowa, na krańcach mapy kilkanaście razy więcej),
   // strażnicy cenniejszych rzeczy (boost) są mocniejsi, a poziom trudności mnoży liczebność
   const diff = DIFFICULTIES[st.settings.difficulty].rating / 100;
@@ -155,19 +196,20 @@ function placeObjects(st) {
     for (const kind of ['wood', 'ore']) { const m = placeMine(kind, s, 4, 9); if (m && k >= starts.length) guard(m, 0); }
     const m = placeMine(RARE[Math.floor(rng() * 4)], s, 6, 14); if (m) guard(m, 0);
   });
+  for (const c of map.caves || []) { const m = placeMine(RARE[Math.floor(rng() * 4)], c, 1, 8); if (m) guard(m, 1); const g2 = rng() < 0.5 && placeMine(rng() < 0.5 ? 'gold' : 'ore', c, 2, 10); if (g2) guard(g2, 1); }
   for (let g = 0; g < Math.max(1, Math.floor(map.sites.length / 2)); g++) { const m = placeMine('gold', map.start, n * 0.25, n * 2); if (m) guard(m, 1); }
-  for (let k = Math.round(N / 90); k > 0; k--) {
+  for (let k = Math.round(NL / 90); k > 0; k--) {
     const p = pick((x, y) => dStart(x, y) >= 2); if (!p) continue; const res = RESOURCES[Math.floor(rng() * 7)].id;
     const amount = res === 'gold' ? 500 + Math.floor(rng() * 6) * 100 : (res === 'wood' || res === 'ore') ? 5 + Math.floor(rng() * 6) : 3 + Math.floor(rng() * 4);
     add({ type: 'res', res, amount: Math.max(1, Math.round(amount * rule(st, 'treasure') / (res === 'gold' ? 100 : 1)) * (res === 'gold' ? 100 : 1)), x: p[0], y: p[1] }, [p[1] * n + p[0]]);
   }
-  for (let k = Math.round(N / 300); k > 0; k--) {
+  for (let k = Math.round(NL / 300); k > 0; k--) {
     const p = pick((x, y) => dStart(x, y) >= 3); if (!p) continue; const v = Math.floor(rng() * 3);
     add({ type: 'chest', gold: Math.round((1000 + v * 500) * rule(st, 'treasure') / 100) * 100, exp: Math.round((500 + v * 500) * rule(st, 'treasure') / 100) * 100, x: p[0], y: p[1] }, [p[1] * n + p[0]]);
   }
-  for (let k = Math.round(N / 260); k > 0; k--) { const p = pick((x, y) => dStart(x, y) >= 6); if (p) monster(p[0], p[1]); }
+  for (let k = Math.round(NL / 260); k > 0; k--) { const p = pick((x, y) => dStart(x, y) >= 6); if (p) monster(p[0], p[1]); }
   // artefakty: im dalej od startu, tym rzadsze; każdego pilnuje potwór
-  for (let k = Math.max(3, Math.round(N / 420)); k > 0; k--) {
+  for (let k = Math.max(3, Math.round(NL / 420)); k > 0; k--) {
     const p = pick((x, y) => dStart(x, y) >= 7); if (!p) continue;
     const dd = d01(p[0], p[1]), rar = dd > 0.6 && rng() < 0.5 ? 'major' : dd > 0.3 ? 'minor' : 'treasure', pool = ARTS_BY_RARITY(rar);
     const a = add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x: p[0], y: p[1] }, [p[1] * n + p[0]]);
@@ -175,7 +217,7 @@ function placeObjects(st) {
   }
   // skarbce: jedna na tyle pól (co najmniej min), dalej od startu niż BANKS[].dd; Smocza Utopia możliwie na krańcu mapy
   for (const [kind, B] of Object.entries(BANKS)) {
-    const want = N / B.per, cnt = Math.max(B.min, Math.floor(want) + (rng() < want % 1 ? 1 : 0));
+    const want = NL / B.per, cnt = Math.max(B.min, Math.floor(want) + (rng() < want % 1 ? 1 : 0));
     for (let k = 0; k < cnt; k++) {
       let p = null; for (let dd = B.dd; !p && dd >= 0; dd -= 0.1) p = footprint(map.start, 6, n * 2, (x, y) => d01(x, y) >= dd);
       if (!p) continue; const [x, y] = p, blocks = [y * n + x - 1, (y - 1) * n + x - 1, (y - 1) * n + x];
@@ -187,11 +229,11 @@ function placeObjects(st) {
     if (map.terrain[i] !== TER.WATER || occ[i] || (near && dStart(x, y) > near)) continue;
     let land = false; for (let d = 0; d < 8; d++) { const j = (y + DY8[d]) * n + x + DX8[d]; if (reach[j] && !occ[j]) land = true; }
     if (land) return add({ type: 'boat', x, y }, [i]); } return null; };
-  if (!coastBoat(n * 0.3)) coastBoat(0); for (let k = Math.round(N / 3000); k > 0; k--) coastBoat(0);
+  if (!coastBoat(n * 0.3)) coastBoat(0); for (let k = Math.round(NL / 3000); k > 0; k--) coastBoat(0);
   // miejsca (SITES): liczba wg gęstości, na małej mapie rzadsze z losowaniem; część pilnują potwory
   for (const [kind, S] of Object.entries(SITES)) {
     if (!S.per) continue; // obeliski rozmieszcza placeGrail
-    const want = N / S.per, cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);
+    const want = NL / S.per, cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0);
     for (let k = 0; k < cnt; k++) {
       const p = pick((x, y) => dStart(x, y) >= (S.guard ? 7 : 4)); if (!p) continue;
       const o = { type: 'site', kind, x: p[0], y: p[1], seen: {} };
@@ -203,7 +245,7 @@ function placeObjects(st) {
     }
   }
   // portale w parach: oba końce daleko od siebie (skrót przez mapę); wraki na wodzie z dala od brzegu
-  const size = (MAP_SIZES.find(m => m.n === n) || MAP_SIZES[1]).id;
+  const size = (MAP_SIZES.find(m => m.n === levelSize(map)) || MAP_SIZES[1]).id;
   for (let k = 0; k < (PORTAL_PAIRS[size] || 1); k++) {
     const a = pick((x, y) => dStart(x, y) >= 5); if (!a) continue; const b = pick((x, y) => dStart(x, y) >= 5 && Math.hypot(x - a[0], y - a[1]) >= n * 0.4); if (!b) continue;
     const pa = add({ type: 'site', kind: 'portal', x: a[0], y: a[1], seen: {} }, [a[1] * n + a[0]]), pb = add({ type: 'site', kind: 'portal', x: b[0], y: b[1], seen: {} }, [b[1] * n + b[0]]);
@@ -282,7 +324,7 @@ function previewHero(st, owner, pick) {
 function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   const rng = mulberry32(seed), d = DIFFICULTIES[S.difficulty];
   const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S, rules: validRules(S.rules) }, bonusText: '', selHero: 0, cam: null, players: [], heroes: [], towns: [], objects: [] };
-  const map = st.map = generateMap(MAP_SIZES.find(m => m.id === S.mapSize).n, seed);
+  const surf = generateMap(MAP_SIZES.find(m => m.id === S.mapSize).n, seed), map = st.map = S.underground ? withUnderground(surf, seed) : surf;
   st.objects = placeObjects(st);
   placeGrail(st);
   // gracze (ludzie i komputer) w kolejnych miejscach startowych (pierwsze = map.start, drugie = najdalej od niego), reszta miast jest niezależna

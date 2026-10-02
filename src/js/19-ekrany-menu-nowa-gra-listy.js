@@ -183,6 +183,9 @@ G.screens.setup = {
     MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 114, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}`, tip: `Na tej mapie zmieści się do ${SITE_COUNT[m.n]} graczy.` })));
     DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 168, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
     BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 254, 100, 36, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, tip: `Bonus startowy: ${b.sub}.` })));
+    const ug = new Button(230 + BONUSES.length * 106 + 14, 254, 150, 36, '', () => { S.underground = !S.underground; saveSettings(); }, { size: 15, selected: () => S.underground,
+      tip: 'Podziemia: drugi poziom świata pod powierzchnią – sieć jaskiń z kopalniami, skarbcami i silnymi potworami. Schodzi się bramami podziemi.' });
+    Object.defineProperty(ug, 'label', { get: () => (S.underground ? 'Podziemia: tak' : 'Podziemia: nie'), set() {} }); B.push(ug);
     this.slotBtns = S.slots.map((o, i) => {
       const x = 80 + (i % 2) * 340, y = 318 + (i >> 1) * 42, col = () => S.slots[i];
       const sw = new Button(x, y, 34, 34, '', () => this.nextColor(i), { swatch: () => colorHex(col().color), tip: 'Kolor gracza (kliknij, aby zmienić).' });

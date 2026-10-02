@@ -94,6 +94,10 @@ function drawSite(ctx, kind, f) {
   const stone = (x, y, w, h, c = '#8a8478') => { box(x, y, w, h, c); box(x, y, w, 2, LT(c)); box(x + w - 2, y, 2, h, DK(c, 0.2)); };
   const roof = (x, y, w, h, c) => { poly([[x - 2, y], [x + w / 2, y - h], [x + w + 2, y]], c); poly([[x + w / 2, y - h], [x + w + 2, y], [x + w / 2, y]], DK(c, 0.18)); };
   switch (kind) {
+    case 'gate': { // brama podziemi (dawny rysunek): kamienny łuk w pagórku, schody w dół
+      poly([[-20, 0], [-14, -22], [0, -30], [14, -22], [20, 0]], '#7a7468'); poly([[-20, 0], [-14, -22], [0, -30], [-4, -12], [-10, 0]], '#9a948a');
+      stone(-13, -24, 26, 24, '#6a6474'); ctx.fillStyle = '#050406'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-8, -12); ctx.arc(0, -12, 8, Math.PI, 0); ctx.lineTo(8, 0); ctx.fill();
+      for (let i = 0; i < 3; i++) box(-7 + i, -3 - i * 3, 14 - i * 2, 2, '#4a4454'); circ(ctx, -16, -20, 2.4, '#ffb040'); circ(ctx, 16, -20, 2.4, '#ffb040'); break; }
     case 'shrine': {
       stone(-11, -6, 22, 6, '#6e6a62'); stone(-8, -24, 16, 18, '#9a948a'); roof(-8, -24, 16, 10, '#4a5a8a');
       box(-3, -20, 6, 12, '#1e1a24'); const a = 0.6 + 0.4 * Math.sin(t);

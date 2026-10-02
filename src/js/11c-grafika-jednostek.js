@@ -33,9 +33,9 @@ function drawMap3dIcon(ctx, key, cx, cy, maxW, maxH) {
 }
 function map3dSprite(key) {
   const A = typeof MAP3D_ART !== 'undefined' && MAP3D_ART, im = MAP3D_IMG.sheet, f = A && A.f[key]; if (!f || !im || !im._ok) return null;
-  const sk = `m3_${key}`; let s = SPR.get(sk); if (s) return s; const [x, y, w, h, ax, ay] = f, k = PXD / A.d, cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+  const sk = `m3_${key}`; let s = SPR.get(sk); if (s) return s; const [x, y, w, h, ax, ay] = f, k = PIXEL_ART ? PXD / A.d : Math.min(1, 2 * Math.min(G.rs, 2.5) / A.d), /* gładko: gęstość ekranu */ cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
   const c = document.createElement('canvas'); c.width = cw; c.height = ch; const g = c.getContext('2d'); c._ctx = g; g.imageSmoothingQuality = 'high'; g.drawImage(im, x, y, w, h, 0, 0, cw, ch);
-  s = { c, ax: ax * cw / w, ay: ay * ch / h, u: 2 / PXD, raw: true }; SPR.set(sk, s); return s;
+  s = { c, ax: ax * cw / w, ay: ay * ch / h, u: 2 * w / A.d / cw, raw: true }; SPR.set(sk, s); return s;
 }
 // Klatka arkusza jako sprite ({ c, ax, ay, u }); odbicie dla dir = -1. Pozy: idle, walk, fly (latające), attack, hurt, dead, map
 function artFrame(cid, pose, i, dir, u) {
@@ -48,7 +48,7 @@ function artFrame(cid, pose, i, dir, u) {
 // Sprite bitewny jednostki w pozie i klatce animacji
 function battleSprite(cid, dir, pose, i = 0) { const A = unitArt(cid); return A ? artFrame(cid, pose, i, dir, A.u) : battleSprite2D(cid, dir, pose, i); }
 // Mała figurka na mapie przygody (4 klatki spoczynku)
-function creatureSprite(cid, dir, i = 0) { const A = unitArt(cid); return A ? artFrame(cid, 'map', i, dir, A.mu) : creatureSprite2D(cid, dir, i); }
+function creatureSprite(cid, dir, i = 0) { const A = unitArt(cid); return A ? (PIXEL_ART || !A.raw ? artFrame(cid, 'map', i, dir, A.mu) : artFrame(cid, 'idle', i, dir, A.u * 0.48)) : creatureSprite2D(cid, dir, i); } // gładko: ostra klatka bitewna w skali mapy
 // Jednostka w oknach i panelach: k = powiększenie jak dla figurki mapy (k ≥ 1,4: klatka bitewna, ostrzejsza)
 function drawCreatureIcon(ctx, cid, x, y, k = 1) {
   if (unitArt(cid) && k >= 1.4) drawSprite(ctx, battleSprite(cid, 1, 'idle', 0), x, y, k / 2);

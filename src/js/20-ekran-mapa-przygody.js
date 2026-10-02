@@ -65,11 +65,15 @@ function buildPanelButtons(scr, st) {
     mk(5, iconGear, 'Menu', () => scr.systemMenu(), { key: 'escape', tip: 'Menu systemowe: powrót do menu głównego (klawisz Esc).' }),
     new Button(LIST.x + 2, 212, 30, 40, 'Mapa zagadki', () => showPuzzle(G.state), { icon: iconPuzzle, key: 'p', tip: 'Mapa zagadki: obeliski odsłaniają miejsce, gdzie zakopano Graala (klawisz P).' }),
     new Button(LIST.x + 34, 212, 30, 40, 'Kop', () => digHere(scr, G.state), { icon: iconShovel, key: 'd', tip: 'Kop w poszukiwaniu Graala na polu bohatera. Tylko z pełnymi punktami ruchu; zużywa cały dzień (klawisz D).' }),
-    new Button(LIST.x + 66, 212, 126, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
+    new Button(LIST.x + 66, 212, st.map.ln ? 92 : 126, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
     scr.tabHeroes = new Button(LIST.x + 4, LIST.y + 3, 92, 22, 'Bohaterowie', () => setListTab(scr, 'heroes'), { size: 12, selected: () => listTab() === 'heroes', tip: 'Lista twoich bohaterów (klawisz B przełącza zakładki).' }),
     scr.tabTowns = new Button(LIST.x + 100, LIST.y + 3, 92, 22, 'Miasta', () => setListTab(scr, 'towns'), { size: 12, selected: () => listTab() === 'towns', tip: 'Lista twoich miast; młotek: czy dziś można jeszcze budować (klawisz B przełącza zakładki).' }),
   ];
+  if (st.map.ln) { const b = new Button(LIST.x + 162, 212, 30, 40, 'Poziom', () => switchLevel(G.state), { icon: iconStairs, key: 'u', selected: () => !!G.state.view });
+    Object.defineProperty(b, 'tip', { get: () => (G.state.view ? 'Wróć widokiem na powierzchnię (klawisz U).' : 'Zejdź widokiem do podziemi (klawisz U).'), set() {} }); scr.buttons.push(b); }
 }
+// Schody (przełącznik powierzchnia / podziemia)
+function iconStairs(ctx, cx, cy, col) { ctx.fillStyle = col; for (let i = 0; i < 4; i++) ctx.fillRect(cx - 9 + i * 4, cy - 2 + i * 3 - 6, 18 - i * 4, 3); ctx.fillRect(cx - 9, cy - 9, 2.4, 14); }
 function panelInfoText(st, scr) {
   if (scr.aiRun) { const p = scr.aiRun.who; return { text: (p ? `Tura przeciwnika: ${ownerName(st, p.id)} (${factionOf(p.faction).name})…` : 'Tura przeciwników…') + (scr.aiRun.skip || !aiMoves().step ? '' : ' Spacja: pomiń'), col: '#ffd970' }; }
   if (scr.flashMsg && G.time - scr.flashMsg.t < 2.2) return { text: scr.flashMsg.text, col: '#ff9a7a' };
@@ -398,7 +402,7 @@ G.screens.adventure = {
     if (d.moved) { G.state.cam.x = d.cx - dx / ZOOM; G.state.cam.y = d.cy - dy / ZOOM; camClamp(G.state); }
   },
   onPointerUp() { const d = this.drag; this.drag = null; return !!(d && (d.mode === 'mini' || d.moved)); }, // przeciągnięcie listy to nie kliknięcie
-  miniJump(x, y) { const st = G.state, n = st.map.n; centerCam(st, clamp((x - MINI.x) / MINI.s * n, 0, n) - 0.5, clamp((y - MINI.y) / MINI.s * n, 0, n) - 0.5); },
+  miniJump(x, y) { const st = G.state, n = levelSize(st.map), o = levelOrigin(st.map, st.map.ln ? st.view || 0 : 0); centerCam(st, o + clamp((x - MINI.x) / MINI.s * n, 0, n - 0.01) - 0.5, o + clamp((y - MINI.y) / MINI.s * n, 0, n - 0.01) - 0.5); },
   onClick(x, y) {
     if (this.aiRun) { if (inRect(x, y, VIEW)) this.skipAi(); return; } // tura przeciwnika: mapę można tylko oglądać, kliknięcie pomija animację
     if (clickButtons(this.buttons, x, y)) return;

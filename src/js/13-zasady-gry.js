@@ -878,8 +878,11 @@ function useSite(st, h, ob) {
     }
     case 'prison': { const p = freePrisoner(st, h, ob); if (typeof p === 'string') return { text: p }; removeObject(st, ob);
       return { text: `${h.name} otwiera celę. ${heroTitle(p)} (poziom ${p.level}) wychodzi na wolność i przyłącza się do twojej sprawy.`, freed: p }; }
-    case 'portal': {
-      const to = st.objects[ob.pair]; if (!to || to.dead) return { text: 'Portal gaśnie: jego drugi koniec zniknął.' };
+    case 'gate': case 'portal': {
+      const to = st.objects[ob.pair], gate = ob.kind === 'gate'; if (!to || to.dead) return { text: 'Portal gaśnie: jego drugi koniec zniknął.' };
+      if (gate && heroAt(st, to.x, to.y)) return { text: 'Wyjście z bramy zajmuje inny bohater. Spróbuj później.' };
+      if (gate) { h.x = to.x; h.y = to.y; h.path = null; h.dest = null; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); MapRender.miniDirty = true;
+        if (h.owner === ME && G.state === st) centerCam(st, h.x, h.y); return { text: levelOf(st.map, h.x, h.y) ? 'Armia schodzi kamiennymi schodami w mrok podziemi.' : 'Armia wychodzi z podziemi na światło dnia.' }; }
       if (heroAt(st, to.x, to.y)) return { text: 'Drugi koniec portalu zajmuje inny bohater. Spróbuj później.' };
       h.x = to.x; h.y = to.y; h.path = null; h.dest = null; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); MapRender.miniDirty = true;
       if (h.owner === ME && G.state === st) centerCam(st, h.x, h.y); return { text: 'Wir światła porywa armię i wyrzuca ją w drugim portalu, daleko stąd.' };
@@ -910,7 +913,7 @@ function siteInfo(st, ob, h) {
   if (ob.kind === 'dwelling') dwellRefresh(st, ob);
   const what = ob.kind === 'shrine' ? `uczy czaru „${SPELLS[ob.spell].name}” (poziom ${SPELLS[ob.spell].level})` : ob.kind === 'windmill' ? `co tydzień 3–6 jednostek surowca (${resName(ob.res).toLowerCase()}) dla pierwszego gościa`
     : ob.kind === 'witchHut' ? `uczy umiejętności ${skillText(ob.skill, 1)}` : ob.kind === 'dwelling' ? `${CREATURES[ob.cid].plural.toLowerCase()} do werbunku: ${ob.avail} (po ${costText(CREATURES[ob.cid].cost)}), co tydzień przybywa ${CREATURES[ob.cid].growth}`
-    : ob.kind === 'portal' && st.objects[ob.pair] ? `${S.desc} (pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})` : S.desc;
+    : ob.kind === 'portal' && st.objects[ob.pair] ? `${S.desc} (pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})` : ob.kind === 'gate' ? `${S.desc}: ${levelOf(st.map, ob.x, ob.y) ? 'wyjście na powierzchnię' : 'zejście do podziemi'}` : S.desc;
   const used = h && siteUsed(st, ob, h) ? { hero: ' Ten bohater już tu był.', day: ' Dziś już wykorzystane.', heroWeek: ' W tym tygodniu już wykorzystane.', week: ' Plon z tego tygodnia już zebrany.', player: ' Już odwiedzone.' }[S.use] : '';
   return `${S.name}: ${what}.${used}${st.guard[ob.y * st.map.n + ob.x] ? ' Pilnuje go potwór.' : ''}`;
 }

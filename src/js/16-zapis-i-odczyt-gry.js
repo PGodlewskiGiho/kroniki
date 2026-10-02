@@ -22,7 +22,7 @@ function serializeGame(st) {
   return {
     v: SAVE_VERSION,
     core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null, caravans: st.caravans || [], retired: st.retired || [] },
-    map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
+    map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), ...(m.ln ? { ln: m.ln } : {}), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
     towns: st.towns, objects: st.objects,
@@ -32,7 +32,7 @@ function deserializeGame(d) {
   if (!d || d.v !== SAVE_VERSION) throw new Error('zapis pochodzi z innej wersji gry');
   const n = d.map.n, N = n * n;
   const map = { n, seed: d.map.seed, sites: d.map.sites, terrain: unpackBytes(d.map.terrain, N), obst: unpackBytes(d.map.obst, N), road: unpackBytes(d.map.road, N) };
-  map.start = map.sites[d.map.startIdx] || map.sites[0];
+  map.start = map.sites[d.map.startIdx] || map.sites[0]; if (d.map.ln) map.ln = d.map.ln;
   const st = { ...d.core, map, players: d.players.map(p => ({ ...p, explored: unpackBytes(p.explored, N) })), heroes: d.heroes, towns: d.towns, objects: d.objects };
   migrateSave(st); ME = st.cur; rebuildObjIndex(st); return st;
 }
