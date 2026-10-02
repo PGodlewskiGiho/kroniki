@@ -186,7 +186,7 @@ function init() {
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)
   setScreen('menu'); G.fade.a = 1; G.fade.target = 0;
   // wbudowana czcionka ładuje się chwilę: potem odświeżamy obrazy z napisami trzymane w pamięci (tytuły, przyciski)
-  if (document.fonts) document.fonts.load(`16px ${FONT_PIXEL}`).then(() => { Layers.cache = {}; G.dirty = true; }, () => {});
+  if (document.fonts) Promise.all([`16px ${FONT_PIXEL}`, `700 16px Cinzel`, `600 16px Cinzel`, `700 16px 'Cinzel Decorative'`, `500 16px 'Cormorant Garamond'`, `700 16px 'Cormorant Garamond'`, `italic 500 16px 'Cormorant Garamond'`].map(f => document.fonts.load(f))).then(() => { Layers.cache = {}; G.dirty = true; }, () => {}); // wbudowane czcionki: po wczytaniu napisy od nowa
   requestAnimationFrame(frame);
 }
 init();
