@@ -286,6 +286,7 @@ function* aiMoveHero(st, h, news) {
     if (!path.length) return;
     for (const [nx, ny] of path) {
       const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
+      const blocker = heroAt(st, nx, ny); if (blocker && blocker !== h && blocker.owner === h.owner && blocker.garrison == null) return; // pole zajmuje własny bohater (np. stoi w kapliczce): nie wchodzimy na niego
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
       reveal(st, nx, ny, heroSight(h), h.owner);
       yield { kind: 'step', h, fx, fy };
