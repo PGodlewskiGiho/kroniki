@@ -12,17 +12,17 @@ from diffusers import StableDiffusionImg2ImgPipeline, DPMSolverMultistepSchedule
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL = os.environ.get('MODEL', 'Lykon/dreamshaper-8')
 STEPS, CFG, S = int(os.environ.get('STEPS', 24)), float(os.environ.get('CFG', 7)), int(os.environ.get('S', 512))
-STYL = 'top-down view of {opis}, ground texture filling the whole frame, painterly fantasy strategy game map terrain, rich natural detail, soft even daylight'
+STYL = os.environ.get('STYL', 'top-down view of {opis}, ground texture filling the whole frame, sharp focus, crisp fine detail, highly detailed high resolution game texture, fantasy strategy game terrain, even daylight')
 STR = float(os.environ.get('STR', 0.55)); STRS = {'swamp': 0.62, 'snow': 0.5, 'grass': 0.6, 'cave': 0.6, 'water': 0.55} # bagno, śnieg, trawa: mocniej przemalowane (baza za prosta)
 PAL = { 'grass': ['#3c7a2a', '#4b8f32', '#5ea23e', '#86c25a'], 'dirt': ['#735432', '#8a6a3e', '#9e7c4a', '#5a4226'], 'sand': ['#c9b074', '#d8c388', '#e6d49c', '#b39660'], 'snow': ['#c8d6e4', '#e2e9f1', '#f4f8fb', '#a6bad2'],
   'cave': ['#463c34', '#564a40', '#685a4c', '#2a241f'], 'water': ['#1d4c8a', '#245a9a', '#2f6aac', '#6a9fd4'],
   'swamp': ['#3e5638', '#4c6444', '#5c7650', '#2c4636'], 'rough': ['#7e6e4a', '#94825a', '#a8966c', '#65573a'], 'lava': ['#2a201d', '#3a2c28', '#4a3a34', '#ff6a1a'] }
-NEG = 'long grass blades, branches, plants stems, perspective, horizon, sky, landscape, objects, buildings, houses, people, animals, trees, text, watermark, signature, frame, border, vignette, blurry, photo, 3d render, tiles grid, seams'
+NEG = 'blurry, soft focus, smudged, airbrushed, smooth gradients, low detail, long grass blades, branches, plants stems, perspective, horizon, sky, landscape, objects, buildings, houses, people, animals, trees, text, watermark, signature, frame, border, vignette, blurry, photo, 3d render, tiles grid, seams'
 OPIS = {
-    'grass': 'dense short grass seen from directly above, tiny grass blades, moss, clover leaves and a few tiny wild flowers, evenly spread',
+    'grass': 'dense short lawn grass seen from directly above, thousands of tiny sharp grass blades, small clover leaves, tiny daisies, evenly spread',
     'dirt': 'brown packed earth ground with small pebbles, dry cracks and sparse withered grass',
     'sand': 'golden desert sand with gentle wind ripples and a few tiny stones',
-    'snow': 'fresh powdery snow field seen from directly above, soft gentle bumps and tiny drifts, faint pale blue shadows, small glittering ice crystals, evenly spread',
+    'snow': 'fresh snow surface seen from directly above, fine granular snow crystals, small footprints-free bumps, tiny sparkles, subtle pale blue shadows, evenly spread',
     'swamp': 'marshland seen from directly above, carpet of dark green moss and wet grass, small patches of black mud, tiny pools with duckweed and lily pads, small reed clumps, evenly spread',
     'cave': 'underground cave floor seen from directly above, dark worn stone, cobbles and gravel, cracks, a few tiny faintly glowing mushrooms, evenly spread',
     'water': 'deep blue sea water surface seen from directly above, gentle painted wave ripples and small foam flecks, evenly spread',

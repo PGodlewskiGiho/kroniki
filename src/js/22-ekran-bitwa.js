@@ -46,7 +46,14 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
   if (pim && pim._ok) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(pim, 0, 0, W, 490); }
   const TX = !PIXEL_ART && !bare && !fac && TERRAIN_TEX[TEX_NAME[terr || 1]]; // faktura z tekstur terenu mapy (widok z góry) i miękkie plamy światła: pole bitwy nie jest płaskie
   if (TX) { c.save(); c.beginPath(); c.rect(0, 44, W, 446); c.clip();
-    const pat = c.createPattern(TX.cv, 'repeat'); pat.setTransform(new DOMMatrix().scale(0.85)); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.6; c.fillStyle = pat; c.fillRect(0, 44, W, 446);
+    const pat = c.createPattern(TX.cv, 'repeat'); pat.setTransform(new DOMMatrix().scale(1.15 / c.getTransform().a)); // ostra tekstura 512 px w rozdzielczości ekranu (piksel tekstury ≈ piksel ekranu)
+    const fade = c.createLinearGradient(0, 44, 0, 110); fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,1)'); // u góry przejście w malowany horyzont
+    const tmp = document.createElement('canvas'); tmp.width = c.canvas.width; tmp.height = c.canvas.height; const tg2 = tmp.getContext('2d'); tg2.setTransform(c.getTransform());
+    tg2.fillStyle = pat; tg2.fillRect(0, 44, W, 446); tg2.globalCompositeOperation = 'destination-in'; tg2.fillStyle = fade; tg2.fillRect(0, 44, W, 446);
+    c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 0.85; c.drawImage(tmp, 0, 0); c.restore();
+    { const n = document.createElement('canvas'); n.width = n.height = 128; const ng = n.getContext('2d'), id = ng.createImageData(128, 128), rr2 = mulberry32(4242); // ziarno w pikselach ekranu
+      for (let i = 0; i < id.data.length; i += 4) { const v = 128 + (rr2() - 0.5) * 70; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; } ng.putImageData(id, 0, 0);
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.22; c.fillStyle = c.createPattern(n, 'repeat'); c.fillRect(0, 0, c.canvas.width, c.canvas.height); c.restore(); }
     const r = mulberry32(terr * 977 + 13); c.globalCompositeOperation = 'soft-light'; c.globalAlpha = 1;
     for (let i = 0; i < 9; i++) { const x = r() * W, y = 60 + r() * 420, rad = 60 + r() * 140, lite = r() < 0.5, g = c.createRadialGradient(x, y, 0, x, y, rad);
       g.addColorStop(0, lite ? 'rgba(255,240,200,.55)' : 'rgba(0,0,0,.5)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
