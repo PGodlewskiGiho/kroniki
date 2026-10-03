@@ -1,6 +1,6 @@
 // ==================== SILNIK: pętla, wejście, przejścia =================================
 // Nie zawiera logiki gry. Ekran to obiekt z metodami enter/draw/update/onClick/... (patrz nagłówek).
-function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; G.dirty = true; restUnits(); if (G.screen.enter) G.screen.enter(params || {}); Music.screen(name, params || {}); }
+function setScreen(name, params) { G.screen = G.screens[name]; G.screenName = name; G.modal = null; G.dirty = true; legScrollTo(0); restUnits(); if (G.screen.enter) G.screen.enter(params || {}); Music.screen(name, params || {}); }
 G.go = function (name, params) { if (G.fade.next) return; G.fade.next = { name, params }; G.fade.target = 1; };
 function activeButtons() { return G.modal ? G.modal.buttons : (G.screen.buttons || []); }
 function updateHover() {
@@ -40,6 +40,9 @@ function boxUnits() {
   return { vw, vh, ox: vw / 2 - (b.x + b.w / 2), oy: vh / 2 - (b.y + b.h / 2), rs: u.rs * m, scale: u.scale * m, m };
 }
 function restUnits() { setUnits(topUnits()); }
+// Przewijanie dawnego ekranu, który nie mieści się w wysokości okna (telefon): przeciągnięcie palcem albo kółko myszy
+function legScrollTo(v) { const L = UNITS.leg; if (!L) return; G.legScroll = clamp(v, 0, G.legScrollMax || 0); if (L.scroll) L.oy = -G.legScroll / LS; if (UNIT === 'leg') OY = L.oy; G.dirty = true; }
+const legScrollable = () => G.legScrollMax > 0 && topUnits() === 'leg';
 // Współrzędne myszy: vx, vy w całym oknie w jednostkach interfejsu; x, y w układzie aktywnej warstwy: dawne okna dialogowe
 // i zwykłe ekrany leżą w wyśrodkowanym obszarze W×H (przesunięcie OX, OY, skala LS), dawne ekrany fill w całym oknie (skala LS).
 function layerXY(vx, vy) {
@@ -58,6 +61,7 @@ function bindInput() {
   const c = G.canvas;
   window.addEventListener('pointermove', e => {
     G.dirty = true; restUnits();
+    const sd = G.scrollDrag; if (sd && G.mouse.down) { const dy = e.clientY - sd.y0; if (Math.abs(dy) > 10) { sd.moved = true; clearTimeout(G.pressTimer); } if (sd.moved) { legScrollTo(sd.s0 - dy / UNITS.ui.scale); restUnits(); return; } }
     const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; G.mouse.type = e.pointerType;
     if (!G.modal && G.screen && G.screen.onPointerMove) G.screen.onPointerMove(p.x, p.y, e);
   });
@@ -86,7 +90,8 @@ function bindInput() {
   c.addEventListener('pointerdown', e => {
     if (G.canvasFirstTouch) G.canvasFirstTouch(e);
     if (G.pinch || needRotate()) return;
-    G.dirty = true; Sfx.unlock(); restUnits(); // dźwięk: kontekst audio dopiero po geście gracza
+    G.dirty = true; Sfx.unlock(); restUnits();
+    G.scrollDrag = e.pointerType !== 'mouse' && legScrollable() ? { y0: e.clientY, s0: G.legScroll, moved: false } : null; // dźwięk: kontekst audio dopiero po geście gracza
     if (e.button === 2) {
       e.preventDefault(); const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; updateHover();
       const txt = rightInfoAt(p.x, p.y); if (txt) G.popup = { text: txt, x: p.vx, y: p.vy };
@@ -107,13 +112,15 @@ function bindInput() {
     clearTimeout(G.pressTimer);
     if (!G.mouse.down) return; G.mouse.down = false; const p = toLogical(e);
     if (G.longPress) { G.longPress = false; G.downTarget = null; return; }
+    if (G.scrollDrag && G.scrollDrag.moved) { G.scrollDrag = null; G.downTarget = null; G.mouse.x = G.mouse.y = G.mouse.vx = G.mouse.vy = -1; return; } // przewinięcie to nie kliknięcie
+    G.scrollDrag = null;
     const consumed = (!G.modal && G.screen.onPointerUp) ? G.screen.onPointerUp(p.x, p.y, e) : false;
     if (!consumed && p.vx >= 0 && p.vx <= UNITS.ui.vw && p.vy >= 0 && p.vy <= UNITS.ui.vh) handleClick(p.x, p.y);
     G.downTarget = null; if (e.pointerType !== 'mouse') { G.mouse.x = G.mouse.y = G.mouse.vx = G.mouse.vy = -1; }
   });
   c.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !G.mouse.down) { G.mouse.x = G.mouse.y = G.mouse.vx = G.mouse.vy = -1; } });
   c.addEventListener('contextmenu', e => e.preventDefault());
-  c.addEventListener('wheel', e => { G.dirty = true; restUnits(); if (!G.modal && !G.fade.next && G.screen.onWheel) { e.preventDefault(); G.screen.onWheel(Math.sign(e.deltaY)); } }, { passive: false });
+  c.addEventListener('wheel', e => { G.dirty = true; restUnits(); if (legScrollable() && (G.modal || !G.screen.onWheel)) { e.preventDefault(); legScrollTo(G.legScroll + clamp(e.deltaY / UNITS.ui.scale, -240, 240)); restUnits(); return; } if (!G.modal && !G.fade.next && G.screen.onWheel) { e.preventDefault(); G.screen.onWheel(Math.sign(e.deltaY)); } }, { passive: false });
   window.addEventListener('keydown', onKey);
   window.addEventListener('keyup', e => { G.keys.delete(e.key.toLowerCase()); G.dirty = true; });
   window.addEventListener('blur', () => { G.keys.clear(); G.dirty = true; });
@@ -128,9 +135,13 @@ function resize() {
   for (const k in Layers.cache) if (/_\d+x\d+$/.test(k)) delete Layers.cache[k]; // warstwy zależne od rozmiaru okna
   const cw = Math.max(1, Math.floor(vw * s)), ch = Math.max(1, Math.floor(vh * s));
   G.dpr = renderDpr(); const scale = cw / vw, rs = scale * G.dpr;
-  LS = Math.min(vw / W, vh / H); const lw = Math.max(W, Math.round(vw / LS / 2) * 2), lh = Math.max(H, Math.round(vh / LS / 2) * 2);
+  // dawne ekrany: zmieszczone w oknie (LS), a gdy wyszłyby wyraźnie mniejsze niż interfejs (telefon), w pełnej wielkości i przewijane w pionie
+  const fit = Math.min(vw / W, vh / H), scroll = fit < 0.92 && vw / W > fit * 1.02;
+  LS = scroll ? Math.min(1, vw / W) : fit; const lw = Math.max(W, Math.round(vw / LS / 2) * 2), lh = scroll ? vh / LS : Math.max(H, Math.round(vh / LS / 2) * 2);
+  G.legScrollMax = scroll ? Math.max(0, H * LS - vh) : 0; G.legScroll = clamp(G.legScroll || 0, 0, G.legScrollMax);
   UNITS.ui = { vw, vh, ox: 0, oy: 0, rs, scale };
-  UNITS.leg = { vw: lw, vh: lh, ox: (lw - W) / 2, oy: (lh - H) / 2, rs: rs * LS, scale: scale * LS };
+  UNITS.leg = { vw: lw, vh: lh, ox: (lw - W) / 2, oy: scroll ? 0 : (lh - H) / 2, rs: rs * LS, scale: scale * LS, scroll };
+  legScrollTo(G.legScroll);
   restUnits(); G.dirty = true;
   G.canvas.style.width = cw + 'px'; G.canvas.style.height = ch + 'px';
   G.canvas.width = Math.round(cw * G.dpr); G.canvas.height = Math.round(ch * G.dpr);
@@ -151,6 +162,8 @@ function render() {
   else { if (OX || OY) drawBackdrop(ctx); center(); G.screen.draw(ctx); }
   if (G.modal) { setUnits(modalUnits()); if (G.modal.ui) whole(); else center(); G.modal.draw(ctx); }
   setUnits('ui'); whole();
+  if (G.legScrollMax > 0 && topUnits() === 'leg') { const h = VH * VH / (VH + G.legScrollMax), y = (VH - h) * G.legScroll / G.legScrollMax; // pasek przewijania dawnego ekranu
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(VW - 7, 0, 7, VH); ctx.fillStyle = 'rgba(214,174,92,.85)'; ctx.fillRect(VW - 6, y + 2, 5, h - 4); }
   if (G.popup) drawPopup(ctx, G.popup);
   drawNetChat(ctx); // czat gry online
   if (G.fade.a > 0) { ctx.fillStyle = `rgba(0,0,0,${G.fade.a.toFixed(3)})`; ctx.fillRect(0, 0, VW, VH); }

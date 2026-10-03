@@ -17,7 +17,7 @@ const btnCenter = (label, layer) => page.evaluate(([label, layer]) => {
 }, [label, layer]);
 
 test('okno 16:9: szersze okno logiczne, menu wyśrodkowane i klikalne', async () => {
-  assert.deepEqual(await size(1280, 720), { VW: 1066, VH: 600, OX: 133, OY: 0 });
+  assert.deepEqual(await size(1280, 720), { VW: 1280, VH: 720, OX: 0, OY: 0 }, 'menu w jednostkach interfejsu');
   await page.evaluate(() => { setScreen('menu'); G.fade.a = 0; G.fade.target = 0; });
   await frames(page, 3);
   const p = await btnCenter('Nowa gra'); await page.mouse.move(p.x, p.y); await page.mouse.click(p.x, p.y);
@@ -107,4 +107,17 @@ test('miasto w oknie telefonu: szuflada armii i kliknięcie oddziału w garnizon
   await page.mouse.move(r.px, r.py); await page.mouse.click(r.px, r.py);
   assert.deepEqual(await page.evaluate(() => G.screens.town.sel && G.screens.town.sel.i), 0, 'pierwszy oddział bohatera w bramie zaznaczony');
   await size(800, 600);
+});
+
+test('telefon: dawny ekran (nowa gra) w pełnej wielkości, przewijany kółkiem; przycisk na dole klikalny po przewinięciu', async () => {
+  await size(844, 390); await page.evaluate(() => { setScreen('setup'); G.fade.a = 0; G.fade.target = 0; }); await frames(page, 3);
+  const r0 = await page.evaluate(() => ({ max: G.legScrollMax, ls: LS }));
+  assert.ok(r0.max > 100 && r0.ls === 1, JSON.stringify(r0));
+  await page.mouse.move(400, 200); await page.mouse.wheel(0, 2000); await frames(page, 3);
+  const p = await page.evaluate(() => { const b = G.screen.buttons.find(b => b.label === 'Wróć'), c = G.canvas.getBoundingClientRect(), k = c.width / UNITS.ui.vw;
+    return { s: G.legScroll, x: c.left + (OX + b.x + b.w / 2) * LS * k, y: c.top + (OY + b.y + b.h / 2) * LS * k }; });
+  assert.ok(p.s > 100 && p.y < 390, JSON.stringify(p));
+  await page.mouse.move(p.x, p.y); await page.mouse.click(p.x, p.y);
+  assert.equal(await page.evaluate(() => G.fade.next && G.fade.next.name), 'menu');
+  await page.waitForFunction(() => G.screenName === 'menu'); await size(800, 600);
 });
