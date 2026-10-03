@@ -651,27 +651,30 @@ const MOAT_LIQ = {
   dungeon: { tex: 'water', col: '#2a2440', tint: 'rgba(60,30,90,.4)', bank: ['#1e1a24', '#34303e'], flow: 'rgba(150,100,220,.22)', spark: 'rgba(200,170,255,.5)' },
   stronghold: { tex: 'water', col: '#4a3e28', tint: 'rgba(110,80,40,.35)', bank: ['#4a3820', '#6a5232'], flow: 'rgba(160,130,80,.25)', spark: 'rgba(230,210,170,.45)' },
 };
-// Fosa oblężonego miasta: kręty kanał wody wzdłuż muru (przez środki pól przed murem, moatX), przerwany mostem w rzędzie bramy:
-// ziemny brzeg, woda z faktury terenu (płynie powoli), ciemniejsza przy brzegach, połyskujące fale
+// Fosa oblężonego miasta: prosty kanał wzdłuż lica muru (równoległy do ukosu, brzeg przy murze), przez całą wysokość pola;
+// w rzędzie bramy przerzucony drewniany most. Ziemny brzeg, woda z faktury terenu (płynie powoli), ciemniejsza przy brzegach, fale
+const MOAT_OFF = 33; // środek kanału tyle px przed licem muru (połowa szerokości z brzegiem: 26; podstawa muru zachodzi na brzeg)
 function drawMoat(ctx, B) {
-  const runs = []; let cur = null;
-  for (let y = 0; y < BROWS; y++) { if (moatAt(B, moatX(y), y)) { if (!cur) runs.push(cur = []); cur.push(y); } else cur = null; }
-  if (!runs.length) return;
-  const k = SIEGE_SLOPE(), line = ys => { ctx.beginPath(); ys.forEach((y, i) => { const [cx, cy] = hexCenter(moatX(y), y), a = y === 0 ? 40 : 18, b = y === BROWS - 1 ? 40 : 18; if (!i) ctx.moveTo(cx - a * k, cy - a); ctx.lineTo(cx, cy); if (i === ys.length - 1) ctx.lineTo(cx + b * k, cy + b); }); };
   const fac = B.sides[1].town ? B.sides[1].town.faction : 'haven', L = MOAT_LIQ[fac] || MOAT_LIQ.haven, WT = TERRAIN_TEX[L.tex] || TERRAIN_TEX.water, pat = WT && WT.cv ? ctx.createPattern(WT.cv, 'repeat') : null;
   if (pat) pat.setTransform(new DOMMatrix().translate(0, G.time * 5).scale(0.35));
-  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  for (const ys of runs) {
-    line(ys); ctx.strokeStyle = L.bank[0]; ctx.lineWidth = 52; ctx.stroke(); // brzeg
-    ctx.strokeStyle = L.bank[1]; ctx.lineWidth = 46; ctx.stroke();
-    ctx.strokeStyle = pat || L.col; ctx.lineWidth = 38; ctx.stroke(); // ciecz fosy
-    if (L.tint) { ctx.strokeStyle = L.tint; ctx.stroke(); }
-    ctx.strokeStyle = 'rgba(8,22,30,.3)'; ctx.lineWidth = 38; ctx.stroke(); ctx.strokeStyle = L.flow; ctx.lineWidth = 18; ctx.stroke(); // głębia i jaśniejszy nurt
-    if (L.glow) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(255,120,30,${0.18 + 0.08 * Math.sin(G.time * 3)})`; ctx.lineWidth = 60; ctx.stroke(); ctx.restore(); } // lawa się żarzy
-    if (L.pads) for (const y of ys) { const [cx, cy] = hexCenter(moatX(y), y); for (const [dx, dy] of [[-8, -6], [7, 9]]) { ctx.fillStyle = '#4e8a3a'; ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 4.5, 0.4, TAU); ctx.lineTo(cx + dx, cy + dy); ctx.fill(); } } // lilie wodne
-    ctx.fillStyle = L.spark;
-    for (const y of ys) { const [cx, cy] = hexCenter(moatX(y), y); for (let i = 0; i < 4; i++) { const ph = (G.time * 0.6 + i * 0.27 + y * 0.13) % 1; if (ph < 0.6) ctx.fillRect(cx - 12 + ((i * 11 + y * 7) % 20), cy - 14 + i * 8 + ph * 5, 1.6, 6); } }
-  }
+  const y0 = 41, y1 = 490, mx = py => wallLineX(py) - MOAT_OFF, k = SIEGE_SLOPE();
+  const band = (hw, a = y0, b = y1) => { ctx.beginPath(); ctx.moveTo(mx(a) - hw, a); ctx.lineTo(mx(a) + hw, a); ctx.lineTo(mx(b) + hw, b); ctx.lineTo(mx(b) - hw, b); ctx.closePath(); };
+  const fill = (hw, c) => { band(hw); ctx.fillStyle = c; ctx.fill(); };
+  ctx.save();
+  fill(26, L.bank[0]); fill(23, L.bank[1]); fill(19, pat || L.col); if (L.tint) fill(19, L.tint); // brzeg i ciecz fosy
+  fill(19, 'rgba(8,22,30,.3)'); fill(9, L.flow); // głębia i jaśniejszy nurt
+  if (L.glow) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; fill(30, `rgba(255,120,30,${0.18 + 0.08 * Math.sin(G.time * 3)})`); ctx.restore(); } // lawa się żarzy
+  const rows = [...Array(BROWS).keys()].filter(y => y !== GATE_Y).map(y => [y, hexCenter(0, y)[1]]);
+  if (L.pads) for (const [y, cy] of rows) { const cx = mx(cy); for (const [dx, dy] of [[-8, -6], [7, 9]]) { ctx.fillStyle = '#4e8a3a'; ctx.beginPath(); ctx.arc(cx + dx + dy * k, cy + dy, 4.5, 0.4, TAU); ctx.lineTo(cx + dx + dy * k, cy + dy); ctx.fill(); } } // lilie wodne
+  ctx.fillStyle = L.spark;
+  for (const [y, cy] of rows) { const cx = mx(cy); for (let i = 0; i < 4; i++) { const ph = (G.time * 0.6 + i * 0.27 + y * 0.13) % 1, dy = -14 + i * 8 + ph * 5; if (ph < 0.6) ctx.fillRect(cx - 10 + ((i * 11 + y * 7) % 16) + dy * k, cy + dy, 1.6, 6); } }
+  // most w rzędzie bramy: deski w poprzek kanału, poręcze, cień na wodzie
+  const gy = hexCenter(0, GATE_Y)[1], h = 13, xa = py => mx(py) - 30, xb = py => wallLineX(py) + 2;
+  const quad = (a, b, c) => { ctx.beginPath(); ctx.moveTo(xa(a), a); ctx.lineTo(xb(a), a); ctx.lineTo(xb(b), b); ctx.lineTo(xa(b), b); ctx.closePath(); ctx.fillStyle = c; ctx.fill(); };
+  quad(gy + h, gy + h + 5, 'rgba(0,0,0,.35)'); quad(gy - h, gy + h, '#6e4a26');
+  ctx.strokeStyle = 'rgba(40,24,10,.75)'; ctx.lineWidth = 1;
+  for (let x = xa(gy) + 5; x < xb(gy) - 2; x += 5.5) { ctx.beginPath(); ctx.moveTo(x - h * k, gy - h); ctx.lineTo(x + h * k, gy + h); ctx.stroke(); } // szpary między deskami
+  quad(gy - h, gy - h + 2.5, '#8a6236'); quad(gy + h - 2.5, gy + h, '#4a2e14'); // krawędzie: oświetlona i w cieniu
   ctx.restore();
 }
 
