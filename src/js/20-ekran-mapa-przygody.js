@@ -76,7 +76,7 @@ function buildPanelButtons(scr, st) {
 function iconStairs(ctx, cx, cy, col) { ctx.fillStyle = col; for (let i = 0; i < 4; i++) ctx.fillRect(cx - 9 + i * 4, cy - 2 + i * 3 - 6, 18 - i * 4, 3); ctx.fillRect(cx - 9, cy - 9, 2.4, 14); }
 function panelInfoText(st, scr) {
   if (scr.aiRun) { const p = scr.aiRun.who; return { text: (p ? `Tura przeciwnika: ${ownerName(st, p.id)} (${factionOf(p.faction).name})…` : 'Tura przeciwników…') + (scr.aiRun.skip || !aiMoves().step ? '' : ' Spacja: pomiń'), col: '#ffd970' }; }
-  if (scr.flashMsg && G.time - scr.flashMsg.t < 2.2) return { text: scr.flashMsg.text, col: '#ff9a7a' };
+  if (scr.flashMsg && G.time - scr.flashMsg.t < (scr.flashMsg.col ? 4 : 2.2)) return { text: scr.flashMsg.text, col: scr.flashMsg.col || '#ff9a7a' };
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, VIEW) && !G.modal) {
     const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y); return { text: tileInfo(st, tx, ty), col: '#ecd9a8' };
   }
@@ -187,7 +187,7 @@ G.screens.adventure = {
     if (!st.cam) { const f = hero(st) || myTowns(st)[0] || st.towns[0]; centerCam(st, f.x, f.y); }
     this.layout(true);
   },
-  flash(msg) { this.flashMsg = { text: msg, t: G.time }; },
+  flash(msg, col) { this.flashMsg = { text: msg, t: G.time, col }; }, // col: kolor (np. złoty dla nagród); bez koloru – ostrzeżenie
   // Gra online: tura innego gracza (watching) – przyciski zablokowane, mapę można tylko oglądać
   netWatch(on) { this.watching = on; if (on || !this.aiRun) this.lockButtons(on); },
   netUpdate(st, kind) {

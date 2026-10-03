@@ -24,8 +24,10 @@ const unitCells = (u, x = u.x, y = u.y) => (u.cid && isWide(u) ? [[x, y], [x + t
 // Sąsiedztwo pól albo oddziałów (każde pole jednego przy którymkolwiek polu drugiego)
 const hexAdjacent = (a, b) => { const cb = unitCells(b); return unitCells(a).some(([ax, ay]) => hexNeighbors(ax, ay).some(([x, y]) => cb.some(([bx, by]) => bx === x && by === y))); };
 // Potwory neutralne dzielą się na kilka oddziałów (jak w oryginale)
-function splitMonster(count) {
-  const k = Math.min(count, count >= 20 ? 5 : count >= 8 ? 3 : count >= 3 ? 2 : 1), out = [];
+// Stado z mapy dzieli się na 1–4 oddziały (mniej i większych: krótsze, ciekawsze bitwy), strzelcy najwyżej na 3
+function splitMonster(count, cid) {
+  const shooter = cid && CREATURES[cid] && CREATURES[cid].shots > 0;
+  const k = Math.min(count, shooter ? 3 : 4, count >= 40 ? 4 : count >= 15 ? 3 : count >= 5 ? 2 : 1), out = [];
   for (let i = 0; i < k; i++) out.push(Math.floor(count / k) + (i < count % k ? 1 : 0));
   return out;
 }
@@ -37,7 +39,7 @@ function battleSide(st, foe) {
     const stacks = []; for (const [cid, n] of foe.guards) (n >= 10 && foe.guards.length <= 3 ? [Math.ceil(n / 2), Math.floor(n / 2)] : [n]).forEach(k => stacks.push({ cid, n: k, src: null, slot: null }));
     return { owner: -1, hero: null, monster: null, bank: foe, town: null, key: foe.id, stacks: stacks.slice(0, 7) };
   }
-  if (foe.type === 'monster') return { owner: -1, hero: null, monster: foe, town: null, key: foe.id, stacks: splitMonster(foe.count).map(n => ({ cid: foe.cid, n, src: null, slot: null })) };
+  if (foe.type === 'monster') return { owner: -1, hero: null, monster: foe, town: null, key: foe.id, stacks: splitMonster(foe.count, foe.cid).map(n => ({ cid: foe.cid, n, src: null, slot: null })) };
   if (foe.garrison) { // miasto: bohater stojący w mieście broni się razem z garnizonem
     const h = townHero(st, foe); // bohater w garnizonie, a gdy go nie ma: bohater w bramie
     return { owner: foe.owner, hero: h, monster: null, town: foe, key: 9000 + st.towns.indexOf(foe), stacks: [...(h ? armyEntries(h.army, 'hero') : []), ...armyEntries(foe.garrison, 'garrison')] };
