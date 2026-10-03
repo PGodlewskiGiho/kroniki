@@ -184,3 +184,14 @@ test('telefon: w pionie prośba o obrót, na komputerze i z pliku bez przycisku 
   assert.equal(r.rot, false); assert.equal(r.inst, false); assert.ok(r.menu.includes('Wyjście')); assert.ok(r.zoom);
   await page.evaluate(() => { drawRotateHint(G.ctx); });
 });
+
+test('aplikacja na Androida (most KronikiApp): bez instalacji, zapis pliku przez most, Wyjście zamyka aplikację', async () => {
+  const r = await page.evaluate(() => {
+    const calls = []; window.KronikiApp = { saveFile: (n, c) => calls.push(['save', n, c.length > 100]), exit: () => calls.push(['exit']) };
+    const out = { standalone: isStandalone(), inst: App.canInstall() };
+    G.state = createNewGame(Object.assign({}, G.settings, { mapSize: 'S', opponents: 0, slots: null }), 3); out.name = exportGameFile(G.state);
+    askQuit(); G.modal.buttons.find(b => b.label === 'Tak').action(); out.calls = calls; delete window.KronikiApp; G.state = null; return out;
+  });
+  assert.equal(r.standalone, true); assert.equal(r.inst, false);
+  assert.deepEqual(r.calls, [['save', r.name, true], ['exit']]);
+});
