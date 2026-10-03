@@ -209,13 +209,16 @@ function landColor(t, ax, ay, hh) {
 const TERRAIN_TEX = {}, TEX_NAME = ['water', 'grass', 'dirt', 'sand', 'snow', 'swamp', 'rough', 'lava'], TEX_TILES = 4; // tekstura 512 px na 4×4 pola: piksel tekstury ≈ piksel ekranu (ostro)
 // faktura z tekstury AI w barwie terenu (pora roku, paleta): kolor × (tekstura / jej średnia). Żeby nie było widać powtórzeń,
 // tekstura jest próbkowana dwa razy (co TEX_TILES pól i co ~1,6× tyle, z zamienionymi osiami) i obie próbki mieszane wolnym szumem
-function texShade(TX, col, ax, ay, w) { const W = TX.w, H = TX.h, P = TEX_TILES * AP, d = TX.d, M = TX.mean;
-  // próbka dwuliniowa (płynnie między pikselami tekstury, bez schodków przy powiększeniu); u, v w pikselach tekstury
-  const smp = (u, v, o) => { const x0 = Math.floor(u), y0 = Math.floor(v), fx = u - x0, fy = v - y0, X0 = ((x0 % W) + W) % W, Y0 = ((y0 % H) + H) % H, X1 = (X0 + 1) % W, Y1 = (Y0 + 1) % H;
-    const a = (Y0 * W + X0) * 4 + o, b = (Y0 * W + X1) * 4 + o, c = (Y1 * W + X0) * 4 + o, e = (Y1 * W + X1) * 4 + o; return (d[a] * (1 - fx) + d[b] * fx) * (1 - fy) + (d[c] * (1 - fx) + d[e] * fx) * fy; };
-  const u1 = ax * W / P, v1 = ay * H / P, u2 = (ay + 11 * AP) * W / (P * 1.618), v2 = (ax + 37 * AP) * H / (P * 1.618);
+const TEXS = new Float32Array(6); // wynik dwóch próbek (RGB × 2), bez tworzenia tablic na każdy piksel
+function texSmp(TX, u, v, k) { // próbka dwuliniowa (płynnie między pikselami tekstury, bez schodków); u, v w pikselach tekstury
+  const W = TX.w, H = TX.h, d = TX.d, x0 = Math.floor(u), y0 = Math.floor(v), fx = u - x0, fy = v - y0, X0 = ((x0 % W) + W) % W, Y0 = ((y0 % H) + H) % H, X1 = X0 + 1 === W ? 0 : X0 + 1, Y1 = Y0 + 1 === H ? 0 : Y0 + 1;
+  const a = (Y0 * W + X0) << 2, b = (Y0 * W + X1) << 2, c = (Y1 * W + X0) << 2, e = (Y1 * W + X1) << 2, w00 = (1 - fx) * (1 - fy), w10 = fx * (1 - fy), w01 = (1 - fx) * fy, w11 = fx * fy;
+  TEXS[k] = d[a] * w00 + d[b] * w10 + d[c] * w01 + d[e] * w11; TEXS[k + 1] = d[a + 1] * w00 + d[b + 1] * w10 + d[c + 1] * w01 + d[e + 1] * w11; TEXS[k + 2] = d[a + 2] * w00 + d[b + 2] * w10 + d[c + 2] * w01 + d[e + 2] * w11;
+}
+function texShade(TX, col, ax, ay, w) { const P = TEX_TILES * AP, M = TX.mean;
+  texSmp(TX, ax * TX.w / P, ay * TX.h / P, 0); texSmp(TX, (ay + 11 * AP) * TX.w / (P * 1.618), (ax + 37 * AP) * TX.h / (P * 1.618), 3);
   const m = clamp((vnoise2(ax / (AP * 3.5), ay / (AP * 3.5), 91) - 0.5) * 3 + 0.5, 0, 1), a = (1 - m) * w, b = m * w, u = 1 - w;
-  return [0, 1, 2].map(o => Math.min(255, col[o] * (smp(u1, v1, o) / M[o] * a + smp(u2, v2, o) / M[o] * b + u))); }
+  return [Math.min(255, col[0] * ((TEXS[0] * a + TEXS[3] * b) / M[0] + u)), Math.min(255, col[1] * ((TEXS[1] * a + TEXS[4] * b) / M[1] + u)), Math.min(255, col[2] * ((TEXS[2] * a + TEXS[5] * b) / M[2] + u))]; }
 function texData(im) {
   const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, c.width, c.height).data;
   let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4;
