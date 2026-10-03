@@ -35,7 +35,7 @@ function restUnits() { setUnits(topUnits()); }
 // Współrzędne myszy: vx, vy w całym oknie w jednostkach interfejsu; x, y w układzie aktywnej warstwy: dawne okna dialogowe
 // i zwykłe ekrany leżą w wyśrodkowanym obszarze W×H (przesunięcie OX, OY, skala LS), dawne ekrany fill w całym oknie (skala LS).
 function layerXY(vx, vy) {
-  if (topUnits() === 'ui') return [vx, vy];
+  if (topUnits() === 'ui') return !G.modal && G.screen && G.screen.mapPoint ? G.screen.mapPoint(vx, vy) : [vx, vy]; // ekran może mieć obszary w dawnych współrzędnych (miasto)
   const L = UNITS.leg, lx = vx / LS, ly = vy / LS;
   return (G.modal || !(G.screen && G.screen.fill)) ? [lx - L.ox, ly - L.oy] : [lx, ly];
 }

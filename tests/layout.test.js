@@ -93,3 +93,18 @@ test('bitwa w oknie telefonu: panel z boku, pole większe, kliknięcie heksu dzi
   assert.deepEqual(after, r.to);
   await size(800, 600);
 });
+
+test('miasto w oknie telefonu: szuflada armii i kliknięcie oddziału w garnizonie', async () => {
+  await size(844, 390); await newGame(page, { opponents: 0 });
+  await page.evaluate(() => { G.screens.town.garOpen = false; setScreen('town', { townId: G.state.towns.findIndex(t => t.owner === 0) }); });
+  await frames(page, 3);
+  let r = await page.evaluate(() => { const S = G.screens.town, R = S.lay(); return { compact: R.compact, B: !!R.B, rows: R.N, gar: S.buttons.some(b => b.label === 'Armia') }; });
+  assert.deepEqual(r, { compact: true, B: false, rows: 2, gar: true });
+  await page.evaluate(() => G.screens.town.buttons.find(b => b.label === 'Armia').action()); await frames(page, 3);
+  r = await page.evaluate(() => { const S = G.screens.town, R = S.lay(), g = S.heroRects[0], c = G.canvas.getBoundingClientRect(), k = c.width / VW, B = R.B;
+    return { B: !!B, px: c.left + (B.sx + (g.x + g.w / 2 - B.lx) * B.s) * k, py: c.top + (B.sy + (g.y + g.h / 2 - B.ly) * B.s) * k }; });
+  assert.ok(r.B);
+  await page.mouse.move(r.px, r.py); await page.mouse.click(r.px, r.py);
+  assert.deepEqual(await page.evaluate(() => G.screens.town.sel && G.screens.town.sel.i), 0, 'pierwszy oddział bohatera w bramie zaznaczony');
+  await size(800, 600);
+});
