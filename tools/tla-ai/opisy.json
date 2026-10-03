@@ -872,42 +872,42 @@
   }
  },
  "bitwa_woda": {
-  "opis": "shallow sea water with gentle waves and foam, a few rocks",
+  "opis": "small grassy island battlefield surrounded by shallow water at the edges, sandy shore, wet stones, reeds",
   "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
   "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
  },
  "bitwa_trawa": {
-  "opis": "lush green meadow with grass tufts, small flowers and a few stones",
+  "opis": "sunlit green meadow, varied grass with darker and lighter patches, worn dirt path crossing, clusters of wildflowers, scattered rocks and bushes near the edges, dappled cloud shadows",
   "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
   "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
  },
  "bitwa_ziemia": {
-  "opis": "brown dirt field with dry grass patches, pebbles and cart ruts",
+  "opis": "brown earth field, trampled dirt with wheel ruts, patches of dry grass, small rocks and roots, a few shrubs near the edges, warm light",
   "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
   "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
  },
  "bitwa_piasek": {
-  "opis": "golden desert sand with wind ripples, small stones and bleached bones",
+  "opis": "golden desert sand with wind ripples, sandstone rocks and bleached bones near the edges, small dunes, harsh sunlight and soft shadows",
   "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
   "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
  },
  "bitwa_snieg": {
-  "opis": "snowy field with drifts, ice patches and frozen grass",
+  "opis": "snowy plain, fresh snow with footprint trails and wind drifts, frozen puddles, snow covered rocks and pine saplings near the edges, cold blue light",
   "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
   "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
  },
  "bitwa_bagno": {
-  "opis": "murky swamp ground with dark puddles, moss, reeds and mud",
+  "opis": "murky swamp ground, wet mud and moss, shallow puddles with reeds and lily pads, rotten logs near the edges, misty green light",
   "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
   "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
  },
  "bitwa_nierowny": {
-  "opis": "rough rocky highland ground with scattered boulders, gravel and dry tufts",
+  "opis": "rough rocky highland, cracked stone slabs, gravel, dry grass tufts, boulders near the edges, dramatic light",
   "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
   "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
  },
  "bitwa_lawa": {
-  "opis": "black volcanic ash ground with glowing lava cracks and embers",
+  "opis": "volcanic wasteland, black basalt ground with glowing lava cracks, ash, scorched rocks near the edges, red ember glow",
   "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
   "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
  }

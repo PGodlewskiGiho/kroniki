@@ -206,18 +206,23 @@ function landColor(t, ax, ay, hh) {
 }
 // Tekstury terenu (TERRAIN_ART, malowane przez AI, bezszwowe): piksele w tablicy + średnia barwa. Teren bierze z tekstury strukturę
 // (kępy trawy, szczeliny, kamienie), a barwę z palety i pory roku: kolor = tekstura × (barwa terenu / średnia tekstury).
-const TERRAIN_TEX = {}, TEX_NAME = ['water', 'grass', 'dirt', 'sand', 'snow', 'swamp', 'rough', 'lava'], TEX_TILES = 6; // tekstura na 6×6 pól
+const TERRAIN_TEX = {}, TEX_NAME = ['water', 'grass', 'dirt', 'sand', 'snow', 'swamp', 'rough', 'lava'], TEX_TILES = 8; // tekstura 512 px (tools/tekstury-proc.py) na 8×8 pól: piksel tekstury ≈ piksel ekranu przy zoomie 1 (ostro)
 // faktura z tekstury AI w barwie terenu (pora roku, paleta): kolor × (tekstura / jej średnia). Żeby nie było widać powtórzeń,
 // tekstura jest próbkowana dwa razy (co TEX_TILES pól i co ~1,6× tyle, z zamienionymi osiami) i obie próbki mieszane wolnym szumem
-function texShade(TX, col, ax, ay, w) { const W = TX.w, H = TX.h, P = TEX_TILES * AP, d = TX.d, M = TX.mean;
-  const q1 = ((((Math.floor(ay * H / P) % H) + H) % H) * W + (((Math.floor(ax * W / P) % W) + W) % W)) * 4;
-  const q2 = ((((Math.floor((ax + 37 * AP) * H / (P * 1.618)) % H) + H) % H) * W + (((Math.floor((ay + 11 * AP) * W / (P * 1.618)) % W) + W) % W)) * 4;
+const TEXS = new Float32Array(6); // wynik dwóch próbek (RGB × 2), bez tworzenia tablic na każdy piksel
+function texSmp(TX, u, v, k) { // próbka dwuliniowa (płynnie między pikselami tekstury, bez schodków); u, v w pikselach tekstury
+  const W = TX.w, H = TX.h, d = TX.d, x0 = Math.floor(u), y0 = Math.floor(v), fx = u - x0, fy = v - y0, X0 = ((x0 % W) + W) % W, Y0 = ((y0 % H) + H) % H, X1 = X0 + 1 === W ? 0 : X0 + 1, Y1 = Y0 + 1 === H ? 0 : Y0 + 1;
+  const a = (Y0 * W + X0) << 2, b = (Y0 * W + X1) << 2, c = (Y1 * W + X0) << 2, e = (Y1 * W + X1) << 2, w00 = (1 - fx) * (1 - fy), w10 = fx * (1 - fy), w01 = (1 - fx) * fy, w11 = fx * fy;
+  TEXS[k] = d[a] * w00 + d[b] * w10 + d[c] * w01 + d[e] * w11; TEXS[k + 1] = d[a + 1] * w00 + d[b + 1] * w10 + d[c + 1] * w01 + d[e + 1] * w11; TEXS[k + 2] = d[a + 2] * w00 + d[b + 2] * w10 + d[c + 2] * w01 + d[e + 2] * w11;
+}
+function texShade(TX, col, ax, ay, w) { const P = TEX_TILES * AP, M = TX.mean;
+  texSmp(TX, ax * TX.w / P, ay * TX.h / P, 0); texSmp(TX, (ay + 11 * AP) * TX.w / (P * 1.618), (ax + 37 * AP) * TX.h / (P * 1.618), 3);
   const m = clamp((vnoise2(ax / (AP * 3.5), ay / (AP * 3.5), 91) - 0.5) * 3 + 0.5, 0, 1), a = (1 - m) * w, b = m * w, u = 1 - w;
-  return [Math.min(255, col[0] * (d[q1] / M[0] * a + d[q2] / M[0] * b + u)), Math.min(255, col[1] * (d[q1 + 1] / M[1] * a + d[q2 + 1] / M[1] * b + u)), Math.min(255, col[2] * (d[q1 + 2] / M[2] * a + d[q2 + 2] / M[2] * b + u))]; }
+  return [Math.min(255, col[0] * ((TEXS[0] * a + TEXS[3] * b) / M[0] + u)), Math.min(255, col[1] * ((TEXS[1] * a + TEXS[4] * b) / M[1] + u)), Math.min(255, col[2] * ((TEXS[2] * a + TEXS[5] * b) / M[2] + u))]; }
 function texData(im) {
   const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, c.width, c.height).data;
   let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4;
-  return { w: c.width, h: c.height, d, mean: [r / n, gg / n, b / n] };
+  return { w: c.width, h: c.height, d, mean: [r / n, gg / n, b / n], cv: c };
 }
 // Pory roku: lato przypala trawę, jesień barwi ją plamami rdzy i złota, zima przykrywa śniegiem (poza lawą i pustynią)
 const SNOWC = [[236, 242, 248], [214, 226, 238], [248, 250, 252]], AUTC = [[176, 104, 38], [150, 86, 36], [196, 146, 56], [128, 110, 44]];
@@ -285,7 +290,7 @@ function* renderChunkSteps(map, cx, cy) {
       } else {
         col = PIXEL_ART ? seasonLand(landColor(t, ax, ay, hh), t, ax, ay, hh, SN) : landLerp(t, ax, ay);
         const TX = !PIXEL_ART && ((under && (t === TER.DIRT || t === TER.ROUGH) && TERRAIN_TEX.cave) || TERRAIN_TEX[TEX_NAME[t]]); // podziemia: dno jaskini
-        if (TX) col = texShade(TX, col, ax, ay, 0.85);
+        if (TX) { col = texShade(TX, col, ax, ay, 0.85); const gr = 0.955 + hh * 0.09; col = [col[0] * gr, col[1] * gr, col[2] * gr]; } // drobne ziarno w pikselach ekranu: ostrość niezależna od tekstury
         const below = TT(fx, fy + D); if (below !== t && below !== TER.WATER) col = TPAL[t][0];
       }
       if (rk) { const q = (fy + MF) * R + fx + MF, k = rk[q];
@@ -378,7 +383,7 @@ const MapRender = {
   map: null, explored: null, season: 0, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
   // D: gęstość terenu (pikseli fragmentu na piksel grafiki = 2 px logiczne); gładko: tyle, ile bufora świata (ostro, bez powiększania)
   D: PXD,
-  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.job = null; this.fog.clear(); this.mini = null; this.warmed = false; this.D = PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * 4) / 4, PXD, 6); },
+  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.job = null; this.fog.clear(); this.mini = null; this.warmed = false; this.D = mapDensity(); },
   // Pora roku: po zmianie wszystkie kawałki terenu rysują się od nowa
   setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); this.job = null; this.warmed = false; } },
   // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
@@ -441,7 +446,9 @@ function layoutAdventure() {
   LIST_ROWS = Math.floor((LIST.h - 28) / LIST_ROW_H); // nad wierszami pasek zakładek (bohaterowie / miasta)
 }
 // Przybliżenie mapy (kółko myszy): ZOOM > 1 powiększa. viewW/viewH = ile pikseli świata mieści widok.
-const ZOOMS = [0.5, 0.75, 1, 1.5, 2]; let ZOOM = 1;
+const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5]; let ZOOM = 1; // największe przybliżenie 1,5×: obiekty 3D mają grafikę w tej skali (dalej byłyby rozmyte)
+// Gęstość malowania terenu: przy przybliżeniu teren maluje się gęściej (ostry przy każdym powiększeniu, nie rozciągnięty)
+const mapDensity = () => (PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * Math.max(1, ZOOM) * 4) / 4, PXD, 8));
 const viewW = () => VIEW.w / ZOOM, viewH = () => VIEW.h / ZOOM;
 // Kamera w granicach oglądanego poziomu (st.view: 0 powierzchnia, 1 podziemia); bez podziemi cała mapa
 function camClamp(st) { const L = st.map.ln ? st.view || 0 : 0, o = levelOrigin(st.map, L) * T, m = levelSize(st.map) * T, w = viewW(), h = viewH();
@@ -454,7 +461,9 @@ function screenToTile(st, x, y) { return { tx: Math.floor(((x - VIEW.x) / ZOOM +
 function setZoom(st, z, sx = VIEW.x + VIEW.w / 2, sy = VIEW.y + VIEW.h / 2) {
   z = clamp(z, ZOOMS[0], ZOOMS[ZOOMS.length - 1]); if (z === ZOOM) return false;
   const wx = st.cam.x + (sx - VIEW.x) / ZOOM, wy = st.cam.y + (sy - VIEW.y) / ZOOM; ZOOM = z;
-  st.cam.x = wx - (sx - VIEW.x) / ZOOM; st.cam.y = wy - (sy - VIEW.y) / ZOOM; camClamp(st); MapRender.warmed = false; G.settings.zoom = z; saveSettings(); return true;
+  st.cam.x = wx - (sx - VIEW.x) / ZOOM; st.cam.y = wy - (sy - VIEW.y) / ZOOM; camClamp(st); MapRender.warmed = false; G.settings.zoom = z; saveSettings();
+  if (MapRender.map && mapDensity() !== MapRender.D) MapRender.reset(MapRender.map, MapRender.explored); // inna gęstość terenu: kawałki od nowa
+  return true;
 }
 function drawFog(ctx, st, ox, oy, camX, camY) {
   const n = st.map.n, ex = human(st).explored;

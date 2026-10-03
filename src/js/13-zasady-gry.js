@@ -134,6 +134,8 @@ function showDwelling(st, h, ob) {
 function advFloat(text, x, y, res) { const s = G.screens.adventure; if (s.floats) s.floats.push({ text, x, y, res, t: G.time }); }
 // Dźwięk tylko dla akcji człowieka (komputer gra po cichu)
 const sfxFor = (st, owner, n, o) => { const P = playerOf(st, owner); if (P && P.human && !(G.screens.adventure && G.screens.adventure.aiRun)) Sfx.play(n, o); };
+// Miejsca z drobną nagrodą (zasób, ruch, mana, premia do bitwy): bez okna dialogowego
+const QUIET_SITES = ['windmill', 'waterMill', 'campfire', 'stables', 'well', 'temple', 'fountain', 'lookout', 'magicSpring', 'oasis', 'buoy', 'flotsam'];
 function visitObject(st, h, ob) {
   const R = playerOf(st, h.owner).resources, snd = (n, o) => { if (playerOf(st, h.owner).human) Sfx.play(n, o); };
   if (ob.type === 'res') { snd(ob.res === 'gold' ? 'coins' : 'pickup'); R[ob.res] += ob.amount; advFloat(`+${ob.amount}`, h.x, h.y, ob.res); removeObject(st, ob); }
@@ -154,6 +156,17 @@ function visitObject(st, h, ob) {
       { label: 'Poświęć', key: 'enter', action: () => { const r = useSite(st, h, ob); advFloat(r.float, h.x, h.y); gainExp(st, h, r.exp); } }, { label: 'Nie', key: 'escape' },
     ], { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_sacrifice', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('sacrifice'), cx, cy + 30, 1.5) });
   } else if (ob.type === 'site' && ['arena', 'school', 'market', 'hillFort', 'dwarfForge'].includes(ob.kind) && !siteUsed(st, ob, h)) siteChoice(st, h, ob);
+  else if (ob.type === 'site' && ob.kind === 'witchHut' && !siteUsed(st, ob, h) && !heroSkill(h, ob.skill) && h.skills.length < MAX_SKILLS) { // wiedźmie można odmówić (miejsce na umiejętność jest cenne)
+    siteDiscover(ob, h.owner); const sk = ob.skill;
+    showDialog(`Chata wiedźmy. Wiedźma proponuje naukę: ${skillText(sk, 1)}. ${h.name} ma ${h.skills.length} z ${MAX_SKILLS} umiejętności. Przyjąć?`, [
+      { label: 'Ucz się', key: 'enter', action: () => { const r = useSite(st, h, ob); snd('shrine'); if (r.float) advFloat(r.float, h.x, h.y); } },
+      { label: 'Odmów', key: 'escape', action: () => {} },
+    ], { iconH: 76, icon: (ctx, cx, cy) => { drawMap3dIcon(ctx, 'site_witchHut', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('witchHut'), cx, cy + 30, 1.5); skillIcon(ctx, sk, cx + 64, cy + 8, 48); } });
+  }
+  else if (ob.type === 'site' && QUIET_SITES.includes(ob.kind)) { // drobne nagrody: napis nad bohaterem i komunikat w ramce, bez okna do klikania
+    const r = useSite(st, h, ob), S = SITES[ob.kind]; snd(r.res === 'gold' ? 'coins' : 'shrine'); advFloat(r.float || (r.text.length < 34 ? r.text : S.name), h.x, h.y, r.res);
+    if (G.screens.adventure && playerOf(st, h.owner).human) G.screens.adventure.flash(`${S.name}: ${r.text}`, '#ffd970');
+  }
   else if (ob.type === 'site') {
     const r = useSite(st, h, ob), S = SITES[ob.kind]; snd(r.res === 'gold' ? 'coins' : 'shrine');
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
@@ -1018,6 +1031,7 @@ function useSite(st, h, ob, choice) {
   const S = SITES[ob.kind], R = playerOf(st, h.owner).resources;
   if (siteUsed(st, ob, h)) return { text: { hero: `${h.name} już tu był${h.female ? 'a' : ''}.`, day: 'Dziś już stąd korzystano. Wróć jutro.', heroWeek: 'W tym tygodniu już stąd korzystano.', week: 'W tym tygodniu plon już zebrano. Wróć w następnym.', player: 'Okolica jest już odsłonięta.' }[S.use] };
   const [k, v] = siteStamp(st, ob, h); const mark = () => { ob.seen = ob.seen || {}; ob.seen[k] = v; };
+  siteDiscover(ob, h.owner);
   switch (ob.kind) {
     case 'shrine': {
       const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
@@ -1101,9 +1115,14 @@ function useSite(st, h, ob, choice) {
   if (S.stat) { mark(); h.stats[S.stat]++; const P = PRIMARY.find(p => p.id === S.stat); if (S.stat === 'kn') h.mana = Math.min(heroMaxMana(h), h.mana + 10); return { text: `${h.name}: ${P.name.toLowerCase()} +1 (teraz ${h.stats[S.stat]}).`, float: `${P.name} +1` }; }
   return { text: '' };
 }
+// Kapliczka i chata wiedźmy zdradzają czar albo umiejętność dopiero, gdy odwiedzi je bohater danego gracza
+const SECRET_SITES = ['shrine', 'witchHut'];
+const siteDiscover = (ob, owner) => { if (SECRET_SITES.includes(ob.kind)) (ob.known = ob.known || {})[owner] = 1; };
+const siteKnown = (ob, owner) => !SECRET_SITES.includes(ob.kind) || !!(ob.known && ob.known[owner]);
 // Opis miejsca w dymku: co daje i czy wybrany bohater już z niego skorzystał
 function siteInfo(st, ob, h) {
-  const S = SITES[ob.kind];
+  const S = SITES[ob.kind], viewer = h ? h.owner : ME;
+  if (!siteKnown(ob, viewer)) return `${S.name}: ${ob.kind === 'shrine' ? 'uczy jakiegoś czaru' : 'uczy jakiejś umiejętności'} – dowiesz się jakiej, gdy odwiedzi ją któryś z twoich bohaterów.${st.guard[ob.y * st.map.n + ob.x] ? ' Pilnuje jej potwór.' : ''}`;
   if (ob.kind === 'dwelling') dwellRefresh(st, ob);
   const what = ob.kind === 'shrine' ? `uczy czaru „${SPELLS[ob.spell].name}” (poziom ${SPELLS[ob.spell].level})` : ob.kind === 'windmill' ? `co tydzień 3–6 jednostek surowca (${resName(ob.res).toLowerCase()}) dla pierwszego gościa`
     : ob.kind === 'witchHut' ? `uczy umiejętności ${skillText(ob.skill, 1)}` : ob.kind === 'dwelling' ? `${CREATURES[ob.cid].plural.toLowerCase()} do werbunku: ${ob.avail} (po ${costText(CREATURES[ob.cid].cost)}), co tydzień przybywa ${CREATURES[ob.cid].growth}`

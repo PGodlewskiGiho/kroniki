@@ -68,6 +68,13 @@ function drawCreatureIcon(ctx, cid, x, y, k = 1) {
   if (unitArt(cid) && k >= 1.4) drawSprite(ctx, battleSprite(cid, 1, 'idle', 0), x, y, k / 2);
   else drawSprite(ctx, creatureSprite(cid, 1), x, y, k);
 }
+// Żywy stwór jak w oknie werbunku Heroes 3: oddycha (klatki spoczynku), a co kilka sekund wyprowadza cios; ph przesuwa fazę (karty obok siebie nie ruszają się równo)
+function drawCreatureAnim(ctx, cid, x, y, k = 2, ph = 0) {
+  if (!unitArt(cid) || PIXEL_ART) return drawCreatureIcon(ctx, cid, x, y, k);
+  const T = 4.2, t = (G.time + ph) % T, atk = t > T - 1.1, pose = atk ? 'attack' : 'idle';
+  const i = atk ? Math.min(BATTLE_FRAMES.attack - 1, Math.floor((t - (T - 1.1)) / 1.1 * BATTLE_FRAMES.attack)) : Math.floor(G.time * 7 + ph * 3) % BATTLE_FRAMES.idle;
+  drawSprite(ctx, battleSprite(cid, 1, pose, i), x, y, k / 2); G.dirty = true;
+}
 // Bohater na mapie przygody: ten sam jeździec 3D co w bitwie (klatki spoczynku, w ruchu szybciej), zmniejszony do ok. 46 px; na łodzi dawny rysunek
 const HERO_MAP_H = 46;
 function heroMap3d(h, col) {

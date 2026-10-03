@@ -913,7 +913,7 @@ function showRecruit(st, t, L, onDone, backToList) {
       text(ctx, F.dw['dw' + L + DW_TIERS[units.indexOf(cid)]][0], W / 2, y + 32, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
       if (units.length === 1) text(ctx, c.name, W / 2, y + 68, { size: 17, align: 'center', color: '#5a3814', fam: 'title' });
       ctx.fillStyle = 'rgba(90,55,20,.12)'; rr(ctx, x + 24, y + 100, 110, 140, 4); ctx.fill();
-      drawCreatureIcon(ctx, cid, x + 79, y + 218, 2);
+      ctx.save(); rr(ctx, x + 24, y + 100, 110, 140, 4); ctx.clip(); drawCreatureAnim(ctx, cid, x + 79, y + 218, 2); ctx.restore(); // ożywiony stwór
       const sx = x + 152;
       [`Poziom ${c.level} · szybkość ${c.spd}`, `Atak ${c.att} · obrona ${c.def}`, `Obrażenia ${c.dmin}–${c.dmax} · życie ${c.hp}`, `Przyrost: ${weeklyGrowth(t, L)} na tydzień`]
         .forEach((l, i) => text(ctx, l, sx, y + 112 + i * 24, { size: 15, weight: 500, color: '#2a1606' }));
@@ -1067,7 +1067,7 @@ function showRecruitList(st, t, onDone) {
         ctx.strokeStyle = built ? 'rgba(120,80,30,.55)' : 'rgba(80,60,40,.3)'; ctx.lineWidth = 1.5; ctx.stroke();
         text(ctx, `${L}. ${F.dw[top][0]}`, x + cw / 2, y + 18, { size: 13, align: 'center', color: built ? '#3a1e08' : '#6a5a48', fam: 'title' });
         ctx.save(); rr(ctx, x + 6, y + 26, cw - 12, 96, 4); ctx.clip(); ctx.fillStyle = built ? 'rgba(255,240,200,.35)' : 'rgba(0,0,0,.08)'; ctx.fillRect(x + 6, y + 26, cw - 12, 96);
-        if (!built) ctx.globalAlpha = 0.35; drawCreatureIcon(ctx, cid, x + cw / 2, y + 114, C.level >= 6 ? 1.6 : 2); ctx.restore();
+        if (!built) ctx.globalAlpha = 0.35; (built ? drawCreatureAnim : drawCreatureIcon)(ctx, cid, x + cw / 2, y + 114, C.level >= 6 ? 1.6 : 2, L * 0.7); ctx.restore();
         text(ctx, C.name, x + cw / 2, y + 138, { size: 15, align: 'center', color: '#2a1606', fam: 'title' });
         const ab = (C.abil || []).map(a => ABILITIES[a].name).join(', '); if (ab) text(ctx, ab, x + cw / 2, y + 152, { size: 10, weight: 600, align: 'center', color: '#6a3a8a' });
         const stats = [['Atak', C.att], ['Obrona', C.def], ['Obraż.', C.dmin === C.dmax ? C.dmin : `${C.dmin}–${C.dmax}`], ['Zdrowie', C.hp], ['Szybkość', C.spd], [C.shots ? 'Strzały' : 'Przyrost', C.shots ? C.shots : `+${weeklyGrowth(t, L, st)}`]];

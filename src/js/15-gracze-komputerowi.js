@@ -240,7 +240,7 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'shrine' && h.spells.includes(ob.spell)) return 0;
   if (ob.kind === 'well' && h.mana >= heroMaxMana(h) * 0.6) return 0;
   if ((ob.kind === 'temple' || ob.kind === 'fountain') && h.boost && h.boost[ob.kind === 'temple' ? 'morale' : 'luck']) return 0;
-  if (ob.kind === 'witchHut' && (heroSkill(h, ob.skill) || h.skills.length >= MAX_SKILLS)) return 0;
+  if (ob.kind === 'witchHut' && (heroSkill(h, ob.skill) || h.skills.length >= MAX_SKILLS || skillWeight(h.cls, ob.skill) < 1)) return 0; // SI odmawia umiejętności obcych swojej klasie
   if (ob.kind === 'prison' && st.heroes.filter(o => o.owner === h.owner).length >= heroLimit(st)) return 0;
   if ((ob.kind === 'oasis' || ob.kind === 'buoy') && h.boost && h.boost.morale) return 0;
   if (ob.kind === 'magicSpring' && h.mana >= heroMaxMana(h)) return 0;
@@ -270,6 +270,7 @@ function* aiVisit(st, h, i, news) {
   if (ob.type === 'res') { R[ob.res] += ob.amount; removeObject(st, ob); }
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
+  else if (ob.type === 'site' && ob.kind === 'witchHut' && skillWeight(h.cls, ob.skill) < 1) siteDiscover(ob, h.owner); // odmawia wiedźmie
   else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); }
   else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
   else if (ob.type === 'mine') { if (ob.owner >= 0 && ob.owner !== h.owner) tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }

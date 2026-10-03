@@ -51,7 +51,7 @@ function build() {
   const smeta = path.join(gdir, 'umiejetnosci.json'), simg = path.join(gdir, 'umiejetnosci.webp'), sart = fs.existsSync(smeta) && fs.existsSync(simg) ? { ...JSON.parse(fs.readFileSync(smeta, 'utf8')), png: b85(fs.readFileSync(simg)), webp: 1 } : null;
   const cmeta = path.join(gdir, 'czary.json'), cimg = path.join(gdir, 'czary.webp'), spart = fs.existsSync(cmeta) && fs.existsSync(cimg) ? { ...JSON.parse(fs.readFileSync(cmeta, 'utf8')), png: b85(fs.readFileSync(cimg)), webp: 1 } : null;
   const umeta = path.join(gdir, 'interfejs.json'), uimg = path.join(gdir, 'interfejs.webp'), uiart = fs.existsSync(umeta) && fs.existsSync(uimg) ? { ...JSON.parse(fs.readFileSync(umeta, 'utf8')), png: b85(fs.readFileSync(uimg)), webp: 1 } : null;
-  // Tekstury terenu mapy (tools/tla-ai/tekstury.py: bezszwowe, malowane przez AI): nazwa terenu -> WebP
+  // Tekstury terenu mapy (tools/tekstury-proc.py: proceduralne, ostre, bezszwowe): nazwa terenu -> WebP
   const tdir = path.join(gdir, 'teren'), tex = {}; if (fs.existsSync(tdir)) for (const f of fs.readdirSync(tdir).sort()) if (f.endsWith('.webp')) tex[f.replace('.webp', '')] = b85(fs.readFileSync(path.join(tdir, f)));
   // Efekty dźwiękowe (tools/dzwieki/wybierz.py, próbki CC0): nazwa_wariant -> MP3 base64
   const sdir = path.join(SRC, 'dzwieki'), snd = {}; if (fs.existsSync(sdir)) for (const f of fs.readdirSync(sdir).sort()) if (f.endsWith('.mp3')) snd[f.replace('.mp3', '')] = b85(fs.readFileSync(path.join(sdir, f)));

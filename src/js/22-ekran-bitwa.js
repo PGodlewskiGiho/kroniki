@@ -44,6 +44,21 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
   g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = !PIXEL_ART; c.drawImage(off, 0, 0, W, H);
   const pim = !bare && !fac && BATTLE_BG_IMG[BATTLE_BG_NAMES[terr]]; // tło malowane przez AI (pole bitwy bez siatki); oblężenie: dawny rysunek z brukiem dziedzińca
   if (pim && pim._ok) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(pim, 0, 0, W, 490); }
+  const TX = !PIXEL_ART && !bare && !fac && TERRAIN_TEX[TEX_NAME[terr || 1]]; // faktura z tekstur terenu mapy (widok z góry) i miękkie plamy światła: pole bitwy nie jest płaskie
+  if (TX) { c.save(); c.beginPath(); c.rect(0, 44, W, 446); c.clip();
+    const pat = c.createPattern(TX.cv, 'repeat'); pat.setTransform(new DOMMatrix().scale(1.15 / c.getTransform().a)); // ostra tekstura 512 px w rozdzielczości ekranu (piksel tekstury ≈ piksel ekranu)
+    const fade = c.createLinearGradient(0, 44, 0, 110); fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,1)'); // u góry przejście w malowany horyzont
+    const tmp = document.createElement('canvas'); tmp.width = c.canvas.width; tmp.height = c.canvas.height; const tg2 = tmp.getContext('2d'); tg2.setTransform(c.getTransform());
+    tg2.fillStyle = pat; tg2.fillRect(0, 44, W, 446); tg2.globalCompositeOperation = 'destination-in'; tg2.fillStyle = fade; tg2.fillRect(0, 44, W, 446);
+    c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 0.85; c.drawImage(tmp, 0, 0); c.restore();
+    { const n = document.createElement('canvas'); n.width = n.height = 128; const ng = n.getContext('2d'), id = ng.createImageData(128, 128), rr2 = mulberry32(4242); // ziarno w pikselach ekranu
+      for (let i = 0; i < id.data.length; i += 4) { const v = 128 + (rr2() - 0.5) * 70; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; } ng.putImageData(id, 0, 0);
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.22; c.fillStyle = c.createPattern(n, 'repeat'); c.fillRect(0, 0, c.canvas.width, c.canvas.height); c.restore(); }
+    const r = mulberry32(terr * 977 + 13); c.globalCompositeOperation = 'soft-light'; c.globalAlpha = 1;
+    for (let i = 0; i < 9; i++) { const x = r() * W, y = 60 + r() * 420, rad = 60 + r() * 140, lite = r() < 0.5, g = c.createRadialGradient(x, y, 0, x, y, rad);
+      g.addColorStop(0, lite ? 'rgba(255,240,200,.55)' : 'rgba(0,0,0,.5)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+    c.globalCompositeOperation = 'source-over'; const v = c.createLinearGradient(0, 44, 0, 490); v.addColorStop(0, 'rgba(0,0,0,.18)'); v.addColorStop(0.25, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.22)'); c.fillStyle = v; c.fillRect(0, 44, W, 446); // głębia: ciemniej przy horyzoncie i u dołu
+    c.restore(); }
   if (bare) return;
   c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1;
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { hexPath(c, x, y, 1); c.stroke(); }
@@ -118,6 +133,7 @@ const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thun
   curse: ['cast', 'curse'], weakness: ['cast', 'curse'], slow: ['cast', 'curse'], deathRipple: ['cast', 'curse'],
   blind: ['cast', 'curse'], poison: ['cast', 'curse'], fireWall: ['fireball', 'explode'], lifeSteal: ['zap', 'heal'], holyLight: ['cast', 'thunder'], vampirism: ['cast', 'curse'], blizzard: ['cast', 'ice'] };
 const spellLandSound = (id, x) => Sfx.play(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff', { vol: 0.9, pan: sfxPan(x) });
+const UNIT_SCALE = 1.15;
 G.screens.battle = {
   fps: smoothFps, // płynnie także czekając na rozkaz (oddychające jednostki, płomienie)
   // Szersze okno: pole walki ciągnie się na boki (lustrzane odbicie brzegów tła, lekko przyciemnione)
@@ -136,7 +152,7 @@ G.screens.battle = {
         for (const y0 of [OY + 38, OY + 487]) { const g = c.createLinearGradient(0, y0, 0, y0 + 3); g.addColorStop(0, '#f0d080'); g.addColorStop(1, '#6a4814'); c.fillStyle = g; c.fillRect(0, y0, VW, 3); c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(0, y0 + 3, VW, 1); } }
     }), 0, 0);
   },
-  bg() { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}`, W, H, c => paintBattleBg(c, this.terr, f)); },
+  bg() { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}_${TERRAIN_TEX[TEX_NAME[this.terr || 1]] ? 1 : 0}`, W, H, c => paintBattleBg(c, this.terr, f)); },
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
     Sfx.play('battlestart', { vol: 0.8, jit: 0 });
@@ -440,15 +456,16 @@ G.screens.battle = {
     for (const u of [...shown, ...obst].sort((a, b) => a.py - b.py)) {
       if (u.obst) { drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
       const L = this.unitLook(u), tp = u.cid === 'arrowTower' ? towerPost() : null, gx = tp ? SIEGE_WX + tp[0] : u.px + L.ox, gy = tp ? u.py + tp[1] : u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
-      if (u.cid !== 'arrowTower') { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15 * sz, 5 * sz, 0, 0, TAU); ctx.fill(); }
+      const us = u.cid === 'arrowTower' ? 1 : UNIT_SCALE; // jednostki nieco większe niż heks (lepiej widać szczegóły)
+      if (u.cid !== 'arrowTower') { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15 * sz * us, 5 * sz * us, 0, 0, TAU); ctx.fill(); }
       ctx.save();
       if (u.dead && u.dieT != null) { const f = clamp((G.time - u.dieT) / 0.45, 0, 1); ctx.translate(gx, gy); ctx.rotate(-(u.side === 0 ? 1 : -1) * ease(f) * Math.PI / 2 * 0.9); ctx.globalAlpha = 1 - f * 0.4; ctx.translate(-gx, -gy); }
-      drawSprite(ctx, L.s, gx, gy - lift - (L.hop || 0), 1);
-      if (L.flash) { ctx.globalAlpha = 0.85; drawSprite(ctx, tintSprite(L.s, '#ffffff'), gx, gy - lift, 1); }
+      drawSprite(ctx, L.s, gx, gy - lift - (L.hop || 0), us);
+      if (L.flash) { ctx.globalAlpha = 0.85; drawSprite(ctx, tintSprite(L.s, '#ffffff'), gx, gy - lift, us); }
       ctx.restore();
     }
     for (const u of shown) if (!u.dead) { // liczebność nad wszystkim, także nad murami
-      const bx = u.px + (u.side === 0 ? 8 : -34), by = u.py + 18, s = String(u.n);
+      const bx = u.px + (u.side === 0 ? 8 : -34), by = Math.min(u.py + 18, 486 - (CREATURES[u.cid].shots && !endlessShots(u) ? 25 : 15)), s = String(u.n); // dolny rząd: licznik nad panelem
       ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(bx + 1, by + 1, 27, 15);
       ctx.fillStyle = u.side === 0 ? col : B.sides[1].owner >= 0 ? ownerColor(st, B.sides[1].owner) : '#5a5448'; ctx.fillRect(bx, by, 26, 14); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx, by, 26, 4);
       ctx.strokeStyle = '#e0b24a'; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, 25, 13);
@@ -495,8 +512,21 @@ G.screens.battle = {
       B.log.slice(-2).forEach((l, i, a) => text(ctx, l, 18, 572 + i * 16, { size: 13, weight: 600, color: i === a.length - 1 ? UI.txt : UI.txt2 })); }
     this.bCast.disabled = this.phase !== 'input' || !canCastNow(B); this.bInfo.label = sideHero(B, this.me) ? `Mana ${sideHero(B, this.me).mana}` : 'Bez bohatera'; this.bInfo.dispCol = UI.mana;
     this.buttons.forEach(b => b.draw(ctx));
+    if (pv && pv.est && this.phase === 'input' && !G.modal && G.mouse.type === 'mouse') drawStrikeTip(ctx, B, u0, pv);
   },
 };
+// Dymek przy kursorze nad celem: przewidywane obrażenia i zabici, a dla ataku wręcz także odwet (najgorszy przypadek dla nas)
+function drawStrikeTip(ctx, B, a, pv) {
+  const t = pv.target, e = pv.est, k = e.kmin === e.kmax ? `${e.kmin}` : `${e.kmin}–${e.kmax}`, lines = [[`${pv.kind === 'shoot' ? 'Strzał' : 'Atak'}: ${e.min}–${e.max} obrażeń`, '#fff4cc'], [`Giną: ${k} z ${t.n}`, '#ffb070']];
+  if (pv.kind === 'attack' && e.kmin < t.n && !hasAb(a, 'noRetal') && canRetal(B, t) && !isMachine(t)) { // odwet tego, co przeżyje (po najmniejszych stratach)
+    const n0 = t.n, r = (t.n = n0 - e.kmin, estimateStrike(B, t, a, false)); t.n = n0;
+    lines.push([`Odwet: ${r.min}–${r.max}, giną ${r.kmin === r.kmax ? r.kmin : `${r.kmin}–${r.kmax}`} z ${a.n}`, '#c8d8f0']);
+  } else if (pv.kind === 'attack' && e.kmin >= t.n) lines.push(['Bez odwetu: cel ginie', '#a8e090']);
+  ctx.font = font(13, 700, 'body'); const w = Math.max(...lines.map(l => ctx.measureText(l[0]).width)) + 18, h = lines.length * 17 + 10;
+  let x = G.mouse.x + 18, y = G.mouse.y + 14; if (x + w > W - 4) x = G.mouse.x - w - 12; if (y + h > 488) y = G.mouse.y - h - 10;
+  ctx.fillStyle = 'rgba(20,12,6,.88)'; rr(ctx, x, y, w, h, 5); ctx.fill(); ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1.2; ctx.stroke();
+  lines.forEach(([l, c], i) => text(ctx, l, x + 9, y + 14 + i * 17, { size: 13, weight: 700, color: c }));
+}
 // Okno po bitwie (pokazywane już na mapie przygody)
 // Wynik bitwy na mapie (po walce automatycznej): okno jak po bitwie na ekranie, potem doświadczenie i odwiedziny miejsca
 function showBattleResult(st, h, res) { showBattleReport(st, res, attackReport(st, h, res), () => battleAftermath(st, h, res)); }

@@ -247,6 +247,17 @@ function placeObjects(st) {
       add(o, [p[1] * n + p[0]]); if (S.guard) guard(o, kind === 'prison' ? 1 : 0);
     }
   }
+  // Pierwsze dni: przy każdym starcie w zasięgu 1–2 dni marszu ciekawe miejsce bez strażnika i skrzynia (jeśli los ich tam nie postawił)
+  const EARLY = ['stone', 'arena', 'tree', 'garden', 'campfire', 'library', 'temple', 'fountain', 'stables', 'lookout', 'altar'];
+  for (const st0 of starts) {
+    const near = (o, r) => Math.hypot(o.x - st0.x, o.y - st0.y) <= r;
+    if (!objs.some(o => o.type === 'site' && EARLY.includes(o.kind) && near(o, 12))) {
+      const kind = EARLY[Math.floor(rng() * EARLY.length)], p = pick((x, y) => { const d = Math.hypot(x - st0.x, y - st0.y); return d >= 5 && d <= 11; }, 1500);
+      if (p) { const o = { type: 'site', kind, x: p[0], y: p[1], seen: {} }; if (kind === 'campfire') o.res = ['wood', 'ore', 'mercury', 'sulfur', 'crystal', 'gems'][Math.floor(rng() * 6)]; add(o, [p[1] * n + p[0]]); }
+    }
+    if (!objs.some(o => o.type === 'chest' && near(o, 10))) { const p = pick((x, y) => { const d = Math.hypot(x - st0.x, y - st0.y); return d >= 3 && d <= 9; }, 1500);
+      if (p) add({ type: 'chest', gold: Math.round(1500 * rule(st, 'treasure') / 100) * 100, exp: Math.round(1000 * rule(st, 'treasure') / 100) * 100, x: p[0], y: p[1] }, [p[1] * n + p[0]]); }
+  }
   // portale w parach: oba końce daleko od siebie (skrót przez mapę); wraki na wodzie z dala od brzegu
   const size = (MAP_SIZES.find(m => m.n === levelSize(map)) || MAP_SIZES[1]).id;
   for (let k = 0; k < (PORTAL_PAIRS[size] || 1); k++) {
@@ -348,7 +359,7 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   for (const p of st.players) {
     const t = st.towns.find(t => t.owner === p.id), h = createHero(st, p.id, t.x, t.y);
     if (p.human) p.bonusText = startBonus(st, S.bonus, p, h, rng);
-    reveal(st, h.x, h.y, HERO_SIGHT + 1, p.id);
+    reveal(st, h.x, h.y, HERO_SIGHT + 6, p.id); // start: okolica własnego miasta odkryta (ok. dzień marszu)
     if (rule(st, 'reveal')) p.explored.fill(1); // zasada „odkryta mapa”
   }
   st.cur = ME = st.players.find(p => p.human).id; st.bonusText = human(st).bonusText; st.selHero = st.heroes.findIndex(h => h.owner === ME);
