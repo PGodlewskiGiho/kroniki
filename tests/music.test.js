@@ -29,11 +29,23 @@ test('ekrany dostają właściwe utwory (mroczne frakcje: mroczne miasto)', asyn
 
 test('odtwarzacz przełącza utwory i trzyma w pamięci najwyżej dwa', async () => {
   const r = await page.evaluate(async () => {
-    Sfx.unlock(); if (!Sfx.ctx) return 'brak audio';
+    Sfx.unlock(); if (!Sfx.ctx) return 'brak audio'; setScreen('menu'); // na mapie świata muzyka nie gra
     const wait = ms => new Promise(f => setTimeout(f, ms));
     for (const n of ['menu', 'bitwa', 'miasto']) { Music.play(n); for (let i = 0; i < 40 && !(Music.buf[n] && Music.node); i++) await wait(100); }
     return { cur: Music.cur, playing: !!Music.node, kept: Object.keys(Music.buf).length };
   });
   if (r === 'brak audio') return;
   assert.deepEqual(r, { cur: 'miasto', playing: true, kept: 2 });
+});
+
+test('na mapie świata żaden utwór nie gra, nawet spóźniony po dekodowaniu', async () => {
+  const r = await page.evaluate(async () => {
+    Sfx.unlock(); if (!Sfx.ctx) return 'brak audio';
+    const wait = ms => new Promise(f => setTimeout(f, ms));
+    setScreen('menu'); for (let i = 0; i < 40 && !Music.node; i++) await wait(100);
+    G.screenName = 'adventure'; Music.fadeOut(0.01); Music.cur = 'menu'; Music.begin('menu'); const begun = !!Music.node; Music.resume(); const resumed = !!Music.node;
+    return { begun, resumed };
+  });
+  if (r === 'brak audio') return;
+  assert.deepEqual(r, { begun: false, resumed: false });
 });

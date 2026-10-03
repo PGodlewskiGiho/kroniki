@@ -392,6 +392,7 @@ G.screens.adventure = {
     showGameEnd(st, r, msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])]);
   },
   update(dt) {
+    if (Music.node) Music.fadeOut(1.2); // mapa świata: bez muzyki, nawet gdy jakiś utwór wystartował spóźniony
     if (G.state && G.state.map) this.layout();
     const st = G.state, K = G.keys, m = G.mouse; if (!st || !st.map) return;
     // ruch wszystkich bohaterów gracza (wybór innego nie zatrzymuje tego, który idzie); kamera śledzi idącego

@@ -114,6 +114,8 @@ function menuTownScene() {
   }, TOWN_ART_SCALE);
 }
 function drawMenuScene(ctx) {
+  if (!PIXEL_ART && typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART && TOWN_BUILD_ART[MENU_FAC] && !townScene3D(MENU_FAC)) return viewportDraw(ctx, c => { // grafika 3D miasta jeszcze się wczytuje: ciemne tło (nie zapamiętujemy zastępczej sceny 2D)
+    const g = c.createRadialGradient(VW / 2, VH * 0.55, 0, VW / 2, VH * 0.55, Math.max(VW, VH) * 0.7); g.addColorStop(0, '#2a2018'); g.addColorStop(1, '#0a0705'); c.fillStyle = g; c.fillRect(0, 0, VW, VH); G.dirty = true; });
   if (!PIXEL_ART && typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART && TOWN_BUILD_ART[MENU_FAC]) return viewportDraw(ctx, c => {
     const sc = menuTownScene(), sw = 576, sh = 422, t = G.time, k = Math.max(VW / sw, VH / sh) * (1.08 + 0.04 * Math.sin(t * 0.05)), dx = Math.sin(t * 0.031) * 0.03 * VW, dy = Math.cos(t * 0.023) * 0.02 * VH;
     c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.translate(VW / 2 + dx, VH / 2 + dy); c.scale(k, k); c.drawImage(sc, 8 * TOWN_ART_SCALE, 8 * TOWN_ART_SCALE, sw * TOWN_ART_SCALE, sh * TOWN_ART_SCALE, -sw / 2, -sh / 2, sw, sh); c.restore();

@@ -57,7 +57,7 @@ const Music = {
   },
   screen(name, p) { const m = this.forScreen(name, p); if (m !== null) this.play(m); },
   play(name) { if (name === this.cur) return; this.cur = name; this.start(name); },
-  resume() { if (this.cur && !this.node) this.start(this.cur); },
+  resume() { if (this.cur && !this.node && G.screenName !== 'adventure') this.start(this.cur); },
   start(name) {
     const ctx = Sfx.ctx; if (!ctx || !this.has()) return;
     if (!this.bus) { this.bus = ctx.createGain(); this.bus.gain.value = this.vol(); this.bus.connect(Sfx.comp || ctx.destination); }
@@ -69,6 +69,7 @@ const Music = {
   },
   keep(name) { this.order = [name, ...this.order.filter(n => n !== name)]; for (const n of this.order.slice(2)) delete this.buf[n]; this.order = this.order.slice(0, 2); },
   begin(name) {
+    if (G.screenName === 'adventure') return; // mapa świata zawsze bez muzyki (także gdy dekodowanie skończy się już po wejściu na mapę)
     const ctx = Sfx.ctx, b = this.buf[name], loop = MUSIC_ART[name].loop || b.duration, now = ctx.currentTime;
     const src = ctx.createBufferSource(), g = ctx.createGain(); src.buffer = b; src.loop = true;
     // przeglądarka zwykle obcina opóźnienie kodera MP3 (wtedy długość = pętla); jeśli nie, pomijamy typowe 1105 próbek
