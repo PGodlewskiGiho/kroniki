@@ -28,14 +28,24 @@ function onKey(e) {
 // Układy jednostek (opis przy W, H): ekran i okno dialogowe z ui: true rysują w jednostkach interfejsu, pozostałe w dawnych.
 // Rysowanie i obsługa wejścia ustawiają układ warstwy, której dotyczą (setUnits); poza tym obowiązuje układ wierzchniej warstwy.
 const UNITS = { ui: null, leg: null }; let UNIT = 'ui';
-function setUnits(m) { const u = UNITS[m]; if (!u) return; UNIT = m; VW = u.vw; VH = u.vh; OX = u.ox; OY = u.oy; G.rs = u.rs; G.scale = u.scale; }
+function setUnits(m) { const u = m === 'box' ? boxUnits() : UNITS[m]; if (!u) return; UNIT = m; VW = u.vw; VH = u.vh; OX = u.ox; OY = u.oy; G.rs = u.rs; G.scale = u.scale; }
 const screenUnits = () => (G.screen && G.screen.ui) ? 'ui' : 'leg';
-const topUnits = () => G.modal ? (G.modal.ui ? 'ui' : 'leg') : screenUnits();
+const modalUnits = () => G.modal.ui ? 'ui' : G.modal.box ? 'box' : 'leg';
+const topUnits = () => G.modal ? modalUnits() : screenUnits();
+// Dawne okno dialogowe z ramką (modal.box: x, y, w, h w układzie W×H) skaluje się do swojej ramki, nie do całego W×H:
+// na telefonie wychodzi większe i czytelniejsze, na dużym monitorze najwyżej tak duże jak dawny ekran (LS)
+function boxUnits() {
+  const b = G.modal && G.modal.box, u = UNITS.ui; if (!b) return UNITS.leg;
+  const m = Math.min((u.vw - 12) / b.w, (u.vh - 12) / b.h, Math.max(1, LS)), vw = u.vw / m, vh = u.vh / m;
+  return { vw, vh, ox: vw / 2 - (b.x + b.w / 2), oy: vh / 2 - (b.y + b.h / 2), rs: u.rs * m, scale: u.scale * m, m };
+}
 function restUnits() { setUnits(topUnits()); }
 // Współrzędne myszy: vx, vy w całym oknie w jednostkach interfejsu; x, y w układzie aktywnej warstwy: dawne okna dialogowe
 // i zwykłe ekrany leżą w wyśrodkowanym obszarze W×H (przesunięcie OX, OY, skala LS), dawne ekrany fill w całym oknie (skala LS).
 function layerXY(vx, vy) {
-  if (topUnits() === 'ui') return !G.modal && G.screen && G.screen.mapPoint ? G.screen.mapPoint(vx, vy) : [vx, vy]; // ekran może mieć obszary w dawnych współrzędnych (miasto)
+  const tu = topUnits();
+  if (tu === 'ui') return !G.modal && G.screen && G.screen.mapPoint ? G.screen.mapPoint(vx, vy) : [vx, vy]; // ekran może mieć obszary w dawnych współrzędnych (miasto)
+  if (tu === 'box') { const b = boxUnits(); return [vx / b.m - b.ox, vy / b.m - b.oy]; }
   const L = UNITS.leg, lx = vx / LS, ly = vy / LS;
   return (G.modal || !(G.screen && G.screen.fill)) ? [lx - L.ox, ly - L.oy] : [lx, ly];
 }
@@ -139,7 +149,7 @@ function render() {
   setUnits(screenUnits()); whole();
   if (G.screen.fill || G.screen.ui) G.screen.draw(ctx);
   else { if (OX || OY) drawBackdrop(ctx); center(); G.screen.draw(ctx); }
-  if (G.modal) { setUnits(G.modal.ui ? 'ui' : 'leg'); if (G.modal.ui) whole(); else center(); G.modal.draw(ctx); }
+  if (G.modal) { setUnits(modalUnits()); if (G.modal.ui) whole(); else center(); G.modal.draw(ctx); }
   setUnits('ui'); whole();
   if (G.popup) drawPopup(ctx, G.popup);
   drawNetChat(ctx); // czat gry online

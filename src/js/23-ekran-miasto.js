@@ -433,7 +433,7 @@ function showCaravan(st, t, say) {
   const send = new Button(x + 24, y + h - 56, 170, 38, 'Wyślij', () => { const e = sendCaravan(st, t, dest, [...sel]); if (e) return say(e); G.modal = null; const c = st.caravans[st.caravans.length - 1], dd = c.arrive - c.start; say(`Karawana wyrusza do miasta ${dest.name} (${dd} ${dd === 1 ? 'dzień' : 'dni'})`); }, { key: 'enter', size: 16 });
   const destBtns = own.slice(0, 6).map((d, i, _, dd = caravanDays(t, d, st)) => new Button(x + 24 + (i % 3) * 166, y + 176 + Math.floor(i / 3) * 50, 158, 42, d.name, () => { dest = d; },
     { size: 14, sub: `${dd} ${dd === 1 ? 'dzień' : 'dni'} drogi`, selected: () => dest === d, tip: `Karawana do miasta ${d.name}.` }));
-  G.modal = {
+  G.modal = { box: { x, y, w, h },
     caravan: true, buttons: [send, cancel, ...destBtns],
     onClick(px, py) { const r = hitRect(rects, px, py); if (r && caravanSrc(st, t)[r.i]) { if (sel.has(r.i)) sel.delete(r.i); else sel.add(r.i); } },
     pick(i) { sel.add(i); }, choose(d) { dest = d; }, // do testów

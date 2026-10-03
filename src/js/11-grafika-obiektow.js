@@ -903,7 +903,7 @@ function showRecruit(st, t, L, onDone, backToList) {
   const bClose = new Button(x + (backToList ? 300 : 240), y + hh - 56, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const btns = [...(units.length > 1 ? unitBtns : []), bMinus, bPlus, bMax, bBuy, bClose];
   if (backToList) btns.push(new Button(x + 165, y + hh - 56, 130, 40, 'Lista', () => backToList(), { size: 17 }));
-  G.modal = {
+  G.modal = { box: { x, y, w, h: hh },
     buttons: btns,
     rightInfo(px, py) { return px < x + 150 && py > y + 100 && py < y + 250 ? stackInfo({ cid, n: t.avail[L] || 0 }) : null; },
     draw(ctx) {
@@ -949,7 +949,7 @@ function showMarket(st, owner, onDone) {
   }, { key: 'enter', size: 17 });
   const bClose = new Button(x + 280, y + hh - 56, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const btns = [...pick(false), ...pick(true), bMinus, bPlus, bMax, bTrade, bClose];
-  G.modal = {
+  G.modal = { box: { x, y, w, h: hh },
     buttons: btns, market: { get from() { return from; }, get to() { return to; }, get n() { return n; }, set: v => set(v) }, // podgląd w testach
     draw(ctx) {
       const L = lot(), m = marketCount(st, owner);
@@ -984,7 +984,7 @@ function showMeeting(st, a, b, onMsg) {
     { size: 13, key: k ? 'arrowup' : 'arrowdown', tip: `${heroes[k].name} oddaje całą armię bohaterowi ${heroes[1 - k].name}, zostawiając sobie jednego stwora z najsłabszego oddziału (klawisz ${k ? '↑' : '↓'}).` }));
   const armyAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(armyRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
   const bagAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(bagRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
-  G.modal = {
+  G.modal = { box: { x, y, w, h: hh },
     buttons: [bSplit, bClose, ...bGive], meeting: { a, b, get sel() { return sel; } }, // podgląd w testach
     onClick(px, py) {
       const s = armyAt(px, py), g = bagAt(px, py);
@@ -1030,7 +1030,7 @@ function showSplit(fromA, i, toA, j, heroArmies, done) {
   bs.push(new Button(x + 330, y + 150, 100, 36, 'Połowa', () => { n = Math.max(1, Math.min(L.max, Math.round(s.n / 2))); }, { size: 15 }));
   bs.push(new Button(x + 90, y + hh - 58, 130, 40, 'Przenieś', () => finish(armySplit(fromA, i, toA, j, n, heroArmies)), { key: 'enter', size: 17 }));
   bs.push(new Button(x + 240, y + hh - 58, 130, 40, 'Anuluj', () => finish(null), { key: 'escape', size: 17 }));
-  G.modal = { buttons: bs, split: { get n() { return n; }, max: L.max }, // podgląd w testach
+  G.modal = { box: { x, y, w, h: hh }, buttons: bs, split: { get n() { return n; }, max: L.max }, // podgląd w testach
     draw(ctx) {
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
       text(ctx, `Podział oddziału: ${c.plural.toLowerCase()}`, W / 2, y + 36, { size: 20, align: 'center', color: '#3a1e08', fam: 'title' });
@@ -1314,7 +1314,7 @@ function showSpellbook(h, mode, onPick) {
   const tabBtns = tabs.map((sc, i) => new Button(x + 24 + i * 108, y + 68, 102, 28, sc ? SCHOOLS[sc].tab : 'Wszystkie', () => { school = sc; page = 0; },
     { size: 13, selected: () => school === sc, tip: sc ? `Czary magii ${SCHOOLS[sc].name}${heroSkill(h, SCHOOLS[sc].skill) ? ` (${SKILLS[SCHOOLS[sc].skill].name}: ${SKILL_LEVELS[heroSkill(h, SCHOOLS[sc].skill)]})` : ''}.` : 'Wszystkie znane czary.' }));
   const at = (px, py) => shown().findIndex((id, k) => inRect(px, py, cell(k)));
-  G.modal = {
+  G.modal = { box: { x, y, w, h: hh },
     buttons: [close, prev, next, ...tabBtns],
     onClick(px, py) { const i = at(px, py), id = shown()[i]; if (i >= 0 && usable(id)) { G.modal = null; onPick(id); } },
     rightInfo(px, py) { const i = at(px, py); if (i < 0) return null; const id = shown()[i], S = SPELLS[id]; return `${S.name} (magia ${SCHOOLS[S.school].name}, poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${spellCost(h, id)} many): ${S.desc(sp)}.${schoolNote(h, id)}`; },

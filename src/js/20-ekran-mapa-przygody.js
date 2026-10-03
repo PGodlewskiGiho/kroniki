@@ -11,7 +11,7 @@ function showKingdom(st) {
   for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === ME) mines[ob.kind] = (mines[ob.kind] || 0) + 1;
   const total = Object.values(mines).reduce((a, b) => a + b, 0);
   const btn = new Button(W / 2 - 70, y + h - 58, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
-  G.modal = {
+  G.modal = { box: { x, y, w, h },
     buttons: [btn],
     draw(ctx) {
       const inc = dailyIncomeAll(st);
