@@ -24,7 +24,8 @@ function hexAt(px, py) {
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { const [cx, cy] = hexCenter(x, y), d = (cx - px) ** 2 + (cy - py) ** 2; if (!best || d < best.d) best = { x, y, d }; }
   return best && best.d < (HEX.w * 0.58) ** 2 ? best : null;
 }
-const PAVE_X = 572; // bruk dziedzińca od tej kolumny pikseli (px logiczne) w prawo
+const PAVE_DX = 40; // bruk dziedzińca zaczyna się tyle px logicznych za licem muru (paveX: granica na wysokości py, ukośna jak mur)
+const paveX = py => wallLineX(py) + PAVE_DX;
 // Tło bitwy w stylu mapy: teren z palety TERRAINS, piksele 2×2, ta sama korekcja barw
 const BATTLE_BG_NAMES = ['woda', 'trawa', 'ziemia', 'piasek', 'snieg', 'bagno', 'nierowny', 'lawa'];
 function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siatki i panelu (szkic dla tła malowanego, tools/tla-ai/szkic-bitwy.js)
@@ -34,7 +35,7 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
   for (let fy = 0; fy < fh; fy++) for (let fx = 0; fx < fw; fx++) {
     const o = (fy * fw + fx) * 4, x = Math.floor(fx / D), y = Math.floor(fy / D), xs = fx / D, ys = fy / D; let col;
     if (y < 22) col = sky[(y + (x & 1)) % 11 < 6 ? 0 : 1];
-    else if (fac && x * 2 > PAVE_X + Math.round(vnoise2(0, y / 4, 3) * 6)) { // bruk dziedzińca za murem
+    else if (fac && x * 2 > paveX(y * 2) + Math.round(vnoise2(0, y / 4, 3) * 6)) { // bruk dziedzińca za murem
       const pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, row = Math.floor(y / 5), cx = x + (row % 2) * 4, edge = y % 5 === 0 || cx % 8 === 0, k = thash(Math.floor(cx / 8), row, 7) % 3;
       col = edge ? pv[1].map(v => v * 0.8) : k === 0 ? pv[1] : k === 1 ? pv[0] : pv[0].map((v, i) => (v + pv[1][i]) / 2);
     } else { const n = vnoise2(xs / 9, ys / 6, 17) * 0.7 + vnoise2(xs / 3, ys / 3, 5) * 0.3 + (PIXEL_ART ? (BAYER4[(fy & 3) * 4 + (fx & 3)] / 16 - 0.5) * 0.18 : 0);
@@ -73,10 +74,10 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
 // mech i trawa ze ścieżką (Knieja), błoto z kładką (Cytadela), ubita ziemia ze słomą (Twierdza). Do tego cień muru i plamy światła.
 const COURTYARD = { haven: 'cobble', academy: 'snow', barrow: 'grave', inferno: 'obsidian', dungeon: 'cave', sylvan: 'grass', fortress: 'mud', stronghold: 'dirt' };
 function paintCourtyard(c, fac) {
-  const kind = COURTYARD[fac] || 'cobble', pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, x0 = PAVE_X - 4, y0 = 41, w = W - x0, h = 449, r = mulberry32(fac.length * 131 + 7);
+  const kind = COURTYARD[fac] || 'cobble', pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, y0 = 41, x0 = paveX(y0) - 4, w = W - x0, h = 449, r = mulberry32(fac.length * 131 + 7);
   const rgb = (a, k = 1, al = 1) => `rgba(${a.map(v => Math.round(clamp(v * k, 0, 255))).join(',')},${al})`, blob = (x, y, rx, ry, col) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU); c.fill(); };
   const glow = (x, y, rad, col) => { const g = c.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); };
-  c.save(); c.beginPath(); c.rect(x0, y0, w, h); c.clip();
+  c.save(); c.beginPath(); c.moveTo(x0, y0); c.lineTo(W, y0); c.lineTo(W, y0 + h); c.lineTo(paveX(y0 + h) - 4, y0 + h); c.closePath(); c.clip(); // granica ukośna jak mur
   if (['cobble', 'snow', 'grave', 'obsidian'].includes(kind)) { // kamienie w rzędach, jaśniejszy wierzch, cień od dołu, ciemne spoiny
     c.fillStyle = rgb(pv[1], 0.62); c.fillRect(x0, y0, w, h); const big = kind === 'snow' || kind === 'obsidian';
     for (let y = y0 - 4, row = 0; y < y0 + h; row++) {
@@ -122,7 +123,7 @@ function paintCourtyard(c, fac) {
     for (let i = 0; i < 70; i++) { const x = x0 + r() * w, y = y0 + r() * h, a = r() * Math.PI; c.strokeStyle = 'rgba(230,200,110,.8)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * 7, y + Math.sin(a) * 3); c.stroke(); }
     for (let i = 0; i < 5; i++) { const x = x0 + 30 + r() * (w - 60), y = y0 + 40 + r() * (h - 80); blob(x + 3, y + 2, 7, 3, 'rgba(0,0,0,.35)'); c.fillStyle = '#6a4a2a'; c.fillRect(x - 2.5, y - 16, 5, 18); c.fillStyle = '#8a6438'; c.fillRect(x - 2.5, y - 16, 1.6, 18); }
   }
-  const sg = c.createLinearGradient(x0, 0, x0 + 46, 0); sg.addColorStop(0, 'rgba(0,0,0,.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = sg; c.fillRect(x0, y0, 46, h); // cień muru
+  { const k = SIEGE_SLOPE(); c.save(); c.transform(1, 0, k, 1, -k * y0, 0); const sg = c.createLinearGradient(x0, 0, x0 + 46, 0); sg.addColorStop(0, 'rgba(0,0,0,.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = sg; c.fillRect(x0, y0, 46, h); c.restore(); } // cień muru (pochylony jak mur)
   c.globalCompositeOperation = 'soft-light';
   for (let i = 0; i < 5; i++) { const x = x0 + r() * w, y = y0 + 40 + r() * (h - 80), rad = 40 + r() * 90; glow(x, y, rad, r() < 0.5 ? 'rgba(255,240,200,.5)' : 'rgba(0,0,0,.45)'); }
   c.restore();
@@ -131,7 +132,7 @@ function paintCourtyard(c, fac) {
 // i drobne malowane szczegóły na polu (kępki, kamyki, kałuże, pęknięcia z żarem). Nie wpływają na walkę.
 function battleDecor(g, terr, w, h, fac) {
   const r = mulberry32(9001 + terr * 131), P = TPAL[terr].map(c => `rgb(${gradeRgb(c).map(Math.round).join(',')})`), px = (x, y, c, k = 1) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), k, k); };
-  const maxX = fac ? PAVE_X / 2 - 8 : w;
+  const maxX = fac ? paveX(44) / 2 - 8 : w;
   // horyzont: odległe wzgórza, las, wydmy, szczyty albo wulkany w kolorach terenu, zlewające się z polem
   const far = { [TER.GRASS]: '#2e4a2a', [TER.DIRT]: '#4a3a28', [TER.SAND]: '#8a7050', [TER.SNOW]: '#8a98b0', [TER.SWAMP]: '#2a3a2a', [TER.ROUGH]: '#4a4436', [TER.LAVA]: '#2a1614', [TER.WATER]: '#2a4a6a' }[terr] || '#3a3a3a';
   g.fillStyle = far; g.beginPath(); g.moveTo(0, 26);
@@ -539,14 +540,14 @@ G.screens.battle = {
     // oddziały i przeszkody (od góry ekranu w dół, żeby niższe zasłaniały wyższe)
     const shown = B.units.filter(u => !u.dead || u.dieT == null || G.time - u.dieT <= 0.45);
     const obst = [...B.obst].map(([k, o]) => { const x = k % BCOLS, y = Math.floor(k / BCOLS), [px, py] = hexCenter(x, y); return { obst: o, px, py }; });
-    if (B.walls) { const T = B.sides[1].town, A3 = siegeArt(T.faction); if (A3) drawSiege3D(ctx, A3, B.walls); else { siegePost3D = null; drawSprite(ctx, castleSprite(T.faction, ownerColor(st, T.owner), B.walls), SIEGE_WX, 0, 1); } } // mury pod oddziałami (z 3D albo dawny rysunek)
+    if (B.walls) { const T = B.sides[1].town, A3 = siegeArt(T.faction); if (A3) drawSiege3D(ctx, A3, B.walls); else { siegePost3D = null; drawSprite(ctx, castleSprite(T.faction, ownerColor(st, T.owner), B.walls), wallWX(0), 0, 1); } } // mury pod oddziałami (z 3D albo dawny rysunek)
     if (this.phase === 'input' && u0 && u0.cid === 'catapult') { // cele katapulty: fragmenty murów, wież i brama; wskazany na czerwono
       const p = this.preview, pulse = 0.6 + 0.4 * Math.sin(G.time * 5); ctx.lineWidth = 3;
       for (const w of catapultTargets(B)) { const on = p && p.kind === 'siege' && p.x === w.x && p.y === w.y; ctx.strokeStyle = on ? '#ff5a3a' : `rgba(255,217,112,${0.5 * pulse})`; hexPath(ctx, w.x, w.y, 4); ctx.stroke(); if (on) { ctx.fillStyle = 'rgba(255,100,60,.22)'; ctx.fill(); } }
     }
     for (const u of [...shown, ...obst].sort((a, b) => a.py - b.py)) {
       if (u.obst) { drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
-      const L = this.unitLook(u), tp = u.cid === 'arrowTower' ? towerPost() : null, gx = tp ? SIEGE_WX + tp[0] : u.px + L.ox, gy = tp ? u.py + tp[1] : u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
+      const L = this.unitLook(u), tp = u.cid === 'arrowTower' ? towerPost() : null, gx = tp ? wallWX(u.y) + tp[0] : u.px + L.ox, gy = tp ? u.py + tp[1] : u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
       const us = u.cid === 'arrowTower' ? 1 : UNIT_SCALE; // jednostki nieco większe niż heks (lepiej widać szczegóły)
       if (u.cid !== 'arrowTower') { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15 * sz * us, 5 * sz * us, 0, 0, TAU); ctx.fill(); }
       ctx.save();
@@ -556,7 +557,7 @@ G.screens.battle = {
       ctx.restore();
     }
     for (const u of shown) if (!u.dead) { // liczebność nad wszystkim, także nad murami
-      const bx = u.px + (u.side === 0 ? 8 : -34), by = Math.min(u.py + 18, Math.min(486, (L.fieldBottom - L.fy) / L.fs - 4) - (CREATURES[u.cid].shots && !endlessShots(u) ? 25 : 15)), s = String(u.n); // dolny rząd: licznik nad panelem
+      const bx = u.cid === 'arrowTower' ? wallWX(u.y) + 70 : u.px + (u.side === 0 ? 8 : -34), by = Math.min(u.py + 18, Math.min(486, (L.fieldBottom - L.fy) / L.fs - 4) - (CREATURES[u.cid].shots && !endlessShots(u) ? 25 : 15)), s = String(u.n); // dolny rząd: licznik nad panelem
       ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(bx + 1, by + 1, 27, 15);
       ctx.fillStyle = u.side === 0 ? col : B.sides[1].owner >= 0 ? ownerColor(st, B.sides[1].owner) : '#5a5448'; ctx.fillRect(bx, by, 26, 14); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx, by, 26, 4);
       ctx.strokeStyle = '#e0b24a'; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, 25, 13);
@@ -643,13 +644,13 @@ const MOAT_LIQ = {
   dungeon: { tex: 'water', col: '#2a2440', tint: 'rgba(60,30,90,.4)', bank: ['#1e1a24', '#34303e'], flow: 'rgba(150,100,220,.22)', spark: 'rgba(200,170,255,.5)' },
   stronghold: { tex: 'water', col: '#4a3e28', tint: 'rgba(110,80,40,.35)', bank: ['#4a3820', '#6a5232'], flow: 'rgba(160,130,80,.25)', spark: 'rgba(230,210,170,.45)' },
 };
-// Fosa oblężonego miasta: kręty kanał wody wzdłuż muru (przez środki pól kolumny MOAT_X), przerwany mostem w rzędzie bramy:
+// Fosa oblężonego miasta: kręty kanał wody wzdłuż muru (przez środki pól przed murem, moatX), przerwany mostem w rzędzie bramy:
 // ziemny brzeg, woda z faktury terenu (płynie powoli), ciemniejsza przy brzegach, połyskujące fale
 function drawMoat(ctx, B) {
   const runs = []; let cur = null;
-  for (let y = 0; y < BROWS; y++) { if (moatAt(B, MOAT_X, y)) { if (!cur) runs.push(cur = []); cur.push(y); } else cur = null; }
+  for (let y = 0; y < BROWS; y++) { if (moatAt(B, moatX(y), y)) { if (!cur) runs.push(cur = []); cur.push(y); } else cur = null; }
   if (!runs.length) return;
-  const line = ys => { ctx.beginPath(); ys.forEach((y, i) => { const [cx, cy] = hexCenter(MOAT_X, y); if (!i) ctx.moveTo(cx, y === 0 ? cy - 40 : cy - 18); ctx.lineTo(cx, cy); if (i === ys.length - 1) ctx.lineTo(cx, y === BROWS - 1 ? cy + 40 : cy + 18); }); };
+  const k = SIEGE_SLOPE(), line = ys => { ctx.beginPath(); ys.forEach((y, i) => { const [cx, cy] = hexCenter(moatX(y), y), a = y === 0 ? 40 : 18, b = y === BROWS - 1 ? 40 : 18; if (!i) ctx.moveTo(cx - a * k, cy - a); ctx.lineTo(cx, cy); if (i === ys.length - 1) ctx.lineTo(cx + b * k, cy + b); }); };
   const fac = B.sides[1].town ? B.sides[1].town.faction : 'haven', L = MOAT_LIQ[fac] || MOAT_LIQ.haven, WT = TERRAIN_TEX[L.tex] || TERRAIN_TEX.water, pat = WT && WT.cv ? ctx.createPattern(WT.cv, 'repeat') : null;
   if (pat) pat.setTransform(new DOMMatrix().translate(0, G.time * 5).scale(0.35));
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -660,9 +661,9 @@ function drawMoat(ctx, B) {
     if (L.tint) { ctx.strokeStyle = L.tint; ctx.stroke(); }
     ctx.strokeStyle = 'rgba(8,22,30,.3)'; ctx.lineWidth = 38; ctx.stroke(); ctx.strokeStyle = L.flow; ctx.lineWidth = 18; ctx.stroke(); // głębia i jaśniejszy nurt
     if (L.glow) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(255,120,30,${0.18 + 0.08 * Math.sin(G.time * 3)})`; ctx.lineWidth = 60; ctx.stroke(); ctx.restore(); } // lawa się żarzy
-    if (L.pads) for (const y of ys) { const [cx, cy] = hexCenter(MOAT_X, y); for (const [dx, dy] of [[-8, -6], [7, 9]]) { ctx.fillStyle = '#4e8a3a'; ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 4.5, 0.4, TAU); ctx.lineTo(cx + dx, cy + dy); ctx.fill(); } } // lilie wodne
+    if (L.pads) for (const y of ys) { const [cx, cy] = hexCenter(moatX(y), y); for (const [dx, dy] of [[-8, -6], [7, 9]]) { ctx.fillStyle = '#4e8a3a'; ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 4.5, 0.4, TAU); ctx.lineTo(cx + dx, cy + dy); ctx.fill(); } } // lilie wodne
     ctx.fillStyle = L.spark;
-    for (const y of ys) { const [cx, cy] = hexCenter(MOAT_X, y); for (let i = 0; i < 4; i++) { const ph = (G.time * 0.6 + i * 0.27 + y * 0.13) % 1; if (ph < 0.6) ctx.fillRect(cx - 12 + ((i * 11 + y * 7) % 20), cy - 14 + i * 8 + ph * 5, 1.6, 6); } }
+    for (const y of ys) { const [cx, cy] = hexCenter(moatX(y), y); for (let i = 0; i < 4; i++) { const ph = (G.time * 0.6 + i * 0.27 + y * 0.13) % 1; if (ph < 0.6) ctx.fillRect(cx - 12 + ((i * 11 + y * 7) % 20), cy - 14 + i * 8 + ph * 5, 1.6, 6); } }
   }
   ctx.restore();
 }

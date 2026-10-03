@@ -1,12 +1,15 @@
 // ==================== GRAFIKA: OBLĘŻENIE ===================================================
-// Mury miasta na polu bitwy (setupSiege: jeden fragment na każdy rząd heksów kolumny SIEGE_X), w tym samym
+// Mury miasta na polu bitwy (setupSiege: jeden fragment na każdy rząd heksów, w kolumnie wallX(y) – mur biegnie ukośnie), w tym samym
 // widoku z góry pod kątem co jednostki: mur to pionowy pas przez całe pole – od strony atakujących lico
 // z cegieł i rząd blanek, dalej chodnik i przedpiersie od strony miasta. Fragmenty nie zachodzą na siebie,
 // więc wyłom jest widoczną dziurą w murze. Wieże strzelnicze to okrągłe baszty z gankiem i dachem,
 // brama to łukowy przejazd między dwiema basztami, z mostem zwodzonym.
-// Jednostki: px logiczne; (0, 0) = zachodnia krawędź muru (x = SIEGE_WX) na wysokości środka rzędu.
+// Jednostki: px logiczne; (0, 0) = zachodnia krawędź muru w danym rzędzie (x = wallWX(y)) na wysokości środka rzędu.
 // Cały mur to jeden sprite (pixel art), rysowany zanim staną oddziały.
-const SIEGE_WX = 532, SIEGE_HALF = 23.5, TOWER_H = 56;
+const SIEGE_HALF = 23.5, TOWER_H = 56;
+// Mur na ekranie: lico w rzędzie y zaczyna się 17 px przed środkiem pola muru; co rząd przesuwa się o pół heksu w prawo
+const SIEGE_SLOPE = () => HEX.w / 2 / HEX.row, wallWX = y => hexCenter(wallX(y), y)[0] - 17;
+const wallLineX = py => wallWX(0) + (py - hexCenter(0, 0)[1]) * SIEGE_SLOPE(); // lico muru na dowolnej wysokości py
 const WALL = { face: 13, walk: 50, depth: 16 }; // lico 0..face, chodnik face..walk; depth: wysokość czoła muru widocznego od południa
 const SIEGE_STONE = { haven: '#b8ae98', sylvan: '#9aa086', barrow: '#6c6676', fortress: '#8e8a6a', inferno: '#5e403c', academy: '#c4c8d2', dungeon: '#5a5260', stronghold: '#b08a5a' };
 function stonePal(fac) {
@@ -137,7 +140,7 @@ function drawRoundTower(ctx, S, A, col, cx, cy, R, top, small = false) {
   sPennant(ctx, apex, col);
   merl(true);
 }
-// Punkt na ganku wieży, w którym stoi strzelec (względem (SIEGE_WX, środek rzędu)); mury z 3D mają swój punkt w opisie arkusza
+// Punkt na ganku wieży, w którym stoi strzelec (względem (wallWX(y), środek rzędu)); mury z 3D mają swój punkt w opisie arkusza
 let siegePost3D = null;
 const towerPost = () => siegePost3D || [WALL.walk / 2 - 2, 10 - TOWER_H + 8];
 // Mury wypalone z 3D (tools/grafika3d/wypal-oblezenia.js): fragment na rząd, od góry do dołu (niższe zasłaniają wyższe)
@@ -147,19 +150,19 @@ function drawSiege3D(ctx, A, walls) {
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   for (const w of [...walls.values()].sort((a, b) => a.y - b.y)) {
     const s = siegeState(w), f = A.p[`${w.kind}_${w.kind === 'tower' && s === 'hit' ? 'ok' : s}`]; if (!f) continue;
-    const cy = hexCenter(w.x, w.y)[1]; ctx.drawImage(A.im, f[0], f[1], f[2], f[3], SIEGE_WX - f[4] / d, cy - f[5] / d, f[2] / d, f[3] / d);
+    const cy = hexCenter(w.x, w.y)[1]; ctx.drawImage(A.im, f[0], f[1], f[2], f[3], wallWX(w.y) - f[4] / d, cy - f[5] / d, f[2] / d, f[3] / d);
   }
   ctx.restore();
 }
-// Cały mur jako jeden sprite; (0, 0) = (SIEGE_WX, 0) ekranu bitwy. Klucz obejmuje stan każdego fragmentu,
+// Cały mur jako jeden sprite; (0, 0) = (wallWX(0), 0) ekranu bitwy, każdy rząd przesunięty jak mur. Klucz obejmuje stan każdego fragmentu,
 // więc nowy rysunek powstaje tylko po trafieniu.
 const siegeState = w => (w.hp <= 0 ? 'down' : w.hp < w.max ? 'hit' : 'ok');
 function castleSprite(fac, col, walls) {
   const segs = [...walls.values()].sort((a, b) => a.y - b.y);
-  return sprite(`castle_${fac}_${col}_${segs.map(w => w.kind[0] + siegeState(w)[0]).join('')}`, 80, 280, 20, 24, p => {
+  return sprite(`castle_${fac}_${col}_${segs.map(w => w.kind[0] + siegeState(w)[0]).join('')}`, 80 + Math.ceil(wallWX(BROWS - 1) - wallWX(0)), 280, 20, 24, p => {
     segs.forEach((w, i) => {
       const next = segs[i + 1], open = !next || (siegeState(next) === 'down' && next.kind === 'wall');
-      p.save(); p.translate(0, hexCenter(w.x, w.y)[1]); drawSiegePiece(p, fac, w.kind, siegeState(w), open, col); p.restore();
+      p.save(); p.translate(wallWX(w.y) - wallWX(0), hexCenter(w.x, w.y)[1]); drawSiegePiece(p, fac, w.kind, siegeState(w), open, col); p.restore();
     });
   }, OUTLINE, 0.5);
 }

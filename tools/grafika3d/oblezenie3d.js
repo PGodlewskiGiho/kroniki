@@ -1,11 +1,13 @@
 // ==================== MURY OBLĘŻENIA W 3D (narzędzie, nie trafia do gry) =========================
 // Fragmenty murów oblężonego miasta dla każdej frakcji, wypalane przez wypal-oblezenia.js do arkusza src/grafika/oblezenia/<frakcja>.webp.
-// Mur biegnie wzdłuż osi z (z północy na południe), lico od strony atakujących to -x. Kamera patrzy z południowego zachodu (SIEGE_YAW),
-// a bryła jest pochylona (x += z·tg(yaw)), żeby mur na ekranie stał pionowo i każdy fragment trafiał w swój rząd heksów.
+// Mur biegnie wzdłuż osi z (z północy na południe), lico od strony atakujących to -x. Kamera patrzy z lekka z południowego zachodu:
+// kąt SIEGE_YAW dobrany tak, żeby oś z na ekranie schodziła o pół heksu w prawo na rząd – jak ukośny mur na polu bitwy (wallX w grze).
+// Bryły stoją prosto, więc lico, wieże i brama wyglądają jak budowle widziane z boku.
 // Jednostki: piksele sceny jak w budowle.js (blk, cyl3); (0, 0, 0) = lico muru na ziemi, w środku rzędu.
 /* global THREE, blk, cyl3, coneRoof, dome, onionDome, ringMerlons, archMat, sph, marker, DK, LT, P, PXU */
-const SIEGE_YAW = -0.5, SIEGE_PITCH = 0.5, SIEGE_ROW = 46; // rząd heksów: 46 px logicznych
-const SIEGE_LZ = SIEGE_ROW * Math.cos(SIEGE_YAW) / Math.sin(SIEGE_PITCH) + 1.5; // długość fragmentu wzdłuż z (z zakładką)
+const SIEGE_PITCH = 0.5, SIEGE_ROW = 46, SIEGE_STEP = 27; // rząd heksów: 46 px w dół i pół heksu (27 px) w prawo
+const SIEGE_YAW = -Math.atan(SIEGE_STEP / SIEGE_ROW * Math.sin(SIEGE_PITCH));
+const SIEGE_LZ = SIEGE_ROW / (Math.cos(SIEGE_YAW) * Math.sin(SIEGE_PITCH)) + 1.5; // długość fragmentu wzdłuż z (z zakładką)
 const SIEGE3 = {
   haven: { mat: 'stone', col: '#c8bca4', kind: 'ashlar', roof: '#3a5f9e', shape: 'cone', deco: 'banner' },
   sylvan: { mat: 'wood', col: '#7a5c36', kind: 'planks', roof: '#3e8a4a', roofKind: 'leaves', shape: 'cone', deco: 'vines' },
@@ -16,15 +18,6 @@ const SIEGE3 = {
   dungeon: { mat: 'stone', col: '#5a5260', kind: 'rock', roof: '#3a2a4a', shape: 'spire', deco: 'crystals' },
   stronghold: { mat: 'wood', col: '#8c5c32', kind: 'planks', roof: '#8a5a3a', roofKind: 'thatch', shape: 'cone', deco: 'skullsWood' },
 };
-// Pochylenie bryły: mur na ekranie pionowy mimo kamery z ukosa
-function siegeShear(g) {
-  const t = Math.tan(SIEGE_YAW), M = new THREE.Matrix4().set(1, 0, t, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-  g.updateMatrixWorld(true);
-  g.traverse(m => { if (!m.isMesh) return; const geo = m.geometry.clone(); geo.applyMatrix4(m.matrixWorld); geo.applyMatrix4(M); m.geometry = geo; m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); m.scale.set(1, 1, 1); m.updateMatrix(); });
-  const flat = new THREE.Group(); const meshes = []; g.traverse(m => { if (m.isMesh) meshes.push(m); }); for (const m of meshes) { m.parent.remove(m); flat.add(m); }
-  g.traverse(o => { if (o.name && o.name.startsWith('fx:')) { const v = o.getWorldPosition(new THREE.Vector3()).applyMatrix4(M); marker(flat, o.name, [v.x, v.y, v.z]); } });
-  return flat;
-}
 const rnd = seed => { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
 const emis = (w, h, d, col, x, y, z, rot) => { const m = blk(w, h, d, col, 'win', x, y, z, rot); return m; };
 // Gruzy: bloki kamienia albo połamane bale rozrzucone po pasie muru
@@ -122,5 +115,5 @@ function buildSiegePiece(fac, kind, state, col = '#2a4a8a') {
   else if (kind === 'gate') siegeGate(g, S, r, state);
   else siegeWall(g, S, r, state);
   siegeDeco(g, S, kind, state, r, col);
-  return siegeShear(g);
+  return g;
 }
