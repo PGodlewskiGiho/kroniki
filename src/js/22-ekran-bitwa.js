@@ -115,7 +115,8 @@ function impactSound(p, tg) {
 // Czar: [dźwięk rzucenia, dźwięk trafienia]
 const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thunder'], chainLightning: ['cast', 'thunder'], fireball: ['fireball', 'explode'], meteorShower: ['fireball', 'explode'], armageddon: ['cast', 'explode'],
   implosion: ['cast', 'explode'], iceBolt: ['cast', 'ice'], frostRing: ['cast', 'ice'], cure: ['cast', 'heal'], massCure: ['cast', 'heal'], resurrection: ['cast', 'heal'], animateDead: ['cast', 'curse'],
-  curse: ['cast', 'curse'], weakness: ['cast', 'curse'], slow: ['cast', 'curse'], deathRipple: ['cast', 'curse'] };
+  curse: ['cast', 'curse'], weakness: ['cast', 'curse'], slow: ['cast', 'curse'], deathRipple: ['cast', 'curse'],
+  blind: ['cast', 'curse'], poison: ['cast', 'curse'], fireWall: ['fireball', 'explode'], lifeSteal: ['zap', 'heal'], holyLight: ['cast', 'thunder'], vampirism: ['cast', 'curse'], blizzard: ['cast', 'ice'] };
 const spellLandSound = (id, x) => Sfx.play(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff', { vol: 0.9, pan: sfxPan(x) });
 G.screens.battle = {
   fps: smoothFps, // płynnie także czekając na rozkaz (oddychające jednostki, płomienie)
@@ -162,7 +163,7 @@ G.screens.battle = {
   },
   onBack() {
     if (this.phase === 'over') return;
-    if (this.casting) { this.casting = null; this.preview = null; return; } // Esc anuluje wybór celu czaru
+    if (this.casting) { this.casting = null; this.tele = null; this.preview = null; return; } // Esc anuluje wybór celu czaru
     if (this.phase !== 'input' && !this.B.auto || this.me === 1) return;
     showDialog('Wycofać się z bitwy? Ocalałe oddziały zostaną z bohaterem, ale na dziś koniec marszu.', [{ label: 'Uciekaj', key: 'enter', action: () => (this.net ? this.order({ a: 'flee' }) : this.finish(true)) }, { label: 'Walcz dalej', key: 'escape' }]);
   },
@@ -194,8 +195,8 @@ G.screens.battle = {
   applyOrder(c) {
     const B = this.B, u = B.active, T = c.t != null ? B.units[c.t] : null;
     if (B.units.indexOf(u) !== c.u) console.warn('bitwa online: rozbieżność kolejki', c, B.units.indexOf(u));
-    this.casting = null; this.preview = null; this.touchKey = null;
-    if (c.a === 'cast') { castBattle(B, c.id, c.x, c.y); this.phase = 'play'; this.resume = true; return; }
+    this.casting = null; this.preview = null; this.touchKey = null; this.tele = null;
+    if (c.a === 'cast') { castBattle(B, c.id, c.x, c.y, c.x2, c.y2); this.phase = 'play'; this.resume = true; return; }
     if (c.a === 'flee') { this.finish(true); return; }
     if (c.a === 'ai') { if (aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } aiAct(B, u); this.phase = 'play'; return; } // ruch SI za gracza (Auto online): ten sam u obu, bo bitwa jest powtarzalna
     if (c.a === 'wait') actWait(B, u); else if (c.a === 'def') actDefend(B, u); else if (c.a === 'shoot') actShoot(B, u, T);
@@ -206,7 +207,7 @@ G.screens.battle = {
     if (this.phase !== 'input') return; const B = this.B;
     const mh = sideHero(B, this.me); if (!mh) return;
     if (B.cast[this.me]) { B.log.push('W tej rundzie bohater już rzucił czar.'); return; }
-    showSpellbook(mh, 'battle', id => { this.casting = id; this.onPointerMove(G.mouse.x, G.mouse.y); });
+    showSpellbook(mh, 'battle', id => { this.casting = id; this.tele = null; this.onPointerMove(G.mouse.x, G.mouse.y); });
   },
   // Koniec bitwy: zwycięzcy wiwatują przez chwilę, potem okno wyniku nad polem bitwy (jak w Heroes 3). Klik albo klawisz przyspiesza.
   startEnding() {
@@ -243,6 +244,7 @@ G.screens.battle = {
       : fx.kind === 'hit' ? (fx.a && !fx.splash ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj || S.meteor ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
     const now = G.time, faceTo = (v, x) => { if (v && Math.abs(x - v.px) > 2) v.face = Math.sign(x - v.px); }; // oddział obraca się w stronę ruchu i celu
+    if (fx.kind === 'heal' && fx.u && (fx.jump || fx.u.px == null)) { [fx.u.px, fx.u.py] = unitPos(fx.u); if (fx.jump) BattleFX.glow(fx.u.px, fx.u.py - 10, 40, '#9ab0ff', 0.4); } // Teleportacja i Klon: nowe miejsce od razu
     if (fx.kind === 'move') { fx.u.anim = { pose: fx.fly ? 'fly' : 'walk', t0: now, dur: this.play.dur }; if (fx.fly) faceTo(fx.u, unitPos(fx.u)[0]); }
     if (fx.kind === 'hit' && fx.a && !fx.splash) { faceTo(fx.a, fx.tg.px); fx.a.anim = { pose: 'attack', t0: now, dur: this.play.dur }; }
     if (fx.kind === 'shot') faceTo(fx.a, fx.tg.px);
@@ -348,6 +350,10 @@ G.screens.battle = {
   onPointerMove(x, y) {
     const B = this.B; this.preview = null; if (this.phase !== 'input' || G.modal) return;
     const u = B.active, hx = hexAt(x, y); if (!hx) return;
+    if (this.casting && this.tele) { // Teleportacja, krok 2: wolne pole dla wskazanego oddziału
+      const T = this.tele, tu = unitAt(B, T.x, T.y);
+      this.preview = tu && teleportOk(B, tu, hx.x, hx.y) ? { kind: 'cast', id: this.casting, x: T.x, y: T.y, x2: hx.x, y2: hx.y, target: tu, tele: true } : { kind: 'nocast', id: this.casting }; return;
+    }
     if (this.casting) {
       const id = this.casting, tu = spellUnitAt(B, id, hx.x, hx.y);
       this.preview = spellTargetOk(B, id, tu) ? { kind: 'cast', id, x: hx.x, y: hx.y, target: tu } : { kind: 'nocast', id }; return;
@@ -381,7 +387,8 @@ G.screens.battle = {
     }
     const B = this.B, p = this.preview; if (this.phase !== 'input' || !p) return;
     const ix = v => B.units.indexOf(v), u = B.active;
-    if (p.kind === 'cast') this.order({ a: 'cast', id: p.id, x: p.x, y: p.y });
+    if (p.kind === 'cast' && SPELLS[p.id].teleport && !p.tele) { this.tele = { x: p.x, y: p.y }; this.preview = null; return; } // najpierw oddział, potem miejsce
+    if (p.kind === 'cast') this.order(p.tele ? { a: 'cast', id: p.id, x: p.x, y: p.y, x2: p.x2, y2: p.y2 } : { a: 'cast', id: p.id, x: p.x, y: p.y });
     else if (p.kind === 'heal') this.order({ a: 'heal', t: ix(p.target) });
     else if (p.kind === 'shoot') this.order({ a: 'shoot', t: ix(p.target) });
     else if (p.kind === 'attack') this.order({ a: 'move', t: ix(p.target), p: pathTo(this.reach, u, ...p.from) });
@@ -402,6 +409,8 @@ G.screens.battle = {
     if (this.phase === 'input' && this.casting) {
       const p = this.preview;
       if (p && p.kind === 'cast') { ctx.fillStyle = 'rgba(160,200,255,.3)'; for (const [ax, ay] of spellArea(p.id, p.x, p.y, B)) { hexPath(ctx, ax, ay, 2); ctx.fill(); } }
+      if (p && p.tele) { ctx.fillStyle = 'rgba(150,170,255,.45)'; for (const [cx, cy] of unitCells(p.target, p.x2, p.y2)) { hexPath(ctx, cx, cy, 2); ctx.fill(); } }
+      else if (this.tele) { ctx.strokeStyle = '#9ab0ff'; ctx.lineWidth = 2.5; hexPath(ctx, this.tele.x, this.tele.y, 3); ctx.stroke(); }
     } else if (this.phase === 'input' && u0) {
       ctx.fillStyle = 'rgba(255,240,200,.16)';
       for (const k of this.reach.dist.keys()) { hexPath(ctx, k % BCOLS, Math.floor(k / BCOLS), 2); ctx.fill(); }
@@ -414,6 +423,13 @@ G.screens.battle = {
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,90,${0.18 + 0.12 * pulse})`; ctx.beginPath(); ctx.ellipse(u0.px, u0.py + 14, isWide(u0) ? 46 : 24, 9, 0, 0, TAU); ctx.fill(); ctx.restore();
     }
     if (B.moat) drawMoat(ctx, B); // fosa przed murem
+    if (B.fire) for (const f of B.fire) { // Ściana ognia: płonące pola (migotanie, języki ognia)
+      const [cx, cy] = hexCenter(f.x, f.y), fl = 0.75 + 0.25 * Math.sin(G.time * 9 + f.x * 3 + f.y);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,110,30,${0.22 * fl})`; hexPath(ctx, f.x, f.y, 3); ctx.fill();
+      for (let i = 0; i < 4; i++) { const ox = (i - 1.5) * 9, h = (14 + 8 * Math.sin(G.time * 11 + i * 1.7 + f.x)) * fl, g = ctx.createLinearGradient(0, cy + 6 - h, 0, cy + 8);
+        g.addColorStop(0, 'rgba(255,220,90,0)'); g.addColorStop(0.5, 'rgba(255,150,40,.55)'); g.addColorStop(1, 'rgba(255,70,20,.75)'); ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(cx + ox - 5, cy + 8); ctx.quadraticCurveTo(cx + ox - 4, cy + 2 - h * 0.4, cx + ox + Math.sin(G.time * 7 + i) * 2, cy + 6 - h); ctx.quadraticCurveTo(cx + ox + 4, cy + 2 - h * 0.4, cx + ox + 5, cy + 8); ctx.fill(); }
+      ctx.restore(); }
     this.drawHeroes(ctx);
     // polegli leżą pod żywymi
     for (const u of B.units) if (u.dead && u.dieT != null && G.time - u.dieT > 0.45) drawSprite(ctx, corpseSprite(u.cid, u.side === 0 ? 1 : -1), u.px, u.py + 14, 1);
@@ -461,7 +477,8 @@ G.screens.battle = {
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'remote' && u0 ? `Ruch gracza ${playerName(st, B.sides[u0.side].owner)}: ${cu.plural.toLowerCase()}…` : this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
-    if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(heroStat(sideHero(B, this.me) || B.h, 'sp'))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
+    if (this.casting && SPELLS[this.casting].teleport) tip = this.tele ? (pv && pv.kind === 'cast' ? 'Teleportacja: kliknij, aby przenieść oddział tutaj.' : 'Teleportacja: wskaż wolne pole (Esc anuluje).') : 'Teleportacja: wskaż swój oddział do przeniesienia (Esc anuluje).';
+    else if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(heroStat(sideHero(B, this.me) || B.h, 'sp'))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
     else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots}${shotPenaltyText(B, u0, pv.target)})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';
     if (this.touchKey && pv && G.mouse.type !== 'mouse') tip += ' Stuknij jeszcze raz, aby wykonać.';

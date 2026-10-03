@@ -1187,6 +1187,19 @@ function drawSpellIcon(c, id) {
   c.fillStyle = dk; c.beginPath(); c.arc(0, 0, 11, 0, TAU); c.fill(); c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round';
   const poly = pts => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); };
   switch (id) {
+    case 'dispel': for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; c.fillRect(Math.cos(a) * 6 - 1.5, Math.sin(a) * 6 - 1.5, 3, 3); } c.beginPath(); c.arc(0, 0, 2.5, 0, TAU); c.fill(); break;
+    case 'blind': c.beginPath(); c.ellipse(0, 0, 8, 4.5, 0, 0, TAU); c.fill(); c.fillStyle = dk; c.fillRect(-9, -1.5, 18, 3); break;
+    case 'poison': c.beginPath(); c.arc(0, 2, 5.5, 0, TAU); c.fill(); c.fillRect(-1.5, -8, 3, 6); c.fillStyle = dk; c.fillRect(-2, 1, 1.5, 1.5); c.fillRect(1, 1, 1.5, 1.5); break;
+    case 'tailwind': c.lineWidth = 1.8; for (const y of [-4, 0, 4]) { c.beginPath(); c.moveTo(-8, y); c.quadraticCurveTo(0, y - 3, 7, y); c.stroke(); } break;
+    case 'vampirism': poly([[-9, -2], [-4, -5], [0, -2], [4, -5], [9, -2], [5, 1], [0, 4], [-5, 1]]); break;
+    case 'fireWall': for (const x of [-5, 0, 5]) poly([[x - 3, 7], [x, -6], [x + 3, 7]]); break;
+    case 'lifeSteal': for (const [x, y] of [[-3, -2], [3, 2]]) { c.beginPath(); c.arc(x - 1.5, y - 1, 2, 0, TAU); c.arc(x + 1.5, y - 1, 2, 0, TAU); c.fill(); poly([[x - 3.4, y - 0.5], [x + 3.4, y - 0.5], [x, y + 4]]); } break;
+    case 'teleport': c.lineWidth = 1.8; for (const r of [3, 6]) { c.beginPath(); c.ellipse(0, 0, r + 2, r * 0.6, 0, 0, TAU); c.stroke(); } break;
+    case 'holyLight': for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; c.lineWidth = 1.4; c.beginPath(); c.moveTo(Math.cos(a) * 3, Math.sin(a) * 3); c.lineTo(Math.cos(a) * 9, Math.sin(a) * 9); c.stroke(); } c.beginPath(); c.arc(0, 0, 3, 0, TAU); c.fill(); break;
+    case 'clone': for (const x of [-4, 4]) { c.beginPath(); c.arc(x, -4, 2.5, 0, TAU); c.fill(); c.fillRect(x - 3, -1, 6, 8); } break;
+    case 'fear': c.beginPath(); c.arc(0, -1, 6, 0, TAU); c.fill(); c.fillRect(-3.5, 3, 7, 4); c.fillStyle = dk; c.fillRect(-4, -3, 3, 3); c.fillRect(1, -3, 3, 3); break;
+    case 'dimensionDoor': c.lineWidth = 2.2; c.beginPath(); c.ellipse(0, 0, 6, 9, 0, 0, TAU); c.stroke(); c.beginPath(); c.arc(0, 0, 2.5, 0, TAU); c.fill(); break;
+    case 'blizzard': c.lineWidth = 1.6; for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; c.beginPath(); c.moveTo(Math.cos(a) * 8, Math.sin(a) * 8); c.lineTo(-Math.cos(a) * 8, -Math.sin(a) * 8); c.stroke(); } break;
     case 'magicArrow': c.lineWidth = 2; c.beginPath(); c.moveTo(-6, 6); c.lineTo(5, -5); c.stroke(); poly([[7, -7], [1, -5], [5, -1]]); break;
     case 'bless': for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; c.lineWidth = 1.6; c.beginPath(); c.moveTo(Math.cos(a) * 4, Math.sin(a) * 4); c.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); c.stroke(); } c.beginPath(); c.arc(0, 0, 3.5, 0, TAU); c.fill(); break;
     case 'stoneSkin': poly([[-7, -6], [7, -6], [7, 1], [0, 8], [-7, 1]]); c.fillStyle = dk; c.fillRect(-3, -3, 2, 2); c.fillRect(2, 0, 2, 2); break;
@@ -1231,12 +1244,13 @@ function spellSprite(id) {
   s = { c, ax: n / 2, ay: n / 2, u: 32 / n, raw: true }; SPR.set(key, s); return s;
 }
 // --- umiejętności drugorzędne: ikony (kwadratowa plakietka w kolorze grupy, jasny znak) ---
-const SKILL_TINT = { might: '#7a2e22', magic: '#2a3e7a', land: '#2e5a2e', gold: '#7a5a1a', dark: '#3a2a4a' };
+const SKILL_TINT = { might: '#7a2e22', magic: '#2a3e7a', land: '#2e5a2e', gold: '#7a5a1a', dark: '#3a2a4a', talent: '#4a2450' };
 const SKILL_GROUP = { leadership: 'might', offense: 'might', archery: 'might', armorer: 'might', artillery: 'might', ballistics: 'might', firstAid: 'might', resistance: 'might',
   sorcery: 'magic', intelligence: 'magic', mysticism: 'magic', wisdom: 'magic', eagleSight: 'magic', learning: 'magic',
-  logistics: 'land', pathfinding: 'land', scouting: 'land', navigation: 'land', luck: 'gold', estates: 'gold', necromancy: 'dark' };
+  logistics: 'land', pathfinding: 'land', scouting: 'land', navigation: 'land', luck: 'gold', estates: 'gold', necromancy: 'dark',
+  tactics: 'might', triage: 'might', plunder: 'gold', diplomacy: 'gold', interference: 'magic' };
 function drawSkillIcon(c, id) {
-  const sc = SKILLS[id].school, bg = sc ? shadeHex(SCHOOLS[sc].col, -0.55) : SKILL_TINT[SKILL_GROUP[id]] || '#4a3e2c', fg = '#f4e8c4', gd = '#ffd060', dk = shadeHex(bg, -0.4);
+  const tal = id.startsWith('t_'), sc = !tal && SKILLS[id].school, bg = tal ? SKILL_TINT.talent : sc ? shadeHex(SCHOOLS[sc].col, -0.55) : SKILL_TINT[SKILL_GROUP[id]] || '#4a3e2c', fg = '#f4e8c4', gd = '#ffd060', dk = shadeHex(bg, -0.4);
   c.fillStyle = '#c8a050'; c.fillRect(-15, -15, 30, 30); c.fillStyle = bg; c.fillRect(-13, -13, 26, 26); c.fillStyle = 'rgba(255,240,200,.16)'; c.fillRect(-13, -13, 26, 4);
   c.fillStyle = fg; c.strokeStyle = fg; c.lineCap = 'round'; c.lineJoin = 'round';
   const poly = (pts, col) => { if (col) c.fillStyle = col; c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); };
@@ -1268,6 +1282,9 @@ function drawSkillIcon(c, id) {
     case 'waterMagic': c.fillStyle = '#6ab8ff'; c.beginPath(); c.moveTo(0, -11); c.quadraticCurveTo(9, 2, 7, 5); c.arc(0, 4, 7, 0.14, Math.PI - 0.14); c.quadraticCurveTo(-9, 2, 0, -11); c.fill(); dot(-2.5, 4, 2, '#d8f0ff'); break;
     case 'earthMagic': poly([[-11, 9], [-4, -5], [0, 1], [4, -9], [11, 9]], '#a8864a'); poly([[4, -9], [7, -3], [4, -4], [2, -5]], fg); poly([[-4, -5], [-2, -2], [-5, -1]], fg); c.fillStyle = '#6a8a3a'; c.fillRect(-11, 8, 22, 2); break;
     case 'eagleSight': poly([[-11, -2], [-6, -6], [-2, -3], [0, -7], [2, -3], [6, -6], [11, -2], [5, 0], [2, 6], [0, 9], [-2, 6], [-5, 0]], '#c8a060'); dot(0, -2, 2, gd); poly([[-1, -1], [1, -1], [0, 2]], '#e8c070'); break;
+    default: { // talenty i nowe umiejętności bez własnego rysunku: gwiazda (talent) albo pierwsza litera nazwy
+      if (tal) { const P = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 4 : 10; P.push([Math.cos(a) * r, Math.sin(a) * r]); } poly(P, gd); }
+      else { c.font = 'bold 16px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = fg; c.fillText(SKILLS[id].name[0], 0, 1); } }
   }
 }
 // Ikona z modelu 3D (tools/grafika3d/wypal-umiejetnosci.js) pomniejszona raz do potrzebnej wielkości; bez arkusza dawny rysunek

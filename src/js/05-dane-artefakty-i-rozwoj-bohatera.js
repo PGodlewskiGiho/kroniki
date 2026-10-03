@@ -48,7 +48,37 @@ const SKILLS = {
   waterMagic: { name: 'Magia Wody', v: [1, 2, 3], school: 'water', desc: v => schoolDesc(v) },
   earthMagic: { name: 'Magia Ziemi', v: [1, 2, 3], school: 'earth', desc: v => schoolDesc(v) },
   eagleSight: { name: 'Orle oko', v: [40, 50, 60], desc: v => `${v}% szans na naukę czaru rzuconego przez wroga (do ${v / 10 - 2}. poziomu)` },
+  tactics: { name: 'Taktyka', v: [1, 2, 3], desc: v => `w dwóch pierwszych rundach bitwy twoje oddziały mają +${v} do szybkości, ataku i obrony (Taktyka wroga to znosi)` },
+  diplomacy: { name: 'Dyplomacja', v: [1, 2, 3], desc: v => `potwory dużo chętniej dołączają do armii i biorą o ${v * 20}% mniej złota${v >= 2 ? '; słabsze stada częściej uciekają' : ''}` },
+  interference: { name: 'Zakłócanie', v: [15, 25, 40], desc: v => `czary wroga w bitwie zadają i leczą o ${v}% mniej` },
+  plunder: { name: 'Grabież', v: [10, 20, 30], desc: v => `po zwycięstwie zabierasz złoto: ${v}% ceny poległych wrogów` },
+  triage: { name: 'Opatrywanie ran', v: [10, 20, 30], desc: v => `po zwycięskiej bitwie wraca ${v}% twoich poległych (żywych) stworów` },
 };
+// Talenty: co TALENT_EVERY poziomów bohater wybiera jeden z trzech (heroPerk). req: lista [umiejętność, poziom], wystarczy jedna;
+// bez req dostępne zawsze (Weteran i Arcymag można brać wielokrotnie). Działanie w ZASADY GRY i BITWA: ZASADY.
+const TALENT_EVERY = 4;
+const TALENTS = {
+  veteran: { name: 'Weteran', desc: '+2 do ataku i +2 do obrony', again: true },
+  archmage: { name: 'Arcymag', desc: '+2 do mocy czarów i +2 do wiedzy', again: true },
+  explorer: { name: 'Odkrywca', desc: '+1 do zasięgu widzenia i +150 punktów ruchu dziennie', again: true },
+  counter: { name: 'Kontruderzenie', req: [['armorer', 2], ['offense', 3]], desc: 'twoje oddziały oddają cios dwa razy na rundę' },
+  volley: { name: 'Salwa', req: [['archery', 2]], desc: 'strzelcy nie tracą obrażeń przez odległość (przeszkody nadal przeszkadzają)' },
+  giantSlayer: { name: 'Pogromca olbrzymów', req: [['offense', 2], ['archery', 2]], desc: 'twoje oddziały zadają o 25% więcej obrażeń stworom 6. i 7. poziomu' },
+  ambush: { name: 'Zasadzka', req: [['tactics', 1], ['offense', 2]], desc: 'w pierwszej rundzie bitwy twoje oddziały zadają o 50% więcej obrażeń' },
+  warlord: { name: 'Wódz', req: [['leadership', 2]], desc: 'morale armii nigdy nie spada poniżej zera, do tego +1' },
+  fortunate: { name: 'Ulubieniec losu', req: [['luck', 2]], desc: 'szczęśliwe ciosy zadają potrójne obrażenia zamiast podwójnych' },
+  fieldMedic: { name: 'Polowy cyrulik', req: [['firstAid', 1], ['triage', 2]], desc: 'na początku każdej rundy ranne stwory na czele twoich oddziałów wracają do pełni sił' },
+  doubleCast: { name: 'Bitewny mag', req: [['sorcery', 2], ['wisdom', 3]], desc: 'w bitwie rzucasz dwa czary na rundę' },
+  spellWard: { name: 'Bariera', req: [['resistance', 2], ['interference', 2]], desc: 'pierwszy wrogi czar w każdej bitwie rozbija się o barierę' },
+  manaSiphon: { name: 'Wysysanie many', req: [['mysticism', 2], ['intelligence', 2]], desc: 'po każdej wygranej bitwie wraca trzecia część many' },
+  scholar: { name: 'Uczony', req: [['wisdom', 2], ['learning', 2], ['eagleSight', 1]], desc: 'od razu poznaje dwa nowe czary (do limitu Mądrości)' },
+  deathLord: { name: 'Pan śmierci', req: [['necromancy', 2]], desc: 'nekromancja wskrzesza o połowę więcej kościotrupów' },
+  forcedMarch: { name: 'Forsowny marsz', req: [['logistics', 2], ['pathfinding', 2]], desc: '+300 punktów ruchu każdego dnia' },
+  treasurer: { name: 'Skarbnik', req: [['estates', 2], ['plunder', 2]], desc: '+500 złota dziennie' },
+  diplomat: { name: 'Poseł', req: [['diplomacy', 2]], desc: 'przyjazne i obojętne stwory dołączają za darmo' },
+};
+// Kolejność wyboru talentów przez SI (wcześniejszy = ważniejszy)
+const AI_TALENT_ORDER = ['doubleCast', 'counter', 'giantSlayer', 'ambush', 'warlord', 'volley', 'deathLord', 'spellWard', 'fortunate', 'fieldMedic', 'forcedMarch', 'treasurer', 'diplomat', 'manaSiphon', 'scholar', 'veteran', 'archmage', 'explorer'];
 // Magowie zaczynają z Mądrością (jak w oryginale): bez niej bohater zna czary najwyżej 2. poziomu
 const spellCap = h => { const L = heroSkill(h, 'wisdom'); return L ? SKILLS.wisdom.v[L - 1] : 2; };
 // Umiejętności startowe klas; nekromancję mogą poznać tylko klasy Kurhanu
@@ -65,23 +95,23 @@ const CLASS_SKILLS = {
 const NECRO_CLASSES = ['deathKnight', 'necro'];
 const MAGE_CLASSES = ['cleric', 'druid', 'necro', 'witch', 'heretic', 'wizard', 'warlock'];
 // Umiejętności, które klasa dostaje przy awansie częściej (jak w oryginale: rycerz rzadko uczy się magii, mag walki)
-const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance'];
-const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting', 'fireMagic', 'airMagic', 'waterMagic', 'earthMagic'];
+const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance', 'tactics', 'triage', 'plunder'];
+const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting', 'fireMagic', 'airMagic', 'waterMagic', 'earthMagic', 'interference'];
 const CLASS_SKILL_PREF = {
-  knight: ['leadership', 'offense', 'armorer', 'artillery'], cleric: ['wisdom', 'waterMagic', 'mysticism', 'estates'],
-  ranger: ['archery', 'pathfinding', 'luck', 'scouting'], druid: ['wisdom', 'earthMagic', 'waterMagic', 'intelligence'],
-  deathKnight: ['offense', 'armorer', 'resistance', 'necromancy'], necro: ['wisdom', 'earthMagic', 'intelligence', 'necromancy'],
-  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid'], witch: ['wisdom', 'eagleSight', 'waterMagic', 'intelligence'],
-  demoniac: ['offense', 'artillery', 'ballistics', 'resistance'], heretic: ['wisdom', 'fireMagic', 'sorcery', 'intelligence'],
-  alchemist: ['artillery', 'ballistics', 'wisdom', 'earthMagic'], wizard: ['wisdom', 'airMagic', 'intelligence', 'sorcery'],
-  overlord: ['leadership', 'offense', 'resistance', 'scouting'], warlock: ['wisdom', 'fireMagic', 'sorcery', 'intelligence'],
-  barbarian: ['offense', 'resistance', 'armorer', 'ballistics'], battleMage: ['offense', 'wisdom', 'fireMagic', 'artillery'],
+  knight: ['leadership', 'offense', 'armorer', 'artillery', 'tactics'], cleric: ['wisdom', 'waterMagic', 'mysticism', 'estates', 'triage'],
+  ranger: ['archery', 'pathfinding', 'luck', 'scouting', 'diplomacy'], druid: ['wisdom', 'earthMagic', 'waterMagic', 'intelligence', 'diplomacy'],
+  deathKnight: ['offense', 'armorer', 'resistance', 'necromancy', 'tactics'], necro: ['wisdom', 'earthMagic', 'intelligence', 'necromancy', 'interference'],
+  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid', 'triage'], witch: ['wisdom', 'eagleSight', 'waterMagic', 'intelligence', 'interference'],
+  demoniac: ['offense', 'artillery', 'ballistics', 'resistance', 'plunder'], heretic: ['wisdom', 'fireMagic', 'sorcery', 'intelligence', 'interference'],
+  alchemist: ['artillery', 'ballistics', 'wisdom', 'earthMagic', 'plunder'], wizard: ['wisdom', 'airMagic', 'intelligence', 'sorcery', 'interference'],
+  overlord: ['leadership', 'offense', 'resistance', 'scouting', 'tactics'], warlock: ['wisdom', 'fireMagic', 'sorcery', 'intelligence', 'interference'],
+  barbarian: ['offense', 'resistance', 'armorer', 'ballistics', 'plunder'], battleMage: ['offense', 'wisdom', 'fireMagic', 'artillery', 'tactics'],
 };
 // Waga umiejętności w losowaniu przy awansie: ulubione klasy ×4, magiczne u wojowników i bojowe u magów ×0,5
 const skillWeight = (cls, id) => (CLASS_SKILL_PREF[cls] || []).includes(id) ? 4 : (MAGE_CLASSES.includes(cls) ? MIGHT_SKILLS : MAGIC_SKILLS).includes(id) ? 0.5 : 1;
 // Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
-const AI_SKILL_ORDER = ['offense', 'necromancy', 'wisdom', 'leadership', 'armorer', 'archery', 'logistics', 'resistance', 'luck', 'artillery', 'pathfinding', 'estates', 'sorcery',
-  'earthMagic', 'fireMagic', 'airMagic', 'waterMagic', 'intelligence', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'navigation', 'scouting'];
+const AI_SKILL_ORDER = ['offense', 'necromancy', 'wisdom', 'leadership', 'armorer', 'archery', 'tactics', 'logistics', 'resistance', 'luck', 'triage', 'artillery', 'pathfinding', 'estates', 'sorcery',
+  'earthMagic', 'fireMagic', 'airMagic', 'waterMagic', 'interference', 'intelligence', 'plunder', 'diplomacy', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'navigation', 'scouting'];
 
 // Specjalności bohaterów (jak w oryginale), rosną z poziomem bohatera:
 // dw: stwory z siedliska tego poziomu (i ulepszone) dostają +5% ataku i obrony za każdy poziom bohatera na poziom stwora, +1 szybkości;

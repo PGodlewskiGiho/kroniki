@@ -55,6 +55,38 @@ const SP3 = {
   massHaste: () => { const g = new THREE.Group(), a = arBoots({ col: '#6a8aa8', gem: '#c8e8ff' }, { wings: '#e8f6ff', cuff: '#c8e8ff' }), b = arBoots({ col: '#5a7a98', gem: '#c8e8ff' }, { wings: '#e8f6ff', cuff: '#c8e8ff' }); a.position.set(-0.9, 0.3, -0.3); a.scale.setScalar(0.8); b.position.set(0.9, -0.3, 0.2); b.scale.setScalar(0.8); g.add(a, b); return g; },
   massCure: () => { const g = new THREE.Group(), cross = (x, y, k) => { g.add(rbox(0.5 * k, 2.0 * k, 0.3, 0.1, '#7af07a', 'glow', [x, y, 0])); g.add(rbox(2.0 * k, 0.5 * k, 0.3, 0.1, '#7af07a', 'glow', [x, y, 0])); }; cross(0, 0.25, 0.8); cross(-1.1, -0.9, 0.45); cross(1.1, -0.9, 0.45); g.add(torus(1.6, 0.05, '#c8ffc8', 'glow', [0, -0.2, -0.2])); return g; },
 };
+// --- nowe czary ---
+Object.assign(SP3, {
+  dispel: () => { const g = new THREE.Group(); for (let i = 0; i < 7; i++) { const a = i * Math.PI * 2 / 7, r = 0.9 + (i % 2) * 0.35; g.add(slab([[0, 0.25], [0.18, 0], [0, -0.25], [-0.18, 0]], 0.08, i % 2 ? '#c8e8ff' : '#e8f6ff', 'gem', [Math.cos(a) * r, Math.sin(a) * r, 0], [0, 0, a])); }
+    g.add(spGlow(0.42, '#ffffff', [0, 0, 0])); g.add(torus(0.65, 0.04, '#c8e8ff', 'glow', [0, 0, 0], null, null, Math.PI * 1.5)); return g; },
+  blind: () => { const g = new THREE.Group(); g.add(sph(1.0, '#f4f0e6', 'skin', [0, 0, 0], [1.3, 0.75, 0.5], 28)); g.add(sph(0.5, '#6a4a2a', 'gem', [0, 0, 0.35], [1, 1, 0.4])); g.add(sph(0.22, '#1a1008', 'cloth', [0, 0, 0.5], [1, 1, 0.4]));
+    g.add(rbox(3.0, 0.55, 0.2, 0.08, '#3a2a3a', 'cloth', [0, 0.05, 0.6], [0, 0, -0.12])); spRays(g, 10, 1.5, 1.9, '#ffe890', -0.2); return g; },
+  poison: () => { const g = new THREE.Group(), b = lathe([[0.01, -1.3], [0.85, -1.15], [1.0, -0.5], [0.8, 0.1], [0.3, 0.45], [0.28, 1.0], [0.36, 1.1]], '#d8e8f0', 'gem'); b.material = b.material.clone(); Object.assign(b.material, { transparent: true, opacity: 0.3 }); g.add(b);
+    g.add(lathe([[0.01, -1.22], [0.8, -1.08], [0.94, -0.5], [0.76, 0.0], [0.01, 0.0]], '#8ac83a', 'glow')); const sk = spSkull('#ece6d2', '#8ac83a'); sk.scale.setScalar(0.38); sk.position.set(0, -0.55, 0.85); g.add(sk);
+    g.add(cyl(0.24, 0.28, 0.35, '#5a3a20', 'wood', [0, 1.25, 0])); for (const [x, y] of [[0.5, 1.6], [0.2, 1.95], [0.6, 2.2]]) g.add(spGlow(0.1, '#aaf05a', [x, y, 0.1])); return g; },
+  tailwind: () => { const g = new THREE.Group(); for (let k = 0; k < 4; k++) { const P = []; for (let i = 0; i <= 30; i++) { const t = i / 30; P.push([-1.6 + t * 3.0, 0.9 - k * 0.6 + Math.sin(t * Math.PI * 1.5 + k) * 0.25, 0]); } g.add(tube(P, 0.03, 0.09, ['#ffffff', '#d8f0ff', '#b8e0ff', '#e8f6ff'][k], 'glow')); }
+    const f = arBoots({ col: '#6a8aa8', gem: '#c8e8ff' }, { wings: '#e8f6ff' }); f.scale.setScalar(0.55); f.position.set(0.6, -0.4, 0.3); g.add(f); return g; },
+  vampirism: () => { const g = new THREE.Group(); for (const s of [-1, 1]) { g.add(slab([[0, 0], [s * 1.5, 0.6], [s * 1.7, -0.1], [s * 1.3, -0.3], [s * 1.0, -0.1], [s * 0.7, -0.4], [s * 0.4, -0.15]], 0.06, '#3a1a2a', 'leather', [0, 0.3, 0])); }
+    g.add(sph(0.4, '#2a1a22', 'leather', [0, 0.25, 0.1], [0.8, 1, 0.7])); for (const s of [-1, 1]) g.add(cone(0.12, 0.35, '#2a1a22', 'leather', [s * 0.2, 0.7, 0.1], null, 6));
+    for (const [x, y, r] of [[0, -0.7, 0.22], [0.25, -1.15, 0.15], [-0.2, -1.45, 0.11]]) g.add(sph(r, '#c81a2a', 'gem', [x, y, 0.2], [1, 1.3, 1])); return g; },
+  fireWall: () => { const g = new THREE.Group(); for (let i = -1; i <= 1; i++) skFlame(g, i * 0.85, -0.7, 0.75 + (i ? 0 : 0.2)); for (let i = -2; i <= 2; i++) g.add(chunk(0.38, 0.22, 0.3, '#3a2a22', 'stone', [i * 0.6, -1.0, 0], null, 3 + i)); return g; },
+  lifeSteal: () => { const g = new THREE.Group(), H = (x, y, k, c) => { const s = new THREE.Group(); s.add(sph(0.5, c, 'gem', [-0.28, 0.15, 0], [1, 1, 0.6])); s.add(sph(0.5, c, 'gem', [0.28, 0.15, 0], [1, 1, 0.6])); s.add(cone(0.68, 0.95, c, 'gem', [0, -0.45, 0], [Math.PI, 0, 0], 20)); s.position.set(x, y, 0); s.scale.setScalar(k); g.add(s); };
+    H(-0.75, 0.55, 0.85, '#8a1a2a'); H(0.75, -0.55, 0.85, '#ff4a6a'); g.add(tube([[-0.4, 0.2, 0.3], [0, 0.2, 0.6], [0.4, -0.2, 0.3]], 0.08, 0.05, '#ff9ab0', 'glow')); g.add(cone(0.15, 0.3, '#ff9ab0', 'glow', [0.45, -0.28, 0.25], [0, 0, -2.4], 6)); return g; },
+  teleport: () => { const g = new THREE.Group(); for (let i = 0; i < 3; i++) g.add(torus(1.4 - i * 0.35, 0.06, ['#9ab0ff', '#c8d8ff', '#ffffff'][i], 'glow', [0, 0, i * 0.1], [0, 0, 0], [1, 0.45, 1]));
+    g.add(spGlow(0.3, '#ffffff', [0, 0, 0.3])); spRays(g, 8, 1.6, 1.95, '#c8d8ff'); for (const [x, y] of [[-1.1, 1.0], [1.0, 1.2], [0.8, -1.1], [-0.9, -1.0]]) g.add(spGlow(0.08, '#e8f0ff', [x, y, 0.2])); return g; },
+  holyLight: () => { const g = new THREE.Group(); g.add(spGlow(0.55, '#fffbe0', [0, 0.3, 0])); spRays(g, 16, 0.75, 1.7, '#ffe890'); for (let i = 0; i < 5; i++) g.add(cyl(0.05, 0.12, 1.4, '#fff4c0', 'glow', [(i - 2) * 0.4, -1.1, 0.2], [0, 0, (i - 2) * 0.12])); return arRot(g, 0, 0, 0); },
+  clone: () => { const g = new THREE.Group(), fig = (x, op) => { const f = new THREE.Group(); f.add(sph(0.32, '#c8d8ff', 'glow', [0, 0.9, 0])); f.add(lathe([[0.01, -1.2], [0.6, -1.2], [0.45, 0.1], [0.3, 0.55], [0.01, 0.6]], '#9ab0e0', 'gem'));
+      f.traverse(m => { if (m.material) { m.material = m.material.clone(); m.material.transparent = op < 1; m.material.opacity = op; } }); f.position.x = x; g.add(f); };
+    fig(-0.55, 1); fig(0.55, 0.45); g.add(torus(1.4, 0.04, '#b8e0ff', 'glow', [0, -0.2, -0.3])); return g; },
+});
+Object.assign(SP3, {
+  fear: () => { const g = new THREE.Group(), sk = spSkull('#e8e0cc', '#ff5a2a'); g.add(sk); for (let i = 0; i < 6; i++) { const a = Math.PI * 0.2 + i * Math.PI * 0.12; g.add(tube([[Math.cos(a) * 0.9, Math.sin(a) * 0.9 + 0.2, -0.2], [Math.cos(a) * 1.4, Math.sin(a) * 1.4 + 0.4, -0.3], [Math.cos(a) * 1.7, Math.sin(a) * 1.7 + 0.2, -0.3]], 0.12, 0.02, i % 2 ? '#ff7a2a' : '#c84a2a', 'glow')); } return g; },
+  dimensionDoor: () => { const g = new THREE.Group(); g.add(torus(1.1, 0.16, '#c8a040', 'gold', [0, 0, 0], null, [0.75, 1.15, 1])); const P = []; for (let i = 0; i <= 60; i++) { const t = i / 60, a = t * Math.PI * 6, r = 0.95 * (1 - t); P.push([Math.cos(a) * r * 0.75, Math.sin(a) * r * 1.15, 0.05 + t * 0.2]); }
+    g.add(tube(P, 0.08, 0.02, '#b89aff', 'glow')); g.add(spGlow(0.25, '#ffffff', [0, 0, 0.25])); for (const [x, y] of [[-1.2, 1.2], [1.2, -1.1], [1.1, 1.0]]) g.add(spGlow(0.07, '#e0d0ff', [x, y, 0.2])); return g; },
+  blizzard: () => { const g = new THREE.Group(); for (const [x, y, k] of [[0, 0.2, 1], [-1.0, -0.8, 0.5], [1.0, -0.7, 0.55], [0.9, 1.1, 0.4]]) { for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; g.add(cyl(0.05 * k, 0.05 * k, 1.6 * k, '#e8f6ff', 'glow', [x + Math.cos(a) * 0.4 * k, y + Math.sin(a) * 0.4 * k, 0], [0, 0, a + Math.PI / 2]));
+      for (const s of [-1, 1]) g.add(cyl(0.035 * k, 0.035 * k, 0.4 * k, '#ffffff', 'glow', [x + Math.cos(a) * 0.62 * k, y + Math.sin(a) * 0.62 * k, 0], [0, 0, a + Math.PI / 2 + s * 0.8])); } }
+    for (let k = 0; k < 3; k++) { const P = []; for (let i = 0; i <= 20; i++) { const t = i / 20; P.push([-1.6 + t * 3.2, -1.3 + k * 0.4 + Math.sin(t * 5 + k) * 0.12, -0.2]); } g.add(tube(P, 0.03, 0.06, '#c8e8ff', 'glow')); } return g; },
+});
 function renderSpell(id, school, S = 192) {
   const f = SP3[id]; if (!f) return null; const col = SP_PANEL[school] || '#4a3e2c', w = new THREE.Group();
   w.add(rbox(3.0, 3.0, 0.3, 0.1, '#c8a050', 'gold', [0, 0, -0.15])); w.add(rbox(2.62, 2.62, 0.22, 0.06, col, 'leather', [0, 0, 0.0])); w.add(rbox(2.66, 0.08, 0.05, 0.02, LT(col, 0.25), 'leather', [0, 1.26, 0.1]));

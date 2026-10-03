@@ -95,6 +95,7 @@ G.screens.hero = {
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
     if (inRect(x, y, SPEC_BOX)) return heroSpec(h) ? `Specjalność: ${specText(h)}.` : null;
     if (x >= 32 && x <= 310 && y >= 32 && y <= 104) { const f = heroFaction(h); return f ? `${heroTitle(h)}. Cecha frakcji (${factionOf(f).name}) — ${traitText(f)}.` : null; }
+    const tr = hitRect(this.talentRects || [], x, y); if (tr) return `Talent — ${talentText(tr.id)}.`;
     const si = this.skillAt(x, y);
     if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
@@ -134,8 +135,10 @@ G.screens.hero = {
      `Zasięg widzenia: ${heroSight(h)}${sB ? ` (+${sB})` : ''} · mana ${h.mana} / ${heroMaxMana(h)} · czary: ${(h.spells || []).length}`,
      `Siła armii: ${Math.round(armyPower(h.army) * heroFactor(h))} (premia bohatera +${Math.round((heroFactor(h) - 1) * 100)}%)`,
      `Morale: ${signed(armyMorale(armyStacks(h.army).map(s => s.cid), h, null))} · Szczęście: ${signed(heroLuck(h))}`,
-     gold ? `Złoto z artefaktów: +${gold} dziennie` : null].filter(Boolean)
-      .forEach((l, i) => text(ctx, l, 32, 286 + i * 22, { size: 15, weight: 500, color: '#2a1606' }));
+     gold ? `Złoto z artefaktów: +${gold} dziennie` : null, (h.talents || []).length ? 'Talenty:' : null].filter(Boolean)
+      .forEach((l, i, L) => { const y = L.length > 4 && (h.talents || []).length ? 276 + i * 19 : 286 + i * 22; text(ctx, l, 32, y, { size: 15, weight: 500, color: '#2a1606' });
+        if (l === 'Talenty:') this.talentRects = h.talents.map((id, k) => { const r = { x: 100 + k * 26, y: y - 12, w: 24, h: 24, id }; skillIcon(ctx, 't_' + id, r.x + 12, y, 24); return r; }); });
+    if (!(h.talents || []).length) this.talentRects = [];
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });
     if (h.machines.length) text(ctx, `Machiny wojenne: ${h.machines.map(id => CREATURES[id].name.toLowerCase()).join(', ')}`, 210, 480, { size: 13, weight: 700, align: 'center', color: '#5a3814' });
@@ -197,6 +200,10 @@ const SPELL_FX = {
   shield: { aura: 'orbit', col: '#e0c070' }, fortune: { aura: 'rise', col: '#8af0c0' }, curse: { aura: 'drip', col: '#b04a8a' },
   airShield: { aura: 'wind', col: '#d0f0ff' }, fireShield: { aura: 'rise', col: '#ff9a3a', column: true },
   iceBolt: { proj: 'orb', col: '#9ad8ff', burst: '#ffffff', flash: 0.15 },
+  blizzard: { aura: 'wind', col: '#e8f6ff', burst: '#ffffff', flash: 0.3, shake: 4 },
+  dispel: { aura: 'rise', col: '#c8e8ff' }, blind: { aura: 'fall', col: '#f0e0a0', flash: 0.2 }, poison: { aura: 'drip', col: '#8ac83a' }, vampirism: { aura: 'rise', col: '#c83a4a' },
+  fireWall: { aura: 'rise', col: '#ff7a2a', burst: '#ffd060', boom: true, flash: 0.2, shake: 5 }, lifeSteal: { proj: 'orb', col: '#d84a6a', burst: '#ff9ab0' },
+  teleport: { aura: 'orbit', col: '#9ab0ff', flash: 0.15 }, holyLight: { aura: 'fall', col: '#fff4c0', burst: '#ffffff', flash: 0.4, column: true }, clone: { aura: 'orbit', col: '#b8e0ff' },
   frostRing: { aura: 'fall', col: '#bfe8ff', burst: '#ffffff', flash: 0.3, shake: 4 },
   chainLightning: { strike: true, chain: true, col: '#e0ecff', burst: '#ffffff', flash: 0.5, shake: 7 },
   massCure: { aura: 'rise', col: '#7ae8c8', column: true }, deathRipple: { aura: 'drip', col: '#8a9a6a', burst: '#c8d0a0', shake: 6 },
