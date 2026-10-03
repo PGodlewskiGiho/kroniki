@@ -172,7 +172,7 @@ G.screens.town = {
   draw(ctx) {
     const st = G.state, t = this.town(), fac = t.faction, col = ownerColor(st, t.owner);
     drawLayer(ctx, Layers.get(`townChrome_${uiArtReady() ? 1 : 0}`, W, H, paintTownChrome), 0, 0);
-    const key = `tw_${fac}_${townLayout(t).seed}_${[...t.built].sort().join('.')}_${col}`;
+    const key = `tw_${fac}_${townLayout(t).seed}_${[...t.built].sort().join('.')}_${col}_${townScene3D(fac) ? 3 : 2}`; // 3D wczytane czy jeszcze nie
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
     const scene = Layers.get(key, 592, 438, c => { c.imageSmoothingEnabled = !PIXEL_ART; TownFXCache[key] = paintTownScene(c, t, col); }, TOWN_ART_SCALE);

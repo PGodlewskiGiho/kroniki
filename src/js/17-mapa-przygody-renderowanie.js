@@ -378,7 +378,7 @@ const MapRender = {
   map: null, explored: null, season: 0, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
   // D: gęstość terenu (pikseli fragmentu na piksel grafiki = 2 px logiczne); gładko: tyle, ile bufora świata (ostro, bez powiększania)
   D: PXD,
-  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.job = null; this.fog.clear(); this.mini = null; this.warmed = false; this.D = PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * 4) / 4, PXD, 6); },
+  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.job = null; this.fog.clear(); this.mini = null; this.warmed = false; this.D = mapDensity(); },
   // Pora roku: po zmianie wszystkie kawałki terenu rysują się od nowa
   setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); this.job = null; this.warmed = false; } },
   // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
@@ -441,7 +441,9 @@ function layoutAdventure() {
   LIST_ROWS = Math.floor((LIST.h - 28) / LIST_ROW_H); // nad wierszami pasek zakładek (bohaterowie / miasta)
 }
 // Przybliżenie mapy (kółko myszy): ZOOM > 1 powiększa. viewW/viewH = ile pikseli świata mieści widok.
-const ZOOMS = [0.5, 0.75, 1, 1.5, 2]; let ZOOM = 1;
+const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5]; let ZOOM = 1; // największe przybliżenie 1,5×: obiekty 3D mają grafikę w tej skali (dalej byłyby rozmyte)
+// Gęstość malowania terenu: przy przybliżeniu teren maluje się gęściej (ostry przy każdym powiększeniu, nie rozciągnięty)
+const mapDensity = () => (PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * Math.max(1, ZOOM) * 4) / 4, PXD, 8));
 const viewW = () => VIEW.w / ZOOM, viewH = () => VIEW.h / ZOOM;
 // Kamera w granicach oglądanego poziomu (st.view: 0 powierzchnia, 1 podziemia); bez podziemi cała mapa
 function camClamp(st) { const L = st.map.ln ? st.view || 0 : 0, o = levelOrigin(st.map, L) * T, m = levelSize(st.map) * T, w = viewW(), h = viewH();
@@ -454,7 +456,9 @@ function screenToTile(st, x, y) { return { tx: Math.floor(((x - VIEW.x) / ZOOM +
 function setZoom(st, z, sx = VIEW.x + VIEW.w / 2, sy = VIEW.y + VIEW.h / 2) {
   z = clamp(z, ZOOMS[0], ZOOMS[ZOOMS.length - 1]); if (z === ZOOM) return false;
   const wx = st.cam.x + (sx - VIEW.x) / ZOOM, wy = st.cam.y + (sy - VIEW.y) / ZOOM; ZOOM = z;
-  st.cam.x = wx - (sx - VIEW.x) / ZOOM; st.cam.y = wy - (sy - VIEW.y) / ZOOM; camClamp(st); MapRender.warmed = false; G.settings.zoom = z; saveSettings(); return true;
+  st.cam.x = wx - (sx - VIEW.x) / ZOOM; st.cam.y = wy - (sy - VIEW.y) / ZOOM; camClamp(st); MapRender.warmed = false; G.settings.zoom = z; saveSettings();
+  if (MapRender.map && mapDensity() !== MapRender.D) MapRender.reset(MapRender.map, MapRender.explored); // inna gęstość terenu: kawałki od nowa
+  return true;
 }
 function drawFog(ctx, st, ox, oy, camX, camY) {
   const n = st.map.n, ex = human(st).explored;
