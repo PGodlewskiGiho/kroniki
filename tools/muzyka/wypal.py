@@ -5,6 +5,8 @@
 import os, sys, io, json, subprocess, numpy as np, soundfile as sf
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from utwory import SONGS
+from zamki import ZAMKI
+SONGS = SONGS + ZAMKI  # muzyka miast: osobny utwór dla każdej frakcji
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..')); OUT = os.path.join(ROOT, 'src', 'muzyka')
 MUZ = os.environ.get('MUZ_DIR', '/home/user/muzyka'); SF2 = os.path.join(MUZ, 'node_modules', 'generaluser', 'GeneralUser.sf2')
 TMP = os.path.join(HERE, '.cache'); os.makedirs(TMP, exist_ok=True); os.makedirs(OUT, exist_ok=True)
@@ -18,7 +20,7 @@ def build(fn):
     rms = np.sqrt(np.mean(y ** 2)); y *= min(10 ** (-18 / 20) / (rms + 1e-9), 10 ** (-1 / 20) / (np.abs(y).max() + 1e-9))  # -18 dB RMS, szczyt maks. -1 dBFS
     buf = io.BytesIO(); sf.write(buf, y.astype(np.float32), sr, format='WAV', subtype='PCM_16')
     ff = __import__('imageio_ffmpeg').get_ffmpeg_exe(); mp3 = os.path.join(OUT, S.name + '.mp3')
-    subprocess.run([ff, '-y', '-loglevel', 'error', '-f', 'wav', '-i', 'pipe:0', '-ac', '2', '-ar', '44100', '-b:a', '160k', mp3], input=buf.getvalue(), check=True)
+    subprocess.run([ff, '-y', '-loglevel', 'error', '-f', 'wav', '-i', 'pipe:0', '-ac', '2', '-ar', '44100', '-b:a', '112k', mp3], input=buf.getvalue(), check=True)
     peak = 20 * np.log10(np.abs(y).max() + 1e-9)
     print(f'{S.name}: {S.seconds:.1f}s, szczyt {peak:.1f} dB, {os.path.getsize(mp3) // 1024} KB')
     return S.name, round(S.seconds, 4)

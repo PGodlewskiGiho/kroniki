@@ -11,7 +11,7 @@ test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'bł�
 test('każdy utwór jest wbudowany i ma długość pętli', async () => {
   const r = await page.evaluate(() => Object.entries(MUSIC_ART).map(([k, v]) => [k, v.loop, v.d.length]));
   const names = r.map(x => x[0]).sort();
-  assert.deepEqual(names, ['bitwa', 'menu', 'miasto', 'miasto_mrok']);
+  assert.deepEqual(names, ['bitwa', 'menu', 'miasto_akademia', 'miasto_cytadela', 'miasto_inferno', 'miasto_knieja', 'miasto_kurhan', 'miasto_loch', 'miasto_przystan', 'miasto_twierdza']);
   for (const [k, loop, len] of r) { assert.ok(loop > 30 && loop < 300, `${k}: pętla ${loop}`); assert.ok(len > 100000, `${k}: dane`); }
 });
 
@@ -24,18 +24,18 @@ test('ekrany dostają właściwe utwory (mroczne frakcje: mroczne miasto)', asyn
     t.faction = 'inferno'; out.inferno = Music.forScreen('town', { townId: 0 }); t.faction = f0;
     return out;
   });
-  assert.deepEqual(r, { menu: 'menu', setup: 'menu', credits: 'menu', adventure: '', battle: 'bitwa', hero: null, bye: '', haven: 'miasto', inferno: 'miasto_mrok' });
+  assert.deepEqual(r, { menu: 'menu', setup: 'menu', credits: 'menu', adventure: '', battle: 'bitwa', hero: null, bye: '', haven: 'miasto_przystan', inferno: 'miasto_inferno' });
 });
 
 test('odtwarzacz przełącza utwory i trzyma w pamięci najwyżej dwa', async () => {
   const r = await page.evaluate(async () => {
     Sfx.unlock(); if (!Sfx.ctx) return 'brak audio'; setScreen('menu'); // na mapie świata muzyka nie gra
     const wait = ms => new Promise(f => setTimeout(f, ms));
-    for (const n of ['menu', 'bitwa', 'miasto']) { Music.play(n); for (let i = 0; i < 40 && !(Music.buf[n] && Music.node); i++) await wait(100); }
+    for (const n of ['menu', 'bitwa', 'miasto_knieja']) { Music.play(n); for (let i = 0; i < 40 && !(Music.buf[n] && Music.node); i++) await wait(100); }
     return { cur: Music.cur, playing: !!Music.node, kept: Object.keys(Music.buf).length };
   });
   if (r === 'brak audio') return;
-  assert.deepEqual(r, { cur: 'miasto', playing: true, kept: 2 });
+  assert.deepEqual(r, { cur: 'miasto_knieja', playing: true, kept: 2 });
 });
 
 test('na mapie świata żaden utwór nie gra, nawet spóźniony po dekodowaniu', async () => {
