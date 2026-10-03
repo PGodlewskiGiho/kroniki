@@ -59,7 +59,7 @@ test('wysokie okno: dłuższa lista bohaterów i miast; powrót do 4:3 przywraca
   assert.deepEqual(await size(800, 600), { VW: 800, VH: 600, OX: 0, OY: 0 });
   r = await page.evaluate(() => ({ view: { ...VIEW }, rows: LIST_ROWS, list: LIST.x }));
   assert.deepEqual(r, { view: { x: 8, y: 8, w: 576, h: 552 }, rows: 3, list: 600 });
-  assert.deepEqual(await size(2400, 800), { VW: 1440, VH: 600, OX: 320, OY: 0 }, 'bardzo szeroki ekran: najwyżej VW_MAX');
+  assert.deepEqual(await size(2400, 800), { VW: 1800, VH: 600, OX: 500, OY: 0 }, 'bardzo szeroki ekran: dawny ekran wyśrodkowany');
 });
 
 test('wszystkie ekrany rysują się bez błędów w szerokim i wysokim oknie', async () => {

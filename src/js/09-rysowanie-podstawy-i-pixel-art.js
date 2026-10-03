@@ -60,10 +60,11 @@ function goldTextPaint(ctx, str, x, y, size, align = 'center') {
 }
 // Warstwy statycznej grafiki renderowane raz (odświeżane przy zmianie skali)
 const Layers = {
-  cache: {},
+  cache: {}, alt: {}, // alt: ta sama warstwa w drugiej skali (ekran w jednostkach interfejsu i okno w dawnych na jednej klatce nie malują jej od nowa)
   get(key, w, h, paint, sc) {
     const s = sc || G.rs; let c = this.cache[key];
-    if (!c || c._s !== s) {
+    if (c && c._s !== s) { const a = this.alt[key]; this.alt[key] = c; c = a && a._s === s ? a : null; if (c) this.cache[key] = c; } else if (!c) delete this.alt[key];
+    if (!c) {
       c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w * s)); c.height = Math.max(1, Math.ceil(h * s));
       const cx = c.getContext('2d'); cx.setTransform(s, 0, 0, s, 0, 0); paint(cx, w, h); c._s = s; this.cache[key] = c;
     }

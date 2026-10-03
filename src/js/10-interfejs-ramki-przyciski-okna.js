@@ -279,20 +279,27 @@ function clickButtons(list, x, y) {
 // opts: [{label, key, action, sub, tip, lead}]; extra: icon, iconH, locked (Esc nie zamyka), bw (szerokość przycisków)
 function showDialog(msg, opts, extra = {}) {
   Sfx.play('page', { vol: 0.4, gap: 0.3 }); // szelest pergaminu
-  const bw = extra.bw || 120, gap = 24, bh = opts.some(o => o.sub) ? 50 : 40;
-  const w = Math.max(400, opts.length * (bw + gap) + 36); G.ctx.font = font(20, 500, 'body'); const lines = wrapText(G.ctx, msg, w - 70);
-  const iconH = extra.icon ? (extra.iconH || 56) : 0, h = 120 + bh + lines.length * 26 + iconH, x = (W - w) / 2, y = (H - h) / 2;
-  const total = opts.length * bw + (opts.length - 1) * gap; let bx = (W - total) / 2;
-  const buttons = opts.map(o => { const b = new Button(bx, y + h - 24 - bh, bw, bh, o.label, () => { G.modal = null; if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip, lead: o.lead, selected: o.selected, primary: o.primary ?? (o.key === 'enter' && opts.length > 1) }); bx += bw + gap; return b; });
+  setUnits('ui'); // okno w jednostkach interfejsu: wyśrodkowane w całym oknie, czytelne także na telefonie
+  const n = opts.length, bh = opts.some(o => o.sub) ? 50 : 40, iconH = extra.icon ? (extra.iconH || 56) : 0;
+  // przyciski w rzędzie, a gdy się nie mieszczą – w dwóch kolumnach (wąskie okno)
+  let bw = extra.bw || 120, gap = 24, cols = n; const maxW = VW - 24;
+  if (n * (bw + gap) + 36 > maxW) { gap = 12; bw = Math.min(bw, Math.floor((maxW - 36 - (n - 1) * gap) / n)); if (bw < 96) { cols = Math.ceil(n / 2); bw = Math.floor((maxW - 36 - (cols - 1) * gap) / cols); } }
+  const rows = Math.ceil(n / cols), w = Math.min(maxW, Math.max(400, cols * (bw + gap) + 36));
+  // tekst: od 20 w dół, aż okno zmieści się w wysokości ekranu
+  let fs = 20, lh, lines; for (;;) { lh = Math.round(fs * 1.3); G.ctx.font = font(fs, 500, 'body'); lines = wrapText(G.ctx, msg, w - 70); if (fs <= 13 || 100 + rows * (bh + 10) + lines.length * lh + iconH <= VH - 16) break; fs--; }
+  const h = Math.min(VH - 8, 100 + rows * (bh + 10) - 10 + lines.length * lh + iconH), x = (VW - w) / 2, y = (VH - h) / 2;
+  const buttons = opts.map((o, i) => { const r = Math.floor(i / cols), c = i % cols, inRow = Math.min(cols, n - r * cols), total = inRow * bw + (inRow - 1) * gap;
+    return new Button((VW - total) / 2 + c * (bw + gap), y + h - 24 - bh - (rows - 1 - r) * (bh + 10), bw, bh, o.label, () => { G.modal = null; restUnits(); if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip, lead: o.lead, selected: o.selected, primary: o.primary ?? (o.key === 'enter' && n > 1) }); });
   G.modal = {
-    msg, buttons, locked: !!extra.locked, hasIcon: !!extra.icon, // msg, hasIcon: treść okna i czy ma rysunek (podgląd w testach)
+    ui: true, msg, buttons, locked: !!extra.locked, hasIcon: !!extra.icon, // msg, hasIcon: treść okna i czy ma rysunek (podgląd w testach)
     draw(ctx) {
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, h);
-      lines.forEach((l, i) => text(ctx, l, W / 2, y + 44 + i * 26, { size: 20, weight: 500, align: 'center', color: '#2a1606' }));
-      if (extra.icon) extra.icon(ctx, W / 2, y + 34 + lines.length * 26 + iconH / 2);
+      lines.forEach((l, i) => text(ctx, l, VW / 2, y + 44 + i * lh, { size: fs, weight: 500, align: 'center', color: '#2a1606' }));
+      if (extra.icon) extra.icon(ctx, VW / 2, y + 34 + lines.length * lh + iconH / 2);
       buttons.forEach(b => b.draw(ctx));
     },
   };
+  restUnits();
 }
 // Okno z polem tekstowym (np. imię gracza): prawdziwy <input> nad pergaminem, żeby działała klawiatura, także na telefonie.
 // done(tekst) po OK/Enter; Anuluj/Esc zamyka bez zmian. Pole znika razem z oknem.
@@ -303,8 +310,8 @@ function askText(msg, initial, done, max = 16) {
   document.body.appendChild(inp);
   const close = () => inp.remove(), ok = () => { const v = inp.value.trim().slice(0, max); close(); done(v); };
   showDialog(msg, [{ label: 'OK', action: ok }, { label: 'Anuluj', action: close }], { iconH: 50, icon: (ctx, cx, cy) => {
-    const r = G.canvas.getBoundingClientRect(), k = r.width / VW, w = 260 * k, h = 36 * k;
-    Object.assign(inp.style, { left: `${r.left + (OX + cx) * k - w / 2}px`, top: `${r.top + (OY + cy) * k - h / 2}px`, width: `${w}px`, height: `${h}px`, fontSize: `${Math.round(20 * k)}px` });
+    const r = G.canvas.getBoundingClientRect(), k = r.width / VW, w = 260 * k, h = 36 * k; // okno w jednostkach interfejsu (całe płótno)
+    Object.assign(inp.style, { left: `${r.left + cx * k - w / 2}px`, top: `${r.top + cy * k - h / 2}px`, width: `${w}px`, height: `${h}px`, fontSize: `${Math.round(20 * k)}px` });
   } });
   const M = G.modal; M.input = inp;
   inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { G.modal = null; ok(); } else if (e.key === 'Escape') { G.modal = null; close(); } });
