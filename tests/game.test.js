@@ -217,9 +217,9 @@ for (const faction of ['haven', 'sylvan', 'barrow']) {
 test('menu: „Nowa gra” prowadzi do ustawień, „Wróć” z powrotem; scena tła menu', async () => {
   await page.evaluate(() => setScreen('menu', {}));
   await frames(page, 3);
-  const r = await page.evaluate(() => ({ labels: G.screens.menu.buttons.map(b => b.label), pix: PIXEL_ART, town: !!Layers.cache[`menuTown_${MENU_FAC}`], buf: PixBufs.menuScene ? [PixBufs.menuScene.width, PixBufs.menuScene.height] : null, exp: [Math.round(VW / PIX), Math.round(VH / PIX)] }));
+  const r = await page.evaluate(() => ({ labels: G.screens.menu.buttons.map(b => b.label), pix: PIXEL_ART, town: !!Layers.cache[`menuTown_${MENU_FAC}`], art: !!(typeof MENU_ART !== 'undefined' && MENU_ART && MENU_IMG.menu && MENU_IMG.menu._ok), buf: PixBufs.menuScene ? [PixBufs.menuScene.width, PixBufs.menuScene.height] : null, exp: [Math.round(VW / PIX), Math.round(VH / PIX)] }));
   assert.deepEqual(r.labels, ['Nowa gra', 'Gra online', 'Wczytaj grę', 'Najlepsze wyniki', 'Grafika', 'Twórcy', 'Wyjście']);
-  if (r.pix) assert.deepEqual(r.buf, r.exp, 'scena w pikselach grafiki (1 piksel = PIX px logicznych)'); else assert.ok(r.town, 'gładko: tłem menu jest rozbudowane miasto');
+  if (r.pix) assert.deepEqual(r.buf, r.exp, 'scena w pikselach grafiki (1 piksel = PIX px logicznych)'); else assert.ok(r.art || r.town, 'gładko: tłem menu jest malowany obraz (Kronikarz), a bez niego rozbudowane miasto');
   await page.evaluate(() => G.screens.menu.buttons[0].action());
   await page.waitForFunction(() => G.screenName === 'setup');
   await frames(page, 3);
