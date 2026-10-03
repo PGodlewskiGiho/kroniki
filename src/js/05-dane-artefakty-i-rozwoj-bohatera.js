@@ -176,6 +176,14 @@ const ARTIFACTS = {
   silverCoin: { name: 'Srebrna moneta', kind: 'misc', rarity: 'treasure', bonus: { gold: 150 }, icon: 'coin', col: '#d8dce4', gem: '#8a8e98' },
   copperRing: { name: 'Miedziany pierścień', kind: 'ring', rarity: 'treasure', bonus: { def: 1 }, icon: 'ring', col: '#c8784a', gem: '#3aa060' },
   knightHelm: { name: 'Hełm rycerski', kind: 'head', rarity: 'minor', bonus: { def: 2 }, icon: 'helm', col: '#b8c0cc', gem: '#a8302a' },
+  // --- artefakty z talentem (perk: działa jak talent TALENTS, póki artefakt jest założony) ---
+  falconBow: { name: 'Łuk sokolnika', kind: 'weapon', rarity: 'major', bonus: { att: 2 }, perk: 'volley', icon: 'bow', col: '#5a3a20', gem: '#ffd060' },
+  giantAxe: { name: 'Topór pogromcy olbrzymów', kind: 'weapon', rarity: 'major', bonus: { att: 2 }, perk: 'giantSlayer', icon: 'axe', col: '#c8ccd4', gem: '#a83a2a' },
+  marchBoots: { name: 'Buty forsownego marszu', kind: 'feet', rarity: 'minor', bonus: {}, perk: 'forcedMarch', icon: 'boots', col: '#5a4a3a', gem: '#c8a040' },
+  wardAmulet: { name: 'Amulet bariery', kind: 'neck', rarity: 'minor', bonus: { def: 1 }, perk: 'spellWard', icon: 'amulet', col: '#c8ccd4', gem: '#8ac8ff' },
+  warlordBanner: { name: 'Sztandar wodza', kind: 'misc', rarity: 'major', bonus: { morale: 1 }, perk: 'warlord', icon: 'banner', col: '#c8302a', gem: '#ffd060' },
+  surgeonBag: { name: 'Torba cyrulika', kind: 'misc', rarity: 'minor', bonus: {}, perk: 'fieldMedic', icon: 'bag', col: '#e8e0cc', gem: '#d83a3a' },
+  twinRing: { name: 'Pierścień bliźniaczych zaklęć', kind: 'ring', rarity: 'major', bonus: { sp: 1 }, perk: 'doubleCast', icon: 'ring', col: '#c8a040', gem: '#b080ff' },
   hunterBow: { name: 'Łuk myśliwego', kind: 'weapon', rarity: 'minor', bonus: { att: 1, luck: 1, sight: 1 }, icon: 'bow', col: '#8a5a2a', gem: '#e8e0c8' },
   ravenAmulet: { name: 'Krucze oko', kind: 'neck', rarity: 'minor', bonus: { kn: 1, sp: 1 }, icon: 'amulet', col: '#3a3a44', gem: '#a02a2a' },
   lionCloak: { name: 'Lwia skóra', kind: 'cloak', rarity: 'minor', bonus: { att: 1, morale: 1 }, icon: 'cloak', col: '#c8a050', gem: '#8a5a20' },
@@ -227,5 +235,5 @@ function artBonusText(b) {
   return out.join(', ');
 }
 const artInfo = id => { const A = ARTIFACTS[id], r = relicOf(id);
-  return `${A.name} (${RARITY[A.rarity]}): ${A.desc || artBonusText(A.bonus) + '.'}` + (A.parts ? ` Złożona z: ${A.parts.map(p => ARTIFACTS[p].name).join(', ')}.` : '') + (r ? ` Część relikwii: ${ARTIFACTS[r].name}.` : ''); };
+  return `${A.name} (${RARITY[A.rarity]}): ${A.desc || [artBonusText(A.bonus), A.perk ? `talent ${TALENTS[A.perk].name} (${TALENTS[A.perk].desc})` : ''].filter(Boolean).join('; ') + '.'}` + (A.parts ? ` Złożona z: ${A.parts.map(p => ARTIFACTS[p].name).join(', ')}.` : '') + (r ? ` Część relikwii: ${ARTIFACTS[r].name}.` : ''); };
 

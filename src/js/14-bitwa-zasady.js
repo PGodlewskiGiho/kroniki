@@ -365,8 +365,10 @@ function aiAct(B, u) {
   if (best) { actDefend(B, u); return; }
   // nikt w zasięgu: strzelcy czekają na miejscu, reszta idzie w stronę najcenniejszego wroga
   if (u.shots > 0 || hold) { actDefend(B, u); return; } // obrońca czeka za murami, aż napastnik podejdzie
-  if (aiHoldBack(B, u)) return;
-  const target = foes.reduce((a, b) => (b.n * CREATURES[b.cid].value > a.n * CREATURES[a.cid].value ? b : a));
+  const rush = AI_RUSH && (AI_RUSH !== 2 || B.round >= 2) && underFire(B, u.side); // wróg ma przewagę strzelców: czekanie tylko pozwala się wystrzelać, więc naprzód
+  if (!rush && aiHoldBack(B, u)) return;
+  const shooters = rush && AI_RUSH_SHOOT ? foes.filter(e => canShootAt(e)) : [], pool = shooters.length ? shooters : foes; // pod ostrzałem: najpierw strzelcy
+  const target = pool.reduce((a, b) => (b.n * CREATURES[b.cid].value > a.n * CREATURES[a.cid].value ? b : a));
   const far = battleDist(B, u, reach.fly ? spd : Infinity); let goal = null;
   if (reach.fly) { for (const k of far.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS), d = hexDistance({ x, y }, target); if (!goal || d < goal.d) goal = { d, nx: x, ny: y }; } }
   else for (const e of [target, ...foes]) { for (const [nx, ny] of hexNeighbors(e.x, e.y)) { const d = far.dist.get(hexKey(nx, ny)); if (d != null && (!goal || d < goal.d)) goal = { d, nx, ny }; } if (goal) break; }
@@ -376,13 +378,23 @@ function aiAct(B, u) {
   }
   if (!goal) { actDefend(B, u); return; }
   let path = reach.fly ? [[goal.nx, goal.ny]] : pathTo(far, u, goal.nx, goal.ny).slice(0, spd);
-  if (!B.walls && B.round <= 4) { // nie wchodzimy pod cios: zatrzymaj się tuż poza zasięgiem wroga (on podejdzie, my uderzymy pierwsi)
+  if (!B.walls && B.round <= 4 && !rush) { // nie wchodzimy pod cios: zatrzymaj się tuż poza zasięgiem wroga (on podejdzie, my uderzymy pierwsi)
     const threat = enemyThreat(B, u.side), safe = ([x, y]) => !threat.has(hexKey(x, y));
     if (reach.fly) { if (!safe(path[0])) { let alt = null; for (const k of reach.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS); if (threat.has(k)) continue; const d = hexDistance({ x, y }, target); if (!alt || d < alt.d) alt = { d, x, y }; } path = alt && hexDistance(alt, target) < hexDistance(u, target) ? [[alt.x, alt.y]] : []; } }
     else { let cut = path.length; while (cut > 0 && !safe(path[cut - 1])) cut--; path = path.slice(0, cut); }
     if (!path.length) { actDefend(B, u); return; }
   }
   actMoveAttack(B, u, path, null);
+}
+// Strzelec, który jeszcze ma czym strzelać
+const canShootAt = e => !isMachine(e) && (endlessShots(e) || e.shots > 0);
+// Czy strona side jest pod ostrzałem: strzelcy wroga są warci wyraźnie więcej niż jej własni (wtedy SI nie czeka, tylko szarżuje).
+// AI_RUSH: 0 = nigdy, 1 = od razu, 2 = od drugiej rundy (pierwsza na przynętę); AI_RUSH_SHOOT: cel szarży to strzelcy.
+// Pomiar (120 bitew na zestaw, przeciwnik trzyma piechotę przy strzelcach jak gracz): piechota 73% → 92% wygranych, armie z lataczami bez zmian.
+let AI_RUSH = 2, AI_RUSH_SHOOT = true;
+function underFire(B, side) {
+  const v = s => fighters(B, s).filter(canShootAt).reduce((t, u) => t + u.n * CREATURES[u.cid].value, 0), foe = v(1 - side);
+  return foe > 0 && foe > v(side) * 1.5;
 }
 // Pola, na które wróg (piechota i latacze) może uderzyć w swojej następnej turze: sąsiedzi pól, do których dojdzie
 function enemyThreat(B, side) {

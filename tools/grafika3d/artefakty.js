@@ -255,6 +255,7 @@ function arGrail(A) {
 // --- katalog: id -> bryła ---
 const ART3 = {
   noviceSword: A => arSword(A, { len: 2.6, grip: '#8a5a2a' }), dragonfangBlade: A => arSword(A, { len: 3.3, w: 0.32, curve: true, bladeKind: 'bone', wing: true, guardCol: '#3a6a4a', pommelGem: true, grip: '#2a3a2a' }),
+  falconBow: A => arBow(A), giantAxe: A => arAxe(A), marchBoots: A => arBoots(A, { wings: '#e8e0c8', cuff: '#c8a040' }), wardAmulet: A => arAmulet(A), warlordBanner: A => arBanner(A), surgeonBag: A => arBag(A), twinRing: A => arRing(A),
   bronzeDagger: A => arDagger(A), steppeAxe: A => arAxe(A), thunderHammer: A => arHammer(A), titanHammer: A => arHammer(A, { titan: true, haft: '#5a6a78' }), hunterBow: A => arBow(A), archmageStaff: A => arStaff(A),
   oakShield: A => arShield(A, { shape: 'round', planks: true, rim: '#5a5a62' }), lionShield: A => arShield(A, { decal: arLion('#a8302a'), dy: 0.15, studs: true, rim: '#8a6a20' }),
   stoneShield: A => arShield(A, { shape: 'stone', rim: '#5a5a54' }), mountainShield: A => arShield(A, { decal: arMount(A.gem), rim: '#c8ccd4', gem: true, gemY: -0.9 }),

@@ -275,12 +275,24 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'mine') { if (ob.owner >= 0 && ob.owner !== h.owner) tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
 const aiKnowsGrail = (st, pid) => obelisksTotal(st) > 0 && obelisksSeen(st, pid) >= obelisksTotal(st);
+// Czary SI na mapie: Wiatr w plecy, gdy cel jest dalej niż dzisiejszy ruch (i zostaje mana na bitwę), Drzwi wymiarów:
+// skok na najdalsze pole ścieżki do celu, które oszczędza co najmniej 300 punktów ruchu. Zwraca true, gdy bohater się przeniósł.
+const aiCan = (h, id) => hasBook(h) && knows(h, id) && h.mana >= spellCost(h, id) + Math.round(heroMaxMana(h) * 0.3);
+function aiMapSpells(st, h, R, target) {
+  if (R.dist[target.i] <= h.mp || h.boat) return false;
+  if (aiCan(h, 'tailwind') && h.windDay !== st.dayTotal) castAdventure(st, h, 'tailwind');
+  if (!aiCan(h, 'dimensionDoor') || doorCheck(st, h)) return false;
+  const path = R.path(target.i).slice(0, -1), n = st.map.n;
+  for (let k = path.length - 1; k >= 0; k--) { const [x, y] = path[k]; if (R.dist[y * n + x] - 300 < 300) break; if (!doorCheck(st, h, x, y)) { castAdventure(st, h, 'dimensionDoor', { x, y }); reveal(st, x, y, heroSight(h), h.owner); return true; } }
+  return false;
+}
 function* aiMoveHero(st, h, news) {
   const G2 = st.grail; // stoi na miejscu Graala od wczoraj: kopie z pełnymi punktami ruchu
   if (G2 && G2.found < 0 && h.x === G2.x && h.y === G2.y && aiKnowsGrail(st, h.owner) && digGrail(st, h).found) tell(st, -1, `${h.name} (${ownerName(st, h.owner)}) wykopuje Graala!`);
   for (let plan = 0; plan < 12 && st.heroes.includes(h); plan++) {
     const R = aiReach(st, h), target = aiPickTarget(st, h, R); if (!target) return;
     aiClaims.set(target.i, h.id);
+    if (aiMapSpells(st, h, R, target)) continue; // czar na mapie przybliżył cel: plan od nowa
     const path = R.path(target.i); if (target.what === 'feed') path.pop(); // do głównego bohatera: staje obok
     if (target.what === 'feed' && !path.length) { const m = st.heroes.find(o => o.owner === h.owner && o.y * st.map.n + o.x === target.i); if (m) aiFeed(st, h, m); continue; }
     if (!path.length) return;
