@@ -74,7 +74,7 @@ function placeMachines(B, side, h) {
 // i katapulta atakującego, która co rundę rzuca głazem w mur. Brama przepuszcza tylko obrońców; lotnicy przelatują.
 // Fosa (od Cytadeli) w polu tuż przed murem (moatX), z mostem w rzędzie bramy: napastnik, który do niej wejdzie, kończy ruch
 // i dostaje obrażenia (MOAT_DMG wg poziomu fortyfikacji); lotnicy ją przelatują.
-const SIEGE_X = 6, GATE_Y = 4, MOAT_DMG = [0, 0, 40, 70], WALL_HP = [0, 2, 3, 4];
+const SIEGE_X = 6, GATE_Y = 4, KEEP_X = BCOLS - 1, MOAT_DMG = [0, 0, 40, 70], WALL_HP = [0, 2, 3, 4];
 const wallX = y => SIEGE_X + (y >> 1), moatX = y => wallX(y) - 1;
 const behindWall = (x, y) => x > wallX(y), beforeWall = (x, y) => x < wallX(y);
 const moatAt = (B, x, y) => !!(B.moat && x === moatX(y) && y !== GATE_Y);
@@ -98,7 +98,11 @@ function setupSiege(B, t) {
     const x = wallX(y); B.walls.set(hexKey(x, y), { x, y, kind: tower ? 'tower' : y === GATE_Y ? 'gate' : 'wall', hp, max: hp }); // wieże też da się zburzyć (giną wtedy ich łucznicy)
     if (tower) addFixed(B, 1, 'arrowTower', x, y, 1 + dwellingLevels(t).length, 'siege'); // siła wieży rośnie z liczbą siedlisk
   }
-  for (const u of B.units) if (u.side === 1 && !behindWall(u.x, u.y) && u.src !== 'siege') { // obrońca na murze albo przed nim: na najbliższe wolne pole za murem
+  if (L >= 2) { // wieża główna (od Cytadeli, jak w Heroes 3): wielka baszta na dziedzińcu przy prawej krawędzi, strzela za dwie wieże
+    B.walls.set(hexKey(KEEP_X, GATE_Y), { x: KEEP_X, y: GATE_Y, kind: 'keep', hp: hp + 1, max: hp + 1 });
+    addFixed(B, 1, 'arrowTower', KEEP_X, GATE_Y, 2 * (1 + dwellingLevels(t).length), 'siege'); B.units[B.units.length - 1].keep = true;
+  }
+  for (const u of B.units) if (u.side === 1 && u.src !== 'siege' && (!behindWall(u.x, u.y) || unitCells(u, u.x, u.y).some(([cx, cy]) => wallAt(B, cx, cy)))) { // obrońca na murze albo przed nim: na najbliższe wolne pole za murem
     let best = null; for (let y = 0; y < BROWS; y++) for (let x = wallX(y) + 1; x < BCOLS; x++) { const d = hexDistance(u, { x, y }); if ((!best || d < best.d) && canStand(B, u, x, y) && !wallAt(B, x, y)) best = { d, x, y }; }
     if (best) { u.x = best.x; u.y = best.y; }
   }
@@ -111,7 +115,7 @@ const catapultShots = (B, u) => (heroSkill(sideHero(B, u.side), 'ballistics') >=
 const catapultChance = (B, u) => skillVal(sideHero(B, u.side), 'ballistics') || 75;
 function aiCatapultTarget(B) { // brama (droga dla piechoty), potem wieże (strzelają co rundę), potem mur
   const segs = catapultTargets(B); if (!segs.length) return null;
-  const gate = segs.find(w => w.kind === 'gate'), towers = segs.filter(w => w.kind === 'tower'), walls = segs.filter(w => w.kind === 'wall'), r = B.rng();
+  const gate = segs.find(w => w.kind === 'gate'), towers = segs.filter(w => w.kind === 'tower' || w.kind === 'keep'), walls = segs.filter(w => w.kind === 'wall'), r = B.rng();
   if (gate && r < 0.45) return gate;
   if (towers.length && r < 0.75) return towers[Math.floor(B.rng() * towers.length)];
   const pool = walls.length ? walls : segs; return pool[Math.floor(B.rng() * pool.length)];
@@ -122,9 +126,9 @@ function actCatapult(B, u, target = null) {
     let w = target && wallAt(B, target.x, target.y); if (!w || w.hp <= 0) w = aiCatapultTarget(B);
     if (!w) { if (!s) B.log.push('Katapulta: mury już leżą w gruzach.'); return; }
     const hit = B.rng() < catapultChance(B, u) / 100; if (hit) w.hp--;
-    const broken = hit && w.hp <= 0, tower = broken && w.kind === 'tower' ? B.units.find(v => v.cid === 'arrowTower' && v.x === w.x && v.y === w.y && !v.dead) : null;
+    const broken = hit && w.hp <= 0, tower = broken && (w.kind === 'tower' || w.kind === 'keep') ? B.units.find(v => v.cid === 'arrowTower' && v.x === w.x && v.y === w.y && !v.dead) : null;
     if (tower) { tower.dead = true; tower.n = 0; }
-    const what = w.kind === 'gate' ? 'brama' : w.kind === 'tower' ? 'wieża' : 'mur';
+    const what = w.kind === 'gate' ? 'brama' : w.kind === 'tower' ? 'wieża' : w.kind === 'keep' ? 'wieża główna' : 'mur';
     B.log.push(hit ? (broken ? `Katapulta: ${what} ${w.kind === 'wall' ? 'runął' : w.kind === 'gate' ? 'rozbita' : 'runęła – łucznicy milkną'}!` : `Katapulta trafia: ${what} słabnie.`) : 'Katapulta chybia.');
     if (B.fx) B.fx.push({ kind: 'siege', a: u, x: w.x, y: w.y, hit, broken, tower });
   }

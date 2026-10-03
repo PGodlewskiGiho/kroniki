@@ -141,24 +141,34 @@ function drawRoundTower(ctx, S, A, col, cx, cy, R, top, small = false) {
   merl(true);
 }
 // Punkt na ganku wieży, w którym stoi strzelec (względem (wallWX(y), środek rzędu)); mury z 3D mają swój punkt w opisie arkusza
-let siegePost3D = null;
+let siegePost3D = null, keepPost3D = null;
 const towerPost = () => siegePost3D || [WALL.walk / 2 - 2, 10 - TOWER_H + 8];
+const keepPost = () => { const p = keepPost3D || [-20, -90]; return [p[0] + KEEP_DX, p[1]]; }; // strzelcy na ganku wieży głównej (względem środka jej heksu)
 // Mury wypalone z 3D (tools/grafika3d/wypal-oblezenia.js): fragment na rząd, od góry do dołu (niższe zasłaniają wyższe)
 const siegeArt = fac => { const A = typeof SIEGE_ART !== 'undefined' && SIEGE_ART[fac], im = SIEGE_IMG[fac]; return A && im && im._ok ? { ...A, im } : null; };
 function drawSiege3D(ctx, A, walls) {
-  const d = A.d; siegePost3D = A.post || null;
+  const d = A.d; siegePost3D = A.post || null; keepPost3D = A.keepPost || null;
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   for (const w of [...walls.values()].sort((a, b) => a.y - b.y)) {
+    if (w.kind === 'keep') continue; // rysuje ją drawKeep3D razem z oddziałami
     const s = siegeState(w), f = A.p[`${w.kind}_${w.kind === 'tower' && s === 'hit' ? 'ok' : s}`]; if (!f) continue;
     const cy = hexCenter(w.x, w.y)[1]; ctx.drawImage(A.im, f[0], f[1], f[2], f[3], wallWX(w.y) - f[4] / d, cy - f[5] / d, f[2] / d, f[3] / d);
   }
   ctx.restore();
 }
+// Wieża główna na dziedzińcu: (0, 0) klatki = środek jej heksu przesunięty o KEEP_DX w prawo (baszta wystaje poza pole jak w Heroes 3,
+// mniej zasłania); oddziały za nią prześwitują (ekran bitwy rysuje je drugi raz, półprzezroczyste)
+const KEEP_DX = 12;
+function drawKeep3D(ctx, A, w) {
+  const f = A.p[`keep_${w.hp <= 0 ? 'down' : 'ok'}`]; if (!f) return; const d = A.d, [hx, cy] = hexCenter(w.x, w.y), cx = hx + KEEP_DX;
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(A.im, f[0], f[1], f[2], f[3], cx - f[4] / d, cy - f[5] / d, f[2] / d, f[3] / d); ctx.restore();
+}
 // Cały mur jako jeden sprite; (0, 0) = (wallWX(0), 0) ekranu bitwy, każdy rząd przesunięty jak mur. Klucz obejmuje stan każdego fragmentu,
 // więc nowy rysunek powstaje tylko po trafieniu.
 const siegeState = w => (w.hp <= 0 ? 'down' : w.hp < w.max ? 'hit' : 'ok');
 function castleSprite(fac, col, walls) {
-  const segs = [...walls.values()].sort((a, b) => a.y - b.y);
+  const segs = [...walls.values()].filter(w => w.kind !== 'keep').sort((a, b) => a.y - b.y); // wieżę główną rysuje tylko grafika 3D
   return sprite(`castle_${fac}_${col}_${segs.map(w => w.kind[0] + siegeState(w)[0]).join('')}`, 80 + Math.ceil(wallWX(BROWS - 1) - wallWX(0)), 280, 20, 24, p => {
     segs.forEach((w, i) => {
       const next = segs[i + 1], open = !next || (siegeState(next) === 'down' && next.kind === 'wall');

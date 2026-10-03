@@ -107,9 +107,45 @@ function siegeDeco(g, S, kind, state, r, col) {
     if (kind === 'tower') g.add(emis(5, 13, 5, '#8ad0ff', 37, 112, -14, [0.2, 0.6, 0])); }
   if (S.deco === 'crystals') for (let i = 0; i < 4; i++) { const z = -L + 4 + r() * (2 * L - 8), x = -8 + r() * 5, h = 8 + r() * 10; const c = cyl3(2.8, 0.2, h, '#9a5ad0', 'win', x, 0, z, 5); c.rotation.z = (r() - 0.5) * 0.6; g.add(c); }
 }
+// Wieża główna (keep) na dziedzińcu: (0, 0, 0) = środek heksu na ziemi. Kamienna: gruba baszta z cokołem, gankiem z blankami,
+// wieżyczką i wysokim dachem frakcji; z bali: wielki dwupiętrowy blokhauz z czterospadowym dachem. Strzelcy na ganku (fx:keep).
+function siegeKeep(g, S, r, state, col) {
+  if (state === 'down') { // gruzy po wieży: kopiec kamieni albo bali i ocalały kikut ściany
+    if (S.mat === 'wood') { for (let i = 0; i < 26; i++) { const lg = cyl3(4.5, 4.5, 26 + r() * 20, i % 3 ? S.col : DK(S.col, 0.25), 'planks', 0, 0, 0, 8); lg.rotation.set(Math.PI / 2 + (r() - 0.5) * 0.7, r() * Math.PI, 0); lg.position.set(...P(-34 + r() * 68, 4 + r() * 10, -34 + r() * 68)); g.add(lg); } return; }
+    g.add(cyl3(46, 50, 10, DK(S.col, 0.2), S.kind, 0, 0, 0)); g.add(cyl3(42, 44, 34, S.col, S.kind, 4, 0, -6, 24));
+    for (let i = 0; i < 40; i++) { const sz = 7 + r() * 12, a = r() * Math.PI * 2, d = 20 + r() * 40; g.add(blk(sz, sz * 0.7, sz, i % 4 ? S.col : DK(S.col, 0.3), S.kind, Math.cos(a) * d, 4 + r() * 18, Math.sin(a) * d, [r(), r() * 3, r()])); }
+    return;
+  }
+  const H = 100;
+  if (S.mat === 'wood') {
+    g.add(blk(76, 70, 76, S.col, 'planks', 0, 0, 0)); g.add(blk(88, 6, 88, DK(S.col, 0.2), 'planks', 0, 70, 0));
+    g.add(blk(84, 54, 84, LT(S.col, 0.05), 'planks', 0, 76, 0));
+    for (const [dx, dz] of [[-40, -40], [40, -40], [-40, 40], [40, 40]]) g.add(cyl3(5, 5, 130, DK(S.col, 0.15), 'planks', dx, 0, dz, 8));
+    for (let i = 0; i < 4; i++) g.add(blk(3, 10, 8, '#120c08', 'planks', -42.5, 92, -24 + i * 16)); // strzelnice
+    g.add(blk(3, 30, 22, '#3a2410', 'planks', -38.5, 0, 0)); // drzwi
+    const roof = coneRoof(68, 62, S.roof, S.roofKind || 'thatch', 0, 130, 0, 4); roof.rotation.y = Math.PI / 4; g.add(roof);
+    g.add(blk(1.2, 26, 16, col, 'cloth', -6, 196, 0)); g.add(cyl3(1.2, 1.2, 40, '#3a2410', 'planks', 0, 186, 0, 6));
+    marker(g, 'fx:keep', P(-20, 130, 10));
+    return;
+  }
+  g.add(cyl3(56, 60, 14, DK(S.col, 0.15), S.kind, 0, 0, 0, 28)); // cokół
+  g.add(cyl3(50, 48, H, S.col, S.kind, 0, 0, 0, 28)); g.add(cyl3(49.5, 49.5, 5, DK(S.col, 0.12), S.kind, 0, H * 0.45, 0, 28));
+  g.add(cyl3(55, 55, 8, DK(S.col, 0.18), S.kind, 0, H, 0, 28)); g.add(ringMerlons(53, H + 8, S.col, S.kind, 0, 0, 20)); // ganek z blankami
+  for (const [a, y] of [[2.7, 0.35], [3.3, 0.66], [2.9, 0.82], [3.6, 0.5]]) g.add(blk(3, 12, 4, '#120c08', 'planks', Math.cos(a) * 49, H * y, Math.sin(a) * 49)); // okna-strzelnice
+  g.add(blk(3, 34, 22, '#2a1a10', 'planks', -50, 14, 0)); g.add(blk(4, 4, 26, DK(S.col, 0.3), S.kind, -50.5, 48, 0)); // brama baszty
+  g.add(cyl3(26, 26, 34, S.col, S.kind, 10, H + 8, -8, 20)); g.add(ringMerlons(25, H + 42, S.col, S.kind, 10, -8, 12)); // wieżyczka
+  siegeRoof(g, S, 28, 10, H + 50, -8);
+  if (S.deco === 'lava') for (let i = 0; i < 5; i++) g.add(emis(1.6, 10 + r() * 16, 1.6, '#ff7a1a', Math.cos(2.6 + i * 0.3) * 50.5, 10 + r() * 80, Math.sin(2.6 + i * 0.3) * 50.5));
+  if (S.deco === 'crystals') for (let i = 0; i < 5; i++) { const a = 2.4 + r() * 1.5, c = cyl3(4, 0.3, 14 + r() * 12, '#9a5ad0', 'win', Math.cos(a) * 58, 0, Math.sin(a) * 58, 5); c.rotation.z = (r() - 0.5) * 0.5; g.add(c); }
+  if (S.deco === 'skulls') for (let i = 0; i < 3; i++) g.add(emis(1, 10, 3, '#7af0a0', -49.4, 40 + i * 26, -10 + i * 10));
+  if (S.deco === 'snow') g.add(cyl3(56, 56, 2, '#f4f8ff', 'plaster', 0, H + 8.5, 0, 28));
+  if (S.deco === 'banner' || S.deco === 'snow') { g.add(blk(1.4, 40, 18, col, 'cloth', -50.5, 70, 18)); g.add(blk(1.4, 40, 18, col, 'cloth', -50.5, 70, -18)); }
+  marker(g, 'fx:keep', P(-30, H + 10, 12));
+}
 // Fragment muru frakcji: kind 'wall' | 'gate' | 'tower', state 'ok' | 'hit' | 'down'; col = barwa właściciela (chorągwie)
 function buildSiegePiece(fac, kind, state, col = '#2a4a8a') {
   const S = SIEGE3[fac] || SIEGE3.haven, g = new THREE.Group(), r = rnd((kind.length * 977 + state.length * 131 + fac.length * 17) | 0);
+  if (kind === 'keep') { siegeKeep(g, S, r, state, col); return g; }
   if (state === 'down' && kind !== 'gate') rubble(g, S, r);
   else if (kind === 'tower') { siegeWall(g, S, r, 'ok'); siegeTower(g, S, r); }
   else if (kind === 'gate') siegeGate(g, S, r, state);

@@ -43,7 +43,7 @@ test('mury miasta stoją na polu bitwy (oblężenie), bez dodatkowej premii do o
     }
     return out;
   });
-  assert.deepEqual(r, [[0, 0, 0], [0, 9, 0], [0, 9, 1], [0, 9, 2]]);
+  assert.deepEqual(r, [[0, 0, 0], [0, 9, 0], [0, 10, 2], [0, 10, 3]]);
 });
 
 test('wejście do niezależnego miasta: okno oblężenia, wygrana, zdobycie i wejście do miasta', async () => {

@@ -498,7 +498,7 @@ G.screens.battle = {
   },
   rightInfo(x, y) {
     [x, y] = this.toField(x, y); const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y), w = hx && wallAt(this.B, hx.x, hx.y);
-    if (w && !u) return w.hp <= 0 ? `${w.kind === 'gate' ? 'Rozbita brama' : 'Wyłom w murze'}: można tędy przejść.` : w.kind === 'gate' ? `Brama miasta (wytrzymałość ${w.hp}/${w.max}): przepuszcza tylko obrońców. Rozbija ją katapulta.` : `Mur miasta (wytrzymałość ${w.hp}/${w.max}). Strzały zza muru tracą połowę siły; katapulta robi wyłomy.`;
+    if (w && !u) return w.hp <= 0 ? `${w.kind === 'gate' ? 'Rozbita brama' : w.kind === 'keep' ? 'Gruzy wieży głównej' : 'Wyłom w murze'}: można tędy przejść.` : w.kind === 'keep' ? `Wieża główna (wytrzymałość ${w.hp}/${w.max}): jej łucznicy strzelają co rundę za dwie wieże. Burzy ją katapulta.` : w.kind === 'gate' ? `Brama miasta (wytrzymałość ${w.hp}/${w.max}): przepuszcza tylko obrońców. Rozbija ją katapulta.` : `Mur miasta (wytrzymałość ${w.hp}/${w.max}). Strzały zza muru tracą połowę siły; katapulta robi wyłomy.`;
     if (!u) return null;
     const c = CREATURES[u.cid];
     const ab = abilText(c);
@@ -545,19 +545,26 @@ G.screens.battle = {
       const p = this.preview, pulse = 0.6 + 0.4 * Math.sin(G.time * 5); ctx.lineWidth = 3;
       for (const w of catapultTargets(B)) { const on = p && p.kind === 'siege' && p.x === w.x && p.y === w.y; ctx.strokeStyle = on ? '#ff5a3a' : `rgba(255,217,112,${0.5 * pulse})`; hexPath(ctx, w.x, w.y, 4); ctx.stroke(); if (on) { ctx.fillStyle = 'rgba(255,100,60,.22)'; ctx.fill(); } }
     }
-    for (const u of [...shown, ...obst].sort((a, b) => a.py - b.py)) {
-      if (u.obst) { drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
-      const L = this.unitLook(u), tp = u.cid === 'arrowTower' ? towerPost() : null, gx = tp ? wallWX(u.y) + tp[0] : u.px + L.ox, gy = tp ? u.py + tp[1] : u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
-      const us = u.cid === 'arrowTower' ? 1 : UNIT_SCALE; // jednostki nieco większe niż heks (lepiej widać szczegóły)
-      if (u.cid !== 'arrowTower') { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15 * sz * us, 5 * sz * us, 0, 0, TAU); ctx.fill(); }
-      ctx.save();
+    const keep = B.walls && [...B.walls.values()].find(w => w.kind === 'keep'), A3 = keep && siegeArt(B.sides[1].town.faction), keepO = A3 ? [{ keepW: keep, py: hexCenter(keep.x, keep.y)[1] - 0.5 }] : []; // wieża główna zasłania i jest zasłaniana jak oddziały
+    const drawUnit = (u, ghost) => { // ghost: oddział za wieżą główną, prześwituje przez nią
+      const L = this.unitLook(u), tp = u.cid === 'arrowTower' ? (u.keep ? keepPost() : towerPost()) : null, gx = tp ? (u.keep ? u.px : wallWX(u.y)) + tp[0] : u.px + L.ox, gy = tp ? u.py + tp[1] : u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
+      const us = u.cid === 'arrowTower' ? UNIT_SCALE * 0.9 : UNIT_SCALE; // jednostki nieco większe niż heks (lepiej widać szczegóły); łucznik na wieży trochę mniejszy
+      if (u.cid !== 'arrowTower' && !ghost) { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15 * sz * us, 5 * sz * us, 0, 0, TAU); ctx.fill(); }
+      ctx.save(); if (ghost) ctx.globalAlpha = 0.45;
       if (u.dead && u.dieT != null) { const f = clamp((G.time - u.dieT) / 0.45, 0, 1); ctx.translate(gx, gy); ctx.rotate(-(u.side === 0 ? 1 : -1) * ease(f) * Math.PI / 2 * 0.9); ctx.globalAlpha = 1 - f * 0.4; ctx.translate(-gx, -gy); }
       drawSprite(ctx, L.s, gx, gy - lift - (L.hop || 0), us);
       if (L.flash) { ctx.globalAlpha = 0.85; drawSprite(ctx, tintSprite(L.s, '#ffffff'), gx, gy - lift, us); }
       ctx.restore();
+    };
+    const kx = keepO.length ? hexCenter(keep.x, keep.y)[0] + KEEP_DX : 0, hidden = keepO.length && keep.hp > 0 ? shown.filter(v => !v.dead && !v.keep && v.py < keepO[0].py && v.py > keepO[0].py - 200 && Math.abs(v.px - kx) < 62) : [];
+    for (const u of [...shown, ...obst, ...keepO].sort((a, b) => a.py - b.py)) {
+      if (u.keepW) { drawKeep3D(ctx, A3, u.keepW); continue; }
+      if (u.obst) { drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
+      drawUnit(u);
     }
+    for (const u of hidden) drawUnit(u, true);
     for (const u of shown) if (!u.dead) { // liczebność nad wszystkim, także nad murami
-      const bx = u.cid === 'arrowTower' ? wallWX(u.y) + 70 : u.px + (u.side === 0 ? 8 : -34), by = Math.min(u.py + 18, Math.min(486, (L.fieldBottom - L.fy) / L.fs - 4) - (CREATURES[u.cid].shots && !endlessShots(u) ? 25 : 15)), s = String(u.n); // dolny rząd: licznik nad panelem
+      const bx = u.cid === 'arrowTower' && !u.keep ? wallWX(u.y) + 70 : u.px + (u.side === 0 ? 8 : -34), by = Math.min(u.py + 18, Math.min(486, (L.fieldBottom - L.fy) / L.fs - 4) - (CREATURES[u.cid].shots && !endlessShots(u) ? 25 : 15)), s = String(u.n); // dolny rząd: licznik nad panelem
       ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(bx + 1, by + 1, 27, 15);
       ctx.fillStyle = u.side === 0 ? col : B.sides[1].owner >= 0 ? ownerColor(st, B.sides[1].owner) : '#5a5448'; ctx.fillRect(bx, by, 26, 14); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx, by, 26, 4);
       ctx.strokeStyle = '#e0b24a'; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, 25, 13);
@@ -594,7 +601,7 @@ G.screens.battle = {
     if (this.touchKey && pv && G.mouse.type !== 'mouse') tip += ' Stuknij jeszcze raz, aby wykonać.';
     else if (pv && pv.kind === 'heal') tip = `Namiot medyka: wyleczy ${CREATURES[pv.target.cid].plural.toLowerCase()} o 1–${Math.min(pv.most, CREATURES[pv.target.cid].hp - pv.target.hp)} życia.`;
     else if (this.phase === 'input' && u0 && u0.cid === 'firstAid') tip = 'Namiot medyka: wskaż rannego oddział do leczenia (Obrona = pomiń).';
-    else if (pv && pv.kind === 'siege') tip = `Katapulta: ${pv.w.kind === 'gate' ? 'brama' : pv.w.kind === 'tower' ? 'wieża strzelnicza' : 'mur'} (wytrzymałość ${pv.w.hp}/${pv.w.max}), trafienie ${pv.chance}%${pv.shots > 1 ? ', dwa strzały' : ''}. Kliknij, aby strzelić.`;
+    else if (pv && pv.kind === 'siege') tip = `Katapulta: ${pv.w.kind === 'gate' ? 'brama' : pv.w.kind === 'tower' ? 'wieża strzelnicza' : pv.w.kind === 'keep' ? 'wieża główna' : 'mur'} (wytrzymałość ${pv.w.hp}/${pv.w.max}), trafienie ${pv.chance}%${pv.shots > 1 ? ', dwa strzały' : ''}. Kliknij, aby strzelić.`;
     else if (this.phase === 'input' && u0 && u0.cid === 'catapult') tip = 'Katapulta: wskaż fragment muru, bramę albo wieżę (zburzona wieża milknie).';
     else if (this.phase === 'input' && u0 && u0.cid === 'ballista') tip = `Balista (${CREATURES.ballista.name}): wskaż cel strzału.`;
     // panel: kolejka ruchów (jak w Heroes 3 HD), pod nią podpowiedź i ostatnie wpisy dziennika
