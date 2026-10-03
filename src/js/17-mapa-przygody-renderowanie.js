@@ -412,15 +412,11 @@ const MapRender = {
       if (!todo.length) { this.warmed = true; return; }
       todo.sort((a, b) => a[2] - b[2]);
       const end = performance.now() + (dl && dl.timeRemaining ? Math.max(6, dl.timeRemaining() - 2) : 6), vis = Math.hypot(viewW(), viewH()) / CP / 2 + 1;
-      // tyle kawałków, ile zmieści się w wolnym czasie (wg średniego czasu jednego), ale co najmniej jeden
+      // porcjami, najwyżej do końca wolnego czasu (kawałek dokończy się w następnych chwilach); w widoku do tego czasu stoi zastępczy kawałek
       for (const [cx, cy, d] of todo) {
-        if (d >= vis) { // poza widokiem: porcjami, najwyżej do końca wolnego czasu (kawałek dokończy się w następnych chwilach)
-          const key = cx + ',' + cy; if (!this.job || this.job.key !== key || this.job.map !== this.map) this.job = { key, map: this.map, it: renderChunkSteps(this.map, cx, cy) };
-          let r; do r = this.job.it.next(); while (!r.done && performance.now() < end);
-          if (!r.done) break; this.job = null; this.store(key, r.value); if (performance.now() >= end) break; continue;
-        }
-        const t0 = performance.now(); this.get(cx, cy); const dt = performance.now() - t0; this.avgGen = this.avgGen ? this.avgGen * 0.8 + dt * 0.2 : dt;
-        if (d < vis) G.dirty = true; if (performance.now() + this.avgGen > end) break;
+        const key = cx + ',' + cy; if (!this.job || this.job.key !== key || this.job.map !== this.map) this.job = { key, map: this.map, it: renderChunkSteps(this.map, cx, cy) };
+        let r; do r = this.job.it.next(); while (!r.done && performance.now() < end);
+        if (!r.done) break; this.job = null; this.store(key, r.value); if (d < vis) G.dirty = true; if (performance.now() >= end) break;
       }
       this.warm(G.state);
     });
