@@ -30,7 +30,8 @@ G.screens.town = {
       this.say(g ? `${g.name} dowodzi garnizonem: brama jest wolna` : 'Bohater wychodzi do bramy'); this.guildVisit(); },
       { icon: Object.assign((ctx, cx, cy, col) => { iconArrow(-1)(ctx, cx, cy - 6, col); iconArrow(1)(ctx, cx, cy + 6, col); }, { k3: 'ic_swap' }), key: 'z',
         tip: 'Zamień: bohater z bramy wchodzi do garnizonu (przejmuje jego wojsko), a bohater z garnizonu wychodzi do bramy. Brama wolna = można nająć nowego bohatera (klawisz Z).' });
-    this.buttons = this.baseButtons;
+    this.bGar = new Button(724, 448, 64, 40, 'Armia', () => { this.garOpen = !this.garOpen; }, { key: 'a', size: 14, selected: () => !!this.garOpen, tip: 'Garnizon i armia bohatera w bramie (na małym ekranie wysuwane nad scenę; klawisz A).' });
+    this.buttons = this.baseButtons; this.R = null;
   },
   showShipyard() {
     const st = G.state, t = this.town();
@@ -169,9 +170,46 @@ G.screens.town = {
     const next = slotNext(t, i); if (next) return buildTip(t, next);
     return null;
   },
+  // Układ (jednostki interfejsu): trzy obszary rysowane w dawnych współrzędnych miasta, każdy z własną skalą i przesunięciem:
+  // A – scena (592×436), B – garnizon i brama (592×124, od y = 436), C – panel budowy (208 × wysokość okna bez paska surowców).
+  // Panel i garnizon mają pełną wielkość interfejsu (lista budowli rośnie z wysokością), scena wypełnia resztę okna.
+  // Niskie okno (telefon): garnizon to szuflada nad dołem sceny (przycisk Armia). Przy 800×600 wszystko leży jak dawniej.
+  ui: true,
+  lay() {
+    const key = VW + 'x' + VH + (this.garOpen ? 'g' : ''); if (this.R && this.R.key === key) return this.R;
+    const compact = VH < 560, Hc = VH - 40, aw = VW - 208, ah = compact ? Hc : Hc - 124, s = Math.min(aw / 592, ah / 436), bx = Math.max(0, Math.round((aw - 592) / 2));
+    const A = { lx: 0, ly: 0, lw: 592, lh: 436, s, sx: Math.round((aw - 592 * s) / 2), sy: Math.round((ah - 436 * s) / 2) };
+    const B = !compact || this.garOpen ? { lx: 0, ly: 436, lw: 592, lh: 124, s: 1, sx: bx, sy: Hc - 124 } : null;
+    const C = { lx: 592, ly: 0, lw: 208, lh: Hc, s: 1, sx: VW - 208, sy: 0 };
+    const N = this.LIST_ROWS = clamp(Math.floor((Hc - 260) / 50), 1, 14);
+    // przyciski panelu: lista budowli, pod nią przewijanie, werbunek (i łódź), a na dole podział, karawana i mapa
+    const [rec, map, car, div] = this.baseButtons; rec.y = this.bRecruitHalf.y = this.bShip.y = this.bGar.y = Hc - 112; map.y = car.y = div.y = Hc - 64;
+    this.btnUp.y = this.btnDown.y = 88 + N * 50 + 4;
+    if (compact) { rec.w = 124; this.bGar.x = 724; this.bGar.w = 64; this.bRecruitHalf.w = this.bShip.w = 62; this.bShip.x = 660; }
+    else { rec.w = 192; this.bRecruitHalf.w = this.bShip.w = 94; this.bShip.x = 694; }
+    return this.R = { key, compact, A, B, C, Hc, N };
+  },
+  // Punkt okna (jednostki interfejsu) → dawne współrzędne obszaru pod nim (przyciski i obsługa kliknięć zostają w dawnych)
+  mapPoint(x, y) {
+    const R = this.lay(); if (y >= VH - 36) return [x, y - (VH - H)]; // pasek surowców (dawne y 569–596)
+    for (const r of [R.C, R.B, R.A]) if (r && x >= r.sx && y >= r.sy && x < r.sx + r.lw * r.s && y < r.sy + r.lh * r.s) return [(x - r.sx) / r.s + r.lx, (y - r.sy) / r.s + r.ly];
+    return [-1000, -1000];
+  },
   draw(ctx) {
-    const st = G.state, t = this.town(), fac = t.faction, col = ownerColor(st, t.owner);
-    drawLayer(ctx, Layers.get(`townChrome_${uiArtReady() ? 1 : 0}`, W, H, paintTownChrome), 0, 0);
+    const R = this.lay(), st = G.state;
+    drawLayer(ctx, Layers.get(`townBackUI_${VW}x${VH}`, VW, VH, c => { stoneFill(c, 0, 0, VW, VH); insetBox(c, 8, VH - 31, VW - 16, 27, 7); }), 0, 0);
+    for (const [P, r] of [['A', R.A], ['B', R.B], ['C', R.C]]) {
+      if (!r) continue; ctx.save(); ctx.translate(r.sx, r.sy); ctx.scale(r.s, r.s); ctx.translate(-r.lx, -r.ly); ctx.beginPath(); ctx.rect(r.lx, r.ly, r.lw, r.lh); ctx.clip();
+      this.pass = P; this.drawArea(ctx, R, P); ctx.restore();
+    }
+    drawResourceBar(ctx, st, VH - H, VW);
+  },
+  drawArea(ctx, R, P) { // P: obszar A (scena), B (garnizon) albo C (panel)
+    const st = G.state, t = this.town(), fac = t.faction, col = ownerColor(st, t.owner), art = uiArtReady() ? 1 : 0;
+    if (P === 'A') drawLayer(ctx, Layers.get(`townA_${art}`, 592, 436, c => goldFrame(c, 8, 8, 576, 422), G.rs * R.A.s), 0, 0);
+    if (P === 'B') { if (R.compact) { ctx.fillStyle = 'rgba(14,9,4,.9)'; ctx.fillRect(4, 436, 584, 124); } drawLayer(ctx, Layers.get(`townB_${art}`, 592, 124, c => { c.translate(0, -436); insetBox(c, 12, 440, 568, 112); }), 0, 436); }
+    if (P === 'C') drawLayer(ctx, Layers.get(`townC_${art}_${R.Hc}`, 208, R.Hc, c => { c.translate(-592, 0); paintPanelAt(c, 592, 12, 200, R.Hc - 32); }), 592, 0);
+    if (P === 'A') {
     const key = `tw_${fac}_${townLayout(t).seed}_${[...t.built].sort().join('.')}_${col}_${townScene3D(fac) ? 3 : 2}`; // 3D wczytane czy jeszcze nie
     if (lastTownKey && lastTownKey !== key) { delete Layers.cache[lastTownKey]; delete TownFXCache[lastTownKey]; }
     lastTownKey = key;
@@ -197,20 +235,25 @@ G.screens.town = {
       if (label) { ctx.font = font(15, 700, 'title'); const w = ctx.measureText(label).width + 20, x = clamp(s.x + s.w / 2 - w / 2, 12, 580 - w), y = Math.max(14, s.b - s.h - 30);
         ctx.fillStyle = 'rgba(12,8,3,.82)'; rr(ctx, x, y, w, 22, 3); ctx.fill(); text(ctx, label, x + w / 2, y + 11, { size: 15, align: 'center', color: '#f3e2b0', fam: 'title' }); }
     }
+    }
     // garnizon i armia bohatera stojącego w mieście
     // u góry garnizon (z bohaterem w murach: jego armia), u dołu bohater w bramie; między nimi przycisk zamiany jak w Heroes 3
     const hh = heroInTown(st, t), gh = garrisonHero(st, t), gar = gh ? gh.army : t.garrison, selOf = a => (this.sel && this.sel.a === a ? this.sel.i : -1);
+    if (P === 'B') {
     if (gh) drawHeroPortrait(ctx, 38, 449, gh, ownerColor(st, gh.owner)); else text(ctx, 'Garnizon', 56, 471, { size: 15, align: 'center', color: PIXEL_ART ? '#f0e4c0' : UI.goldHi, fam: 'title' });
     this.garRects = drawArmyRow(ctx, gar, 100, 446, { sel: selOf(gar), w: 58 });
     if (hh) { drawHeroPortrait(ctx, 38, 505, hh, ownerColor(st, hh.owner)); this.heroRects = drawArmyRow(ctx, hh.army, 100, 498, { sel: selOf(hh.army), w: 58 }); }
     else { this.heroRects = []; text(ctx, gh ? 'Brama wolna: możesz nająć bohatera w tawernie.' : 'Brak bohatera w mieście. Wejdź bohaterem, aby przekazać mu wojsko.', 321, 523, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(240,228,192,.55)' }); }
+    } else if (!R.B) { this.garRects = []; this.heroRects = []; } // szuflada zamknięta: miejsc armii nie ma pod kursorem
     this.bSwap.disabled = !hh && !gh; this.bGiveUp.disabled = this.bGiveDown.disabled = !hh;
     if (this.sel && !this.sel.a[this.sel.i]) this.sel = null;
     const rb = this.baseButtons[0]; rb.disabled = !dwellingLevels(t).length;
     rb.tip = rb.disabled ? 'Najpierw zbuduj siedlisko jednostek (np. z listy budowli po prawej).' : 'Werbunek jednostek ze wszystkich siedlisk miasta (klawisz R).';
+    if (P === 'C') {
     text(ctx, t.name, 692, 34, { size: 20, align: 'center', color: PIXEL_ART ? '#f3e2b0' : UI.goldHi, fam: 'title' });
     text(ctx, `${factionOf(fac).name}, ${townGold(t)} złota dziennie`, 692, 54, { size: 15, weight: 600, align: 'center', color: UI.txt2 });
     text(ctx, t.builtToday ? 'Budowa: wykorzystana dziś' : 'Budowa: dostępna', 692, 72, { size: 15, weight: 600, align: 'center', color: t.builtToday ? '#e0a070' : UI.good });
+    }
     // lista budowania: dostępne, a pod nimi zablokowane (szare, z kłódką i brakującymi budowlami); najechanie wskazuje w scenie,
     // gdzie stanie budowla (złota ramka) i co trzeba postawić wcześniej (czerwone ramki)
     const list = buildList(t, st), N = this.LIST_ROWS; this.rows = [];
@@ -220,6 +263,7 @@ G.screens.town = {
       const y = 88 + i * 50, afford = !locked && canAfford(st, B.cost) && !t.builtToday, info = bInfo(B, fac);
       const row = { B, locked, miss, x: 596, y, w: 192, h: 46 }; this.rows.push(row);
       const hot = !G.modal && G.mouse.x >= 596 && G.mouse.x <= 788 && G.mouse.y >= y && G.mouse.y <= y + 46; if (hot) hotRow = row;
+      if (P !== 'C') return; // pozostałe obszary: tylko wiersze i podświetlenie (ramki w scenie)
       if (PIXEL_ART) { ctx.fillStyle = hot ? 'rgba(210,160,60,.3)' : locked ? 'rgba(0,0,0,.5)' : 'rgba(0,0,0,.3)'; rr(ctx, 596, y, 192, 46, 3); ctx.fill(); ctx.strokeStyle = afford ? '#b8913f' : locked ? '#4a3e2a' : '#6a5a3a'; ctx.lineWidth = 1.2; ctx.stroke(); }
       else slotBox(ctx, 598, y, 188, 46, hot ? 'hover' : locked ? 'off' : '');
       ctx.font = font(14, 700, 'title'); let fs = 14; const maxW = locked ? 160 : 180; while (fs > 10 && ctx.measureText(info.name).width > maxW) { fs--; ctx.font = font(fs, 700, 'title'); }
@@ -229,22 +273,21 @@ G.screens.town = {
       ctx.font = font(13, 600, 'body'); let req = `Wymaga: ${reqNames(miss, fac)}`; if (ctx.measureText(req).width > 178) { while (req.length > 10 && ctx.measureText(req + '…').width > 178) req = req.slice(0, -1); req += '…'; }
       text(ctx, req, 604, y + 33, { size: 13, weight: 600, color: '#d08a6a' });
     });
-    if (hotRow) { // ramki w scenie miasta
+    if (hotRow && P === 'A') { // ramki w scenie miasta
       const RR = (TownFXCache[lastTownKey] || {}).rects || {}, mark = (slot, col) => { const r = RR[slot]; if (!r) return; ctx.save(); ctx.setLineDash([5, 3]); ctx.strokeStyle = col; ctx.lineWidth = 2; rr(ctx, r.x - 2, r.y - 4, r.w + 4, r.h + 8, 5); ctx.stroke(); ctx.restore(); };
       for (const id of hotRow.miss || []) mark(BUILD_BY_ID[id].slot, 'rgba(240,110,80,.9)');
       mark(hotRow.B.slot, 'rgba(255,232,154,.95)');
     }
-    if (!list.length) text(ctx, 'Wszystko zbudowane', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
+    if (!list.length && P === 'C') text(ctx, 'Wszystko zbudowane', 692, 120, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const paged = list.length > N;
     const base = hasB(t, 'shipyard') ? [this.bRecruitHalf, this.bShip, ...this.baseButtons.slice(1)] : this.baseButtons; // ze stocznią: werbunek i łódź obok siebie
-    this.buttons = [...(paged ? [...base, this.btnUp, this.btnDown] : base), this.bSwap, this.bGiveUp, this.bGiveDown];
-    if (paged) {
+    this.buttons = [...(paged ? [...base, this.btnUp, this.btnDown] : base), ...(R.compact ? [this.bGar] : []), ...(R.B ? [this.bSwap, this.bGiveUp, this.bGiveDown] : [])];
+    if (paged && P === 'C') {
       this.btnUp.disabled = this.scroll === 0; this.btnDown.disabled = this.scroll >= list.length - N;
-      text(ctx, `${this.scroll + 1}–${Math.min(list.length, this.scroll + N)} z ${list.length}`, 692, 406, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
+      text(ctx, `${this.scroll + 1}–${Math.min(list.length, this.scroll + N)} z ${list.length}`, 692, this.btnUp.y + 14, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     }
-    this.buttons.forEach(b => b.draw(ctx));
-    if (this.msg && G.time - this.msgT < 2.4) { ctx.fillStyle = 'rgba(12,8,3,.8)'; rr(ctx, 160, 398, 272, 26, 4); ctx.fill(); text(ctx, this.msg, 296, 411, { size: 15, align: 'center', color: '#ffd98a', fam: 'title' }); }
-    drawResourceBar(ctx, st);
+    this.buttons.forEach(b => { if ((b.x < 592) === (P === 'B')) b.draw(ctx); });
+    if (P === 'A' && this.msg && G.time - this.msgT < 2.4) { ctx.fillStyle = 'rgba(12,8,3,.8)'; rr(ctx, 160, 398, 272, 26, 4); ctx.fill(); text(ctx, this.msg, 296, 411, { size: 15, align: 'center', color: '#ffd98a', fam: 'title' }); }
   },
 };
 // Opis budowli w mieście: wymagania (także pośrednie) i co odblokowuje
@@ -258,14 +301,6 @@ function padlock(ctx, cx, cy, col) {
   ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(cx, cy - 2, 3.5, Math.PI, 0); ctx.stroke();
   ctx.fillStyle = col; ctx.fillRect(cx - 5, cy - 2, 10, 8); ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(cx - 1, cy + 1, 2, 3); ctx.restore();
 }
-function paintTownChrome(c) {
-  stoneFill(c, 0, 0, W, H);
-  goldFrame(c, 8, 8, 576, 422);
-  if (PIXEL_ART) { c.fillStyle = 'rgba(0,0,0,.45)'; rr(c, 12, 440, 568, 112, 4); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1.2; c.stroke(); rr(c, 592, 12, 200, 528, 4); c.fill(); c.stroke(); }
-  else { insetBox(c, 12, 440, 568, 112); paintPanelAt(c, 592, 12, 200, 528); }
-  insetBox(c, 8, 569, 784, 27, 7);
-}
-
 // --- gildia magów: wnętrze w stylu frakcji, okno z żywym widokiem na miasto, półki z czarami poziomów 1–5 (na górze 5) ---
 // Zbudowane poziomy mają zwoje (klik: opis w ramce pod oknem, prawy przycisk: dymek), niezbudowane stoją puste z wymaganiem.
 const GUILD_LOOK = { // kształt okna, materiał półek i kolor krawędzi, drobiazgi przy oknie
@@ -398,7 +433,7 @@ function showCaravan(st, t, say) {
   const send = new Button(x + 24, y + h - 56, 170, 38, 'Wyślij', () => { const e = sendCaravan(st, t, dest, [...sel]); if (e) return say(e); G.modal = null; const c = st.caravans[st.caravans.length - 1], dd = c.arrive - c.start; say(`Karawana wyrusza do miasta ${dest.name} (${dd} ${dd === 1 ? 'dzień' : 'dni'})`); }, { key: 'enter', size: 16 });
   const destBtns = own.slice(0, 6).map((d, i, _, dd = caravanDays(t, d, st)) => new Button(x + 24 + (i % 3) * 166, y + 176 + Math.floor(i / 3) * 50, 158, 42, d.name, () => { dest = d; },
     { size: 14, sub: `${dd} ${dd === 1 ? 'dzień' : 'dni'} drogi`, selected: () => dest === d, tip: `Karawana do miasta ${d.name}.` }));
-  G.modal = {
+  G.modal = { box: { x, y, w, h },
     caravan: true, buttons: [send, cancel, ...destBtns],
     onClick(px, py) { const r = hitRect(rects, px, py); if (r && caravanSrc(st, t)[r.i]) { if (sel.has(r.i)) sel.delete(r.i); else sel.add(r.i); } },
     pick(i) { sel.add(i); }, choose(d) { dest = d; }, // do testów

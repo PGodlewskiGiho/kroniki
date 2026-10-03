@@ -432,13 +432,18 @@ const MapRender = {
 };
 const VIEW = { x: 8, y: 8, w: 576, h: 552 }, MINI = { x: 624, y: 24, s: 144 };
 const LIST = { x: 600, y: 262, w: 196, h: 186 }, INFOBOX = { x: 600, y: 456, w: 196, h: 108 };
-// Układ mapy przygody zależy od rozmiaru okna (VW×VH): mapa zajmuje wszystko poza panelem po prawej,
+// Układ mapy przygody (jednostki interfejsu) zależy od rozmiaru okna (VW×VH): mapa zajmuje wszystko poza panelem po prawej,
 // panel i pasek surowców trzymają się prawej i dolnej krawędzi, a lista bohaterów i miast rośnie z wysokością.
+// Niskie okno (telefon poziomo): panel kompaktowy – mniejsza minimapa, bez okienka wieści (komunikaty jako pasek na mapie).
 const LIST_ROW_H = 48; let LIST_ROWS = 3;
+const PANEL = { by1: 176, by2: 212, compact: false }; // rzędy przycisków panelu
 function layoutAdventure() {
-  const dx = VW - W, dy = VH - H;
-  VIEW.w = 576 + dx; VIEW.h = 552 + dy; MINI.x = 624 + dx;
-  LIST.x = 600 + dx; LIST.h = 186 + dy; INFOBOX.x = 600 + dx; INFOBOX.y = 456 + dy;
+  const compact = PANEL.compact = VH < 560, px = VW - 200;
+  VIEW.w = px - 24; VIEW.h = VH - 48;
+  MINI.s = compact ? 112 : 144; MINI.y = compact ? 14 : 24; MINI.x = px + (compact ? 42 : 24);
+  PANEL.by1 = MINI.y + MINI.s + 8; PANEL.by2 = PANEL.by1 + 36;
+  LIST.x = INFOBOX.x = px; LIST.y = PANEL.by2 + 50;
+  INFOBOX.h = compact ? 0 : 108; INFOBOX.y = compact ? VH : VH - 144; LIST.h = (compact ? VH - 39 : INFOBOX.y - 8) - LIST.y;
   LIST_ROWS = Math.floor((LIST.h - 28) / LIST_ROW_H); // nad wierszami pasek zakładek (bohaterowie / miasta)
 }
 // Przybliżenie mapy (kółko myszy): ZOOM > 1 powiększa. viewW/viewH = ile pikseli świata mieści widok.

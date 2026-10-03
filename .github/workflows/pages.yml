@@ -32,9 +32,15 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # build.js wbudowuje bibliotekę PeerJS (gra online) z node_modules
+      - run: npm ci
       # gra to jeden plik; na stronie ma być pod adresem głównym, więc kopiujemy go jako index.html
       - run: node build.js --check
-      - run: mkdir _site && cp "Kroniki Królestw.html" _site/index.html
+      - run: mkdir _site && cp "Kroniki Królestw.html" _site/index.html && cp web/* _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

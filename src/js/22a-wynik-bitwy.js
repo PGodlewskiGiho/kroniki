@@ -65,7 +65,7 @@ function showBattleReport(st, res, R, onOk) {
     if (list.length > 8) text(ctx, `+${list.length - 8}`, x + 190 + 8 * 50, ry + 30, { size: 14, color: '#3a1e08' });
   };
   const winnerMe = R.kind === 'win';
-  G.modal = {
+  G.modal = { box: { x, y, w, h },
     msg: `${R.title} ${R.body}`, buttons: [ok], report: R, locked: true,
     draw(ctx) {
       dimScreen(ctx, 0.45); drawParchment(ctx, x, y, w, h); const t = G.time - t0;

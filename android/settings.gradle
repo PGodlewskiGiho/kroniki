@@ -1,0 +1,5 @@
+// Aplikacja Kroniki Królestw na Androida: WebView z grą (jeden plik HTML) w zasobach. Budowa: .github/workflows/android.yml
+pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+rootProject.name = 'Kroniki'
+include ':app'

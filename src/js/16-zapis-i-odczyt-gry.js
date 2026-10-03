@@ -131,6 +131,7 @@ function exportGameFile(st) {
   const rec = { kroniki: 1, meta: saveMeta(st), game: serializeGame(st) }, m = rec.meta;
   const slug = t => (t || '').toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); // nazwa pliku tylko z ASCII: polskie litery bywają gubione
   const name = `kroniki-${slug(m.hero) || 'gra'}-${slug(m.date)}.json`;
+  if (window.KronikiApp && KronikiApp.saveFile) { KronikiApp.saveFile(name, JSON.stringify(rec)); return name; } // aplikacja na Androida: plik do Pobranych
   // adres data: (nie blob:), bo przy grze otwartej z dysku (file://) przeglądarka ignoruje nazwę pliku dla blob:
   const a = document.createElement('a'); a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(rec)); a.download = name;
   document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000); return name;

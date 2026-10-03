@@ -1,0 +1,36 @@
+plugins { id 'com.android.application' }
+// Podpis: klucz z sekretu ANDROID_KEYSTORE_B64 (ten sam przy każdej wersji, więc aktualizacja instaluje się na poprzedniej);
+// bez sekretu – klucz debug (workflow trzyma go w pamięci podręcznej).
+def ks = System.getenv('KRONIKI_KEYSTORE')
+android {
+    namespace 'pl.kroniki.krolestw'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'pl.kroniki.krolestw'
+        minSdk 24
+        targetSdk 34
+        versionCode((project.findProperty('versionCode') ?: '1') as int)
+        versionName project.findProperty('versionName') ?: '1.1'
+    }
+    signingConfigs {
+        kroniki {
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('KRONIKI_KEYSTORE_PASS')
+                keyAlias System.getenv('KRONIKI_KEY_ALIAS') ?: 'kroniki'
+                keyPassword System.getenv('KRONIKI_KEYSTORE_PASS')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig ks ? signingConfigs.kroniki : signingConfigs.debug
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+dependencies { implementation 'androidx.webkit:webkit:1.11.0' }

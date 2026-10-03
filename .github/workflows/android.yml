@@ -1,0 +1,60 @@
+# Aplikacja na Androida (APK): WebView z grą w środku. Po każdej zmianie gry w main nowe wydanie „android”
+# z plikiem kroniki-krolestw.apk (stały adres: releases/latest/download/kroniki-krolestw.apk).
+# Podpis: sekrety ANDROID_KEYSTORE_B64 (keystore w base64) i ANDROID_KEYSTORE_PASS; bez nich klucz debug z pamięci podręcznej.
+name: Aplikacja Android (APK)
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['src/**', 'android/**', 'web/**', 'build.js', 'package*.json', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node build.js --check
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Klucz debug z pamięci podręcznej (gdy nie ma sekretu)
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-v1
+      - name: Gra do zasobów aplikacji
+        run: mkdir -p android/app/src/main/assets && cp "Kroniki Królestw.html" android/app/src/main/assets/index.html
+      - name: Budowa APK
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KRONIKI_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+        run: |
+          if [ -n "$KS_B64" ]; then echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/kroniki.keystore"; export KRONIKI_KEYSTORE="$RUNNER_TEMP/kroniki.keystore"; fi
+          gradle -p android assembleRelease --no-daemon -PversionCode=${{ github.run_number }} -PversionName="1.1.${{ github.run_number }}"
+          cp android/app/build/outputs/apk/release/app-release.apk kroniki-krolestw.apk
+          ls -la kroniki-krolestw.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kroniki-krolestw-apk
+          path: kroniki-krolestw.apk
+      - name: Wydanie do pobrania (tylko main)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android --yes --cleanup-tag || true
+          gh release create android kroniki-krolestw.apk --title "Kroniki Królestw na Androida" --latest \
+            --notes "Aplikacja na Androida (wersja 1.1.${{ github.run_number }}). Pobierz kroniki-krolestw.apk na telefonie i otwórz; telefon zapyta o zgodę na instalację z tego źródła. Gra działa bez internetu (poza grą online)."

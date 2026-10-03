@@ -122,16 +122,16 @@ function drawLoadingScreen(ctx) {
   const { done, total } = artProgress(), f = total ? done / total : 1, t = G.time; G.dirty = true;
   viewportDraw(ctx, c => { const g = c.createRadialGradient(VW / 2, VH * 0.55, 0, VW / 2, VH * 0.55, Math.max(VW, VH) * 0.75); g.addColorStop(0, '#3a2a1a'); g.addColorStop(0.6, '#1a120b'); g.addColorStop(1, '#070504'); c.fillStyle = g; c.fillRect(0, 0, VW, VH);
     for (let i = 0; i < 40; i++) { const x = (i * 197.3 + t * (8 + i % 5 * 3)) % VW, y = VH - ((i * 131.7 + t * (14 + i % 7 * 4)) % VH), a = 0.15 + 0.25 * Math.sin(t * 2 + i); c.fillStyle = `rgba(255,${170 + i % 4 * 15},90,${a})`; c.fillRect(x, y, 2, 2); } }); // iskry unoszące się jak nad ogniskiem
-  goldText(ctx, 'KRONIKI KRÓLESTW', W / 2, H * 0.36, 48);
-  text(ctx, 'Czas bohaterów', W / 2, H * 0.36 + 44, { size: 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
-  const bw = 420, bh = 22, bx = W / 2 - bw / 2, by = H * 0.6;
+  goldText(ctx, 'KRONIKI KRÓLESTW', VW / 2, VH * 0.3, 48);
+  text(ctx, 'Czas bohaterów', VW / 2, VH * 0.3 + 44, { size: 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
+  const bw = 420, bh = 22, bx = VW / 2 - bw / 2, by = VH * 0.55;
   ctx.fillStyle = 'rgba(0,0,0,.55)'; rr(ctx, bx - 4, by - 4, bw + 8, bh + 8, 6); ctx.fill(); ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 2; ctx.stroke();
   const fill = ctx.createLinearGradient(bx, 0, bx + bw, 0); fill.addColorStop(0, '#8a5a1a'); fill.addColorStop(1, '#f0c050'); ctx.fillStyle = fill; rr(ctx, bx, by, Math.max(bh, bw * f), bh, 4); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx + 2, by + 2, Math.max(0, bw * f - 4), 5);
   const sx = bx + ((t * 160) % (bw + 60)) - 30; if (sx < bx + bw * f) { ctx.save(); ctx.beginPath(); ctx.rect(bx, by, bw * f, bh); ctx.clip(); ctx.fillStyle = 'rgba(255,240,200,.25)'; ctx.fillRect(sx, by, 26, bh); ctx.restore(); } // połysk
-  text(ctx, `Wczytywanie grafiki… ${Math.round(f * 100)}%`, W / 2, by + bh + 26, { size: 16, weight: 600, align: 'center', color: '#e8d4a0' });
+  text(ctx, `Wczytywanie grafiki… ${Math.round(f * 100)}%`, VW / 2, by + bh + 26, { size: 16, weight: 600, align: 'center', color: '#e8d4a0' });
   ctx.font = font(15, 500, 'body'); const tip = LOADING_TIPS[Math.floor(t / 5) % LOADING_TIPS.length];
-  wrapText(ctx, `Porada: ${tip}`, 560).forEach((l, i) => text(ctx, l, W / 2, by + bh + 66 + i * 20, { size: 15, weight: 500, italic: true, align: 'center', color: 'rgba(240,220,170,.8)' }));
+  wrapText(ctx, `Porada: ${tip}`, Math.min(560, VW - 40)).forEach((l, i) => text(ctx, l, VW / 2, by + bh + 66 + i * 20, { size: 15, weight: 500, italic: true, align: 'center', color: 'rgba(240,220,170,.8)' }));
 }
 function drawMenuScene(ctx) {
   if (!PIXEL_ART && typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART && TOWN_BUILD_ART[MENU_FAC] && !townScene3D(MENU_FAC)) return viewportDraw(ctx, c => { // grafika 3D miasta jeszcze się wczytuje: ciemne tło (nie zapamiętujemy zastępczej sceny 2D)
@@ -173,13 +173,14 @@ function paintMenuScene(pb) {
 }
 function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); dimScreen(ctx, a); }
 function askQuit() {
-  showDialog('Czy na pewno chcesz opuścić grę?', [{ label: 'Tak', key: 'enter', action: () => G.go('bye') }, { label: 'Nie', key: 'escape' }]);
+  showDialog('Czy na pewno chcesz opuścić grę?', [{ label: 'Tak', key: 'enter', action: () => (window.KronikiApp && KronikiApp.exit ? KronikiApp.exit() : G.go('bye')) }, { label: 'Nie', key: 'escape' }]);
 }
 function askToMenu() {
   showDialog('Wrócić do menu głównego? Niezapisane postępy zostaną utracone.', [
     { label: 'Tak', key: 'enter', action: () => G.go('menu') }, { label: 'Nie', key: 'escape' }]);
 }
 G.screens.menu = {
+  ui: true, // jednostki interfejsu: scena na całe okno, tytuł i kolumna przycisków dopasowane do wysokości (telefon: ciaśniej)
   fps: smoothFps, // animowana scena menu w tle: płynnie
   backdrop() {}, // scena menu maluje całe okno
   buttons: [], mode: 'main',
@@ -194,21 +195,28 @@ G.screens.menu = {
       B('Najlepsze wyniki', () => G.go('scores'), { key: 'h' }),
       B('Grafika', () => showGfxSettings(), { key: 'g' }),
       B('Twórcy', () => G.go('credits'), { key: 'c' }),
-      B('Wyjście', () => askQuit(), { key: 'q' }),
+      App.canInstall() ? B('Zainstaluj grę', () => App.install(), { key: 'i', tip: 'Gra jak aplikacja: ikona na ekranie głównym, pełny ekran bez pasków przeglądarki, działa bez internetu.' }) : B('Wyjście', () => askQuit(), { key: 'q' }),
     ];
 
   },
   onBack() { askQuit(); },
   // Ekran ładowania: dopóki grafiki się wczytują (najwyżej 30 s), zamiast menu pasek postępu i porady; przyciski czekają
   loading() { if (this.ready) return false; if (unitArtReady() || G.time > 30) { this.ready = true; if (this._btns) { this.buttons = this._btns; this._btns = null; } return false; } if (this.buttons.length) { this._btns = this.buttons; this.buttons = []; } return true; },
+  // Układ: kolumna przycisków na prawo od środka; w niskim oknie mniejszy tytuł i gęstsze przyciski (7 przycisków mieści się w 440)
+  lay() {
+    const compact = VH < 560, step = compact ? 46 : 50, bh = compact ? 40 : 44, by = compact ? 92 : Math.round(180 + (VH - 600) * 0.3), bx = Math.min(VW - 250, Math.round(VW / 2 + 140));
+    const list = this._btns || this.buttons; list.forEach((b, i) => { b.x = bx; b.y = by + i * step; b.h = bh; });
+    return { compact, bx, by, step, bh, n: list.length };
+  },
   draw(ctx) {
     if (this.loading()) return drawLoadingScreen(ctx);
+    const L = this.lay();
     drawMenuScene(ctx);
-    drawStone(ctx, 520, 164, 260, 378);
+    drawStone(ctx, L.bx - 20, L.by - 16, 260, (L.n - 1) * L.step + L.bh + 34);
     this.buttons.forEach(b => b.draw(ctx));
-    goldText(ctx, 'KRONIKI KRÓLESTW', W / 2, 62, 44);
-    text(ctx, 'Czas bohaterów', W / 2, 104, { size: 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
-    text(ctx, `Kroniki Królestw · wersja ${VERSION}`, 12, H - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
+    goldText(ctx, 'KRONIKI KRÓLESTW', VW / 2, L.compact ? 38 : 62, L.compact ? 36 : 44);
+    text(ctx, 'Czas bohaterów', VW / 2, L.compact ? 70 : 104, { size: L.compact ? 18 : 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
+    text(ctx, `Kroniki Królestw · wersja ${VERSION}`, 12, VH - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
   },
 };
 // Nowa gra: mapa, trudność, bonus i 8 miejsc graczy (człowiek / komputer / wolne, kolor, frakcja).

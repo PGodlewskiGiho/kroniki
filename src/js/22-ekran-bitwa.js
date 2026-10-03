@@ -136,23 +136,42 @@ const spellLandSound = (id, x) => Sfx.play(SPELL_SND[id] ? SPELL_SND[id][1] : 'b
 const UNIT_SCALE = 1.15;
 G.screens.battle = {
   fps: smoothFps, // płynnie także czekając na rozkaz (oddychające jednostki, płomienie)
-  // Szersze okno: pole walki ciągnie się na boki (lustrzane odbicie brzegów tła, lekko przyciemnione)
-  backdrop(ctx) { // gotowy obraz na dany rozmiar okna i teren (kamień, odbite brzegi pola, przyciemnienie): jedna warstwa zamiast pięciu
+  // Układ (jednostki interfejsu): pole walki (heksy w swoich współrzędnych 800×490) skalowane do wolnego miejsca (fs, przesunięcie fx, fy),
+  // pasek górny i panel dowodzenia w pełnej wielkości. Panel pod polem, a w niskim, szerokim oknie (telefon) z boku – wtedy pole jest większe.
+  // Przy 800×600 pole ma skalę 1 i leży jak dawniej (te same współrzędne heksów).
+  ui: true,
+  lay() {
+    const key = VW + 'x' + VH; if (this.L && this.L.key === key) return this.L;
+    const TOP = 44, FH = 446, SW = 300, fsB = Math.min(VW / W, (VH - TOP - 110) / FH), fsS = Math.min((VW - SW) / W, (VH - TOP - 6) / FH), side = fsS > fsB * 1.08;
+    const fs = side ? fsS : fsB, areaW = side ? VW - SW : VW, areaH = (side ? VH : VH - 110) - TOP;
+    const L = this.L = { key, side, fs, areaW, top: TOP, fx: Math.round((areaW - W * fs) / 2), fy: Math.round(TOP + (areaH - FH * fs) / 2 - TOP * fs),
+      panel: side ? { x: VW - SW, y: TOP - 3, w: SW, h: VH - TOP + 3 } : { x: 0, y: VH - 110, w: VW, h: 110 } };
+    L.fieldBottom = side ? VH : VH - 110;
+    // przyciski: pod polem – trzy kolumny przy prawej krawędzi; z boku – dwie kolumny u góry panelu
+    const P = L.panel, place = (b, i, j) => { b.x = side ? P.x + 38 + i * 116 : VW - 330 + i * 108; b.y = side ? P.y + 12 + j * 46 : P.y + 10 + j * 46; b.w = side ? 108 : 100; };
+    if (this.bWait) { if (side) { place(this.bWait, 0, 0); place(this.bDef, 1, 0); place(this.bCast, 0, 1); place(this.bInfo, 1, 1); place(this.bAuto, 0, 2); place(this.bFlee, 1, 2); }
+      else { place(this.bWait, 0, 0); place(this.bDef, 1, 0); place(this.bCast, 2, 0); place(this.bAuto, 0, 1); place(this.bFlee, 1, 1); place(this.bInfo, 2, 1); } }
+    return L;
+  },
+  toField(x, y) { const L = this.lay(); return [(x - L.fx) / L.fs, (y - L.fy) / L.fs]; },
+  // Tło: pole z obrazu bitwy, na boki lustrzane odbicie jego brzegów (przyciemnione), pasek górny i panel dowodzenia (jedna warstwa na rozmiar okna)
+  drawBack(ctx, L) {
     const f = this.B && this.B.walls ? this.B.sides[1].town.faction : '';
-    drawLayer(ctx, Layers.get(`battleBack_${VW}x${VH}_${this.terr}_${f}`, VW, VH, c => {
-      const bg = this.bg(), k = bg.width / W, sw = Math.min(OX, W);
+    drawLayer(ctx, Layers.get(`battleBackUI_${VW}x${VH}_${this.terr}_${f}_${TERRAIN_TEX[TEX_NAME[this.terr || 1]] ? 1 : 0}`, VW, VH, c => {
+      const bg = this.bg(G.rs * L.fs), k = bg.width / W, y0 = 38, fh = PIXEL_ART ? H - 38 : 452, dy = L.fy + y0 * L.fs, dh = fh * L.fs, fw = W * L.fs;
       stoneFill(c, 0, 0, VW, VH);
-      if (sw > 0) {
-        const fh = PIXEL_ART ? H : 490, sh = bg.height * fh / H; // gładko: odbijamy samo pole (bez panelu dowodzenia)
-        c.save(); c.translate(OX, OY); c.scale(-1, 1); c.drawImage(bg, 0, 0, sw * k, sh, 0, 0, sw, fh); c.restore();
-        c.save(); c.translate(OX + W, OY); c.scale(-1, 1); c.drawImage(bg, (W - sw) * k, 0, sw * k, sh, -sw, 0, sw, fh); c.restore();
-      }
-      c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(0, 0, VW, VH);
-      if (!PIXEL_ART) { const tg = c.createLinearGradient(0, OY, 0, OY + 40); tg.addColorStop(0, 'rgba(10,6,3,.92)'); tg.addColorStop(1, 'rgba(10,6,3,.7)'); c.fillStyle = tg; c.fillRect(0, OY, VW, 38);
-        for (const y0 of [OY + 38, OY + 487]) { const g = c.createLinearGradient(0, y0, 0, y0 + 3); g.addColorStop(0, '#f0d080'); g.addColorStop(1, '#6a4814'); c.fillStyle = g; c.fillRect(0, y0, VW, 3); c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(0, y0 + 3, VW, 1); } }
+      c.imageSmoothingEnabled = !PIXEL_ART; c.drawImage(bg, 0, y0 * k, W * k, fh * k, L.fx, dy, fw, dh);
+      for (let x = L.fx, flip = true; x > 0; x -= fw, flip = !flip) { c.save(); c.translate(x, 0); c.scale(-1, 1); c.drawImage(bg, 0, y0 * k, W * k, fh * k, flip ? 0 : -fw, dy, fw, dh); c.restore(); } // lewo
+      for (let x = L.fx + fw, flip = true; x < L.areaW; x += fw, flip = !flip) { c.save(); c.translate(x, 0); c.scale(-1, 1); c.drawImage(bg, 0, y0 * k, W * k, fh * k, flip ? -fw : 0, dy, fw, dh); c.restore(); } // prawo
+      c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(0, 0, L.fx, VH); c.fillRect(L.fx + fw, 0, VW - L.fx - fw, VH);
+      const tg = c.createLinearGradient(0, 0, 0, 40); tg.addColorStop(0, 'rgba(10,6,3,.96)'); tg.addColorStop(1, 'rgba(10,6,3,.86)'); c.fillStyle = tg; c.fillRect(0, 0, VW, 38);
+      const P = L.panel; stoneFill(c, P.x, P.y, P.w, P.h);
+      const gold = (x, y, w, h) => { const g = h > w ? c.createLinearGradient(x, 0, x + w, 0) : c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#f0d080'); g.addColorStop(1, '#6a4814'); c.fillStyle = g; c.fillRect(x, y, w, h); };
+      gold(0, 38, L.side ? P.x : VW, 3); if (L.side) { gold(P.x, 38, P.w, 3); gold(P.x, 38, 3, VH - 38); } else gold(0, P.y - 3, VW, 3);
+      if (L.side) insetBox(c, P.x + 12, P.y + 156, P.w - 24, P.h - 168, 11); else insetBox(c, 10, P.y + 8, VW - 344, 94, 11); // wnęka na kolejkę, podpowiedź i dziennik
     }), 0, 0);
   },
-  bg() { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}_${TERRAIN_TEX[TEX_NAME[this.terr || 1]] ? 1 : 0}`, W, H, c => paintBattleBg(c, this.terr, f)); },
+  bg(sc) { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}_${TERRAIN_TEX[TEX_NAME[this.terr || 1]] ? 1 : 0}`, W, H, c => paintBattleBg(c, this.terr, f), sc); },
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
     Sfx.play('battlestart', { vol: 0.8, jit: 0 });
@@ -174,7 +193,7 @@ G.screens.battle = {
     this.casting = null; this.resume = false;
     this.fleeTip = this.bFlee.tip;
     if (this.me === 1) { this.bFlee.disabled = true; this.bFlee.tip = 'Obrońca nie może uciec z pola bitwy.'; }
-    this.buttons = [this.bWait, this.bDef, this.bAuto, this.bFlee, this.bCast, this.bInfo];
+    this.buttons = [this.bWait, this.bDef, this.bAuto, this.bFlee, this.bCast, this.bInfo]; this.L = null; this.lay();
     this.phase = 'intro';
   },
   onBack() {
@@ -363,7 +382,8 @@ G.screens.battle = {
     }
     return { s: battleSprite(u.cid, d, pose, i), ox, flash: u.flashT != null && now - u.flashT < 0.14 };
   },
-  onPointerMove(x, y) {
+  onPointerMove(x, y) { this.hover(...this.toField(x, y)); },
+  hover(x, y) { // x, y: współrzędne pola walki
     const B = this.B; this.preview = null; if (this.phase !== 'input' || G.modal) return;
     const u = B.active, hx = hexAt(x, y); if (!hx) return;
     if (this.casting && this.tele) { // Teleportacja, krok 2: wolne pole dla wskazanego oddziału
@@ -396,9 +416,10 @@ G.screens.battle = {
   onClick(x, y) {
     if (this.phase === 'over') { if (this.ending.t > 0.3) this.finish(false); return; }
     if (clickButtons(this.buttons, x, y)) return;
+    [x, y] = this.toField(x, y);
     if (this.phase === 'input' && G.mouse.type && G.mouse.type !== 'mouse') { // dotyk: pierwsze stuknięcie pokazuje akcję i jej skutek, drugie w to samo pole ją wykonuje
       const hx = hexAt(x, y), key = hx ? hexKey(hx.x, hx.y) + (this.casting || '') : null, again = key && key === this.touchKey;
-      if (!again) { this.onPointerMove(x, y); this.touchKey = this.preview && this.preview.kind !== 'info' && this.preview.kind !== 'far' && this.preview.kind !== 'nocast' ? key : null; return; }
+      if (!again) { this.hover(x, y); this.touchKey = this.preview && this.preview.kind !== 'info' && this.preview.kind !== 'far' && this.preview.kind !== 'nocast' ? key : null; return; }
       this.touchKey = null;
     }
     const B = this.B, p = this.preview; if (this.phase !== 'input' || !p) return;
@@ -411,7 +432,7 @@ G.screens.battle = {
     else if (p.kind === 'move') this.order({ a: 'move', p: pathTo(this.reach, u, ...p.to) });
   },
   rightInfo(x, y) {
-    const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y), w = hx && wallAt(this.B, hx.x, hx.y);
+    [x, y] = this.toField(x, y); const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y), w = hx && wallAt(this.B, hx.x, hx.y);
     if (w && !u) return w.hp <= 0 ? `${w.kind === 'gate' ? 'Rozbita brama' : 'Wyłom w murze'}: można tędy przejść.` : w.kind === 'gate' ? `Brama miasta (wytrzymałość ${w.hp}/${w.max}): przepuszcza tylko obrońców. Rozbija ją katapulta.` : `Mur miasta (wytrzymałość ${w.hp}/${w.max}). Strzały zza muru tracą połowę siły; katapulta robi wyłomy.`;
     if (!u) return null;
     const c = CREATURES[u.cid];
@@ -419,9 +440,10 @@ G.screens.battle = {
     return `${c.plural}: ${u.n} (${u.side === this.me ? 'twoi' : 'wrogowie'}). Życie pierwszego: ${u.hp}/${c.hp}. ${unitStats(c)}${c.shots ? `, strzały ${u.shots}` : ''}.${ab ? ` ${ab}.` : ''}${u.defending ? ' Broni się.' : ''} Morale ${signed(unitMorale(this.B, u))}, szczęście ${signed(unitLuck(this.B, u))}.${Object.keys(u.buffs).length ? ` Czary: ${Object.entries(u.buffs).map(([k, r]) => `${BUFF_NAMES[k]} (${r})`).join(', ')}.` : ''}`;
   },
   draw(ctx) {
-    const B = this.B, st = B.st, u0 = B.active, col = ownerColor(st, B.h.owner);
-    drawLayer(ctx, this.bg(), 0, 0);
-    const sh = BattleFX.shake; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, 490); ctx.clip(); if (sh > 0) ctx.translate((Math.random() - 0.5) * sh * 2, (Math.random() - 0.5) * sh * 2);
+    const B = this.B, st = B.st, u0 = B.active, col = ownerColor(st, B.h.owner), L = this.lay(), P = L.panel;
+    this.drawBack(ctx, L);
+    ctx.save(); ctx.translate(L.fx, L.fy); ctx.scale(L.fs, L.fs); // pole walki w swoich współrzędnych
+    const sh = BattleFX.shake; ctx.save(); ctx.beginPath(); ctx.rect(-L.fx / L.fs, 41, L.areaW / L.fs, (L.fieldBottom - L.fy) / L.fs - 41); ctx.clip(); if (sh > 0) ctx.translate((Math.random() - 0.5) * sh * 2, (Math.random() - 0.5) * sh * 2);
     if (this.phase === 'input' && this.casting) {
       const p = this.preview;
       if (p && p.kind === 'cast') { ctx.fillStyle = 'rgba(160,200,255,.3)'; for (const [ax, ay] of spellArea(p.id, p.x, p.y, B)) { hexPath(ctx, ax, ay, 2); ctx.fill(); } }
@@ -465,7 +487,7 @@ G.screens.battle = {
       ctx.restore();
     }
     for (const u of shown) if (!u.dead) { // liczebność nad wszystkim, także nad murami
-      const bx = u.px + (u.side === 0 ? 8 : -34), by = Math.min(u.py + 18, 486 - (CREATURES[u.cid].shots && !endlessShots(u) ? 25 : 15)), s = String(u.n); // dolny rząd: licznik nad panelem
+      const bx = u.px + (u.side === 0 ? 8 : -34), by = Math.min(u.py + 18, Math.min(486, (L.fieldBottom - L.fy) / L.fs - 4) - (CREATURES[u.cid].shots && !endlessShots(u) ? 25 : 15)), s = String(u.n); // dolny rząd: licznik nad panelem
       ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(bx + 1, by + 1, 27, 15);
       ctx.fillStyle = u.side === 0 ? col : B.sides[1].owner >= 0 ? ownerColor(st, B.sides[1].owner) : '#5a5448'; ctx.fillRect(bx, by, 26, 14); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx, by, 26, 4);
       ctx.strokeStyle = '#e0b24a'; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, 25, 13);
@@ -485,11 +507,12 @@ G.screens.battle = {
     }
     ctx.restore(); // koniec wstrząsu
     BattleFX.drawFlash(ctx);
+    ctx.restore(); // koniec pola walki
     // pasek górny
     if (PIXEL_ART) drawHeroPortrait(ctx, 6, 1, B.h, col); else drawHeroMedal(ctx, 24, 21, 19, B.h, col); text(ctx, heroTitle(B.h), 50, 19, { size: 15, color: UI.txt, fam: 'title' });
-    text(ctx, `Runda ${B.round}`, W / 2, 19, { size: 17, align: 'center', color: UI.goldHi, fam: 'title' });
-    const D = B.sides[1], foeCol = ownerColor(st, D.owner), right = D.hero ? W - 50 : W - 12;
-    if (D.hero) { if (PIXEL_ART) drawHeroPortrait(ctx, W - 44, 1, D.hero, foeCol); else drawHeroMedal(ctx, W - 26, 21, 19, D.hero, foeCol); }
+    text(ctx, `Runda ${B.round}`, VW / 2, 19, { size: 17, align: 'center', color: UI.goldHi, fam: 'title' });
+    const D = B.sides[1], foeCol = ownerColor(st, D.owner), right = D.hero ? VW - 50 : VW - 12;
+    if (D.hero) { if (PIXEL_ART) drawHeroPortrait(ctx, VW - 44, 1, D.hero, foeCol); else drawHeroMedal(ctx, VW - 26, 21, 19, D.hero, foeCol); }
     text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: UI.txt, fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
@@ -502,28 +525,31 @@ G.screens.battle = {
     else if (pv && pv.kind === 'heal') tip = `Namiot medyka: wyleczy ${CREATURES[pv.target.cid].plural.toLowerCase()} o 1–${Math.min(pv.most, CREATURES[pv.target.cid].hp - pv.target.hp)} życia.`;
     else if (this.phase === 'input' && u0 && u0.cid === 'firstAid') tip = 'Namiot medyka: wskaż rannego oddział do leczenia (Obrona = pomiń).';
     else if (this.phase === 'input' && u0 && u0.cid === 'ballista') tip = `Balista (${CREATURES.ballista.name}): wskaż cel strzału.`;
-    let tfs = 15; ctx.font = font(tfs, 700, 'body'); while (tfs > 11 && ctx.measureText(tip).width > 440) { tfs--; ctx.font = font(tfs, 700, 'body'); }
-    if (PIXEL_ART) { text(ctx, tip, 20, 508, { size: tfs, weight: 700, color: '#ffd970' }); B.log.slice(-4).forEach((l, i) => text(ctx, l, 20, 532 + i * 18, { size: 14, weight: 600, color: UI.txt2 })); }
-    else { // kolejka ruchów (jak w Heroes 3 HD): oddział, który teraz działa, i następne; pod nią podpowiedź i ostatnie wpisy dziennika
-      battleQueue(B, 11).forEach((u, i) => { const qx = 16 + i * 41, qy = 503, own = u.side === 0 ? col : foeCol;
-        slotBox(ctx, qx, qy, 38, 36, i === 0 ? 'sel' : ''); ctx.save(); ctx.beginPath(); ctx.rect(qx + 1, qy + 1, 36, 34); ctx.clip(); { const bs = battleSprite(u.cid, u.side === 0 ? 1 : -1, 'idle', 0), k = clamp(30 / (bs.c.height * bs.u), 0.3, 0.6); drawSprite(ctx, bs, qx + 19, qy + 35, k); } /* cała postać w kratce */ ctx.restore();
-        ctx.fillStyle = own; ctx.fillRect(qx + 2, qy + 32, 34, 3); text(ctx, String(u.n), qx + 36, qy + 25, { size: 11, align: 'right', color: '#fff4cc', fam: 'title' }); });
-      text(ctx, tip, 18, 554, { size: Math.min(tfs, 15), weight: 700, color: UI.goldHi });
-      B.log.slice(-2).forEach((l, i, a) => text(ctx, l, 18, 572 + i * 16, { size: 13, weight: 600, color: i === a.length - 1 ? UI.txt : UI.txt2 })); }
+    // panel: kolejka ruchów (jak w Heroes 3 HD), pod nią podpowiedź i ostatnie wpisy dziennika
+    const qx0 = L.side ? P.x + 22 : 16, qy0 = L.side ? P.y + 166 : P.y + 13, perRow = L.side ? 6 : Math.max(4, Math.floor((VW - 346) / 41)), qn = L.side ? 12 : perRow;
+    const tx = qx0 + 2, tw = L.side ? P.w - 40 : VW - 366, ty = L.side ? qy0 + 98 : P.y + 64;
+    battleQueue(B, qn).forEach((u, i) => { const qx = qx0 + (i % perRow) * 41, qy = qy0 + Math.floor(i / perRow) * 42, own = u.side === 0 ? col : foeCol;
+      slotBox(ctx, qx, qy, 38, 36, i === 0 ? 'sel' : ''); ctx.save(); ctx.beginPath(); ctx.rect(qx + 1, qy + 1, 36, 34); ctx.clip(); { const bs = battleSprite(u.cid, u.side === 0 ? 1 : -1, 'idle', 0), k = clamp(30 / (bs.c.height * bs.u), 0.3, 0.6); drawSprite(ctx, bs, qx + 19, qy + 35, k); } /* cała postać w kratce */ ctx.restore();
+      ctx.fillStyle = own; ctx.fillRect(qx + 2, qy + 32, 34, 3); text(ctx, String(u.n), qx + 36, qy + 25, { size: 11, align: 'right', color: '#fff4cc', fam: 'title' }); });
+    ctx.font = font(15, 700, 'body'); const tipL = L.side ? wrapText(ctx, tip, tw).slice(0, 3) : [tip];
+    let tfs = 15; if (!L.side) while (tfs > 11 && ctx.measureText(tip).width > tw) { tfs--; ctx.font = font(tfs, 700, 'body'); }
+    tipL.forEach((l, i) => text(ctx, l, tx, ty + i * 18, { size: tfs, weight: 700, color: UI.goldHi }));
+    const ly = ty + tipL.length * 18, logN = L.side ? Math.max(1, Math.min(10, Math.floor((P.y + P.h - 14 - ly) / 16))) : 2;
+    B.log.slice(-logN).forEach((l, i, a) => text(ctx, L.side ? fitText(ctx, l, tw, 13) : l, tx, ly + i * 16, { size: 13, weight: 600, color: i === a.length - 1 ? UI.txt : UI.txt2 }));
     this.bCast.disabled = this.phase !== 'input' || !canCastNow(B); this.bInfo.label = sideHero(B, this.me) ? `Mana ${sideHero(B, this.me).mana}` : 'Bez bohatera'; this.bInfo.dispCol = UI.mana;
     this.buttons.forEach(b => b.draw(ctx));
-    if (pv && pv.est && this.phase === 'input' && !G.modal && G.mouse.type === 'mouse') drawStrikeTip(ctx, B, u0, pv);
+    if (pv && pv.est && this.phase === 'input' && !G.modal && G.mouse.type === 'mouse') drawStrikeTip(ctx, B, u0, pv, L.side ? P.x : VW, L.fieldBottom);
   },
 };
 // Dymek przy kursorze nad celem: przewidywane obrażenia i zabici, a dla ataku wręcz także odwet (najgorszy przypadek dla nas)
-function drawStrikeTip(ctx, B, a, pv) {
+function drawStrikeTip(ctx, B, a, pv, maxX = W, maxY = 490) {
   const t = pv.target, e = pv.est, k = e.kmin === e.kmax ? `${e.kmin}` : `${e.kmin}–${e.kmax}`, lines = [[`${pv.kind === 'shoot' ? 'Strzał' : 'Atak'}: ${e.min}–${e.max} obrażeń`, '#fff4cc'], [`Giną: ${k} z ${t.n}`, '#ffb070']];
   if (pv.kind === 'attack' && e.kmin < t.n && !hasAb(a, 'noRetal') && canRetal(B, t) && !isMachine(t)) { // odwet tego, co przeżyje (po najmniejszych stratach)
     const n0 = t.n, r = (t.n = n0 - e.kmin, estimateStrike(B, t, a, false)); t.n = n0;
     lines.push([`Odwet: ${r.min}–${r.max}, giną ${r.kmin === r.kmax ? r.kmin : `${r.kmin}–${r.kmax}`} z ${a.n}`, '#c8d8f0']);
   } else if (pv.kind === 'attack' && e.kmin >= t.n) lines.push(['Bez odwetu: cel ginie', '#a8e090']);
   ctx.font = font(13, 700, 'body'); const w = Math.max(...lines.map(l => ctx.measureText(l[0]).width)) + 18, h = lines.length * 17 + 10;
-  let x = G.mouse.x + 18, y = G.mouse.y + 14; if (x + w > W - 4) x = G.mouse.x - w - 12; if (y + h > 488) y = G.mouse.y - h - 10;
+  let x = G.mouse.x + 18, y = G.mouse.y + 14; if (x + w > maxX - 4) x = G.mouse.x - w - 12; if (y + h > maxY - 2) y = G.mouse.y - h - 10;
   ctx.fillStyle = 'rgba(20,12,6,.88)'; rr(ctx, x, y, w, h, 5); ctx.fill(); ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1.2; ctx.stroke();
   lines.forEach(([l, c], i) => text(ctx, l, x + 9, y + 14 + i * 17, { size: 13, weight: 700, color: c }));
 }

@@ -89,7 +89,7 @@ function showPuzzle(st) {
   const N = obelisksTotal(st), seen = obelisksSeen(st, ME), btn = new Button(W / 2 - 70, y + H0 - 46, 140, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
   const found = st.grail.found >= 0, note = found ? (st.grail.found === ME ? 'Graal jest już twój.' : 'Ktoś inny już wykopał Graala.')
     : shown >= PUZZLE_COLS * PUZZLE_ROWS ? 'Mapa kompletna! Krzyżyk wskazuje miejsce Graala.' : `Odwiedzone obeliski: ${seen} z ${N}. Szukaj kolejnych, aby odsłonić mapę.`;
-  G.modal = {
+  G.modal = { box: { x, y, w: W0, h: H0 },
     msg: `Mapa zagadki. ${note}`, buttons: [btn], puzzle: { shown, open },
     draw(ctx) {
       dimScreen(ctx, 0.55); drawParchment(ctx, x, y, W0, H0);

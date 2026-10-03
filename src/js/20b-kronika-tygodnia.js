@@ -43,7 +43,7 @@ function chronicleTable(st, pid) {
 function showChronicle(st) {
   const T0 = chronicleTable(st, ME), cols = T0.players.length, W0 = Math.min(760, 250 + cols * 110), H0 = 172 + T0.rows.length * 34, x = (W - W0) / 2, y = (H - H0) / 2, cw = (W0 - 230) / cols;
   const btn = new Button(W / 2 - 70, y + H0 - 46, 140, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
-  G.modal = {
+  G.modal = { box: { x, y, w: W0, h: H0 },
     msg: `Kronika tawerny. Tawerny: ${T0.taverns}.`, buttons: [btn], chronicle: T0,
     draw(ctx) {
       dimScreen(ctx, 0.55); drawParchment(ctx, x, y, W0, H0);
