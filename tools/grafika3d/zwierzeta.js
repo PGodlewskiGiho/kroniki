@@ -39,12 +39,14 @@ function quadBody(root, o, P) {
       if (o.dewclaw) ft.add(spike(0.015, 0.08, o.claw || '#e8e0d0', 'horn', [-r * 0.2, r * 0.05, 0], [0, 0, 2.2]));
       continue;
     }
-    hip.rotation.z = flying ? (front ? -0.5 : -1.1) + Math.sin(ph + p) * 0.08 : sw - pitch * (front ? 0.3 : 1) + (front ? (o.rear ? wind * 1.2 + hit * 0.3 : hit * 0.45 - wind * 0.15) : -hit * 0.45 + wind * 0.2); // dęba: przednie nogi w górę, potem uderzenie kopytami
+    const pr = o.prance && front && z > 0 && !walking && !flying && A == null ? 1 : 0; // prance: w spoczynku bliższa przednia noga uniesiona i zgięta (dumna poza)
+    hip.rotation.z = pr * 0.6 + (flying ? (front ? -0.5 : -1.1) + Math.sin(ph + p) * 0.08 : sw - pitch * (front ? 0.3 : 1)) + (front ? (o.rear ? wind * 1.2 + hit * 0.3 : hit * 0.45 - wind * 0.15) : -hit * 0.45 + wind * 0.2); // dęba: przednie nogi w górę, potem uderzenie kopytami
     const upL = legH * 0.52, loL = legH * 0.48 - r * 0.2;
     bone(hip, r * (front ? 0.42 : 0.5) * bulk, r * 0.26, upL, c, K);
-    const kn = joint(hip, [0, -upL, 0], flying ? (front ? 1.5 : -0.5) : kb - (front && o.rear ? wind * 1.7 : 0));
+    const kn = joint(hip, [0, -upL, 0], (flying ? (front ? 1.5 : -0.5) : kb - (front && o.rear ? wind * 1.7 : 0)) - pr * 1.8);
     bone(kn, r * 0.26, r * 0.2, loL + r * 0.15, c, K);
     kn.add(cyl(r * 0.24, r * 0.28, r * 0.35, o.hoofCol || '#2a2018', 'horn', [0, -loL - r * 0.1, 0]));
+    if (o.feather) for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; kn.add(cone(r * 0.09, r * 0.55, i % 2 ? o.feather : LT(o.feather, 0.15), 'hair', [Math.cos(a) * r * 0.2, -loL + r * 0.12, Math.sin(a) * r * 0.2], [Math.sin(a) * 0.35, 0, Math.PI - Math.cos(a) * 0.35], 5)); } // szczotki włosia nad kopytami
     if (o.hoofFire) for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; kn.add(cone(0.035, 0.12 + (i % 2) * 0.06, i % 2 ? o.hoofFire : LT(o.hoofFire, 0.4), 'fire', [Math.cos(a) * r * 0.25, -loL - r * 0.05, Math.sin(a) * r * 0.25], [Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3], 5)); } // płonące kopyta
   }
   return { body, neck: joint(body, [len * 0.5, r * 0.45, 0], wind * 0.3 - hit * 0.3), tail: joint(body, [-len * 0.55, r * 0.35, 0], wind * 0.25 - hit * 0.2), hit, wind, bodyY, r, len, flying, ph };
@@ -75,7 +77,7 @@ function horseHead(neck, col, mane, P, o = {}) {
 // Koń (jednorożec, rumak jeźdźca); nightmare: koszmarny rumak w kolczastej zbroi płytowej, z płonącą grzywą, ogonem i kopytami
 function horse(L, P, o = {}) {
   const root = new THREE.Group(), col = L.horse || L.fur || '#7a4a26', mane = L.mane || DK(col, 0.6), nm = !!L.nightmare, plate = L.metal || '#3a3440';
-  const q = quadBody(root, { col, len: nm ? 1.15 : 1.05, legH: nm ? 0.86 : 0.8, r: nm ? 0.28 : 0.25, rear: true, bulk: nm ? 1.2 : 1, hump: 0.08, chest: 1.18, hoofFire: nm ? mane : null }, P);
+  const q = quadBody(root, { col, len: nm ? 1.15 : 1.05, legH: nm ? 0.86 : 0.8, r: nm ? 0.28 : 0.25, rear: true, bulk: nm ? 1.2 : 1, hump: 0.08, chest: 1.18, hoofFire: nm ? mane : null, prance: o.prance, feather: o.feather, hoofCol: o.hoofCol, kind: o.kind }, P);
   horseHead(q.neck, col, mane, P, { bridle: o.saddle, horn: o.horn, hornL: o.hornL, hornGlow: o.hornGlow, longMane: L.longMane, horns: L.horseHorns, nightmare: nm, eyes: nm ? L.eyes || mane : o.eyes || null, plate, armor: L.horseArmor });
   if (L.horseArmor) { const pc = L.horseArmor; for (const z of [-1, 1]) for (let i = 0; i < 3; i++) { const x = 0.36 - i * 0.32; q.body.add(rbox(0.3, 0.24, 0.035, 0.02, i % 2 ? pc : DK(pc, 0.12), 'steel', [x, -0.05, z * 0.36], [0.1 * z, 0, 0])); if (L.trim) q.body.add(box(0.3, 0.02, 0.04, L.trim, 'gold', [x, 0.07, z * 0.365], [0.1 * z, 0, 0])); }
     q.body.add(rbox(0.07, 0.34, 0.44, 0.02, pc, 'steel', [q.len * 0.6, -0.04, 0], [0, 0, -0.2])); if (L.trim) q.body.add(torus(0.2, 0.014, L.trim, 'gold', [q.len * 0.63, -0.04, 0], [0, Math.PI / 2, 0], [1, 1, 1.1])); } // zbroja rumaka: płyty na bokach, napierśnik
@@ -121,7 +123,7 @@ function centaur(L, P = {}) {
   return root;
 }
 function unicorn(L, P = {}) {
-  const { root: r, q } = horse({ horse: L.fur, mane: L.mane || '#c8b8e8', horseWings: L.wings, longMane: L.longMane !== false }, P, { horn: L.hornCol || '#f0d890', eyes: L.eyes || '#5a7ad0', hornL: L.hornL || 1.4, hornGlow: L.hornGlow }); // długa spływająca grzywa i ogon, dłuższy róg, niebieskie oczy
+  const { root: r, q } = horse({ horse: L.fur, mane: L.mane || '#c8b8e8', horseWings: L.wings, longMane: L.longMane !== false }, P, { horn: L.hornCol || '#f0d890', eyes: L.eyes || '#5a7ad0', hornL: L.hornL || 1.4, hornGlow: L.hornGlow, prance: true, feather: L.mane || '#c8b8e8', hoofCol: '#c8b070', kind: 'skin' }); // gładka, lśniąca sierść (faktura futra ciemniła biel) // długa spływająca grzywa i ogon, dłuższy róg, niebieskie oczy
   if (L.stars) for (let i = 0; i < 16; i++) { const a = i * 2.4, x = -q.len * 0.45 + (i / 15) * q.len * 0.9; q.body.add(sph(0.018 + (i % 3) * 0.006, L.stars, 'glow', [x, Math.cos(a) * q.r * 0.96, Math.sin(a) * q.r * 0.96])); } // gwiezdny: iskry na sierści
   r.scale.setScalar(HORSE_K * (L.size || 1)); return r;
 }
@@ -310,7 +312,7 @@ function birdBody(L, P, o) {
   const sx = 0.05 * Math.cos(pitch) - 0.17 * Math.sin(pitch), sy = H + 0.05 * Math.sin(pitch) + 0.17 * Math.cos(pitch), wl = joint(root, [sx, sy, 0]);
   for (let pw = 0; pw < (o.wingPairs || 1); pw++) for (const z of [-1, 1]) {
     const beat = fly ? Math.sin(P.fly * Math.PI * 2 - pw * 0.8) : 0, w = joint(wl, [-0.04 - pw * 0.22, -pw * 0.06, 0.12 * z]), idle = Math.sin(t * 2) * 0.05 + hit * 0.35;
-    const [rx, ry, rz] = fly ? [0.5 + beat * 1.0, -0.2, -0.3] : eagle ? [1.0 + idle, -0.75, 0.55] : storm ? [0.42 + idle, -0.4, 0.2] : [1.3 + Math.sin(t * 2.4) * 0.15, -0.45, -0.05];
+    const [rx, ry, rz] = fly ? [0.5 + beat * 1.0, -0.2, -0.3] : eagle ? [1.15 + idle, -0.5, 0.0] : storm ? [1.0 + idle, -0.4, 0.05] : [1.3 + Math.sin(t * 2.4) * 0.15, -0.45, -0.05];
     w.rotation.set((rx - pw * 0.35) * z, ry * z, rz + pw * 0.25); w.scale.setScalar((storm ? 2.05 : fire ? 1.9 : 1.95) * 0.9 * (1 - pw * 0.38) * (o.wingK || 1)); featherFan(w, wcol, 1, !!o.flame, storm);
     if (o.bolts) for (const off of [0, 0.2, 0.42]) w.add(tube([[0.02, 0.15 + off, 0.02], [0.1, 0.33 + off, 0.02], [-0.03, 0.46 + off, 0.02], [0.08, 0.64 + off, 0.02], [-0.05, 0.84 + off, 0.02]], 0.012, 0.004, o.bolts, 'glow')); // wyładowania
   }

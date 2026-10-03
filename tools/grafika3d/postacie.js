@@ -165,7 +165,7 @@ function humanoid(L, P = {}) {
   const hulk = B === BUILDS.brute || B === BUILDS.colossus, col = B === BUILDS.colossus; // głowa nisko, wysunięta, osadzona w karku
   const neck = joint(spine, [0.03 + (hulk ? 0.04 : 0) + (col ? 0.06 : 0), 0.6 * tl - (hulk ? 0.05 : 0) - (col ? 0.06 : 0), 0]); neck.add(cyl(bony ? 0.03 : 0.065 * B.arm ** 0.6, bony ? 0.03 : 0.06, 0.12, skin, bony ? 'bone' : skinK, [0, 0.04, 0]));
   if (hulk && !bony) neck.add(rbox(0.2, 0.14 * (col ? 1.3 : 1), 0.36 * (col ? 1.4 : 1), 0.05, bare ? skin : cloth, bare ? skinK : 'cloth', [-0.06, -0.02, 0], [0, 0, -0.35])); // kark osiłka
-  const head = joint(neck, [0.02, 0.18, 0], lean * 0.6 - hurt * 0.2 + (flying ? 0.4 : 0)), hr = 0.14 * B.head;
+  const head = joint(neck, [0.02, 0.18, 0], lean * 0.6 - hurt * 0.2 + (flying ? 0.4 : 0)), hr = 0.14 * B.head * (L.headK || 1); // headK: większa głowa (dżin: krępy tułów z drobną głową ginął w turbanie)
   headOf(head, L, hr, skin, t, A);
   if (L.halo) head.add(torus(0.12, 0.014, L.halo, 'glow', [-0.02, hr + 0.12, 0], [Math.PI / 2 + 0.25, 0, 0]));
   // --- ręce i broń ---

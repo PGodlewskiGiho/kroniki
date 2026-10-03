@@ -20,6 +20,8 @@ function b85(buf) {
 function build() {
   const dir = path.join(SRC, 'js'), files = fs.readdirSync(dir).filter(f => f.endsWith('.js')).sort();
   const js = files.map(f => { const s = fs.readFileSync(path.join(dir, f), 'utf8'); return s.endsWith('\n') ? s : s + '\n'; }).join('');
+  // znacznik kompilacji: skrót kodu gry (ten sam kod = ten sam znacznik), widoczny w menu przy wersji – łatwo sprawdzić, czy aplikacja się zaktualizowała
+  const buildId = require('crypto').createHash('sha1').update(js).digest('hex').slice(0, 6);
   const shell = fs.readFileSync(path.join(SRC, 'szablon.html'), 'utf8');
   if (!shell.includes('@@SKRYPT@@\n')) throw new Error('src/szablon.html: brak linii @@SKRYPT@@');
   // Czcionki z src/czcionki (np. pikselowa) wbudowane w plik jako @font-face z danymi base64: gra działa bez internetu.
@@ -64,7 +66,7 @@ function build() {
   const artJs = `// Wbudowane przez build.js z src/grafika (wypalone przez tools/grafika3d i tools/portrety-ai): klatki jednostek i bohaterów, portrety\nconst UNIT_ART = ${JSON.stringify(art)};\nconst HERO_ART = ${JSON.stringify(hart)};\nconst HERO_PORTRAITS = ${JSON.stringify(port)};\nconst TOWN_BUILD_ART = ${JSON.stringify(tart)};\nconst SIEGE_ART = ${JSON.stringify(oart)};\nconst ARTIFACT_ART = ${JSON.stringify(aart)};\nconst MAP3D_ART = ${JSON.stringify(mart)};\nconst BATTLE_BG_ART = ${JSON.stringify(bart)};\nconst SKILL_ART = ${JSON.stringify(sart)};\nconst UI_ART = ${JSON.stringify(uiart)};\nconst SPELL_ART = ${JSON.stringify(spart)};\nconst SOUND_ART = ${JSON.stringify(snd)};\nconst TERRAIN_ART = ${JSON.stringify(tex)};\nconst MUSIC_ART = ${JSON.stringify(mus)};\n`;
   // Biblioteka PeerJS (npm peerjs, licencja MIT): połączenia WebRTC między graczami online, osobny <script> przed kodem gry
   const peerjs = fs.readFileSync(path.join(__dirname, 'node_modules', 'peerjs', 'dist', 'peerjs.min.js'), 'utf8').replace(/\/\/# sourceMappingURL=.*$/m, '');
-  return shell.replace('@@BIBLIOTEKI@@', () => peerjs).replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => artJs + js);
+  return shell.replace('@@BIBLIOTEKI@@', () => peerjs).replace('@@CZCIONKI@@', () => faces).replace('@@SKRYPT@@\n', () => artJs + `const BUILD_ID = '${buildId}';\n` + js);
 }
 
 const arg = process.argv[2];
