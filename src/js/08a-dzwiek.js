@@ -62,6 +62,7 @@ const Music = {
     const ctx = Sfx.ctx; if (!ctx || !this.has()) return;
     if (!this.bus) { this.bus = ctx.createGain(); this.bus.gain.value = this.vol(); this.bus.connect(Sfx.comp || ctx.destination); }
     this.fadeOut(1.4);
+    if (G.screenName === 'adventure') return; // mapa świata: muzyka całkowicie wyłączona
     const e = name && MUSIC_ART[name]; if (!e || !this.vol()) return;
     if (this.buf[name]) return this.begin(name);
     if (this.buf[name] === false) return; this.buf[name] = false; // dekodowanie w toku

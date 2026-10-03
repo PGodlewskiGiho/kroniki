@@ -113,6 +113,26 @@ function menuTownScene() {
     c.imageSmoothingEnabled = true; try { paintTownScene(c, t, colorHex(G.settings.color)); } catch (e) { c.fillStyle = '#1a1420'; c.fillRect(0, 0, 592, 438); }
   }, TOWN_ART_SCALE);
 }
+// Ekran ładowania: ciepła poświata, tytuł, pasek postępu w złotej ramie i porada, która zmienia się co kilka sekund
+const LOADING_TIPS = ['Prawy przycisk myszy pokazuje opis wszystkiego: potworów, budowli, umiejętności i czarów.', 'Co 4 poziomy bohater wybiera talent: Salwa, Kontruderzenie, Bitewny mag i wiele innych.',
+  'Strzelcy za plecami piechoty to najlepsza obrona; piechota wroga szybko to wykorzysta, więc pilnuj flank.', 'Drzwi wymiarów przenoszą bohatera nawet przez góry – przydają się w pościgu i ucieczce.',
+  'Dyplomacja sprawia, że neutralne stwory chętniej dołączają do armii i biorą mniej złota.', 'W każdym tygodniu astrologowie ogłaszają coś nowego: zaglądaj do Kroniki tygodnia.',
+  'Ściana ognia płonie kilka rund: postaw ją na drodze wrogiej piechoty.', 'Taktyka daje twoim oddziałom przewagę w dwóch pierwszych rundach bitwy.'];
+function drawLoadingScreen(ctx) {
+  const { done, total } = artProgress(), f = total ? done / total : 1, t = G.time; G.dirty = true;
+  viewportDraw(ctx, c => { const g = c.createRadialGradient(VW / 2, VH * 0.55, 0, VW / 2, VH * 0.55, Math.max(VW, VH) * 0.75); g.addColorStop(0, '#3a2a1a'); g.addColorStop(0.6, '#1a120b'); g.addColorStop(1, '#070504'); c.fillStyle = g; c.fillRect(0, 0, VW, VH);
+    for (let i = 0; i < 40; i++) { const x = (i * 197.3 + t * (8 + i % 5 * 3)) % VW, y = VH - ((i * 131.7 + t * (14 + i % 7 * 4)) % VH), a = 0.15 + 0.25 * Math.sin(t * 2 + i); c.fillStyle = `rgba(255,${170 + i % 4 * 15},90,${a})`; c.fillRect(x, y, 2, 2); } }); // iskry unoszące się jak nad ogniskiem
+  goldText(ctx, 'KRONIKI KRÓLESTW', W / 2, H * 0.36, 48);
+  text(ctx, 'Czas bohaterów', W / 2, H * 0.36 + 44, { size: 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
+  const bw = 420, bh = 22, bx = W / 2 - bw / 2, by = H * 0.6;
+  ctx.fillStyle = 'rgba(0,0,0,.55)'; rr(ctx, bx - 4, by - 4, bw + 8, bh + 8, 6); ctx.fill(); ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 2; ctx.stroke();
+  const fill = ctx.createLinearGradient(bx, 0, bx + bw, 0); fill.addColorStop(0, '#8a5a1a'); fill.addColorStop(1, '#f0c050'); ctx.fillStyle = fill; rr(ctx, bx, by, Math.max(bh, bw * f), bh, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx + 2, by + 2, Math.max(0, bw * f - 4), 5);
+  const sx = bx + ((t * 160) % (bw + 60)) - 30; if (sx < bx + bw * f) { ctx.save(); ctx.beginPath(); ctx.rect(bx, by, bw * f, bh); ctx.clip(); ctx.fillStyle = 'rgba(255,240,200,.25)'; ctx.fillRect(sx, by, 26, bh); ctx.restore(); } // połysk
+  text(ctx, `Wczytywanie grafiki… ${Math.round(f * 100)}%`, W / 2, by + bh + 26, { size: 16, weight: 600, align: 'center', color: '#e8d4a0' });
+  ctx.font = font(15, 500, 'body'); const tip = LOADING_TIPS[Math.floor(t / 5) % LOADING_TIPS.length];
+  wrapText(ctx, `Porada: ${tip}`, 560).forEach((l, i) => text(ctx, l, W / 2, by + bh + 66 + i * 20, { size: 15, weight: 500, italic: true, align: 'center', color: 'rgba(240,220,170,.8)' }));
+}
 function drawMenuScene(ctx) {
   if (!PIXEL_ART && typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART && TOWN_BUILD_ART[MENU_FAC] && !townScene3D(MENU_FAC)) return viewportDraw(ctx, c => { // grafika 3D miasta jeszcze się wczytuje: ciemne tło (nie zapamiętujemy zastępczej sceny 2D)
     const g = c.createRadialGradient(VW / 2, VH * 0.55, 0, VW / 2, VH * 0.55, Math.max(VW, VH) * 0.7); g.addColorStop(0, '#2a2018'); g.addColorStop(1, '#0a0705'); c.fillStyle = g; c.fillRect(0, 0, VW, VH); G.dirty = true; });
@@ -179,7 +199,10 @@ G.screens.menu = {
 
   },
   onBack() { askQuit(); },
+  // Ekran ładowania: dopóki grafiki się wczytują (najwyżej 30 s), zamiast menu pasek postępu i porady; przyciski czekają
+  loading() { if (this.ready) return false; if (unitArtReady() || G.time > 30) { this.ready = true; if (this._btns) { this.buttons = this._btns; this._btns = null; } return false; } if (this.buttons.length) { this._btns = this.buttons; this.buttons = []; } return true; },
   draw(ctx) {
+    if (this.loading()) return drawLoadingScreen(ctx);
     drawMenuScene(ctx);
     drawStone(ctx, 520, 164, 260, 378);
     this.buttons.forEach(b => b.draw(ctx));

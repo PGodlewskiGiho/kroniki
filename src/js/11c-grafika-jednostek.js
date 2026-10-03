@@ -13,6 +13,13 @@ function loadUnitArt() {
   if (typeof MAP3D_ART !== 'undefined' && MAP3D_ART) { load({ sheet: MAP3D_ART }, MAP3D_IMG); // teren z drzewami i górami malowany wcześniej dawnymi rysunkami: od nowa
     MAP3D_IMG.sheet.addEventListener('load', () => { if (typeof MapRender !== 'undefined' && MapRender.map) MapRender.reset(MapRender.map, MapRender.explored); }); }
 }
+// Postęp wczytywania grafik (obrazki dekodują się asynchronicznie): { done, total }; ekran ładowania w menu
+function artProgress() {
+  let done = 0, total = 0;
+  for (const store of [UNIT_IMG, HERO_IMG, PORTRAIT_IMG, TOWN_IMG, ARTIFACT_IMG, SKILL_IMG, UI_IMG, SPELL_IMG, MAP3D_IMG, BATTLE_BG_IMG]) for (const im of Object.values(store)) { total++; if (im._ok) done++; }
+  if (typeof TERRAIN_ART !== 'undefined' && TERRAIN_ART) { const k = Object.keys(TERRAIN_ART); total += k.length; done += k.filter(n => TERRAIN_TEX[n]).length; }
+  return { done, total };
+}
 // Portret bohatera z obrazu (tools/portrety-ai), gdy jest wbudowany i wczytany
 const portraitArt = h => { const im = PORTRAIT_IMG[h.name]; return im && im._ok ? im : null; };
 const unitArt = cid => { const A = typeof UNIT_ART !== 'undefined' && UNIT_ART[cid], im = UNIT_IMG[cid]; return A && im && im._ok ? A : null; };
