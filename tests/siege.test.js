@@ -171,9 +171,10 @@ test('wieża główna (od Cytadeli): stoi za murem, blokuje pole, katapulta moż
     out.blocked = walled(B, k.x, k.y, 1) && walled(B, k.x, k.y, 0);
     out.defOk = B.units.filter(u => u.side === 1 && u.src !== 'siege').every(u => behindWall(u.x, u.y) && !wallAt(B, u.x, u.y));
     B.rng = () => 0.1; for (let i = 0; i < 8 && k.hp > 0; i++) actCatapult(B, cat, { x: k.x, y: k.y });
+    out.vis = B.units.filter(u => u.cid === 'arrowTower').every(u => u.vis === TOWER_SHOOTER[B.sides[1].town.faction] && lookCid(u) === u.vis);
     out.down = k.hp <= 0; out.archersDead = B.units.find(u => u.keep).dead; out.passable = !walled(B, k.x, k.y, 0);
     return out;
   });
   assert.equal(fort, false, 'Fort: bez wieży głównej');
-  assert.deepEqual(r, { behind: true, blocked: true, defOk: true, down: true, archersDead: true, passable: true });
+  assert.deepEqual(r, { behind: true, blocked: true, defOk: true, vis: true, down: true, archersDead: true, passable: true });
 });

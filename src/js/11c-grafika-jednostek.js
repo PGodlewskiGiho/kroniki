@@ -60,8 +60,9 @@ function artFrame(cid, pose, i, dir, u) {
   s = { c, ax: dir < 0 ? w - ax : ax, ay, u, raw: !!A.raw }; SPR.set(key, s); return s;
 }
 // Sprite bitewny jednostki w pozie i klatce animacji
-// Wieże strzelnicze obsadzają łucznicy pełnej wielkości (ten sam model co w armii)
-function battleSprite(cid, dir, pose, i = 0) { if (cid === 'arrowTower' && unitArt('archer')) cid = 'archer'; const A = unitArt(cid); return A ? artFrame(cid, pose, i, dir, A.u) : battleSprite2D(cid, dir, pose, i); }
+// Wieże strzelnicze obsadzają strzelcy frakcji miasta (u.vis, setupSiege) w pełnej wielkości; bez frakcji łucznik
+const lookCid = u => u.vis && unitArt(u.vis) ? u.vis : u.cid === 'arrowTower' && unitArt('archer') ? 'archer' : u.cid;
+function battleSprite(cid, dir, pose, i = 0) { const A = unitArt(cid); return A ? artFrame(cid, pose, i, dir, A.u) : battleSprite2D(cid, dir, pose, i); }
 // Mała figurka na mapie przygody (4 klatki spoczynku)
 function creatureSprite(cid, dir, i = 0) { const A = unitArt(cid); return A ? (PIXEL_ART || !A.raw ? artFrame(cid, 'map', i, dir, A.mu) : artFrame(cid, 'idle', i, dir, A.u * 0.48)) : creatureSprite2D(cid, dir, i); } // gładko: ostra klatka bitewna w skali mapy
 // Jednostka w oknach i panelach: k = powiększenie jak dla figurki mapy (k ≥ 1,4: klatka bitewna, ostrzejsza)

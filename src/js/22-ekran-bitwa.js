@@ -242,7 +242,7 @@ G.screens.battle = {
     for (const u of B.units) { [u.px, u.py] = unitPos(u); u.anim = null; u.dieT = null; u.flashT = null; u.face = null; }
     BattleFX.reset(); this.intro = { t: 0, dur: 0.9 };
     // przygotowanie klatek animacji z góry (żeby pierwszy ruch nie przycinał)
-    for (const u of B.units) for (const d of [1, -1]) for (const [pose, n] of Object.entries(BATTLE_FRAMES)) for (let i = 0; i < n; i++) battleSprite(u.cid, d, pose, i); // obie strony: oddziały się obracają
+    for (const u of B.units) for (const d of [1, -1]) for (const [pose, n] of Object.entries(BATTLE_FRAMES)) for (let i = 0; i < n; i++) battleSprite(lookCid(u), d, pose, i); // obie strony: oddziały się obracają
     const bx = 470, mk = (i, j, label, act, o) => new Button(bx + i * 108, 500 + j * 46, 100, 38, label, act, Object.assign({ size: 15 }, o));
     this.bWait = mk(0, 0, 'Czekaj', () => this.order({ a: 'wait' }), { key: 'w', tip: 'Oddział ruszy na końcu tej rundy (klawisz W).' });
     this.bDef = mk(1, 0, 'Obrona', () => this.order({ a: 'def' }), { key: 'd', tip: 'Oddział broni się: wyższa obrona do jego następnego ruchu (klawisz D).' });
@@ -433,7 +433,7 @@ G.screens.battle = {
     const E = (this.phase === 'over' || this.phase === 'done') && this.ending;
     if (E && u.side === E.winner && !u.dead && !isMachine(u)) { // zwycięzcy podskakują i wymachują bronią
       const k = now * 1.6 + u.id * 0.37, hop = Math.abs(Math.sin(k * Math.PI)) * 7 * clamp(E.t * 3, 0, 1);
-      return { s: battleSprite(u.cid, d, 'attack', Math.floor((k % 1) * BATTLE_FRAMES.attack)), ox: 0, hop, flash: false };
+      return { s: battleSprite(lookCid(u), d, 'attack', Math.floor((k % 1) * BATTLE_FRAMES.attack)), ox: 0, hop, flash: false };
     }
     if (this.phase === 'intro' && u.cid !== 'arrowTower') { pose = 'walk'; i = Math.floor(now * 13) % BATTLE_FRAMES.walk; ox = -d * (1 - ease(clamp(this.intro.t / this.intro.dur, 0, 1))) * 110; }
     else if (a) {
@@ -443,7 +443,7 @@ G.screens.battle = {
       if (pose === 'attack' && p && p.kind === 'hit' && p.a === u) ox = Math.sign(p.tg.px - u.px || d) * Math.sin(f * Math.PI) * 12;
       if (pose === 'hurt') ox = -d * Math.sin(f * Math.PI) * 5;
     }
-    return { s: battleSprite(u.cid, d, pose, i), ox, flash: u.flashT != null && now - u.flashT < 0.14 };
+    return { s: battleSprite(lookCid(u), d, pose, i), ox, flash: u.flashT != null && now - u.flashT < 0.14 };
   },
   onPointerMove(x, y) { this.hover(...this.toField(x, y)); },
   hover(x, y) { // x, y: współrzędne pola walki
@@ -608,7 +608,7 @@ G.screens.battle = {
     const qx0 = L.side ? P.x + 22 : 16, qy0 = L.side ? P.y + 166 : P.y + 13, perRow = L.side ? 6 : Math.max(4, Math.floor((VW - 346) / 41)), qn = L.side ? 12 : perRow;
     const tx = qx0 + 2, tw = L.side ? P.w - 40 : VW - 366, ty = L.side ? qy0 + 98 : P.y + 64;
     battleQueue(B, qn).forEach((u, i) => { const qx = qx0 + (i % perRow) * 41, qy = qy0 + Math.floor(i / perRow) * 42, own = u.side === 0 ? col : foeCol;
-      slotBox(ctx, qx, qy, 38, 36, i === 0 ? 'sel' : ''); ctx.save(); ctx.beginPath(); ctx.rect(qx + 1, qy + 1, 36, 34); ctx.clip(); { const bs = battleSprite(u.cid, u.side === 0 ? 1 : -1, 'idle', 0), k = clamp(30 / (bs.c.height * bs.u), 0.3, 0.6); drawSprite(ctx, bs, qx + 19, qy + 35, k); } /* cała postać w kratce */ ctx.restore();
+      slotBox(ctx, qx, qy, 38, 36, i === 0 ? 'sel' : ''); ctx.save(); ctx.beginPath(); ctx.rect(qx + 1, qy + 1, 36, 34); ctx.clip(); { const bs = battleSprite(lookCid(u), u.side === 0 ? 1 : -1, 'idle', 0), k = clamp(30 / (bs.c.height * bs.u), 0.3, 0.6); drawSprite(ctx, bs, qx + 19, qy + 35, k); } /* cała postać w kratce */ ctx.restore();
       ctx.fillStyle = own; ctx.fillRect(qx + 2, qy + 32, 34, 3); text(ctx, String(u.n), qx + 36, qy + 25, { size: 11, align: 'right', color: '#fff4cc', fam: 'title' }); });
     ctx.font = font(15, 700, 'body'); const tipL = L.side ? wrapText(ctx, tip, tw).slice(0, 3) : [tip];
     let tfs = 15; if (!L.side) while (tfs > 11 && ctx.measureText(tip).width > tw) { tfs--; ctx.font = font(tfs, 700, 'body'); }

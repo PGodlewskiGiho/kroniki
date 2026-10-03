@@ -34,16 +34,57 @@ function siegeRoof(g, S, r, x, y, z) {
   else if (S.shape === 'spire') g.add(coneRoof(r, r * 3.2, S.roof, rk, x, y, z, 12));
   else g.add(coneRoof(r, r * 2.1, S.roof, rk, x, y, z, S.mat === 'wood' ? 8 : 16));
 }
+// Drewniana wieża frakcji (cx = środek, R = promień, H = wysokość pomostu strzelców, mark = marker strzelca):
+// Knieja (vines): wieża z żywego drzewa – gruby pień z korzeniami, okrągły pomost z balustradą, korona liści z tyłu;
+// Cytadela (reeds): chata na palach nad bagnem – pale z krzyżulcami, pomost, okrągła chata z trzcinowym dachem z tyłu, drabina;
+// Twierdza (skullsWood): orcza baszta z bali – pierścień pni, nawis z zaostrzonymi palami, daszek ze skór, czaszki na palach.
+function woodTower(g, S, r, cx, R, H, mark, col) {
+  const c = S.col, dk = DK(c, 0.22), lt = LT(c, 0.1), TAU = Math.PI * 2;
+  const ring = (rad, h, n, y0, sharp, cc = c, lw = 0, a0 = 0, a1 = TAU, ox = cx, oz = 0) => { for (let i = 0; i < n; i++) { const a = a0 + (a1 - a0) * (i + 0.5) / n, x = ox + Math.cos(a) * rad, z = oz + Math.sin(a) * rad, l = lw || Math.max(2, rad * TAU / n / 2 * 1.08), hh = h * (0.93 + r() * 0.12);
+    g.add(cyl3(l, l, hh, i % 2 ? cc : DK(cc, 0.12), 'planks', x, y0, z, 7)); if (sharp) g.add(cyl3(l, 0.3, l * 2.6, LT(cc, 0.12), 'planks', x, y0 + hh, z, 7)); } };
+  const tilt = (m, rx, rz) => { m.rotation.x = rx; m.rotation.z = rz; return m; };
+  let postY = H + 5;
+  if (S.deco === 'vines') {
+    g.add(cyl3(R * 0.42, R * 0.62, H + R * 0.6, '#5c4128', 'planks', cx, 0, 0, 14)); // pień
+    for (let i = 0; i < 7; i++) { const a = i / 7 * TAU + 0.3, m = cyl3(R * 0.2, R * 0.04, R * 0.8, '#4e3622', 'planks', cx + Math.cos(a) * R * 0.5, -4, Math.sin(a) * R * 0.5, 7); g.add(tilt(m, Math.sin(a) * 0.55, -Math.cos(a) * 0.55)); } // korzenie wrastające w ziemię
+    for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.8, m = cyl3(2.2, 2.2, R * 0.75, dk, 'planks', cx + Math.cos(a) * R * 0.55, H - R * 0.55, Math.sin(a) * R * 0.55, 6); g.add(tilt(m, -Math.sin(a) * 0.7, Math.cos(a) * 0.7)); } // zastrzały pomostu
+    g.add(cyl3(R, R, 5, lt, 'planks', cx, H, 0, 20)); g.add(cyl3(R + 1.5, R + 1.5, 2, dk, 'planks', cx, H - 1, 0, 20));
+    ring(R - 1, 12, 26, H + 5, false, c, 1.3); // balustrada
+    for (let i = 0; i < 3; i++) { const a = 4.2 + i * 0.7; g.add(cyl3(2.6, 1.6, R * 1.1, '#5c4128', 'planks', cx + Math.cos(a) * R * 0.3, H + 5, Math.sin(a) * R * 0.3, 6)); } // konary w górę
+    for (let i = 0; i < 13; i++) { const rr = R * (0.32 + r() * 0.22), a = 3.6 + r() * 2.6, d = R * (0.2 + r() * 0.55); g.add(sph(rr / PXU, ['#3e7a30', '#4e8a3a', '#2e6226', '#5a9a40'][i % 4], 'leaves', P(cx + Math.cos(a) * d + R * 0.15, H + R * (0.85 + r() * 0.6), Math.sin(a) * d - R * 0.15), null, 10)); } // korona z tyłu
+    for (let i = 0; i < 4; i++) g.add(emis(2.4, 2.4, 2.4, '#f8e890', cx + Math.cos(i * 1.6) * R * 0.8, H + 14 + r() * 6, Math.sin(i * 1.6) * R * 0.8)); // świetliki-latarenki
+  } else if (S.deco === 'reeds') {
+    const ph = H * 0.6; postY = ph + 5;
+    for (let i = 0; i < 6; i++) { const a = i / 6 * TAU, x = cx + Math.cos(a) * R * 0.82, z = Math.sin(a) * R * 0.82; g.add(cyl3(R * 0.08, R * 0.1, ph + 4, dk, 'planks', x, -6, z, 7)); }
+    for (let i = 0; i < 6; i++) { const a = (i + 0.5) / 6 * TAU, m = blk(R * 0.9, 2.4, 2.4, DK(c, 0.3), 'planks', cx + Math.cos(a) * R * 0.8, ph * 0.45, Math.sin(a) * R * 0.8); m.rotation.y = -a + Math.PI / 2; m.rotation.z = (i % 2 ? 0.6 : -0.6); g.add(m); } // krzyżulce
+    g.add(cyl3(R, R, 5, lt, 'planks', cx, ph, 0, 18));
+    ring(R - 1, 10, 22, ph + 5, false, c, 1.2, Math.PI * 0.55, Math.PI * 1.55); // poręcz od frontu
+    const hx = cx + R * 0.28, hz = -R * 0.22, hr = R * 0.55, hh = H * 0.36;
+    ring(hr, hh, 22, ph + 5, false, LT(c, 0.05), 0, 0, TAU, hx, hz); g.add(cyl3(hr - 1.5, hr - 1.5, hh, DK(c, 0.35), 'planks', hx, ph + 5, hz, 16));
+    g.add(coneRoof(hr * 1.35, hr * 1.5, S.roof, 'thatch', hx, ph + 5 + hh, hz, 14)); // dach z trzciny
+    g.add(blk(3, 16, 10, '#2a1a0e', 'planks', hx - hr - 0.5, ph + 5, hz + 2)); // wejście do chaty
+    for (const dz of [-5, 5]) g.add(tilt(cyl3(1.4, 1.4, ph + 6, dk, 'planks', cx - R - 6, -2, dz, 6), 0, -0.18)); // drabina
+    for (let k = 0; k < 7; k++) g.add(tilt(blk(2, 1.6, 12, lt, 'planks', cx - R - 6 + k * ph / 7 * 0.18, 4 + k * ph / 7.5, 0), 0, 0));
+    for (let i = 0; i < 22; i++) { const a = r() * TAU, d = R * (0.6 + r() * 0.7); g.add(cyl3(0.7, 0.3, 10 + r() * 14, i % 2 ? '#6a7a3a' : '#8a8a4a', 'leaves', cx + Math.cos(a) * d, 0, Math.sin(a) * d, 5)); } // trzciny
+    g.add(blk(1.2, 20, 12, col, 'cloth', hx + hr * 0.2, ph + 5 + hh + hr * 1.5 - 4, hz)); // chorągiewka na szczycie
+  } else {
+    ring(R * 0.82, H, 24, 0, false); g.add(cyl3(R * 0.78, R * 0.78, H, DK(c, 0.3), 'planks', cx, 0, 0, 16));
+    for (const y of [H * 0.28, H * 0.66]) g.add(cyl3(R * 0.86, R * 0.86, 3, '#3a2a18', 'planks', cx, y, 0, 18)); // obręcze z lin
+    for (let i = 0; i < 6; i++) { const a = i / 6 * TAU, m = cyl3(2.4, 2.4, R * 0.6, dk, 'planks', cx + Math.cos(a) * R * 0.92, H - R * 0.35, Math.sin(a) * R * 0.92, 6); g.add(tilt(m, -Math.sin(a) * 0.6, Math.cos(a) * 0.6)); } // wsporniki nawisu
+    g.add(cyl3(R * 1.12, R * 1.12, 7, lt, 'planks', cx, H, 0, 18)); postY = H + 7;
+    ring(R * 1.08, 15, 30, H + 7, true); // zaostrzone pale nawisu
+    for (const [dx, dz] of [[0.1, -0.45], [0.6, -0.1], [0.2, 0.4], [-0.2, -0.2]]) g.add(cyl3(2.4, 2.4, 32, dk, 'planks', cx + dx * R, H + 7, dz * R, 6));
+    const roof = coneRoof(R * 0.85, R * 0.7, S.roof, 'thatch', cx + R * 0.2, H + 39, -R * 0.05, 6); g.add(roof); // daszek ze skór
+    for (const a of [2.5, 3.2, 3.9]) { const x = cx + Math.cos(a) * R * 1.08, z = Math.sin(a) * R * 1.08; g.add(cyl3(1.6, 1.6, 26, dk, 'planks', x, H + 7, z, 6)); g.add(sph(3.6 / PXU, '#e8e0cc', 'bone', P(x, H + 35, z), null, 10)); } // czaszki na palach
+    for (let i = 0; i < 5; i++) { const a = 2.4 + i * 0.4, m = cyl3(2.6, 0.3, 26, lt, 'planks', cx + Math.cos(a) * R, 4, Math.sin(a) * R, 6); g.add(tilt(m, Math.sin(a) * 1.0, -Math.cos(a) * 1.0)); } // pale przeciw szarży
+    g.add(blk(1.2, 30, 14, '#a8281e', 'cloth', cx - R * 0.84, H * 0.42, 0)); // proporzec na licu
+  }
+  marker(g, mark, P(cx - R * 0.55, postY, R * 0.25));
+}
 function siegeTower(g, S, r) {
   const x = 30, H = 96;
-  if (S.mat === 'wood') { // wieża strażnicza z bali: cztery słupy, krzyżulce, pomost z palisadą z zaostrzonych desek
-    for (const [dx, dz] of [[-15, -15], [15, -15], [-15, 15], [15, 15]]) g.add(cyl3(3.5, 3, H, DK(S.col, 0.1), 'planks', x + dx, 0, dz, 8));
-    for (const dz of [-15, 15]) { const b = blk(42, 3, 3, DK(S.col, 0.3), 'planks', x, H * 0.45, dz, [0, 0, 0.7]); g.add(b); }
-    g.add(blk(40, 4, 40, S.col, 'planks', x, H, 0));
-    for (let i = 0; i < 9; i++) for (const side of [-1, 1]) { g.add(cyl3(2.4, 2.4, 12, S.col, 'planks', x - 18 + i * 4.5, H + 4, side * 19, 6)); g.add(cyl3(2.4, 0.3, 4, LT(S.col, 0.1), 'planks', x - 18 + i * 4.5, H + 16, side * 19, 6)); }
-    for (let i = 0; i < 9; i++) { g.add(cyl3(2.4, 2.4, 12, S.col, 'planks', x - 19, H + 4, -18 + i * 4.5, 6)); g.add(cyl3(2.4, 0.3, 4, LT(S.col, 0.1), 'planks', x - 19, H + 16, -18 + i * 4.5, 6)); }
-    g.add(cyl3(9, 9, 16, S.col, 'planks', x + 10, H + 4, -12, 8)); siegeRoof(g, S, 12, x + 10, H + 20, -12);
-  } else {
+  if (S.mat === 'wood') { woodTower(g, S, r, x, 24, H, 'fx:post', '#a8281e'); return; }
+  {
     g.add(cyl3(37, 35, H, S.col, S.kind, x, 0, 0)); g.add(cyl3(39, 39, 8, DK(S.col, 0.15), S.kind, x, 0, 0)); g.add(cyl3(36.5, 36.5, 4, DK(S.col, 0.1), S.kind, x, H * 0.5, 0));
     g.add(ringMerlons(35, H, S.col, S.kind, x, 0, 16));
     for (const a of [2.6, 3.4]) g.add(blk(3, 9, 3, '#120c08', 'planks', x + Math.cos(a) * 35.4, H * 0.62, Math.sin(a) * 35.4)); // strzelnice
@@ -117,17 +158,7 @@ function siegeKeep(g, S, r, state, col) {
     return;
   }
   const H = 100;
-  if (S.mat === 'wood') {
-    g.add(blk(76, 70, 76, S.col, 'planks', 0, 0, 0)); g.add(blk(88, 6, 88, DK(S.col, 0.2), 'planks', 0, 70, 0));
-    g.add(blk(84, 54, 84, LT(S.col, 0.05), 'planks', 0, 76, 0));
-    for (const [dx, dz] of [[-40, -40], [40, -40], [-40, 40], [40, 40]]) g.add(cyl3(5, 5, 130, DK(S.col, 0.15), 'planks', dx, 0, dz, 8));
-    for (let i = 0; i < 4; i++) g.add(blk(3, 10, 8, '#120c08', 'planks', -42.5, 92, -24 + i * 16)); // strzelnice
-    g.add(blk(3, 30, 22, '#3a2410', 'planks', -38.5, 0, 0)); // drzwi
-    const roof = coneRoof(68, 62, S.roof, S.roofKind || 'thatch', 0, 130, 0, 4); roof.rotation.y = Math.PI / 4; g.add(roof);
-    g.add(blk(1.2, 26, 16, col, 'cloth', -6, 196, 0)); g.add(cyl3(1.2, 1.2, 40, '#3a2410', 'planks', 0, 186, 0, 6));
-    marker(g, 'fx:keep', P(-20, 130, 10));
-    return;
-  }
+  if (S.mat === 'wood') { woodTower(g, S, r, 0, 46, 112, 'fx:keep', col); return; }
   g.add(cyl3(56, 60, 14, DK(S.col, 0.15), S.kind, 0, 0, 0, 28)); // cokół
   g.add(cyl3(50, 48, H, S.col, S.kind, 0, 0, 0, 28)); g.add(cyl3(49.5, 49.5, 5, DK(S.col, 0.12), S.kind, 0, H * 0.45, 0, 28));
   g.add(cyl3(55, 55, 8, DK(S.col, 0.18), S.kind, 0, H, 0, 28)); g.add(ringMerlons(53, H + 8, S.col, S.kind, 0, 0, 20)); // ganek z blankami

@@ -74,6 +74,8 @@ function placeMachines(B, side, h) {
 // i katapulta atakującego, która co rundę rzuca głazem w mur. Brama przepuszcza tylko obrońców; lotnicy przelatują.
 // Fosa (od Cytadeli) w polu tuż przed murem (moatX), z mostem w rzędzie bramy: napastnik, który do niej wejdzie, kończy ruch
 // i dostaje obrażenia (MOAT_DMG wg poziomu fortyfikacji); lotnicy ją przelatują.
+// Strzelcy na wieżach: najsłabszy strzelec frakcji miasta (tylko wygląd; siłę wieży liczy arrowTower)
+const TOWER_SHOOTER = { haven: 'archer', sylvan: 'elfArcher', barrow: 'necromancer', fortress: 'lizardman', inferno: 'gog', academy: 'masterGremlin', dungeon: 'medusa', stronghold: 'orcAxe' };
 const SIEGE_X = 6, GATE_Y = 4, KEEP_X = BCOLS - 1, MOAT_DMG = [0, 0, 40, 70], WALL_HP = [0, 2, 3, 4];
 const wallX = y => SIEGE_X + (y >> 1), moatX = y => wallX(y) - 1;
 const behindWall = (x, y) => x > wallX(y), beforeWall = (x, y) => x < wallX(y);
@@ -106,6 +108,7 @@ function setupSiege(B, t) {
     let best = null; for (let y = 0; y < BROWS; y++) for (let x = wallX(y) + 1; x < BCOLS; x++) { const d = hexDistance(u, { x, y }); if ((!best || d < best.d) && canStand(B, u, x, y) && !wallAt(B, x, y)) best = { d, x, y }; }
     if (best) { u.x = best.x; u.y = best.y; }
   }
+  for (const u of B.units) if (u.cid === 'arrowTower') u.vis = TOWER_SHOOTER[t.faction];
   const spot = freeSpot(B, 0, [BROWS - 1, 0, BROWS - 2, 1, 7, 2, 6, 3, 5, 4]); if (spot) addFixed(B, 0, 'catapult', spot[0], spot[1], 1, 'siege');
 }
 // Katapulta: cel wskazuje gracz (fragment muru, brama albo wieża), komputer wybiera sam; trafia w 75% strzałów, z Balistyką częściej,
