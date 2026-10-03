@@ -555,6 +555,7 @@ G.screens.battle = {
       drawSprite(ctx, L.s, gx, gy - lift - (L.hop || 0), us);
       if (L.flash) { ctx.globalAlpha = 0.85; drawSprite(ctx, tintSprite(L.s, '#ffffff'), gx, gy - lift, us); }
       ctx.restore();
+      if (u.cid === 'arrowTower' && !u.dead && B.walls) drawTowerFront(ctx, siegeArt(B.sides[1].town.faction), u);
     };
     const kx = keepO.length ? hexCenter(keep.x, keep.y)[0] + KEEP_DX : 0, hidden = keepO.length && keep.hp > 0 ? shown.filter(v => !v.dead && !v.keep && v.py < keepO[0].py && v.py > keepO[0].py - 200 && Math.abs(v.px - kx) < 62) : [];
     for (const u of [...shown, ...obst, ...keepO].sort((a, b) => a.py - b.py)) {

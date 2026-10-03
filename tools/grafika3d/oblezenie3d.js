@@ -79,11 +79,11 @@ function woodTower(g, S, r, cx, R, H, mark, col) {
     for (let i = 0; i < 5; i++) { const a = 2.4 + i * 0.4, m = cyl3(2.6, 0.3, 26, lt, 'planks', cx + Math.cos(a) * R, 4, Math.sin(a) * R, 6); g.add(tilt(m, Math.sin(a) * 1.0, -Math.cos(a) * 1.0)); } // pale przeciw szarży
     g.add(blk(1.2, 30, 14, '#a8281e', 'cloth', cx - R * 0.84, H * 0.42, 0)); // proporzec na licu
   }
-  marker(g, mark, P(cx - R * 0.55, postY, R * 0.25));
+  marker(g, mark, P(cx - R * 0.3, postY, R * 0.15)); // strzelec na środku przedniej części pomostu
 }
 function siegeTower(g, S, r) {
   const x = 30, H = 96;
-  if (S.mat === 'wood') { woodTower(g, S, r, x, 24, H, 'fx:post', '#a8281e'); return; }
+  if (S.mat === 'wood') { woodTower(g, S, r, x, 36, H, 'fx:post', '#a8281e'); return; } // pomost na tyle szeroki, żeby strzelec się zmieścił
   {
     g.add(cyl3(37, 35, H, S.col, S.kind, x, 0, 0)); g.add(cyl3(39, 39, 8, DK(S.col, 0.15), S.kind, x, 0, 0)); g.add(cyl3(36.5, 36.5, 4, DK(S.col, 0.1), S.kind, x, H * 0.5, 0));
     g.add(ringMerlons(35, H, S.col, S.kind, x, 0, 16));
@@ -172,6 +172,18 @@ function siegeKeep(g, S, r, state, col) {
   if (S.deco === 'snow') g.add(cyl3(56, 56, 2, '#f4f8ff', 'plaster', 0, H + 8.5, 0, 28));
   if (S.deco === 'banner' || S.deco === 'snow') { g.add(blk(1.4, 40, 18, col, 'cloth', -50.5, 70, 18)); g.add(blk(1.4, 40, 18, col, 'cloth', -50.5, 70, -18)); }
   marker(g, 'fx:keep', P(-30, H + 10, 12));
+}
+// Przód blanek wieży (klatka 'tower_front' / 'keep_front'): tylko elementy przy krawędzi pomostu, od strony kamery, na wysokości
+// strzelca – gra rysuje je po strzelcu, więc stoi on za balustradą, w środku wieży, a nie na jej dachu
+function siegeFront(fac, kind) {
+  const S = SIEGE3[fac] || SIEGE3.haven, wood = S.mat === 'wood', g = buildSiegePiece(fac, kind, 'ok');
+  const cx = kind === 'keep' ? 0 : 30, R = kind === 'keep' ? (wood ? 46 : 50) : (wood ? 36 : 35), dir = [Math.sin(SIEGE_YAW), Math.cos(SIEGE_YAW)];
+  g.updateMatrixWorld(true); let post = null; g.traverse(o => { if (o.name === (kind === 'keep' ? 'fx:keep' : 'fx:post')) post = o.getWorldPosition(new THREE.Vector3()).multiplyScalar(PXU); });
+  const y0 = post ? post.y - 3 : 0, drop = [];
+  g.traverse(m => { if (!m.isMesh) return; const c = new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()).multiplyScalar(PXU), rx = c.x - cx, rz = c.z;
+    const ok = c.y >= y0 && c.y <= y0 + 30 && Math.hypot(rx, rz) > R * 0.8 && rx * dir[0] + rz * dir[1] > R * 0.15; if (!ok) drop.push(m); });
+  for (const m of drop) m.parent.remove(m);
+  return g;
 }
 // Fragment muru frakcji: kind 'wall' | 'gate' | 'tower', state 'ok' | 'hit' | 'down'; col = barwa właściciela (chorągwie)
 function buildSiegePiece(fac, kind, state, col = '#2a4a8a') {

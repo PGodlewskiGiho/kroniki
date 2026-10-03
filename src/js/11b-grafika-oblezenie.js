@@ -164,6 +164,13 @@ function drawKeep3D(ctx, A, w) {
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(A.im, f[0], f[1], f[2], f[3], cx - f[4] / d, cy - f[5] / d, f[2] / d, f[3] / d); ctx.restore();
 }
+// Przód blanek wieży (balustrada, pale, blanki od strony patrzącego) rysowany po strzelcu: strzelec stoi w wieży, nie na niej
+function drawTowerFront(ctx, A, u) {
+  const f = A && A.p[u.keep ? 'keep_front' : 'tower_front']; if (!f || f[2] <= 0) return;
+  const d = A.d, [hx, cy] = hexCenter(u.x, u.y), x = u.keep ? hx + KEEP_DX : wallWX(u.y);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(A.im, f[0], f[1], f[2], f[3], x - f[4] / d, cy - f[5] / d, f[2] / d, f[3] / d); ctx.restore();
+}
 // Cały mur jako jeden sprite; (0, 0) = (wallWX(0), 0) ekranu bitwy, każdy rząd przesunięty jak mur. Klucz obejmuje stan każdego fragmentu,
 // więc nowy rysunek powstaje tylko po trafieniu.
 const siegeState = w => (w.hp <= 0 ? 'down' : w.hp < w.max ? 'hit' : 'ok');

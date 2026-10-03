@@ -7,7 +7,7 @@
 const path = require('path'), fs = require('fs');
 const { ROOT, openStudio } = require('./wspolne');
 const OUT = path.join(ROOT, 'src', 'grafika', 'oblezenia'), META = path.join(ROOT, 'src', 'grafika', 'oblezenia.json'), D = +(process.env.D || 2);
-const PIECES = [['wall', 'ok'], ['wall', 'hit'], ['wall', 'down'], ['gate', 'ok'], ['gate', 'hit'], ['gate', 'down'], ['tower', 'ok'], ['tower', 'down'], ['keep', 'ok'], ['keep', 'down']];
+const PIECES = [['wall', 'ok'], ['wall', 'hit'], ['wall', 'down'], ['gate', 'ok'], ['gate', 'hit'], ['gate', 'down'], ['tower', 'ok'], ['tower', 'down'], ['keep', 'ok'], ['keep', 'down'], ['tower', 'front'], ['keep', 'front']];
 const FACS = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'dungeon', 'stronghold'];
 (async () => {
   const t0 = Date.now(), only = process.argv[2] ? process.argv[2].split(',') : null; fs.mkdirSync(OUT, { recursive: true });
@@ -18,7 +18,7 @@ const FACS = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'du
       G3.raw = true; const k = PXU * D, frames = []; let post = null, keepPost = null;
       for (const [kind, state] of PIECES) {
         const big = kind === 'keep', W = (big ? 220 : 150) * D, H = (big ? 340 : 260) * D, AX = (big ? 110 : 44) * D, AY = (big ? 280 : 200) * D; // wieża główna: środek heksu
-        const c = G3.render(buildSiegePiece(fac, kind, state), W, H, k, AX, AY, { yaw: SIEGE_YAW, pitch: SIEGE_PITCH, raw: true });
+        const c = G3.render(state === 'front' ? siegeFront(fac, kind) : buildSiegePiece(fac, kind, state), W, H, k, AX, AY, { yaw: SIEGE_YAW, pitch: SIEGE_PITCH, raw: true });
         const p = (c._marks || []).find(m => m[0] === 'post'); if (p && kind === 'tower' && state === 'ok') post = [Math.round((p[1] - AX) / D), Math.round((p[2] - AY) / D)];
         const kp = (c._marks || []).find(m => m[0] === 'keep'); if (kp && state === 'ok') keepPost = [Math.round((kp[1] - AX) / D), Math.round((kp[2] - AY) / D)];
         const d = c.getContext('2d').getImageData(0, 0, W, H).data; let x0 = W, y0 = H, x1 = -1, y1 = -1;
