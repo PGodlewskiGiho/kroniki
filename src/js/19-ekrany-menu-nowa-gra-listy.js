@@ -173,7 +173,7 @@ function paintMenuScene(pb) {
 }
 function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); dimScreen(ctx, a); }
 function askQuit() {
-  showDialog('Czy na pewno chcesz opuścić grę?', [{ label: 'Tak', key: 'enter', action: () => G.go('bye') }, { label: 'Nie', key: 'escape' }]);
+  showDialog('Czy na pewno chcesz opuścić grę?', [{ label: 'Tak', key: 'enter', action: () => (window.KronikiApp && KronikiApp.exit ? KronikiApp.exit() : G.go('bye')) }, { label: 'Nie', key: 'escape' }]);
 }
 function askToMenu() {
   showDialog('Wrócić do menu głównego? Niezapisane postępy zostaną utracone.', [

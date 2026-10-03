@@ -3,9 +3,13 @@
 // przeglądarki, poziomo i bez internetu (manifest, ikony i sw.js z katalogu web/ leżą obok index.html).
 // Na telefonie: pierwszy dotyk włącza pełny ekran i obrót poziomy (Android), a w pionie gra prosi o obrócenie telefonu.
 const isTouchDevice = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints || 0) > 0 && !(window.matchMedia && window.matchMedia('(pointer: fine)').matches);
-const isStandalone = () => !!((window.matchMedia && window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) || navigator.standalone);
+// Aplikacja na Androida (android/: WebView z grą w środku) wystawia most KronikiApp: zapis pliku, wyjście
+const inApp = () => !!window.KronikiApp;
+const isAndroid = () => /Android/i.test(navigator.userAgent);
+const APK_URL = 'https://github.com/PGodlewskiGiho/kroniki/releases/latest/download/kroniki-krolestw.apk';
+const isStandalone = () => inApp() || !!((window.matchMedia && window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) || navigator.standalone);
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1);
-const onWeb = () => /^https?:$/.test(location.protocol);
+const onWeb = () => /^https?:$/.test(location.protocol) && !inApp();
 // W pionie (telefon trzymany pionowo) obraz 800×600 byłby malutkim paskiem: zamiast gry prośba o obrót
 const needRotate = () => isTouchDevice() && window.innerHeight > window.innerWidth * 1.1;
 const App = {
@@ -33,6 +37,8 @@ const App = {
   canInstall() { return onWeb() && !isStandalone() && !this.installed && (!!this.prompt || isTouchDevice()); },
   install() {
     if (this.prompt) { const p = this.prompt; this.prompt = null; p.prompt(); if (p.userChoice) p.userChoice.then(r => { if (r && r.outcome === 'accepted') this.installed = true; G.dirty = true; }).catch(() => {}); return; }
+    if (isAndroid()) return showDialog('Na Androidzie możesz zainstalować grę jako aplikację z przeglądarki (ikona na ekranie głównym) albo pobrać osobną aplikację (plik APK): działa bez internetu i bez przeglądarki. Przy instalacji APK telefon zapyta o zgodę na instalację z tego źródła.',
+      [{ label: 'Pobierz APK', key: 'enter', primary: true, action: () => { location.href = APK_URL; } }, { label: 'Z przeglądarki', key: 'p', action: () => showDialog('W menu przeglądarki (⋮) wybierz „Zainstaluj aplikację” albo „Dodaj do ekranu głównego”.', [{ label: 'OK', key: 'enter' }]) }, { label: 'Anuluj', key: 'escape' }], { bw: 150 });
     const how = isIOS() ? 'W Safari stuknij „Udostępnij” (kwadrat ze strzałką), potem „Do ekranu początkowego”.'
       : 'W menu przeglądarki (⋮) wybierz „Zainstaluj aplikację” albo „Dodaj do ekranu głównego”.';
     showDialog(`Zainstaluj Kroniki jak aplikację: ${how} Gra otworzy się z ikony na pełnym ekranie, bez pasków przeglądarki, i zadziała także bez internetu. Zapisy zostają te same.`, [{ label: 'OK', key: 'enter' }]);
