@@ -42,7 +42,7 @@ test('Ściana ognia, Kradzież życia, Święte światło', async () => {
   }, setup);
   assert.equal(r.wall[0], 40, 'od razu 10 + 10 × moc'); assert.equal(r.wall[1], 20, 'co rundę połowa'); assert.equal(r.wall[3], 3);
   assert.ok(r.steal > 0, 'kradzież życia wskrzesza polegle');
-  assert.equal(r.holy[0], 60); assert.equal(r.holy[1], 0, 'swoich nie rani'); assert.equal(r.holy[2], 2);
+  assert.equal(r.holy[0], 46); assert.equal(r.holy[1], 0, 'swoich nie rani'); assert.equal(r.holy[2], 2);
 });
 
 test('Klon i Teleportacja; klon nie wraca do armii', async () => {

@@ -51,9 +51,9 @@ test('talenty i nowe umiejętności w bitwie', async () => {
     const out = {};
     // Taktyka: +3 do szybkości i ataku w pierwszej rundzie, potem znika
     { const B = setup([{ id: 'tactics', lv: 3 }], []), u = B.units.find(u => u.side === 0 && u.cid === 'swordsman'), s0 = unitSpd(u); nextActive(B); const s1 = unitSpd(u);
-      B.order = []; B.waitQ = []; B.active = null; nextActive(B); out.tac = [CREATURES.swordsman.spd, s1, unitSpd(u), B.round]; }
+      for (let k = 0; k < 2; k++) { B.order = []; B.waitQ = []; B.active = null; nextActive(B); } out.tac = [CREATURES.swordsman.spd, s1, unitSpd(u), B.round]; }
     // Salwa: strzał z daleka bez kary
-    { const dmg = t => { const B = setup([], t), a = B.units.find(u => u.side === 0 && u.cid === 'archer'), e = B.units.find(u => u.side === 1); a.x = 0; e.x = BCOLS - 1; return damageRoll(B, a, e, true); }; out.volley = [dmg([]), dmg(['volley'])]; }
+    { const dmg = t => { const B = setup([], t), a = B.units.find(u => u.side === 0 && u.cid === 'archer'), e = B.units.find(u => u.side === 1); a.x = 0; e.x = BCOLS - 1; B.obst.clear(); return damageRoll(B, a, e, true); }; out.volley = [dmg([]), dmg(['volley'])]; }
     // Kontruderzenie: dwa odwety na rundę
     { const B = setup([], ['counter']), u = B.units.find(u => u.side === 0 && u.cid === 'swordsman'); out.counter = [canRetal(B, u), (u.retaliated = 1, canRetal(B, u)), (u.retaliated = 2, canRetal(B, u))]; }
     // Wódz: morale nie spada poniżej zera, +1
@@ -70,7 +70,7 @@ test('talenty i nowe umiejętności w bitwie', async () => {
     return out;
   });
   assert.equal(r.tac[1], r.tac[0] + 3); assert.equal(r.tac[2], r.tac[0], JSON.stringify(r.tac));
-  assert.ok(Math.abs(r.volley[1] / r.volley[0] - 2) < 0.02, JSON.stringify(r.volley));
+  assert.ok(Math.abs(r.volley[1] / r.volley[0] - 2) < 0.02, JSON.stringify(r.volley)); // kara za odległość znika
   assert.deepEqual(r.counter, [true, true, false]);
   assert.ok(r.warlord[0] < 0 && r.warlord[1] === 1, JSON.stringify(r.warlord));
   assert.deepEqual(r.dbl, [true, false]);

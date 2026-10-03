@@ -117,7 +117,7 @@ function createBattle(st, h, foe) {
   if (D.town) setupSiege(B, D.town);
   placeMachines(B, 0, h); placeMachines(B, 1, D.hero);
   for (const u of B.units) { const sb = specBonus(B.sides[u.side].hero, u.cid); if (sb) u.spec = sb; } // specjalność bohatera
-  // Taktyka (przewaga nad Taktyką wroga) i talent Zasadzka: premie tylko w pierwszej rundzie (u.tac, u.amb; zdejmuje je nextActive)
+  // Taktyka (przewaga nad Taktyką wroga): premia w dwóch pierwszych rundach (u.tac), talent Zasadzka w pierwszej (u.amb); zdejmuje je nextActive
   const tac = [0, 1].map(s => skillVal(B.sides[s].hero, 'tactics')), amb = [0, 1].map(s => heroPerk(B.sides[s].hero, 'ambush'));
   for (const u of B.units) if (!isMachine(u)) { const t = Math.max(0, tac[u.side] - tac[1 - u.side]); if (t) u.tac = t; if (amb[u.side]) u.amb = true; }
   B.casts = [0, 0]; B.warded = [false, false];
@@ -235,8 +235,8 @@ function damageRoll(B, a, t, ranged, moved = 0) {
   // strzał atakującego zza muru w obrońcę za murem: połowa obrażeń, dopóki ten fragment muru stoi
   if (ranged && B.walls && a.side === 0 && a.x < SIEGE_X && t.x > SIEGE_X) { const w = wallAt(B, SIEGE_X, t.y); if (w && w.hp > 0) mult *= 0.5; }
   if (t.buffs[ranged ? 'airShield' : 'shield']) mult *= 1 - SHIELD_CUT / 100; // Tarcza (wręcz) i Tarcza powietrza (strzały)
-  const ha = sideHero(B, a.side), volley = heroPerk(ha, 'volley'); // talent Salwa: bez kar za odległość i przeszkody
-  if (ranged && !volley && farShot(a, t)) mult *= 0.5; if (ranged && !volley && shotBlocked(B, a, t)) mult *= 0.5; // odległość i przeszkody na torze lotu
+  const ha = sideHero(B, a.side), volley = heroPerk(ha, 'volley'); // talent Salwa: bez kary za odległość
+  if (ranged && !volley && farShot(a, t)) mult *= 0.5; if (ranged && shotBlocked(B, a, t)) mult *= 0.5; // odległość i przeszkody na torze lotu
   if (a.amb) mult *= 1.5; if (ct.level >= 6 && heroPerk(ha, 'giantSlayer')) mult *= 1.25; // talenty Zasadzka (1. runda) i Pogromca olbrzymów
   // umiejętności bohaterów: Atak / Łucznictwo napastnika, Zbroja obrońcy
   mult *= (1 + skillVal(sideHero(B, a.side), ranged ? 'archery' : 'offense') / 100) * (1 - skillVal(sideHero(B, t.side), 'armorer') / 100);
@@ -268,7 +268,7 @@ function strike(B, a, t, ranged, moved = 0) {
     B.log.push(`Ognista tarcza parzy: ${CREATURES[a.cid].plural.toLowerCase()} (${back}${k ? `, tracą ${k}` : ''}).`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: a, dmg: back, killed: k });
   }
   if ((hasAb(a, 'lifeDrain') || a.buffs.vampiric) && !hasAb(t, 'undead')) { // umiejętność wampirów albo czar Wampiryzm
-    const back = healUnit(a, dmg); if (back) B.log.push(`${CREATURES[a.cid].plural} wysysają życie: wraca ${back}.`);
+    const back = healUnit(a, hasAb(a, 'lifeDrain') ? dmg : Math.floor(dmg / 2)); if (back) B.log.push(`${CREATURES[a.cid].plural} wysysają życie: wraca ${back}.`);
     if (B.fx) B.fx.push({ kind: 'heal', u: a, amount: dmg });
   }
   if (!ranged && hasAb(a, 'breath')) {
@@ -426,7 +426,7 @@ function nextActive(B) {
       B.round++; B.cast = [false, false]; B.casts = [0, 0];
       for (const u of B.units) {
         u.retaliated = false; u.defending = false; u.waited = false; u.moraleBonus = false; u.moraleRolled = false;
-        if (B.round >= 2) { delete u.tac; delete u.amb; } // Taktyka i Zasadzka: tylko pierwsza runda
+        if (B.round >= 2) delete u.amb; if (B.round >= 3) delete u.tac; // Zasadzka: pierwsza runda, Taktyka: dwie pierwsze
         if (!u.dead && u.psn && u.buffs.poison) { const k = applyDamage(u, u.psn); B.log.push(`Trucizna: ${CREATURES[u.cid].plural.toLowerCase()} tracą ${u.psn} życia${k ? ` (giną: ${k})` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: u, dmg: u.psn, killed: k }); }
         const fw = !u.dead && (B.fire || []).find(f => f.r > 0 && unitCells(u).some(([cx, cy]) => cx === f.x && cy === f.y));
         if (fw) { const k = applyDamage(u, fw.d); B.log.push(`Ściana ognia parzy: ${CREATURES[u.cid].plural.toLowerCase()} (${fw.d}${k ? `, giną: ${k}` : ''}).`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: u, dmg: fw.d, killed: k }); }
@@ -449,7 +449,7 @@ function nextActive(B) {
 }
 // --- czary w bitwie: bohater rzuca jeden czar na rundę, zanim ruszy oddział ---
 const unitAtt = u => CREATURES[u.cid].att + (u.tac || 0) + (u.spec ? u.spec.att : 0) + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
-const unitDef = u => CREATURES[u.cid].def + (u.spec ? u.spec.def : 0) + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
+const unitDef = u => CREATURES[u.cid].def + (u.tac || 0) + (u.spec ? u.spec.def : 0) + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
 const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.tac || 0) + (u.spec ? u.spec.spd : 0) + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
 const battleSpells = h => (hasBook(h) ? h.spells || [] : []).filter(id => SPELLS[id].kind === 'battle'); // bez księgi nie ma czarów
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
