@@ -217,7 +217,7 @@ function texShade(TX, col, ax, ay, w) { const W = TX.w, H = TX.h, P = TEX_TILES 
 function texData(im) {
   const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, c.width, c.height).data;
   let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4;
-  return { w: c.width, h: c.height, d, mean: [r / n, gg / n, b / n] };
+  return { w: c.width, h: c.height, d, mean: [r / n, gg / n, b / n], cv: c };
 }
 // Pory roku: lato przypala trawę, jesień barwi ją plamami rdzy i złota, zima przykrywa śniegiem (poza lawą i pustynią)
 const SNOWC = [[236, 242, 248], [214, 226, 238], [248, 250, 252]], AUTC = [[176, 104, 38], [150, 86, 36], [196, 146, 56], [128, 110, 44]];

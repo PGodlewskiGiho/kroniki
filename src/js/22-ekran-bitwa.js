@@ -44,6 +44,14 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
   g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = !PIXEL_ART; c.drawImage(off, 0, 0, W, H);
   const pim = !bare && !fac && BATTLE_BG_IMG[BATTLE_BG_NAMES[terr]]; // tło malowane przez AI (pole bitwy bez siatki); oblężenie: dawny rysunek z brukiem dziedzińca
   if (pim && pim._ok) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(pim, 0, 0, W, 490); }
+  const TX = !PIXEL_ART && !bare && !fac && TERRAIN_TEX[TEX_NAME[terr || 1]]; // faktura z tekstur terenu mapy (widok z góry) i miękkie plamy światła: pole bitwy nie jest płaskie
+  if (TX) { c.save(); c.beginPath(); c.rect(0, 44, W, 446); c.clip();
+    const pat = c.createPattern(TX.cv, 'repeat'); pat.setTransform(new DOMMatrix().scale(0.85)); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.6; c.fillStyle = pat; c.fillRect(0, 44, W, 446);
+    const r = mulberry32(terr * 977 + 13); c.globalCompositeOperation = 'soft-light'; c.globalAlpha = 1;
+    for (let i = 0; i < 9; i++) { const x = r() * W, y = 60 + r() * 420, rad = 60 + r() * 140, lite = r() < 0.5, g = c.createRadialGradient(x, y, 0, x, y, rad);
+      g.addColorStop(0, lite ? 'rgba(255,240,200,.55)' : 'rgba(0,0,0,.5)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+    c.globalCompositeOperation = 'source-over'; const v = c.createLinearGradient(0, 44, 0, 490); v.addColorStop(0, 'rgba(0,0,0,.18)'); v.addColorStop(0.25, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.22)'); c.fillStyle = v; c.fillRect(0, 44, W, 446); // głębia: ciemniej przy horyzoncie i u dołu
+    c.restore(); }
   if (bare) return;
   c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1;
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { hexPath(c, x, y, 1); c.stroke(); }
@@ -137,7 +145,7 @@ G.screens.battle = {
         for (const y0 of [OY + 38, OY + 487]) { const g = c.createLinearGradient(0, y0, 0, y0 + 3); g.addColorStop(0, '#f0d080'); g.addColorStop(1, '#6a4814'); c.fillStyle = g; c.fillRect(0, y0, VW, 3); c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(0, y0 + 3, VW, 1); } }
     }), 0, 0);
   },
-  bg() { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}`, W, H, c => paintBattleBg(c, this.terr, f)); },
+  bg() { const f = this.B && this.B.walls ? this.B.sides[1].town.faction : ''; return Layers.get(`battleBg_${this.terr}_${f}_${TERRAIN_TEX[TEX_NAME[this.terr || 1]] ? 1 : 0}`, W, H, c => paintBattleBg(c, this.terr, f)); },
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
     Sfx.play('battlestart', { vol: 0.8, jit: 0 });
