@@ -137,8 +137,20 @@ function drawRoundTower(ctx, S, A, col, cx, cy, R, top, small = false) {
   sPennant(ctx, apex, col);
   merl(true);
 }
-// Punkt na ganku wieży, w którym stoi strzelec (względem (SIEGE_WX, środek rzędu))
-const towerPost = () => [WALL.walk / 2 - 2, 10 - TOWER_H + 8];
+// Punkt na ganku wieży, w którym stoi strzelec (względem (SIEGE_WX, środek rzędu)); mury z 3D mają swój punkt w opisie arkusza
+let siegePost3D = null;
+const towerPost = () => siegePost3D || [WALL.walk / 2 - 2, 10 - TOWER_H + 8];
+// Mury wypalone z 3D (tools/grafika3d/wypal-oblezenia.js): fragment na rząd, od góry do dołu (niższe zasłaniają wyższe)
+const siegeArt = fac => { const A = typeof SIEGE_ART !== 'undefined' && SIEGE_ART[fac], im = SIEGE_IMG[fac]; return A && im && im._ok ? { ...A, im } : null; };
+function drawSiege3D(ctx, A, walls) {
+  const d = A.d; siegePost3D = A.post || null;
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  for (const w of [...walls.values()].sort((a, b) => a.y - b.y)) {
+    const s = siegeState(w), f = A.p[`${w.kind}_${w.kind === 'tower' && s === 'hit' ? 'ok' : s}`]; if (!f) continue;
+    const cy = hexCenter(w.x, w.y)[1]; ctx.drawImage(A.im, f[0], f[1], f[2], f[3], SIEGE_WX - f[4] / d, cy - f[5] / d, f[2] / d, f[3] / d);
+  }
+  ctx.restore();
+}
 // Cały mur jako jeden sprite; (0, 0) = (SIEGE_WX, 0) ekranu bitwy. Klucz obejmuje stan każdego fragmentu,
 // więc nowy rysunek powstaje tylko po trafieniu.
 const siegeState = w => (w.hp <= 0 ? 'down' : w.hp < w.max ? 'hit' : 'ok');
