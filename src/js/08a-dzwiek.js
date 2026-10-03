@@ -51,7 +51,10 @@ const Music = {
   forScreen(name, p = {}) {
     if (['menu', 'setup', 'rules', 'load', 'scores', 'credits', 'nazwa'].includes(name)) return 'menu';
     if (name === 'adventure') return ''; // mapa świata: bez muzyki (same dźwięki otoczenia i kroki)
-    if (name === 'battle') return 'bitwa';
+    if (name === 'battle') { // oblężenie, starcie z bohaterem, a z potworami na zmianę dwa utwory
+      const B = p.battle; if (B && B.walls) return 'bitwa_oblezenie';
+      if (B && (B.sides[1].hero || B.sides[1].town)) return 'bitwa_bohater';
+      return MUSIC_ART && MUSIC_ART.bitwa_dzicz && (this.wild = !this.wild) ? 'bitwa_dzicz' : 'bitwa'; }
     if (name === 'town') { const t = G.state && G.state.towns[p.townId || 0]; return MUSIC_TOWN[t && t.faction] || 'miasto_przystan'; }
     if (name === 'bye') return '';
     return null;

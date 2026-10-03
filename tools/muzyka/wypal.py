@@ -6,7 +6,8 @@ import os, sys, io, json, subprocess, numpy as np, soundfile as sf
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from utwory import SONGS
 from zamki import ZAMKI
-SONGS = SONGS + ZAMKI  # muzyka miast: osobny utwór dla każdej frakcji
+from bitwy import BITWY
+SONGS = SONGS + ZAMKI + BITWY  # muzyka miast (każda frakcja) i dodatkowe utwory bitew
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..')); OUT = os.path.join(ROOT, 'src', 'muzyka')
 MUZ = os.environ.get('MUZ_DIR', '/home/user/muzyka'); SF2 = os.path.join(MUZ, 'node_modules', 'generaluser', 'GeneralUser.sf2')
 TMP = os.path.join(HERE, '.cache'); os.makedirs(TMP, exist_ok=True); os.makedirs(OUT, exist_ok=True)

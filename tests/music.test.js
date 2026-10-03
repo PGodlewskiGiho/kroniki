@@ -11,7 +11,7 @@ test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'bł�
 test('każdy utwór jest wbudowany i ma długość pętli', async () => {
   const r = await page.evaluate(() => Object.entries(MUSIC_ART).map(([k, v]) => [k, v.loop, v.d.length]));
   const names = r.map(x => x[0]).sort();
-  assert.deepEqual(names, ['bitwa', 'menu', 'miasto_akademia', 'miasto_cytadela', 'miasto_inferno', 'miasto_knieja', 'miasto_kurhan', 'miasto_loch', 'miasto_przystan', 'miasto_twierdza']);
+  assert.deepEqual(names, ['bitwa', 'bitwa_bohater', 'bitwa_dzicz', 'bitwa_oblezenie', 'menu', 'miasto_akademia', 'miasto_cytadela', 'miasto_inferno', 'miasto_knieja', 'miasto_kurhan', 'miasto_loch', 'miasto_przystan', 'miasto_twierdza']);
   for (const [k, loop, len] of r) { assert.ok(loop > 30 && loop < 300, `${k}: pętla ${loop}`); assert.ok(len > 100000, `${k}: dane`); }
 });
 
@@ -24,7 +24,11 @@ test('ekrany dostają właściwe utwory (mroczne frakcje: mroczne miasto)', asyn
     t.faction = 'inferno'; out.inferno = Music.forScreen('town', { townId: 0 }); t.faction = f0;
     return out;
   });
-  assert.deepEqual(r, { menu: 'menu', setup: 'menu', credits: 'menu', adventure: '', battle: 'bitwa', hero: null, bye: '', haven: 'miasto_przystan', inferno: 'miasto_inferno' });
+  assert.match(r.battle, /^bitwa(_dzicz)?$/, 'z potworami na zmianę dwa utwory'); delete r.battle;
+  assert.deepEqual(r, { menu: 'menu', setup: 'menu', credits: 'menu', adventure: '', hero: null, bye: '', haven: 'miasto_przystan', inferno: 'miasto_inferno' });
+  const b = await page.evaluate(() => { const two = [Music.forScreen('battle', {}), Music.forScreen('battle', {})].sort();
+    return { two, siege: Music.forScreen('battle', { battle: { walls: new Map(), sides: [{}, { town: {} }] } }), hero: Music.forScreen('battle', { battle: { sides: [{}, { hero: {} }] } }) }; });
+  assert.deepEqual(b, { two: ['bitwa', 'bitwa_dzicz'], siege: 'bitwa_oblezenie', hero: 'bitwa_bohater' });
 });
 
 test('odtwarzacz przełącza utwory i trzyma w pamięci najwyżej dwa', async () => {
