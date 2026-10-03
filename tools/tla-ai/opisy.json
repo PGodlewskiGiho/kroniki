@@ -910,5 +910,10 @@
   "opis": "volcanic wasteland, black basalt ground with glowing lava cracks, ash, scorched rocks near the edges, red ember glow",
   "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
   "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "menu": {
+  "opis": "epic fantasy matte painting, knight seen from behind on a cliff edge, red cape, blue banner, huge glowing open book on stone pedestal beside him, spiral of golden magic light, vast green valley, shining river, white medieval castles with towers and red roofs on hills, sunset, golden clouds, god rays, dragon in the sky",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
  }
 }

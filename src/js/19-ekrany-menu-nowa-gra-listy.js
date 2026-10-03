@@ -133,7 +133,29 @@ function drawLoadingScreen(ctx) {
   ctx.font = font(15, 500, 'body'); const tip = LOADING_TIPS[Math.floor(t / 5) % LOADING_TIPS.length];
   wrapText(ctx, `Porada: ${tip}`, Math.min(560, VW - 40)).forEach((l, i) => text(ctx, l, VW / 2, by + bh + 66 + i * 20, { size: 15, weight: 500, italic: true, align: 'center', color: 'rgba(240,220,170,.8)' }));
 }
+// Obraz menu (tools/tla-ai/menu): Kronikarz na skalnej iglicy nad doliną królestw, obok otwarta księga kronik. Kadr wypełnia ekran
+// (punkt focus zostaje w kadrze: na wąskim ekranie bohater, na szerokim cała dolina), kamera powoli oddycha i płynie; z księgi
+// spiralą wznoszą się złote iskry, jej światło pulsuje, słońce lekko migocze. U góry przyciemnienie pod tytuł, winieta na brzegach.
+function drawMenuArt(c, im, A) {
+  const iw = im.naturalWidth, ih = im.naturalHeight, t = G.time, k = Math.max(VW / iw, VH / ih) * (1.025 + 0.015 * Math.sin(t * 0.045)), vw = VW / k, vh = VH / k;
+  const fx = (A.focus || [0.42, 0.5])[0], cx = clamp(fx * iw + Math.sin(t * 0.027) * iw * 0.012, vw / 2, iw - vw / 2), cy = clamp(ih * 0.5 + Math.cos(t * 0.021) * ih * 0.012, vh / 2, ih - vh / 2);
+  c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, cx - vw / 2, cy - vh / 2, vw, vh, 0, 0, VW, VH);
+  const P = ([x, y]) => [(x * iw - (cx - vw / 2)) * k, (y * ih - (cy - vh / 2)) * k], s = k * iw / 1024; c.globalCompositeOperation = 'lighter';
+  if (A.sun) { const [sx, sy] = P(A.sun), r = (90 + 8 * Math.sin(t * 0.9)) * s, g = c.createRadialGradient(sx, sy, 0, sx, sy, r); g.addColorStop(0, 'rgba(255,230,170,.22)'); g.addColorStop(1, 'rgba(255,200,120,0)'); c.fillStyle = g; c.fillRect(sx - r, sy - r, r * 2, r * 2); }
+  if (A.book) {
+    const [bx, by] = P(A.book), pulse = 0.75 + 0.25 * Math.sin(t * 1.6), r = 70 * s * (0.9 + 0.1 * pulse), g = c.createRadialGradient(bx, by, 0, bx, by, r);
+    g.addColorStop(0, `rgba(255,236,170,${0.5 * pulse})`); g.addColorStop(0.4, `rgba(255,190,90,${0.22 * pulse})`); g.addColorStop(1, 'rgba(255,160,60,0)'); c.fillStyle = g; c.fillRect(bx - r, by - r, r * 2, r * 2);
+    for (let i = 0; i < 70; i++) { // iskry kronik: spirala w górę, coraz szersza i bledsza
+      const ph = (t * (0.08 + (i % 5) * 0.012) + i * 0.1371) % 1, a = ph * 9 + i * 2.39, rad = (6 + ph * 70) * s, x = bx + Math.cos(a) * rad, y = by - ph * 230 * s - (i % 3) * 4 * s, al = Math.sin(ph * Math.PI) * (0.55 + (i % 4) * 0.1), sz = (1.2 + (i % 3) * 0.7) * s;
+      c.fillStyle = `rgba(255,${200 + (i % 4) * 12},${110 + (i % 3) * 40},${al})`; c.beginPath(); c.arc(x, y, sz, 0, TAU); c.fill(); }
+  }
+  c.globalCompositeOperation = 'source-over';
+  const tg = c.createLinearGradient(0, 0, 0, VH * 0.32); tg.addColorStop(0, 'rgba(8,5,3,.6)'); tg.addColorStop(1, 'rgba(8,5,3,0)'); c.fillStyle = tg; c.fillRect(0, 0, VW, VH * 0.32);
+  const vg = c.createRadialGradient(VW * 0.45, VH * 0.55, Math.min(VW, VH) * 0.4, VW / 2, VH / 2, Math.max(VW, VH) * 0.8); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); c.fillStyle = vg; c.fillRect(0, 0, VW, VH);
+  c.restore(); G.dirty = true;
+}
 function drawMenuScene(ctx) {
+  if (!PIXEL_ART && typeof MENU_ART !== 'undefined' && MENU_ART && MENU_IMG.menu && MENU_IMG.menu._ok) return viewportDraw(ctx, c => drawMenuArt(c, MENU_IMG.menu, MENU_ART));
   if (!PIXEL_ART && typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART && TOWN_BUILD_ART[MENU_FAC] && !townScene3D(MENU_FAC)) return viewportDraw(ctx, c => { // grafika 3D miasta jeszcze się wczytuje: ciemne tło (nie zapamiętujemy zastępczej sceny 2D)
     const g = c.createRadialGradient(VW / 2, VH * 0.55, 0, VW / 2, VH * 0.55, Math.max(VW, VH) * 0.7); g.addColorStop(0, '#2a2018'); g.addColorStop(1, '#0a0705'); c.fillStyle = g; c.fillRect(0, 0, VW, VH); G.dirty = true; });
   if (!PIXEL_ART && typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART && TOWN_BUILD_ART[MENU_FAC]) return viewportDraw(ctx, c => {
