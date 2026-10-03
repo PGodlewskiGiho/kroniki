@@ -332,7 +332,7 @@ function initHeroProgress(h) {
 }
 // --- umiejętności drugorzędne ---
 const heroSkill = (h, id) => { const s = h && h.skills && h.skills.find(s => s.id === id); return s ? s.lv : 0; };
-const heroPerk = (h, id) => !!(h && h.talents && h.talents.includes(id)); // talent bohatera (TALENTS)
+const heroPerk = (h, id) => !!(h && ((h.talents && h.talents.includes(id)) || (h.equip && Object.values(h.equip).some(a => a && ARTIFACTS[a].perk === id)))); // talent bohatera (TALENTS) albo z założonego artefaktu
 const perkCount = (h, id) => (h && h.talents ? h.talents.filter(t => t === id).length : 0); // talenty brane wielokrotnie (Odkrywca)
 // Szkoły magii: poziom umiejętności szkoły czaru u bohatera, koszt many po zniżce, mnożnik obrażeń i leczenia
 const spellSchoolLv = (h, id) => { const S = SPELLS[id]; return S && S.school ? heroSkill(h, SCHOOLS[S.school].skill) : 0; };
@@ -374,7 +374,8 @@ function learnSkill(h, id) {
   h.mana = Math.min(h.mana, heroMaxMana(h));
 }
 // --- talenty (co TALENT_EVERY poziomów, wybór z trzech) ---
-const talentLevel = L => L >= TALENT_EVERY && L % TALENT_EVERY === 0;
+let TALENTS_ON = true; // wyłącznik do pomiarów balansu (rozgrywka SI bez talentów)
+const talentLevel = L => TALENTS_ON && L >= TALENT_EVERY && L % TALENT_EVERY === 0;
 const talentReady = (h, id) => { const T = TALENTS[id]; return (T.again || !heroPerk(h, id)) && (!T.req || T.req.some(([sk, lv]) => heroSkill(h, sk) >= lv)); };
 function talentOffer(st, h, L) {
   const r = mulberry32(thash(h.id, L, st.seed) ^ 0x7a1e), pool = Object.keys(TALENTS).filter(id => !TALENTS[id].again && talentReady(h, id)), out = [];
@@ -525,7 +526,7 @@ function doorCheck(st, h, x, y) {
   if (h.doorDay === st.dayTotal && h.doorN >= 2) return 'Drzwi wymiarów można otworzyć najwyżej dwa razy dziennie';
   if (x == null) return null; const n = st.map.n, R = 6 + heroStat(h, 'sp');
   if (Math.max(Math.abs(x - h.x), Math.abs(y - h.y)) > R) return `Za daleko: drzwi sięgają ${R} pól`;
-  if (!passableTile(st, x, y) || st.map.terrain[y * n + x] === TER.WATER || objectAt(st, y * n + x) || heroAt(st, x, y)) return 'Tu nie da się stanąć: wybierz wolne, odkryte pole lądu';
+  const i = y * n + x; if (x < 0 || y < 0 || x >= n || y >= n || !playerOf(st, h.owner).explored[i] || st.map.obst[i] || st.map.terrain[i] === TER.WATER || objectAt(st, i) || st.guard[i] || heroAt(st, x, y)) return 'Tu nie da się stanąć: wybierz wolne, odkryte pole lądu (nie obok potworów)';
   return null;
 }
 function castAdventure(st, h, id, tgt) {

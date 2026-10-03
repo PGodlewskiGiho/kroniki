@@ -127,6 +127,8 @@
    Nowe czary: Rozproszenie (target any), Oślepienie (buff blind: bez tury i odwetu do trafienia), Trucizna (u.psn co rundę), Wampiryzm,
    Ściana ognia (target wall, B.fire), Kradzież życia (drain), Teleportacja (dwa kliknięcia, x2/y2 w rozkazie), Święte światło (enemies),
    Klon (src clone, ginie od trafienia, nie wraca do armii) i Wiatr w plecy (ruch, raz dziennie).
+   SI w bitwie pod ostrzałem (underFire, AI_RUSH): od 2. rundy piechota nie czeka, tylko szarżuje na strzelców. SI na mapie: aiMapSpells
+   (Wiatr w plecy, Drzwi wymiarów). Artefakty z talentem (A.perk, heroPerk patrzy też na ekwipunek).
    Kronika tygodnia (20b): ogłoszenie astrologów z rysunkiem na początku tygodnia (st.weekNews, p.seenWeek, chronicleIconOpts),
    nowe tygodnie Żniw (+HARVEST drewna i rudy) i Magii (pełna mana), Kronika tawerny (showChronicle: ranking graczy jak Gildia
    Złodziei, rubryki CHRONICLE_ROWS odkrywane liczbą własnych tawern).

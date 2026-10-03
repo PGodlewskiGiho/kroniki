@@ -101,3 +101,31 @@ test('Bariera, Dyplomacja, Forsowny marsz, Skarbnik, Uczony; zapis talentów', a
   assert.deepEqual(r.saved, ['forcedMarch', 'treasurer', 'scholar']); assert.match(r.info, /Talent — Forsowny marsz/);
   await frames(page, 5);
 });
+
+test('SI pod ostrzałem: piechota nie czeka w miejscu, tylko idzie na strzelców (od 2. rundy)', async () => {
+  await newGame(page, { opponents: 1 });
+  const r = await page.evaluate(() => {
+    const st = G.state, a = hero(st), b = st.heroes.find(h => h.owner === 1);
+    a.army = emptyArmy(); a.army[0] = { cid: 'swordsman', n: 20 }; a.army[1] = { cid: 'pikeman', n: 30 }; b.army = emptyArmy(); b.army[0] = { cid: 'archer', n: 40 }; b.army[1] = { cid: 'pikeman', n: 30 };
+    a.machines = []; b.machines = []; const B = createBattle(st, a, b), u = B.units.find(x => x.side === 0 && x.cid === 'swordsman'), x0 = u.x;
+    B.round = 2; B.order = B.units.filter(x => x.side === 1); B.active = u; const fire = underFire(B, 0); aiAct(B, u);
+    return { fire, moved: u.x !== x0, waited: !!u.waited, def: !!u.defending };
+  });
+  assert.deepEqual(r, { fire: true, moved: true, waited: false, def: false });
+});
+
+test('artefakty z talentem działają po założeniu; SI skacze Drzwiami wymiarów do dalekiego celu', async () => {
+  await newGame(page, { opponents: 1 });
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), out = {}; h.talents = [];
+    out.before = heroPerk(h, 'volley'); h.equip.weapon = 'falconBow'; out.after = heroPerk(h, 'volley'); out.info = artInfo('falconBow');
+    const ai = st.heroes.find(x => x.owner === 1), n = st.map.n; for (const p of st.players) p.explored.fill(1);
+    ai.spells = ['dimensionDoor']; ai.book = true; ai.stats.sp = 4; ai.stats.kn = 10; ai.mana = 100; ai.mp = 400; const R = aiReach(st, ai);
+    let ti = -1; for (let i = 0; i < n * n; i++) if (R.dist[i] > 1500 && R.dist[i] < 2500) { ti = i; break; }
+    const x0 = ai.x, y0 = ai.y, jumped = aiMapSpells(st, ai, R, { i: ti, what: 'explore' });
+    out.ai = { jumped, moved: ai.x !== x0 || ai.y !== y0, mana: ai.mana < 100 };
+    return out;
+  });
+  assert.equal(r.before, false); assert.equal(r.after, true); assert.match(r.info, /talent Salwa/);
+  assert.deepEqual(r.ai, { jumped: true, moved: true, mana: true });
+});
