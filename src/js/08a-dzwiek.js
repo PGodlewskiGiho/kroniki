@@ -40,6 +40,12 @@ const sfxPan = x => clamp((x / W - 0.5) * 1.2, -0.6, 0.6);
 // Utwory orkiestrowe (tools/muzyka: kompozycje MIDI renderowane bankiem GeneralUser GS) wbudowane jako MUSIC_ART: { nazwa: { d: mp3 (kod 85-znakowy), loop: s } }.
 // Każdy ekran ma swój utwór (Music.forScreen); zmiana utworu to płynne przenikanie. Pliki są pętlami bez szwu (ogon pogłosu
 // dodany na początek), więc grają w kółko. Zdekodowany utwór zajmuje ok. 30 MB, dlatego w pamięci trzymamy tylko bieżący i poprzedni.
+// Jak groźna jest bitwa dla gracza przed ekranem: siła wojsk wroga (z bohaterem: premia jego ataku i obrony) do naszej
+function battleDanger(B) {
+  const me = B.sides[0].owner === ME ? 0 : B.sides[1].owner === ME ? 1 : 0, foe = 1 - me;
+  const pow = s => B.units.filter(u => u.side === s && !u.dead && !isMachine(u)).reduce((a, u) => a + u.n * CREATURES[u.cid].value, 0) * (B.sides[s].hero ? 1 + 0.05 * ((B.sides[s].hero.stats || {}).att || 0) + 0.05 * ((B.sides[s].hero.stats || {}).def || 0) : 1);
+  return { me, foe, ratio: pow(foe) / Math.max(1, pow(me)) };
+}
 // Muzyka miasta: osobny utwór każdej frakcji, w jej klimacie (tools/muzyka/zamki.py)
 const MUSIC_TOWN = { haven: 'miasto_przystan', sylvan: 'miasto_knieja', barrow: 'miasto_kurhan', fortress: 'miasto_cytadela', inferno: 'miasto_inferno', academy: 'miasto_akademia', dungeon: 'miasto_loch', stronghold: 'miasto_twierdza' };
 const Music = {
@@ -51,8 +57,11 @@ const Music = {
   forScreen(name, p = {}) {
     if (['menu', 'setup', 'rules', 'load', 'scores', 'credits', 'nazwa'].includes(name)) return 'menu';
     if (name === 'adventure') return ''; // mapa świata: bez muzyki (same dźwięki otoczenia i kroki)
-    if (name === 'battle') { // oblężenie, starcie z bohaterem, a z potworami na zmianę dwa utwory
-      const B = p.battle; if (B && B.walls) return 'bitwa_oblezenie';
+    if (name === 'battle') { // boss (silny wrogi bohater), trudna walka, oblężenie, starcie z bohaterem, a z potworami na zmianę dwa utwory
+      const B = p.battle, d = B && B.units ? battleDanger(B) : null, foeHero = B && B.sides[d ? d.foe : 1].hero;
+      if (d && foeHero && d.ratio >= 1) return 'bitwa_boss';
+      if (d && d.ratio >= 1.25) return 'bitwa_trudna';
+      if (B && B.walls) return 'bitwa_oblezenie';
       if (B && (B.sides[1].hero || B.sides[1].town)) return 'bitwa_bohater';
       return MUSIC_ART && MUSIC_ART.bitwa_dzicz && (this.wild = !this.wild) ? 'bitwa_dzicz' : 'bitwa'; }
     if (name === 'town') { const t = G.state && G.state.towns[p.townId || 0]; return MUSIC_TOWN[t && t.faction] || 'miasto_przystan'; }

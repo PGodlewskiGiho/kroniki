@@ -11,7 +11,7 @@ test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'bł�
 test('każdy utwór jest wbudowany i ma długość pętli', async () => {
   const r = await page.evaluate(() => Object.entries(MUSIC_ART).map(([k, v]) => [k, v.loop, v.d.length]));
   const names = r.map(x => x[0]).sort();
-  assert.deepEqual(names, ['bitwa', 'bitwa_bohater', 'bitwa_dzicz', 'bitwa_oblezenie', 'menu', 'miasto_akademia', 'miasto_cytadela', 'miasto_inferno', 'miasto_knieja', 'miasto_kurhan', 'miasto_loch', 'miasto_przystan', 'miasto_twierdza']);
+  assert.deepEqual(names, ['bitwa', 'bitwa_bohater', 'bitwa_boss', 'bitwa_dzicz', 'bitwa_oblezenie', 'bitwa_trudna', 'menu', 'miasto_akademia', 'miasto_cytadela', 'miasto_inferno', 'miasto_knieja', 'miasto_kurhan', 'miasto_loch', 'miasto_przystan', 'miasto_twierdza']);
   for (const [k, loop, len] of r) { assert.ok(loop > 30 && loop < 300, `${k}: pętla ${loop}`); assert.ok(len > 100000, `${k}: dane`); }
 });
 
@@ -29,6 +29,16 @@ test('ekrany dostają właściwe utwory (mroczne frakcje: mroczne miasto)', asyn
   const b = await page.evaluate(() => { const two = [Music.forScreen('battle', {}), Music.forScreen('battle', {})].sort();
     return { two, siege: Music.forScreen('battle', { battle: { walls: new Map(), sides: [{}, { town: {} }] } }), hero: Music.forScreen('battle', { battle: { sides: [{}, { hero: {} }] } }) }; });
   assert.deepEqual(b, { two: ['bitwa', 'bitwa_dzicz'], siege: 'bitwa_oblezenie', hero: 'bitwa_bohater' });
+  const d = await page.evaluate(() => { // prawdziwe bitwy: słaby potwór, silny potwór, silny wrogi bohater
+    const st = G.state, h = hero(st), m = st.objects.find(o => o.type === 'monster'); h.army = emptyArmy(); h.army[0] = { cid: 'pikeman', n: 20 };
+    const pick = () => Music.forScreen('battle', { battle: createBattle(st, h, m) });
+    m.cid = 'pikeman'; m.count = 5; const weak = pick(); m.count = 60; const hard = pick();
+    const foe = st.heroes.find(x => x.owner !== h.owner) || (() => { const f = JSON.parse(JSON.stringify(h)); f.owner = 1; st.heroes.push(f); return f; })();
+    foe.army = emptyArmy(); foe.army[0] = { cid: 'pikeman', n: 40 }; const boss = Music.forScreen('battle', { battle: createBattle(st, h, foe) });
+    foe.army[0].n = 5; const easyHero = Music.forScreen('battle', { battle: createBattle(st, h, foe) });
+    return { weak: /^bitwa(_dzicz)?$/.test(weak), hard, boss, easyHero };
+  });
+  assert.deepEqual(d, { weak: true, hard: 'bitwa_trudna', boss: 'bitwa_boss', easyHero: 'bitwa_bohater' });
 });
 
 test('odtwarzacz przełącza utwory i trzyma w pamięci najwyżej dwa', async () => {
