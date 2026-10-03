@@ -42,9 +42,9 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
     img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
   }
   g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = !PIXEL_ART; c.drawImage(off, 0, 0, W, H);
-  const pim = !bare && !fac && BATTLE_BG_IMG[BATTLE_BG_NAMES[terr]]; // tło malowane przez AI (pole bitwy bez siatki); oblężenie: dawny rysunek z brukiem dziedzińca
+  const pim = !bare && BATTLE_BG_IMG[BATTLE_BG_NAMES[terr]]; // tło malowane przez AI (pole bitwy bez siatki); przy oblężeniu dziedziniec zamku maluje paintCourtyard
   if (pim && pim._ok) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(pim, 0, 0, W, 490); }
-  const TX = !PIXEL_ART && !bare && !fac && TERRAIN_TEX[TEX_NAME[terr || 1]]; // faktura z tekstur terenu mapy (widok z góry) i miękkie plamy światła: pole bitwy nie jest płaskie
+  const TX = !PIXEL_ART && !bare && TERRAIN_TEX[TEX_NAME[terr || 1]]; // faktura z tekstur terenu mapy (widok z góry) i miękkie plamy światła: pole bitwy nie jest płaskie
   if (TX) { c.save(); c.beginPath(); c.rect(0, 44, W, 446); c.clip();
     const pat = c.createPattern(TX.cv, 'repeat'); pat.setTransform(new DOMMatrix().scale(1.15 / c.getTransform().a)); // ostra tekstura 512 px w rozdzielczości ekranu (piksel tekstury ≈ piksel ekranu)
     const fade = c.createLinearGradient(0, 44, 0, 110); fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,1)'); // u góry przejście w malowany horyzont
@@ -59,6 +59,7 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
       g.addColorStop(0, lite ? 'rgba(255,240,200,.55)' : 'rgba(0,0,0,.5)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
     c.globalCompositeOperation = 'source-over'; const v = c.createLinearGradient(0, 44, 0, 490); v.addColorStop(0, 'rgba(0,0,0,.18)'); v.addColorStop(0.25, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.22)'); c.fillStyle = v; c.fillRect(0, 44, W, 446); // głębia: ciemniej przy horyzoncie i u dołu
     c.restore(); }
+  if (fac && !bare && !PIXEL_ART) paintCourtyard(c, fac);
   if (bare) return;
   c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1;
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { hexPath(c, x, y, 1); c.stroke(); }
@@ -66,6 +67,29 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
   stoneFill(c, 0, 490, W, 110); insetBox(c, 10, 498, 456, 94, 11); // panel dowodzenia: drewno, wnęka na podpowiedź i dziennik
   const tg = c.createLinearGradient(0, 0, 0, 40); tg.addColorStop(0, 'rgba(10,6,3,.92)'); tg.addColorStop(1, 'rgba(10,6,3,.7)'); c.fillStyle = tg; c.fillRect(0, 0, W, 38); // pasek górny
   for (const y0 of [38, 487]) { const g = c.createLinearGradient(0, y0, 0, y0 + 3); g.addColorStop(0, '#f0d080'); g.addColorStop(1, '#6a4814'); c.fillStyle = g; c.fillRect(0, y0, W, 3); c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(0, y0 + 3, W, 1); } // złote listwy
+}
+// Dziedziniec oblężonego zamku: bruk z nieregularnych kamieni w barwach frakcji (w pełnej rozdzielczości warstwy), cień muru,
+// plamy światła i ziarno. Kamienie w rzędach, każdy z jaśniejszym wierzchem i cieniem od dołu, ciemne spoiny między nimi.
+function paintCourtyard(c, fac) {
+  const pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, x0 = PAVE_X - 4, y0 = 41, w = W - x0, h = 449, r = mulberry32(fac.length * 131 + 7), rgb = (a, k = 1) => `rgb(${a.map(v => Math.round(clamp(v * k, 0, 255))).join(',')})`;
+  c.save(); c.beginPath(); c.rect(x0, y0, w, h); c.clip();
+  c.fillStyle = rgb(pv[1], 0.62); c.fillRect(x0, y0, w, h); // spoiny
+  for (let y = y0 - 4, row = 0; y < y0 + h; row++) {
+    const sh = 9 + r() * 4; let x = x0 - 6 - (row % 2) * 7;
+    while (x < x0 + w) {
+      const sw = 11 + r() * 10, t = r(), base = pv[0].map((v, i) => v + (pv[1][i] - v) * t), k = 0.86 + r() * 0.22, rx = x + 0.9, ry = y + 0.9, ww = sw - 1.8, hh = sh - 1.8;
+      c.fillStyle = rgb(base, k); rr(c, rx, ry, ww, hh, 3); c.fill();
+      c.fillStyle = rgb(base, k * 1.12); rr(c, rx + 1, ry + 0.6, ww - 2, hh * 0.42, 2.5); c.fill(); // wierzch w świetle
+      c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(rx + 1.5, ry + hh - 1.6, ww - 3, 1.6); // cień od dołu
+      if (r() < 0.12) { c.fillStyle = 'rgba(80,110,50,.35)'; c.fillRect(rx - 0.5, ry + hh * r(), 2.5, 2); } // mech w spoinie
+      x += sw;
+    }
+    y += sh;
+  }
+  const sg = c.createLinearGradient(x0, 0, x0 + 46, 0); sg.addColorStop(0, 'rgba(0,0,0,.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = sg; c.fillRect(x0, y0, 46, h); // cień muru
+  c.globalCompositeOperation = 'soft-light';
+  for (let i = 0; i < 5; i++) { const x = x0 + r() * w, y = y0 + 40 + r() * (h - 80), rad = 40 + r() * 90, g = c.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, r() < 0.5 ? 'rgba(255,240,200,.5)' : 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+  c.restore();
 }
 // Tło bitwy zależne od terenu (w połowie rozdzielczości, przed powiększeniem): horyzont pod paskiem u góry
 // i drobne malowane szczegóły na polu (kępki, kamyki, kałuże, pęknięcia z żarem). Nie wpływają na walkę.
@@ -210,7 +234,8 @@ G.screens.battle = {
   },
   startTurnFor(u) {
     const B = this.B; this.casting = null; this.touchKey = null;
-    const mach = isMachine(u) && humanSide(B, u.side) && !B.auto && !(machineControlled(B, u) && (u.cid !== 'firstAid' || firstAidTargets(B, u).length)); // machiny gracza działają same, chyba że bohater zna ich umiejętność
+    const ctl = u.cid === 'catapult' ? catapultTargets(B).length > 0 : machineControlled(B, u) && (u.cid !== 'firstAid' || firstAidTargets(B, u).length); // katapultą zawsze celuje gracz
+    const mach = isMachine(u) && humanSide(B, u.side) && !B.auto && !ctl; // pozostałe machiny gracza działają same, chyba że bohater zna ich umiejętność
     const ai = mach || B.auto || !humanSide(B, u.side);
     if (ai && !mach && aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } // najpierw czar bohatera (swojego albo wroga)
     if (ai) { this.phase = 'ai'; this.timer = B.auto ? 0.2 : 0.4; return; }
@@ -235,7 +260,7 @@ G.screens.battle = {
     if (c.a === 'flee') { this.finish(true); return; }
     if (c.a === 'ai') { if (aiHeroCast(B)) { this.phase = 'play'; this.resume = true; return; } aiAct(B, u); this.phase = 'play'; return; } // ruch SI za gracza (Auto online): ten sam u obu, bo bitwa jest powtarzalna
     if (c.a === 'wait') actWait(B, u); else if (c.a === 'def') actDefend(B, u); else if (c.a === 'shoot') actShoot(B, u, T);
-    else if (c.a === 'heal') actFirstAid(B, u, T); else actMoveAttack(B, u, c.p, T);
+    else if (c.a === 'heal') actFirstAid(B, u, T); else if (c.a === 'cat') actCatapult(B, u, { x: c.x, y: c.y }); else actMoveAttack(B, u, c.p, T);
     this.phase = 'play';
   },
   openBook() {
@@ -324,7 +349,8 @@ G.screens.battle = {
       if (!p.launched && f >= 0.4) { p.launched = true; p.pr = BattleFX.proj('rock', p.a.px, p.a.py - 26, tx + (p.hit ? 0 : 20), ty - 20, 0.5 * p.sp, '#8a847a', 90); p.hitAt = p.t + p.pr.dur; }
       if (p.launched && !p.landed && p.t >= p.hitAt) {
         p.landed = true; Sfx.play(p.hit ? 'crash' : 'thud', { vol: p.broken ? 1 : 0.7, pan: sfxPan(tx) }); BattleFX.emit(tx, ty - 16, { n: p.broken ? 40 : 18, col: ['#9a948a', '#6e6a62', '#c8c0b0'], spd: 120, up: -60, g: 300, life: 0.7, size: 4, jx: 20 });
-        BattleFX.shake = Math.max(BattleFX.shake, p.broken ? 6 : 3); this.floats.push({ x: tx, y: ty - 50, text: p.hit ? (p.broken ? 'Wyłom!' : 'Trafienie!') : 'Pudło', t: G.time, col: '#e8e0cc', small: true });
+        BattleFX.shake = Math.max(BattleFX.shake, p.broken ? 6 : 3); this.floats.push({ x: tx, y: ty - 50, text: p.hit ? (p.broken ? (p.tower ? 'Wieża runęła!' : 'Wyłom!') : 'Trafienie!') : 'Pudło', t: G.time, col: '#e8e0cc', small: true });
+        if (p.tower) { p.tower.dieT = G.time - 1; BattleFX.emit(tx, ty - 40, { n: 50, col: ['#9a948a', '#6e6a62', '#c8c0b0', '#4a4440'], spd: 150, up: -90, g: 280, life: 1, size: 5, jx: 30 }); BattleFX.shake = 9; } // wieża w gruzach, łucznicy znikają
       }
       if (p.hitAt) p.dur = Math.max(p.dur, p.hitAt + 0.2);
     } else if (p.kind === 'heal') {
@@ -395,6 +421,7 @@ G.screens.battle = {
       this.preview = spellTargetOk(B, id, tu) ? { kind: 'cast', id, x: hx.x, y: hx.y, target: tu } : { kind: 'nocast', id }; return;
     }
     const occ = unitAt(B, hx.x, hx.y), k = hexKey(hx.x, hx.y);
+    if (u.cid === 'catapult') { const w = wallAt(B, hx.x, hx.y); if (w && w.hp > 0) this.preview = { kind: 'siege', x: w.x, y: w.y, w, chance: catapultChance(B, u), shots: catapultShots(B, u) }; return; } // katapulta: cel w murach // namiot medyka pod rozkazami: wskazujemy rannego oddział
     if (u.cid === 'firstAid') { // namiot medyka pod rozkazami: wskazujemy rannego oddział
       if (occ && firstAidTargets(B, u).includes(occ)) this.preview = { kind: 'heal', target: occ, most: skillVal(sideHero(B, u.side), 'firstAid') || 25 };
       else if (occ) this.preview = { kind: 'info', target: occ };
@@ -427,6 +454,7 @@ G.screens.battle = {
     if (p.kind === 'cast' && SPELLS[p.id].teleport && !p.tele) { this.tele = { x: p.x, y: p.y }; this.preview = null; return; } // najpierw oddział, potem miejsce
     if (p.kind === 'cast') this.order(p.tele ? { a: 'cast', id: p.id, x: p.x, y: p.y, x2: p.x2, y2: p.y2 } : { a: 'cast', id: p.id, x: p.x, y: p.y });
     else if (p.kind === 'heal') this.order({ a: 'heal', t: ix(p.target) });
+    else if (p.kind === 'siege') this.order({ a: 'cat', x: p.x, y: p.y });
     else if (p.kind === 'shoot') this.order({ a: 'shoot', t: ix(p.target) });
     else if (p.kind === 'attack') this.order({ a: 'move', t: ix(p.target), p: pathTo(this.reach, u, ...p.from) });
     else if (p.kind === 'move') this.order({ a: 'move', p: pathTo(this.reach, u, ...p.to) });
@@ -449,6 +477,7 @@ G.screens.battle = {
       if (p && p.kind === 'cast') { ctx.fillStyle = 'rgba(160,200,255,.3)'; for (const [ax, ay] of spellArea(p.id, p.x, p.y, B)) { hexPath(ctx, ax, ay, 2); ctx.fill(); } }
       if (p && p.tele) { ctx.fillStyle = 'rgba(150,170,255,.45)'; for (const [cx, cy] of unitCells(p.target, p.x2, p.y2)) { hexPath(ctx, cx, cy, 2); ctx.fill(); } }
       else if (this.tele) { ctx.strokeStyle = '#9ab0ff'; ctx.lineWidth = 2.5; hexPath(ctx, this.tele.x, this.tele.y, 3); ctx.stroke(); }
+    } else if (this.phase === 'input' && u0 && u0.cid === 'catapult') { // cele katapulty rysujemy nad murami (niżej)
     } else if (this.phase === 'input' && u0) {
       ctx.fillStyle = 'rgba(255,240,200,.16)';
       for (const k of this.reach.dist.keys()) { hexPath(ctx, k % BCOLS, Math.floor(k / BCOLS), 2); ctx.fill(); }
@@ -470,11 +499,15 @@ G.screens.battle = {
       ctx.restore(); }
     this.drawHeroes(ctx);
     // polegli leżą pod żywymi
-    for (const u of B.units) if (u.dead && u.dieT != null && G.time - u.dieT > 0.45) drawSprite(ctx, corpseSprite(u.cid, u.side === 0 ? 1 : -1), u.px, u.py + 14, 1);
+    for (const u of B.units) if (u.dead && u.dieT != null && G.time - u.dieT > 0.45 && u.cid !== 'arrowTower') drawSprite(ctx, corpseSprite(u.cid, u.side === 0 ? 1 : -1), u.px, u.py + 14, 1);
     // oddziały i przeszkody (od góry ekranu w dół, żeby niższe zasłaniały wyższe)
     const shown = B.units.filter(u => !u.dead || u.dieT == null || G.time - u.dieT <= 0.45);
     const obst = [...B.obst].map(([k, o]) => { const x = k % BCOLS, y = Math.floor(k / BCOLS), [px, py] = hexCenter(x, y); return { obst: o, px, py }; });
     if (B.walls) { const T = B.sides[1].town; drawSprite(ctx, castleSprite(T.faction, ownerColor(st, T.owner), B.walls), SIEGE_WX, 0, 1); } // mury pod oddziałami
+    if (this.phase === 'input' && u0 && u0.cid === 'catapult') { // cele katapulty: fragmenty murów, wież i brama; wskazany na czerwono
+      const p = this.preview, pulse = 0.6 + 0.4 * Math.sin(G.time * 5); ctx.lineWidth = 3;
+      for (const w of catapultTargets(B)) { const on = p && p.kind === 'siege' && p.x === w.x && p.y === w.y; ctx.strokeStyle = on ? '#ff5a3a' : `rgba(255,217,112,${0.5 * pulse})`; hexPath(ctx, w.x, w.y, 4); ctx.stroke(); if (on) { ctx.fillStyle = 'rgba(255,100,60,.22)'; ctx.fill(); } }
+    }
     for (const u of [...shown, ...obst].sort((a, b) => a.py - b.py)) {
       if (u.obst) { drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
       const L = this.unitLook(u), tp = u.cid === 'arrowTower' ? towerPost() : null, gx = tp ? SIEGE_WX + tp[0] : u.px + L.ox, gy = tp ? u.py + tp[1] : u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
@@ -524,6 +557,8 @@ G.screens.battle = {
     if (this.touchKey && pv && G.mouse.type !== 'mouse') tip += ' Stuknij jeszcze raz, aby wykonać.';
     else if (pv && pv.kind === 'heal') tip = `Namiot medyka: wyleczy ${CREATURES[pv.target.cid].plural.toLowerCase()} o 1–${Math.min(pv.most, CREATURES[pv.target.cid].hp - pv.target.hp)} życia.`;
     else if (this.phase === 'input' && u0 && u0.cid === 'firstAid') tip = 'Namiot medyka: wskaż rannego oddział do leczenia (Obrona = pomiń).';
+    else if (pv && pv.kind === 'siege') tip = `Katapulta: ${pv.w.kind === 'gate' ? 'brama' : pv.w.kind === 'tower' ? 'wieża strzelnicza' : 'mur'} (wytrzymałość ${pv.w.hp}/${pv.w.max}), trafienie ${pv.chance}%${pv.shots > 1 ? ', dwa strzały' : ''}. Kliknij, aby strzelić.`;
+    else if (this.phase === 'input' && u0 && u0.cid === 'catapult') tip = 'Katapulta: wskaż fragment muru, bramę albo wieżę (zburzona wieża milknie).';
     else if (this.phase === 'input' && u0 && u0.cid === 'ballista') tip = `Balista (${CREATURES.ballista.name}): wskaż cel strzału.`;
     // panel: kolejka ruchów (jak w Heroes 3 HD), pod nią podpowiedź i ostatnie wpisy dziennika
     const qx0 = L.side ? P.x + 22 : 16, qy0 = L.side ? P.y + 166 : P.y + 13, perRow = L.side ? 6 : Math.max(4, Math.floor((VW - 346) / 41)), qn = L.side ? 12 : perRow;
@@ -561,14 +596,24 @@ function battleAftermath(st, h, res) {
   advFloat(`+${res.exp} dośw.`, h.x, h.y);
   gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank') visitObject(st, h, here); });
 }
-// Fosa oblężonego miasta: ciemna woda na polach przed murem, połyskujące piksele fal, most w rzędzie bramy
+// Fosa oblężonego miasta: kręty kanał wody wzdłuż muru (przez środki pól kolumny MOAT_X), przerwany mostem w rzędzie bramy:
+// ziemny brzeg, woda z faktury terenu (płynie powoli), ciemniejsza przy brzegach, połyskujące fale
 function drawMoat(ctx, B) {
-  for (let y = 0; y < BROWS; y++) {
-    if (!moatAt(B, MOAT_X, y)) continue; const [cx, cy] = hexCenter(MOAT_X, y);
-    ctx.fillStyle = '#16303e'; hexPath(ctx, MOAT_X, y, 0); ctx.fill(); ctx.fillStyle = '#1f4a5e'; hexPath(ctx, MOAT_X, y, 4); ctx.fill();
-    ctx.fillStyle = 'rgba(160,210,230,.55)';
-    for (let i = 0; i < 4; i++) { const ph = (G.time * 0.6 + i * 0.27 + y * 0.13) % 1, px = Math.round((cx - 16 + ((i * 11 + y * 7) % 30)) / 2) * 2, py = Math.round((cy - 10 + i * 6) / 2) * 2; if (ph < 0.6) ctx.fillRect(px + Math.round(ph * 4) * 2, py, 6, 2); }
-    ctx.strokeStyle = 'rgba(8,16,22,.8)'; ctx.lineWidth = 2; hexPath(ctx, MOAT_X, y, 1); ctx.stroke();
+  const runs = []; let cur = null;
+  for (let y = 0; y < BROWS; y++) { if (moatAt(B, MOAT_X, y)) { if (!cur) runs.push(cur = []); cur.push(y); } else cur = null; }
+  if (!runs.length) return;
+  const line = ys => { ctx.beginPath(); ys.forEach((y, i) => { const [cx, cy] = hexCenter(MOAT_X, y); if (!i) ctx.moveTo(cx, y === 0 ? cy - 40 : cy - 18); ctx.lineTo(cx, cy); if (i === ys.length - 1) ctx.lineTo(cx, y === BROWS - 1 ? cy + 40 : cy + 18); }); };
+  const WT = TERRAIN_TEX.water, pat = WT && WT.cv ? ctx.createPattern(WT.cv, 'repeat') : null;
+  if (pat) pat.setTransform(new DOMMatrix().translate(0, G.time * 5).scale(0.35));
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const ys of runs) {
+    line(ys); ctx.strokeStyle = '#3e3020'; ctx.lineWidth = 52; ctx.stroke(); // brzeg
+    ctx.strokeStyle = '#5a4630'; ctx.lineWidth = 46; ctx.stroke();
+    ctx.strokeStyle = pat || '#1f4a5e'; ctx.lineWidth = 38; ctx.stroke(); // woda
+    ctx.strokeStyle = 'rgba(8,22,30,.35)'; ctx.lineWidth = 38; ctx.stroke(); ctx.strokeStyle = 'rgba(40,90,110,.25)'; ctx.lineWidth = 18; ctx.stroke(); // głębia i jaśniejszy nurt
+    ctx.fillStyle = 'rgba(200,230,240,.55)';
+    for (const y of ys) { const [cx, cy] = hexCenter(MOAT_X, y); for (let i = 0; i < 4; i++) { const ph = (G.time * 0.6 + i * 0.27 + y * 0.13) % 1; if (ph < 0.6) ctx.fillRect(cx - 12 + ((i * 11 + y * 7) % 20), cy - 14 + i * 8 + ph * 5, 1.6, 6); } }
   }
+  ctx.restore();
 }
 

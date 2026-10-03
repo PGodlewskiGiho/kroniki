@@ -1,6 +1,9 @@
 # Kontrola: każdy instrument utworu osobno -> głośność (dB RMS) i środek widma (Hz). Pomaga wyłapać ciszę, szum albo zły instrument.
 import sys, os, subprocess, numpy as np, soundfile as sf
 from utwory import SONGS
+from zamki import ZAMKI
+from bitwy import BITWY
+SONGS = SONGS + ZAMKI + BITWY
 from wypal import SF2, MUZ, TMP, HERE
 for fn in SONGS:
     if sys.argv[1:] and fn.__name__ not in sys.argv[1:]: continue

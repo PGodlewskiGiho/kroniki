@@ -100,7 +100,8 @@ test('ekran oblężenia: rysuje mury, katapulta rzuca, dymek muru', async () => 
     const s = await page.evaluate(() => {
       const scr = G.screens.battle, B = scr.B, kinds = [];
       for (let k = 0; k < 10; k++) { scr.update(0.05); if (scr.play) kinds.push(scr.play.kind); }
-      if (scr.phase === 'input') { actDefend(B, B.active); scr.phase = 'play'; }
+      if (scr.phase === 'input' && B.active.cid === 'catapult') { const w = catapultTargets(B)[0]; scr.order({ a: 'cat', x: w.x, y: w.y }); } // katapultą celuje gracz
+      else if (scr.phase === 'input') { actDefend(B, B.active); scr.phase = 'play'; }
       return { kinds, screen: G.screenName };
     });
     s.kinds.forEach(k => seen.add(k));
@@ -138,4 +139,23 @@ test('obrońca walczący wręcz czeka za murem; przy dużej przewadze robi wypad
     d.n = 400; d.x = x0; d.y = 4; aiAct(B, d); return { stayed, sortie: d.x < x0 };
   });
   assert.deepEqual(r, { stayed: true, sortie: true });
+});
+
+test('katapulta pod rozkazami: cel wybrany przez gracza, zburzona wieża milknie, Balistyka daje dwa strzały', async () => {
+  await newGame(page, { mapSize: 'M' }, 8);
+  await siege(['fort', 'citadel', 'castle'], [['pikeman', 10]], [['pikeman', 10]]);
+  const r = await page.evaluate(() => {
+    const B = __B, cat = B.units.find(u => u.cid === 'catapult'), tw = [...B.walls.values()].find(w => w.kind === 'tower'), out = {};
+    out.towerHp = tw.hp; B.rng = () => 0.1; // zawsze trafia
+    out.targets = catapultTargets(B).length;
+    for (let i = 0; i < 6 && tw.hp > 0; i++) actCatapult(B, cat, { x: tw.x, y: tw.y });
+    const archers = B.units.find(u => u.cid === 'arrowTower' && u.x === tw.x && u.y === tw.y);
+    out.towerDown = tw.hp <= 0; out.archersDead = archers.dead;
+    out.passable = !walled(B, tw.x, tw.y, 0);
+    const h = sideHero(B, 0); h.skills = [{ id: 'ballistics', lv: 2 }]; const n0 = B.log.length; actCatapult(B, cat); out.shots = B.log.slice(n0).filter(l => /Katapulta/.test(l)).length;
+    return out;
+  });
+  assert.ok(Number.isFinite(r.towerHp) && r.towerHp > 0, 'wieża ma wytrzymałość');
+  assert.ok(r.targets >= 9); assert.ok(r.towerDown && r.archersDead && r.passable);
+  assert.equal(r.shots, 2);
 });

@@ -31,7 +31,7 @@ function drawSiegePiece(ctx, fac, kind, state, open, col) {
   const S = stonePal(fac), A = TOWN_ART[fac] || TOWN_ART.haven, h = SIEGE_HALF, { face, walk, depth } = WALL;
   const r = mulberry32((kind === 'gate' ? 50 : kind === 'tower' ? 90 : 3) + (state === 'hit' ? 100 : state === 'down' ? 200 : 0));
   ctx.fillStyle = S.top; ctx.fillStyle = S.lit; ctx.fillStyle = S.base; ctx.fillStyle = S.sh; ctx.fillStyle = S.dk; ctx.fillStyle = S.mortar; // paleta sprite'a
-  if (state === 'down' && kind === 'wall') return drawRubble(ctx, S, r);
+  if (state === 'down' && kind !== 'gate') return drawRubble(ctx, S, r); // wyłom w murze albo zburzona wieża
   // cień muru na dziedzińcu (dithering)
   ctx.fillStyle = S.dk; for (let y = -h; y < h; y += 2) for (let x = walk; x < walk + 10; x += 2) if (((x + y) / 2 & 3) === 0 || x === walk) ctx.fillRect(x, y, 2, 2);
   // lico od strony atakujących, cokół u podstawy

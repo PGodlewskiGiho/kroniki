@@ -40,7 +40,8 @@ const sfxPan = x => clamp((x / W - 0.5) * 1.2, -0.6, 0.6);
 // Utwory orkiestrowe (tools/muzyka: kompozycje MIDI renderowane bankiem GeneralUser GS) wbudowane jako MUSIC_ART: { nazwa: { d: mp3 (kod 85-znakowy), loop: s } }.
 // Każdy ekran ma swój utwór (Music.forScreen); zmiana utworu to płynne przenikanie. Pliki są pętlami bez szwu (ogon pogłosu
 // dodany na początek), więc grają w kółko. Zdekodowany utwór zajmuje ok. 30 MB, dlatego w pamięci trzymamy tylko bieżący i poprzedni.
-const MUSIC_DARK = ['barrow', 'inferno', 'dungeon'];
+// Muzyka miasta: osobny utwór każdej frakcji, w jej klimacie (tools/muzyka/zamki.py)
+const MUSIC_TOWN = { haven: 'miasto_przystan', sylvan: 'miasto_knieja', barrow: 'miasto_kurhan', fortress: 'miasto_cytadela', inferno: 'miasto_inferno', academy: 'miasto_akademia', dungeon: 'miasto_loch', stronghold: 'miasto_twierdza' };
 const Music = {
   cur: null, node: null, buf: {}, order: [], bus: null,
   vol() { const v = G.settings.musVol; return v == null ? 0.5 : v; },
@@ -50,8 +51,11 @@ const Music = {
   forScreen(name, p = {}) {
     if (['menu', 'setup', 'rules', 'load', 'scores', 'credits', 'nazwa'].includes(name)) return 'menu';
     if (name === 'adventure') return ''; // mapa świata: bez muzyki (same dźwięki otoczenia i kroki)
-    if (name === 'battle') return 'bitwa';
-    if (name === 'town') { const t = G.state && G.state.towns[p.townId || 0]; return t && MUSIC_DARK.includes(t.faction) ? 'miasto_mrok' : 'miasto'; }
+    if (name === 'battle') { // oblężenie, starcie z bohaterem, a z potworami na zmianę dwa utwory
+      const B = p.battle; if (B && B.walls) return 'bitwa_oblezenie';
+      if (B && (B.sides[1].hero || B.sides[1].town)) return 'bitwa_bohater';
+      return MUSIC_ART && MUSIC_ART.bitwa_dzicz && (this.wild = !this.wild) ? 'bitwa_dzicz' : 'bitwa'; }
+    if (name === 'town') { const t = G.state && G.state.towns[p.townId || 0]; return MUSIC_TOWN[t && t.faction] || 'miasto_przystan'; }
     if (name === 'bye') return '';
     return null;
   },
