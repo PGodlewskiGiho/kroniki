@@ -28,8 +28,8 @@ test('okno 16:9: szersze okno logiczne, menu wyśrodkowane i klikalne', async ()
 test('mapa przygody wypełnia szerokie okno: większy widok, panel przy prawej krawędzi', async () => {
   await size(1280, 720); await newGame(page, { opponents: 0 }, 3); await frames(page, 3); // ziarno 3: cel daleko w prawo jest osiągalny
   const r = await page.evaluate(() => ({ view: { ...VIEW }, list: LIST.x, rows: LIST_ROWS, end: G.screens.adventure.buttons.find(b => b.label === 'Koniec tury').x }));
-  assert.deepEqual(r.view, { x: 8, y: 8, w: 842, h: 552 });
-  assert.equal(r.list, 866); assert.equal(r.end, 932); assert.equal(r.rows, 3);
+  assert.deepEqual(r.view, { x: 8, y: 8, w: 1056, h: 672 }, 'jednostki interfejsu: okno 1280×720 to 1280×720');
+  assert.equal(r.list, 1080); assert.equal(r.end, 1146); assert.equal(r.rows, 5);
   // kliknięcie w mapę daleko po prawej (poza dawnym obszarem 800×600) wyznacza ścieżkę
   const target = await page.evaluate(() => {
     const st = G.state, h = hero(st), n = st.map.n, r = G.canvas.getBoundingClientRect(), k = r.width / VW; human(st).explored.fill(1); centerCam(st, h.x, h.y);
@@ -52,14 +52,17 @@ test('mapa przygody wypełnia szerokie okno: większy widok, panel przy prawej k
 
 test('wysokie okno: dłuższa lista bohaterów i miast; powrót do 4:3 przywraca układ', async () => {
   await newGame(page, { opponents: 0 });
-  assert.deepEqual(await size(900, 900), { VW: 800, VH: 800, OX: 0, OY: 100 });
+  assert.deepEqual(await size(900, 900), { VW: 818, VH: 818, OX: 0, OY: 0 }, 'powyżej UI_MAX_H interfejs rośnie');
   await frames(page, 2);
   let r = await page.evaluate(() => ({ view: { ...VIEW }, rows: LIST_ROWS, info: INFOBOX.y }));
-  assert.deepEqual(r, { view: { x: 8, y: 8, w: 576, h: 752 }, rows: 7, info: 656 });
+  assert.deepEqual(r, { view: { x: 8, y: 8, w: 594, h: 770 }, rows: 7, info: 674 });
   assert.deepEqual(await size(800, 600), { VW: 800, VH: 600, OX: 0, OY: 0 });
   r = await page.evaluate(() => ({ view: { ...VIEW }, rows: LIST_ROWS, list: LIST.x }));
   assert.deepEqual(r, { view: { x: 8, y: 8, w: 576, h: 552 }, rows: 3, list: 600 });
-  assert.deepEqual(await size(2400, 800), { VW: 1800, VH: 600, OX: 500, OY: 0 }, 'bardzo szeroki ekran: dawny ekran wyśrodkowany');
+  assert.deepEqual(await size(2400, 800), { VW: 2400, VH: 800, OX: 0, OY: 0 }, 'bardzo szeroki ekran: mapa na całą szerokość');
+  assert.deepEqual(await size(844, 390), { VW: 952, VH: 440, OX: 0, OY: 0 }, 'telefon poziomo: okno ma co najmniej UI_MIN_H jednostek');
+  r = await page.evaluate(() => ({ compact: PANEL.compact, rows: LIST_ROWS, mini: MINI.s, info: INFOBOX.h }));
+  assert.deepEqual(r, { compact: true, rows: 3, mini: 112, info: 0 }, 'kompaktowy panel na niskim ekranie');
 });
 
 test('wszystkie ekrany rysują się bez błędów w szerokim i wysokim oknie', async () => {

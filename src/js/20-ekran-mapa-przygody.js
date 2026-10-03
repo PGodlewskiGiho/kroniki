@@ -3,7 +3,7 @@
 function paintAdvChrome(c) {
   stoneFill(c, 0, 0, VW, VH);
   goldFrame(c, VIEW.x, VIEW.y, VIEW.w, VIEW.h); goldFrame(c, MINI.x, MINI.y, MINI.s, MINI.s);
-  for (const r of [LIST, INFOBOX]) insetBox(c, r.x, r.y, r.w, r.h);
+  for (const r of [LIST, INFOBOX]) if (r.h > 0) insetBox(c, r.x, r.y, r.w, r.h);
   insetBox(c, 8, VH - 31, VW - 16, 27, 7);
 }
 function showKingdom(st) {
@@ -54,7 +54,7 @@ function iconHammer(ctx, cx, cy, ok) {
   if (!ok) { ctx.strokeStyle = '#c85040'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - 7, cy + 7); ctx.lineTo(cx + 7, cy - 7); ctx.stroke(); }
 }
 function buildPanelButtons(scr, st) {
-  const S = 30, by = 176, bx = LIST.x + 2, mk = (i, icon, label, act, o = {}) => new Button(bx + i * 32, by, S, S, label, act, Object.assign({ icon }, o));
+  const S = 30, by = PANEL.by1, bx = LIST.x + 2, mk = (i, icon, label, act, o = {}) => new Button(bx + i * 32, by, S, S, label, act, Object.assign({ icon }, o));
   scr.btnMove = mk(2, iconBoot, 'Ruch', () => scr.startMove(), { key: 'm', tip: 'Ruszaj bohatera wzdłuż wyznaczonej ścieżki (klawisz M).' });
   scr.btnSleep = mk(3, iconSleep, 'Śpij', () => scr.toggleSleep(), { key: 's', selected: () => !!(hero(G.state) && hero(G.state).asleep), tip: 'Uśpij albo obudź bohatera. Śpiący nie upomina się o ruch przy końcu tury (klawisz S).' });
   scr.buttons = [
@@ -63,13 +63,13 @@ function buildPanelButtons(scr, st) {
     scr.btnMove, scr.btnSleep,
     mk(4, iconSpell, 'Czary', () => scr.spellbook(), { key: 'c', tip: 'Księga czarów: czary rzucane na mapie (klawisz C).' }),
     mk(5, iconGear, 'Menu', () => scr.systemMenu(), { key: 'escape', tip: 'Menu systemowe: powrót do menu głównego (klawisz Esc).' }),
-    new Button(LIST.x + 2, 212, 30, 40, 'Mapa zagadki', () => showPuzzle(G.state), { icon: iconPuzzle, key: 'p', tip: 'Mapa zagadki: obeliski odsłaniają miejsce, gdzie zakopano Graala (klawisz P).' }),
-    new Button(LIST.x + 34, 212, 30, 40, 'Kop', () => digHere(scr, G.state), { icon: iconShovel, key: 'd', tip: 'Kop w poszukiwaniu Graala na polu bohatera. Tylko z pełnymi punktami ruchu; zużywa cały dzień (klawisz D).' }),
-    new Button(LIST.x + 66, 212, st.map.ln ? 92 : 126, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, primary: true, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
+    new Button(LIST.x + 2, PANEL.by2, 30, 40, 'Mapa zagadki', () => showPuzzle(G.state), { icon: iconPuzzle, key: 'p', tip: 'Mapa zagadki: obeliski odsłaniają miejsce, gdzie zakopano Graala (klawisz P).' }),
+    new Button(LIST.x + 34, PANEL.by2, 30, 40, 'Kop', () => digHere(scr, G.state), { icon: iconShovel, key: 'd', tip: 'Kop w poszukiwaniu Graala na polu bohatera. Tylko z pełnymi punktami ruchu; zużywa cały dzień (klawisz D).' }),
+    new Button(LIST.x + 66, PANEL.by2, st.map.ln ? 92 : 126, 40, 'Koniec tury', () => scr.endTurn(), { key: 'e', size: 17, primary: true, tip: 'Kończy dzień. Bohaterowie odzyskują punkty ruchu, a kopalnie i miasta dają dochód (klawisz E).' }),
     scr.tabHeroes = new Button(LIST.x + 4, LIST.y + 3, 92, 22, 'Bohaterowie', () => setListTab(scr, 'heroes'), { size: 12, selected: () => listTab() === 'heroes', tip: 'Lista twoich bohaterów (klawisz B przełącza zakładki).' }),
     scr.tabTowns = new Button(LIST.x + 100, LIST.y + 3, 92, 22, 'Miasta', () => setListTab(scr, 'towns'), { size: 12, selected: () => listTab() === 'towns', tip: 'Lista twoich miast; młotek: czy dziś można jeszcze budować (klawisz B przełącza zakładki).' }),
   ];
-  if (st.map.ln) { const b = new Button(LIST.x + 162, 212, 30, 40, 'Poziom', () => switchLevel(G.state), { icon: iconStairs, key: 'u', selected: () => !!G.state.view });
+  if (st.map.ln) { const b = new Button(LIST.x + 162, PANEL.by2, 30, 40, 'Poziom', () => switchLevel(G.state), { icon: iconStairs, key: 'u', selected: () => !!G.state.view });
     Object.defineProperty(b, 'tip', { get: () => (G.state.view ? 'Wróć widokiem na powierzchnię (klawisz U).' : 'Zejdź widokiem do podziemi (klawisz U).'), set() {} }); scr.buttons.push(b); }
 }
 // Schody (przełącznik powierzchnia / podziemia)
@@ -115,10 +115,18 @@ function drawPanel(ctx, st, scr) {
       iconHammer(ctx, LIST.x + 178, y + 14, !t.builtToday); // czy dziś można jeszcze budować
     }
   }
+  if (PANEL.compact) return drawCompactInfo(ctx, st, scr);
   text(ctx, `Tydzień ${weekName(st)}`, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 18, { size: 15, align: 'center', color: UI.goldHi, fam: 'title' });
   divider(ctx, INFOBOX.x + 16, INFOBOX.x + INFOBOX.w - 16, INFOBOX.y + 32);
   const info = panelInfoText(st, scr); ctx.font = font(15, 600, 'body');
   wrapText(ctx, info.text, INFOBOX.w - 24).slice(0, 4).forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18, { size: 15, weight: 600, align: 'center', color: info.col }));
+}
+// Kompaktowy panel (niskie okno): ważne wieści (tura przeciwnika, komunikaty) jako pasek u dołu mapy zamiast okienka w panelu
+function drawCompactInfo(ctx, st, scr) {
+  if (!scr.aiRun && !(scr.flashMsg && G.time - scr.flashMsg.t < (scr.flashMsg.col ? 4 : 2.2))) return;
+  const info = panelInfoText(st, scr); ctx.font = font(16, 600, 'body'); const lines = wrapText(ctx, info.text, VIEW.w - 60).slice(0, 2), h = 14 + lines.length * 20, y = VIEW.y + VIEW.h - h - 10;
+  ctx.save(); ctx.fillStyle = 'rgba(16,10,4,.82)'; ctx.fillRect(VIEW.x + 20, y, VIEW.w - 40, h); ctx.strokeStyle = 'rgba(201,161,74,.7)'; ctx.lineWidth = 1; ctx.strokeRect(VIEW.x + 20.5, y + 0.5, VIEW.w - 41, h - 1); ctx.restore();
+  lines.forEach((l, i) => text(ctx, l, VIEW.x + VIEW.w / 2, y + 17 + i * 20, { size: 16, weight: 600, align: 'center', color: info.col }));
 }
 G.screens.adventure = {
   // Płynnie (60 klatek): gdy coś się rusza, zawsze; w spoczynku (woda, stwory) przy niskiej jakości grafiki 30
@@ -131,7 +139,7 @@ G.screens.adventure = {
   },
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
-  fill: true, // rysuje w całym oknie, układ z layoutAdventure()
+  fill: true, ui: true, // rysuje w całym oknie w jednostkach interfejsu, układ z layoutAdventure()
   // Po zmianie rozmiaru okna: nowy układ panelu, przyciski na nowych miejscach, kamera w granicach mapy
   layout(force) {
     const key = VW + 'x' + VH; if (!force && this.layoutKey === key) return; this.layoutKey = key;

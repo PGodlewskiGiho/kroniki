@@ -5,7 +5,7 @@
 //   duży monitor: skala rośnie powyżej UI_MAX_H). Ekrany i okna z ui: true układają się same w VW×VH.
 // • dawny ('leg'): ekrany zaprojektowane na W×H, wyśrodkowane i przeskalowane (LS), by zmieściły się w oknie; okno widziane
 //   wtedy jako VW×VH w jednostkach W×H (co najmniej W×H), OX, OY: przesunięcie obszaru W×H. Ekrany z fill: true rysują w całym oknie.
-const W = 800, H = 600, UI_MIN_W = 760, UI_MIN_H = 440, UI_MAX_H = 900, VW_MAX = 3200, VH_MAX = 1800;
+const W = 800, H = 600, UI_MIN_W = 760, UI_MIN_H = 440, UI_MAX_H = 820, VW_MAX = 3200, VH_MAX = 1800;
 let VW = W, VH = H, OX = 0, OY = 0, LS = 1;
 const VERSION = '1.1';
 // Plan rozwoju: gdzie w interfejsie obiecujemy przyszłe funkcje. Zmiana planu = zmiana tylko tutaj.
