@@ -92,21 +92,35 @@ function setupSiege(B, t) {
   B.walls = new Map(); B.siege = { level: L }; if (MOAT_DMG[L]) B.moat = { dmg: MOAT_DMG[L] };
   for (let y = 0; y < BROWS; y++) {
     const tower = towers.includes(y);
-    B.walls.set(hexKey(SIEGE_X, y), { x: SIEGE_X, y, kind: tower ? 'tower' : y === GATE_Y ? 'gate' : 'wall', hp: tower ? Infinity : hp, max: hp });
+    B.walls.set(hexKey(SIEGE_X, y), { x: SIEGE_X, y, kind: tower ? 'tower' : y === GATE_Y ? 'gate' : 'wall', hp, max: hp }); // wieże też da się zburzyć (giną wtedy ich łucznicy)
     if (tower) addFixed(B, 1, 'arrowTower', SIEGE_X, y, 1 + dwellingLevels(t).length, 'siege'); // siła wieży rośnie z liczbą siedlisk
   }
   const spot = freeSpot(B, 0, [BROWS - 1, 0, BROWS - 2, 1, 7, 2, 6, 3, 5, 4]); if (spot) addFixed(B, 0, 'catapult', spot[0], spot[1], 1, 'siege');
 }
-// Katapulta: głaz w bramę (co drugi rzut) albo w losowy fragment muru; trafia 3 razy na 4
-function actCatapult(B, u) {
+// Katapulta: cel wskazuje gracz (fragment muru, brama albo wieża), komputer wybiera sam; trafia w 75% strzałów, z Balistyką częściej,
+// a od zaawansowanej Balistyki strzela dwa razy na rundę. Zburzona wieża milknie (jej łucznicy giną).
+const catapultTargets = B => (B.walls ? [...B.walls.values()].filter(w => w.hp > 0) : []);
+const catapultShots = (B, u) => (heroSkill(sideHero(B, u.side), 'ballistics') >= 2 ? 2 : 1);
+const catapultChance = (B, u) => skillVal(sideHero(B, u.side), 'ballistics') || 75;
+function aiCatapultTarget(B) { // brama (droga dla piechoty), potem wieże (strzelają co rundę), potem mur
+  const segs = catapultTargets(B); if (!segs.length) return null;
+  const gate = segs.find(w => w.kind === 'gate'), towers = segs.filter(w => w.kind === 'tower'), walls = segs.filter(w => w.kind === 'wall'), r = B.rng();
+  if (gate && r < 0.45) return gate;
+  if (towers.length && r < 0.75) return towers[Math.floor(B.rng() * towers.length)];
+  const pool = walls.length ? walls : segs; return pool[Math.floor(B.rng() * pool.length)];
+}
+function actCatapult(B, u, target = null) {
   u.acted = true;
-  const segs = [...B.walls.values()].filter(w => w.kind !== 'tower' && w.hp > 0);
-  if (!segs.length) { B.log.push('Katapulta: mury już leżą w gruzach.'); return; }
-  const gate = segs.find(w => w.kind === 'gate'), w = gate && B.rng() < 0.5 ? gate : segs[Math.floor(B.rng() * segs.length)], hit = B.rng() < (skillVal(sideHero(B, u.side), 'ballistics') || 75) / 100; // Balistyka
-  if (hit) w.hp--;
-  const what = w.kind === 'gate' ? 'brama' : 'mur';
-  B.log.push(hit ? (w.hp <= 0 ? `Katapulta: ${what} ${w.kind === 'gate' ? 'rozbita' : 'runął'}!` : `Katapulta trafia: ${what} słabnie.`) : 'Katapulta chybia.');
-  if (B.fx) B.fx.push({ kind: 'siege', a: u, x: w.x, y: w.y, hit, broken: hit && w.hp <= 0 });
+  for (let s = 0, n = catapultShots(B, u); s < n; s++) {
+    let w = target && wallAt(B, target.x, target.y); if (!w || w.hp <= 0) w = aiCatapultTarget(B);
+    if (!w) { if (!s) B.log.push('Katapulta: mury już leżą w gruzach.'); return; }
+    const hit = B.rng() < catapultChance(B, u) / 100; if (hit) w.hp--;
+    const broken = hit && w.hp <= 0, tower = broken && w.kind === 'tower' ? B.units.find(v => v.cid === 'arrowTower' && v.x === w.x && v.y === w.y && !v.dead) : null;
+    if (tower) { tower.dead = true; tower.n = 0; }
+    const what = w.kind === 'gate' ? 'brama' : w.kind === 'tower' ? 'wieża' : 'mur';
+    B.log.push(hit ? (broken ? `Katapulta: ${what} ${w.kind === 'wall' ? 'runął' : w.kind === 'gate' ? 'rozbita' : 'runęła – łucznicy milkną'}!` : `Katapulta trafia: ${what} słabnie.`) : 'Katapulta chybia.');
+    if (B.fx) B.fx.push({ kind: 'siege', a: u, x: w.x, y: w.y, hit, broken, tower });
+  }
 }
 // foe: potwór z mapy, skarbiec, bohater albo miasto
 function createBattle(st, h, foe) {
