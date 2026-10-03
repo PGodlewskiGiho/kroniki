@@ -216,7 +216,7 @@ G.screens.menu = {
     this.buttons.forEach(b => b.draw(ctx));
     goldText(ctx, 'KRONIKI KRÓLESTW', VW / 2, L.compact ? 38 : 62, L.compact ? 36 : 44);
     text(ctx, 'Czas bohaterów', VW / 2, L.compact ? 70 : 104, { size: L.compact ? 18 : 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
-    text(ctx, `Kroniki Królestw · wersja ${VERSION}`, 12, VH - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
+    text(ctx, `Kroniki Królestw · wersja ${VERSION}${typeof BUILD_ID !== 'undefined' ? ' · ' + BUILD_ID : ''}`, 12, VH - 14, { size: 14, weight: 500, color: 'rgba(255,235,190,.55)' });
   },
 };
 // Nowa gra: mapa, trudność, bonus i 8 miejsc graczy (człowiek / komputer / wolne, kolor, frakcja).

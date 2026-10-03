@@ -267,7 +267,7 @@ function loft(secs, col, kind, axis = 'x', pos, rot, rep) {
   S.forEach((s, i) => P.forEach(([u, v], j) => { pos3.push(...vert(s, u, v)); uv.push(j / n * 2, i / (S.length - 1) * 2); }));
   for (let i = 0; i < S.length - 1; i++) for (let j = 0; j < n; j++) { const a = i * n + j, b = i * n + (j + 1) % n, c = a + n, d = b + n; idx.push(a, c, b, b, c, d); }
   for (const [i, first] of [[0, true], [S.length - 1, false]]) { const s = S[i], ci = pos3.length / 3, cy = (s[2] - s[3]) / 2; pos3.push(...(axis === 'x' ? [s[0], cy, 0] : [cy, s[0], 0])); uv.push(0.5, 0.5); for (let j = 0; j < n; j++) { const a = i * n + j, b = i * n + (j + 1) % n; if (first) idx.push(ci, a, b); else idx.push(ci, b, a); } }
-  if (axis === 'x') for (let k = 0; k < idx.length; k += 3) [idx[k + 1], idx[k + 2]] = [idx[k + 2], idx[k + 1]]; // oś x: zamiana osi odwraca kierunek ścianek
+  // oś x: kolejność wierzchołków już daje ścianki na zewnątrz (dawna zamiana odwracała normalne: grzbiety czworonogów wychodziły ciemne, brzuchy jasne)
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos3, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
   return mesh(g, col, kind, pos, rot, null, rep);
 }

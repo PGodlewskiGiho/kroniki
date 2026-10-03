@@ -383,9 +383,16 @@ const MapRender = {
   map: null, explored: null, season: 0, cache: new Map(), fog: new Map(), mini: null, miniDirty: false,
   // D: gęstość terenu (pikseli fragmentu na piksel grafiki = 2 px logiczne); gładko: tyle, ile bufora świata (ostro, bez powiększania)
   D: PXD,
-  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.job = null; this.fog.clear(); this.mini = null; this.warmed = false; this.D = mapDensity(); },
+  reset(map, explored) { this.map = map; this.explored = explored || null; this.cache.clear(); this.alt = null; this.job = null; this.sprIt = null; this.fog.clear(); this.mini = null; this.warmed = false; this.D = mapDensity(); },
+  // Zmiana przybliżenia (inna gęstość terenu): kawałki dotychczasowej gęstości zostają jako zapas (alt) – do czasu domalowania
+  // nowych widok pokazuje stare, przeskalowane, a powrót do poprzedniego przybliżenia jest natychmiastowy (bez malowania od nowa)
+  setDensity(D) { if (D === this.D) return; const prev = { D: this.D, cache: this.cache }; if (this.alt && this.alt.D === D) { this.cache = this.alt.cache; } else this.cache = new Map(); this.alt = prev; this.D = D; this.job = null; this.warmed = false; },
+  // Nowe grafiki terenu (tekstury, drzewa i góry) wczytane po pokazaniu mapy: teren maluje się od nowa, ale raz dla kilku obrazków
+  // naraz (odczekanie), a do czasu domalowania widać dotychczasowe kawałki (zapas bez gęstości: nie wraca jako gotowy po zmianie przybliżenia)
+  refresh() { if (!this.map) return; clearTimeout(this._rt); this._rt = setTimeout(() => { if (this.cache.size) this.alt = { D: null, cache: this.cache }; this.cache = new Map(); this.job = null; this.warmed = false; G.dirty = true; }, 80); },
+  stale(cx, cy) { return this.alt ? this.alt.cache.get(cx + ',' + cy) || null : null; },
   // Pora roku: po zmianie wszystkie kawałki terenu rysują się od nowa
-  setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); this.job = null; this.warmed = false; } },
+  setSeason(s) { if (this.season !== s) { this.season = s; this.cache.clear(); this.alt = null; this.job = null; this.warmed = false; } },
   // Gotowy kawałek terenu; nowy powstaje tylko, gdy pozwala na to budżet czasu klatki (allow), inaczej null (zastępczy rysunek)
   get(cx, cy, allow = true) {
     const key = cx + ',' + cy; let c = this.cache.get(key);
@@ -409,14 +416,17 @@ const MapRender = {
       this.warming = false; if (!G.state || G.state.map !== this.map) return;
       const n = this.map.n, nC = Math.ceil(n / CHUNK), CP = CHUNK * T, cam = G.state.cam || { x: 0, y: 0 }, mx = (cam.x + viewW() / 2) / CP, my = (cam.y + viewH() / 2) / CP, todo = [];
       for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!this.has(cx, cy) && !voidChunk(this.map, cx, cy)) todo.push([cx, cy, Math.hypot(cx + 0.5 - mx, cy + 0.5 - my)]);
-      if (!todo.length) { this.warmed = true; return; }
+      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(6, dl.timeRemaining() - 2) : 6);
+      // obrazki obiektów mapy (od najbliższych): pierwsze narysowanie każdego kosztuje, np. przy oddaleniu – część każdej wolnej chwili
+      if (this.sprIt !== false) { if (!this.sprIt) this.sprIt = mapSpriteJobs(G.state, mx * CHUNK, my * CHUNK); const e2 = todo.length ? performance.now() + Math.max(3, (end - performance.now()) * 0.4) : end; let r; do r = this.sprIt.next(); while (!r.done && performance.now() < e2); if (r.done) this.sprIt = false; }
+      if (!todo.length) { if (this.sprIt === false) { this.warmed = true; return; } this.warm(G.state); return; }
       todo.sort((a, b) => a[2] - b[2]);
-      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(6, dl.timeRemaining() - 2) : 6), vis = Math.hypot(viewW(), viewH()) / CP / 2 + 1;
+      const vis = Math.hypot(viewW(), viewH()) / CP / 2 + 1;
       // porcjami, najwyżej do końca wolnego czasu (kawałek dokończy się w następnych chwilach); w widoku do tego czasu stoi zastępczy kawałek
       for (const [cx, cy, d] of todo) {
         const key = cx + ',' + cy; if (!this.job || this.job.key !== key || this.job.map !== this.map) this.job = { key, map: this.map, it: renderChunkSteps(this.map, cx, cy) };
         let r; do r = this.job.it.next(); while (!r.done && performance.now() < end);
-        if (!r.done) break; this.job = null; this.store(key, r.value); if (d < vis) G.dirty = true; if (performance.now() >= end) break;
+        if (!r.done) break; this.job = null; this.store(key, r.value); if (d < vis && G.screenName === 'adventure') G.dirty = true; // inny ekran: nie wymuszamy klatek if (performance.now() >= end) break;
       }
       this.warm(G.state);
     });
@@ -463,7 +473,7 @@ function setZoom(st, z, sx = VIEW.x + VIEW.w / 2, sy = VIEW.y + VIEW.h / 2) {
   z = clamp(z, ZOOMS[0], ZOOMS[ZOOMS.length - 1]); if (z === ZOOM) return false;
   const wx = st.cam.x + (sx - VIEW.x) / ZOOM, wy = st.cam.y + (sy - VIEW.y) / ZOOM; ZOOM = z;
   st.cam.x = wx - (sx - VIEW.x) / ZOOM; st.cam.y = wy - (sy - VIEW.y) / ZOOM; camClamp(st); MapRender.warmed = false; G.settings.zoom = z; saveSettings();
-  if (MapRender.map && mapDensity() !== MapRender.D) MapRender.reset(MapRender.map, MapRender.explored); // inna gęstość terenu: kawałki od nowa
+  if (MapRender.map && mapDensity() !== MapRender.D) MapRender.setDensity(mapDensity()); // inna gęstość terenu: nowe kawałki malują się w tle, do tego czasu stare
   return true;
 }
 function drawFog(ctx, st, ox, oy, camX, camY) {
@@ -545,10 +555,10 @@ function drawWorldPixel(b, st) {
   const ox = VIEW.x - camX, oy = VIEW.y - camY;
   // kawałki terenu malują się w tle (MapRender.warm), nie w klatce: brakujący widoczny kawałek na chwilę zastępuje rysunek
   // w kolorach minimapy, a tło dorysowuje go w najbliższej wolnej chwili (najwyżej po ~0,1 s). Pierwsza klatka widoku maluje wszystko.
-  MapRender.warm(st); const first = !MapRender.cache.size;
+  MapRender.warm(st); const first = !MapRender.cache.size && !MapRender.alt; // po zmianie przybliżenia nie malujemy wszystkiego w jednej klatce: są stare kawałki
   for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
     const ch = MapRender.get(cx, cy, first), x = ox + cx * CP, y = oy + cy * CP;
-    if (!ch) { MapRender.placeholder(b, cx, cy, x, y); G.dirty = true; continue; }
+    if (!ch) { const old = MapRender.stale(cx, cy); if (old) b.drawImage(old, x, y, CP, CP); else MapRender.placeholder(b, cx, cy, x, y); G.dirty = true; continue; }
     b.drawImage(ch, x, y, CP, CP); WaterFx.draw(b, ch, x, y, CP, cx * ch.width, cy * ch.width);
   }
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
@@ -663,6 +673,21 @@ function gradeCanvas(c, ox = 0, oy = 0, step = 18) {
     d[k] = clamp(Math.round((r + (l - r) * ds + o) / step) * step, 0, 255); d[k + 1] = clamp(Math.round((gg + (l - gg) * ds + o) / step) * step, 0, 255); d[k + 2] = clamp(Math.round((b + (l - b) * ds + o) / step) * step, 0, 255);
   }
   g.putImageData(img, 0, 0); return c;
+}
+// Obrazki obiektów mapy przygotowywane w tle (MapRender.warm): potwory, budowle, kopalnie, skarby oraz drzewa i góry tuż przed obiektami
+function* mapSpriteJobs(st, cx = 0, cy = 0) {
+  const map = st.map, n = map.n, SN = MapRender.season || 0, g = s => { if (s && s.c) gradedSprite(s); };
+  for (const ob of st.objects.slice().sort((a, c) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(c.x - cx, c.y - cy))) { if (ob.dead) continue; let k = null;
+    if (ob.type === 'monster') { for (let i = 0; i < 4; i++) g(creatureSprite(ob.cid, ob.dir, i)); yield; continue; }
+    if (ob.type === 'town') { const t = st.towns[ob.townId]; k = `town_${t.faction}_${townLevel(t)}`; }
+    else if (ob.type === 'bank') k = `bank_${ob.kind}_${ob.cleared ? 1 : 0}`;
+    else if (ob.type === 'res' || ob.type === 'mine' || ob.type === 'site' || ob.type === 'art') k = ob.type + '_' + (ob.res || ob.kind || ob.art);
+    else if (ob.type === 'chest' || ob.type === 'boat') k = ob.type;
+    if (k) { g(map3dSprite(k)); yield; }
+    for (let dy = 1; dy <= 2; dy++) for (let dx = -1; dx <= 1; dx++) { const x = ob.x + dx, y = ob.y + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; if (!map.obst[i]) continue;
+      g(obstacleSprite(map.obst[i], map.terrain[i], thash(x, y, map.seed + 2) % (map.obst[i] === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y))); }
+    yield;
+  }
 }
 function gradedSprite(s) {
   if (!s._g) { const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; c.getContext('2d').drawImage(s.c, 0, 0); s._g = { c: gradeCanvas(c), ax: s.ax, ay: s.ay, u: s.u }; }
