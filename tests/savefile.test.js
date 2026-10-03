@@ -11,13 +11,13 @@ test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'bł�
 
 test('gra zapisana do pliku wczytuje się z pliku taka sama', async () => {
   await newGame(page);
-  await page.evaluate(() => { G.state.players[G.state.cur].resources.gold = 12345; G.go('load', { mode: 'save', fromGame: true }); });
+  await page.evaluate(() => { G.state.players[G.state.cur].resources.gold = 12345; setScreen('load', { mode: 'save', fromGame: true }); });
   await page.waitForFunction(() => G.screenName === 'load');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.evaluate(() => G.screen.toFile())]);
   const file = path.join(os.tmpdir(), 'kk-test-zapis.json'); await dl.saveAs(file);
   assert.match(dl.suggestedFilename(), /^kroniki-.*\.json$/);
   const before = await page.evaluate(() => JSON.stringify(serializeGame(G.state)));
-  await page.evaluate(() => { G.state.players[G.state.cur].resources.gold = 1; G.go('load', { mode: 'load' }); });
+  await page.evaluate(() => { G.state.players[G.state.cur].resources.gold = 1; setScreen('load', { mode: 'load' }); });
   await page.waitForFunction(() => G.screenName === 'load' && G.screen.mode === 'load');
   const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => { G.screen.fromFile(); })]);
   await fc.setFiles(file);
