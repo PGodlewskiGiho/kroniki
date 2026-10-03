@@ -109,6 +109,107 @@ def porazka():
     return img
 
 
+def shelves(d, x0, x1, top=0, bot=H):
+    d.rectangle([x0, top, x1, bot], fill=(70, 44, 24))
+    for y in range(top + 20, bot - 40, 64):
+        d.rectangle([x0, y + 52, x1, y + 60], fill=(50, 30, 16))
+        x = x0 + 6
+        while x < x1 - 10: w = R.randint(8, 16); d.rectangle([x, y + R.randint(4, 14), x + w, y + 52], fill=R.choice([(120, 30, 30), (40, 60, 110), (60, 90, 50), (140, 110, 60), (90, 50, 90)])); x += w + 2
+
+
+def nowagra():  # rada wojenna w namiocie
+    img = Image.new('RGB', (W, H)); gradient(img, [(0, (90, 40, 30)), (1, (50, 24, 18))]); d = ImageDraw.Draw(img, 'RGBA')
+    d.polygon([(420, 0), (604, 0), (650, 300), (374, 300)], fill=(250, 200, 140, 255)) # wejście: obóz o świcie
+    for i in range(6): x = 430 + i * 36; d.polygon([(x, 290), (x + 16, 250), (x + 32, 290)], fill=(200, 170, 130, 255))
+    for x in (40, 940): d.rectangle([x, 0, x + 50, 300], fill=(40, 60, 140, 255)); d.polygon([(x, 300), (x + 25, 330), (x + 50, 300)], fill=(40, 60, 140, 255))
+    for x in (150, 830): d.rectangle([x, 0, x + 44, 260], fill=(150, 30, 30, 255))
+    d.polygon([(120, 330), (904, 330), (1000, H), (24, H)], fill=(110, 70, 40, 255)) # stół
+    d.polygon([(220, 350), (800, 350), (860, 480), (160, 480)], fill=(220, 196, 150, 255)) # mapa
+    for i in range(14): d.line([(R.uniform(200, 820), R.uniform(360, 470)), (R.uniform(200, 820), R.uniform(360, 470))], fill=(140, 100, 60, 255), width=2)
+    for i in range(16): x, y = R.uniform(240, 780), R.uniform(370, 460); d.rectangle([x - 5, y - 16, x + 5, y], fill=R.choice([(160, 30, 30, 255), (40, 60, 150, 255), (220, 190, 60, 255)]))
+    d.rectangle([110, 300, 126, 350], fill=(236, 226, 196, 255)); glow(img, [(118, 290, 70, 200), (512, 150, 200, 120)], (255, 200, 120), 30)
+    return img
+
+
+def wczytaj():  # biblioteka kronik
+    img = Image.new('RGB', (W, H)); gradient(img, [(0, (40, 30, 26)), (1, (30, 20, 16))]); d = ImageDraw.Draw(img, 'RGBA')
+    shelves(d, 0, 330); shelves(d, 694, W)
+    d.rectangle([430, 20, 594, 260], fill=(200, 210, 230, 255)); d.pieslice([430, -60, 594, 100], 180, 360, fill=(200, 210, 230, 255))
+    for a in (-0.25, 0, 0.25): d.polygon([(470, 120), (554, 120), (554 + 300 * a + 120, H), (470 + 300 * a - 120, H)], fill=(255, 240, 200, 40))
+    d.polygon([(340, 380), (684, 380), (720, H), (304, H)], fill=(90, 56, 30, 255)) # pulpit
+    d.polygon([(380, 400), (512, 420), (644, 400), (634, 360), (512, 380), (390, 360)], fill=(240, 226, 190, 255))
+    d.line([(200, 120), (260, 480)], fill=(100, 70, 40, 255), width=6); d.line([(240, 120), (300, 480)], fill=(100, 70, 40, 255), width=6) # drabina
+    glow(img, [(512, 380, 160, 120)], (255, 220, 160), 30)
+    return img
+
+
+def wyniki():  # sala chwały
+    img = Image.new('RGB', (W, H)); gradient(img, [(0, (60, 44, 30)), (1, (40, 28, 20))]); d = ImageDraw.Draw(img, 'RGBA')
+    for x in (60, 200, 780, 920): d.rectangle([x, 0, x + 60, H], fill=(170, 150, 120, 255)); d.rectangle([x + 40, 0, x + 60, H], fill=(120, 104, 84, 255))
+    for x in (150, 300, 690, 840): d.rectangle([x, 0, x + 40, 220], fill=R.choice([(150, 30, 30, 255), (40, 60, 140, 255)])); d.polygon([(x, 220), (x + 20, 250), (x + 40, 220)], fill=(150, 30, 30, 255))
+    d.polygon([(470, 300), (554, 300), (700, H), (324, H)], fill=(150, 30, 30, 255)) # dywan
+    d.rectangle([462, 170, 562, 300], fill=(210, 170, 60, 255)); d.polygon([(462, 170), (512, 110), (562, 170)], fill=(230, 190, 70, 255)) # tron
+    for x in (380, 644): d.rectangle([x - 18, 200, x + 18, 330], fill=(190, 186, 176, 255)); d.ellipse([x - 14, 176, x + 14, 204], fill=(190, 186, 176, 255)) # posągi
+    for x in (420, 604): d.rectangle([x, 20, x + 40, 120], fill=(255, 230, 170, 255))
+    glow(img, [(512, 200, 200, 160)], (255, 220, 140), 40)
+    return img
+
+
+def tworcy():  # tawerna
+    img = Image.new('RGB', (W, H)); gradient(img, [(0, (60, 36, 22)), (1, (40, 24, 14))]); d = ImageDraw.Draw(img, 'RGBA')
+    for y in (40, 120): d.rectangle([0, y, W, y + 18], fill=(50, 30, 16, 255)) # belki
+    d.rectangle([720, 160, 980, 420], fill=(120, 110, 100, 255)); d.rectangle([770, 260, 930, 420], fill=(30, 20, 16, 255))
+    for i in range(10): x = R.uniform(790, 910); d.polygon([(x - 18, 420), (x, 420 - R.uniform(60, 130)), (x + 18, 420)], fill=(255, R.randint(120, 200), 50, 255))
+    d.polygon([(40, 360), (620, 360), (660, H), (0, H)], fill=(110, 70, 36, 255)) # stół
+    for x in (180, 260, 480): d.rectangle([x, 300, x + 40, 360], fill=(150, 110, 60, 255)); d.rectangle([x, 300, x + 40, 312], fill=(240, 230, 200, 255)) # kufle
+    d.ellipse([320, 330, 420, 370], fill=(150, 100, 50, 255)); d.line([(400, 340), (520, 290)], fill=(90, 60, 30, 255), width=10) # lutnia
+    for x in (120, 560): d.rectangle([x, 160, x + 30, 210], fill=(255, 220, 140, 255))
+    glow(img, [(850, 340, 220, 200), (135, 185, 80, 180), (575, 185, 80, 180)], (255, 170, 80), 40)
+    return img
+
+
+def online():  # most światów
+    img = Image.new('RGB', (W, H)); gradient(img, [(0, (10, 14, 40)), (0.6, (40, 40, 90)), (1, (20, 20, 40))]); d = ImageDraw.Draw(img, 'RGBA')
+    for i in range(160): x, y = R.uniform(0, W), R.uniform(0, 300); r = R.choice([1, 1, 1.5]); d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 255, 230, 255))
+    for k in range(3): d.arc([100 - k * 40, -150 + k * 20, 924 + k * 40, 300 + k * 20], 200, 340, fill=(80, 220, 170, 90), width=18) # zorza
+    d.polygon([(0, H), (0, 300), (180, 290), (260, 330), (300, H)], fill=(30, 26, 40, 255)); d.polygon([(W, H), (W, 300), (844, 290), (764, 330), (724, H)], fill=(30, 26, 40, 255))
+    castle(d, 130, 296, 0.8, wall=(150, 150, 180), sh=(100, 100, 130), roof=(60, 80, 160)); castle(d, 894, 296, 0.8, wall=(150, 150, 180), sh=(100, 100, 130), roof=(120, 60, 140))
+    pts = [(240, 250), (512, 140), (784, 250)]
+    for wdt, col in [(30, (120, 200, 255, 120)), (12, (230, 250, 255, 255))]: d.line(pts, fill=col, width=wdt, joint='curve')
+    glow(img, [(512, 150, 120, 200), (240, 250, 60, 200), (784, 250, 60, 200)], (140, 210, 255), 30)
+    return img
+
+
+def bitwa_wygrana():
+    img = Image.new('RGB', (W, H)); gradient(img, [(0, (60, 90, 150)), (0.5, (240, 160, 90)), (1, (90, 80, 50))], sun=(700, 260), sun_r=360); d = ImageDraw.Draw(img, 'RGBA')
+    d.polygon([(0, 360), (300, 300), (620, 230), (900, 300), (W, 340), (W, H), (0, H)], fill=(80, 90, 50, 255))
+    banner(d, 620, 236, 150, (160, 30, 34), 6)
+    for i in range(70): x = R.uniform(300, 950); y = 240 + abs(x - 620) * 0.25 + R.uniform(10, 60); d.rectangle([x - 4, y - 16, x + 4, y], fill=(50, 40, 40, 255)); d.line([(x + 3, y - 14), (x + 8, y - 40)], fill=(220, 220, 230, 255), width=2)
+    return img
+
+
+def bitwa_przegrana():
+    img = Image.new('RGB', (W, H)); gradient(img, [(0, (60, 60, 70)), (0.6, (120, 110, 110)), (1, (50, 46, 44))]); d = ImageDraw.Draw(img, 'RGBA')
+    d.polygon([(0, 330), (W, 310), (W, H), (0, H)], fill=(60, 56, 50, 255))
+    for i in range(30): x, y = R.uniform(0, W), R.uniform(320, H); d.line([(x, y), (x + R.uniform(-30, 30), y - R.uniform(30, 80))], fill=(80, 64, 50, 255), width=3) # połamane włócznie
+    for i in range(12): x, y = R.uniform(0, W), R.uniform(360, H); d.ellipse([x - 14, y - 10, x + 14, y + 10], fill=R.choice([(120, 30, 30, 255), (40, 60, 120, 255)])) # tarcze
+    d.line([(300, 470), (560, 380)], fill=(70, 50, 36, 255), width=6); d.polygon([(560, 380), (640, 400), (600, 440), (530, 420)], fill=(150, 30, 34, 255)) # porzucona chorągiew
+    for i in range(9): x, y = R.uniform(200, 900), R.uniform(60, 220); d.polygon([(x - 16, y), (x, y + 5), (x + 16, y), (x, y - 4)], fill=(14, 12, 14, 255))
+    for i in range(6): x0 = R.uniform(-100, 700); d.ellipse([x0, R.uniform(250, 370), x0 + R.uniform(300, 600), R.uniform(390, 460)], fill=(200, 200, 210, 50)) # mgła
+    return img
+
+
+def bitwa_odwrot():
+    img = Image.new('RGB', (W, H)); gradient(img, [(0, (12, 16, 36)), (1, (24, 30, 40))], sun=(520, 110), sun_r=200, sun_col=(220, 230, 255), sun_k=0.6); d = ImageDraw.Draw(img, 'RGBA')
+    d.ellipse([490, 80, 550, 140], fill=(240, 240, 220, 255))
+    for x in list(range(-20, 380, 46)) + list(range(660, 1060, 46)): h = R.uniform(260, 420); d.polygon([(x - 40, H), (x, H - h), (x + 40, H)], fill=(14, 24, 20, 255))
+    d.polygon([(380, H), (480, 300), (560, 300), (680, H)], fill=(70, 66, 60, 255)) # droga
+    x, y = 520, 360 # jeździec od tyłu
+    d.ellipse([x - 24, y - 20, x + 24, y + 20], fill=(30, 22, 18, 255)); d.rectangle([x - 20, y + 10, x - 12, y + 50], fill=(30, 22, 18, 255)); d.rectangle([x + 12, y + 10, x + 20, y + 50], fill=(30, 22, 18, 255))
+    d.polygon([(x - 14, y - 16), (x + 14, y - 16), (x + 26, y + 20), (x - 30, y + 26)], fill=(140, 24, 28, 255)); d.ellipse([x - 7, y - 36, x + 7, y - 20], fill=(100, 100, 110, 255))
+    return img
+
+
 if __name__ == '__main__':
     name, out = sys.argv[1], sys.argv[2]
     globals()[name]().filter(ImageFilter.GaussianBlur(1.2)).save(out)

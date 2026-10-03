@@ -203,7 +203,12 @@ function paintMenuScene(pb) {
     b.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; b.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
   }
 }
-function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); dimScreen(ctx, a); }
+// Ekrany menu (nowa gra, zasady, wczytywanie, wyniki, twórcy, gra online) mają własne malowane obrazy; bez nich scena menu
+const SCREEN_PAINT = { setup: 'nowagra', rules: 'nowagra', load: 'wczytaj', scores: 'wyniki', credits: 'tworcy', online: 'online' };
+function dimmedMenuScene(ctx, a) {
+  const A = screenArt(SCREEN_PAINT[G.screenName]);
+  if (A) { viewportDraw(ctx, c => drawPaintedArt(c, A[0], A[1], VW, VH)); dimScreen(ctx, a * 0.75); } else { drawMenuScene(ctx); dimScreen(ctx, a); }
+}
 function askQuit() {
   showDialog('Czy na pewno chcesz opuścić grę?', [{ label: 'Tak', key: 'enter', action: () => (window.KronikiApp && KronikiApp.exit ? KronikiApp.exit() : G.go('bye')) }, { label: 'Nie', key: 'escape' }]);
 }

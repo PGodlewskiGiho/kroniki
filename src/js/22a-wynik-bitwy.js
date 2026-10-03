@@ -71,7 +71,9 @@ function showBattleReport(st, res, R, onOk) {
       dimScreen(ctx, 0.45); drawParchment(ctx, x, y, w, h); const t = G.time - t0;
       goldText(ctx, R.title, W / 2, y + 34, 30);
       const px = x + 120, py = y + 60, pw = w - 240, ph = 150;
-      pixLayer('report', ctx, px, py, pw, ph, g => drawReportScene(g, px, py, pw, ph, R.kind, me, colOf(me), t, st)); // obraz jako pixel art
+      const RA = screenArt({ win: 'bitwa_wygrana', lose: 'bitwa_przegrana', fled: 'bitwa_odwrot' }[R.kind]); // malowany obraz wyniku (sztandar na wzgórzu, pobojowisko we mgle, nocny odwrót)
+      if (RA) { ctx.save(); ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip(); ctx.translate(px, py); drawPaintedArt(ctx, RA[0], RA[1], pw, ph); ctx.restore(); }
+      else pixLayer('report', ctx, px, py, pw, ph, g => drawReportScene(g, px, py, pw, ph, R.kind, me, colOf(me), t, st)); // obraz jako pixel art
       ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 3; ctx.strokeRect(px - 1.5, py - 1.5, pw + 3, ph + 3); ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1; ctx.strokeRect(px - 4, py - 4, pw + 8, ph + 8);
       portrait(ctx, me, x + 20, y + 64, 1, winnerMe); portrait(ctx, foe, x + w - 100, y + 64, -1, !winnerMe && R.kind !== 'fled');
       lines.forEach((l, i) => text(ctx, l, W / 2, y + 240 + i * 22, { size: 17, weight: 500, align: 'center', color: '#2a1606' }));
@@ -146,7 +148,7 @@ function showGameEnd(st, r, msg, opts) {
   const win = r === 'win', R = mulberry32(77);
   const bursts = Array.from({ length: 7 }, (_, i) => ({ x: 120 + R() * 560, y: 70 + R() * 150, t: i * 0.45 + R() * 0.3, c: [col, '#ffd970', '#ffffff', '#6ac0ff', '#ff6a8a'][i % 5] }));
   G.modal = {
-    msg, buttons, locked: true, gameEnd: r,
+    msg, buttons, locked: true, gameEnd: r, box: { x: 0, y: 0, w: W, h: H }, // okno 800×600 skalowane do ekranu: na telefonie całe widoczne (bez przewijania)
     draw(ctx) {
       const t = G.time - t0; G.dirty = true;
       const EA = screenArt(win ? 'zwyciestwo' : 'porazka'); // malowany obraz końca gry (rycerz w czerwonej pelerynie: triumf o świcie albo klęska przy płonącym zamku)
