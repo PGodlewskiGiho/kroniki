@@ -121,6 +121,20 @@ function drawPanel(ctx, st, scr) {
   const info = panelInfoText(st, scr); ctx.font = font(15, 600, 'body');
   wrapText(ctx, info.text, INFOBOX.w - 24).slice(0, 4).forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18, { size: 15, weight: 600, align: 'center', color: info.col }));
 }
+// Środek pola mapy na ekranie (jednostki interfejsu)
+const tileScreen = (st, tx, ty) => [VIEW.x + (tx * T + T / 2 - st.cam.x) * ZOOM, VIEW.y + (ty * T + T / 2 - st.cam.y) * ZOOM];
+// Karta celu po stuknięciu (dotyk): opis pola u góry mapy i podpowiedź, że drugie stuknięcie wysyła bohatera
+function drawTapInfo(ctx, st, scr) {
+  const I = scr.tapInfo, h = hero(st); if (!I || !h || G.time - I.t > 12 || h.moving || G.modal) return;
+  if (I.ok && !(h.dest && h.dest[0] === I.tx && h.dest[1] === I.ty)) { scr.tapInfo = null; return; }
+  const w = Math.min(VIEW.w - 40, 600), x = VIEW.x + (VIEW.w - w) / 2; ctx.font = font(16, 600, 'body');
+  const lines = wrapText(ctx, I.text, w - 36).slice(0, 4), foot = I.ok ? `Stuknij cel jeszcze raz, aby wyruszyć (${I.steps} ${I.steps === 1 ? 'pole' : I.steps % 10 >= 2 && I.steps % 10 <= 4 && (I.steps % 100 < 10 || I.steps % 100 >= 20) ? 'pola' : 'pól'}).` : '', hh = 22 + lines.length * 20 + (foot ? 24 : 0), y = VIEW.y + 10;
+  drawParchment(ctx, x, y, w, hh);
+  lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 22 + i * 20, { size: 16, weight: 600, align: 'center', color: '#2a1606' }));
+  if (foot) text(ctx, foot, x + w / 2, y + 22 + lines.length * 20 + 6, { size: 15, weight: 700, italic: true, align: 'center', color: '#6a3a10' });
+  const [sx, sy] = tileScreen(st, I.tx, I.ty); ctx.save(); ctx.strokeStyle = 'rgba(255,226,140,.9)'; ctx.lineWidth = 2.5; ctx.setLineDash([6, 4]); ctx.lineDashOffset = -G.time * 20; // cel zaznaczony na mapie
+  ctx.strokeRect(sx - T * ZOOM / 2 + 1, sy - T * ZOOM / 2 + 1, T * ZOOM - 2, T * ZOOM - 2); ctx.restore(); G.dirty = true;
+}
 // Kompaktowy panel (niskie okno): ważne wieści (tura przeciwnika, komunikaty) jako pasek u dołu mapy zamiast okienka w panelu
 function drawCompactInfo(ctx, st, scr) {
   if (!scr.aiRun && !(scr.flashMsg && G.time - scr.flashMsg.t < (scr.flashMsg.col ? 4 : 2.2))) return;
@@ -302,9 +316,11 @@ G.screens.adventure = {
       if (here && here.type === 'town' && here.owner === h.owner) G.go('town', { townId: here.townId }); else this.heroInfo();
       return;
     }
-    if (h.path && h.dest && h.dest[0] === tx && h.dest[1] === ty) { this.startMove(); return; }
+    if (h.path && h.dest && h.dest[0] === tx && h.dest[1] === ty) { this.tapInfo = null; this.startMove(); return; }
     const p = computePath(st, h, tx, ty);
     if (p) { h.path = p; h.dest = [tx, ty]; } else { h.path = null; h.dest = null; this.flash('Nie można tam dotrzeć'); }
+    // dotyk: pierwsze stuknięcie pokazuje, co tam jest (jak prawy przycisk myszy), dopiero drugie w ten sam cel wysyła bohatera
+    if (G.mouse.type && G.mouse.type !== 'mouse') { const [sx, sy] = tileScreen(st, tx, ty); this.tapInfo = { tx, ty, t: G.time, text: this.rightInfo(sx, sy) || tileInfo(st, tx, ty), ok: !!p, steps: p ? p.length : 0 }; }
   },
   endTurn() {
     const st = G.state; if (this.aiRun || st.heroes.some(h => h.moving || h.anim)) return;
@@ -461,7 +477,7 @@ G.screens.adventure = {
     const st = G.state; if (!st || !st.map) return;
     this.layout();
     drawLayer(ctx, Layers.get(`advChrome_${VW}x${VH}_${uiArtReady() ? 1 : 0}`, VW, VH, paintAdvChrome), 0, 0);
-    drawMapView(ctx, st, this); drawPanel(ctx, st, this);
+    drawMapView(ctx, st, this); drawPanel(ctx, st, this); drawTapInfo(ctx, st, this);
     if (this.watching && st.players[st.cur]) { // online: czyja tura (oglądamy)
       const msg = `Tura: ${cap1(playerName(st, st.cur))}${st.players[st.cur].human ? '' : ' (komputer)'} – oglądasz`, w = 300, x = VIEW.x + VIEW.w / 2 - w / 2;
       drawParchment(ctx, x, VIEW.y + 10, w, 36); text(ctx, msg, x + w / 2, VIEW.y + 33, { size: 16, align: 'center', color: '#3a1e08', fam: 'title' });

@@ -121,3 +121,11 @@ test('telefon: dawny ekran (nowa gra) w pełnej wielkości, przewijany kółkiem
   assert.equal(await page.evaluate(() => G.fade.next && G.fade.next.name), 'menu');
   await page.waitForFunction(() => G.screenName === 'menu'); await size(800, 600);
 });
+
+test('dotyk na mapie: pierwsze stuknięcie pokazuje opis celu, drugie wysyła bohatera', async () => {
+  await newGame(page, { opponents: 0 }, 5);
+  const r = await page.evaluate(() => { const st = G.state, h = hero(st), S = G.screens.adventure, ob = st.objects.find(o => o.type === 'mine' && Math.abs(o.x - h.x) < 6 && Math.abs(o.y - h.y) < 6);
+    G.mouse.type = 'touch'; S.tileClick(ob.x, ob.y); const first = { info: S.tapInfo && S.tapInfo.text, moving: !!(h.moving || h.anim) };
+    S.tileClick(ob.x, ob.y); const second = !!(h.moving || h.anim) || h.path === null; G.mouse.type = 'mouse'; return { first, second, tap: S.tapInfo }; });
+  assert.match(r.first.info, /Właściciel: nikt/); assert.equal(r.first.moving, false); assert.ok(r.second); assert.equal(r.tap, null);
+});
