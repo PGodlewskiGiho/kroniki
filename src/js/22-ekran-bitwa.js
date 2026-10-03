@@ -116,7 +116,7 @@ function impactSound(p, tg) {
 const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thunder'], chainLightning: ['cast', 'thunder'], fireball: ['fireball', 'explode'], meteorShower: ['fireball', 'explode'], armageddon: ['cast', 'explode'],
   implosion: ['cast', 'explode'], iceBolt: ['cast', 'ice'], frostRing: ['cast', 'ice'], cure: ['cast', 'heal'], massCure: ['cast', 'heal'], resurrection: ['cast', 'heal'], animateDead: ['cast', 'curse'],
   curse: ['cast', 'curse'], weakness: ['cast', 'curse'], slow: ['cast', 'curse'], deathRipple: ['cast', 'curse'],
-  blind: ['cast', 'curse'], poison: ['cast', 'curse'], fireWall: ['fireball', 'explode'], lifeSteal: ['zap', 'heal'], holyLight: ['cast', 'thunder'], vampirism: ['cast', 'curse'] };
+  blind: ['cast', 'curse'], poison: ['cast', 'curse'], fireWall: ['fireball', 'explode'], lifeSteal: ['zap', 'heal'], holyLight: ['cast', 'thunder'], vampirism: ['cast', 'curse'], blizzard: ['cast', 'ice'] };
 const spellLandSound = (id, x) => Sfx.play(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff', { vol: 0.9, pan: sfxPan(x) });
 G.screens.battle = {
   fps: smoothFps, // płynnie także czekając na rozkaz (oddychające jednostki, płomienie)

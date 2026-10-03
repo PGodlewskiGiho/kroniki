@@ -79,6 +79,14 @@ Object.assign(SP3, {
       f.traverse(m => { if (m.material) { m.material = m.material.clone(); m.material.transparent = op < 1; m.material.opacity = op; } }); f.position.x = x; g.add(f); };
     fig(-0.55, 1); fig(0.55, 0.45); g.add(torus(1.4, 0.04, '#b8e0ff', 'glow', [0, -0.2, -0.3])); return g; },
 });
+Object.assign(SP3, {
+  fear: () => { const g = new THREE.Group(), sk = spSkull('#e8e0cc', '#ff5a2a'); g.add(sk); for (let i = 0; i < 6; i++) { const a = Math.PI * 0.2 + i * Math.PI * 0.12; g.add(tube([[Math.cos(a) * 0.9, Math.sin(a) * 0.9 + 0.2, -0.2], [Math.cos(a) * 1.4, Math.sin(a) * 1.4 + 0.4, -0.3], [Math.cos(a) * 1.7, Math.sin(a) * 1.7 + 0.2, -0.3]], 0.12, 0.02, i % 2 ? '#ff7a2a' : '#c84a2a', 'glow')); } return g; },
+  dimensionDoor: () => { const g = new THREE.Group(); g.add(torus(1.1, 0.16, '#c8a040', 'gold', [0, 0, 0], null, [0.75, 1.15, 1])); const P = []; for (let i = 0; i <= 60; i++) { const t = i / 60, a = t * Math.PI * 6, r = 0.95 * (1 - t); P.push([Math.cos(a) * r * 0.75, Math.sin(a) * r * 1.15, 0.05 + t * 0.2]); }
+    g.add(tube(P, 0.08, 0.02, '#b89aff', 'glow')); g.add(spGlow(0.25, '#ffffff', [0, 0, 0.25])); for (const [x, y] of [[-1.2, 1.2], [1.2, -1.1], [1.1, 1.0]]) g.add(spGlow(0.07, '#e0d0ff', [x, y, 0.2])); return g; },
+  blizzard: () => { const g = new THREE.Group(); for (const [x, y, k] of [[0, 0.2, 1], [-1.0, -0.8, 0.5], [1.0, -0.7, 0.55], [0.9, 1.1, 0.4]]) { for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; g.add(cyl(0.05 * k, 0.05 * k, 1.6 * k, '#e8f6ff', 'glow', [x + Math.cos(a) * 0.4 * k, y + Math.sin(a) * 0.4 * k, 0], [0, 0, a + Math.PI / 2]));
+      for (const s of [-1, 1]) g.add(cyl(0.035 * k, 0.035 * k, 0.4 * k, '#ffffff', 'glow', [x + Math.cos(a) * 0.62 * k, y + Math.sin(a) * 0.62 * k, 0], [0, 0, a + Math.PI / 2 + s * 0.8])); } }
+    for (let k = 0; k < 3; k++) { const P = []; for (let i = 0; i <= 20; i++) { const t = i / 20; P.push([-1.6 + t * 3.2, -1.3 + k * 0.4 + Math.sin(t * 5 + k) * 0.12, -0.2]); } g.add(tube(P, 0.03, 0.06, '#c8e8ff', 'glow')); } return g; },
+});
 function renderSpell(id, school, S = 192) {
   const f = SP3[id]; if (!f) return null; const col = SP_PANEL[school] || '#4a3e2c', w = new THREE.Group();
   w.add(rbox(3.0, 3.0, 0.3, 0.1, '#c8a050', 'gold', [0, 0, -0.15])); w.add(rbox(2.62, 2.62, 0.22, 0.06, col, 'leather', [0, 0, 0.0])); w.add(rbox(2.66, 0.08, 0.05, 0.02, LT(col, 0.25), 'leather', [0, 1.26, 0.1]));

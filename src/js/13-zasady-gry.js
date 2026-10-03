@@ -200,6 +200,7 @@ function neutralReaction(st, h, m) {
     }
   }
   if (mood !== 'savage' && ratio >= 6 - 0.5 * lead - (dip >= 2 ? 0.75 * dip : 0)) return { kind: 'flee' };
+  if (h.fearDay === st.dayTotal && ratio >= 2) return { kind: 'flee' }; // czar Groza
   return null;
 }
 function joinMonsters(st, h, m, cost) {
@@ -517,7 +518,17 @@ function visitGuild(st, t, h) {
   h.mana = Math.max(h.mana, heroMaxMana(h)); return learned;
 }
 // Czary na mapie przygody. Zwraca tekst błędu albo null.
-function castAdventure(st, h, id) {
+// Drzwi wymiarów: czy bohater może przenieść się na pole (x, y); zwraca tekst błędu albo null (bez celu: tylko warunki ogólne)
+function doorCheck(st, h, x, y) {
+  if (h.boat) return 'Nie da się otworzyć drzwi wymiarów z pokładu łodzi';
+  if (h.mp < 300) return 'Za mało punktów ruchu (potrzeba 300)';
+  if (h.doorDay === st.dayTotal && h.doorN >= 2) return 'Drzwi wymiarów można otworzyć najwyżej dwa razy dziennie';
+  if (x == null) return null; const n = st.map.n, R = 6 + heroStat(h, 'sp');
+  if (Math.max(Math.abs(x - h.x), Math.abs(y - h.y)) > R) return `Za daleko: drzwi sięgają ${R} pól`;
+  if (!passableTile(st, x, y) || st.map.terrain[y * n + x] === TER.WATER || objectAt(st, y * n + x) || heroAt(st, x, y)) return 'Tu nie da się stanąć: wybierz wolne, odkryte pole lądu';
+  return null;
+}
+function castAdventure(st, h, id, tgt) {
   const S = SPELLS[id], sp = heroStat(h, 'sp');
   if (h.mana < spellCost(h, id)) return 'Za mało many';
   if (id === 'eagleEye') { reveal(st, h.x, h.y, 5 + sp); }
@@ -533,6 +544,12 @@ function castAdventure(st, h, id) {
     if (h.boat) { h.boat = false; addBoat(st, h.x, h.y); } // łódź zostaje na wodzie
     h.x = t.x; h.y = t.y; h.mp -= 300; h.path = null; h.dest = null; reveal(st, h.x, h.y, heroSight(h)); centerCam(st, h.x, h.y);
   }
+  else if (id === 'dimensionDoor') {
+    const err = doorCheck(st, h, tgt ? tgt.x : null, tgt ? tgt.y : null); if (err) return err; if (!tgt) return 'Wskaż pole';
+    if (h.doorDay !== st.dayTotal) { h.doorDay = st.dayTotal; h.doorN = 0; } h.doorN++;
+    h.x = tgt.x; h.y = tgt.y; h.mp -= 300; h.path = null; h.dest = null; h.prev = null; reveal(st, h.x, h.y, heroSight(h));
+  }
+  else if (id === 'fear') { if (h.fearDay === st.dayTotal) return 'Groza już dziś otacza bohatera'; h.fearDay = st.dayTotal; }
   else if (id === 'tailwind') { // Wiatr w plecy: dodatkowy ruch na dziś, raz dziennie
     if (h.windDay === st.dayTotal) return 'Wiatr już dziś wieje w plecy bohatera';
     h.windDay = st.dayTotal; h.mp += 400 + 100 * sp;

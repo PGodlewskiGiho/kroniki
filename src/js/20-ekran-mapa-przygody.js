@@ -209,6 +209,7 @@ G.screens.adventure = {
   },
   openSaves(mode) { if (!canSaveNow(G.state)) return this.flash('Poczekaj, aż bohater się zatrzyma'); G.go('load', { mode, fromGame: true }); },
   autosave(st) { SaveStore.write('auto', st).catch(() => { if (G.state === st) this.flash('Autozapis się nie udał'); }); },
+  cancelMode() { if (!this.door) return false; this.door = false; this.flash('Anulowano drzwi wymiarów'); return true; },
   onKey(k) {
     if ((k === '+' || k === '=' || k === '-') && G.state) { const i = ZOOMS.indexOf(ZOOM); setZoom(G.state, ZOOMS[clamp(i + (k === '-' ? -1 : 1), 0, ZOOMS.length - 1)]); return; } // klawisze +/−: przybliż, oddal
     if (this.aiRun) { if (k === ' ' || k === 'escape' || k === 'enter') this.skipAi(); return; }
@@ -262,6 +263,7 @@ G.screens.adventure = {
     const st = G.state, h = hero(st); if (!h || h.moving || h.anim) return;
     if (!hasBook(h)) return this.flash(`${h.name} nie ma księgi czarów. Kupisz ją w mieście z gildią magów (${SPELLBOOK_COST} złota).`);
     showSpellbook(h, 'adv', id => {
+      if (id === 'dimensionDoor') { const err = doorCheck(st, h); if (err) return this.flash(err); this.door = true; return this.flash(`Drzwi wymiarów: wskaż wolne pole w promieniu ${6 + heroStat(h, 'sp')} (Esc anuluje)`); }
       const from = [h.x, h.y], err = castAdventure(st, h, id); this.flash(err || `${h.name} rzuca: ${SPELLS[id].name}`); if (err) return;
       this.mapFx = this.mapFx || []; const col = SPELLS[id].col;
       if (id === 'eagleEye') this.mapFx.push({ kind: 'ring', x: h.x, y: h.y, r: 5 + heroStat(h, 'sp'), col, t: G.time });
@@ -278,6 +280,8 @@ G.screens.adventure = {
   },
   tileClick(tx, ty) {
     const st = G.state, h = hero(st), n = st.map.n; if (!h) return;
+    if (this.door) { this.door = false; const from = [h.x, h.y], err = castAdventure(st, h, 'dimensionDoor', { x: tx, y: ty }); this.flash(err || `${h.name} przechodzi przez drzwi wymiarów`); if (err) return; // Drzwi wymiarów: drugie kliknięcie = cel
+      const col = SPELLS.dimensionDoor.col; this.mapFx = this.mapFx || []; this.mapFx.push({ kind: 'column', x: from[0], y: from[1], col, t: G.time }, { kind: 'column', x: h.x, y: h.y, col, t: G.time + 0.2 }); centerCam(st, h.x, h.y); return; }
     if (h.moving || h.anim) { h.stop = true; return; }
     if (h.garrison != null) { const t = st.towns[h.garrison]; if (tx === t.x && ty === t.y) G.go('town', { townId: t.id }); else this.flash(`${h.name} stoi w garnizonie miasta ${t.name}. Wyprowadź go do bramy w mieście (przycisk „Zamień”).`); return; }
     if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;

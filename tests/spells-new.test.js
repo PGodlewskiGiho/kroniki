@@ -82,3 +82,26 @@ test('Wiatr w plecy raz dziennie; SI w walce używa nowych czarów bez błędów
   assert.equal(r.a, null); assert.equal(r.gain, 600); assert.match(r.b, /już dziś/);
   assert.ok(r.res.every(x => x === 'win' || x === 'lose'), JSON.stringify(r.res));
 });
+
+test('Drzwi wymiarów (zasięg, wolne pole, dwa razy dziennie), Groza, Zamieć', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), n = st.map.n, out = {}; h.stats.sp = 2; h.mana = 200; h.mp = 2000; for (const p of st.players) p.explored.fill(1);
+    const free = []; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (!doorCheck(st, h, x, y)) free.push([x, y]);
+    const far = (() => { for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (Math.max(Math.abs(x - h.x), Math.abs(y - h.y)) > 9 && passableTile(st, x, y)) return [x, y]; })();
+    out.far = castAdventure(st, h, 'dimensionDoor', { x: far[0], y: far[1] });
+    const [tx, ty] = free.find(([x, y]) => x !== h.x || y !== h.y); const mp0 = h.mp; out.go = castAdventure(st, h, 'dimensionDoor', { x: tx, y: ty }); out.at = [h.x === tx, h.y === ty, mp0 - h.mp];
+    const [ux, uy] = free.find(([x, y]) => !doorCheck(st, h, x, y) && (x !== h.x || y !== h.y)); castAdventure(st, h, 'dimensionDoor', { x: ux, y: uy });
+    const [vx, vy] = [h.x, h.y]; out.third = castAdventure(st, h, 'dimensionDoor', { x: vx, y: vy });
+    // Groza: słabsze o połowę stado ucieka, nawet dzikie
+    const m = { ...st.objects.find(o => o.type === 'monster'), cid: 'pikeman', count: 10, mood: 'savage' }; h.army = emptyArmy(); h.army[0] = { cid: 'pikeman', n: 30 }; h.skills = [];
+    out.fear = [neutralReaction(st, h, m), (castAdventure(st, h, 'fear'), neutralReaction(st, h, m)), castAdventure(st, h, 'fear')];
+    // Zamieć: obrażenia i spowolnienie każdego wroga
+    const mm = st.objects.find(o => o.type === 'monster'); mm.cid = 'pikeman'; mm.count = 30; h.spells = ['blizzard']; h.mana = 100; const B = createBattle(st, h, mm); B.active = B.units.find(u => u.side === 0);
+    castBattle(B, 'blizzard', 0, 0); const foes = B.units.filter(u => u.side === 1 && !u.dead); out.bliz = [foes.every(u => u.buffs.slow), foes.every(u => u.hp < CREATURES.pikeman.hp || u.n < u.n0), B.units.filter(u => u.side === 0).every(u => !u.buffs.slow)];
+    return out;
+  });
+  assert.match(r.far, /Za daleko/); assert.equal(r.go, null); assert.deepEqual(r.at, [true, true, 300]); assert.match(r.third, /dwa razy dziennie/);
+  assert.equal(r.fear[0], null); assert.deepEqual(r.fear[1], { kind: 'flee' }); assert.match(r.fear[2], /już dziś/);
+  assert.deepEqual(r.bliz, [true, true, true]);
+});

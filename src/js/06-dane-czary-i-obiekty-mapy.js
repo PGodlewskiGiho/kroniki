@@ -53,6 +53,9 @@ const SPELLS = {
   teleport: { name: 'Teleportacja', school: 'water', level: 3, cost: 12, kind: 'battle', target: 'ally', col: '#9ab0ff', teleport: true, desc: () => 'przenosi sojusznika na dowolne wolne pole (najpierw wskaż oddział, potem miejsce; w oblężeniu nie przez mur)' },
   holyLight: { name: 'Święte światło', school: 'water', level: 4, cost: 18, kind: 'battle', target: 'enemies', holy: true, col: '#fff4c0', dmg: sp => 15 + 15 * sp, desc: sp => `${15 + 15 * sp} obrażeń każdemu wrogowi (nieumarłym podwójnie); swoich nie rani` },
   clone: { name: 'Klon', school: 'air', level: 4, cost: 20, kind: 'battle', target: 'ally', col: '#b8e0ff', clone: true, desc: () => 'tworzy obok kopię oddziału, która walczy, ale znika po pierwszym trafieniu (jeden klon na raz)' },
+  fear: { name: 'Groza', school: 'fire', level: 3, cost: 12, kind: 'adv', target: 'none', col: '#c84a2a', desc: () => 'do końca dnia stada co najmniej dwa razy słabsze od twojej armii uciekają przed bohaterem (nawet dzikie)' },
+  dimensionDoor: { name: 'Drzwi wymiarów', school: 'air', level: 5, cost: 25, kind: 'adv', target: 'tile', col: '#b89aff', desc: sp => `bohater przenosi się na wskazane wolne pole lądu w promieniu ${6 + sp} pól (300 punktów ruchu, dwa razy dziennie)` },
+  blizzard: { name: 'Zamieć', school: 'water', level: 5, cost: 26, kind: 'battle', target: 'enemies', buff: 'slow', col: '#d8f0ff', dmg: sp => 10 + 10 * sp, desc: sp => `${10 + 10 * sp} obrażeń każdemu wrogowi i spowolnienie (−3 do szybkości) na ${SPELL_ROUNDS(sp)} rund` },
   massCure: { name: 'Źródło życia', school: 'water', level: 5, cost: 22, kind: 'battle', target: 'allies', col: '#7ae8c8', heal: sp => 20 + 15 * sp, desc: sp => `leczy ${20 + 15 * sp} życia wszystkim sojusznikom i zdejmuje z nich złe czary` },
 };
 const BUFF_NAMES = { bless: 'błogosławieństwo', stoneSkin: 'kamienna skóra', haste: 'przyspieszenie', slow: 'spowolnienie', weakness: 'osłabienie', bloodlust: 'żądza krwi', prayer: 'modlitwa',
