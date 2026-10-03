@@ -37,9 +37,9 @@ test('mury: jeden sprite zamku, nowy rysunek po trafieniu i wyłomie', async () 
   const r = await page.evaluate(() => {
     const st = G.state, t = st.towns[1], h = hero(st); t.built = ['hall1', 'dw1', 'fort', 'citadel', 'castle'];
     const B = createBattle(st, h, t), spr = () => castleSprite(t.faction, '#888888', B.walls);
-    const s0 = spr(), again = spr() === s0, w = wallAt(B, SIEGE_X, 2); w.hp--; const s1 = spr(); w.hp = 0; const s2 = spr();
+    const s0 = spr(), again = spr() === s0, w = wallAt(B, wallX(2), 2); w.hp--; const s1 = spr(); w.hp = 0; const s2 = spr();
     setScreen('battle', { battle: B });
-    return { again, hit: s1 !== s0, down: s2 !== s1 && s2 !== s0, w: s0.c.width === Math.ceil(80 * PXD) };
+    return { again, hit: s1 !== s0, down: s2 !== s1 && s2 !== s0, w: s0.c.width === Math.ceil((80 + Math.ceil(wallWX(BROWS - 1) - wallWX(0))) * PXD) };
   });
   assert.deepEqual(r, { again: true, hit: true, down: true, w: true });
   await frames(page, 4);

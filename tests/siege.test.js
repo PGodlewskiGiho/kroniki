@@ -21,12 +21,12 @@ test('mur blokuje piechotę atakującego, brama przepuszcza obrońców, lotnik p
   await siege(['fort'], [['pikeman', 10], ['griffin', 5]], [['pikeman', 10]]);
   const r = await page.evaluate(() => {
     const B = __B, pike = B.units.find(u => u.cid === 'pikeman' && u.side === 0), grif = B.units.find(u => u.cid === 'griffin'), def = B.units.find(u => u.side === 1 && u.cid === 'pikeman');
-    const across = d => [...d.dist.keys()].some(k => k % BCOLS > SIEGE_X);
-    const out = { pikeAcross: across(battleDist(B, pike)), defOut: [...battleDist(B, def).dist.keys()].some(k => k % BCOLS < SIEGE_X), grifAcross: across(battleDist(B, grif, 99)) };
+    const across = d => [...d.dist.keys()].some(k => behindWall(k % BCOLS, Math.floor(k / BCOLS)));
+    const out = { pikeAcross: across(battleDist(B, pike)), defOut: [...battleDist(B, def).dist.keys()].some(k => beforeWall(k % BCOLS, Math.floor(k / BCOLS))), grifAcross: across(battleDist(B, grif, 99)) };
     for (const w of B.walls.values()) if (w.kind === 'gate') w.hp = 0;
     out.afterBreach = across(battleDist(B, pike));
     out.catapult = B.units.some(u => u.cid === 'catapult' && u.side === 0);
-    out.obstOk = [...B.obst.keys()].every(k => k % BCOLS < SIEGE_X - 1);
+    out.obstOk = [...B.obst.keys()].every(k => k % BCOLS < moatX(Math.floor(k / BCOLS)));
     return out;
   });
   assert.deepEqual(r, { pikeAcross: false, defOut: true, grifAcross: true, afterBreach: true, catapult: true, obstOk: true });
@@ -37,13 +37,13 @@ test('katapulta niszczy mury; strzał zza muru traci połowę siły', async () =
   await siege(['fort', 'citadel'], [['archer', 20]], [['pikeman', 10]]);
   const r = await page.evaluate(() => {
     const B = __B, cat = B.units.find(u => u.cid === 'catapult'), arch = B.units.find(u => u.cid === 'archer'), def = B.units.find(u => u.side === 1 && u.cid === 'pikeman');
-    const hp = () => [...B.walls.values()].filter(w => w.kind !== 'tower').reduce((s, w) => s + w.hp, 0), hp0 = hp();
+    const hp = () => [...B.walls.values()].reduce((s, w) => s + w.hp, 0), hp0 = hp();
     const est = () => estimateStrike(B, arch, def, true).min, withWall = est();
     for (let i = 0; i < 12; i++) actCatapult(B, cat);
-    const hp1 = hp(); wallAt(B, SIEGE_X, def.y).hp = 0;
+    const hp1 = hp(); wallAt(B, wallX(def.y), def.y).hp = 0;
     return { hp0, hp1, withWall, open: est() };
   });
-  assert.equal(r.hp0, 8 * 3, 'Cytadela: 7 fragmentów + brama po 3');
+  assert.equal(r.hp0, 9 * 3 + 4, 'Cytadela: wieża, 7 fragmentów i brama po 3, wieża główna 4');
   assert.ok(r.hp1 <= r.hp0 - 6, `po 12 rzutach: ${r.hp1}`);
   assert.ok(Math.abs(r.open - r.withWall * 2) <= 1, `${r.withWall} → ${r.open}`);
 });
@@ -55,9 +55,10 @@ test('wieże strzelają same i nie da się ich zaatakować ani trafić czarem', 
     const B = __B, tower = B.units.filter(u => u.cid === 'arrowTower'), arch = B.units.find(u => u.cid === 'archer');
     const n0 = arch.n; aiAct(B, tower[0]);
     const h = hero(G.state); h.spells = ['magicArrow']; h.mana = 50; B.active = arch;
-    return { towers: tower.length, n: tower[0].n, hurt: arch.n < n0 || arch.hp < CREATURES.archer.hp, spell: spellTargetOk(B, 'magicArrow', tower[0]), fighters: fighters(B, 1).some(u => u.cid === 'arrowTower') };
+    return { towers: tower.length, keepN: (tower.find(u => u.keep) || {}).n, n: tower[0].n, hurt: arch.n < n0 || arch.hp < CREATURES.archer.hp, spell: spellTargetOk(B, 'magicArrow', tower[0]), fighters: fighters(B, 1).some(u => u.cid === 'arrowTower') };
   });
-  assert.equal(r.towers, 2);
+  assert.equal(r.towers, 3, 'dwie wieże i wieża główna');
+  assert.equal(r.keepN, 6, 'wieża główna strzela za dwie wieże');
   assert.equal(r.n, 3, 'siła wieży: 1 + liczba siedlisk');
   assert.ok(r.hurt);
   assert.equal(r.spell, false);
@@ -109,7 +110,7 @@ test('ekran oblężenia: rysuje mury, katapulta rzuca, dymek muru', async () => 
     if (seen.has('siege') || s.screen !== 'battle') break;
   }
   assert.ok(seen.has('siege'), [...seen].join(','));
-  const info = await page.evaluate(() => { const [x, y] = hexCenter(SIEGE_X, GATE_Y); return G.screens.battle.rightInfo(x, y); });
+  const info = await page.evaluate(() => { const [x, y] = hexCenter(wallX(GATE_Y), GATE_Y); return G.screens.battle.rightInfo(x, y); });
   assert.match(info, /Brama miasta/);
   await frames(page, 5);
 });
@@ -120,10 +121,10 @@ test('fosa (od Cytadeli): kończy ruch napastnika i go rani, most przy bramie; F
   const none = await page.evaluate(() => !__B.moat);
   await siege(['fort', 'citadel'], [['swordsman', 10]], [['pikeman', 10]]);
   const r = await page.evaluate(() => {
-    const B = __B, sw = B.units.find(u => u.side === 0 && u.cid === 'swordsman'); B.obst.clear(); sw.x = MOAT_X - 2; sw.y = 2;
-    const reach = battleDist(B, sw, 99), beyond = [...reach.dist.keys()].some(k => { const x = k % BCOLS, y = Math.floor(k / BCOLS); return x < MOAT_X && reach.prev.get(k) != null && moatAt(B, reach.prev.get(k) % BCOLS, Math.floor(reach.prev.get(k) / BCOLS)); });
-    const hp0 = (sw.n - 1) * CREATURES.swordsman.hp + sw.hp; actMoveAttack(B, sw, pathTo(reach, sw, MOAT_X, 2), null);
-    return { inMoat: sw.x === MOAT_X, lost: hp0 - ((sw.n - 1) * CREATURES.swordsman.hp + sw.hp), dmg: B.moat.dmg, bridge: !moatAt(B, MOAT_X, GATE_Y), beyond, wallHp: [...B.walls.values()].find(w => w.kind === 'wall').hp };
+    const B = __B, sw = B.units.find(u => u.side === 0 && u.cid === 'swordsman'); B.obst.clear(); sw.x = moatX(2) - 2; sw.y = 2;
+    const reach = battleDist(B, sw, 99), beyond = [...reach.dist.keys()].some(k => { const x = k % BCOLS, y = Math.floor(k / BCOLS); return x < moatX(y) && reach.prev.get(k) != null && moatAt(B, reach.prev.get(k) % BCOLS, Math.floor(reach.prev.get(k) / BCOLS)); });
+    const hp0 = (sw.n - 1) * CREATURES.swordsman.hp + sw.hp; actMoveAttack(B, sw, pathTo(reach, sw, moatX(2), 2), null);
+    return { inMoat: sw.x === moatX(2), lost: hp0 - ((sw.n - 1) * CREATURES.swordsman.hp + sw.hp), dmg: B.moat.dmg, bridge: !moatAt(B, moatX(GATE_Y), GATE_Y), beyond, wallHp: [...B.walls.values()].find(w => w.kind === 'wall').hp };
   });
   assert.ok(none, 'Fort: bez fosy');
   assert.equal(r.inMoat, true); assert.equal(r.lost, r.dmg); assert.equal(r.bridge, true); assert.equal(r.beyond, false, 'nie przechodzi przez fosę w jednym ruchu');
@@ -135,7 +136,7 @@ test('obrońca walczący wręcz czeka za murem; przy dużej przewadze robi wypad
   await siege(['fort'], [['archer', 30]], [['swordsman', 10]]);
   const r = await page.evaluate(() => {
     const B = __B; for (const w of B.walls.values()) if (w.kind === 'gate') w.hp = 0; B.obst.clear();
-    const d = B.units.find(u => u.side === 1 && u.cid === 'swordsman'), x0 = d.x; B.active = d; aiAct(B, d); const stayed = d.x > SIEGE_X - 1 || d.x === x0;
+    const d = B.units.find(u => u.side === 1 && u.cid === 'swordsman'), x0 = d.x; B.active = d; aiAct(B, d); const stayed = !beforeWall(d.x, d.y) || d.x === x0;
     d.n = 400; d.x = x0; d.y = 4; aiAct(B, d); return { stayed, sortie: d.x < x0 };
   });
   assert.deepEqual(r, { stayed: true, sortie: true });
@@ -158,4 +159,22 @@ test('katapulta pod rozkazami: cel wybrany przez gracza, zburzona wieża milknie
   assert.ok(Number.isFinite(r.towerHp) && r.towerHp > 0, 'wieża ma wytrzymałość');
   assert.ok(r.targets >= 9); assert.ok(r.towerDown && r.archersDead && r.passable);
   assert.equal(r.shots, 2);
+});
+
+test('wieża główna (od Cytadeli): stoi za murem, blokuje pole, katapulta może ją zburzyć', async () => {
+  await newGame(page, { mapSize: 'M' }, 8);
+  await siege(['fort'], [['pikeman', 10]], [['pikeman', 10]]);
+  const fort = await page.evaluate(() => [...__B.walls.values()].some(w => w.kind === 'keep'));
+  await siege(['fort', 'citadel'], [['pikeman', 10]], [['pikeman', 10], ['archer', 10], ['swordsman', 5], ['monk', 3], ['pikeman', 4], ['archer', 2], ['pikeman', 1]]);
+  const r = await page.evaluate(() => {
+    const B = __B, k = [...B.walls.values()].find(w => w.kind === 'keep'), cat = B.units.find(u => u.cid === 'catapult'), out = { behind: behindWall(k.x, k.y) };
+    out.blocked = walled(B, k.x, k.y, 1) && walled(B, k.x, k.y, 0);
+    out.defOk = B.units.filter(u => u.side === 1 && u.src !== 'siege').every(u => behindWall(u.x, u.y) && !wallAt(B, u.x, u.y));
+    B.rng = () => 0.1; for (let i = 0; i < 8 && k.hp > 0; i++) actCatapult(B, cat, { x: k.x, y: k.y });
+    out.vis = B.units.filter(u => u.cid === 'arrowTower').every(u => u.vis === TOWER_SHOOTER[B.sides[1].town.faction] && lookCid(u) === u.vis);
+    out.down = k.hp <= 0; out.archersDead = B.units.find(u => u.keep).dead; out.passable = !walled(B, k.x, k.y, 0);
+    return out;
+  });
+  assert.equal(fort, false, 'Fort: bez wieży głównej');
+  assert.deepEqual(r, { behind: true, blocked: true, defOk: true, vis: true, down: true, archersDead: true, passable: true });
 });

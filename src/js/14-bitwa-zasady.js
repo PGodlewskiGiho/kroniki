@@ -69,12 +69,17 @@ function placeMachines(B, side, h) {
     B.units.push({ id: B.units.length, side, cid, n: 1, n0: 1, hp: cr.hp, shots: cr.shots || 0, x: spot[0], y: spot[1], src: 'machine', slot: null, retaliated: false, defending: false, waited: false, dead: false, buffs: {} });
   }
 }
-// --- oblężenie: mur z bramą w kolumnie SIEGE_X (Fort i wyżej), wieże strzelnicze (Cytadela: jedna, Zamek: dwie)
+// --- oblężenie: mur z bramą (Fort i wyżej) biegnie ukośnie przez pole jak w Heroes 3: u góry bliżej atakujących, u dołu dalej
+// (wallX(y): kolumna muru w rzędzie y, co dwa rzędy o jedną dalej – prosta linia pól), wieże strzelnicze (Cytadela: jedna, Zamek: dwie)
 // i katapulta atakującego, która co rundę rzuca głazem w mur. Brama przepuszcza tylko obrońców; lotnicy przelatują.
-// Fosa (od Cytadeli) w kolumnie MOAT_X przed murem, z mostem w rzędzie bramy: napastnik, który do niej wejdzie, kończy ruch
+// Fosa (od Cytadeli) w polu tuż przed murem (moatX), z mostem w rzędzie bramy: napastnik, który do niej wejdzie, kończy ruch
 // i dostaje obrażenia (MOAT_DMG wg poziomu fortyfikacji); lotnicy ją przelatują.
-const SIEGE_X = 9, GATE_Y = 4, MOAT_X = SIEGE_X - 1, MOAT_DMG = [0, 0, 40, 70], WALL_HP = [0, 2, 3, 4];
-const moatAt = (B, x, y) => !!(B.moat && x === MOAT_X && y !== GATE_Y);
+// Strzelcy na wieżach: najsłabszy strzelec frakcji miasta (tylko wygląd; siłę wieży liczy arrowTower)
+const TOWER_SHOOTER = { haven: 'archer', sylvan: 'elfArcher', barrow: 'necromancer', fortress: 'lizardman', inferno: 'gog', academy: 'masterGremlin', dungeon: 'medusa', stronghold: 'orcAxe' };
+const SIEGE_X = 6, GATE_Y = 4, KEEP_X = BCOLS - 1, MOAT_DMG = [0, 0, 40, 70], WALL_HP = [0, 2, 3, 4];
+const wallX = y => SIEGE_X + (y >> 1), moatX = y => wallX(y) - 1;
+const behindWall = (x, y) => x > wallX(y), beforeWall = (x, y) => x < wallX(y);
+const moatAt = (B, x, y) => !!(B.moat && x === moatX(y) && y !== GATE_Y);
 const wallAt = (B, x, y) => (B.walls ? B.walls.get(hexKey(x, y)) : null);
 const walled = (B, x, y, side) => { const w = wallAt(B, x, y); return !!w && w.hp > 0 && (w.kind !== 'gate' || side !== 1); };
 const targetable = u => u.cid !== 'arrowTower'; // wież nie da się zaatakować
@@ -88,13 +93,22 @@ function freeSpot(B, side, rows) {
 }
 function setupSiege(B, t) {
   const L = townLevel(t); if (!L) return;
-  const hp = WALL_HP[L], towers = L >= 3 ? [0, BROWS - 1] : L >= 2 ? [0] : [];
+  const hp = WALL_HP[L], towers = L >= 3 ? [2, BROWS - 1] : L >= 2 ? [2] : []; // górna wieża w trzecim rzędzie: baszta w pierwszym chowałaby się pod paskiem u góry
   B.walls = new Map(); B.siege = { level: L }; if (MOAT_DMG[L]) B.moat = { dmg: MOAT_DMG[L] };
   for (let y = 0; y < BROWS; y++) {
     const tower = towers.includes(y);
-    B.walls.set(hexKey(SIEGE_X, y), { x: SIEGE_X, y, kind: tower ? 'tower' : y === GATE_Y ? 'gate' : 'wall', hp, max: hp }); // wieże też da się zburzyć (giną wtedy ich łucznicy)
-    if (tower) addFixed(B, 1, 'arrowTower', SIEGE_X, y, 1 + dwellingLevels(t).length, 'siege'); // siła wieży rośnie z liczbą siedlisk
+    const x = wallX(y); B.walls.set(hexKey(x, y), { x, y, kind: tower ? 'tower' : y === GATE_Y ? 'gate' : 'wall', hp, max: hp }); // wieże też da się zburzyć (giną wtedy ich łucznicy)
+    if (tower) addFixed(B, 1, 'arrowTower', x, y, 1 + dwellingLevels(t).length, 'siege'); // siła wieży rośnie z liczbą siedlisk
   }
+  if (L >= 2) { // wieża główna (od Cytadeli, jak w Heroes 3): wielka baszta na dziedzińcu przy prawej krawędzi, strzela za dwie wieże
+    B.walls.set(hexKey(KEEP_X, GATE_Y), { x: KEEP_X, y: GATE_Y, kind: 'keep', hp: hp + 1, max: hp + 1 });
+    addFixed(B, 1, 'arrowTower', KEEP_X, GATE_Y, 2 * (1 + dwellingLevels(t).length), 'siege'); B.units[B.units.length - 1].keep = true;
+  }
+  for (const u of B.units) if (u.side === 1 && u.src !== 'siege' && (!behindWall(u.x, u.y) || unitCells(u, u.x, u.y).some(([cx, cy]) => wallAt(B, cx, cy)))) { // obrońca na murze albo przed nim: na najbliższe wolne pole za murem
+    let best = null; for (let y = 0; y < BROWS; y++) for (let x = wallX(y) + 1; x < BCOLS; x++) { const d = hexDistance(u, { x, y }); if ((!best || d < best.d) && canStand(B, u, x, y) && !wallAt(B, x, y)) best = { d, x, y }; }
+    if (best) { u.x = best.x; u.y = best.y; }
+  }
+  for (const u of B.units) if (u.cid === 'arrowTower') u.vis = TOWER_SHOOTER[t.faction];
   const spot = freeSpot(B, 0, [BROWS - 1, 0, BROWS - 2, 1, 7, 2, 6, 3, 5, 4]); if (spot) addFixed(B, 0, 'catapult', spot[0], spot[1], 1, 'siege');
 }
 // Katapulta: cel wskazuje gracz (fragment muru, brama albo wieża), komputer wybiera sam; trafia w 75% strzałów, z Balistyką częściej,
@@ -104,7 +118,7 @@ const catapultShots = (B, u) => (heroSkill(sideHero(B, u.side), 'ballistics') >=
 const catapultChance = (B, u) => skillVal(sideHero(B, u.side), 'ballistics') || 75;
 function aiCatapultTarget(B) { // brama (droga dla piechoty), potem wieże (strzelają co rundę), potem mur
   const segs = catapultTargets(B); if (!segs.length) return null;
-  const gate = segs.find(w => w.kind === 'gate'), towers = segs.filter(w => w.kind === 'tower'), walls = segs.filter(w => w.kind === 'wall'), r = B.rng();
+  const gate = segs.find(w => w.kind === 'gate'), towers = segs.filter(w => w.kind === 'tower' || w.kind === 'keep'), walls = segs.filter(w => w.kind === 'wall'), r = B.rng();
   if (gate && r < 0.45) return gate;
   if (towers.length && r < 0.75) return towers[Math.floor(B.rng() * towers.length)];
   const pool = walls.length ? walls : segs; return pool[Math.floor(B.rng() * pool.length)];
@@ -115,9 +129,9 @@ function actCatapult(B, u, target = null) {
     let w = target && wallAt(B, target.x, target.y); if (!w || w.hp <= 0) w = aiCatapultTarget(B);
     if (!w) { if (!s) B.log.push('Katapulta: mury już leżą w gruzach.'); return; }
     const hit = B.rng() < catapultChance(B, u) / 100; if (hit) w.hp--;
-    const broken = hit && w.hp <= 0, tower = broken && w.kind === 'tower' ? B.units.find(v => v.cid === 'arrowTower' && v.x === w.x && v.y === w.y && !v.dead) : null;
+    const broken = hit && w.hp <= 0, tower = broken && (w.kind === 'tower' || w.kind === 'keep') ? B.units.find(v => v.cid === 'arrowTower' && v.x === w.x && v.y === w.y && !v.dead) : null;
     if (tower) { tower.dead = true; tower.n = 0; }
-    const what = w.kind === 'gate' ? 'brama' : w.kind === 'tower' ? 'wieża' : 'mur';
+    const what = w.kind === 'gate' ? 'brama' : w.kind === 'tower' ? 'wieża' : w.kind === 'keep' ? 'wieża główna' : 'mur';
     B.log.push(hit ? (broken ? `Katapulta: ${what} ${w.kind === 'wall' ? 'runął' : w.kind === 'gate' ? 'rozbita' : 'runęła – łucznicy milkną'}!` : `Katapulta trafia: ${what} słabnie.`) : 'Katapulta chybia.');
     if (B.fx) B.fx.push({ kind: 'siege', a: u, x: w.x, y: w.y, hit, broken, tower });
   }
@@ -140,10 +154,10 @@ function createBattle(st, h, foe) {
   B.morale = [sideMorale(B, 0), sideMorale(B, 1)]; B.luck = [sideLuck(B, 0), sideLuck(B, 1)];
   // przeszkody ze środka pola: te same drzewa i skały co na mapie przygody (typ + wariant rysunku)
   const cnt = 3 + Math.floor(B.rng() * 4);
-  const xMax = B.walls ? SIEGE_X - 2 : BCOLS - 3; // przy oblężeniu przeszkody tylko przed murem
+  const xMax = B.walls ? moatX(BROWS - 1) - 1 : BCOLS - 3; // przy oblężeniu przeszkody tylko przed murem (i fosą)
   for (let k = 0, tries = 0; k < cnt && tries < 60; tries++) {
     const x = 2 + Math.floor(B.rng() * (xMax - 1)), y = Math.floor(B.rng() * BROWS), key = hexKey(x, y);
-    if (B.obst.has(key)) continue; B.obst.set(key, { o: B.rng() < 0.55 ? OBST.TREE : OBST.ROCK, v: Math.floor(B.rng() * 4) }); k++;
+    if (B.obst.has(key) || (B.walls && x >= moatX(y))) continue; B.obst.set(key, { o: B.rng() < 0.55 ? OBST.TREE : OBST.ROCK, v: Math.floor(B.rng() * 4) }); k++;
   }
   return B;
 }
@@ -249,7 +263,7 @@ function damageRoll(B, a, t, ranged, moved = 0) {
   if (!ranged && ca.shots > 0 && !hasAb(a, 'noMeleePenalty')) mult *= 0.5;
   if (!ranged && hasAb(a, 'jousting')) mult *= 1 + 0.05 * moved;
   // strzał atakującego zza muru w obrońcę za murem: połowa obrażeń, dopóki ten fragment muru stoi
-  if (ranged && B.walls && a.side === 0 && a.x < SIEGE_X && t.x > SIEGE_X) { const w = wallAt(B, SIEGE_X, t.y); if (w && w.hp > 0) mult *= 0.5; }
+  if (ranged && B.walls && a.side === 0 && beforeWall(a.x, a.y) && behindWall(t.x, t.y)) { const w = wallAt(B, wallX(t.y), t.y); if (w && w.hp > 0) mult *= 0.5; }
   if (t.buffs[ranged ? 'airShield' : 'shield']) mult *= 1 - SHIELD_CUT / 100; // Tarcza (wręcz) i Tarcza powietrza (strzały)
   const ha = sideHero(B, a.side), volley = heroPerk(ha, 'volley'); // talent Salwa: bez kary za odległość
   if (ranged && !volley && farShot(a, t)) mult *= 0.5; if (ranged && shotBlocked(B, a, t)) mult *= 0.5; // odległość i przeszkody na torze lotu
@@ -372,7 +386,7 @@ function aiAct(B, u) {
   const gang = !B.walls ? enemyThreatCount(B, u.side) : null, uval = u.n * CREATURES[u.cid].value;
   for (const e of foes) for (const [nx, ny] of [[u.x, u.y], ...attackSpots(u, e)]) {
     if (!hexAdjacent({ ...u, x: nx, y: ny }, e)) continue; const d = reach.dist.get(hexKey(nx, ny)); if (d == null) continue;
-    if (hold && nx < SIEGE_X) continue; // obrońca bije tylko zza muru (z bramy, wyłomu albo ze środka)
+    if (hold && beforeWall(nx, ny)) continue; // obrońca bije tylko zza muru (z bramy, wyłomu albo ze środka)
     const exposed = gang ? Math.max(0, (gang.get(hexKey(nx, ny)) || 0) - 1) * uval * 0.04 : 0; // pole, do którego dobiegnie wielu wrogów naraz, jest gorsze
     const score = tradeValue(B, u, e, false, d) - d * 0.01 - exposed; if (!best || score > best.score) best = { score, e, nx, ny };
   }
@@ -389,7 +403,7 @@ function aiAct(B, u) {
   if (reach.fly) { for (const k of far.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS), d = hexDistance({ x, y }, target); if (!goal || d < goal.d) goal = { d, nx: x, ny: y }; } }
   else for (const e of [target, ...foes]) { for (const [nx, ny] of hexNeighbors(e.x, e.y)) { const d = far.dist.get(hexKey(nx, ny)); if (d != null && (!goal || d < goal.d)) goal = { d, nx, ny }; } if (goal) break; }
   if (!goal && B.walls && !reach.fly) { // mur zamknięty: podejdź pod bramę i czekaj na wyłom
-    for (const k of far.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS), d = hexDistance({ x, y }, { x: SIEGE_X, y: GATE_Y }); if (!goal || d < goal.d) goal = { d, nx: x, ny: y }; }
+    for (const k of far.dist.keys()) { const x = k % BCOLS, y = Math.floor(k / BCOLS), d = hexDistance({ x, y }, { x: wallX(GATE_Y), y: GATE_Y }); if (!goal || d < goal.d) goal = { d, nx: x, ny: y }; }
     if (goal && goal.nx === u.x && goal.ny === u.y) goal = null;
   }
   if (!goal) { actDefend(B, u); return; }
@@ -501,7 +515,7 @@ const spellId = S => Object.keys(SPELLS).find(id => SPELLS[id] === S);
 // Święte światło: nieumarli dostają podwójnie
 const holyMul = (S, v) => (S.holy && hasAb(v, 'undead') ? 2 : 1);
 // Teleportacja: wolne pole dla całego oddziału; w oblężeniu napastnik nie przenosi się za mur
-const teleportOk = (B, u, x, y) => inField(x, y) && canStand(B, u, x, y) && !(B.walls && u.side === 0 && x >= SIEGE_X);
+const teleportOk = (B, u, x, y) => inField(x, y) && canStand(B, u, x, y) && !(B.walls && u.side === 0 && !beforeWall(x, y));
 // Klon: najbliższe wolne pole obok oddziału
 function cloneSpot(B, u) { for (let r = 1; r <= 3; r++) { const c = []; for (let y = u.y - r; y <= u.y + r; y++) for (let x = u.x - r; x <= u.x + r; x++) if (canStand(B, u, x, y) && hexDistance(u, { x, y }) === r) c.push([x, y]); if (c.length) return c.sort((a, b) => (u.side ? b[0] - a[0] : a[0] - b[0]))[0]; } return null; }
 // Zakłócanie bohatera strony przeciwnej: mnożnik obrażeń i leczenia czarów rzucanych przez stronę s

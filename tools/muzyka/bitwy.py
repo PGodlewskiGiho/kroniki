@@ -1,6 +1,6 @@
 # Muzyka bitew: oblężenie, starcie z bohaterem i walka z dzikimi stworami (obok utworu „bitwa” z utwory.py).
 from nuty import *
-from utwory import STR, SLOWSTR, TREM, PIZZ, VLN, VLA, VC, CB, HARP, TIMP, HORN, TPT, TBN, BRASS, OBOE, EH, BSN, CLAR, FLUTE, CHOIR
+from utwory import STR, SLOWSTR, TREM, PIZZ, VLN, VLA, VC, CB, HARP, TIMP, HORN, TPT, TBN, BRASS, OBOE, EH, BSN, CLAR, FLUTE, CHOIR, ORGAN, BELLS
 from zamki import TAIKO, MARIMBA, hits
 
 
@@ -116,4 +116,81 @@ def dzicz():  # walka z dzikimi stworami: g-dorycki, flet i obój, pizzicato, ko
     return S
 
 
-BITWY = [oblezenie, bohater, dzicz]
+def trudna():  # trudna walka (silniejsze stwory): d-moll, bezlitosne ostinato, chór szeptem i krzykiem, blacha, taiko
+    S = Song('bitwa_trudna', 150, 4, 36, seed=47); P = lambda s, b: prog(s, 4, S.bar(b))
+    I, A, B, A2, C = P('Dm Dm Bb A', 1), P('Dm Bb Gm A Dm Bb Gm:2 A:2 A', 5), P('Gm Dm Eb Bb Gm Dm Eb:2 A:2 A', 13), P('Dm Bb Gm A Dm Bb Gm:2 A:2 A', 21), P('Dm C Bb A Dm C Bb:2 A:2 A', 29)
+    allp = I + A + B + A2 + C
+    mA = 'D4:1.5 E4:.5 F4:2 | D4:1 F4:1 Bb4:2 | A4:1.5 G4:.5 Bb4:2 | A4:2 C#4:2 | D4:1 F4:1 A4:1 D5:1 | Bb4:1.5 A4:.5 F4:2 | G4:1 Bb4:1 A4:1 E4:1 | A3:4'
+    horn = S.track('rogi', HORN, 0, vol=112, pan=58, rev=85)
+    tbn = S.track('puzony', TBN, 1, vol=100, pan=70, rev=80)
+    tpt = S.track('trąbki', TPT, 2, vol=94, pan=50, rev=85)
+    ch = S.track('chór', CHOIR, 3, vol=96, pan=64, rev=105)
+    vln = S.track('skrzypce', STR, 4, vol=96, pan=44, rev=70)
+    vc = S.track('wiolonczele', VC, 5, vol=100, pan=82, rev=65)
+    cb = S.track('kontrabasy', CB, 6, vol=86, pan=76, rev=65)
+    timp = S.track('kotły', TIMP, 7, vol=110, pan=64, rev=80)
+    taiko = S.track('taiko', TAIKO, 8, vol=108, pan=64, rev=75)
+    dr = S.track('perkusja', 48, 9, vol=90, pan=64, rev=65)
+    melody(horn, S.bar(5), mA, vel=104, legato=0.92)
+    mB = melody(ch, S.bar(13), 'Bb4:2 D5:2 | A4:2 F4:2 | G4:2 Bb4:2 | F4:4 | D5:2 Bb4:2 | F5:2 D5:2 | Eb5:2 C#5:2 | E5:4', vel=100, legato=1.0)
+    copy_notes(mB, tpt, vel=90)
+    m3 = melody(horn, S.bar(21), mA, vel=112, legato=0.92); copy_notes(m3, tbn, oct=-1, vel=104, legato=0.92); copy_notes(m3, vln, oct=1, vel=96, legato=0.92)
+    mC = melody(tpt, S.bar(29), 'D5:1 D5:1 F5:2 | E5:1 E5:1 G5:2 | F5:1 F5:1 D5:2 | C#5:4 | D5:1 F5:1 A5:2 | G5:1 E5:1 C5:2 | D5:2 C#5:2 | E5:4', vel=104, legato=0.9)
+    copy_notes(mC, ch, oct=-1, vel=96)
+    for c, s, d in I + A + A2: # chór staccato: sylaby na ósemkach
+        v = voicing(c, 50, 62, 2)
+        for k in (0, 1.5, 2, 3.5):
+            if k < d:
+                for p in v: ch.note(s + k, .3, p, 70)
+    ostinato(vc, allp, 38, [0, 0, 1, 0, 0, 0, 7, 6])  # półton i tryton: niepokój
+    ostinato(vln, I + B + C, 62, [12, 7, 12, 8, 12, 7, 13, 12], vel=(76, 64))
+    bass(cb, allp, lo=26, vel=88)
+    pad(tbn, B, 43, 55, 3, vel=80)
+    for c, s, d in allp: taiko.note(s, .7, 38, 112); taiko.note(s + 1.5, .5, 38, 84); taiko.note(s + 2, .7, 38, 104); taiko.note(s + 3.5, .4, 38, 90)
+    for c, s, d in allp: dr.note(s + 1, .2, 38, 74); dr.note(s + 3, .2, 38, 82)
+    for b in (5, 13, 21, 29): dr.note(S.bar(b), 2, 49, 108)
+    for b in (4, 12, 20, 28, 36): roll(timp, S.bar(b), 4, 45, 50, 118)
+    return S
+
+
+def boss():  # starcie z potężnym bohaterem (boss): f-moll, organy i chór, cała orkiestra, dzwony, ciężkie kotły
+    S = Song('bitwa_boss', 132, 4, 40, seed=49); P = lambda s, b: prog(s, 4, S.bar(b))
+    I, A, B, A2, C = P('Fm Db Fm C', 1), P('Fm Db Bbm C Fm Db Bbm:2 C:2 C', 5), P('Db Ab Eb Fm Db Ab Bbm:2 C:2 C', 13), P('Fm Db Bbm C Fm Db Bbm:2 C:2 C', 21), P('Fm Fm Db Db Bbm Bbm C:2 Csus4:2 C Fm Db Bbm:2 C:2 C', 29)
+    allp = I + A + B + A2 + C
+    mA = 'F4:2 Ab4:1 C5:1 | Db5:2 C5:1 Bb4:1 | Bb4:1.5 C5:.5 Db5:1 F5:1 | E5:4 | F5:1 Eb5:1 C5:1 Ab4:1 | Db5:1.5 C5:.5 Ab4:2 | Bb4:1 Db5:1 C5:1 G4:1 | C5:4'
+    org = S.track('organy', ORGAN, 0, vol=84, pan=60, rev=110)
+    ch = S.track('chór', CHOIR, 1, vol=100, pan=64, rev=115)
+    horn = S.track('rogi', HORN, 2, vol=110, pan=56, rev=90)
+    tbn = S.track('puzony', TBN, 3, vol=102, pan=70, rev=85)
+    tpt = S.track('trąbki', TPT, 4, vol=96, pan=48, rev=90)
+    vln = S.track('skrzypce', STR, 5, vol=100, pan=44, rev=80)
+    vc = S.track('wiolonczele', VC, 6, vol=100, pan=82, rev=70)
+    cb = S.track('kontrabasy', CB, 7, vol=88, pan=76, rev=70)
+    bells = S.track('dzwony', BELLS, 8, vol=84, pan=36, rev=115)
+    timp = S.track('kotły', TIMP, 10, vol=112, pan=64, rev=90)
+    taiko = S.track('taiko', TAIKO, 11, vol=104, pan=64, rev=80)
+    dr = S.track('perkusja', 48, 9, vol=90, pan=64, rev=70)
+    pad(org, I, 41, 60, 4, vel=80)
+    for b in (1, 3): bells.note(S.bar(b), 4, 53, 96); bells.note(S.bar(b) + 2, 2, 48, 80)
+    m1 = melody(ch, S.bar(5), mA, vel=100, legato=1.02); copy_notes(m1, horn, oct=-1, vel=96, legato=0.95)
+    mB = melody(tpt, S.bar(13), 'Ab5:2 F5:2 | Eb5:2 C5:2 | Bb4:1 Eb5:1 G5:2 | F5:2 C5:2 | Db5:1 F5:1 Ab5:2 | C6:2 Ab5:1 Eb5:1 | Db5:2 F5:2 | E5:4', vel=100, legato=0.95)
+    copy_notes(mB, vln, vel=94, legato=0.95)
+    m3 = melody(horn, S.bar(21), mA, vel=112, legato=0.95); copy_notes(m3, ch, oct=1, vel=96); copy_notes(m3, tbn, oct=-1, vel=104, legato=0.95); copy_notes(m3, tpt, oct=1, vel=90, legato=0.95)
+    melody(ch, S.bar(29), 'C5:4 | Ab4:4 | Db5:4 | F5:4 | Db5:4 | Bb4:4 | C5:2 F5:2 | E5:4 | F5:2 C5:2 | Ab5:2 F5:2 | F5:2 E5:2 | E5:4', vel=104, legato=1.04)
+    pad(org, A + B + A2 + C, 41, 60, 4, vel=66); org.expr([(16, 70), (80, 96), (112, 110), (160, 90)])
+    ostinato(vc, allp, 41, [0, 0, 7, 0, 0, 7, 12, 7])
+    arp(vln, A + A2 + C, 65, 89, step=0.5, shape=(0, 2, 4, 2, 0, 3, 5, 3), vel=64, ring=1.0)
+    bass(cb, allp, lo=29, vel=90)
+    pad(tbn, B + C, 44, 56, 3, vel=76)
+    for c, s, d in A + B + A2 + C:
+        taiko.note(s, .8, 38, 110); taiko.note(s + 2, .8, 38, 100)
+        dr.note(s + 1, .2, 38, 76); dr.note(s + 3, .2, 38, 84)
+    for b in range(29, 41, 2): bells.note(S.bar(b), 3, 53, 88)
+    for b in (5, 13, 21, 29, 37): dr.note(S.bar(b), 2, 49, 110)
+    root_t = {'F': 41, 'D': 37, 'B': 46, 'C': 48, 'A': 44, 'E': 39}
+    for c, s, d in I + C: timp.note(s, 1, root_t[c[0]], 112); timp.note(s + 2, .5, root_t[c[0]], 92)
+    for b in (4, 12, 20, 28, 40): roll(timp, S.bar(b), 4, 48, 50, 120)
+    return S
+
+
+BITWY = [oblezenie, bohater, dzicz, trudna, boss]

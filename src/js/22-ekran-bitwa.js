@@ -24,7 +24,8 @@ function hexAt(px, py) {
   for (let y = 0; y < BROWS; y++) for (let x = 0; x < BCOLS; x++) { const [cx, cy] = hexCenter(x, y), d = (cx - px) ** 2 + (cy - py) ** 2; if (!best || d < best.d) best = { x, y, d }; }
   return best && best.d < (HEX.w * 0.58) ** 2 ? best : null;
 }
-const PAVE_X = 572; // bruk dziedzińca od tej kolumny pikseli (px logiczne) w prawo
+const PAVE_DX = 40; // bruk dziedzińca zaczyna się tyle px logicznych za licem muru (paveX: granica na wysokości py, ukośna jak mur)
+const paveX = py => wallLineX(py) + PAVE_DX;
 // Tło bitwy w stylu mapy: teren z palety TERRAINS, piksele 2×2, ta sama korekcja barw
 const BATTLE_BG_NAMES = ['woda', 'trawa', 'ziemia', 'piasek', 'snieg', 'bagno', 'nierowny', 'lawa'];
 function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siatki i panelu (szkic dla tła malowanego, tools/tla-ai/szkic-bitwy.js)
@@ -34,7 +35,7 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
   for (let fy = 0; fy < fh; fy++) for (let fx = 0; fx < fw; fx++) {
     const o = (fy * fw + fx) * 4, x = Math.floor(fx / D), y = Math.floor(fy / D), xs = fx / D, ys = fy / D; let col;
     if (y < 22) col = sky[(y + (x & 1)) % 11 < 6 ? 0 : 1];
-    else if (fac && x * 2 > PAVE_X + Math.round(vnoise2(0, y / 4, 3) * 6)) { // bruk dziedzińca za murem
+    else if (fac && x * 2 > paveX(y * 2) + Math.round(vnoise2(0, y / 4, 3) * 6)) { // bruk dziedzińca za murem
       const pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, row = Math.floor(y / 5), cx = x + (row % 2) * 4, edge = y % 5 === 0 || cx % 8 === 0, k = thash(Math.floor(cx / 8), row, 7) % 3;
       col = edge ? pv[1].map(v => v * 0.8) : k === 0 ? pv[1] : k === 1 ? pv[0] : pv[0].map((v, i) => (v + pv[1][i]) / 2);
     } else { const n = vnoise2(xs / 9, ys / 6, 17) * 0.7 + vnoise2(xs / 3, ys / 3, 5) * 0.3 + (PIXEL_ART ? (BAYER4[(fy & 3) * 4 + (fx & 3)] / 16 - 0.5) * 0.18 : 0);
@@ -68,34 +69,70 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
   const tg = c.createLinearGradient(0, 0, 0, 40); tg.addColorStop(0, 'rgba(10,6,3,.92)'); tg.addColorStop(1, 'rgba(10,6,3,.7)'); c.fillStyle = tg; c.fillRect(0, 0, W, 38); // pasek górny
   for (const y0 of [38, 487]) { const g = c.createLinearGradient(0, y0, 0, y0 + 3); g.addColorStop(0, '#f0d080'); g.addColorStop(1, '#6a4814'); c.fillStyle = g; c.fillRect(0, y0, W, 3); c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(0, y0 + 3, W, 1); } // złote listwy
 }
-// Dziedziniec oblężonego zamku: bruk z nieregularnych kamieni w barwach frakcji (w pełnej rozdzielczości warstwy), cień muru,
-// plamy światła i ziarno. Kamienie w rzędach, każdy z jaśniejszym wierzchem i cieniem od dołu, ciemne spoiny między nimi.
+// Dziedziniec oblężonego zamku w charakterze frakcji (w pełnej rozdzielczości warstwy): bruk (Przystań), ośnieżony marmur (Akademia),
+// bruk z kośćmi i zieloną mgłą (Kurhan), obsydian z lawą w szczelinach (Inferno), dno pieczary z kryształami (Loch),
+// mech i trawa ze ścieżką (Knieja), błoto z kładką (Cytadela), ubita ziemia ze słomą (Twierdza). Do tego cień muru i plamy światła.
+const COURTYARD = { haven: 'cobble', academy: 'snow', barrow: 'grave', inferno: 'obsidian', dungeon: 'cave', sylvan: 'grass', fortress: 'mud', stronghold: 'dirt' };
 function paintCourtyard(c, fac) {
-  const pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, x0 = PAVE_X - 4, y0 = 41, w = W - x0, h = 449, r = mulberry32(fac.length * 131 + 7), rgb = (a, k = 1) => `rgb(${a.map(v => Math.round(clamp(v * k, 0, 255))).join(',')})`;
-  c.save(); c.beginPath(); c.rect(x0, y0, w, h); c.clip();
-  c.fillStyle = rgb(pv[1], 0.62); c.fillRect(x0, y0, w, h); // spoiny
-  for (let y = y0 - 4, row = 0; y < y0 + h; row++) {
-    const sh = 9 + r() * 4; let x = x0 - 6 - (row % 2) * 7;
-    while (x < x0 + w) {
-      const sw = 11 + r() * 10, t = r(), base = pv[0].map((v, i) => v + (pv[1][i] - v) * t), k = 0.86 + r() * 0.22, rx = x + 0.9, ry = y + 0.9, ww = sw - 1.8, hh = sh - 1.8;
-      c.fillStyle = rgb(base, k); rr(c, rx, ry, ww, hh, 3); c.fill();
-      c.fillStyle = rgb(base, k * 1.12); rr(c, rx + 1, ry + 0.6, ww - 2, hh * 0.42, 2.5); c.fill(); // wierzch w świetle
-      c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(rx + 1.5, ry + hh - 1.6, ww - 3, 1.6); // cień od dołu
-      if (r() < 0.12) { c.fillStyle = 'rgba(80,110,50,.35)'; c.fillRect(rx - 0.5, ry + hh * r(), 2.5, 2); } // mech w spoinie
-      x += sw;
+  const kind = COURTYARD[fac] || 'cobble', pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, y0 = 41, x0 = paveX(y0) - 4, w = W - x0, h = 449, r = mulberry32(fac.length * 131 + 7);
+  const rgb = (a, k = 1, al = 1) => `rgba(${a.map(v => Math.round(clamp(v * k, 0, 255))).join(',')},${al})`, blob = (x, y, rx, ry, col) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU); c.fill(); };
+  const glow = (x, y, rad, col) => { const g = c.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); };
+  c.save(); c.beginPath(); c.moveTo(x0, y0); c.lineTo(W, y0); c.lineTo(W, y0 + h); c.lineTo(paveX(y0 + h) - 4, y0 + h); c.closePath(); c.clip(); // granica ukośna jak mur
+  if (['cobble', 'snow', 'grave', 'obsidian'].includes(kind)) { // kamienie w rzędach, jaśniejszy wierzch, cień od dołu, ciemne spoiny
+    c.fillStyle = rgb(pv[1], 0.62); c.fillRect(x0, y0, w, h); const big = kind === 'snow' || kind === 'obsidian';
+    for (let y = y0 - 4, row = 0; y < y0 + h; row++) {
+      const sh = (big ? 14 : 9) + r() * 4; let x = x0 - 6 - (row % 2) * 7;
+      while (x < x0 + w) {
+        const sw = (big ? 18 : 11) + r() * 10, t = r(), base = pv[0].map((v, i) => v + (pv[1][i] - v) * t), k = 0.86 + r() * 0.22, rx = x + 0.9, ry = y + 0.9, ww = sw - 1.8, hh = sh - 1.8;
+        c.fillStyle = rgb(base, k); rr(c, rx, ry, ww, hh, big ? 1.5 : 3); c.fill();
+        c.fillStyle = rgb(base, k * 1.12); rr(c, rx + 1, ry + 0.6, ww - 2, hh * 0.42, 2.5); c.fill();
+        c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(rx + 1.5, ry + hh - 1.6, ww - 3, 1.6);
+        if (kind === 'cobble' && r() < 0.12) { c.fillStyle = 'rgba(80,110,50,.35)'; c.fillRect(rx - 0.5, ry + hh * r(), 2.5, 2); }
+        if (kind === 'obsidian' && r() < 0.35) { c.strokeStyle = 'rgba(255,110,30,.85)'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(rx + ww, ry); c.lineTo(rx + ww + 0.5, ry + hh); c.stroke(); } // lawa w szczelinie
+        x += sw;
+      }
+      y += sh;
     }
-    y += sh;
+    if (kind === 'snow') { for (let i = 0; i < 14; i++) blob(x0 + r() * w, y0 + r() * h, 14 + r() * 30, 6 + r() * 10, `rgba(250,252,255,${0.55 + r() * 0.3})`); for (let i = 0; i < 60; i++) { c.fillStyle = 'rgba(255,255,255,.9)'; c.fillRect(x0 + r() * w, y0 + r() * h, 1.2, 1.2); } }
+    if (kind === 'grave') {
+      for (let i = 0; i < 6; i++) glow(x0 + 20 + r() * (w - 40), y0 + 30 + r() * (h - 60), 40 + r() * 40, 'rgba(110,220,130,.18)');
+      for (let i = 0; i < 4; i++) { const x = x0 + 30 + r() * (w - 60), y = y0 + 40 + r() * (h - 80); blob(x + 3, y + 22, 12, 4, 'rgba(0,0,0,.35)'); c.fillStyle = '#6e6878'; rr(c, x - 7, y, 14, 22, 6); c.fill(); c.fillStyle = '#8a8496'; c.fillRect(x - 5, y + 3, 10, 2); c.fillRect(x - 1, y + 6, 2, 9); c.fillRect(x - 4, y + 8, 8, 2); } // nagrobki
+      for (let i = 0; i < 14; i++) { const x = x0 + r() * w, y = y0 + r() * h, a = r() * Math.PI; c.strokeStyle = '#d8d0bc'; c.lineWidth = 1.8; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * 8, y + Math.sin(a) * 8); c.stroke(); } // kości
+    }
+    if (kind === 'obsidian') for (let i = 0; i < 6; i++) glow(x0 + r() * w, y0 + r() * h, 30 + r() * 40, 'rgba(255,90,20,.22)');
+  } else if (kind === 'cave') { // dno pieczary: skała, kryształy, świecące grzyby
+    c.fillStyle = '#2e2a36'; c.fillRect(x0, y0, w, h);
+    for (let i = 0; i < 90; i++) { const v = 0.7 + r() * 0.6; blob(x0 + r() * w, y0 + r() * h, 8 + r() * 22, 5 + r() * 12, rgb([62, 56, 74], v, 0.9)); }
+    for (let i = 0; i < 7; i++) { const x = x0 + 20 + r() * (w - 40), y = y0 + 30 + r() * (h - 60); glow(x, y - 6, 30, 'rgba(170,90,240,.35)');
+      for (let k = 0; k < 4; k++) { const dx = (k - 1.5) * 5, hh = 10 + r() * 14; c.fillStyle = '#8a4ac8'; c.beginPath(); c.moveTo(x + dx - 3, y); c.lineTo(x + dx + (r() - 0.5) * 3, y - hh); c.lineTo(x + dx + 3, y); c.fill(); c.fillStyle = 'rgba(220,180,255,.7)'; c.fillRect(x + dx, y - hh * 0.8, 1.2, hh * 0.6); } }
+    for (let i = 0; i < 14; i++) { const x = x0 + r() * w, y = y0 + r() * h; glow(x, y, 9, 'rgba(120,240,220,.5)'); blob(x, y, 2.4, 1.6, '#9af8e8'); }
+  } else if (kind === 'grass') { // mech i trawa, kamienna ścieżka, opadłe liście
+    const g = c.createLinearGradient(x0, 0, x0 + w, 0); g.addColorStop(0, '#3e6a2e'); g.addColorStop(1, '#4e7e38'); c.fillStyle = g; c.fillRect(x0, y0, w, h);
+    for (let i = 0; i < 900; i++) { const x = x0 + r() * w, y = y0 + r() * h; c.strokeStyle = r() < 0.5 ? 'rgba(120,170,70,.6)' : 'rgba(40,80,30,.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - 0.5) * 3, y - 3 - r() * 4); c.stroke(); }
+    for (let y = y0 + 10, k = 0; y < y0 + h; y += 26, k++) { const x = x0 + w * 0.45 + Math.sin(k * 0.9) * 30; blob(x + 2, y + 3, 13, 7, 'rgba(0,0,0,.25)'); blob(x, y, 13, 7, '#8e8a78'); blob(x - 2, y - 2, 9, 4, '#a8a490'); }
+    for (let i = 0; i < 40; i++) blob(x0 + r() * w, y0 + r() * h, 2.6, 1.4, ['#c8902e', '#a8662a', '#d8b040'][i % 3]);
+  } else if (kind === 'mud') { // błoto, kałuże, drewniana kładka, trzciny
+    c.fillStyle = '#4e4028'; c.fillRect(x0, y0, w, h);
+    for (let i = 0; i < 60; i++) blob(x0 + r() * w, y0 + r() * h, 10 + r() * 24, 5 + r() * 10, rgb([96, 78, 46], 0.7 + r() * 0.5, 0.6));
+    for (let i = 0; i < 7; i++) { const x = x0 + r() * w, y = y0 + r() * h, rx = 16 + r() * 22; blob(x, y, rx, rx * 0.4, 'rgba(40,52,40,.85)'); blob(x - rx * 0.3, y - 2, rx * 0.4, rx * 0.1, 'rgba(160,190,170,.35)'); }
+    const kx = x0 + w * 0.5; for (let y = y0; y < y0 + h; y += 7) { c.fillStyle = (y / 7 | 0) % 2 ? '#7a5e38' : '#8a6c42'; c.fillRect(kx - 14, y, 28, 6); c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(kx - 14, y + 5, 28, 1.2); }
+    for (let i = 0; i < 30; i++) { const x = x0 + r() * w, y = y0 + r() * h; c.strokeStyle = '#7a8a3a'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - 0.5) * 4, y - 10 - r() * 6); c.stroke(); }
+  } else { // ubita ziemia ze słomą i palami (Twierdza)
+    c.fillStyle = '#8a6a44'; c.fillRect(x0, y0, w, h);
+    for (let i = 0; i < 1400; i++) { c.fillStyle = r() < 0.5 ? 'rgba(60,40,20,.35)' : 'rgba(190,150,100,.35)'; c.fillRect(x0 + r() * w, y0 + r() * h, 1.6, 1.6); }
+    for (let i = 0; i < 70; i++) { const x = x0 + r() * w, y = y0 + r() * h, a = r() * Math.PI; c.strokeStyle = 'rgba(230,200,110,.8)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * 7, y + Math.sin(a) * 3); c.stroke(); }
+    for (let i = 0; i < 5; i++) { const x = x0 + 30 + r() * (w - 60), y = y0 + 40 + r() * (h - 80); blob(x + 3, y + 2, 7, 3, 'rgba(0,0,0,.35)'); c.fillStyle = '#6a4a2a'; c.fillRect(x - 2.5, y - 16, 5, 18); c.fillStyle = '#8a6438'; c.fillRect(x - 2.5, y - 16, 1.6, 18); }
   }
-  const sg = c.createLinearGradient(x0, 0, x0 + 46, 0); sg.addColorStop(0, 'rgba(0,0,0,.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = sg; c.fillRect(x0, y0, 46, h); // cień muru
+  { const k = SIEGE_SLOPE(); c.save(); c.transform(1, 0, k, 1, -k * y0, 0); const sg = c.createLinearGradient(x0, 0, x0 + 46, 0); sg.addColorStop(0, 'rgba(0,0,0,.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = sg; c.fillRect(x0, y0, 46, h); c.restore(); } // cień muru (pochylony jak mur)
   c.globalCompositeOperation = 'soft-light';
-  for (let i = 0; i < 5; i++) { const x = x0 + r() * w, y = y0 + 40 + r() * (h - 80), rad = 40 + r() * 90, g = c.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, r() < 0.5 ? 'rgba(255,240,200,.5)' : 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+  for (let i = 0; i < 5; i++) { const x = x0 + r() * w, y = y0 + 40 + r() * (h - 80), rad = 40 + r() * 90; glow(x, y, rad, r() < 0.5 ? 'rgba(255,240,200,.5)' : 'rgba(0,0,0,.45)'); }
   c.restore();
 }
 // Tło bitwy zależne od terenu (w połowie rozdzielczości, przed powiększeniem): horyzont pod paskiem u góry
 // i drobne malowane szczegóły na polu (kępki, kamyki, kałuże, pęknięcia z żarem). Nie wpływają na walkę.
 function battleDecor(g, terr, w, h, fac) {
   const r = mulberry32(9001 + terr * 131), P = TPAL[terr].map(c => `rgb(${gradeRgb(c).map(Math.round).join(',')})`), px = (x, y, c, k = 1) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), k, k); };
-  const maxX = fac ? PAVE_X / 2 - 8 : w;
+  const maxX = fac ? paveX(44) / 2 - 8 : w;
   // horyzont: odległe wzgórza, las, wydmy, szczyty albo wulkany w kolorach terenu, zlewające się z polem
   const far = { [TER.GRASS]: '#2e4a2a', [TER.DIRT]: '#4a3a28', [TER.SAND]: '#8a7050', [TER.SNOW]: '#8a98b0', [TER.SWAMP]: '#2a3a2a', [TER.ROUGH]: '#4a4436', [TER.LAVA]: '#2a1614', [TER.WATER]: '#2a4a6a' }[terr] || '#3a3a3a';
   g.fillStyle = far; g.beginPath(); g.moveTo(0, 26);
@@ -205,7 +242,7 @@ G.screens.battle = {
     for (const u of B.units) { [u.px, u.py] = unitPos(u); u.anim = null; u.dieT = null; u.flashT = null; u.face = null; }
     BattleFX.reset(); this.intro = { t: 0, dur: 0.9 };
     // przygotowanie klatek animacji z góry (żeby pierwszy ruch nie przycinał)
-    for (const u of B.units) for (const d of [1, -1]) for (const [pose, n] of Object.entries(BATTLE_FRAMES)) for (let i = 0; i < n; i++) battleSprite(u.cid, d, pose, i); // obie strony: oddziały się obracają
+    for (const u of B.units) for (const d of [1, -1]) for (const [pose, n] of Object.entries(BATTLE_FRAMES)) for (let i = 0; i < n; i++) battleSprite(lookCid(u), d, pose, i); // obie strony: oddziały się obracają
     const bx = 470, mk = (i, j, label, act, o) => new Button(bx + i * 108, 500 + j * 46, 100, 38, label, act, Object.assign({ size: 15 }, o));
     this.bWait = mk(0, 0, 'Czekaj', () => this.order({ a: 'wait' }), { key: 'w', tip: 'Oddział ruszy na końcu tej rundy (klawisz W).' });
     this.bDef = mk(1, 0, 'Obrona', () => this.order({ a: 'def' }), { key: 'd', tip: 'Oddział broni się: wyższa obrona do jego następnego ruchu (klawisz D).' });
@@ -396,7 +433,7 @@ G.screens.battle = {
     const E = (this.phase === 'over' || this.phase === 'done') && this.ending;
     if (E && u.side === E.winner && !u.dead && !isMachine(u)) { // zwycięzcy podskakują i wymachują bronią
       const k = now * 1.6 + u.id * 0.37, hop = Math.abs(Math.sin(k * Math.PI)) * 7 * clamp(E.t * 3, 0, 1);
-      return { s: battleSprite(u.cid, d, 'attack', Math.floor((k % 1) * BATTLE_FRAMES.attack)), ox: 0, hop, flash: false };
+      return { s: battleSprite(lookCid(u), d, 'attack', Math.floor((k % 1) * BATTLE_FRAMES.attack)), ox: 0, hop, flash: false };
     }
     if (this.phase === 'intro' && u.cid !== 'arrowTower') { pose = 'walk'; i = Math.floor(now * 13) % BATTLE_FRAMES.walk; ox = -d * (1 - ease(clamp(this.intro.t / this.intro.dur, 0, 1))) * 110; }
     else if (a) {
@@ -406,7 +443,7 @@ G.screens.battle = {
       if (pose === 'attack' && p && p.kind === 'hit' && p.a === u) ox = Math.sign(p.tg.px - u.px || d) * Math.sin(f * Math.PI) * 12;
       if (pose === 'hurt') ox = -d * Math.sin(f * Math.PI) * 5;
     }
-    return { s: battleSprite(u.cid, d, pose, i), ox, flash: u.flashT != null && now - u.flashT < 0.14 };
+    return { s: battleSprite(lookCid(u), d, pose, i), ox, flash: u.flashT != null && now - u.flashT < 0.14 };
   },
   onPointerMove(x, y) { this.hover(...this.toField(x, y)); },
   hover(x, y) { // x, y: współrzędne pola walki
@@ -461,7 +498,7 @@ G.screens.battle = {
   },
   rightInfo(x, y) {
     [x, y] = this.toField(x, y); const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y), w = hx && wallAt(this.B, hx.x, hx.y);
-    if (w && !u) return w.hp <= 0 ? `${w.kind === 'gate' ? 'Rozbita brama' : 'Wyłom w murze'}: można tędy przejść.` : w.kind === 'gate' ? `Brama miasta (wytrzymałość ${w.hp}/${w.max}): przepuszcza tylko obrońców. Rozbija ją katapulta.` : `Mur miasta (wytrzymałość ${w.hp}/${w.max}). Strzały zza muru tracą połowę siły; katapulta robi wyłomy.`;
+    if (w && !u) return w.hp <= 0 ? `${w.kind === 'gate' ? 'Rozbita brama' : w.kind === 'keep' ? 'Gruzy wieży głównej' : 'Wyłom w murze'}: można tędy przejść.` : w.kind === 'keep' ? `Wieża główna (wytrzymałość ${w.hp}/${w.max}): jej łucznicy strzelają co rundę za dwie wieże. Burzy ją katapulta.` : w.kind === 'gate' ? `Brama miasta (wytrzymałość ${w.hp}/${w.max}): przepuszcza tylko obrońców. Rozbija ją katapulta.` : `Mur miasta (wytrzymałość ${w.hp}/${w.max}). Strzały zza muru tracą połowę siły; katapulta robi wyłomy.`;
     if (!u) return null;
     const c = CREATURES[u.cid];
     const ab = abilText(c);
@@ -503,24 +540,32 @@ G.screens.battle = {
     // oddziały i przeszkody (od góry ekranu w dół, żeby niższe zasłaniały wyższe)
     const shown = B.units.filter(u => !u.dead || u.dieT == null || G.time - u.dieT <= 0.45);
     const obst = [...B.obst].map(([k, o]) => { const x = k % BCOLS, y = Math.floor(k / BCOLS), [px, py] = hexCenter(x, y); return { obst: o, px, py }; });
-    if (B.walls) { const T = B.sides[1].town; drawSprite(ctx, castleSprite(T.faction, ownerColor(st, T.owner), B.walls), SIEGE_WX, 0, 1); } // mury pod oddziałami
+    if (B.walls) { const T = B.sides[1].town, A3 = siegeArt(T.faction); if (A3) drawSiege3D(ctx, A3, B.walls); else { siegePost3D = null; drawSprite(ctx, castleSprite(T.faction, ownerColor(st, T.owner), B.walls), wallWX(0), 0, 1); } } // mury pod oddziałami (z 3D albo dawny rysunek)
     if (this.phase === 'input' && u0 && u0.cid === 'catapult') { // cele katapulty: fragmenty murów, wież i brama; wskazany na czerwono
       const p = this.preview, pulse = 0.6 + 0.4 * Math.sin(G.time * 5); ctx.lineWidth = 3;
       for (const w of catapultTargets(B)) { const on = p && p.kind === 'siege' && p.x === w.x && p.y === w.y; ctx.strokeStyle = on ? '#ff5a3a' : `rgba(255,217,112,${0.5 * pulse})`; hexPath(ctx, w.x, w.y, 4); ctx.stroke(); if (on) { ctx.fillStyle = 'rgba(255,100,60,.22)'; ctx.fill(); } }
     }
-    for (const u of [...shown, ...obst].sort((a, b) => a.py - b.py)) {
-      if (u.obst) { drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
-      const L = this.unitLook(u), tp = u.cid === 'arrowTower' ? towerPost() : null, gx = tp ? SIEGE_WX + tp[0] : u.px + L.ox, gy = tp ? u.py + tp[1] : u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
-      const us = u.cid === 'arrowTower' ? 1 : UNIT_SCALE; // jednostki nieco większe niż heks (lepiej widać szczegóły)
-      if (u.cid !== 'arrowTower') { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15 * sz * us, 5 * sz * us, 0, 0, TAU); ctx.fill(); }
-      ctx.save();
+    const keep = B.walls && [...B.walls.values()].find(w => w.kind === 'keep'), A3 = keep && siegeArt(B.sides[1].town.faction), keepO = A3 ? [{ keepW: keep, py: hexCenter(keep.x, keep.y)[1] - 0.5 }] : []; // wieża główna zasłania i jest zasłaniana jak oddziały
+    const drawUnit = (u, ghost) => { // ghost: oddział za wieżą główną, prześwituje przez nią
+      const L = this.unitLook(u), tp = u.cid === 'arrowTower' ? (u.keep ? keepPost() : towerPost()) : null, gx = tp ? (u.keep ? u.px : wallWX(u.y)) + tp[0] : u.px + L.ox, gy = tp ? u.py + tp[1] : u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
+      const us = u.cid === 'arrowTower' ? UNIT_SCALE * 0.9 : UNIT_SCALE; // jednostki nieco większe niż heks (lepiej widać szczegóły); łucznik na wieży trochę mniejszy
+      if (u.cid !== 'arrowTower' && !ghost) { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15 * sz * us, 5 * sz * us, 0, 0, TAU); ctx.fill(); }
+      ctx.save(); if (ghost) ctx.globalAlpha = 0.45;
       if (u.dead && u.dieT != null) { const f = clamp((G.time - u.dieT) / 0.45, 0, 1); ctx.translate(gx, gy); ctx.rotate(-(u.side === 0 ? 1 : -1) * ease(f) * Math.PI / 2 * 0.9); ctx.globalAlpha = 1 - f * 0.4; ctx.translate(-gx, -gy); }
       drawSprite(ctx, L.s, gx, gy - lift - (L.hop || 0), us);
       if (L.flash) { ctx.globalAlpha = 0.85; drawSprite(ctx, tintSprite(L.s, '#ffffff'), gx, gy - lift, us); }
       ctx.restore();
+      if (u.cid === 'arrowTower' && !u.dead && B.walls) drawTowerFront(ctx, siegeArt(B.sides[1].town.faction), u);
+    };
+    const kx = keepO.length ? hexCenter(keep.x, keep.y)[0] + KEEP_DX : 0, hidden = keepO.length && keep.hp > 0 ? shown.filter(v => !v.dead && !v.keep && v.py < keepO[0].py && v.py > keepO[0].py - 200 && Math.abs(v.px - kx) < 62) : [];
+    for (const u of [...shown, ...obst, ...keepO].sort((a, b) => a.py - b.py)) {
+      if (u.keepW) { drawKeep3D(ctx, A3, u.keepW); continue; }
+      if (u.obst) { drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
+      drawUnit(u);
     }
+    for (const u of hidden) drawUnit(u, true);
     for (const u of shown) if (!u.dead) { // liczebność nad wszystkim, także nad murami
-      const bx = u.px + (u.side === 0 ? 8 : -34), by = Math.min(u.py + 18, Math.min(486, (L.fieldBottom - L.fy) / L.fs - 4) - (CREATURES[u.cid].shots && !endlessShots(u) ? 25 : 15)), s = String(u.n); // dolny rząd: licznik nad panelem
+      const bx = u.cid === 'arrowTower' && !u.keep ? wallWX(u.y) + 70 : u.px + (u.side === 0 ? 8 : -34), by = Math.min(u.py + 18, Math.min(486, (L.fieldBottom - L.fy) / L.fs - 4) - (CREATURES[u.cid].shots && !endlessShots(u) ? 25 : 15)), s = String(u.n); // dolny rząd: licznik nad panelem
       ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(bx + 1, by + 1, 27, 15);
       ctx.fillStyle = u.side === 0 ? col : B.sides[1].owner >= 0 ? ownerColor(st, B.sides[1].owner) : '#5a5448'; ctx.fillRect(bx, by, 26, 14); ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx, by, 26, 4);
       ctx.strokeStyle = '#e0b24a'; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, 25, 13);
@@ -557,14 +602,14 @@ G.screens.battle = {
     if (this.touchKey && pv && G.mouse.type !== 'mouse') tip += ' Stuknij jeszcze raz, aby wykonać.';
     else if (pv && pv.kind === 'heal') tip = `Namiot medyka: wyleczy ${CREATURES[pv.target.cid].plural.toLowerCase()} o 1–${Math.min(pv.most, CREATURES[pv.target.cid].hp - pv.target.hp)} życia.`;
     else if (this.phase === 'input' && u0 && u0.cid === 'firstAid') tip = 'Namiot medyka: wskaż rannego oddział do leczenia (Obrona = pomiń).';
-    else if (pv && pv.kind === 'siege') tip = `Katapulta: ${pv.w.kind === 'gate' ? 'brama' : pv.w.kind === 'tower' ? 'wieża strzelnicza' : 'mur'} (wytrzymałość ${pv.w.hp}/${pv.w.max}), trafienie ${pv.chance}%${pv.shots > 1 ? ', dwa strzały' : ''}. Kliknij, aby strzelić.`;
+    else if (pv && pv.kind === 'siege') tip = `Katapulta: ${pv.w.kind === 'gate' ? 'brama' : pv.w.kind === 'tower' ? 'wieża strzelnicza' : pv.w.kind === 'keep' ? 'wieża główna' : 'mur'} (wytrzymałość ${pv.w.hp}/${pv.w.max}), trafienie ${pv.chance}%${pv.shots > 1 ? ', dwa strzały' : ''}. Kliknij, aby strzelić.`;
     else if (this.phase === 'input' && u0 && u0.cid === 'catapult') tip = 'Katapulta: wskaż fragment muru, bramę albo wieżę (zburzona wieża milknie).';
     else if (this.phase === 'input' && u0 && u0.cid === 'ballista') tip = `Balista (${CREATURES.ballista.name}): wskaż cel strzału.`;
     // panel: kolejka ruchów (jak w Heroes 3 HD), pod nią podpowiedź i ostatnie wpisy dziennika
     const qx0 = L.side ? P.x + 22 : 16, qy0 = L.side ? P.y + 166 : P.y + 13, perRow = L.side ? 6 : Math.max(4, Math.floor((VW - 346) / 41)), qn = L.side ? 12 : perRow;
     const tx = qx0 + 2, tw = L.side ? P.w - 40 : VW - 366, ty = L.side ? qy0 + 98 : P.y + 64;
     battleQueue(B, qn).forEach((u, i) => { const qx = qx0 + (i % perRow) * 41, qy = qy0 + Math.floor(i / perRow) * 42, own = u.side === 0 ? col : foeCol;
-      slotBox(ctx, qx, qy, 38, 36, i === 0 ? 'sel' : ''); ctx.save(); ctx.beginPath(); ctx.rect(qx + 1, qy + 1, 36, 34); ctx.clip(); { const bs = battleSprite(u.cid, u.side === 0 ? 1 : -1, 'idle', 0), k = clamp(30 / (bs.c.height * bs.u), 0.3, 0.6); drawSprite(ctx, bs, qx + 19, qy + 35, k); } /* cała postać w kratce */ ctx.restore();
+      slotBox(ctx, qx, qy, 38, 36, i === 0 ? 'sel' : ''); ctx.save(); ctx.beginPath(); ctx.rect(qx + 1, qy + 1, 36, 34); ctx.clip(); { const bs = battleSprite(lookCid(u), u.side === 0 ? 1 : -1, 'idle', 0), k = clamp(30 / (bs.c.height * bs.u), 0.3, 0.6); drawSprite(ctx, bs, qx + 19, qy + 35, k); } /* cała postać w kratce */ ctx.restore();
       ctx.fillStyle = own; ctx.fillRect(qx + 2, qy + 32, 34, 3); text(ctx, String(u.n), qx + 36, qy + 25, { size: 11, align: 'right', color: '#fff4cc', fam: 'title' }); });
     ctx.font = font(15, 700, 'body'); const tipL = L.side ? wrapText(ctx, tip, tw).slice(0, 3) : [tip];
     let tfs = 15; if (!L.side) while (tfs > 11 && ctx.measureText(tip).width > tw) { tfs--; ctx.font = font(tfs, 700, 'body'); }
@@ -596,24 +641,41 @@ function battleAftermath(st, h, res) {
   advFloat(`+${res.exp} dośw.`, h.x, h.y);
   gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank') visitObject(st, h, here); });
 }
-// Fosa oblężonego miasta: kręty kanał wody wzdłuż muru (przez środki pól kolumny MOAT_X), przerwany mostem w rzędzie bramy:
-// ziemny brzeg, woda z faktury terenu (płynie powoli), ciemniejsza przy brzegach, połyskujące fale
+// Zawartość fosy wg frakcji: faktura terenu, zabarwienie, brzeg, połysk; Inferno – lawa, Cytadela – bagno, Kurhan – trująca zieleń
+const MOAT_LIQ = {
+  haven: { tex: 'water', col: '#1f4a5e', bank: ['#3e3020', '#5a4630'], flow: 'rgba(40,90,110,.25)', spark: 'rgba(200,230,240,.55)' },
+  sylvan: { tex: 'water', col: '#1f5a4e', tint: 'rgba(30,90,60,.25)', bank: ['#2e3a1e', '#4a5a2e'], flow: 'rgba(60,120,90,.25)', spark: 'rgba(210,240,220,.5)', pads: true },
+  barrow: { tex: 'water', col: '#2a4a2e', tint: 'rgba(70,160,80,.35)', bank: ['#2a2630', '#403a48'], flow: 'rgba(120,230,140,.22)', spark: 'rgba(170,255,190,.45)' },
+  fortress: { tex: 'swamp', col: '#3a4a2a', tint: 'rgba(50,60,24,.3)', bank: ['#3a2e18', '#56462a'], flow: 'rgba(90,110,50,.25)', spark: 'rgba(200,220,160,.35)', pads: true },
+  inferno: { tex: 'lava', col: '#a8401a', bank: ['#1e1414', '#3a2420'], flow: 'rgba(255,200,90,.3)', spark: 'rgba(255,230,150,.7)', glow: true },
+  academy: { tex: 'water', col: '#5a8aa8', tint: 'rgba(210,235,255,.4)', bank: ['#8a909a', '#c8d0da'], flow: 'rgba(230,245,255,.35)', spark: 'rgba(255,255,255,.75)' },
+  dungeon: { tex: 'water', col: '#2a2440', tint: 'rgba(60,30,90,.4)', bank: ['#1e1a24', '#34303e'], flow: 'rgba(150,100,220,.22)', spark: 'rgba(200,170,255,.5)' },
+  stronghold: { tex: 'water', col: '#4a3e28', tint: 'rgba(110,80,40,.35)', bank: ['#4a3820', '#6a5232'], flow: 'rgba(160,130,80,.25)', spark: 'rgba(230,210,170,.45)' },
+};
+// Fosa oblężonego miasta: prosty kanał wzdłuż lica muru (równoległy do ukosu, brzeg przy murze), przez całą wysokość pola;
+// w rzędzie bramy przerzucony drewniany most. Ziemny brzeg, woda z faktury terenu (płynie powoli), ciemniejsza przy brzegach, fale
+const MOAT_OFF = 33; // środek kanału tyle px przed licem muru (połowa szerokości z brzegiem: 26; podstawa muru zachodzi na brzeg)
 function drawMoat(ctx, B) {
-  const runs = []; let cur = null;
-  for (let y = 0; y < BROWS; y++) { if (moatAt(B, MOAT_X, y)) { if (!cur) runs.push(cur = []); cur.push(y); } else cur = null; }
-  if (!runs.length) return;
-  const line = ys => { ctx.beginPath(); ys.forEach((y, i) => { const [cx, cy] = hexCenter(MOAT_X, y); if (!i) ctx.moveTo(cx, y === 0 ? cy - 40 : cy - 18); ctx.lineTo(cx, cy); if (i === ys.length - 1) ctx.lineTo(cx, y === BROWS - 1 ? cy + 40 : cy + 18); }); };
-  const WT = TERRAIN_TEX.water, pat = WT && WT.cv ? ctx.createPattern(WT.cv, 'repeat') : null;
+  const fac = B.sides[1].town ? B.sides[1].town.faction : 'haven', L = MOAT_LIQ[fac] || MOAT_LIQ.haven, WT = TERRAIN_TEX[L.tex] || TERRAIN_TEX.water, pat = WT && WT.cv ? ctx.createPattern(WT.cv, 'repeat') : null;
   if (pat) pat.setTransform(new DOMMatrix().translate(0, G.time * 5).scale(0.35));
-  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  for (const ys of runs) {
-    line(ys); ctx.strokeStyle = '#3e3020'; ctx.lineWidth = 52; ctx.stroke(); // brzeg
-    ctx.strokeStyle = '#5a4630'; ctx.lineWidth = 46; ctx.stroke();
-    ctx.strokeStyle = pat || '#1f4a5e'; ctx.lineWidth = 38; ctx.stroke(); // woda
-    ctx.strokeStyle = 'rgba(8,22,30,.35)'; ctx.lineWidth = 38; ctx.stroke(); ctx.strokeStyle = 'rgba(40,90,110,.25)'; ctx.lineWidth = 18; ctx.stroke(); // głębia i jaśniejszy nurt
-    ctx.fillStyle = 'rgba(200,230,240,.55)';
-    for (const y of ys) { const [cx, cy] = hexCenter(MOAT_X, y); for (let i = 0; i < 4; i++) { const ph = (G.time * 0.6 + i * 0.27 + y * 0.13) % 1; if (ph < 0.6) ctx.fillRect(cx - 12 + ((i * 11 + y * 7) % 20), cy - 14 + i * 8 + ph * 5, 1.6, 6); } }
-  }
+  const y0 = 41, y1 = 490, mx = py => wallLineX(py) - MOAT_OFF, k = SIEGE_SLOPE();
+  const band = (hw, a = y0, b = y1) => { ctx.beginPath(); ctx.moveTo(mx(a) - hw, a); ctx.lineTo(mx(a) + hw, a); ctx.lineTo(mx(b) + hw, b); ctx.lineTo(mx(b) - hw, b); ctx.closePath(); };
+  const fill = (hw, c) => { band(hw); ctx.fillStyle = c; ctx.fill(); };
+  ctx.save();
+  fill(26, L.bank[0]); fill(23, L.bank[1]); fill(19, pat || L.col); if (L.tint) fill(19, L.tint); // brzeg i ciecz fosy
+  fill(19, 'rgba(8,22,30,.3)'); fill(9, L.flow); // głębia i jaśniejszy nurt
+  if (L.glow) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; fill(30, `rgba(255,120,30,${0.18 + 0.08 * Math.sin(G.time * 3)})`); ctx.restore(); } // lawa się żarzy
+  const rows = [...Array(BROWS).keys()].filter(y => y !== GATE_Y).map(y => [y, hexCenter(0, y)[1]]);
+  if (L.pads) for (const [y, cy] of rows) { const cx = mx(cy); for (const [dx, dy] of [[-8, -6], [7, 9]]) { ctx.fillStyle = '#4e8a3a'; ctx.beginPath(); ctx.arc(cx + dx + dy * k, cy + dy, 4.5, 0.4, TAU); ctx.lineTo(cx + dx + dy * k, cy + dy); ctx.fill(); } } // lilie wodne
+  ctx.fillStyle = L.spark;
+  for (const [y, cy] of rows) { const cx = mx(cy); for (let i = 0; i < 4; i++) { const ph = (G.time * 0.6 + i * 0.27 + y * 0.13) % 1, dy = -14 + i * 8 + ph * 5; if (ph < 0.6) ctx.fillRect(cx - 10 + ((i * 11 + y * 7) % 16) + dy * k, cy + dy, 1.6, 6); } }
+  // most w rzędzie bramy: deski w poprzek kanału, poręcze, cień na wodzie
+  const gy = hexCenter(0, GATE_Y)[1], h = 13, xa = py => mx(py) - 30, xb = py => wallLineX(py) + 2;
+  const quad = (a, b, c) => { ctx.beginPath(); ctx.moveTo(xa(a), a); ctx.lineTo(xb(a), a); ctx.lineTo(xb(b), b); ctx.lineTo(xa(b), b); ctx.closePath(); ctx.fillStyle = c; ctx.fill(); };
+  quad(gy + h, gy + h + 5, 'rgba(0,0,0,.35)'); quad(gy - h, gy + h, '#6e4a26');
+  ctx.strokeStyle = 'rgba(40,24,10,.75)'; ctx.lineWidth = 1;
+  for (let x = xa(gy) + 5; x < xb(gy) - 2; x += 5.5) { ctx.beginPath(); ctx.moveTo(x - h * k, gy - h); ctx.lineTo(x + h * k, gy + h); ctx.stroke(); } // szpary między deskami
+  quad(gy - h, gy - h + 2.5, '#8a6236'); quad(gy + h - 2.5, gy + h, '#4a2e14'); // krawędzie: oświetlona i w cieniu
   ctx.restore();
 }
 
