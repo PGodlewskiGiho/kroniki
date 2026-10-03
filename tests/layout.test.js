@@ -79,3 +79,17 @@ test('wszystkie ekrany rysują się bez błędów w szerokim i wysokim oknie', a
   }
   await size(800, 600);
 });
+
+test('bitwa w oknie telefonu: panel z boku, pole większe, kliknięcie heksu działa', async () => {
+  await size(844, 390); await newGame(page, { opponents: 0 });
+  await page.evaluate(() => { const st = G.state, h = hero(st), m = st.objects.find(o => o.type === 'monster'); m.cid = 'pikeman'; m.count = 5; setScreen('battle', { battle: createBattle(st, h, m) }); });
+  await frames(page, 5);
+  const r = await page.evaluate(() => { const S = G.screens.battle, B = S.B; for (let i = 0; i < 400 && (S.phase !== 'input' || B.active.side !== 0); i++) S.update(0.1);
+    const L = S.lay(), u = B.active, k = [...S.reach.dist.keys()].find(k => !unitAt(B, k % BCOLS, Math.floor(k / BCOLS))), tx = k % BCOLS, ty = Math.floor(k / BCOLS), [fx, fy] = hexCenter(tx, ty), c = G.canvas.getBoundingClientRect(), s = c.width / VW;
+    return { side: L.side, fs: L.fs, px: c.left + (L.fx + fx * L.fs) * s, py: c.top + (L.fy + fy * L.fs) * s, to: [tx, ty], u: B.units.indexOf(u) }; });
+  assert.ok(r.side && r.fs > 0.75, JSON.stringify(r));
+  await page.mouse.move(r.px, r.py); await page.mouse.click(r.px, r.py);
+  const after = await page.evaluate(i => { const S = G.screens.battle; for (let k = 0; k < 100 && S.phase === 'play'; k++) S.update(0.1); const u = S.B.units[i]; return [u.x, u.y]; }, r.u);
+  assert.deepEqual(after, r.to);
+  await size(800, 600);
+});

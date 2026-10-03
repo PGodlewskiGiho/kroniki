@@ -374,6 +374,12 @@ function iconGear(ctx, cx, cy, col) {
 }
 // Ikony przycisków z modeli 3D (arkusz interfejsu); funkcje wektorowe zostają jako zapas i w stylu pikselowym
 const ICON3 = new Map([[iconCrown, 'ic_crown'], [iconNext, 'ic_next'], [iconBoot, 'ic_move'], [iconSleep, 'ic_sleep'], [iconSpell, 'ic_book'], [iconGear, 'ic_gear'], [iconStairs, 'ic_stairs'], [iconPuzzle, 'ic_puzzle'], [iconShovel, 'ic_dig']]);
+// Tekst skrócony wielokropkiem do szerokości w (czcionka body o rozmiarze size)
+function fitText(ctx, str, w, size, weight = 600) {
+  ctx.font = font(size, weight, 'body'); if (ctx.measureText(str).width <= w) return str;
+  let lo = 0, hi = str.length; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (ctx.measureText(str.slice(0, m) + '…').width <= w) lo = m; else hi = m - 1; }
+  return str.slice(0, lo).trimEnd() + '…';
+}
 // Koszt jako rząd ikon surowców z liczbami. have = zasoby gracza: brakujące liczby na czerwono.
 function drawCost(ctx, cost, x, y, o = {}) {
   const size = o.size || 18, fs = o.font || 14, col = o.color || '#2a1606', entries = RESOURCES.filter(r => cost[r.id]); let cx = x;
