@@ -310,7 +310,7 @@ function birdBody(L, P, o) {
   const sx = 0.05 * Math.cos(pitch) - 0.17 * Math.sin(pitch), sy = H + 0.05 * Math.sin(pitch) + 0.17 * Math.cos(pitch), wl = joint(root, [sx, sy, 0]);
   for (let pw = 0; pw < (o.wingPairs || 1); pw++) for (const z of [-1, 1]) {
     const beat = fly ? Math.sin(P.fly * Math.PI * 2 - pw * 0.8) : 0, w = joint(wl, [-0.04 - pw * 0.22, -pw * 0.06, 0.12 * z]), idle = Math.sin(t * 2) * 0.05 + hit * 0.35;
-    const [rx, ry, rz] = fly ? [0.5 + beat * 1.0, -0.2, -0.3] : eagle ? [1.0 + idle, -0.75, 0.55] : storm ? [0.42 + idle, -0.4, 0.2] : [1.3 + Math.sin(t * 2.4) * 0.15, -0.45, -0.05];
+    const [rx, ry, rz] = fly ? [0.5 + beat * 1.0, -0.2, -0.3] : eagle ? [1.15 + idle, -0.5, 0.0] : storm ? [1.0 + idle, -0.4, 0.05] : [1.3 + Math.sin(t * 2.4) * 0.15, -0.45, -0.05];
     w.rotation.set((rx - pw * 0.35) * z, ry * z, rz + pw * 0.25); w.scale.setScalar((storm ? 2.05 : fire ? 1.9 : 1.95) * 0.9 * (1 - pw * 0.38) * (o.wingK || 1)); featherFan(w, wcol, 1, !!o.flame, storm);
     if (o.bolts) for (const off of [0, 0.2, 0.42]) w.add(tube([[0.02, 0.15 + off, 0.02], [0.1, 0.33 + off, 0.02], [-0.03, 0.46 + off, 0.02], [0.08, 0.64 + off, 0.02], [-0.05, 0.84 + off, 0.02]], 0.012, 0.004, o.bolts, 'glow')); // wyładowania
   }
