@@ -58,7 +58,8 @@ test('mgła w kawałkach: odkrycie pola odświeża tylko potrzebny kawałek', as
   await newGame(page, { mapSize: 'M' });
   const r = await page.evaluate(() => {
     const st = G.state, n = st.map.n, ex = human(st).explored; MapRender.reset(st.map, ex);
-    const cx = 5, cy = 5, a = fogChunk(ex, n, cx, cy), again = fogChunk(ex, n, cx, cy) === a;
+    const cx = 5, cy = 5; for (let y = cy * CHUNK - 2; y <= cy * CHUNK + CHUNK + 1; y++) for (let x = cx * CHUNK - 2; x <= cx * CHUNK + CHUNK + 1; x++) ex[y * n + x] = 0; // kawałek w mgle (start odkrywa okolicę miasta)
+    const a = fogChunk(ex, n, cx, cy), again = fogChunk(ex, n, cx, cy) === a;
     ex[(cy * CHUNK + 3) * n + cx * CHUNK + 3] = 1; const b = fogChunk(ex, n, cx, cy);
     for (let y = cy * CHUNK - 1; y <= cy * CHUNK + CHUNK; y++) for (let x = cx * CHUNK - 1; x <= cx * CHUNK + CHUNK; x++) ex[y * n + x] = 1;
     return { again, changed: b !== a, clear: fogChunk(ex, n, cx, cy) === null };
