@@ -178,3 +178,9 @@ test('jednostki z modeli 3D: wbudowane arkusze dają klatki bitwy i mapy, odbici
   assert.ok(r.n >= 70, `arkuszy: ${r.n}`); assert.equal(r.u, r.raw ? 0.6 : 0.9); assert.ok(Math.abs(r.mu - (r.pix || !r.raw ? 1.8 : r.u * 0.48)) < 1e-9, 'na mapie: klatki mapy (gładko: klatki bitwy w skali mapy)'); assert.ok(r.mirror, 'odbicie w poziomie'); assert.ok(r.poses); assert.ok(r.mach, 'machiny z arkuszy'); assert.deepEqual(r.all, [], 'każda jednostka ma arkusz');
   assert.ok(r.tall * r.u > 35 && r.tall * r.u < 90, `wysokość klatki na ekranie: ${r.tall * r.u}`); // piksele arkusza × rozmiar piksela
 });
+
+test('telefon: w pionie prośba o obrót, na komputerze i z pliku bez przycisku instalacji', async () => {
+  const r = await page.evaluate(() => ({ rot: needRotate(), inst: App.canInstall(), menu: (setScreen('menu'), G.screen.buttons.map(b => b.label)), zoom: ZOOMS.includes(ZOOM) }));
+  assert.equal(r.rot, false); assert.equal(r.inst, false); assert.ok(r.menu.includes('Wyjście')); assert.ok(r.zoom);
+  await page.evaluate(() => { drawRotateHint(G.ctx); });
+});

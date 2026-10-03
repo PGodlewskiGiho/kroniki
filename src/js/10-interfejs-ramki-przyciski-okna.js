@@ -264,7 +264,7 @@ class Button {
 }
 // Przycisk pod palcem albo kursorem. Dotyk: palec jest gruby, więc trafia też tuż obok przycisku (do 10 px), a z kilku
 // pobliskich wygrywa ten, którego środek jest najbliżej.
-const TOUCH_PAD = 10;
+const TOUCH_PAD = 16; // dotyk: przycisk łapie też stuknięcie obok (palec jest grubszy niż kursor), wygrywa najbliższy
 function buttonAt(list, x, y) {
   const exact = list.find(b => !b.disabled && b.hit(x, y)); if (exact || !G.mouse.type || G.mouse.type === 'mouse') return exact || null;
   let best = null, bd = Infinity;

@@ -194,7 +194,7 @@ G.screens.menu = {
       B('Najlepsze wyniki', () => G.go('scores'), { key: 'h' }),
       B('Grafika', () => showGfxSettings(), { key: 'g' }),
       B('Twórcy', () => G.go('credits'), { key: 'c' }),
-      B('Wyjście', () => askQuit(), { key: 'q' }),
+      App.canInstall() ? B('Zainstaluj grę', () => App.install(), { key: 'i', tip: 'Gra jak aplikacja: ikona na ekranie głównym, pełny ekran bez pasków przeglądarki, działa bez internetu.' }) : B('Wyjście', () => askQuit(), { key: 'q' }),
     ];
 
   },

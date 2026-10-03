@@ -1,0 +1,17 @@
+{
+  "name": "Kroniki Królestw",
+  "short_name": "Kroniki",
+  "description": "Turowa strategia w stylu Heroes 3: bohaterowie, zamki, bitwy na heksach.",
+  "lang": "pl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#0a0806",
+  "theme_color": "#0a0806",
+  "icons": [
+    { "src": "ikona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "ikona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

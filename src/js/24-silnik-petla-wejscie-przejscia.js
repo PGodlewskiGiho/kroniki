@@ -63,7 +63,8 @@ function bindInput() {
   });
   window.addEventListener('pointerup', touchEnd); window.addEventListener('pointercancel', touchEnd);
   c.addEventListener('pointerdown', e => {
-    if (G.pinch) return;
+    if (G.canvasFirstTouch) G.canvasFirstTouch(e);
+    if (G.pinch || needRotate()) return;
     G.dirty = true; Sfx.unlock(); // dźwięk: kontekst audio dopiero po geście gracza
     if (e.button === 2) {
       e.preventDefault(); const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; updateHover();
@@ -127,6 +128,7 @@ function render() {
   drawNetChat(ctx); // czat gry online
   if (G.fade.a > 0) { ctx.fillStyle = `rgba(0,0,0,${G.fade.a.toFixed(3)})`; ctx.fillRect(0, 0, VW, VH); }
   if (G.showPerf) drawPerfInfo(ctx);
+  if (needRotate()) drawRotateHint(ctx); // telefon trzymany pionowo
 }
 // Tło wokół wyśrodkowanego ekranu: kamień jak w ramkach gry, przyciemniony, ze złotą obwódką.
 // Ekran może podać własne (screen.backdrop), np. bitwa przedłuża pole walki.
@@ -220,9 +222,9 @@ function showGfxSettings(back) {
 }
 function init() {
   loadSettings(); loadUnitArt(); // arkusze jednostek dekodują się w tle (do tego czasu dawne rysunki)
-  setPixelSize(G.settings.quality === 'low' ? 2 : PIX_DEFAULT); ZOOM = ZOOMS.includes(G.settings.zoom) ? G.settings.zoom : 1; // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
+  setPixelSize(G.settings.quality === 'low' ? 2 : PIX_DEFAULT); ZOOM = ZOOMS.includes(G.settings.zoom) ? G.settings.zoom : isTouchDevice() ? 1.25 : 1; // na telefonie domyślnie bliżej: pola pod palec // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
   G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: false }); // nieprzezroczyste płótno: przeglądarka nie miesza go z tłem strony
-  resize(); window.addEventListener('resize', resize); bindInput();
+  App.init(); resize(); window.addEventListener('resize', resize); bindInput();
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)
   setScreen('menu'); G.fade.a = 1; G.fade.target = 0;
   // wbudowana czcionka ładuje się chwilę: potem odświeżamy obrazy z napisami trzymane w pamięci (tytuły, przyciski)
