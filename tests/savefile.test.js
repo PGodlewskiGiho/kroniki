@@ -21,7 +21,7 @@ test('gra zapisana do pliku wczytuje się z pliku taka sama', async () => {
   await page.waitForFunction(() => G.screenName === 'load' && G.screen.mode === 'load');
   const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => { G.screen.fromFile(); })]);
   await fc.setFiles(file);
-  await page.waitForFunction(() => G.screenName === 'adventure', null, { timeout: 10000 });
+  await page.waitForFunction(() => G.screenName === 'adventure', null, { timeout: 30000 }); // przy kilku przeglądarkach naraz (testy równolegle) wczytanie bywa wolne
   const r = await page.evaluate(() => ({ gold: G.state.players[G.state.cur].resources.gold, same: JSON.stringify(serializeGame(G.state)) }));
   assert.equal(r.gold, 12345); assert.equal(r.same, before);
   fs.unlinkSync(file);
