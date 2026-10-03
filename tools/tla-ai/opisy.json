@@ -915,5 +915,20 @@
   "opis": "epic fantasy matte painting, knight seen from behind on a cliff edge, red cape, blue banner, huge glowing open book on stone pedestal beside him, spiral of golden magic light, vast green valley, shining river, white medieval castles with towers and red roofs on hills, sunset, golden clouds, god rays, dragon in the sky",
   "styl": "{opis}, heroes of might and magic art, highly detailed",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "ladowanie": {
+  "opis": "epic fantasy matte painting, medieval scriptorium in a stone tower at night, huge open ancient chronicle book on a wooden desk lit by candles, quill in inkwell, scrolls, old map on the wall, arched window with moon and stars, warm candlelight",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "zwyciestwo": {
+  "opis": "epic fantasy matte painting, triumphant knight in red cape seen from behind on castle battlements raising a shining sword at sunrise, cheering army with colorful banners below, white castle with blue flags, golden morning light, god rays",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "porazka": {
+  "opis": "epic fantasy matte painting, defeated knight in torn red cape kneeling on a dark hill beside his sword stuck in the ground, fallen blue banner, burning ruined castle in the distance, smoke, embers, ravens, blood red dusk sky",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
  }
 }

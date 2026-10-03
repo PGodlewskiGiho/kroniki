@@ -129,7 +129,7 @@ function drawReportScene(ctx, x, y, w, h, kind, me, col, t, st) {
 }
 
 // ==================== EKRAN KOŃCA GRY ====================================================
-// Tłem jest scena miasta gracza: przy zwycięstwie z fajerwerkami i złotym blaskiem, przy porażce szara, w dymie,
+// Tłem jest malowany obraz (zwycięstwo / porażka, tools/tla-ai/menu), a bez niego scena miasta gracza: przy zwycięstwie z fajerwerkami i złotym blaskiem, przy porażce szara, w dymie,
 // z żarem i krukami. Na niej napis, kronika królestwa (dni, miasta, bohaterowie, siła armii, wynik) i ranga jak w Heroes 3.
 const END_RANKS = [[0, 'Chłop'], [40, 'Goblin'], [80, 'Wilk'], [140, 'Ork'], [220, 'Gryf'], [330, 'Mantykora'], [480, 'Jednorożec'], [700, 'Archanioł'], [1000, 'Czarny smok']];
 const endRank = score => END_RANKS.filter(([s]) => score >= s).pop()[1];
@@ -149,15 +149,17 @@ function showGameEnd(st, r, msg, opts) {
     msg, buttons, locked: true, gameEnd: r,
     draw(ctx) {
       const t = G.time - t0; G.dirty = true;
-      ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(scene, 30 * SK, 20 * SK, 534 * SK, 400 * SK, 0, 0, W, H); ctx.restore(); // piksel sceny = 3 px ekranu (równe piksele)
-      if (win) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,120,${(0.08 + 0.04 * Math.sin(t)).toFixed(3)})`; ctx.fillRect(0, 0, W, H); ctx.restore(); } // ciepłe światło: gładkie (dithering dałby siatkę kropek)
+      const EA = screenArt(win ? 'zwyciestwo' : 'porazka'); // malowany obraz końca gry (rycerz w czerwonej pelerynie: triumf o świcie albo klęska przy płonącym zamku)
+      if (EA) viewportDraw(ctx, c => drawPaintedArt(c, EA[0], EA[1], VW, VH)); // obraz na całe okno (także poza polem okna 800×600)
+      else { ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(scene, 30 * SK, 20 * SK, 534 * SK, 400 * SK, 0, 0, W, H); ctx.restore(); } // piksel sceny = 3 px ekranu (równe piksele)
+      if (win && !EA) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,120,${(0.08 + 0.04 * Math.sin(t)).toFixed(3)})`; ctx.fillRect(0, 0, W, H); ctx.restore(); } // ciepłe światło: gładkie (dithering dałby siatkę kropek)
       if (win) pixLayer('endFx', ctx, 0, 0, W, H, ctx => {
         ctx.save(); ctx.globalCompositeOperation = 'lighter';
         for (const B of bursts) { const u = ((t - B.t) % 3.2 + 3.2) % 3.2; if (u > 1.4) continue; const k = u / 1.4, rad = 20 + ease(k) * 70; // fajerwerki
           for (let i = 0; i < 26; i++) { const a = i / 26 * TAU, px = B.x + Math.cos(a) * rad, py = B.y + Math.sin(a) * rad + k * k * 30; ctx.fillStyle = B.c; ctx.globalAlpha = 1 - k; ctx.fillRect(px - 1.5, py - 1.5, 3, 3); } }
         ctx.restore(); ctx.globalAlpha = 1;
       }, { px: 3, add: true });
-      else {
+      else if (!EA) {
         ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = 0.85; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, H); ctx.restore();
         ctx.fillStyle = 'rgba(10,4,6,.45)'; ctx.fillRect(0, 0, W, H);
         pixLayer('endFx', ctx, 0, 0, W, H, ctx => {
