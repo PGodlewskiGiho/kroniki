@@ -7,7 +7,7 @@ const { chromium } = require('playwright'), fs = require('fs'), path = require('
 const GAME_URL = pathToFileURL(path.join(__dirname, '..', 'Kroniki Królestw.html')).href;
 
 const PORT = 9131, PEER = { host: '127.0.0.1', port: PORT, path: '/kk', secure: false, config: { iceServers: [] } };
-let server, browser, A, B; // A = gospodarz, B = gość (dwie karty jednej przeglądarki)
+let server, browser, A, B; // A = gospodarz, B = gość (dwa okna jednej przeglądarki)
 const LOG = process.env.NET_LOG, L = m => { if (LOG) fs.appendFileSync(LOG, new Date().toISOString().slice(11, 19) + ' ' + m + '\n'); };
 const until = async (page, fn, arg, ms = 20000) => { L('wait ' + String(fn).slice(6, 70)); await page.waitForFunction(fn, arg, { timeout: ms, polling: 100 }); L('ok'); };
 
@@ -18,19 +18,21 @@ test.before(async () => {
   const exe = process.env.CHROMIUM_PATH || (fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : null);
   browser = await chromium.launch(exe ? { executablePath: exe } : {});
   const open = async () => {
-    const page = await browser.newPage({ viewport: { width: 800, height: 600 } }), errors = [];
+    const page = await (await browser.newContext({ viewport: { width: 800, height: 600 } })).newPage(), errors = []; // osobne okno: karta w tle dostawałaby rzadkie klatki (przejścia ekranów trwałyby sekundy)
     page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
     await page.goto(GAME_URL); await page.waitForFunction(() => typeof G !== 'undefined' && G.screen && unitArtReady());
     await page.evaluate(o => { window.KK_PEER = o; }, PEER); return { page, errors };
   };
   A = await open(); B = await open(); L('pages');
 });
-test.after(async () => { if (browser) await browser.close(); if (server) { server.closeAllConnections(); server.close(); } });
+test.after(async () => { setTimeout(() => process.exit(0), 10000).unref(); // zawieszone zamykanie (połączenia WebRTC, gniazda serwera) nie blokuje końca testów
+  if (browser) await browser.close(); if (server) { server.closeAllConnections(); server.close(); } });
 test.afterEach(() => { for (const g of [A, B]) { const e = g.errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); } });
 
 test('pokój: gospodarz z kodem, gość dołącza i widzi listę graczy', async () => {
   assert.equal(await A.page.evaluate(async () => { Net.name = 'Ala'; G.go('online'); return Net.hostGame('TESTA'); }), true);
   await B.page.evaluate(() => { Net.name = 'Bob'; G.go('online'); Net.join('TESTA', 'Bob'); });
+  for (const g of [A, B]) await until(g.page, () => G.screenName === 'online' && !G.fade.next); // przejście ekranu skończone, zanim padnie następne polecenie
   await until(A.page, () => Net.guests.length === 1 && Net.guests[0].conn && Net.guests[0].conn.open);
   await until(B.page, () => Net.lobby && Net.lobby.players.length === 1);
   assert.deepEqual(await B.page.evaluate(() => [Net.lobby.host, Net.lobby.players[0].name]), ['Ala', 'Bob']);
@@ -42,6 +44,7 @@ test('czat: wiadomość gospodarza dociera do gościa', async () => {
 });
 
 test('start gry: gość dostaje świat i ogląda turę gospodarza, podgląd zmian na żywo', async () => {
+  await until(A.page, () => !G.fade.next);
   await A.page.evaluate(() => {
     const S = G.settings; S.mapSize = 'S'; S.slots.forEach((o, i) => { o.type = i < 2 ? 'human' : 'off'; o.faction = 'haven'; }); S.slots[2].type = 'ai';
     G.go('setup', { online: true });
