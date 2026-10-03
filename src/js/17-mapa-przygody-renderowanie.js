@@ -206,7 +206,7 @@ function landColor(t, ax, ay, hh) {
 }
 // Tekstury terenu (TERRAIN_ART, malowane przez AI, bezszwowe): piksele w tablicy + średnia barwa. Teren bierze z tekstury strukturę
 // (kępy trawy, szczeliny, kamienie), a barwę z palety i pory roku: kolor = tekstura × (barwa terenu / średnia tekstury).
-const TERRAIN_TEX = {}, TEX_NAME = ['water', 'grass', 'dirt', 'sand', 'snow', 'swamp', 'rough', 'lava'], TEX_TILES = 4; // tekstura 512 px na 4×4 pola: piksel tekstury ≈ piksel ekranu (ostro)
+const TERRAIN_TEX = {}, TEX_NAME = ['water', 'grass', 'dirt', 'sand', 'snow', 'swamp', 'rough', 'lava'], TEX_TILES = 8; // tekstura 512 px (tools/tekstury-proc.py) na 8×8 pól: piksel tekstury ≈ piksel ekranu przy zoomie 1 (ostro)
 // faktura z tekstury AI w barwie terenu (pora roku, paleta): kolor × (tekstura / jej średnia). Żeby nie było widać powtórzeń,
 // tekstura jest próbkowana dwa razy (co TEX_TILES pól i co ~1,6× tyle, z zamienionymi osiami) i obie próbki mieszane wolnym szumem
 const TEXS = new Float32Array(6); // wynik dwóch próbek (RGB × 2), bez tworzenia tablic na każdy piksel
