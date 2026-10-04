@@ -43,7 +43,8 @@ const G3 = {
     let probe = null; if (o.probe) { const ob = group.getObjectByName(o.probe); if (ob) { const v = ob.getWorldPosition(new THREE.Vector3()).project(c); probe = [(v.x + 1) / 2 * w, (1 - v.y) / 2 * h]; } } // punkt pomocniczy w pikselach klatki
     const edges = this.edgePass(w, h); this.scene.remove(group);
     const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high'; g.drawImage(mid, 0, 0, w, h);
-    inkLines(out, edges); if (o.raw || G3.raw) crisp(out); else pixelize(out, o.step || 8); /* raw: bez pikselizacji, wyostrzony */ disposeGroup(group); out._probe = probe; out._marks = marks; return out;
+    const soft = o.soft ?? G3.soft; // tryb łagodny: słabe kontury, delikatne wyostrzenie, miękka poświata światła (naturalniejsze, mniej „plastikowe”)
+    inkLines(out, edges, soft ? 0.45 : 1); if (o.raw || G3.raw) { if (soft) { crisp(out, 0.22, 0.5); softGlow(out); } else crisp(out); } else pixelize(out, o.step || 8); /* raw: bez pikselizacji, wyostrzony */ disposeGroup(group); out._probe = probe; out._marks = marks; return out;
   },
   edgePass(w, h) {
     const r = this.r, s = this.scene; r.setSize(w, h, false); r.toneMapping = THREE.NoToneMapping; r.outputColorSpace = THREE.LinearSRGBColorSpace; const env = s.environment; s.environment = null;
@@ -65,7 +66,7 @@ function disposeGroup(g) {
   g.traverse(m => { if (!m.isMesh) return; m.geometry.dispose(); if (!shared.has(m.material)) { if (m.material.map && !m.material.map._shared) m.material.map.dispose(); m.material.dispose(); } });
 }
 // Kontur wewnętrzny: skok głębi (linia po dalszej stronie) albo ostry załom powierzchni
-function inkLines(c, E) {
+function inkLines(c, E, K = 1) { // K: siła konturów (tryb łagodny: słabsze, tylko skoki głębi)
   const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data, N = E.n, D = E.d, mark = new Uint8Array(w * h);
   const nrm = k => [N[k * 4] / 127.5 - 1, N[k * 4 + 1] / 127.5 - 1, N[k * 4 + 2] / 127.5 - 1];
   for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
@@ -74,12 +75,18 @@ function inkLines(c, E) {
       if (dd > 3) { mark[k] = 1; break; }
       if (Math.abs(dd) <= 3 && a[0] * b[0] + a[1] * b[1] + a[2] * b[2] < 0.35 && dd >= 0) { mark[k] = 2; break; } }
   }
-  for (let k = 0; k < w * h; k++) if (mark[k]) { const i = k * 4, f = mark[k] === 1 ? 0.5 : 0.28; d[i] *= 1 - f; d[i + 1] *= 1 - f; d[i + 2] *= 1 - f * 0.8; }
+  for (let k = 0; k < w * h; k++) if (mark[k]) { const i = k * 4, f = (mark[k] === 1 ? 0.5 : K < 1 ? 0 : 0.28) * K; d[i] *= 1 - f; d[i + 1] *= 1 - f; d[i + 2] *= 1 - f * 0.8; }
   g.putImageData(img, 0, 0);
 }
 // Grafika bez pikselizacji, ale ostra (jak wyrenderowane sprite'y Heroes 3): wyostrzenie (maska wyostrzająca na kolorze),
 // twardsza krawędź sylwetki (alfa przez krzywą S) i cienki, wygładzony ciemny obrys na zewnątrz
-function crisp(c, amount = 0.7) {
+// Miękka poświata: rozmyta kopia jasnych partii dodana lekko (światło „rozlewa się” po krawędziach jak na malowanych sprite'ach)
+function softGlow(c, k = 0.18) {
+  const w = c.width, h = c.height, t = document.createElement('canvas'); t.width = w; t.height = h; const tg = t.getContext('2d');
+  tg.filter = `blur(${Math.max(1, Math.round(Math.min(w, h) / 90))}px) brightness(1.1)`; tg.drawImage(c, 0, 0);
+  const g = c.getContext('2d'); g.save(); g.globalCompositeOperation = 'source-atop'; g.globalAlpha = k; g.drawImage(t, 0, 0); g.globalCompositeOperation = 'soft-light'; g.globalAlpha = k * 1.5; g.drawImage(t, 0, 0); g.restore();
+}
+function crisp(c, amount = 0.7, rim = 0.85) { // rim: krycie zewnętrznego obrysu
   const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data, src = new Float32Array(d);
   const A = k => src[k * 4 + 3] / 255;
   for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
@@ -90,7 +97,7 @@ function crisp(c, amount = 0.7) {
   for (let k = 0; k < w * h; k++) { const i = k * 4, a = d[i + 3] / 255; if (a > 0 && a < 1) { const t = Math.min(1, Math.max(0, (a - 0.12) / 0.6)); d[i + 3] = Math.round(255 * t * t * (3 - 2 * t)); } }
   const al = Float32Array.from({ length: w * h }, (_, k) => d[k * 4 + 3] / 255);
   for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const k = y * w + x, i = k * 4, a = al[k]; if (a > 0.98) continue;
-    const m = Math.max(al[k - 1], al[k + 1], al[k - w], al[k + w], 0.7 * Math.max(al[k - w - 1], al[k - w + 1], al[k + w - 1], al[k + w + 1])), oa = m * 0.85; if (oa <= a) continue;
+    const m = Math.max(al[k - 1], al[k + 1], al[k - w], al[k + w], 0.7 * Math.max(al[k - w - 1], al[k - w + 1], al[k + w - 1], al[k + w + 1])), oa = m * rim; if (oa <= a) continue;
     const f = a / oa; d[i] = d[i] * f + 24 * (1 - f); d[i + 1] = d[i + 1] * f + 16 * (1 - f); d[i + 2] = d[i + 2] * f + 10 * (1 - f); d[i + 3] = Math.round(oa * 255); }
   g.putImageData(img, 0, 0); void A;
 }
@@ -174,6 +181,7 @@ function mat(col, kind = 'cloth', rep = 1) {
 const col3 = c => new THREE.Color(c);
 const DK = (hex, k = 0.25) => '#' + col3(hex).multiplyScalar(1 - k).getHexString();
 const LT = (hex, k = 0.25) => '#' + col3(hex).lerp(col3('#ffffff'), k).getHexString();
+const mixHex = (a, b, k = 0.5) => '#' + col3(a).lerp(col3(b), k).getHexString();
 // jasny kolor (świecące oczy, aureole): jasność > 0,6
 const bright = hex => { const c = col3(hex); return (c.r + c.g + c.b) / 3 > 0.55; };
 // Kępa liści namalowana na kanwie (jak na tle AI): falista sylwetka z płatów wypełniona setkami pociągnięć pędzla; każdy płat jasny i ciepły u góry,
@@ -208,6 +216,7 @@ function leafClump(r, col, pos, v = 0, fl = null) {
 // --- bryły ---
 function mesh(geo, col, kind, pos, rot, scl, rep) { const m = new THREE.Mesh(geo, mat(col, kind, rep)); if (pos) m.position.set(...pos); if (rot) m.rotation.set(...rot); if (scl) m.scale.set(...scl); return m; }
 const joint = (parent, pos, rz = 0) => { const g = new THREE.Group(); if (pos) g.position.set(...pos); g.rotation.z = rz; parent.add(g); return g; };
+const headJoint = (parent, pos, rz = 0) => { const g = joint(parent, pos, rz); g.name = 'head'; return g; }; // głowa: punkt kadru portretu jednostki (wypal-ikony.js)
 const sph = (r, col, kind, pos, scl, seg = 20) => mesh(new THREE.SphereGeometry(r, seg, Math.round(seg * 0.7)), col, kind, pos, null, scl);
 const cap = (r, len, col, kind, pos, rot, scl) => mesh(new THREE.CapsuleGeometry(r, len, 6, 16), col, kind, pos, rot, scl);
 const cyl = (r0, r1, len, col, kind, pos, rot, scl, seg = 16) => mesh(new THREE.CylinderGeometry(r1, r0, len, seg), col, kind, pos, rot, scl);
@@ -292,4 +301,23 @@ function layDead(g, L) {
   const w = new THREE.Group(); w.add(g);
   if (MACHINE_KINDS.includes(L.kind)) { g.rotation.z = 0.28; g.rotation.x = 0.12; g.position.y = -0.1; return w; } // rozbita machina: przechylona, osiadła
   g.rotation.z = 1.42; g.position.y = 0.14 * (L.size || 1); return w;
+}
+
+// Opis jednostki po angielsku dla domalowania portretu przez AI (tools/tla-ai/portrety-jednostek): nazwa z identyfikatora i cechy wyglądu
+function colorName(hex) {
+  if (!hex || hex[0] !== '#') return ''; const h = {}; new THREE.Color(hex).getHSL(h, THREE.SRGBColorSpace);
+  if (h.l < 0.14) return 'black'; if (h.l > 0.86) return 'white'; if (h.s < 0.14) return h.l > 0.55 ? 'silver grey' : 'grey';
+  const H = h.h, n = H < 0.035 || H > 0.95 ? 'red' : H < 0.11 ? (h.l < 0.45 ? 'brown' : 'orange') : H < 0.18 ? 'yellow' : H < 0.45 ? 'green' : H < 0.55 ? 'teal' : H < 0.72 ? 'blue' : H < 0.83 ? 'purple' : 'magenta';
+  return (h.l < 0.3 && n !== 'brown' ? 'dark ' : '') + n;
+}
+function unitPrompt(id, L) {
+  const words = id.replace(/([A-Z])/g, ' $1').toLowerCase().trim(), t = [], machine = ['ballista', 'tent', 'cart', 'catapult', 'tower'].includes(L.kind);
+  if (machine) return `medieval wooden ${words}, war machine, detailed wood and iron`;
+  if (L.kind === 'hum' && !L.beast && !L.golem) {
+    t.push(`fantasy ${words}`); { const sk = colorName(L.skin); if (sk.match(/green|grey|blue|purple|black|white|dark red|teal/) || (sk === 'red' && L.skin && parseInt(L.skin.slice(3, 5), 16) < 0x70)) t.push(`${sk} skin`); }
+    if (L.helm) t.push(L.helm === 'hood' ? 'hood' : `${L.helmCol ? colorName(L.helmCol) + ' ' : ''}${L.helm} helmet`); if (L.hood || L.robe) t.push(`${colorName(L.cloth)} ${L.robe ? 'robe' : 'hood'}`); else if (L.cloth) t.push(`${colorName(L.cloth)} clothes`);
+    if (L.armor) t.push(`${L.armor} armor`); if (L.weapon && L.weapon !== 'none') t.push(`holding a ${L.weapon}`); if (L.beard || L.mustache) t.push(L.beard ? 'beard' : 'mustache');
+    if (L.bony) t.push('skeleton, bare bones'); if (L.tusks) t.push('tusks'); if (L.horns) t.push('horns'); if (L.cape) t.push(`${colorName(L.cape)} cape`); if (L.wings) t.push('wings'); if (L.snout) t.push('hyena head');
+  } else { const c = L.fur || L.col || L.body || L.skin; t.push(`fantasy creature ${words}`, c ? `${colorName(c)} ${L.kind === 'dragon' || L.kind === 'hydra' || L.kind === 'lizard' ? 'scales' : 'fur'}` : '', L.wings ? 'wings' : ''); }
+  return t.filter(Boolean).join(', ');
 }

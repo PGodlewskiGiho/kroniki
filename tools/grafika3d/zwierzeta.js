@@ -58,7 +58,7 @@ function horseHead(neck, col, mane, P, o = {}) {
   neck.rotation.z = -0.5 + hit * 0.25; neck.add(loft([[-0.05, 0.12, 0.17, 0.13, 0], [0.28, 0.09, 0.13, 0.1, 0], [0.56, 0.07, 0.1, 0.08, 0]], col, 'fur', 'y')); // szyja
   if (nm) for (let i = 0; i < 8; i++) neck.add(cone(0.05, 0.24 + (i % 3) * 0.08 + Math.sin(t * 8 + i) * 0.03, i % 2 ? mane : LT(mane, 0.4), 'fire', [-0.11, 0.06 + i * 0.07, 0], [0, 0, 1.2 - i * 0.04], 6)); // płonąca grzywa
   else neck.add(slab([[0, -0.05], [-0.07, 0.05], [-0.04, 0.16], [-0.09, 0.26], [-0.05, 0.36], [-0.1, 0.46], [-0.05, 0.6], [0.02, 0.62], [0.02, -0.05]], 0.06, mane, 'hair', [-0.08, 0.0, 0])); // grzywa
-  const head = joint(neck, [0, 0.54, 0], -1.75);
+  const head = headJoint(neck, [0, 0.54, 0], -1.75);
   head.add(rbox(0.19, 0.2, 0.16, 0.04, col, 'fur', [0, 0.07, 0])); head.add(rbox(0.13, 0.27, 0.12, 0.04, col, 'fur', [0.02, 0.29, 0])); // czaszka i pysk
   head.add(rbox(0.1, 0.16, 0.14, 0.03, dark, 'fur', [0.07, 0.1, 0])); head.add(rbox(0.09, 0.08, 0.11, 0.03, DK(col, 0.4), 'fur', [0.03, 0.42, 0])); // policzek i chrapy
   const eye = o.eyes || '#140c06', eK = o.eyes ? 'glow' : 'skin';
@@ -130,7 +130,7 @@ function unicorn(L, P = {}) {
 
 // Wilk i jego odmiany: ogniste ogary (flame), trójgłowy pies (heads), mantykora (mane + wings + stinger), behemot (horns, duży)
 function canineHead(neck, L, P, col, o = {}) {
-  const hit = P.atk != null ? Math.sin(Math.min(1, P.atk) * Math.PI) : 0, snarl = 0.12 + hit * 0.55, head = joint(neck, [0, 0, 0], -0.4 - hit * 0.3);
+  const hit = P.atk != null ? Math.sin(Math.min(1, P.atk) * Math.PI) : 0, snarl = 0.12 + hit * 0.55, head = headJoint(neck, [0, 0, 0], -0.4 - hit * 0.3);
   head.add(sph(0.13, col, 'fur', [0.04, 0.02, 0], [1.1, 0.95, 0.9]));
   head.add(rbox(0.2, 0.09, 0.11, 0.03, col, 'fur', [0.2, -0.015, 0], [0, 0, -0.08])); head.add(sph(0.03, '#141010', 'skin', [0.3, -0.005, 0]));
   head.add(rbox(0.1, 0.03, 0.18, 0.01, DK(col, 0.2), 'fur', [0.1, 0.075, 0], [0, 0, -0.3])); // łuk brwiowy: groźne spojrzenie
@@ -183,7 +183,7 @@ function wolf(L, P = {}) {
 function bull(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#5a3a24';
   const q = quadBody(root, { col, len: 1.1, legH: 0.62, r: 0.33, chest: 1.3, hoofCol: '#1a140e' }, P);
-  const hit = q.hit, head = joint(q.neck, [0.02, -0.05, 0], -0.2 - hit * 0.6);
+  const hit = q.hit, head = headJoint(q.neck, [0.02, -0.05, 0], -0.2 - hit * 0.6);
   head.add(sph(0.2, col, 'fur', [0.12, 0, 0], [1.2, 1, 0.9])); head.add(sph(0.12, DK(col, 0.2), 'fur', [0.3, -0.08, 0], [1, 0.9, 1]));
   for (const z of [-1, 1]) { head.add(sph(0.02, '#140c06', 'skin', [0.28, 0.06, 0.1 * z])); head.add(tube([[0.1, 0.12, 0.12 * z], [0.12, 0.18, 0.28 * z], [0.24, 0.3, 0.32 * z]], 0.045, 0.01, L.horn || '#e8e0cc', 'horn')); head.add(cone(0.04, 0.1, col, 'fur', [0.02, 0.12, 0.16 * z], [0.8 * z, 0, 0], 6)); }
   if (!L.plain) for (let i = 0; i < 12; i++) q.body.add(sph(0.06, DK(col, 0.15), 'scale', [-q.len * 0.4 + (i % 6) * q.len * 0.16, q.r * 0.7, (i < 6 ? 1 : -1) * 0.08], [1.2, 0.6, 1])); // łuski gorgony
@@ -201,7 +201,7 @@ function aurochs(L, P = {}) {
   const q = quadBody(root, { col, len: 1.2, legH: 0.8, r: 0.29, hump: 0.4, chest: 1.25, rump: 0.88, bulk: 1.05, hoofCol: '#1a140e' }, P), hit = q.hit;
   for (let i = 0; i < 30; i++) { const x = 0.05 + (i % 10) * 0.07, z = (i % 2 ? 1 : -1) * (0.05 + (i % 3) * 0.1), yb = q.r * (0.95 - Math.abs(z) * 1.2) + (x > 0.3 ? 0.08 : 0); q.body.add(cone(0.035, 0.2 + (i % 3) * 0.06, i % 3 ? shag : DK(shag, 0.2), 'fur', [x, yb, z], [0.5 * Math.sign(z), 0, 2.4 + (i % 4) * 0.1], 5)); } // kudły na garbie i barkach
   for (let i = 0; i < 8; i++) q.body.add(cone(0.035, 0.24, shag, 'fur', [q.len * 0.42 + (i % 4) * 0.04, -q.r * 0.9, (i % 2 ? 1 : -1) * 0.06], [0, 0, Math.PI - 0.2], 5)); // kudły pod piersią
-  const head = joint(q.neck, [0.04, -0.06, 0], -0.25 - hit * 0.55);
+  const head = headJoint(q.neck, [0.04, -0.06, 0], -0.25 - hit * 0.55);
   head.add(rbox(0.3, 0.26, 0.26, 0.05, col, 'fur', [0.1, 0.02, 0])); head.add(rbox(0.22, 0.18, 0.2, 0.05, DK(col, 0.1), 'fur', [0.3, -0.07, 0], [0, 0, -0.35])); // czaszka, długi pysk
   head.add(rbox(0.1, 0.12, 0.2, 0.04, '#c8b8a0', 'fur', [0.4, -0.13, 0], [0, 0, -0.35])); head.add(rbox(0.05, 0.05, 0.14, 0.02, '#1a1210', 'skin', [0.45, -0.12, 0], [0, 0, -0.35])); // jasny pysk, nozdrza
   for (let i = 0; i < 6; i++) head.add(cone(0.035, 0.22, shag, 'fur', [0.18 + (i % 3) * 0.04, -0.14, (i % 2 ? 1 : -1) * 0.05], [0, 0, Math.PI + 0.3], 5)); // broda
@@ -236,7 +236,7 @@ function gorgon(L, P = {}) {
   }
   if (hv) for (let i = 0; i < 5; i++) for (const z of [-1, 1]) q.neck.add(slab([[0, 0.07], [0.07, 0.03], [0.05, -0.06], [-0.14, 0], [0.05, 0.06]], 0.02, i % 2 ? plate : LT(plate, 0.1), 'scale', [0.02 + i * 0.05, 0.14 - i * 0.02, 0.14 * z], [0.6 * z, 0, -0.4])); // łuski na karku
   for (let i = 0; i < (hv ? 9 : 7); i++) { const m = (hv ? 4 : 3); q.body.add(slab([[-0.08, 0], [0.08, 0], [-0.02, (0.14 - Math.abs(i - m) * 0.015) * (hv ? 2 : 1)]], 0.035, edge, 'iron', [q.len * (hv ? 0.45 : 0.4) - i * (hv ? 0.12 : 0.14), q.r * 0.96, 0], [0, 0, 0.35])); } // grzebień płyt na grzbiecie
-  const head = joint(q.neck, [0.06, -0.14, 0], -0.45 - hit * 0.3); // łeb nisko, jak u szarżującego byka
+  const head = headJoint(q.neck, [0.06, -0.14, 0], -0.45 - hit * 0.3); // łeb nisko, jak u szarżującego byka
   head.add(rbox(0.3, 0.24, 0.3, 0.04, col, 'skin', [0.1, 0, 0])); head.add(rbox(0.22, 0.16, 0.24, 0.04, DK(col, 0.08), 'skin', [0.3, -0.06, 0], [0, 0, -0.2]));
   head.add(rbox(0.06, 0.26, 0.3, 0.015, plate, 'iron', [0.2, 0.12, 0], [0, 0, -1.0])); head.add(rbox(0.05, 0.18, 0.22, 0.015, plate, 'iron', [0.36, 0.02, 0], [0, 0, -0.6])); // żelazny pancerz na czole i nosie
   for (const z of [-1, 1]) {
@@ -265,7 +265,7 @@ function griffin(L, P = {}) {
   if (L.barding) { const bd = mesh(new THREE.CylinderGeometry(q.r * 1.05, q.r * 1.12, q.len * 0.55, 20, 1, true, -Math.PI * 0.6, Math.PI * 1.2), L.barding, 'cloth', [-0.1, -0.02, 0], [0, 0, Math.PI / 2]); bd.material = bd.material.clone(); bd.material.side = THREE.DoubleSide; q.body.add(bd);
     if (L.trim) for (const x of [-0.1 + q.len * 0.27, -0.1 - q.len * 0.27]) q.body.add(torus(q.r * 1.1, 0.012, L.trim, 'gold', [x, -0.02, 0], [0, Math.PI / 2, 0], [1, 1, 0.95], Math.PI * 1.2)); } // czaprak gryfa cesarskiego
   q.neck.rotation.z = -0.4; q.neck.add(cap(0.12, 0.18, wh, 'feather', [0, 0.12, 0], null, [1, 1, 0.85]));
-  const head = joint(q.neck, [0.03, 0.28, 0], -0.3); head.add(sph(0.12, wh, 'feather', [0, 0, 0], [1.1, 1, 0.9]));
+  const head = headJoint(q.neck, [0.03, 0.28, 0], -0.3); head.add(sph(0.12, wh, 'feather', [0, 0, 0], [1.1, 1, 0.9]));
   head.add(tube([[0.1, 0.0, 0], [0.2, -0.02, 0], [0.26, -0.08, 0], [0.24, -0.13, 0]], 0.05, 0.008, '#e8b040', 'horn'));
   for (const z of [-1, 1]) { head.add(sph(0.02, '#e8a020', 'gem', [0.08, 0.04, 0.08 * z])); head.add(sph(0.01, '#140c06', 'skin', [0.095, 0.04, 0.085 * z])); head.add(cone(0.03, 0.1, wh, 'feather', [-0.08, 0.06, 0.06 * z], [0, 0, 1.2], 5)); }
   q.tail.add(tube([[0, 0, 0], [-0.2, -0.1, 0], [-0.35, -0.3, 0], [-0.4, -0.45, 0]], 0.04, 0.02, col, 'fur'), sph(0.06, DK(col, 0.3), 'fur', [-0.4, -0.47, 0]));
@@ -296,7 +296,7 @@ function birdBody(L, P, o) {
   const neck = eagle ? [[0, 0, 0], [0.06, 0.14, 0], [0.1, 0.26, 0]] : storm ? [[0, 0, 0], [0.08, 0.2, 0], [0.1, 0.4, 0]] : [[0, 0, 0], [0.12, 0.2, 0], [0.04, 0.42, 0], [0.16, 0.62, 0]];
   nk.add(tube(neck, eagle ? 0.11 : storm ? 0.09 : 0.07, eagle ? 0.085 : storm ? 0.07 : 0.045, hd, K)); const nt = neck[neck.length - 1];
   if (!fire) for (let i = 0; i < 9; i++) { const a = (i / 8 - 0.5) * 2.4; nk.add(slab(storm ? [[0, 0], [0.04, 0], [-0.03, 0.08], [0.0, 0.1], [-0.1, 0.2]] : [[0, 0], [0.04, 0], [-0.06, 0.16]], 0.012, i % 2 ? hd : DK(hd, 0.15), fK, [-0.02, nt[1] * 0.5 + Math.cos(a) * 0.02, Math.sin(a) * 0.09], [0, a * 0.4, 1.9 - nr])); } // kryza piór na karku
-  const head = joint(nk, [nt[0], nt[1] + 0.04, 0], -(pitch + nr) - 0.08 - hit * 0.25); head.scale.setScalar(eagle ? 1.35 : storm ? 1.25 : 1.0);
+  const head = headJoint(nk, [nt[0], nt[1] + 0.04, 0], -(pitch + nr) - 0.08 - hit * 0.25); head.scale.setScalar(eagle ? 1.35 : storm ? 1.25 : 1.0);
   head.add(rbox(0.21, 0.15, 0.15, 0.04, hd, K, [0, 0.01, 0])); head.add(rbox(0.12, 0.1, 0.13, 0.03, hd, K, [0.07, -0.03, 0]));
   const bk = o.beak || '#e0a030'; head.add(rbox(0.06, 0.06, 0.09, 0.015, LT(bk, 0.2), 'horn', [0.12, 0.0, 0])); // woskówka
   head.add(slab(eagle ? [[0, 0.035], [0.1, 0.04], [0.19, 0.01], [0.24, -0.05], [0.21, -0.11], [0.18, -0.05], [0.09, -0.02], [0, -0.025]]
@@ -368,7 +368,7 @@ function dragon(L, P = {}) {
   for (let i = 1; i < 4; i++) fin(q.neck, nk[i][0] - 0.06, nk[i][1] + 0.07, ser ? 0.3 : 0.2, dark, 0.3, 0.07); // kolce szyi
   if (L.mane) for (let i = 0; i < 9; i++) { const f = i / 8, k = Math.min(2, Math.floor(f * 3)), u = f * 3 - k, a = nk[k], b = nk[k + 1], x = a[0] + (b[0] - a[0]) * u, y = a[1] + (b[1] - a[1]) * u; // grzywa wzdłuż szyi
     for (const z of [-0.05, 0.05]) q.neck.add(slab([[0, 0], [0.07, 0.02], [0.03, 0.3 - f * 0.08], [-0.09, 0.2]], 0.016, i % 2 ? L.mane : LT(L.mane, 0.18), 'skin', [x - 0.1, y + 0.08, z], [z * 4, 0, 1.0 + f * 0.3])); }
-  const head = joint(q.neck, nk[3], (fly ? -0.05 : -0.35) - hit * 0.35 + wind * 0.35), hs = heavy ? 1.5 : fae ? 1.1 : 1.35;
+  const head = headJoint(q.neck, nk[3], (fly ? -0.05 : -0.35) - hit * 0.35 + wind * 0.35), hs = heavy ? 1.5 : fae ? 1.1 : 1.35;
   head.scale.setScalar(hs);
   head.add(rbox(0.26, 0.15, 0.2, 0.03, col, K, [0.02, 0.01, 0], [0, 0, 0.1])); // czaszka
   head.add(rbox(0.3, 0.09, 0.14, 0.025, col, K, [0.25, -0.02, 0], [0, 0, -0.08])); // pysk
@@ -531,7 +531,7 @@ function lizard(L, P = {}) {
   for (let i = 0; i < 8; i++) q.body.add(cone(0.04, 0.16, L.spikes || DK(col, 0.4), 'horn', [-0.55 + i * 0.16, q.r * 0.95, 0], [0, 0, 0.3], 5));
   if (L.sail) { const Sp = [[0.5, 0]]; for (let i = 0; i <= 8; i++) { const x = 0.45 - i * 0.13, h = 0.28 + Math.sin(i / 8 * Math.PI) * 0.34 + (i % 2) * 0.05; Sp.push([x, h]); } Sp.push([-0.62, 0]); q.body.add(slab(Sp, 0.014, L.sail, 'skin', [0, q.r * 0.85, 0]));
     for (let i = 0; i <= 8; i++) { const x = 0.45 - i * 0.13, h = 0.28 + Math.sin(i / 8 * Math.PI) * 0.34 + (i % 2) * 0.05; q.body.add(cyl(0.012, 0.006, h + 0.08, L.spikes || DK(L.sail, 0.35), 'horn', [x, q.r * 0.85 + (h + 0.08) / 2, 0])); } } // żagiel na grzbiecie
-  const hit = q.hit, head = joint(q.neck, [0.05, -0.02, 0], -0.1 - hit * 0.2);
+  const hit = q.hit, head = headJoint(q.neck, [0.05, -0.02, 0], -0.1 - hit * 0.2);
   head.add(sph(0.14, col, 'scale', [0.1, 0, 0], [1.5, 0.8, 1])); head.add(cap(0.06, 0.12, DK(col, 0.1), 'scale', [0.3, -0.03, 0], [0, 0, Math.PI / 2], [1, 1, 1.1]));
   for (const z of [-1, 1]) head.add(sph(0.03, L.eyes || '#f0e040', 'glow', [0.18, 0.06, 0.08 * z]));
   if (L.frill) { const F = []; for (let i = 0; i <= 9; i++) { const a = -1.4 + i / 9 * 2.8, r = 0.24 + (i % 2) * 0.08; F.push([Math.sin(a) * r, Math.cos(a) * r * 0.85]); } F.push([0, -0.05]); head.add(slab(F, 0.015, L.frill, 'skin', [0.0, 0.03, 0], [0, Math.PI / 2, 0], null, 0.2)); } // kryza
@@ -549,7 +549,7 @@ function insect(L, P = {}) {
   const root = new THREE.Group(), col = L.fur || '#3a7ac8', t = P.t || 0, hover = Math.sin(t * 5) * 0.04, A = P.atk, hit = A != null ? Math.sin(A * Math.PI) : 0;
   const body = joint(root, [0, 1.0 + hover, 0], -hit * 0.35), lt = !!L.longTail, dark = DK(col, 0.45), light = LT(col, 0.3), eye = L.eyes || '#a0f070';
   // głowa: oczy fasetkowe prawie stykające się na czubku, czoło, żuwaczki
-  const head = joint(body, [0.2, 0.02, 0], hit * 0.3); head.add(sph(0.085, col, 'scale', [0.02, -0.01, 0], [1, 0.95, 1.1]));
+  const head = headJoint(body, [0.2, 0.02, 0], hit * 0.3); head.add(sph(0.085, col, 'scale', [0.02, -0.01, 0], [1, 0.95, 1.1]));
   for (const z of [-1, 1]) { head.add(sph(0.095, eye, 'gem', [0.03, 0.04, 0.07 * z], [1, 1.05, 0.85])); head.add(sph(0.03, LT(eye, 0.45), 'glow', [0.08, 0.08, 0.09 * z])); }
   for (const z of [-1, 1]) { const jw = joint(head, [0.09, -0.06, 0.03 * z], 0); jw.rotation.y = (0.35 + hit * 0.4) * z; jw.add(slab([[0, 0.012], [0.07, 0.0], [0.09, -0.03], [0.05, -0.012], [0, -0.012]], 0.012, DK(col, 0.3), 'horn')); }
   // tułów: krępy, lekko pochylony, ciemne pasy po bokach

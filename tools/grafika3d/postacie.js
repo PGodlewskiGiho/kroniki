@@ -96,7 +96,7 @@ function humanoid(L, P = {}) {
     for (let i = 1; i < 5; i++) hips.add(spike(0.03, 0.09, DK(L.serpent, 0.4), 'horn', [pts[i][0] - 0.04, pts[i][1] + 0.14 - i * 0.02, pts[i][2]], [0, 0, 0.9]));
   }
   if (L.tail) { const tw = Math.sin(t * 3 + (walking ? ph : 0)) * 0.06, tip = [-0.82, 0.14 + tw, 0];
-    hips.add(tube([[-0.12, 0, 0], [-0.38, -0.22, 0], [-0.62, -0.12, 0.02], tip], 0.06 * B.leg, 0.018, L.tail, L.snout ? 'scale' : skinK));
+    const tk = L.tailK || 1; hips.add(tube([[-0.12, 0, 0], [-0.12 - 0.26 * tk, -0.22 * tk, 0], [-0.12 - 0.5 * tk, -0.12 * tk, 0.02], [-0.12 + (tip[0] + 0.12) * tk, tip[1] * tk, 0]], 0.06 * B.leg * (L.tailK ? 1.5 : 1), 0.018, L.tail, L.snout === 'lizard' ? 'scale' : skinK)); // tailK: krótszy, puszysty ogon (gnoll)
     if (L.horns && !L.snout) hips.add(slab([[0, 0.06], [0.1, 0], [0, -0.06], [0.03, 0]], 0.02, DK(L.tail, 0.3), 'horn', [tip[0] - 0.08, tip[1], 0], [0, 0, Math.PI])); } // grot na ogonie diabła
   // --- tułów ---
   const tl = B.torso, spine = joint(hips, [0, 0, 0], -lean), cz = 1.18 * B.chest;
@@ -165,7 +165,7 @@ function humanoid(L, P = {}) {
   const hulk = B === BUILDS.brute || B === BUILDS.colossus, col = B === BUILDS.colossus; // głowa nisko, wysunięta, osadzona w karku
   const neck = joint(spine, [0.03 + (hulk ? 0.04 : 0) + (col ? 0.06 : 0), 0.6 * tl - (hulk ? 0.05 : 0) - (col ? 0.06 : 0), 0]); neck.add(cyl(bony ? 0.03 : 0.065 * B.arm ** 0.6, bony ? 0.03 : 0.06, 0.12, skin, bony ? 'bone' : skinK, [0, 0.04, 0]));
   if (hulk && !bony) neck.add(rbox(0.2, 0.14 * (col ? 1.3 : 1), 0.36 * (col ? 1.4 : 1), 0.05, bare ? skin : cloth, bare ? skinK : 'cloth', [-0.06, -0.02, 0], [0, 0, -0.35])); // kark osiłka
-  const head = joint(neck, [0.02, 0.18, 0], lean * 0.6 - hurt * 0.2 + (flying ? 0.4 : 0)), hr = 0.14 * B.head * (L.headK || 1); // headK: większa głowa (dżin: krępy tułów z drobną głową ginął w turbanie)
+  const head = headJoint(neck, [0.02, 0.18, 0], lean * 0.6 - hurt * 0.2 + (flying ? 0.4 : 0)), hr = 0.14 * B.head * (L.headK || 1); // headK: większa głowa (dżin: krępy tułów z drobną głową ginął w turbanie)
   headOf(head, L, hr, skin, t, A);
   if (L.halo) head.add(torus(0.12, 0.014, L.halo, 'glow', [-0.02, hr + 0.12, 0], [Math.PI / 2 + 0.25, 0, 0]));
   // --- ręce i broń ---
@@ -218,6 +218,89 @@ function humanoid(L, P = {}) {
 }
 
 // Głowa: twarz (kanciasta żuchwa, łuki brwiowe), oczy, włosy, zarost, uszy, kły, pysk, rogi i nakrycie głowy
+// --- oczy ---------------------------------------------------------------------------------------------------------
+// Tęczówka malowana na płótnie (włókna, ciemny pierścień, plamki, źrenica okrągła albo pionowa szpara), mokra gałka z odblaskiem,
+// powieki górna i dolna obejmujące gałkę, linia rzęs. UV kuli: środek tekstury (0,5; 0,5) patrzy w +x.
+const EYE_TEX = {};
+function eyeTexture(iris, slit, glow) {
+  const key = iris + (slit ? 's' : 'r') + (glow ? 'g' : ''); if (EYE_TEX[key]) return EYE_TEX[key];
+  const W = 512, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), R = rng(key.length * 97 + iris.charCodeAt(2));
+  const ic = new THREE.Color(iris), hex = k => '#' + ic.clone().multiplyScalar(k).getHexString(), lt = k => '#' + ic.clone().lerp(new THREE.Color('#ffffff'), k).getHexString();
+  g.fillStyle = glow ? hex(0.35) : '#efe8dc'; g.fillRect(0, 0, W, H); // twardówka (u świecących oczu ciemna)
+  if (!glow) { const sg = g.createRadialGradient(W / 2, H / 2, 20, W / 2, H / 2, 200); sg.addColorStop(0, 'rgba(0,0,0,0)'); sg.addColorStop(1, 'rgba(170,90,80,.35)'); g.fillStyle = sg; g.fillRect(0, 0, W, H); // zaczerwienione kąciki
+    g.strokeStyle = 'rgba(170,40,40,.35)'; g.lineWidth = 1; for (let i = 0; i < 14; i++) { let x = W / 2 + (R() < 0.5 ? -1 : 1) * (60 + R() * 60), y = H / 2 + (R() - 0.5) * 120; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 4; k++) { x += (W / 2 - x) * 0.12 + (R() - 0.5) * 14; y += (R() - 0.5) * 14; g.lineTo(x, y); } g.stroke(); } } // żyłki
+  const cx = W / 2, cy = H / 2, r = 36;
+  const ig = g.createRadialGradient(cx, cy, 2, cx, cy, r); ig.addColorStop(0, glow ? lt(0.7) : lt(0.25)); ig.addColorStop(0.45, glow ? lt(0.3) : '#' + ic.getHexString()); ig.addColorStop(0.85, hex(glow ? 0.9 : 0.6)); ig.addColorStop(1, hex(0.25));
+  g.fillStyle = ig; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+  for (let i = 0; i < 90; i++) { const a = R() * Math.PI * 2, r0 = r * (0.3 + R() * 0.2), r1 = r * (0.75 + R() * 0.25); g.strokeStyle = R() < 0.5 ? 'rgba(255,255,255,.18)' : `rgba(0,0,0,${0.15 + R() * 0.15})`; g.lineWidth = 1 + R(); g.beginPath(); g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); g.lineTo(cx + Math.cos(a + (R() - 0.5) * 0.2) * r1, cy + Math.sin(a) * r1); g.stroke(); } // włókna
+  for (let i = 0; i < 6; i++) { const a = R() * Math.PI * 2, d = r * (0.45 + R() * 0.35); g.fillStyle = `rgba(${R() < 0.5 ? '90,60,20' : '255,240,200'},.25)`; g.beginPath(); g.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 2 + R() * 3, 0, Math.PI * 2); g.fill(); } // plamki
+  g.strokeStyle = 'rgba(10,6,4,.85)'; g.lineWidth = 4; g.beginPath(); g.arc(cx, cy, r - 1, 0, Math.PI * 2); g.stroke(); // ciemny pierścień na brzegu
+  g.fillStyle = '#060404'; g.beginPath(); if (slit) g.ellipse(cx, cy, 4, r * 0.85, 0, 0, Math.PI * 2); else g.arc(cx, cy, r * 0.36, 0, Math.PI * 2); g.fill(); // źrenica
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return (EYE_TEX[key] = t);
+}
+// Barwa tęczówki z wyglądu: zwykle brązowa; elfy i jasnowłosi zielone/niebieskie
+function irisFor(L) { if (L.snout === 'dog') return '#c8862a'; const h = (L.hair || L.longHair || '').toLowerCase(); return L.ears && !L.tusks ? '#4a8a5a' : h && new THREE.Color(h).getHSL({}).l > 0.5 ? '#4a7ab0' : '#6a4424'; }
+function eyeBall(head, q, er, o) {
+  const m = new THREE.MeshPhysicalMaterial({ map: eyeTexture(o.iris, o.slit, o.glow), roughness: 0.12, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05 });
+  if (o.glow) { m.emissive = new THREE.Color(o.iris); m.emissiveMap = m.map; m.emissiveIntensity = 1.4; }
+  const e = new THREE.Mesh(new THREE.SphereGeometry(er, 32, 20), m); e.position.set(...q); e.rotation.y = -o.z * 0.12; head.add(e); // gałka lekko zezuje do środka jak prawdziwe oczy
+  const lid = new THREE.Group(); lid.position.set(...q); lid.rotation.z = -0.18 - o.lid * 0.6; head.add(lid); // górna powieka z ciemnym brzegiem (linia rzęs)
+  lid.add(mesh(new THREE.SphereGeometry(er * 1.1, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.4), o.skin, o.skinK));
+  if (o.lash) lid.add(mesh(new THREE.TorusGeometry(er * 1.1 * Math.sin(Math.PI * 0.4), er * 0.06, 6, 24), '#1a1210', 'hair', [0, er * 1.1 * Math.cos(Math.PI * 0.4), 0], [Math.PI / 2, 0, 0]));
+  head.add(mesh(new THREE.SphereGeometry(er * 1.06, 20, 8, 0, Math.PI * 2, Math.PI * 0.72, Math.PI * 0.28), o.skin, o.skinK, q, [0, 0, 0.25])); // dolna powieka
+  const hl = sph(er * 0.12, '#ffffff', 'glow', [q[0] + er * 0.92, q[1] + er * 0.3, q[2] - o.z * er * 0.15], null, 8); head.add(hl); // odblask światła w oku
+}
+// --- głowa z jednej bryły -------------------------------------------------------------------------------------------
+const nrm3 = (x, y, z) => { const l = Math.hypot(x, y, z) || 1; return [x / l, y / l, z / l]; };
+// Proporcje twarzy z opisu wyglądu: człowiek, zwierzoczłek z pyskiem (gnoll: hiena, jaszczur), troglodyta (płaski gadzi łeb)
+function faceParams(L) {
+  const P = { jaw: 0.24, nose: 0.3, brow: 0.17, chin: 0.15, cheek: 0.13, muzzle: 0, muzzleY: -0.3, skullBack: 0.16, eyeY: 0.1, eyeZ: 0.34, eyeR: 0.13, lid: 0, forehead: 0, socket: 0.17, dark: 0, spots: 0 };
+  if (L.build === 'brute' || L.tusks) Object.assign(P, { jaw: 0.06, brow: 0.2, chin: 0.14, nose: 0.26, lid: 0.25 }); // ork, troll, ogr: masywna szczęka, ciężkie brwi
+  if (L.build === 'imp' || L.bigEars) Object.assign(P, { jaw: 0.42, nose: 0.3, chin: 0.05, eyeR: 0.19 });
+  if (L.snout === 'dog') Object.assign(P, { muzzle: 1.1, muzzleY: -0.22, muzzleW: 0.42, nose: 0, brow: 0.1, chin: 0, cheek: 0.14, jaw: 0.1, eyeY: 0.22, eyeZ: 0.42, eyeR: 0.13, forehead: -0.2, lid: 0.05, dark: 0.55, spots: 1 }); // hiena: długi pysk, płaskie czoło
+  if (L.snout === 'lizard') Object.assign(P, { muzzle: 0.8, muzzleY: -0.18, nose: 0, brow: 0.12, chin: 0, cheek: 0.02, jaw: 0.1, eyeY: 0.22, eyeZ: 0.48, eyeR: 0.16, forehead: -0.25, lid: 0 });
+  if (L.trog) Object.assign(P, { muzzle: 0.55, muzzleY: -0.3, muzzleW: 0.6, nose: 0, brow: 0.16, chin: 0, cheek: 0.12, jaw: -0.1, forehead: -0.35, skullBack: 0.4, wide: 0.35, socket: 0.05, dark: 0.3 }); // troglodyta: szeroka, płaska paszcza, bez oczu
+  return Object.assign(P, L.face || {});
+}
+// Odkształcenie kuli jednostkowej (przód: +x, góra: +y) w głowę; open: otwarcie paszczy (dolna szczęka obraca się w zawiasie)
+function headForm(P, open = 0) {
+  const g = (a, s) => Math.exp(-(a * a) / (2 * s * s));
+  const f = (x, y, z) => {
+    let X = x * 0.96, Y = y * 1.04, Z = z * (0.86 + (P.wide || 0) * Math.max(0, -y));
+    const fr = Math.pow(Math.max(0, x), 2.2);
+    if (y < 0) { const t = -y; Z *= 1 - P.jaw * t * t - 0.12 * Math.max(0, t - 0.6); X += 0.06 * t * Math.max(0, x); }
+    if (y > 0.55) X *= 1 - 0.12 * (y - 0.55); // ścięty czubek (mniej jajowata)
+    if (x < 0) X *= 1 + P.skullBack * -x * Math.max(0, y + 0.3);
+    if (P.forehead) X += P.forehead * fr * Math.max(0, y - 0.15) * 1.6; // czoło cofnięte (zwierzęta)
+    X += P.brow * fr * g(y - 0.27, 0.07) * (1 - 0.35 * Math.abs(z));
+    X -= P.socket * fr * g(y - P.eyeY, 0.085) * (g(z - P.eyeZ, 0.12) + g(z + P.eyeZ, 0.12)); // oczodoły
+    if (P.nose) { const ny = Math.min(1, Math.max(0, (0.2 - y) / 0.5)), cut = y > -0.32 ? 1 : g(y + 0.32, 0.04), top = y < 0.22 ? 1 : g(y - 0.22, 0.04);
+      X += P.nose * (0.25 + 0.6 * ny) * cut * top * g(z, 0.06 + 0.04 * ny) * fr; X += P.nose * 0.45 * fr * g(y + 0.25, 0.06) * g(z, 0.1); X += P.nose * 0.4 * fr * g(y + 0.3, 0.045) * (g(z - 0.11, 0.05) + g(z + 0.11, 0.05)); } // grzbiet nosa, zaokrąglony czubek, skrzydełka
+    X += P.cheek * fr * g(y + 0.02, 0.11) * (g(z - 0.5, 0.13) + g(z + 0.5, 0.13));
+    if (!P.muzzle) { X += 0.035 * fr * g(z, 0.2) * g(y + 0.5, 0.04); X -= 0.02 * fr * g(z, 0.18) * g(y + 0.56, 0.016); } // wargi, szpara ust
+    X += P.chin * fr * g(y + 0.82, 0.09) * g(z, 0.22);
+    if (P.muzzle) { // pysk: wysunięty klin, zwężony ku nosowi, płaski od spodu
+      const m = P.muzzle * g(y - P.muzzleY, 0.24) * g(z, P.muzzleW || 0.3) * Math.pow(Math.max(0, x), 1.4); X += m; Z *= 1 - 0.3 * Math.min(1, m / Math.max(0.01, P.muzzle));
+      if (open && y < P.muzzleY - 0.06 && x > 0.2) { const w = Math.min(1, (x - 0.2) * 2), a = -open * 0.55 * w, hx = 0.25, hy = (P.muzzleY - 0.06) * 1.1, dx = X - hx, dy = Y - hy; X = hx + dx * Math.cos(a) - dy * Math.sin(a); Y = hy + dx * Math.sin(a) + dy * Math.cos(a); }
+    }
+    return [X, Y, Z];
+  };
+  f.P = P; return f;
+}
+function faceGeo(F) {
+  let geo = new THREE.SphereGeometry(1, 56, 40); geo.deleteAttribute('normal'); geo.deleteAttribute('uv'); geo = THREE.mergeVertices(geo);
+  const p = geo.attributes.position, uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) { const q = F(p.getX(i), p.getY(i), p.getZ(i)); p.setXYZ(i, q[0], q[1], q[2]); uv[i * 2] = Math.atan2(q[2], q[0]) * 0.8; uv[i * 2 + 1] = q[1] * 1.2; }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.computeVertexNormals();
+  const P = F.P; if (P.dark || P.spots) { // ciemniejszy koniec pyska i cętki (hiena) jako kolory wierzchołków
+    const col = new Float32Array(p.count * 3), sp = [[0.1, 0.7, 0.5], [-0.4, 0.5, -0.6], [-0.7, 0.2, 0.4], [0.2, 0.5, -0.75], [-0.2, -0.3, 0.8], [-0.6, -0.4, -0.5], [0.4, 0.75, 0.1], [-0.9, 0.3, -0.1]];
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); let k = 1;
+      if (P.dark) k -= P.dark * Math.min(1, Math.max(0, (x - 0.9) / 0.45));
+      if (P.spots) for (const [a, b, c] of sp) { const d = Math.hypot(x - a, y - b, z - c); if (d < 0.26) k *= 0.45 + 0.55 * (d / 0.26) ** 2; }
+      col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = k ** 2.2; } // kolory wierzchołków są liniowe
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.userData.vc = true; }
+  return geo;
+}
 function headOf(head, L, hr, skin, t, A) {
   const bony = !!L.bony, eyeCol = L.eyes || '#2a1c10', glowEye = L.eyes && (bony || bright(L.eyes)), eK = glowEye ? 'glow' : 'skin', skinK = L.hide === true ? 'hide' : L.hide || 'skin';
   const open = A != null ? Math.sin(Math.min(1, A) * Math.PI) : 0;
@@ -231,26 +314,32 @@ function headOf(head, L, hr, skin, t, A) {
     for (const z of [-1, 1]) { head.add(sph(0.018, '#100808', 'skin', [hr * 1.55, -hr * 0.5, 0.035 * z])); head.add(sph(0.02, L.eyes || '#e03020', L.eyes ? 'glow' : 'skin', [hr * 0.7, hr * 0.25, 0.1 * z])); head.add(box(0.07, 0.022, 0.05, DK(skin, 0.4), 'fur', [hr * 0.65, hr * 0.38, 0.1 * z], [0, 0, -0.35])); head.add(cone(0.04, 0.12, skin, 'fur', [-0.02, hr * 0.3, hr * 0.95 * z], [0.9 * z, 0, 0.2], 6)); }
     head.add(torus(0.035, 0.008, '#e0c060', 'gold', [hr * 1.6, -hr * 0.8, 0], [0, Math.PI / 2, 0])); head.add(sph(hr * 0.7, DK(skin, 0.3), 'fur', [-0.02, hr * 0.5, 0], [1, 0.5, 1.2])); // kółko, grzywka
   } else {
-    head.add(sph(hr, skin, skinK, [0, 0, 0], [0.98, 1.08, 0.92])); // czaszka
-    head.add(rbox(hr * 0.95, hr * 0.62, hr * 1.2, 0.03, skin, skinK, [hr * 0.35, -hr * 0.52, 0], [0, 0, -0.18])); // kanciasta żuchwa
-    head.add(rbox(hr * 0.36, hr * 0.2, hr * 1.35, 0.02, DK(skin, 0.12), skinK, [hr * 0.78, hr * 0.28, 0], [0, 0, -0.3])); // łuki brwiowe
-    for (const z of [-1, 1]) head.add(sph(hr * 0.24, skin, skinK, [hr * 0.62, -hr * 0.12, hr * 0.5 * z], [0.8, 0.7, 1], 10)); // kości policzkowe
-    if (L.snout) { // pysk psa (gnoll), jaszczura
-      const lz = L.snout === 'lizard', len = lz ? 0.2 : 0.15;
-      head.add(rbox(len, 0.075, 0.1, 0.025, skin, lz ? 'scale' : 'fur', [hr + len * 0.4, -0.05, 0], [0, 0, -0.1])); head.add(sph(0.032, '#140c08', 'skin', [hr + len * 0.9, -0.03, 0], [1, 0.8, 1.2]));
-      const jw = joint(head, [hr * 0.6, -0.09, 0], -open * 0.5); jw.add(rbox(len * 0.95, 0.04, 0.085, 0.015, DK(skin, 0.15), lz ? 'scale' : 'fur', [len * 0.55, -0.01, 0]));
-      for (let k = 0; k < 3; k++) for (const z of [-0.035, 0.035]) head.add(spike(0.008, 0.035, '#f0ead8', 'horn', [hr + 0.02 + k * 0.045, -0.095, z], [Math.PI, 0, 0]));
-    } else head.add(cone(0.03, 0.08, skin, skinK, [hr * 0.98, -0.01, 0], [0, 0, -Math.PI / 2 + 0.3], 6)); // nos
-    if (L.cyclops) { head.add(sph(0.05, '#f0ece2', 'skin', [hr * 0.8, 0.03, 0])); head.add(sph(0.026, L.eyes || '#3a2a1a', eK, [hr * 0.9, 0.03, 0])); head.add(rbox(0.06, 0.03, 0.16, 0.01, DK(skin, 0.3), skinK, [hr * 0.84, 0.1, 0], [0, 0, -0.3])); }
-    else if (!L.blind) for (const z of [-0.055, 0.055]) { // oczy głęboko pod brwiami
-      head.add(sph(0.022, glowEye ? eyeCol : '#f0ece2', eK, [hr * 0.83, 0.02, z], [0.6, 0.65, 1], 10)); head.add(sph(0.012, glowEye ? LT(eyeCol, 0.5) : eyeCol, eK, [hr * 0.9, 0.02, z], null, 8));
-      head.add(box(0.03, 0.014, 0.06, L.hair || DK(skin, 0.5), 'hair', [hr * 0.86, 0.058, z], [0, 0, -0.2])); // brwi
+    // Głowa z jednej gładkiej bryły (headForm: kula odkształcona w czaszkę, oczodoły, łuki brwiowe, nos, kości policzkowe, usta,
+    // podbródek, a u zwierzoludzi pysk); dawniej zlepek kuli, prostopadłościanów i stożka (twarz jak drewniana maska)
+    const F = headForm(faceParams(L), open);
+    { const fg = faceGeo(F), fm = mesh(fg, skin, skinK, null, null, [hr, hr, hr]); if (fg.userData.vc) { fm.material = fm.material.clone(); fm.material.vertexColors = true; } head.add(fm); }
+    const at = (x, y, z, dx = 0) => { const q = F(...nrm3(x, y, z)); return [q[0] * hr + dx, q[1] * hr, q[2] * hr]; };
+    const fp = F.P;
+    if (L.snout || fp.muzzle) { // nos pyska (psi: czarny, wilgotny), zęby wzdłuż szczęki
+      if (L.snout === 'dog') head.add(sph(hr * 0.17, '#141010', 'horn', at(1, fp.muzzleY + 0.12, 0, -hr * 0.04), [0.9, 0.75, 1.15], 12));
+      else head.add(...[-1, 1].map(z => sph(hr * 0.04, '#141010', 'skin', at(1, fp.muzzleY + 0.1, 0.09 * z, -hr * 0.02))));
+      const n = L.snout ? 5 : 4; for (let k = 0; k < n; k++) for (const z of [-1, 1]) { const u = 0.55 + k * 0.1, q = at(u, fp.muzzleY - 0.05, (0.28 - k * 0.03) * z * (L.snout ? 0.7 : 1), -hr * 0.03); head.add(spike(hr * 0.045, hr * (k === 1 ? 0.22 : 0.13), '#f0ead8', 'horn', [q[0], q[1], q[2]], [Math.PI, 0, 0])); }
     }
-    head.add(box(0.012, 0.01, 0.05 + open * 0.02, DK(skin, 0.5), 'skin', [hr * 0.92, -0.075 - open * 0.015, 0])); // usta
+    if (L.cyclops) { const q = at(0.9, 0.16, 0, -hr * 0.12); head.add(sph(hr * 0.36, '#f0ece2', 'skin', q)); head.add(sph(hr * 0.19, L.eyes || '#3a2a1a', eK, [q[0] + hr * 0.24, q[1], q[2]])); }
+    else if (!L.blind) for (const z of [-1, 1]) { // gałki oczne osadzone w oczodołach, tęczówka, powieka
+      const q = at(0.84, fp.eyeY, fp.eyeZ * z, -hr * 0.035), er = hr * fp.eyeR * 1.12;
+      eyeBall(head, q, er, { iris: L.iris || (glowEye ? eyeCol : L.eyes || irisFor(L)), glow: glowEye, slit: L.slit || L.snout === 'lizard' || L.serpent || L.snakes || (glowEye && !!L.horns), skin, skinK, lid: fp.lid, z, lash: !fp.muzzle && !L.horns && !L.tusks });
+      if (!fp.muzzle || L.snout === 'lizard') { const b = [0.3, 0.6, 0.85].map(u => at(0.86 - u * 0.12, fp.eyeY + 0.17 - u * u * 0.04, z * (fp.eyeZ - 0.2 + u * 0.4), hr * 0.02)); head.add(tube(b, hr * 0.06, hr * 0.03, L.hair || DK(skin, 0.45), 'hair')); } // brew
+    }
+    if (!fp.muzzle) { const m = [-0.17, 0, 0.17].map(z => at(1, -0.52 + Math.abs(z) * 0.18, z, hr * 0.005)); head.add(tube(m, hr * 0.028, hr * 0.016, mixHex(DK(skin, 0.3), '#8a3a32', 0.45), 'skin')); } // usta
     if (L.grin) for (let k = -2; k <= 2; k++) head.add(spike(0.007, 0.022, '#f8f0e0', 'horn', [hr * 0.95, -0.07, k * 0.012], [Math.PI, 0, 0])); // szeroki uśmiech chochlika
-    const ears = L.bigEars ? 0.3 : L.ears ? 0.17 : 0;
-    if (ears) for (const z of [-1, 1]) head.add(slab([[0, -0.03], [0, 0.04], [-ears * 0.6, ears * 0.55], [-ears * 0.35, 0]], 0.012, skin, skinK, [-0.02, 0.05, hr * 0.85 * z], [0.9 * z, 0.3 * z, 0]));
-    else if (!L.snout) for (const z of [-1, 1]) head.add(sph(0.03, skin, skinK, [-0.01, 0, hr * 0.9 * z], [0.6, 1, 0.5], 10));
+    const ears = L.trog ? 0 : L.bigEars ? 0.3 : L.ears ? 0.17 : 0;
+    if (ears && L.snout === 'dog') for (const z of [-1, 1]) { const E = []; for (let i = 0; i <= 12; i++) { const a = i / 12 * Math.PI; E.push([Math.cos(a) * hr * 0.42, Math.sin(a) * hr * 0.75]); } // uszy hieny: duże, okrągłe, stojące
+      const q = at(-0.25, 0.75, 0.55 * z); head.add(slab(E, hr * 0.08, skin, skinK, [q[0], q[1] - hr * 0.1, q[2]], [0.25 * z, -0.5 * z, -0.15])); head.add(slab(E.map(([a, b]) => [a * 0.7, b * 0.75]), hr * 0.09, DK(skin, 0.45), skinK, [q[0] + hr * 0.02, q[1] - hr * 0.06, q[2] + hr * 0.01 * z], [0.25 * z, -0.5 * z, -0.15])); }
+    else if (ears) for (const z of [-1, 1]) head.add(slab([[0, -0.03], [0, 0.04], [-ears * 0.6, ears * 0.55], [-ears * 0.35, 0]], 0.012, skin, skinK, [-0.02, 0.05, hr * 0.85 * z], [0.9 * z, 0.3 * z, 0]));
+    else if (!L.snout && !L.trog) for (const z of [-1, 1]) { const q = at(-0.05, 0.02, z, 0); head.add(sph(hr * 0.2, skin, skinK, [q[0], q[1], q[2] + hr * 0.03 * z], [0.55, 1, 0.45], 10)); }
+    if (L.snout === 'dog') for (let i = 0; i < 7; i++) { const q = at(-0.2 - i * 0.12, 0.85 - i * 0.3, 0); head.add(spike(hr * 0.13, hr * (0.5 - i * 0.03), DK(skin, 0.5), 'fur', [q[0] - hr * 0.05, q[1], 0], [0, 0, 1.2 + i * 0.12])); } // grzywa hieny wzdłuż karku
+    if (L.trog) for (let i = 0; i < 6; i++) { const q = at(0.5 - i * 0.28, 0.98 - i * 0.07, 0); head.add(slab([[-hr * 0.22, 0], [hr * 0.1, 0], [-hr * 0.05, hr * (0.42 - Math.abs(i - 2) * 0.06)]], hr * 0.05, DK(skin, 0.25), skinK, [q[0], q[1] - hr * 0.05, 0], [0, 0, -0.2 - i * 0.3])); } // grzebień troglodyty
     if (L.tusks) for (const z of [-0.05, 0.05]) head.add(tube([[hr * 0.75, -0.09, z], [hr * 0.9, -0.05, z * 1.3], [hr * 0.95, 0.0, z * 1.1]], 0.016, 0.004, '#f0ead8', 'horn'));
     if (L.fangs) for (const z of [-0.025, 0.025]) head.add(spike(0.008, 0.04, '#ffffff', 'horn', [hr * 0.93, -0.095, z], [Math.PI, 0, 0]));
     if (L.beard) { const fork = L.beard === 'goatee'; head.add(sph(fork ? 0.05 : 0.095, L.beardCol || L.beard, 'hair', [0.08, fork ? -0.14 : -0.1, 0], fork ? [0.7, 1.9, 0.6] : [0.9, 1.25, 1.15])); if (fork) head.add(spike(0.03, 0.1, L.beardCol || '#1a1010', 'hair', [0.09, -0.24, 0], [Math.PI, 0, -0.3])); }
@@ -258,7 +347,7 @@ function headOf(head, L, hr, skin, t, A) {
   }
   const hm = L.helm, hc = L.helmCol || L.metal || '#b8c0cc';
   const hairTop = !hm || hm === 'crown' || hm === 'cap' || hm === 'circlet';
-  if ((L.hair || L.longHair) && hairTop && !bony && L.snout !== 'bull') head.add(sph(hr * 1.05, L.hair || L.longHair, 'hair', [-0.03, 0.035, 0], [1, 0.9, 1.02]));
+  if ((L.hair || L.longHair) && hairTop && !bony && L.snout !== 'bull') { head.add(mesh(new THREE.SphereGeometry(hr * 1.08, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), L.hair || L.longHair, 'hair', [-hr * 0.12, hr * 0.12, 0], [0, 0, 0.42], [1.02, 1, 0.92])); head.add(sph(hr * 0.98, L.hair || L.longHair, 'hair', [-hr * 0.3, -hr * 0.02, 0], [0.8, 1, 0.92])); } // włosy: czapa odsłania czoło, z tyłu potylica
   if (L.longHair && !bony) head.add(cap(0.1, 0.3, L.longHair, 'hair', [-0.1, -0.12, 0], [0, 0, -0.2], [0.7, 1, 1.3]));
   if (L.topknot) head.add(tube([[-0.02, hr * 0.95, 0], [-0.08, hr + 0.1, 0], [-0.22, hr + 0.02, 0], [-0.3, hr - 0.15, 0]], 0.04, 0.02, L.topknot, 'hair'));
   if (L.mohawk) for (let i = 0; i < 5; i++) head.add(spike(0.02, 0.1 - Math.abs(i - 2) * 0.01, L.mohawk, 'hair', [0.08 - i * 0.05, hr * 0.95, 0], [0, 0, 0.3 + i * 0.25]));
@@ -461,7 +550,7 @@ function golem(L, P = {}) {
   if (L.core) { spine.add(mesh(new THREE.OctahedronGeometry(0.09), L.core, 'glow', [0.25, 0.32, 0], [0, 0, 0], [0.6, 1.1, 1])); spine.add(torus(0.11, 0.022, LT(col, 0.25), K, [0.24, 0.32, 0], [0, Math.PI / 2, 0])); } // świecący rdzeń w piersi
   if (L.crystals) for (const z of [-1, 1]) for (let i = 0; i < 3; i++) spine.add(mesh(new THREE.OctahedronGeometry(0.12), L.crystals, 'gem', [-0.06 + i * 0.07, 0.8 + (i === 1 ? 0.08 : 0), 0.3 * z], [0.35 * z, i, (0.3 - i * 0.2) * z], [0.5, 2.8 - i * 0.5, 0.5])); // wysokie kryształy na barkach
   if (G === 'diamond') for (let i = 0; i < 5; i++) spine.add(mesh(new THREE.OctahedronGeometry(0.1), LT(col, 0.3), 'gem', [-0.1 + (i % 2) * 0.1, 0.55 + (i % 3) * 0.05, -0.2 + i * 0.1], [i, i * 2, 0], [0.6, 1.8, 0.6])); // kryształy na barkach
-  const head = joint(spine, [0.12, 0.62, 0], -0.2); head.add(part(0.2, 0.18, 0.2, [0.02, 0.06, 0]));
+  const head = headJoint(spine, [0.12, 0.62, 0], -0.2); head.add(part(0.2, 0.18, 0.2, [0.02, 0.06, 0]));
   if (L.crystals) head.add(mesh(new THREE.OctahedronGeometry(0.08), L.crystals, 'gem', [-0.02, 0.24, 0], [0, 0.5, 0.2], [0.5, 1.9, 0.5])); // kryształowy grzebień
   head.add(box(0.03, 0.022, 0.13, '#0a0a0c', 'stone', [0.12, 0.08, 0])); for (const z of [-0.04, 0.04]) head.add(sph(0.02, glow, 'glow', [0.125, 0.08, z], [0.5, 0.7, 1.4]));
   for (const side of [1, -1]) {

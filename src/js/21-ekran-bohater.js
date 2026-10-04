@@ -24,7 +24,7 @@ function drawSpecBox(ctx, h) {
   if (PIXEL_ART) { ctx.fillStyle = 'rgba(90,55,20,.14)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill(); ctx.strokeStyle = hot ? '#b8862a' : 'rgba(90,55,20,.5)'; ctx.lineWidth = hot ? 1.8 : 1; ctx.stroke(); }
   else { ctx.fillStyle = 'rgba(90,55,20,.14)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill(); slotBox(ctx, r.x + 6, r.y + 15, r.w - 12, 46, hot ? 'hover' : ''); }
   text(ctx, 'Specjalność', cx, r.y + 9, { size: 10, weight: 700, align: 'center', color: '#6a4418' });
-  if (sp.dw) { ctx.save(); rr(ctx, r.x + 7, r.y + 16, r.w - 14, 44, 3); ctx.clip(); drawCreatureIcon(ctx, specUnits(h)[0], cx, r.y + 58, PIXEL_ART ? 1.2 : 1.45); ctx.restore(); }
+  if (sp.dw) { ctx.save(); rr(ctx, r.x + 7, r.y + 16, r.w - 14, 44, 3); ctx.clip(); if (!drawUnitPortrait(ctx, specUnits(h)[0], r.x + 7, r.y + 16, r.w - 14, 44)) drawCreatureIcon(ctx, specUnits(h)[0], cx, r.y + 58, PIXEL_ART ? 1.2 : 1.45); ctx.restore(); }
   else if (sp.res) resIcon(ctx, sp.res, cx, r.y + 38, PIXEL_ART ? 30 : 36);
   else if (sp.spell) drawSprite(ctx, spellSprite(sp.spell), cx, r.y + 38, PIXEL_ART ? 1.8 : 1.3);
   else if (!PIXEL_ART && sp.skill) skillIcon(ctx, sp.skill, cx, r.y + 38, 42); // umiejętność: ikona 3D
