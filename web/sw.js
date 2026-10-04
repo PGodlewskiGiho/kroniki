@@ -1,6 +1,6 @@
 // Kroniki Królestw jako aplikacja: gra działa bez internetu (poza grą online).
 // Najpierw sieć (zawsze najnowsza wersja), a bez sieci ostatnia zapisana kopia.
-const CACHE = 'kroniki-v1', FILES = ['./', 'manifest.webmanifest', 'ikona-192.png', 'ikona-512.png'];
+const CACHE = 'kroniki-v2', FILES = ['./', 'manifest.webmanifest', 'ikona-180.png', 'ikona-192.png', 'ikona-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
