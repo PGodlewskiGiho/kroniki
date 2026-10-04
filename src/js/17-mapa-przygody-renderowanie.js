@@ -460,8 +460,10 @@ function layoutAdventure() {
 }
 // Przybliżenie mapy (kółko myszy): ZOOM > 1 powiększa. viewW/viewH = ile pikseli świata mieści widok.
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5]; let ZOOM = 1; // największe przybliżenie 1,5×: obiekty 3D mają grafikę w tej skali (dalej byłyby rozmyte)
-// Gęstość malowania terenu: przy przybliżeniu teren maluje się gęściej (ostry przy każdym powiększeniu, nie rozciągnięty)
-const mapDensity = () => (PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * Math.max(1, ZOOM) * 4) / 4, PXD, 8));
+// Gęstość malowania terenu: jedna dla wszystkich przybliżeń (jak przy 1×). Przybliżanie i oddalanie tylko skaluje gotowe kawałki
+// (robi to karta graficzna, natychmiast), zamiast malować całą mapę od nowa przy każdym kroku; przy 1,25–1,5× teren jest
+// minimalnie miękki, ale nic się nie doczytuje, a pamięć zostaje jak przy 1×
+const mapDensity = () => (PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * 4) / 4, PXD, 8));
 const viewW = () => VIEW.w / ZOOM, viewH = () => VIEW.h / ZOOM;
 // Kamera w granicach oglądanego poziomu (st.view: 0 powierzchnia, 1 podziemia); bez podziemi cała mapa
 function camClamp(st) { const L = st.map.ln ? st.view || 0 : 0, o = levelOrigin(st.map, L) * T, m = levelSize(st.map) * T, w = viewW(), h = viewH();
