@@ -32,7 +32,7 @@ function drawSpecBox(ctx, h) {
   const nm = specName(h); text(ctx, nm, cx, r.y + 68, { size: nm.length > 11 ? 9 : 11, weight: 700, align: 'center', color: '#3a1e08' });
 }
 G.screens.hero = {
-  buttons: [], sel: null, bagPage: 0, armyRects: [], back: null,
+  buttons: [], sel: null, bagPage: 0, armyRects: [], back: null, paintedBack: 'zbrojownia', // tło: malowana zbrojownia
   hero() { return this.preview || G.state.heroes[this.heroId] || hero(G.state); },
   // p.preview: kandydat z tawerny (podgląd przed najęciem; p.hire = { townId, k }) — bez zmian w armii i ekwipunku
   enter(p) {
@@ -108,7 +108,8 @@ G.screens.hero = {
   },
   draw(ctx) {
     const st = G.state, h = this.hero(), col = ownerColor(st, h.owner);
-    stoneFill(ctx, 0, 0, W, H); drawParchment(ctx, 12, 12, 396, PIXEL_ART ? 548 : 576);
+    const HB = paintedBackLayer('zbrojownia', 0.55); if (HB) viewportDraw(ctx, c => drawLayer(c, HB, 0, 0)); else stoneFill(ctx, 0, 0, W, H);
+    drawParchment(ctx, 12, 12, 396, PIXEL_ART ? 548 : 576);
     if (PIXEL_ART) { ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(ctx, 416, 12, 372, 548, 4); ctx.fill(); ctx.strokeStyle = '#8a6d32'; ctx.lineWidth = 1.2; ctx.stroke(); } else drawStone(ctx, 416, 12, 372, 584);
     // nagłówek i doświadczenie
     drawHeroPortrait(ctx, 32, 32, h, col, 2);
@@ -145,7 +146,15 @@ G.screens.hero = {
     else text(ctx, this.preview ? `Kandydat z tawerny: podgląd przed najęciem (${HERO_COST} złota).` : 'Kliknij oddział, a potem miejsce, aby go przestawić lub połączyć.', 210, 480, { size: 12, italic: true, weight: 500, align: 'center', color: '#7a5a34' });
     // ekwipunek
     text(ctx, 'Ekwipunek', 602, 38, { size: 20, align: 'center', color: PIXEL_ART ? '#f0e4c0' : UI.goldHi, fam: 'title' }); if (!PIXEL_ART) divider(ctx, 470, 734, 56);
-    { const a = 'rgba(214,174,88,.09)'; circ(ctx, 599, 89, 26, a); ctx.fillStyle = a; rr(ctx, 560, 118, 78, 170, 20); ctx.fill(); ctx.fillRect(566, 280, 26, 70); ctx.fillRect(606, 280, 26, 70); } // sylwetka bohatera pod gniazdami
+    const MA = screenArt('manekin');
+    if (MA) drawLayer(ctx, Layers.get('heroMannequin', 352, 300, c => { // malowany stojak ze zbroją we wnęce pod gniazdami, u dołu gaśnie w panelu
+      const im = MA[0], k = 352 / im.naturalWidth; c.drawImage(im, 0, 0, im.naturalWidth, 300 / k, 0, 0, 352, 300);
+      c.fillStyle = 'rgba(10,7,4,.42)'; c.fillRect(0, 0, 352, 300);
+      c.globalCompositeOperation = 'destination-in'; const g = c.createLinearGradient(0, 0, 0, 300); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.12, '#000'); g.addColorStop(0.75, '#000'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.fillRect(0, 0, 352, 300); const h = c.createLinearGradient(0, 0, 352, 0); h.addColorStop(0, 'rgba(0,0,0,0)'); h.addColorStop(0.1, '#000'); h.addColorStop(0.9, '#000'); h.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = h; c.fillRect(0, 0, 352, 300);
+    }), 426, 60);
+    else { const a = 'rgba(214,174,88,.09)'; circ(ctx, 599, 89, 26, a); ctx.fillStyle = a; rr(ctx, 560, 118, 78, 170, 20); ctx.fill(); ctx.fillRect(566, 280, 26, 70); ctx.fillRect(606, 280, 26, 70); } // sylwetka bohatera pod gniazdami
     const hot = !G.modal ? this.equipAt(G.mouse.x, G.mouse.y) : null;
     for (const s of EQUIP_SLOTS) {
       const id = h.equip[s.id];

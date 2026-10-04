@@ -175,6 +175,8 @@ function render() {
 // Ekran może podać własne (screen.backdrop), np. bitwa przedłuża pole walki.
 function drawBackdrop(ctx) {
   if (G.screen.backdrop) { G.screen.backdrop(ctx); return; }
+  const P = paintedBackLayer(G.screen.paintedBack || 'sala', 0.55); // malowana sala zamkowa (gobeliny, pochodnie) zamiast kamienia
+  if (P) { drawLayer(ctx, P, 0, 0); drawLayer(ctx, Layers.get(`backframe_${VW}x${VH}`, VW, VH, c => goldFrame(c, OX, OY, W, H)), 0, 0); return; }
   drawLayer(ctx, Layers.get(`backdrop_${VW}x${VH}`, VW, VH, c => {
     stoneFill(c, 0, 0, VW, VH); c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, 0, VW, VH);
     goldFrame(c, OX, OY, W, H);
