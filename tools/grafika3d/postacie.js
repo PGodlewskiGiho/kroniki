@@ -96,7 +96,7 @@ function humanoid(L, P = {}) {
     for (let i = 1; i < 5; i++) hips.add(spike(0.03, 0.09, DK(L.serpent, 0.4), 'horn', [pts[i][0] - 0.04, pts[i][1] + 0.14 - i * 0.02, pts[i][2]], [0, 0, 0.9]));
   }
   if (L.tail) { const tw = Math.sin(t * 3 + (walking ? ph : 0)) * 0.06, tip = [-0.82, 0.14 + tw, 0];
-    hips.add(tube([[-0.12, 0, 0], [-0.38, -0.22, 0], [-0.62, -0.12, 0.02], tip], 0.06 * B.leg, 0.018, L.tail, L.snout ? 'scale' : skinK));
+    const tk = L.tailK || 1; hips.add(tube([[-0.12, 0, 0], [-0.12 - 0.26 * tk, -0.22 * tk, 0], [-0.12 - 0.5 * tk, -0.12 * tk, 0.02], [-0.12 + (tip[0] + 0.12) * tk, tip[1] * tk, 0]], 0.06 * B.leg * (L.tailK ? 1.5 : 1), 0.018, L.tail, L.snout === 'lizard' ? 'scale' : skinK)); // tailK: krótszy, puszysty ogon (gnoll)
     if (L.horns && !L.snout) hips.add(slab([[0, 0.06], [0.1, 0], [0, -0.06], [0.03, 0]], 0.02, DK(L.tail, 0.3), 'horn', [tip[0] - 0.08, tip[1], 0], [0, 0, Math.PI])); } // grot na ogonie diabła
   // --- tułów ---
   const tl = B.torso, spine = joint(hips, [0, 0, 0], -lean), cz = 1.18 * B.chest;
@@ -308,6 +308,7 @@ function headOf(head, L, hr, skin, t, A) {
       const q = at(-0.25, 0.75, 0.55 * z); head.add(slab(E, hr * 0.08, skin, skinK, [q[0], q[1] - hr * 0.1, q[2]], [0.25 * z, -0.5 * z, -0.15])); head.add(slab(E.map(([a, b]) => [a * 0.7, b * 0.75]), hr * 0.09, DK(skin, 0.45), skinK, [q[0] + hr * 0.02, q[1] - hr * 0.06, q[2] + hr * 0.01 * z], [0.25 * z, -0.5 * z, -0.15])); }
     else if (ears) for (const z of [-1, 1]) head.add(slab([[0, -0.03], [0, 0.04], [-ears * 0.6, ears * 0.55], [-ears * 0.35, 0]], 0.012, skin, skinK, [-0.02, 0.05, hr * 0.85 * z], [0.9 * z, 0.3 * z, 0]));
     else if (!L.snout && !L.trog) for (const z of [-1, 1]) { const q = at(-0.05, 0.02, z, 0); head.add(sph(hr * 0.2, skin, skinK, [q[0], q[1], q[2] + hr * 0.03 * z], [0.55, 1, 0.45], 10)); }
+    if (L.snout === 'dog') for (let i = 0; i < 7; i++) { const q = at(-0.2 - i * 0.12, 0.85 - i * 0.3, 0); head.add(spike(hr * 0.13, hr * (0.5 - i * 0.03), DK(skin, 0.5), 'fur', [q[0] - hr * 0.05, q[1], 0], [0, 0, 1.2 + i * 0.12])); } // grzywa hieny wzdłuż karku
     if (L.trog) for (let i = 0; i < 6; i++) { const q = at(0.5 - i * 0.28, 0.98 - i * 0.07, 0); head.add(slab([[-hr * 0.22, 0], [hr * 0.1, 0], [-hr * 0.05, hr * (0.42 - Math.abs(i - 2) * 0.06)]], hr * 0.05, DK(skin, 0.25), skinK, [q[0], q[1] - hr * 0.05, 0], [0, 0, -0.2 - i * 0.3])); } // grzebień troglodyty
     if (L.tusks) for (const z of [-0.05, 0.05]) head.add(tube([[hr * 0.75, -0.09, z], [hr * 0.9, -0.05, z * 1.3], [hr * 0.95, 0.0, z * 1.1]], 0.016, 0.004, '#f0ead8', 'horn'));
     if (L.fangs) for (const z of [-0.025, 0.025]) head.add(spike(0.008, 0.04, '#ffffff', 'horn', [hr * 0.93, -0.095, z], [Math.PI, 0, 0]));
