@@ -45,7 +45,8 @@ const PY = process.env.BLENDER_PY || '/home/user/bl/bin/python', TMP = path.join
     const list = job.frames.map((f, k) => { const g = path.join(dir, `${k}.glb`); fs.writeFileSync(g, Buffer.from(f.glb, 'base64')); return { glb: g, out: path.join(dir, `${k}.png`) }; });
     fs.writeFileSync(path.join(dir, 'job.json'), JSON.stringify({ w: job.W, h: job.H, k: KB, ax: job.AX, ay: job.AY, yaw: 0.38, pitch: 0.28, skin: job.skin, frames: list }));
     // 2) Blender renderuje wszystkie klatki jednostki w jednym uruchomieniu
-    execFileSync(PY, [path.join(__dirname, 'blender', 'klatki.py'), path.join(dir, 'job.json')], { stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, LD_LIBRARY_PATH: path.join(path.dirname(PY), '..', 'lib') } });
+    let ok = false; for (let a = 0; a < 2 && !ok; a++) try { execFileSync(PY, [path.join(__dirname, 'blender', 'klatki.py'), path.join(dir, 'job.json')], { stdio: ['ignore', 'ignore', 'ignore'], env: { ...process.env, LD_LIBRARY_PATH: path.join(path.dirname(PY), '..', 'lib') } }); ok = true; } catch (e) { /* Blender padł (np. SIGSEGV): drugie podejście */ }
+    if (!ok) { process.stdout.write(`[${id}: Blender padł, zostaje stary arkusz] `); fs.rmSync(dir, { recursive: true, force: true }); continue; }
     // 3) arkusz jak w wypal.js: klatki przycięte do zajętych pikseli, rzędy po pozach
     const pngs = list.map(f => 'data:image/png;base64,' + fs.readFileSync(f.out).toString('base64'));
     const r = await st.page.evaluate(async ([job, pngs]) => {
