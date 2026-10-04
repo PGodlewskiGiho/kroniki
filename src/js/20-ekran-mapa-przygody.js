@@ -78,7 +78,7 @@ function panelInfoText(st, scr) {
   if (scr.aiRun) { const p = scr.aiRun.who; return { text: (p ? `Tura przeciwnika: ${ownerName(st, p.id)} (${factionOf(p.faction).name})…` : 'Tura przeciwników…') + (scr.aiRun.skip || !aiMoves().step ? '' : ' Spacja: pomiń'), col: '#ffd970' }; }
   if (scr.flashMsg && G.time - scr.flashMsg.t < (scr.flashMsg.col ? 4 : 2.2)) return { text: scr.flashMsg.text, col: scr.flashMsg.col || '#ff9a7a' };
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, VIEW) && !G.modal) {
-    const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y); return { text: tileInfo(st, tx, ty), col: '#ecd9a8' };
+    const { tx, ty } = pickTile(st, G.mouse.x, G.mouse.y); return { text: tileInfo(st, tx, ty), col: '#ecd9a8' };
   }
   const h = hero(st);
   if (!h) return { text: 'Nie masz bohatera. Najmij nowego w tawernie któregoś z miast.', col: '#ff9a7a' };
@@ -274,7 +274,7 @@ G.screens.adventure = {
     const st = G.state;
     if (inRect(x, y, { x: INFOBOX.x, y: INFOBOX.y, w: INFOBOX.w, h: 32 })) { const W = weekInfo(st), M = monthInfo(st); const S = seasonOf(st); return `${S.name}: ${S.text}. Tydzień ${W.name}: ${W.text || 'spokojny tydzień, bez szczególnych skutków'}.${M.name ? ` Miesiąc ${M.name}: ${M.text}.` : ''} Co tydzień los wybiera nowy efekt, a co miesiąc zmienia się pora roku. Pogoda dziś: ${WEATHERS[weatherOf(st)]}.`; }
     if (inRect(x, y, VIEW)) {
-      const { tx, ty } = screenToTile(st, x, y), n = st.map.n;
+      const { tx, ty } = pickTile(st, x, y), n = st.map.n;
       if (tx < 0 || ty < 0 || tx >= n || ty >= n) return null;
       const i = ty * n + tx;
       if (!human(st).explored[i]) return 'Nieodkryty teren. Wyślij tam bohatera, żeby zobaczyć, co się kryje.';
@@ -490,7 +490,7 @@ G.screens.adventure = {
       if (r && r.hero) { if (r.hero === hero(st)) this.heroInfo(); else this.selectHero(r.hero); } else if (r && r.town) G.go('town', { townId: r.town.id });
       return;
     }
-    if (inRect(x, y, VIEW)) { const { tx, ty } = screenToTile(st, x, y); this.tileClick(tx, ty); }
+    if (inRect(x, y, VIEW)) { const { tx, ty } = pickTile(st, x, y); this.tileClick(tx, ty); }
   },
   draw(ctx) {
     const st = G.state; if (!st || !st.map) return;

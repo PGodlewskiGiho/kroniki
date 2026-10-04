@@ -164,7 +164,7 @@ test('kółko myszy przybliża i oddala mapę wokół kursora; pole pod kursorem
     s.draw(G.ctx); setZoom(st, 1); s.onKey('-'); const key = ZOOM; setZoom(st, 1);
     return { z1, z2, zMin, zMax, key, same: before.tx === after.tx && before.ty === after.ty };
   });
-  assert.deepEqual(r, { z1: 1.25, z2: 0.75, zMin: 0.5, zMax: 1.5, key: 0.75, same: true });
+  assert.deepEqual(r, { z1: 1.25, z2: 0.75, zMin: 0.5, zMax: 2, key: 0.75, same: true });
 });
 
 test('jednostki z modeli 3D: wbudowane arkusze dają klatki bitwy i mapy, odbicie dla drugiej strony, także machiny', async () => {
