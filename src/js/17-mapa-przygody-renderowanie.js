@@ -415,7 +415,9 @@ const MapRender = {
     idle(dl => {
       this.warming = false; if (!G.state || G.state.map !== this.map) return;
       const n = this.map.n, nC = Math.ceil(n / CHUNK), CP = CHUNK * T, cam = G.state.cam || { x: 0, y: 0 }, mx = (cam.x + viewW() / 2) / CP, my = (cam.y + viewH() / 2) / CP, todo = [];
-      for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!this.has(cx, cy) && !voidChunk(this.map, cx, cy)) todo.push([cx, cy, Math.hypot(cx + 0.5 - mx, cy + 0.5 - my)]);
+      // kolejność: od widoku, ale też od twoich bohaterów i miast (przeskok do innego bohatera trafia na gotowy teren)
+      const pts = [[mx, my, 0]]; try { const me = G.state.players[ME]; for (const h of G.state.heroes) if (h && h.owner === ME && h.x != null) pts.push([(h.x + 0.5) / CHUNK, (h.y + 0.5) / CHUNK, 0.6]); for (const t of G.state.towns) if (t.owner === ME) pts.push([(t.x + 0.5) / CHUNK, (t.y + 0.5) / CHUNK, 1.2]); void me; } catch (e) { /* stan bez graczy (podgląd) */ }
+      for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!this.has(cx, cy) && !voidChunk(this.map, cx, cy)) todo.push([cx, cy, Math.min(...pts.map(([px, py, w]) => Math.hypot(cx + 0.5 - px, cy + 0.5 - py) + w))]);
       const end = performance.now() + (dl && dl.timeRemaining ? Math.max(6, dl.timeRemaining() - 2) : 6);
       // obrazki obiektów mapy (od najbliższych): pierwsze narysowanie każdego kosztuje, np. przy oddaleniu – część każdej wolnej chwili
       if (this.sprIt !== false) { if (!this.sprIt) this.sprIt = mapSpriteJobs(G.state, mx * CHUNK, my * CHUNK); const e2 = todo.length ? performance.now() + Math.max(3, (end - performance.now()) * 0.4) : end; let r; do r = this.sprIt.next(); while (!r.done && performance.now() < e2); if (r.done) this.sprIt = false; }
@@ -458,8 +460,10 @@ function layoutAdventure() {
 }
 // Przybliżenie mapy (kółko myszy): ZOOM > 1 powiększa. viewW/viewH = ile pikseli świata mieści widok.
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5]; let ZOOM = 1; // największe przybliżenie 1,5×: obiekty 3D mają grafikę w tej skali (dalej byłyby rozmyte)
-// Gęstość malowania terenu: przy przybliżeniu teren maluje się gęściej (ostry przy każdym powiększeniu, nie rozciągnięty)
-const mapDensity = () => (PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * Math.max(1, ZOOM) * 4) / 4, PXD, 8));
+// Gęstość malowania terenu: jedna dla wszystkich przybliżeń (jak przy 1×). Przybliżanie i oddalanie tylko skaluje gotowe kawałki
+// (robi to karta graficzna, natychmiast), zamiast malować całą mapę od nowa przy każdym kroku; przy 1,25–1,5× teren jest
+// minimalnie miękki, ale nic się nie doczytuje, a pamięć zostaje jak przy 1×
+const mapDensity = () => (PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * 4) / 4, PXD, 8));
 const viewW = () => VIEW.w / ZOOM, viewH = () => VIEW.h / ZOOM;
 // Kamera w granicach oglądanego poziomu (st.view: 0 powierzchnia, 1 podziemia); bez podziemi cała mapa
 function camClamp(st) { const L = st.map.ln ? st.view || 0 : 0, o = levelOrigin(st.map, L) * T, m = levelSize(st.map) * T, w = viewW(), h = viewH();
@@ -556,8 +560,14 @@ function drawWorldPixel(b, st) {
   // kawałki terenu malują się w tle (MapRender.warm), nie w klatce: brakujący widoczny kawałek na chwilę zastępuje rysunek
   // w kolorach minimapy, a tło dorysowuje go w najbliższej wolnej chwili (najwyżej po ~0,1 s). Pierwsza klatka widoku maluje wszystko.
   MapRender.warm(st); const first = !MapRender.cache.size && !MapRender.alt; // po zmianie przybliżenia nie malujemy wszystkiego w jednej klatce: są stare kawałki
+  // Brakujące kawałki w widoku (skok kamery do innego bohatera, przewinięcie daleko): od środka widoku malujemy od razu, w tej klatce,
+  // ile zmieści się w ~20 ms (co najmniej jeden), zamiast czekać na wolne chwile tła – przy animowanej mapie bywa ich mało i teren
+  // doczytywał się kilka sekund. Reszta w następnych klatkach, a do tego czasu stary albo zastępczy rysunek.
+  { const t0 = performance.now(), mcx = (camX + VIEW.w / 2) / CP, mcy = (camY + VIEW.h / 2) / CP, miss = [];
+    for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) if (!MapRender.has(cx, cy)) miss.push([cx, cy, Math.hypot(cx + 0.5 - mcx, cy + 0.5 - mcy)]);
+    miss.sort((a, b) => a[2] - b[2]); for (const [cx, cy] of miss) { if (performance.now() - t0 > 20 && !first) break; MapRender.get(cx, cy, true); } }
   for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
-    const ch = MapRender.get(cx, cy, first), x = ox + cx * CP, y = oy + cy * CP;
+    const ch = MapRender.get(cx, cy, false), x = ox + cx * CP, y = oy + cy * CP;
     if (!ch) { const old = MapRender.stale(cx, cy); if (old) b.drawImage(old, x, y, CP, CP); else MapRender.placeholder(b, cx, cy, x, y); G.dirty = true; continue; }
     b.drawImage(ch, x, y, CP, CP); WaterFx.draw(b, ch, x, y, CP, cx * ch.width, cy * ch.width);
   }

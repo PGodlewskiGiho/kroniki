@@ -8,14 +8,14 @@
 'use strict';
 const path = require('path'), fs = require('fs');
 const { ROOT, CACHE, openStudio } = require('./wspolne');
-const AI = process.argv.includes('--do-ai'), PW = AI ? 256 : 112, PH = AI ? 292 : 128, YAW = 1.05, PITCH = 0.12; // portret w pikselach arkusza (gra rysuje go w połowie: ostry na gęstych ekranach); kamera z przodu-boku
+const BL = process.argv.includes('--blender'), AI = process.argv.includes('--do-ai'), PW = AI ? 256 : 112, PH = AI ? 292 : 128, YAW = 1.05, PITCH = 0.12; // portret w pikselach arkusza (gra rysuje go w połowie: ostry na gęstych ekranach); kamera z przodu-boku
 
 // Opis portretu dla AI: słowa z identyfikatora (blackDragon -> black dragon) i najważniejsze cechy wyglądu (kolory, hełm, broń)
 async function bake(ids) {
   const out = []; let st = null, n = 0;
   for (const id of ids) {
     if (!st || n++ % 20 === 0) { if (st) await st.browser.close(); st = await openStudio({ width: 300, height: 300 }); } // świeża przeglądarka co kilkanaście (pamięć karty programowej)
-    const r = await st.page.evaluate(([id, PW, PH, YAW0, PITCH, AI]) => {
+    const r = await st.page.evaluate(async ([id, PW, PH, YAW0, PITCH, AI, BL]) => {
       G3.raw = true; G3.soft = AI; const L = CREATURES[id].look, g = buildUnit(L, { t: 0 }); if (!g) return null;
       g.updateMatrixWorld(true); const box = new THREE.Box3().setFromObject(g), heads = [];
       g.traverse(o => { if (o.name === 'head') heads.push(o.getWorldPosition(new THREE.Vector3())); });
@@ -30,9 +30,10 @@ async function bake(ids) {
       const fx = machine ? (box.min.x + box.max.x) / 2 : hp.x, fy = machine ? (box.min.y + box.max.y) / 2 : hp.y, fz = machine ? (box.min.z + box.max.z) / 2 : hp.z;
       const px = fx * cy - fz * sy, py = -fx * sy * sp + fy * cp - fz * cy * sp; // punkt kadru na ekranie (kamera ortogonalna z yaw/pitch jak G3.render)
       const ax = PW / 2 - px * k + (machine ? 0 : -PW * 0.04), ay = (machine ? 0.5 : 0.34) * PH + py * k;
+      if (BL) { const u = new Uint8Array(await new THREE.GLTFExporter().parseAsync(g, { binary: true })); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return { glb: btoa(s), w: PW, h: PH, k, ax, ay, yaw: YAW, pitch: PITCH, skin: L.skin || '' }; } // portret w Blenderze
       const c = G3.render(g, PW, PH, k, ax, ay, { raw: true, yaw: YAW, pitch: PITCH });
       return c.toDataURL('image/png');
-    }, [id, PW, PH, YAW, PITCH, AI]);
+    }, [id, PW, PH, YAW, PITCH, AI, BL]);
     if (r) out.push([id, r]); process.stdout.write(r ? '.' : '-');
   }
   if (st) await st.browser.close();
@@ -46,6 +47,14 @@ async function bake(ids) {
   console.log(`Portrety ${ids.length} jednostek…`);
   const W = 3, parts = await Promise.all(Array.from({ length: W }, (_, k) => bake(ids.filter((_, i) => i % W === k))));
   const all = parts.flat().sort((a, b) => ids.indexOf(a[0]) - ids.indexOf(b[0]));
+  if (BL) { // --blender: wszystkie portrety w jednym uruchomieniu Blendera (blender/klatki.py), potem jak zwykle arkusz
+    const dir = path.join(CACHE, 'blender', '_portrety'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+    const frames = all.map(([id, r]) => { const glb = path.join(dir, id + '.glb'); fs.writeFileSync(glb, Buffer.from(r.glb, 'base64')); const { glb: _, ...cam } = r; return { glb, out: path.join(dir, id + '.png'), ...cam }; });
+    fs.writeFileSync(path.join(dir, 'job.json'), JSON.stringify({ ...frames[0], frames }));
+    const PY = process.env.BLENDER_PY || '/home/user/bl/bin/python';
+    require('child_process').execFileSync(PY, [path.join(__dirname, 'blender', 'klatki.py'), path.join(dir, 'job.json')], { stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, LD_LIBRARY_PATH: path.join(path.dirname(PY), '..', 'lib') } });
+    for (const a of all) a[1] = 'data:image/png;base64,' + fs.readFileSync(path.join(dir, a[0] + '.png')).toString('base64');
+  }
   if (AI) { // pojedyncze portrety i opisy dla AI (angielskie: nazwa z identyfikatora i cechy wyglądu)
     const dir = path.join(CACHE, 'portrety'); fs.mkdirSync(dir, { recursive: true }); for (const [id, url] of all) fs.writeFileSync(path.join(dir, id + '.png'), Buffer.from(url.split(',')[1], 'base64'));
     const { browser: b3, page: p3 } = await openStudio({ width: 200, height: 200 });
