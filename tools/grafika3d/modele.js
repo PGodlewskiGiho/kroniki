@@ -43,7 +43,8 @@ const G3 = {
     let probe = null; if (o.probe) { const ob = group.getObjectByName(o.probe); if (ob) { const v = ob.getWorldPosition(new THREE.Vector3()).project(c); probe = [(v.x + 1) / 2 * w, (1 - v.y) / 2 * h]; } } // punkt pomocniczy w pikselach klatki
     const edges = this.edgePass(w, h); this.scene.remove(group);
     const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high'; g.drawImage(mid, 0, 0, w, h);
-    inkLines(out, edges); if (o.raw || G3.raw) crisp(out); else pixelize(out, o.step || 8); /* raw: bez pikselizacji, wyostrzony */ disposeGroup(group); out._probe = probe; out._marks = marks; return out;
+    const soft = o.soft ?? G3.soft; // tryb łagodny: słabe kontury, delikatne wyostrzenie, miękka poświata światła (naturalniejsze, mniej „plastikowe”)
+    inkLines(out, edges, soft ? 0.45 : 1); if (o.raw || G3.raw) { if (soft) { crisp(out, 0.22, 0.5); softGlow(out); } else crisp(out); } else pixelize(out, o.step || 8); /* raw: bez pikselizacji, wyostrzony */ disposeGroup(group); out._probe = probe; out._marks = marks; return out;
   },
   edgePass(w, h) {
     const r = this.r, s = this.scene; r.setSize(w, h, false); r.toneMapping = THREE.NoToneMapping; r.outputColorSpace = THREE.LinearSRGBColorSpace; const env = s.environment; s.environment = null;
@@ -65,7 +66,7 @@ function disposeGroup(g) {
   g.traverse(m => { if (!m.isMesh) return; m.geometry.dispose(); if (!shared.has(m.material)) { if (m.material.map && !m.material.map._shared) m.material.map.dispose(); m.material.dispose(); } });
 }
 // Kontur wewnętrzny: skok głębi (linia po dalszej stronie) albo ostry załom powierzchni
-function inkLines(c, E) {
+function inkLines(c, E, K = 1) { // K: siła konturów (tryb łagodny: słabsze, tylko skoki głębi)
   const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data, N = E.n, D = E.d, mark = new Uint8Array(w * h);
   const nrm = k => [N[k * 4] / 127.5 - 1, N[k * 4 + 1] / 127.5 - 1, N[k * 4 + 2] / 127.5 - 1];
   for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
@@ -74,12 +75,18 @@ function inkLines(c, E) {
       if (dd > 3) { mark[k] = 1; break; }
       if (Math.abs(dd) <= 3 && a[0] * b[0] + a[1] * b[1] + a[2] * b[2] < 0.35 && dd >= 0) { mark[k] = 2; break; } }
   }
-  for (let k = 0; k < w * h; k++) if (mark[k]) { const i = k * 4, f = mark[k] === 1 ? 0.5 : 0.28; d[i] *= 1 - f; d[i + 1] *= 1 - f; d[i + 2] *= 1 - f * 0.8; }
+  for (let k = 0; k < w * h; k++) if (mark[k]) { const i = k * 4, f = (mark[k] === 1 ? 0.5 : K < 1 ? 0 : 0.28) * K; d[i] *= 1 - f; d[i + 1] *= 1 - f; d[i + 2] *= 1 - f * 0.8; }
   g.putImageData(img, 0, 0);
 }
 // Grafika bez pikselizacji, ale ostra (jak wyrenderowane sprite'y Heroes 3): wyostrzenie (maska wyostrzająca na kolorze),
 // twardsza krawędź sylwetki (alfa przez krzywą S) i cienki, wygładzony ciemny obrys na zewnątrz
-function crisp(c, amount = 0.7) {
+// Miękka poświata: rozmyta kopia jasnych partii dodana lekko (światło „rozlewa się” po krawędziach jak na malowanych sprite'ach)
+function softGlow(c, k = 0.18) {
+  const w = c.width, h = c.height, t = document.createElement('canvas'); t.width = w; t.height = h; const tg = t.getContext('2d');
+  tg.filter = `blur(${Math.max(1, Math.round(Math.min(w, h) / 90))}px) brightness(1.1)`; tg.drawImage(c, 0, 0);
+  const g = c.getContext('2d'); g.save(); g.globalCompositeOperation = 'source-atop'; g.globalAlpha = k; g.drawImage(t, 0, 0); g.globalCompositeOperation = 'soft-light'; g.globalAlpha = k * 1.5; g.drawImage(t, 0, 0); g.restore();
+}
+function crisp(c, amount = 0.7, rim = 0.85) { // rim: krycie zewnętrznego obrysu
   const g = c.getContext('2d', { willReadFrequently: true }), w = c.width, h = c.height, img = g.getImageData(0, 0, w, h), d = img.data, src = new Float32Array(d);
   const A = k => src[k * 4 + 3] / 255;
   for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
@@ -90,7 +97,7 @@ function crisp(c, amount = 0.7) {
   for (let k = 0; k < w * h; k++) { const i = k * 4, a = d[i + 3] / 255; if (a > 0 && a < 1) { const t = Math.min(1, Math.max(0, (a - 0.12) / 0.6)); d[i + 3] = Math.round(255 * t * t * (3 - 2 * t)); } }
   const al = Float32Array.from({ length: w * h }, (_, k) => d[k * 4 + 3] / 255);
   for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const k = y * w + x, i = k * 4, a = al[k]; if (a > 0.98) continue;
-    const m = Math.max(al[k - 1], al[k + 1], al[k - w], al[k + w], 0.7 * Math.max(al[k - w - 1], al[k - w + 1], al[k + w - 1], al[k + w + 1])), oa = m * 0.85; if (oa <= a) continue;
+    const m = Math.max(al[k - 1], al[k + 1], al[k - w], al[k + w], 0.7 * Math.max(al[k - w - 1], al[k - w + 1], al[k + w - 1], al[k + w + 1])), oa = m * rim; if (oa <= a) continue;
     const f = a / oa; d[i] = d[i] * f + 24 * (1 - f); d[i + 1] = d[i + 1] * f + 16 * (1 - f); d[i + 2] = d[i + 2] * f + 10 * (1 - f); d[i + 3] = Math.round(oa * 255); }
   g.putImageData(img, 0, 0); void A;
 }
