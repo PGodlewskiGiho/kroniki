@@ -972,9 +972,9 @@
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
  },
  "zbrojownia": {
-  "opis": "epic fantasy matte painting, castle armory interior, stone walls, racks of swords and spears, heraldic shields on wall, red banners, burning torches, wooden chest, warm torchlight",
+  "opis": "epic fantasy matte painting, castle armory interior, stone walls, wooden weapon racks full of steel swords, spears and battle axes, heraldic shields on wall, burning torches, wooden chest",
   "styl": "{opis}, heroes of might and magic art, highly detailed",
-  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate, candles, candlesticks, altar"
  },
  "manekin": {
   "opis": "fantasy painting, knight plate armor with helmet and red cape on wooden armor stand, dark stone alcove, warm torchlight, centered, dark background",

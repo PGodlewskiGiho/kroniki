@@ -26,8 +26,17 @@ def torch(img, d, x, y):
     glow(img, [(x, y - 14, 120, 170)], (255, 170, 80), 40)
 
 
-def sword(d, x, y, h, tilt=0):
-    d.line([(x, y), (x + tilt, y - h)], fill=(200, 204, 214), width=6); d.line([(x - 14, y - 16), (x + 14, y - 16)], fill=(150, 116, 50), width=6)
+def sword(d, x, y, h, tilt=0): # ostrzem w dół, rękojeść u góry (na stojaku)
+    d.polygon([(x - 5, y - h + 40), (x + 5, y - h + 40), (x + 3, y), (x, y + 10), (x - 3, y)], fill=(196, 200, 212))
+    d.rectangle([x - 18, y - h + 34, x + 18, y - h + 42], fill=(150, 116, 50)); d.rectangle([x - 3, y - h + 6, x + 3, y - h + 34], fill=(70, 44, 26)); d.ellipse([x - 6, y - h, x + 6, y - h + 10], fill=(170, 136, 60))
+
+
+def spear(d, x, y, h):
+    d.line([(x, y), (x, y - h)], fill=(90, 62, 36), width=5); d.polygon([(x - 8, y - h), (x, y - h - 34), (x + 8, y - h)], fill=(200, 204, 214))
+
+
+def axe(d, x, y, h):
+    d.line([(x, y), (x, y - h)], fill=(90, 62, 36), width=6); d.polygon([(x, y - h + 6), (x + 34, y - h - 14), (x + 40, y - h + 26), (x, y - h + 34)], fill=(190, 194, 204))
 
 
 def shield(d, x, y, r, col, rim=(180, 150, 70)):
@@ -39,9 +48,11 @@ def zbrojownia():
     img = Image.new('RGB', (W, H)); d = ImageDraw.Draw(img, 'RGBA'); stone_wall(d, 0, 0, W, 400)
     d.rectangle([0, 400, W, H], fill=(60, 46, 34))
     for i in range(0, W, 64): d.line([(i, 400), (i - 80, H)], fill=(44, 32, 24), width=3)
-    for x0 in (30, 800): # stojaki z bronią po bokach
-        d.rectangle([x0, 250, x0 + 190, 262], fill=(90, 60, 34)); d.rectangle([x0, 390, x0 + 190, 402], fill=(90, 60, 34))
-        for k in range(7): sword(d, x0 + 16 + k * 26, 392, 150 + R.randint(-10, 30), R.randint(-6, 6))
+    for x0 in (20, 790): # stojaki z bronią po bokach: miecze, włócznie i topory
+        d.rectangle([x0, 236, x0 + 214, 248], fill=(90, 60, 34)); d.rectangle([x0, 380, x0 + 214, 394], fill=(90, 60, 34))
+        d.rectangle([x0, 236, x0 + 10, 400], fill=(80, 52, 30)); d.rectangle([x0 + 204, 236, x0 + 214, 400], fill=(80, 52, 30))
+        for k in range(4): sword(d, x0 + 26 + k * 30, 380, 150)
+        spear(d, x0 + 150, 392, 260); axe(d, x0 + 178, 392, 190)
     for x, col in ((320, (150, 30, 34)), (512, (40, 60, 140)), (704, (150, 30, 34))): shield(d, x, 150, 46, col)
     for x in (410, 614): banner(d, x, 0, 230, (130, 26, 30))
     for x in (250, 774): torch(img, d, x, 220)
