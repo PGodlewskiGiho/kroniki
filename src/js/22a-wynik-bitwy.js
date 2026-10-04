@@ -71,7 +71,9 @@ function showBattleReport(st, res, R, onOk) {
       dimScreen(ctx, 0.45); drawParchment(ctx, x, y, w, h); const t = G.time - t0;
       goldText(ctx, R.title, W / 2, y + 34, 30);
       const px = x + 120, py = y + 60, pw = w - 240, ph = 150;
-      pixLayer('report', ctx, px, py, pw, ph, g => drawReportScene(g, px, py, pw, ph, R.kind, me, colOf(me), t, st)); // obraz jako pixel art
+      const RA = screenArt({ win: 'bitwa_wygrana', lose: 'bitwa_przegrana', fled: 'bitwa_odwrot' }[R.kind]); // malowany obraz wyniku (sztandar na wzgórzu, pobojowisko we mgle, nocny odwrót)
+      if (RA) { ctx.save(); ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip(); ctx.translate(px, py); drawPaintedArt(ctx, RA[0], RA[1], pw, ph); ctx.restore(); }
+      else pixLayer('report', ctx, px, py, pw, ph, g => drawReportScene(g, px, py, pw, ph, R.kind, me, colOf(me), t, st)); // obraz jako pixel art
       ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 3; ctx.strokeRect(px - 1.5, py - 1.5, pw + 3, ph + 3); ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1; ctx.strokeRect(px - 4, py - 4, pw + 8, ph + 8);
       portrait(ctx, me, x + 20, y + 64, 1, winnerMe); portrait(ctx, foe, x + w - 100, y + 64, -1, !winnerMe && R.kind !== 'fled');
       lines.forEach((l, i) => text(ctx, l, W / 2, y + 240 + i * 22, { size: 17, weight: 500, align: 'center', color: '#2a1606' }));
@@ -129,7 +131,7 @@ function drawReportScene(ctx, x, y, w, h, kind, me, col, t, st) {
 }
 
 // ==================== EKRAN KOŃCA GRY ====================================================
-// Tłem jest scena miasta gracza: przy zwycięstwie z fajerwerkami i złotym blaskiem, przy porażce szara, w dymie,
+// Tłem jest malowany obraz (zwycięstwo / porażka, tools/tla-ai/menu), a bez niego scena miasta gracza: przy zwycięstwie z fajerwerkami i złotym blaskiem, przy porażce szara, w dymie,
 // z żarem i krukami. Na niej napis, kronika królestwa (dni, miasta, bohaterowie, siła armii, wynik) i ranga jak w Heroes 3.
 const END_RANKS = [[0, 'Chłop'], [40, 'Goblin'], [80, 'Wilk'], [140, 'Ork'], [220, 'Gryf'], [330, 'Mantykora'], [480, 'Jednorożec'], [700, 'Archanioł'], [1000, 'Czarny smok']];
 const endRank = score => END_RANKS.filter(([s]) => score >= s).pop()[1];
@@ -146,18 +148,20 @@ function showGameEnd(st, r, msg, opts) {
   const win = r === 'win', R = mulberry32(77);
   const bursts = Array.from({ length: 7 }, (_, i) => ({ x: 120 + R() * 560, y: 70 + R() * 150, t: i * 0.45 + R() * 0.3, c: [col, '#ffd970', '#ffffff', '#6ac0ff', '#ff6a8a'][i % 5] }));
   G.modal = {
-    msg, buttons, locked: true, gameEnd: r,
+    msg, buttons, locked: true, gameEnd: r, box: { x: 0, y: 0, w: W, h: H }, // okno 800×600 skalowane do ekranu: na telefonie całe widoczne (bez przewijania)
     draw(ctx) {
       const t = G.time - t0; G.dirty = true;
-      ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(scene, 30 * SK, 20 * SK, 534 * SK, 400 * SK, 0, 0, W, H); ctx.restore(); // piksel sceny = 3 px ekranu (równe piksele)
-      if (win) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,120,${(0.08 + 0.04 * Math.sin(t)).toFixed(3)})`; ctx.fillRect(0, 0, W, H); ctx.restore(); } // ciepłe światło: gładkie (dithering dałby siatkę kropek)
+      const EA = screenArt(win ? 'zwyciestwo' : 'porazka'); // malowany obraz końca gry (rycerz w czerwonej pelerynie: triumf o świcie albo klęska przy płonącym zamku)
+      if (EA) viewportDraw(ctx, c => drawPaintedArt(c, EA[0], EA[1], VW, VH)); // obraz na całe okno (także poza polem okna 800×600)
+      else { ctx.save(); ctx.imageSmoothingEnabled = !PIXEL_ART; ctx.drawImage(scene, 30 * SK, 20 * SK, 534 * SK, 400 * SK, 0, 0, W, H); ctx.restore(); } // piksel sceny = 3 px ekranu (równe piksele)
+      if (win && !EA) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,200,120,${(0.08 + 0.04 * Math.sin(t)).toFixed(3)})`; ctx.fillRect(0, 0, W, H); ctx.restore(); } // ciepłe światło: gładkie (dithering dałby siatkę kropek)
       if (win) pixLayer('endFx', ctx, 0, 0, W, H, ctx => {
         ctx.save(); ctx.globalCompositeOperation = 'lighter';
         for (const B of bursts) { const u = ((t - B.t) % 3.2 + 3.2) % 3.2; if (u > 1.4) continue; const k = u / 1.4, rad = 20 + ease(k) * 70; // fajerwerki
           for (let i = 0; i < 26; i++) { const a = i / 26 * TAU, px = B.x + Math.cos(a) * rad, py = B.y + Math.sin(a) * rad + k * k * 30; ctx.fillStyle = B.c; ctx.globalAlpha = 1 - k; ctx.fillRect(px - 1.5, py - 1.5, 3, 3); } }
         ctx.restore(); ctx.globalAlpha = 1;
       }, { px: 3, add: true });
-      else {
+      else if (!EA) {
         ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = 0.85; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, H); ctx.restore();
         ctx.fillStyle = 'rgba(10,4,6,.45)'; ctx.fillRect(0, 0, W, H);
         pixLayer('endFx', ctx, 0, 0, W, H, ctx => {

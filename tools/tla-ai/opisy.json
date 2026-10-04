@@ -915,5 +915,60 @@
   "opis": "epic fantasy matte painting, knight seen from behind on a cliff edge, red cape, blue banner, huge glowing open book on stone pedestal beside him, spiral of golden magic light, vast green valley, shining river, white medieval castles with towers and red roofs on hills, sunset, golden clouds, god rays, dragon in the sky",
   "styl": "{opis}, heroes of might and magic art, highly detailed",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "ladowanie": {
+  "opis": "epic fantasy matte painting, medieval scriptorium in a stone tower at night, huge open ancient chronicle book on a wooden desk lit by candles, quill in inkwell, scrolls, old map on the wall, arched window with moon and stars, warm candlelight",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "zwyciestwo": {
+  "opis": "epic fantasy matte painting, triumphant knight in red cape seen from behind on castle battlements raising a shining sword at sunrise, cheering army with colorful banners below, white castle with blue flags, golden morning light, god rays",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "porazka": {
+  "opis": "epic fantasy matte painting, defeated knight in torn red cape kneeling on a dark hill beside his sword stuck in the ground, fallen blue banner, burning ruined castle in the distance, smoke, embers, ravens, blood red dusk sky",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "nowagra": {
+  "opis": "epic fantasy matte painting, medieval war council tent interior, large wooden table with a parchment campaign map and army figurines, candle, hanging blue and red banners, open tent entrance showing army camp at dawn, warm light",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "wczytaj": {
+  "opis": "epic fantasy matte painting, grand ancient library of chronicles, towering wooden bookshelves full of old books, wooden ladder, tall arched window with beams of light, reading desk with open book, dust in light",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "wyniki": {
+  "opis": "epic fantasy matte painting, majestic hall of fame in a castle, stone columns, red carpet leading to a golden throne, statues of heroes, hanging banners, golden light from high windows",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "tworcy": {
+  "opis": "epic fantasy matte painting, cozy medieval tavern interior at night, roaring stone fireplace, wooden tables with ale mugs, a lute on the table, lanterns, wooden beams, warm firelight",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "online": {
+  "opis": "epic fantasy matte painting, two castles on cliffs at night connected by a glowing magical bridge of light, starry sky, green aurora, magic portals, blue light",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "bitwa_wygrana": {
+  "opis": "epic fantasy matte painting, victorious army raising swords and spears on a green hill at sunset, red banner planted on the hilltop, golden sun rays, glory",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "bitwa_przegrana": {
+  "opis": "epic fantasy matte painting, misty battlefield after defeat at dusk, broken spears and shields on the ground, fallen red banner in the mud, crows flying in grey sky",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "bitwa_odwrot": {
+  "opis": "epic fantasy matte painting, lone knight in red cape riding a horse away along a forest road at night, dark pine forest, full moon, moonlight, retreat",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
  }
 }

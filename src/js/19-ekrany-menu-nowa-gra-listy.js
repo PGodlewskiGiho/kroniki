@@ -119,8 +119,9 @@ const LOADING_TIPS = ['Prawy przycisk myszy pokazuje opis wszystkiego: potworów
   'Dyplomacja sprawia, że neutralne stwory chętniej dołączają do armii i biorą mniej złota.', 'W każdym tygodniu astrologowie ogłaszają coś nowego: zaglądaj do Kroniki tygodnia.',
   'Ściana ognia płonie kilka rund: postaw ją na drodze wrogiej piechoty.', 'Taktyka daje twoim oddziałom przewagę w dwóch pierwszych rundach bitwy.'];
 function drawLoadingScreen(ctx) {
-  const { done, total } = artProgress(), f = total ? done / total : 1, t = G.time; G.dirty = true;
-  viewportDraw(ctx, c => { const g = c.createRadialGradient(VW / 2, VH * 0.55, 0, VW / 2, VH * 0.55, Math.max(VW, VH) * 0.75); g.addColorStop(0, '#3a2a1a'); g.addColorStop(0.6, '#1a120b'); g.addColorStop(1, '#070504'); c.fillStyle = g; c.fillRect(0, 0, VW, VH);
+  const { done, total } = artProgress(), f = total ? done / total : 1, t = G.time, LA = screenArt('ladowanie'); G.dirty = true;
+  if (LA) viewportDraw(ctx, c => { drawPaintedArt(c, LA[0], LA[1], VW, VH); c.fillStyle = 'rgba(8,5,3,.45)'; c.fillRect(0, 0, VW, VH); }); // skryptorium: księga kronik w blasku świec
+  else viewportDraw(ctx, c => { const g = c.createRadialGradient(VW / 2, VH * 0.55, 0, VW / 2, VH * 0.55, Math.max(VW, VH) * 0.75); g.addColorStop(0, '#3a2a1a'); g.addColorStop(0.6, '#1a120b'); g.addColorStop(1, '#070504'); c.fillStyle = g; c.fillRect(0, 0, VW, VH);
     for (let i = 0; i < 40; i++) { const x = (i * 197.3 + t * (8 + i % 5 * 3)) % VW, y = VH - ((i * 131.7 + t * (14 + i % 7 * 4)) % VH), a = 0.15 + 0.25 * Math.sin(t * 2 + i); c.fillStyle = `rgba(255,${170 + i % 4 * 15},90,${a})`; c.fillRect(x, y, 2, 2); } }); // iskry unoszące się jak nad ogniskiem
   goldText(ctx, 'KRONIKI KRÓLESTW', VW / 2, VH * 0.3, 48);
   text(ctx, 'Czas bohaterów', VW / 2, VH * 0.3 + 44, { size: 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });
@@ -133,27 +134,36 @@ function drawLoadingScreen(ctx) {
   ctx.font = font(15, 500, 'body'); const tip = LOADING_TIPS[Math.floor(t / 5) % LOADING_TIPS.length];
   wrapText(ctx, `Porada: ${tip}`, Math.min(560, VW - 40)).forEach((l, i) => text(ctx, l, VW / 2, by + bh + 66 + i * 20, { size: 15, weight: 500, italic: true, align: 'center', color: 'rgba(240,220,170,.8)' }));
 }
-// Obraz menu (tools/tla-ai/menu): Kronikarz na skalnej iglicy nad doliną królestw, obok otwarta księga kronik. Kadr wypełnia ekran
-// (punkt focus zostaje w kadrze: na wąskim ekranie bohater, na szerokim cała dolina), kamera powoli oddycha i płynie; z księgi
-// spiralą wznoszą się złote iskry, jej światło pulsuje, słońce lekko migocze. U góry przyciemnienie pod tytuł, winieta na brzegach.
-function drawMenuArt(c, im, A) {
-  const iw = im.naturalWidth, ih = im.naturalHeight, t = G.time, k = Math.max(VW / iw, VH / ih) * (1.025 + 0.015 * Math.sin(t * 0.045)), vw = VW / k, vh = VH / k;
+// Malowane obrazy (tools/tla-ai/menu): menu „Kronikarz”, ekran ładowania (skryptorium), koniec gry (zwycięstwo, porażka).
+// Kadr wypełnia prostokąt w×h (punkt focus zostaje w kadrze), kamera powoli oddycha i płynie; efekty z opisu obrazu (A):
+// book – pulsujące światło i spirala złotych iskier z księgi, sun – migoczące słońce, candles – drgające płomienie świec,
+// glint – błysk na ostrzu, fire – żarzący się pożar, embers – iskry unoszące się z dołu.
+function drawPaintedArt(c, im, A, w, h) {
+  const iw = im.naturalWidth, ih = im.naturalHeight, t = G.time, k = Math.max(w / iw, h / ih) * (1.025 + 0.015 * Math.sin(t * 0.045)), vw = w / k, vh = h / k;
   const fx = (A.focus || [0.42, 0.5])[0], cx = clamp(fx * iw + Math.sin(t * 0.027) * iw * 0.012, vw / 2, iw - vw / 2), cy = clamp(ih * 0.5 + Math.cos(t * 0.021) * ih * 0.012, vh / 2, ih - vh / 2);
-  c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, cx - vw / 2, cy - vh / 2, vw, vh, 0, 0, VW, VH);
+  c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(im, cx - vw / 2, cy - vh / 2, vw, vh, 0, 0, w, h);
   const P = ([x, y]) => [(x * iw - (cx - vw / 2)) * k, (y * ih - (cy - vh / 2)) * k], s = k * iw / 1024; c.globalCompositeOperation = 'lighter';
-  if (A.sun) { const [sx, sy] = P(A.sun), r = (90 + 8 * Math.sin(t * 0.9)) * s, g = c.createRadialGradient(sx, sy, 0, sx, sy, r); g.addColorStop(0, 'rgba(255,230,170,.22)'); g.addColorStop(1, 'rgba(255,200,120,0)'); c.fillStyle = g; c.fillRect(sx - r, sy - r, r * 2, r * 2); }
+  const halo = (x, y, r, col, a) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); };
+  if (A.sun) { const [sx, sy] = P(A.sun); halo(sx, sy, (90 + 8 * Math.sin(t * 0.9)) * s, '255,220,160', 0.22); }
   if (A.book) {
-    const [bx, by] = P(A.book), pulse = 0.75 + 0.25 * Math.sin(t * 1.6), r = 70 * s * (0.9 + 0.1 * pulse), g = c.createRadialGradient(bx, by, 0, bx, by, r);
-    g.addColorStop(0, `rgba(255,236,170,${0.5 * pulse})`); g.addColorStop(0.4, `rgba(255,190,90,${0.22 * pulse})`); g.addColorStop(1, 'rgba(255,160,60,0)'); c.fillStyle = g; c.fillRect(bx - r, by - r, r * 2, r * 2);
+    const [bx, by] = P(A.book), pulse = 0.75 + 0.25 * Math.sin(t * 1.6), sp = A.bookK || 1; halo(bx, by, 70 * s * sp * (0.9 + 0.1 * pulse), '255,214,140', 0.45 * pulse);
     for (let i = 0; i < 70; i++) { // iskry kronik: spirala w górę, coraz szersza i bledsza
-      const ph = (t * (0.08 + (i % 5) * 0.012) + i * 0.1371) % 1, a = ph * 9 + i * 2.39, rad = (6 + ph * 70) * s, x = bx + Math.cos(a) * rad, y = by - ph * 230 * s - (i % 3) * 4 * s, al = Math.sin(ph * Math.PI) * (0.55 + (i % 4) * 0.1), sz = (1.2 + (i % 3) * 0.7) * s;
+      const ph = (t * (0.08 + (i % 5) * 0.012) + i * 0.1371) % 1, a = ph * 9 + i * 2.39, rad = (6 + ph * 70) * s * sp, x = bx + Math.cos(a) * rad, y = by - ph * 230 * s * sp - (i % 3) * 4 * s, al = Math.sin(ph * Math.PI) * (0.55 + (i % 4) * 0.1), sz = (1.2 + (i % 3) * 0.7) * s;
       c.fillStyle = `rgba(255,${200 + (i % 4) * 12},${110 + (i % 3) * 40},${al})`; c.beginPath(); c.arc(x, y, sz, 0, TAU); c.fill(); }
   }
-  c.globalCompositeOperation = 'source-over';
-  const tg = c.createLinearGradient(0, 0, 0, VH * 0.32); tg.addColorStop(0, 'rgba(8,5,3,.6)'); tg.addColorStop(1, 'rgba(8,5,3,0)'); c.fillStyle = tg; c.fillRect(0, 0, VW, VH * 0.32);
-  const vg = c.createRadialGradient(VW * 0.45, VH * 0.55, Math.min(VW, VH) * 0.4, VW / 2, VH / 2, Math.max(VW, VH) * 0.8); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); c.fillStyle = vg; c.fillRect(0, 0, VW, VH);
+  for (const [i, pt] of (A.candles || []).entries()) { const [x, y] = P(pt), f = 0.7 + 0.3 * Math.sin(t * 9 + i * 2.1) * Math.sin(t * 5.3 + i); halo(x, y, 46 * s * (0.85 + 0.15 * f), '255,190,90', 0.35 * f); }
+  if (A.glint) { const [x, y] = P(A.glint), ph = (t * 0.35) % 1, a = ph < 0.15 ? Math.sin(ph / 0.15 * Math.PI) : 0; if (a > 0) { halo(x, y, 40 * s, '255,255,235', 0.9 * a); c.fillStyle = `rgba(255,255,240,${a})`; c.fillRect(x - 30 * s * a, y - 1, 60 * s * a, 2); c.fillRect(x - 1, y - 30 * s * a, 2, 60 * s * a); } }
+  if (A.fire) { const [x, y] = P(A.fire), f = 0.8 + 0.2 * Math.sin(t * 3.1) * Math.sin(t * 7.7); halo(x, y, 200 * s, '255,110,40', 0.22 * f); }
+  if (A.embers) for (let i = 0; i < 50; i++) { const ph = (t * (0.05 + (i % 7) * 0.01) + i * 0.173) % 1, x = ((i * 0.6180339) % 1) * w + Math.sin(t * 0.8 + i) * 12 * s, y = h * (1.02 - ph * 1.1); c.fillStyle = `rgba(255,${120 + (i % 4) * 30},40,${(1 - ph) * 0.8})`; c.fillRect(x, y, 2 * s, 2 * s); }
   c.restore(); G.dirty = true;
 }
+function drawMenuArt(c, im, A) {
+  drawPaintedArt(c, im, A, VW, VH);
+  const tg = c.createLinearGradient(0, 0, 0, VH * 0.32); tg.addColorStop(0, 'rgba(8,5,3,.6)'); tg.addColorStop(1, 'rgba(8,5,3,0)'); c.fillStyle = tg; c.fillRect(0, 0, VW, VH * 0.32);
+  const vg = c.createRadialGradient(VW * 0.45, VH * 0.55, Math.min(VW, VH) * 0.4, VW / 2, VH / 2, Math.max(VW, VH) * 0.8); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); c.fillStyle = vg; c.fillRect(0, 0, VW, VH);
+}
+// Obraz z zestawu ekranów (SCREEN_ART: src/grafika/ekrany), gdy już się wczytał
+const screenArt = name => (!PIXEL_ART && typeof SCREEN_ART !== 'undefined' && SCREEN_ART && SCREEN_ART[name] && SCREEN_IMG[name] && SCREEN_IMG[name]._ok ? [SCREEN_IMG[name], SCREEN_ART[name]] : null);
 function drawMenuScene(ctx) {
   if (!PIXEL_ART && typeof MENU_ART !== 'undefined' && MENU_ART && MENU_IMG.menu && MENU_IMG.menu._ok) return viewportDraw(ctx, c => drawMenuArt(c, MENU_IMG.menu, MENU_ART));
   if (!PIXEL_ART && typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART && TOWN_BUILD_ART[MENU_FAC] && !townScene3D(MENU_FAC)) return viewportDraw(ctx, c => { // grafika 3D miasta jeszcze się wczytuje: ciemne tło (nie zapamiętujemy zastępczej sceny 2D)
@@ -193,7 +203,12 @@ function paintMenuScene(pb) {
     b.fillStyle = `rgba(255,214,130,${a.toFixed(3)})`; b.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, 2, 2);
   }
 }
-function dimmedMenuScene(ctx, a) { drawMenuScene(ctx); dimScreen(ctx, a); }
+// Ekrany menu (nowa gra, zasady, wczytywanie, wyniki, twórcy, gra online) mają własne malowane obrazy; bez nich scena menu
+const SCREEN_PAINT = { setup: 'nowagra', rules: 'nowagra', load: 'wczytaj', scores: 'wyniki', credits: 'tworcy', online: 'online' };
+function dimmedMenuScene(ctx, a) {
+  const A = screenArt(SCREEN_PAINT[G.screenName]);
+  if (A) { viewportDraw(ctx, c => drawPaintedArt(c, A[0], A[1], VW, VH)); dimScreen(ctx, a * 0.75); } else { drawMenuScene(ctx); dimScreen(ctx, a); }
+}
 function askQuit() {
   showDialog('Czy na pewno chcesz opuścić grę?', [{ label: 'Tak', key: 'enter', action: () => (window.KronikiApp && KronikiApp.exit ? KronikiApp.exit() : G.go('bye')) }, { label: 'Nie', key: 'escape' }]);
 }
