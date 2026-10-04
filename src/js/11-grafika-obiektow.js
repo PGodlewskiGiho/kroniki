@@ -874,7 +874,7 @@ function drawArmyRow(ctx, army, x, y, o = {}) {
     if (PIXEL_ART) { ctx.fillStyle = o.light ? 'rgba(90,55,20,.14)' : 'rgba(0,0,0,.35)'; rr(ctx, sx, y, w, h, 3); ctx.fill(); ctx.strokeStyle = sel ? '#ffd970' : (o.light ? 'rgba(90,55,20,.45)' : '#6a5a3a'); ctx.lineWidth = sel ? 2.4 : 1; ctx.stroke(); }
     else slotBox(ctx, sx, y, w, h, sel ? 'sel' : '');
     if (!s) return;
-    ctx.save(); rr(ctx, sx + 1, y + 1, w - 2, h - 2, 3); ctx.clip(); drawCreatureIcon(ctx, s.cid, sx + w / 2, y + h - 7, !PIXEL_ART && h >= 50 ? 1.5 : 1); ctx.restore(); // gładko: ostra klatka bitewna
+    ctx.save(); rr(ctx, sx + 1, y + 1, w - 2, h - 2, 3); ctx.clip(); if (!drawUnitPortrait(ctx, s.cid, sx + 1, y + 1, w - 2, h - 2)) drawCreatureIcon(ctx, s.cid, sx + w / 2, y + h - 7, !PIXEL_ART && h >= 50 ? 1.5 : 1); ctx.restore(); // gładko: ostra klatka bitewna
     const n = String(s.n); ctx.save(); ctx.font = font(13, 700, PIXEL_ART ? 'body' : 'title'); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
     ctx.lineWidth = 3; ctx.strokeStyle = '#120a03'; ctx.strokeText(n, sx + w - 4, y + h - 4); ctx.fillStyle = '#f3e2b0'; ctx.fillText(n, sx + w - 4, y + h - 4); ctx.restore();
   });

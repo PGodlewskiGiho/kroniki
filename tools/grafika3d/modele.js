@@ -208,6 +208,7 @@ function leafClump(r, col, pos, v = 0, fl = null) {
 // --- bryły ---
 function mesh(geo, col, kind, pos, rot, scl, rep) { const m = new THREE.Mesh(geo, mat(col, kind, rep)); if (pos) m.position.set(...pos); if (rot) m.rotation.set(...rot); if (scl) m.scale.set(...scl); return m; }
 const joint = (parent, pos, rz = 0) => { const g = new THREE.Group(); if (pos) g.position.set(...pos); g.rotation.z = rz; parent.add(g); return g; };
+const headJoint = (parent, pos, rz = 0) => { const g = joint(parent, pos, rz); g.name = 'head'; return g; }; // głowa: punkt kadru portretu jednostki (wypal-ikony.js)
 const sph = (r, col, kind, pos, scl, seg = 20) => mesh(new THREE.SphereGeometry(r, seg, Math.round(seg * 0.7)), col, kind, pos, null, scl);
 const cap = (r, len, col, kind, pos, rot, scl) => mesh(new THREE.CapsuleGeometry(r, len, 6, 16), col, kind, pos, rot, scl);
 const cyl = (r0, r1, len, col, kind, pos, rot, scl, seg = 16) => mesh(new THREE.CylinderGeometry(r1, r0, len, seg), col, kind, pos, rot, scl);

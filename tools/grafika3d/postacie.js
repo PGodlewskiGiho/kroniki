@@ -165,7 +165,7 @@ function humanoid(L, P = {}) {
   const hulk = B === BUILDS.brute || B === BUILDS.colossus, col = B === BUILDS.colossus; // głowa nisko, wysunięta, osadzona w karku
   const neck = joint(spine, [0.03 + (hulk ? 0.04 : 0) + (col ? 0.06 : 0), 0.6 * tl - (hulk ? 0.05 : 0) - (col ? 0.06 : 0), 0]); neck.add(cyl(bony ? 0.03 : 0.065 * B.arm ** 0.6, bony ? 0.03 : 0.06, 0.12, skin, bony ? 'bone' : skinK, [0, 0.04, 0]));
   if (hulk && !bony) neck.add(rbox(0.2, 0.14 * (col ? 1.3 : 1), 0.36 * (col ? 1.4 : 1), 0.05, bare ? skin : cloth, bare ? skinK : 'cloth', [-0.06, -0.02, 0], [0, 0, -0.35])); // kark osiłka
-  const head = joint(neck, [0.02, 0.18, 0], lean * 0.6 - hurt * 0.2 + (flying ? 0.4 : 0)), hr = 0.14 * B.head * (L.headK || 1); // headK: większa głowa (dżin: krępy tułów z drobną głową ginął w turbanie)
+  const head = headJoint(neck, [0.02, 0.18, 0], lean * 0.6 - hurt * 0.2 + (flying ? 0.4 : 0)), hr = 0.14 * B.head * (L.headK || 1); // headK: większa głowa (dżin: krępy tułów z drobną głową ginął w turbanie)
   headOf(head, L, hr, skin, t, A);
   if (L.halo) head.add(torus(0.12, 0.014, L.halo, 'glow', [-0.02, hr + 0.12, 0], [Math.PI / 2 + 0.25, 0, 0]));
   // --- ręce i broń ---
@@ -461,7 +461,7 @@ function golem(L, P = {}) {
   if (L.core) { spine.add(mesh(new THREE.OctahedronGeometry(0.09), L.core, 'glow', [0.25, 0.32, 0], [0, 0, 0], [0.6, 1.1, 1])); spine.add(torus(0.11, 0.022, LT(col, 0.25), K, [0.24, 0.32, 0], [0, Math.PI / 2, 0])); } // świecący rdzeń w piersi
   if (L.crystals) for (const z of [-1, 1]) for (let i = 0; i < 3; i++) spine.add(mesh(new THREE.OctahedronGeometry(0.12), L.crystals, 'gem', [-0.06 + i * 0.07, 0.8 + (i === 1 ? 0.08 : 0), 0.3 * z], [0.35 * z, i, (0.3 - i * 0.2) * z], [0.5, 2.8 - i * 0.5, 0.5])); // wysokie kryształy na barkach
   if (G === 'diamond') for (let i = 0; i < 5; i++) spine.add(mesh(new THREE.OctahedronGeometry(0.1), LT(col, 0.3), 'gem', [-0.1 + (i % 2) * 0.1, 0.55 + (i % 3) * 0.05, -0.2 + i * 0.1], [i, i * 2, 0], [0.6, 1.8, 0.6])); // kryształy na barkach
-  const head = joint(spine, [0.12, 0.62, 0], -0.2); head.add(part(0.2, 0.18, 0.2, [0.02, 0.06, 0]));
+  const head = headJoint(spine, [0.12, 0.62, 0], -0.2); head.add(part(0.2, 0.18, 0.2, [0.02, 0.06, 0]));
   if (L.crystals) head.add(mesh(new THREE.OctahedronGeometry(0.08), L.crystals, 'gem', [-0.02, 0.24, 0], [0, 0.5, 0.2], [0.5, 1.9, 0.5])); // kryształowy grzebień
   head.add(box(0.03, 0.022, 0.13, '#0a0a0c', 'stone', [0.12, 0.08, 0])); for (const z of [-0.04, 0.04]) head.add(sph(0.02, glow, 'glow', [0.125, 0.08, z], [0.5, 0.7, 1.4]));
   for (const side of [1, -1]) {

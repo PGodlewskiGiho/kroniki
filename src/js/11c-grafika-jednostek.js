@@ -3,12 +3,13 @@
 // opis klatek i obrazek w kodzie 85-znakowym, zob. unpackBin). Klatka = [x, y, w, h, ax, ay] w arkuszu, (ax, ay) = stopy. Bitwa: 1 piksel arkusza = u px
 // logicznych (1,3), mapa: mu (1,8). Dla dir = -1 klatka jest odbita w poziomie. Jednostka bez arkusza (albo zanim obrazek
 // się wczyta) korzysta z dawnego rysunku wektorowego (battleSprite2D, creatureSprite2D).
-const MENU_IMG = {}, SCREEN_IMG = {}, SIEGE_IMG = {}, UNIT_IMG = {}, HERO_IMG = {}, PORTRAIT_IMG = {}, TOWN_IMG = {}, ARTIFACT_IMG = {}, SKILL_IMG = {}, UI_IMG = {}, SPELL_IMG = {}, MAP3D_IMG = {}, BATTLE_BG_IMG = {};
+const MENU_IMG = {}, SCREEN_IMG = {}, ICON_IMG = {}, SIEGE_IMG = {}, UNIT_IMG = {}, HERO_IMG = {}, PORTRAIT_IMG = {}, TOWN_IMG = {}, ARTIFACT_IMG = {}, SKILL_IMG = {}, UI_IMG = {}, SPELL_IMG = {}, MAP3D_IMG = {}, BATTLE_BG_IMG = {};
 function loadUnitArt() {
   if (typeof UNIT_ART === 'undefined') return;
   const load = (set, store) => { for (const [id, A] of Object.entries(set)) { const png = typeof A === 'string' ? A : A.png; if (store[id] || !png) continue; const im = new Image(); im.onload = () => { im._ok = true; G.dirty = true; }; im.src = binUrl(png, `image/${A.webp ? 'webp' : 'png'}`); store[id] = im; } };
   if (typeof MENU_ART !== 'undefined' && MENU_ART) load({ menu: MENU_ART }, MENU_IMG); // obraz menu najpierw: pierwszy ekran gry
-  if (typeof SCREEN_ART !== 'undefined' && SCREEN_ART) load(SCREEN_ART, SCREEN_IMG); // malowane ekrany: ładowanie, koniec gry
+  if (typeof SCREEN_ART !== 'undefined' && SCREEN_ART) load(SCREEN_ART, SCREEN_IMG);
+  if (typeof UNIT_ICON_ART !== 'undefined' && UNIT_ICON_ART) load({ sheet: UNIT_ICON_ART }, ICON_IMG); // portrety jednostek w okienkach armii // malowane ekrany: ładowanie, koniec gry
   load(UNIT_ART, UNIT_IMG); if (typeof HERO_ART !== 'undefined') load(HERO_ART, HERO_IMG); if (typeof HERO_PORTRAITS !== 'undefined') load(HERO_PORTRAITS, PORTRAIT_IMG); if (typeof TOWN_BUILD_ART !== 'undefined') load(TOWN_BUILD_ART, TOWN_IMG); if (typeof SIEGE_ART !== 'undefined') load(SIEGE_ART, SIEGE_IMG); if (typeof ARTIFACT_ART !== 'undefined' && ARTIFACT_ART) load({ sheet: ARTIFACT_ART }, ARTIFACT_IMG); if (typeof SKILL_ART !== 'undefined' && SKILL_ART) load({ sheet: SKILL_ART }, SKILL_IMG); if (typeof UI_ART !== 'undefined' && UI_ART) load({ sheet: UI_ART }, UI_IMG); if (typeof SPELL_ART !== 'undefined' && SPELL_ART) load({ sheet: SPELL_ART }, SPELL_IMG); if (typeof BATTLE_BG_ART !== 'undefined') load(BATTLE_BG_ART, BATTLE_BG_IMG);
   if (typeof TERRAIN_ART !== 'undefined' && TERRAIN_ART) for (const [k, b] of Object.entries(TERRAIN_ART)) { // tekstury terenu: po wczytaniu teren maluje się od nowa (MapRender.refresh: raz dla kilku tekstur)
     const im = new Image(); im.onload = () => { TERRAIN_TEX[k] = texData(im); if (typeof MapRender !== 'undefined') MapRender.refresh(); G.dirty = true; }; im.src = binUrl(b, 'image/webp'); }
@@ -68,6 +69,23 @@ function battleSprite(cid, dir, pose, i = 0) { const A = unitArt(cid); return A 
 // Mała figurka na mapie przygody (4 klatki spoczynku)
 function creatureSprite(cid, dir, i = 0) { const A = unitArt(cid); return A ? (PIXEL_ART || !A.raw ? artFrame(cid, 'map', i, dir, A.mu) : artFrame(cid, 'idle', i, dir, A.u * 0.48)) : creatureSprite2D(cid, dir, i); } // gładko: ostra klatka bitewna w skali mapy
 // Jednostka w oknach i panelach: k = powiększenie jak dla figurki mapy (k ≥ 1,4: klatka bitewna, ostrzejsza)
+// Portret jednostki w okienku armii (jak w Heroes 3): głowa i tułów modelu 3D (tools/grafika3d/wypal-ikony.js) na tle w barwach
+// frakcji: niebo u góry, ziemia u dołu, winieta. false, gdy portretu nie ma (pixel art, arkusz się wczytuje): wtedy cała postać.
+const ICON_BG = { haven: ['#a8c8ec', '#6a9a48'], sylvan: ['#b8d8a0', '#3e6a2a'], barrow: ['#8a8098', '#3a3440'], fortress: ['#a8b890', '#4a5a30'],
+  inferno: ['#e07a3a', '#4a1810'], academy: ['#d8e8f4', '#8aa0b8'], dungeon: ['#6a5a8a', '#241a30'], stronghold: ['#e8c080', '#8a5a2a'], '': ['#b8a888', '#5a4a34'] };
+function drawUnitPortrait(ctx, cid, x, y, w, h) {
+  if (PIXEL_ART || typeof UNIT_ICON_ART === 'undefined' || !UNIT_ICON_ART || !UNIT_ICON_ART.f[cid] || !ICON_IMG.sheet || !ICON_IMG.sheet._ok) return false;
+  const fac = (CREATURES[cid] && CREATURES[cid].faction) || '', bg = ICON_BG[fac] || ICON_BG[''], W0 = Math.round(w), H0 = Math.round(h);
+  drawLayer(ctx, Layers.get(`iconBg_${fac}_${W0}x${H0}`, W0, H0, c => {
+    const g = c.createLinearGradient(0, 0, 0, H0); g.addColorStop(0, bg[0]); g.addColorStop(0.62, LT(bg[0], 0.15)); g.addColorStop(0.63, bg[1]); g.addColorStop(1, DK(bg[1], 0.35));
+    c.fillStyle = g; c.fillRect(0, 0, W0, H0);
+    const v = c.createRadialGradient(W0 / 2, H0 * 0.4, Math.min(W0, H0) * 0.25, W0 / 2, H0 * 0.45, Math.max(W0, H0) * 0.75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
+    c.fillStyle = v; c.fillRect(0, 0, W0, H0);
+  }), x, y);
+  const [sx, sy, sw, sh] = UNIT_ICON_ART.f[cid], k = Math.max(w / sw, h / sh), dw = sw * k, dh = sh * k;
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(ICON_IMG.sheet, sx, sy, sw, sh, x + (w - dw) / 2, y, dw, dh); ctx.restore();
+  return true;
+}
 function drawCreatureIcon(ctx, cid, x, y, k = 1) {
   if (unitArt(cid) && k >= 1.4) drawSprite(ctx, battleSprite(cid, 1, 'idle', 0), x, y, k / 2);
   else drawSprite(ctx, creatureSprite(cid, 1), x, y, k);
