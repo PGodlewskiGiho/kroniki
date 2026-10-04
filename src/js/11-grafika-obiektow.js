@@ -1350,5 +1350,10 @@ function showSpellbook(h, mode, onPick) {
 
 // --- rysowanie obiektów w interfejsie (te same sprite'y co na mapie) ----------------------------
 // size = rozmiar ikony w px logicznych; 24 = dokładnie jak na mapie
-function resIcon(ctx, id, cx, cy, size = 24) { drawSprite(ctx, resSprite(id), cx, cy, size / 24); }
+// Ikona surowca w interfejsie: bryła 3D z arkusza interfejsu (tools/grafika3d/interfejs.js), a bez niej (pixel art, arkusz się wczytuje) rysunek z mapy
+function resIcon(ctx, id, cx, cy, size = 24) {
+  const k = 'res_' + id, s = size * 1.2;
+  if (!PIXEL_ART && uiArtReady() && UI_ART.f[k] && drawUiPiece(ctx, k, cx - s / 2, cy - s / 2, s, s)) return;
+  drawSprite(ctx, resSprite(id), cx, cy, size / 24);
+}
 

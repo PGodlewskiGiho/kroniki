@@ -64,9 +64,30 @@ UI3.ic_minus = () => arGrp(rbox(1.8, 0.5, 0.3, 0.1, '#f0cc66', 'gold', [0, 0, 0]
 UI3.ic_swap = () => { const g = new THREE.Group(), a = uiArrow(), b = arRot(uiArrow(), 0, 0, Math.PI); a.scale.setScalar(0.7); b.scale.setScalar(0.7); a.position.set(-0.45, 0.1, 0); b.position.set(0.45, -0.1, 0); g.add(a, b); return g; };
 function arSwordIcon() { return arSword({ col: '#dfe3ea', gem: '#d84a3a' }, { guardCol: '#c8a040' }); }
 // Render: bryła wyśrodkowana i dopasowana do prostokąta w×h (pikseli), z marginesem
-function renderUi(key, w, h, mirror) {
+// Ikony surowców: kupki z mapy (mapa3d.js) oglądane z ukosa z góry (view), jak bryłki na pasku surowców w H3
+// Ikony surowców: bryły jak kupki z mapy (mapa3d.js), ale pełniejsze i czytelne w małym rozmiarze; oglądane z ukosa z góry (view)
+function uiRes(r) {
+  const g = new THREE.Group(), R = rng(r.length * 31 + 7);
+  const heap = (n, rad, col, kind, sz, h0 = 0.04, cols) => { for (let i = 0; i < n; i++) { const a = R() * 6.28, d = Math.sqrt(R()) * rad, y = h0 + (rad - d) * 0.75 + R() * 0.03, s = sz * (0.75 + R() * 0.5); g.add(chunk(s, s * 0.8, s * 0.9, cols ? cols[i % cols.length] : col, kind, [Math.cos(a) * d, y, Math.sin(a) * d * 0.8], [R(), R(), R()], i + 3, 10)); } };
+  if (r === 'wood') return mpRes('wood');
+  if (r === 'mercury') return mpRes('mercury');
+  if (r === 'ore') { heap(14, 0.24, '#6a6a72', 'stone', 0.085, 0.04, ['#6a6a72', '#7a7a82', '#8a5a48', '#5a5a62']); for (let i = 0; i < 4; i++) g.add(sph(0.022, '#d8dce8', 'steel', [(R() - 0.5) * 0.3, 0.16 + R() * 0.06, 0.12])); }
+  else if (r === 'sulfur') { heap(16, 0.24, '#e0c83a', 'stone', 0.075, 0.04, ['#e8d040', '#d8b828', '#f4e070']); for (let i = 0; i < 4; i++) g.add(cone(0.035, 0.12, '#fff07a', 'gem', [(R() - 0.5) * 0.25, 0.22 + R() * 0.04, (R() - 0.3) * 0.15], [R() - 0.5, 0, R() - 0.5], 5)); }
+  else if (r === 'crystal') { g.add(chunk(0.24, 0.08, 0.18, '#5a5660', 'stone', [0, 0.05, 0], null, 4, 12));
+    for (let i = 0; i < 7; i++) { const a = i / 7 * 6.28, q = i ? 1 : 0, h = i ? 0.2 + R() * 0.1 : 0.45; g.add(cone(i ? 0.05 : 0.085, h, i % 2 ? '#ff5050' : '#d82a2a', 'gem', [Math.cos(a) * 0.12 * q, 0.1 + h / 2, Math.sin(a) * 0.09 * q], [Math.sin(a) * 0.45 * q, 0, -Math.cos(a) * 0.45 * q], 6)); } }
+  else if (r === 'gems') { const cols = ['#40c070', '#3a80e0', '#c060e0', '#e03a3a', '#f4f4ff', '#f0c040'];
+    for (let i = 0; i < 16; i++) { const a = R() * 6.28, d = Math.sqrt(R()) * 0.22, y = 0.05 + (0.22 - d) * 0.6; g.add(mesh(new THREE.OctahedronGeometry(0.06, 0), cols[i % 6], 'gem', [Math.cos(a) * d, y, Math.sin(a) * d * 0.8], [R() * 3, R() * 3, 0])); }
+    g.add(mesh(new THREE.OctahedronGeometry(0.11, 0), '#40d080', 'gem', [0, 0.24, 0.02], [0.3, 0.6, 0], [1, 1.25, 1])); }
+  else if (r === 'gold') { for (const [x, z, n] of [[-0.15, -0.05, 6], [0.12, -0.08, 8], [0.02, 0.1, 4]]) for (let i = 0; i < n; i++) g.add(cyl(0.075, 0.075, 0.022, i % 2 ? '#f0c040' : '#e0b030', 'gold', [x + (R() - 0.5) * 0.01, 0.012 + i * 0.024, z], null, null, 18));
+    for (let i = 0; i < 9; i++) { const a = R() * 6.28, d = 0.18 + R() * 0.1; g.add(cyl(0.07, 0.07, 0.02, '#f0c040', 'gold', [Math.cos(a) * d, 0.012, Math.sin(a) * d * 0.7], [R() * 0.5, 0, R() * 0.5], null, 18)); }
+    g.add(rbox(0.24, 0.07, 0.1, 0.015, '#f4c848', 'gold', [0.05, 0.035, 0.2], [0, 0.4, 0])); }
+  return g;
+}
+for (const r of ['wood', 'ore', 'mercury', 'sulfur', 'crystal', 'gems', 'gold']) UI3['res_' + r] = () => uiRes(r);
+function renderUi(key, w, h, mirror, view) {
   const f = UI3[key.replace(/_(tr|bl|br)$/, '_tl')]; if (!f) return null; const g = f(); if (mirror) g.scale.set(mirror[0], mirror[1], 1);
   const wrap = new THREE.Group(); wrap.add(g); const b = new THREE.Box3().setFromObject(wrap), c = b.getCenter(new THREE.Vector3()), z = b.getSize(new THREE.Vector3());
   g.position.sub(c); const k = Math.min((w - 4) / z.x, (h - 4) / z.y);
+  if (view) { const v = new THREE.Group(); v.add(wrap); wrap.rotation.y = view.yaw || 0; v.rotation.x = view.pitch || 0; const p = new THREE.Group(); p.add(v); const b2 = new THREE.Box3().setFromObject(p), c2 = b2.getCenter(new THREE.Vector3()), z2 = b2.getSize(new THREE.Vector3()); v.position.sub(c2); const k2 = Math.min((w - 4) / z2.x, (h - 4) / z2.y); return G3.render(p, w, h, k2, w / 2, h / 2, { raw: true, yaw: 0, pitch: 0.001 }); }
   return G3.render(wrap, w, h, k, w / 2, h / 2, { raw: true, yaw: 0, pitch: 0.001 });
 }
