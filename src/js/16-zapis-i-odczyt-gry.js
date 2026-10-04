@@ -132,6 +132,11 @@ function exportGameFile(st) {
   const slug = t => (t || '').toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); // nazwa pliku tylko z ASCII: polskie litery bywają gubione
   const name = `kroniki-${slug(m.hero) || 'gra'}-${slug(m.date)}.json`;
   if (window.KronikiApp && KronikiApp.saveFile) { KronikiApp.saveFile(name, JSON.stringify(rec)); return name; } // aplikacja na Androida: plik do Pobranych
+  // iPhone/iPad: pobieranie z linku w aplikacji z ekranu początkowego nie działa, więc systemowe „Udostępnij” (Zapisz w Plikach, AirDrop, wiadomość)
+  if (isIOS() && navigator.share && window.File) {
+    const f = new File([JSON.stringify(rec)], name, { type: 'application/json' });
+    if (!navigator.canShare || navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: name }).catch(() => {}); return name; }
+  }
   // adres data: (nie blob:), bo przy grze otwartej z dysku (file://) przeglądarka ignoruje nazwę pliku dla blob:
   const a = document.createElement('a'); a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(rec)); a.download = name;
   document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000); return name;

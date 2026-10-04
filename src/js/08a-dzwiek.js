@@ -7,7 +7,9 @@ const Sfx = {
   ctx: null, out: null, buf: {}, groups: {}, last: {}, lastT: {}, voices: 0, MAX_VOICES: 24,
   vol() { const v = G.settings.sfxVol; return v == null ? 0.8 : v; },
   unlock() {
-    if (this.ctx || typeof SOUND_ART === 'undefined' || !SOUND_ART) return; const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    if (this.ctx) { if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {}); return; } // iPhone wstrzymuje dźwięk po wyjściu z aplikacji (stan suspended/interrupted): wznawia go następny dotyk
+    if (typeof SOUND_ART === 'undefined' || !SOUND_ART) return; const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* starsze przeglądarki */ } // iPhone: dźwięk gry także przy przełączniku wyciszenia (jak w grach z App Store)
     try { this.ctx = new AC(); } catch (e) { return; }
     const comp = this.ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.2; // wspólny ogranicznik: głośne bitwy bez przesterowań
     this.comp = comp; this.out = this.ctx.createGain(); this.out.gain.value = this.vol(); this.out.connect(comp); comp.connect(this.ctx.destination);
