@@ -403,7 +403,7 @@ const MapRender = {
   },
   store(key, c) {
     this.cache.set(key, c); this.lastGen = performance.now();
-    const nC = Math.ceil(this.map.n / CHUNK); if (this.cache.size > Math.max(160, nC * nC)) this.cache.delete(this.cache.keys().next().value); // mieści całą mapę (olbrzymia: 324 kawałki, ~21 MB)
+    const nC = Math.ceil(this.map.n / CHUNK), cap = this.D > mapBufScale() * 2.5 ? 110 : Math.max(160, nC * nC); if (this.cache.size > cap) this.cache.delete(this.cache.keys().next().value); // gęsty komplet (duże przybliżenie): najwyżej ~110 kawałków, najdawniej oglądane wypadają // mieści całą mapę (olbrzymia: 324 kawałki, ~21 MB)
     return c;
   },
   has(cx, cy) { return this.cache.has(cx + ',' + cy); },
@@ -459,11 +459,11 @@ function layoutAdventure() {
   LIST_ROWS = Math.floor((LIST.h - 28) / LIST_ROW_H); // nad wierszami pasek zakładek (bohaterowie / miasta)
 }
 // Przybliżenie mapy (kółko myszy): ZOOM > 1 powiększa. viewW/viewH = ile pikseli świata mieści widok.
-const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5]; let ZOOM = 1; // największe przybliżenie 1,5×: obiekty 3D mają grafikę w tej skali (dalej byłyby rozmyte)
+const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2]; let ZOOM = 1; // największe przybliżenie 2× (na laptopie 1,5× było za daleko; obiekty 3D przy 2× minimalnie miękkie)
 // Gęstość malowania terenu: jedna dla wszystkich przybliżeń (jak przy 1×). Przybliżanie i oddalanie tylko skaluje gotowe kawałki
 // (robi to karta graficzna, natychmiast), zamiast malować całą mapę od nowa przy każdym kroku; przy 1,25–1,5× teren jest
 // minimalnie miękki, ale nic się nie doczytuje, a pamięć zostaje jak przy 1×
-const mapDensity = () => (PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * 4) / 4, PXD, 8));
+const mapDensity = () => (PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * (ZOOM >= 1.5 ? 2 : 1) * 4) / 4, PXD, 8)); // duże przybliżenia (1,5–2×): drugi, gęstszy komplet kawałków (raz namalowany, potem w zapasie)
 const viewW = () => VIEW.w / ZOOM, viewH = () => VIEW.h / ZOOM;
 // Kamera w granicach oglądanego poziomu (st.view: 0 powierzchnia, 1 podziemia); bez podziemi cała mapa
 function camClamp(st) { const L = st.map.ln ? st.view || 0 : 0, o = levelOrigin(st.map, L) * T, m = levelSize(st.map) * T, w = viewW(), h = viewH();
@@ -472,6 +472,15 @@ function centerCam(st, tx, ty) { st.view = levelOf(st.map, Math.floor(tx + 0.5),
 // Przełączenie widoku między powierzchnią a podziemiami: to samo miejsce na drugim poziomie
 function switchLevel(st) { if (!st.map.ln) return; const ln = st.map.ln, d = st.view ? -ln : ln; st.view = st.view ? 0 : 1; st.cam.x += d * T; st.cam.y += d * T; camClamp(st); MapRender.miniDirty = true; G.dirty = true; }
 function screenToTile(st, x, y) { return { tx: Math.floor(((x - VIEW.x) / ZOOM + st.cam.x) / T), ty: Math.floor(((y - VIEW.y) / ZOOM + st.cam.y) / T) }; }
+// Pole pod kursorem z uwzględnieniem tego, co narysowane: postać bohatera, potwora czy skarbu sięga pola nad sobą, budowla nawet
+// dwóch pól – kliknięcie (i podświetlenie, kursor, opis) w głowę bohatera albo dach zamku trafia w nie, a nie w puste pole za nimi
+function pickTile(st, x, y) {
+  const p = screenToTile(st, x, y), n = st.map.n; if (p.tx < 0 || p.ty < 0 || p.tx >= n || p.ty >= n) return p;
+  if (heroAt(st, p.tx, p.ty)) return p; const own = objectAt(st, p.ty * n + p.tx); if (own) return own.blocks ? { tx: own.x, ty: own.y } : p;
+  const ob = drawnObjectAt(st, p.tx, p.ty); if (ob) return { tx: ob.x, ty: ob.y };
+  if (p.ty + 1 < n) { if (heroAt(st, p.tx, p.ty + 1)) return { tx: p.tx, ty: p.ty + 1 }; const o = objectAt(st, (p.ty + 1) * n + p.tx); if (o && ['monster', 'art', 'res', 'chest', 'boat'].includes(o.type)) return { tx: p.tx, ty: p.ty + 1 }; }
+  return p;
+}
 // Zmienia przybliżenie o krok (d = -1 bliżej, +1 dalej), trzymając w miejscu punkt świata pod myszą (sx, sy)
 function setZoom(st, z, sx = VIEW.x + VIEW.w / 2, sy = VIEW.y + VIEW.h / 2) {
   z = clamp(z, ZOOMS[0], ZOOMS[ZOOMS.length - 1]); if (z === ZOOM) return false;
@@ -630,7 +639,9 @@ function drawWorldPixel(b, st) {
   if (!PIXEL_ART) drawMapAmbient(b, st, ox, oy, tx0, ty0, tx1, ty1);
   drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, { x: VIEW.x, y: VIEW.y, w: VIEW.w * ZOOM, h: VIEW.h * ZOOM })) {
-    const { tx, ty } = screenToTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
+    const { tx, ty } = pickTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
+    { const n = st.map.n, i = ty * n + tx, live = tx >= 0 && ty >= 0 && tx < n && ty < n && (heroAt(st, tx, ty) || objectAt(st, i)); // bohater albo obiekt do kliknięcia: złoty pierścień pod nim
+      if (live) { b.save(); b.strokeStyle = 'rgba(255,214,110,.9)'; b.lineWidth = 2 * PIX; b.shadowColor = '#ffd060'; b.shadowBlur = 8; b.beginPath(); b.ellipse(x + T / 2, y + T * 0.78, T * 0.55, T * 0.26, 0, 0, Math.PI * 2); b.stroke(); b.restore(); } }
     b.fillStyle = 'rgba(255,240,190,.55)'; const q = PIX; b.fillRect(x, y, T, q); b.fillRect(x, y + T - q, T, q); b.fillRect(x, y + q, q, T - 2 * q); b.fillRect(x + T - q, y + q, q, T - 2 * q);
   }
 }

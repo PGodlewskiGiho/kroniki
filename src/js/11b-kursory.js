@@ -75,7 +75,7 @@ function setCursor(kind) {
 // Mapa przygody: co pokazuje kursor nad polem (x, y) dla wybranego bohatera
 function adventureCursor(st, x, y) {
   const h = hero(st); if (!h || !st.map) return 'arrow';
-  const { tx, ty } = screenToTile(st, x, y), n = st.map.n; if (tx < 0 || ty < 0 || tx >= n || ty >= n) return 'arrow';
+  const { tx, ty } = pickTile(st, x, y), n = st.map.n; if (tx < 0 || ty < 0 || tx >= n || ty >= n) return 'arrow';
   const i = ty * n + tx; if (!human(st).explored[i]) return 'no';
   const oh = heroAt(st, tx, ty); if (oh) return oh === h ? 'arrow' : oh.owner === h.owner ? 'visit' : 'attack';
   const ob = objectAt(st, i);
