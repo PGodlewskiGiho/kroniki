@@ -147,13 +147,11 @@ G.screens.hero = {
     // ekwipunek
     text(ctx, 'Ekwipunek', 602, 38, { size: 20, align: 'center', color: PIXEL_ART ? '#f0e4c0' : UI.goldHi, fam: 'title' }); if (!PIXEL_ART) divider(ctx, 470, 734, 56);
     const MA = screenArt('manekin');
-    if (MA) drawLayer(ctx, Layers.get('heroMannequin', 352, 300, c => { // malowany stojak ze zbroją we wnęce pod gniazdami, u dołu gaśnie w panelu
-      const im = MA[0], k = 352 / im.naturalWidth; c.drawImage(im, 0, 0, im.naturalWidth, 300 / k, 0, 0, 352, 300);
-      c.fillStyle = 'rgba(10,7,4,.42)'; c.fillRect(0, 0, 352, 300);
-      c.globalCompositeOperation = 'destination-in'; const g = c.createLinearGradient(0, 0, 0, 300); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.12, '#000'); g.addColorStop(0.75, '#000'); g.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = g; c.fillRect(0, 0, 352, 300); const h = c.createLinearGradient(0, 0, 352, 0); h.addColorStop(0, 'rgba(0,0,0,0)'); h.addColorStop(0.1, '#000'); h.addColorStop(0.9, '#000'); h.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = h; c.fillRect(0, 0, 352, 300);
-    }), 426, 60);
+    if (MA) drawLayer(ctx, Layers.get('heroMannequin', 206, 308, c => { // malowany stojak ze zbroją: hełm pod gniazdem głowy, napierśnik pod tułowiem; brzegi gasną w panelu
+      c.drawImage(MA[0], 0, 0, 206, 308); c.fillStyle = 'rgba(10,7,4,.35)'; c.fillRect(0, 0, 206, 308);
+      c.globalCompositeOperation = 'destination-in'; const g = c.createRadialGradient(103, 140, 40, 103, 150, 170); g.addColorStop(0, '#000'); g.addColorStop(0.7, 'rgba(0,0,0,.8)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.fillRect(0, 0, 206, 308);
+    }), 496, 52);
     else { const a = 'rgba(214,174,88,.09)'; circ(ctx, 599, 89, 26, a); ctx.fillStyle = a; rr(ctx, 560, 118, 78, 170, 20); ctx.fill(); ctx.fillRect(566, 280, 26, 70); ctx.fillRect(606, 280, 26, 70); } // sylwetka bohatera pod gniazdami
     const hot = !G.modal ? this.equipAt(G.mouse.x, G.mouse.y) : null;
     for (const s of EQUIP_SLOTS) {

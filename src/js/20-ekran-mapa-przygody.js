@@ -85,6 +85,16 @@ function panelInfoText(st, scr) {
   if (h.path) return { text: `Ścieżka wyznaczona, ${h.path.length} pól. Kliknij cel ponownie albo naciśnij M.`, col: '#ecd9a8' };
   return { text: 'Kliknij pole, aby wyznaczyć ścieżkę. Prawy przycisk myszy pokazuje informacje.', col: 'rgba(236,217,168,.75)' };
 }
+// Sztandar gracza w wolnym miejscu listy (malowany, w kolorze gracza): pusty panel nie straszy pustką na początku gry
+function drawPanelBanner(ctx, st, y0, y1) {
+  const A = screenArt('sztandar'), free = y1 - y0 - 12; if (!A || free < 110) return;
+  const h = Math.min(free, 300), w = Math.round(h / 2), col = ownerColor(st, ME);
+  drawLayer(ctx, Layers.get(`panelBanner_${col}_${h}`, w, h, c => {
+    c.drawImage(A[0], 0, 0, w, h); c.globalCompositeOperation = 'multiply'; c.fillStyle = col; c.globalAlpha = 0.75; c.fillRect(0, 0, w, h); c.globalAlpha = 1;
+    c.globalCompositeOperation = 'destination-in'; const g = c.createRadialGradient(w / 2, h * 0.42, w * 0.3, w / 2, h * 0.45, h * 0.62); g.addColorStop(0, 'rgba(0,0,0,.8)'); g.addColorStop(0.75, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+  }), Math.round(LIST.x + (LIST.w - w) / 2), Math.round(y0 + (y1 - y0 - h) / 2));
+}
 function drawPanel(ctx, st, scr) {
   drawMinimap(ctx, st);
   const items = panelItems(st).length; scr.listScroll = clamp(scr.listScroll || 0, 0, Math.max(0, items - LIST_ROWS));
@@ -94,6 +104,7 @@ function drawPanel(ctx, st, scr) {
     const bh = LH * LIST_ROWS / items, by = LY + (LH - bh) * scr.listScroll / (items - LIST_ROWS);
     ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(LIST.x + LIST.w - 3, LY, 3, LH); ctx.fillStyle = '#b8913f'; ctx.fillRect(LIST.x + LIST.w - 3, by, 3, bh);
   }
+  drawPanelBanner(ctx, st, LY + Math.min(items, LIST_ROWS) * LIST_ROW_H, LY + LH);
   if (!items) text(ctx, listTab() === 'towns' ? 'Nie masz miast' : 'Nie masz bohaterów', LIST.x + LIST.w / 2, LY + 30, { size: 13, italic: true, weight: 500, align: 'center', color: 'rgba(236,217,168,.6)' });
   for (const r of panelRows(st, scr.listScroll)) {
     const y = r.y, on = r.hero && r.hero === hero(st);

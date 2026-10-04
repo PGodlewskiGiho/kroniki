@@ -990,5 +990,10 @@
   "opis": "epic fantasy matte painting, lone knight with red cape on horse seen from behind riding along a road toward sunset, distant castle on hill, golden sky, birds",
   "styl": "{opis}, heroes of might and magic art, highly detailed",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "sztandar": {
+  "opis": "fantasy painting, ornate white silk heraldic banner with gold trim and golden emblem hanging from a crossbar, swallowtail end, soft folds, plain dark background, centered",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate, people, room"
  }
 }

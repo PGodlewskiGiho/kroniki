@@ -106,6 +106,17 @@ def pozegnanie():
     return img
 
 
+def sztandar(): # pion 1:2: biały sztandar ze złotym herbem na ciemnym tle (kolor gracza nakłada gra)
+    Ws, Hs = 384, 768; img = Image.new('RGB', (Ws, Hs), (22, 16, 12)); d = ImageDraw.Draw(img, 'RGBA')
+    d.rectangle([40, 60, 344, 72], fill=(150, 116, 50)); d.ellipse([28, 54, 52, 78], fill=(190, 150, 60)); d.ellipse([332, 54, 356, 78], fill=(190, 150, 60))
+    d.polygon([(64, 72), (320, 72), (320, 640), (192, 560), (64, 640)], fill=(200, 196, 188))
+    d.line([(64, 72), (320, 72), (320, 640), (192, 560), (64, 640), (64, 72)], fill=(200, 160, 70), width=10)
+    d.polygon([(192, 180), (262, 280), (192, 420), (122, 280)], fill=(210, 170, 70)); d.ellipse([162, 250, 222, 310], fill=(150, 110, 40))
+    for k in range(5): d.line([(90 + k * 50, 90), (80 + k * 52, 600)], fill=(170, 166, 160), width=3) # fałdy
+    glow(img, [(192, 200, 200, 70)], (255, 210, 150), 60)
+    return img
+
+
 if __name__ == '__main__':
     name, out = sys.argv[1], sys.argv[2]
     globals()[name]().filter(ImageFilter.GaussianBlur(1.2)).save(out)
