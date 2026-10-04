@@ -7,3 +7,4 @@ export { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 export { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 export { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 export { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
+export { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';

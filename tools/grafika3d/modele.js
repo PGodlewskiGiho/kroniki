@@ -181,6 +181,7 @@ function mat(col, kind = 'cloth', rep = 1) {
 const col3 = c => new THREE.Color(c);
 const DK = (hex, k = 0.25) => '#' + col3(hex).multiplyScalar(1 - k).getHexString();
 const LT = (hex, k = 0.25) => '#' + col3(hex).lerp(col3('#ffffff'), k).getHexString();
+const mixHex = (a, b, k = 0.5) => '#' + col3(a).lerp(col3(b), k).getHexString();
 // jasny kolor (świecące oczy, aureole): jasność > 0,6
 const bright = hex => { const c = col3(hex); return (c.r + c.g + c.b) / 3 > 0.55; };
 // Kępa liści namalowana na kanwie (jak na tle AI): falista sylwetka z płatów wypełniona setkami pociągnięć pędzla; każdy płat jasny i ciepły u góry,
