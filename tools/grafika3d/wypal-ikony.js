@@ -2,18 +2,21 @@
 // i w zbliżeniu na głowę i tułów (głowa: punkt 'head' z modeli, przy jeźdźcu i centaurze najwyższy). Tło (barwy frakcji)
 // dorysowuje gra, więc portret jest przezroczysty. Arkusz: src/grafika/ikony.webp + ikony.json { f: { cid: [x, y, w, h] } }.
 //   node tools/grafika3d/wypal-ikony.js            wszystkie jednostki      node tools/grafika3d/wypal-ikony.js pikeman,orc   wybrane (do podglądu)
+//   node tools/grafika3d/wypal-ikony.js --do-ai    portrety 256×292 do domalowania (tools/grafika3d/.cache/portrety/<cid>.png + opisy.json);
+//     potem tools/tla-ai/portrety-jednostek/domaluj-wszystkie.py (AI) i sklej.py (arkusz do gry)
 // Podgląd zawsze w tools/grafika3d/.cache/ikony.png.
 'use strict';
 const path = require('path'), fs = require('fs');
 const { ROOT, CACHE, openStudio } = require('./wspolne');
-const PW = 112, PH = 128, YAW = 1.05, PITCH = 0.12; // portret w pikselach arkusza (gra rysuje go w połowie: ostry na gęstych ekranach); kamera z przodu-boku
+const AI = process.argv.includes('--do-ai'), PW = AI ? 256 : 112, PH = AI ? 292 : 128, YAW = 1.05, PITCH = 0.12; // portret w pikselach arkusza (gra rysuje go w połowie: ostry na gęstych ekranach); kamera z przodu-boku
 
+// Opis portretu dla AI: słowa z identyfikatora (blackDragon -> black dragon) i najważniejsze cechy wyglądu (kolory, hełm, broń)
 async function bake(ids) {
   const out = []; let st = null, n = 0;
   for (const id of ids) {
     if (!st || n++ % 20 === 0) { if (st) await st.browser.close(); st = await openStudio({ width: 300, height: 300 }); } // świeża przeglądarka co kilkanaście (pamięć karty programowej)
-    const r = await st.page.evaluate(([id, PW, PH, YAW0, PITCH]) => {
-      G3.raw = true; const L = CREATURES[id].look, g = buildUnit(L, { t: 0 }); if (!g) return null;
+    const r = await st.page.evaluate(([id, PW, PH, YAW0, PITCH, AI]) => {
+      G3.raw = true; G3.soft = AI; const L = CREATURES[id].look, g = buildUnit(L, { t: 0 }); if (!g) return null;
       g.updateMatrixWorld(true); const box = new THREE.Box3().setFromObject(g), heads = [];
       g.traverse(o => { if (o.name === 'head') heads.push(o.getWorldPosition(new THREE.Vector3())); });
       let mouth = null; g.traverse(o => { if (o.name === 'mouth' && !mouth) mouth = o.getWorldPosition(new THREE.Vector3()); });
@@ -29,7 +32,7 @@ async function bake(ids) {
       const ax = PW / 2 - px * k + (machine ? 0 : -PW * 0.04), ay = (machine ? 0.5 : 0.34) * PH + py * k;
       const c = G3.render(g, PW, PH, k, ax, ay, { raw: true, yaw: YAW, pitch: PITCH });
       return c.toDataURL('image/png');
-    }, [id, PW, PH, YAW, PITCH]);
+    }, [id, PW, PH, YAW, PITCH, AI]);
     if (r) out.push([id, r]); process.stdout.write(r ? '.' : '-');
   }
   if (st) await st.browser.close();
@@ -37,12 +40,18 @@ async function bake(ids) {
 }
 
 (async () => {
-  const t0 = Date.now(), arg = process.argv[2], only = arg ? arg.split(',') : null;
+  const t0 = Date.now(), arg = process.argv.slice(2).find(a => !a.startsWith('--')), only = arg ? arg.split(',') : null;
   const { browser, page } = await openStudio({ width: 200, height: 200 });
   const ids = await page.evaluate(only => Object.keys(CREATURES).filter(id => (!only || only.includes(id)) && buildUnit(CREATURES[id].look, {})), only); await browser.close();
   console.log(`Portrety ${ids.length} jednostek…`);
   const W = 3, parts = await Promise.all(Array.from({ length: W }, (_, k) => bake(ids.filter((_, i) => i % W === k))));
   const all = parts.flat().sort((a, b) => ids.indexOf(a[0]) - ids.indexOf(b[0]));
+  if (AI) { // pojedyncze portrety i opisy dla AI (angielskie: nazwa z identyfikatora i cechy wyglądu)
+    const dir = path.join(CACHE, 'portrety'); fs.mkdirSync(dir, { recursive: true }); for (const [id, url] of all) fs.writeFileSync(path.join(dir, id + '.png'), Buffer.from(url.split(',')[1], 'base64'));
+    const { browser: b3, page: p3 } = await openStudio({ width: 200, height: 200 });
+    const prompts = await p3.evaluate(ids => Object.fromEntries(ids.map(id => [id, unitPrompt(id, CREATURES[id].look)])), all.map(a => a[0])); await b3.close();
+    fs.writeFileSync(path.join(dir, 'opisy.json'), JSON.stringify(prompts, null, 1)); console.log(`\nGotowe: ${all.length} portretów do AI w ${dir}`); return;
+  }
   // arkusz składa osobna strona (płótno przeglądarki): portrety w rzędach po 16
   const { browser: b2, page: p2 } = await openStudio({ width: 200, height: 200 });
   const res = await p2.evaluate(async ([all, PW, PH]) => {

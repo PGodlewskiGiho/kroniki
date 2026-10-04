@@ -301,3 +301,22 @@ function layDead(g, L) {
   if (MACHINE_KINDS.includes(L.kind)) { g.rotation.z = 0.28; g.rotation.x = 0.12; g.position.y = -0.1; return w; } // rozbita machina: przechylona, osiadła
   g.rotation.z = 1.42; g.position.y = 0.14 * (L.size || 1); return w;
 }
+
+// Opis jednostki po angielsku dla domalowania portretu przez AI (tools/tla-ai/portrety-jednostek): nazwa z identyfikatora i cechy wyglądu
+function colorName(hex) {
+  if (!hex || hex[0] !== '#') return ''; const h = {}; new THREE.Color(hex).getHSL(h, THREE.SRGBColorSpace);
+  if (h.l < 0.14) return 'black'; if (h.l > 0.86) return 'white'; if (h.s < 0.14) return h.l > 0.55 ? 'silver grey' : 'grey';
+  const H = h.h, n = H < 0.035 || H > 0.95 ? 'red' : H < 0.11 ? (h.l < 0.45 ? 'brown' : 'orange') : H < 0.18 ? 'yellow' : H < 0.45 ? 'green' : H < 0.55 ? 'teal' : H < 0.72 ? 'blue' : H < 0.83 ? 'purple' : 'magenta';
+  return (h.l < 0.3 && n !== 'brown' ? 'dark ' : '') + n;
+}
+function unitPrompt(id, L) {
+  const words = id.replace(/([A-Z])/g, ' $1').toLowerCase().trim(), t = [], machine = ['ballista', 'tent', 'cart', 'catapult', 'tower'].includes(L.kind);
+  if (machine) return `medieval wooden ${words}, war machine, detailed wood and iron`;
+  if (L.kind === 'hum' && !L.beast && !L.golem) {
+    t.push(`fantasy ${words}`); { const sk = colorName(L.skin); if (sk.match(/green|grey|blue|purple|black|white|dark red|teal/) || (sk === 'red' && L.skin && parseInt(L.skin.slice(3, 5), 16) < 0x70)) t.push(`${sk} skin`); }
+    if (L.helm) t.push(L.helm === 'hood' ? 'hood' : `${L.helmCol ? colorName(L.helmCol) + ' ' : ''}${L.helm} helmet`); if (L.hood || L.robe) t.push(`${colorName(L.cloth)} ${L.robe ? 'robe' : 'hood'}`); else if (L.cloth) t.push(`${colorName(L.cloth)} clothes`);
+    if (L.armor) t.push(`${L.armor} armor`); if (L.weapon && L.weapon !== 'none') t.push(`holding a ${L.weapon}`); if (L.beard || L.mustache) t.push(L.beard ? 'beard' : 'mustache');
+    if (L.bony) t.push('skeleton, bare bones'); if (L.tusks) t.push('tusks'); if (L.horns) t.push('horns'); if (L.cape) t.push(`${colorName(L.cape)} cape`); if (L.wings) t.push('wings'); if (L.snout) t.push('hyena head');
+  } else { const c = L.fur || L.col || L.body || L.skin; t.push(`fantasy creature ${words}`, c ? `${colorName(c)} ${L.kind === 'dragon' || L.kind === 'hydra' || L.kind === 'lizard' ? 'scales' : 'fur'}` : '', L.wings ? 'wings' : ''); }
+  return t.filter(Boolean).join(', ');
+}
