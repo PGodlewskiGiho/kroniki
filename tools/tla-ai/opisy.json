@@ -970,5 +970,30 @@
   "opis": "epic fantasy matte painting, lone knight in red cape riding a horse away along a forest road at night, dark pine forest, full moon, moonlight, retreat",
   "styl": "{opis}, heroes of might and magic art, highly detailed",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "zbrojownia": {
+  "opis": "epic fantasy matte painting, castle armory interior, stone walls, wooden weapon racks full of steel swords, spears and battle axes, heraldic shields on wall, burning torches, wooden chest",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate, candles, candlesticks, altar"
+ },
+ "manekin": {
+  "opis": "fantasy painting, knight plate armor with helmet and red cape on wooden armor stand, dark stone alcove, warm torchlight, centered, dark background",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "sala": {
+  "opis": "epic fantasy matte painting, medieval castle great hall wall, stone pillars, red and blue heraldic tapestries with gold emblems, torches, dim warm light",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "pozegnanie": {
+  "opis": "epic fantasy matte painting, lone knight with red cape on horse seen from behind riding along a road toward sunset, distant castle on hill, golden sky, birds",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate"
+ },
+ "sztandar": {
+  "opis": "fantasy painting, ornate white silk heraldic banner with gold trim and golden emblem hanging from a crossbar, swallowtail end, soft folds, plain dark background, centered",
+  "styl": "{opis}, heroes of might and magic art, highly detailed",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate, people, room"
  }
 }

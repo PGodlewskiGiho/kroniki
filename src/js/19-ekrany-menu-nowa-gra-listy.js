@@ -164,6 +164,19 @@ function drawMenuArt(c, im, A) {
 }
 // Obraz z zestawu ekranów (SCREEN_ART: src/grafika/ekrany), gdy już się wczytał
 const screenArt = name => (!PIXEL_ART && typeof SCREEN_ART !== 'undefined' && SCREEN_ART && SCREEN_ART[name] && SCREEN_IMG[name] && SCREEN_IMG[name]._ok ? [SCREEN_IMG[name], SCREEN_ART[name]] : null);
+// Malowane tło całego okna bez animacji (ekran bohatera, miasto, tło wokół okien): obraz kryjący okno w punkcie ostrości,
+// przyciemniony (dim) i z winietą, w warstwie. null, gdy obrazu nie ma (pixel art, plik jeszcze się wczytuje).
+function paintedBackLayer(name, dim = 0.5) {
+  const A = screenArt(name); if (!A) return null;
+  return Layers.get(`pback_${name}_${dim}_${VW}x${VH}`, VW, VH, c => {
+    const im = A[0], iw = im.naturalWidth, ih = im.naturalHeight, k = Math.max(VW / iw, VH / ih), vw = VW / k, vh = VH / k, f = A[1].focus || [0.5, 0.5];
+    c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    c.drawImage(im, clamp(f[0] * iw - vw / 2, 0, iw - vw), clamp(f[1] * ih - vh / 2, 0, ih - vh), vw, vh, 0, 0, VW, VH); c.restore();
+    c.fillStyle = `rgba(8,6,4,${dim})`; c.fillRect(0, 0, VW, VH);
+    const g = c.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * 0.3, VW / 2, VH / 2, Math.hypot(VW, VH) * 0.6); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
+    c.fillStyle = g; c.fillRect(0, 0, VW, VH);
+  });
+}
 function drawMenuScene(ctx) {
   if (!PIXEL_ART && typeof MENU_ART !== 'undefined' && MENU_ART && MENU_IMG.menu && MENU_IMG.menu._ok) return viewportDraw(ctx, c => drawMenuArt(c, MENU_IMG.menu, MENU_ART));
   if (!PIXEL_ART && typeof TOWN_BUILD_ART !== 'undefined' && TOWN_BUILD_ART && TOWN_BUILD_ART[MENU_FAC] && !townScene3D(MENU_FAC)) return viewportDraw(ctx, c => { // grafika 3D miasta jeszcze się wczytuje: ciemne tło (nie zapamiętujemy zastępczej sceny 2D)
@@ -492,7 +505,10 @@ G.screens.bye = {
   enter() { this.t0 = G.time; },
   onClick() { G.go('menu'); }, onBack() { G.go('menu'); },
   draw(ctx) {
-    dimScreen(ctx, 1); ctx.globalAlpha = clamp((G.time - this.t0) / 1.2, 0, 1);
+    const A = screenArt('pozegnanie'); // jeździec odjeżdża ku zachodowi słońca
+    if (A) { viewportDraw(ctx, c => drawPaintedArt(c, A[0], A[1], VW, VH)); dimScreen(ctx, 0.25); viewportDraw(ctx, c => { const g = c.createRadialGradient(VW / 2, VH / 2 - 10, 0, VW / 2, VH / 2 - 10, 340 * UNITS.ui.scale); g.addColorStop(0, 'rgba(0,0,0,.5)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, VW, VH); }); }
+    else dimScreen(ctx, 1);
+    ctx.globalAlpha = clamp((G.time - this.t0) / 1.2, 0, 1);
     goldText(ctx, 'Do zobaczenia, Władco!', W / 2, H / 2 - 20, 36);
     text(ctx, 'Kliknij, aby wrócić do menu głównego', W / 2, H / 2 + 30, { size: 18, weight: 500, italic: true, align: 'center', color: '#bfae88' });
     ctx.globalAlpha = 1;

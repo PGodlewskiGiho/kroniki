@@ -197,7 +197,9 @@ G.screens.town = {
   },
   draw(ctx) {
     const R = this.lay(), st = G.state;
-    drawLayer(ctx, Layers.get(`townBackUI_${VW}x${VH}`, VW, VH, c => { stoneFill(c, 0, 0, VW, VH); insetBox(c, 8, VH - 31, VW - 16, 27, 7); }), 0, 0);
+    const TB = paintedBackLayer('sala', 0.5); // malowana sala zamkowa wokół sceny miasta
+    if (TB) drawLayer(ctx, TB, 0, 0);
+    drawLayer(ctx, Layers.get(`townBackUI_${VW}x${VH}_${TB ? 1 : 0}`, VW, VH, c => { if (!TB) stoneFill(c, 0, 0, VW, VH); insetBox(c, 8, VH - 31, VW - 16, 27, 7); }), 0, 0);
     for (const [P, r] of [['A', R.A], ['B', R.B], ['C', R.C]]) {
       if (!r) continue; ctx.save(); ctx.translate(r.sx, r.sy); ctx.scale(r.s, r.s); ctx.translate(-r.lx, -r.ly); ctx.beginPath(); ctx.rect(r.lx, r.ly, r.lw, r.lh); ctx.clip();
       this.pass = P; this.drawArea(ctx, R, P); ctx.restore();
