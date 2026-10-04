@@ -90,7 +90,15 @@ function drawPanelBanner(ctx, st, y0, y1) {
   const A = screenArt('sztandar'), free = y1 - y0 - 12; if (!A || free < 110) return;
   const h = Math.min(free, 300), w = Math.round(h / 2), col = ownerColor(st, ME);
   drawLayer(ctx, Layers.get(`panelBanner_${col}_${h}`, w, h, c => {
-    c.drawImage(A[0], 0, 0, w, h); c.globalCompositeOperation = 'multiply'; c.fillStyle = col; c.globalAlpha = 0.75; c.fillRect(0, 0, w, h); c.globalAlpha = 1;
+    c.drawImage(A[0], 0, 0, w, h); // białe płótno barwione kolorem gracza, złote obszycie i herb zostają złote
+    try {
+      const d = c.getImageData(0, 0, c.canvas.width, c.canvas.height), p = d.data, cr = parseInt(col.slice(1, 3), 16), cg = parseInt(col.slice(3, 5), 16), cb = parseInt(col.slice(5, 7), 16);
+      for (let i = 0; i < p.length; i += 4) {
+        const r = p[i], g = p[i + 1], b = p[i + 2], mx = Math.max(r, g, b), sat = mx ? (mx - Math.min(r, g, b)) / mx : 0, k = clamp(1 - sat * 3, 0, 1), L = (r * 0.3 + g * 0.59 + b * 0.11) / 255 * 1.15;
+        p[i] = r + (cr * L - r) * k; p[i + 1] = g + (cg * L - g) * k; p[i + 2] = b + (cb * L - b) * k;
+      }
+      c.putImageData(d, 0, 0);
+    } catch (e) { /* płótno bez dostępu do pikseli: sztandar bez barwy gracza */ }
     c.globalCompositeOperation = 'destination-in'; const g = c.createRadialGradient(w / 2, h * 0.42, w * 0.3, w / 2, h * 0.45, h * 0.62); g.addColorStop(0, 'rgba(0,0,0,.8)'); g.addColorStop(0.75, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     c.fillStyle = g; c.fillRect(0, 0, w, h);
   }), Math.round(LIST.x + (LIST.w - w) / 2), Math.round(y0 + (y1 - y0 - h) / 2));
