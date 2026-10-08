@@ -151,7 +151,7 @@ function update(dt) {
   G.time += dt; const f = G.fade, sp = 3.5;
   if (f.a < f.target) f.a = Math.min(f.target, f.a + dt * sp); else if (f.a > f.target) f.a = Math.max(f.target, f.a - dt * sp);
   if (f.next && f.a >= 1) { const n = f.next; f.next = null; f.target = 0; setScreen(n.name, n.params); } // enter() może od razu zlecić kolejne przejście
-  restUnits(); syncMouse(); updateHover(); setUnits(screenUnits()); if (G.screen.update) G.screen.update(dt); restUnits(); setCursor(G.wantCursor);
+  restUnits(); syncMouse(); updateHover(); setUnits(screenUnits()); if (G.screen.update) G.screen.update(dt); restUnits(); setCursor(G.wantCursor); Ambient.tick(dt);
 }
 function render() {
   // przesunięcie wyśrodkowanego ekranu w całych pikselach: przy ułamkowym każdy obraz byłby filtrowany (wolno i nieostro)

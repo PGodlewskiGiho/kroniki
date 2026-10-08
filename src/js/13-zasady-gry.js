@@ -617,8 +617,9 @@ function castAdventure(st, h, id, tgt) {
     if (h.windDay === st.dayTotal) return 'Wiatr już dziś wieje w plecy bohatera';
     h.windDay = st.dayTotal; h.mp += 400 + 100 * sp;
   }
-  h.mana -= spellCost(h, id); return null;
+  h.mana -= spellCost(h, id); sfxFor(st, h.owner, sndOr(ADV_SPELL_SND[id] || 'cast'), { vol: 0.8 }); return null;
 }
+const ADV_SPELL_SND = { eagleEye: 'wind', summonBoat: 'teleport', townPortal: 'teleport', dimensionDoor: 'teleport', fear: 'dark', tailwind: 'wind' };
 
 // --- armie: 7 miejsc, każde null albo { cid, n } (bohater: h.army, miasto: t.garrison) ---
 const ARMY_SLOTS = 7;

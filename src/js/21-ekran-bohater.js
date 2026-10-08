@@ -194,29 +194,48 @@ G.screens.hero = {
 // --- efekty bitwy: cząsteczki, pociski, pioruny, kręgi, błyski, wstrząsy ---------------------------
 // Wszystko w px logicznych ekranu; cząsteczki rysowane jako kwadraciki (pixel art), poświaty addytywnie.
 const SPELL_FX = {
-  magicArrow: { proj: 'orb', col: '#8ac0ff', burst: '#d8ecff' },
-  lightningBolt: { strike: true, col: '#e0f0ff', burst: '#ffffff', flash: 0.45, shake: 5 },
-  fireball: { proj: 'fireball', col: '#ff8a2a', burst: '#ffd060', boom: true, flash: 0.25, shake: 8 },
-  bless: { aura: 'fall', col: '#ffe08a' }, stoneSkin: { aura: 'orbit', col: '#c8b898' }, haste: { aura: 'wind', col: '#a8f0ff' },
-  cure: { aura: 'rise', col: '#8af07a' }, slow: { aura: 'fall', col: '#9a7ad8' }, weakness: { aura: 'drip', col: '#9aa060' },
-  bloodlust: { aura: 'rise', col: '#ff5a4a' }, animateDead: { aura: 'rise', col: '#a6f0a8', column: true },
-  meteorShower: { meteor: true, col: '#ff6a3a', burst: '#ffd060', boom: true, flash: 0.3, shake: 10 },
-  prayer: { aura: 'fall', col: '#fff0b0', column: true }, resurrection: { aura: 'rise', col: '#fff8d0', column: true },
-  implosion: { aura: 'orbit', col: '#c05aff', burst: '#f0c0ff', flash: 0.35, shake: 7 },
-  armageddon: { aura: 'fall', col: '#ff4a1a', burst: '#ffd060', flash: 0.6, shake: 12 }, massHaste: { aura: 'wind', col: '#a8f0ff' },
-  shield: { aura: 'orbit', col: '#e0c070' }, fortune: { aura: 'rise', col: '#8af0c0' }, curse: { aura: 'drip', col: '#b04a8a' },
-  airShield: { aura: 'wind', col: '#d0f0ff' }, fireShield: { aura: 'rise', col: '#ff9a3a', column: true },
-  iceBolt: { proj: 'orb', col: '#9ad8ff', burst: '#ffffff', flash: 0.15 },
-  blizzard: { aura: 'wind', col: '#e8f6ff', burst: '#ffffff', flash: 0.3, shake: 4 },
-  dispel: { aura: 'rise', col: '#c8e8ff' }, blind: { aura: 'fall', col: '#f0e0a0', flash: 0.2 }, poison: { aura: 'drip', col: '#8ac83a' }, vampirism: { aura: 'rise', col: '#c83a4a' },
-  fireWall: { aura: 'rise', col: '#ff7a2a', burst: '#ffd060', boom: true, flash: 0.2, shake: 5 }, lifeSteal: { proj: 'orb', col: '#d84a6a', burst: '#ff9ab0' },
-  teleport: { aura: 'orbit', col: '#9ab0ff', flash: 0.15 }, holyLight: { aura: 'fall', col: '#fff4c0', burst: '#ffffff', flash: 0.4, column: true }, clone: { aura: 'orbit', col: '#b8e0ff' },
-  frostRing: { aura: 'fall', col: '#bfe8ff', burst: '#ffffff', flash: 0.3, shake: 4 },
-  chainLightning: { strike: true, chain: true, col: '#e0ecff', burst: '#ffffff', flash: 0.5, shake: 7 },
-  massCure: { aura: 'rise', col: '#7ae8c8', column: true }, deathRipple: { aura: 'drip', col: '#8a9a6a', burst: '#c8d0a0', shake: 6 },
+  magicArrow: { proj: 'orb', col: '#8ac0ff', burst: '#d8ecff', sig: 'spark' },
+  lightningBolt: { strike: true, col: '#e0f0ff', burst: '#ffffff', flash: 0.45, shake: 5, sig: 'scorch' },
+  fireball: { proj: 'fireball', col: '#ff8a2a', burst: '#ffd060', boom: true, flash: 0.25, shake: 8, sig: 'flames' },
+  bless: { aura: 'fall', col: '#ffe08a', sig: 'beam' }, stoneSkin: { aura: 'orbit', col: '#c8b898', sig: 'stone' }, haste: { aura: 'wind', col: '#a8f0ff', sig: 'speed' },
+  cure: { aura: 'rise', col: '#8af07a', sig: 'spiral' }, slow: { aura: 'fall', col: '#9a7ad8', sig: 'sink' }, weakness: { aura: 'drip', col: '#9aa060', sig: 'smoke' },
+  bloodlust: { aura: 'rise', col: '#ff5a4a', sig: 'rage' }, animateDead: { aura: 'rise', col: '#a6f0a8', column: true, sig: 'souls' },
+  meteorShower: { meteor: true, col: '#ff6a3a', burst: '#ffd060', boom: true, flash: 0.3, shake: 10, sig: 'flames' },
+  prayer: { aura: 'fall', col: '#fff0b0', column: true, sig: 'beam' }, resurrection: { aura: 'rise', col: '#fff8d0', column: true, sig: 'souls' },
+  implosion: { aura: 'orbit', col: '#c05aff', burst: '#f0c0ff', flash: 0.35, shake: 7, sig: 'implode' },
+  armageddon: { aura: 'fall', col: '#ff4a1a', burst: '#ffd060', flash: 0.6, shake: 12, sig: 'firerain' }, massHaste: { aura: 'wind', col: '#a8f0ff', sig: 'speed' },
+  shield: { aura: 'orbit', col: '#e0c070', sig: 'dome' }, fortune: { aura: 'rise', col: '#8af0c0', sig: 'spiral' }, curse: { aura: 'drip', col: '#b04a8a', sig: 'smoke' },
+  airShield: { aura: 'wind', col: '#d0f0ff', sig: 'dome' }, fireShield: { aura: 'rise', col: '#ff9a3a', column: true, sig: 'firedome' },
+  iceBolt: { proj: 'orb', col: '#9ad8ff', burst: '#ffffff', flash: 0.15, sig: 'ice' },
+  blizzard: { aura: 'wind', col: '#e8f6ff', burst: '#ffffff', flash: 0.3, shake: 4, sig: 'ice' },
+  dispel: { aura: 'rise', col: '#c8e8ff', sig: 'implode' }, blind: { aura: 'fall', col: '#f0e0a0', flash: 0.2, sig: 'beam' }, poison: { aura: 'drip', col: '#8ac83a', sig: 'bubbles' }, vampirism: { aura: 'rise', col: '#c83a4a', sig: 'smoke' },
+  fireWall: { aura: 'rise', col: '#ff7a2a', burst: '#ffd060', boom: true, flash: 0.2, shake: 5, sig: 'flames' }, lifeSteal: { proj: 'orb', col: '#d84a6a', burst: '#ff9ab0', sig: 'implode' },
+  teleport: { aura: 'orbit', col: '#9ab0ff', flash: 0.15, sig: 'spiral' }, holyLight: { aura: 'fall', col: '#fff4c0', burst: '#ffffff', flash: 0.4, column: true, sig: 'beam' }, clone: { aura: 'orbit', col: '#b8e0ff', sig: 'dome' },
+  frostRing: { aura: 'fall', col: '#bfe8ff', burst: '#ffffff', flash: 0.3, shake: 4, sig: 'ice' },
+  chainLightning: { strike: true, chain: true, col: '#e0ecff', burst: '#ffffff', flash: 0.5, shake: 7, sig: 'scorch' },
+  tailwind: { aura: 'wind', col: '#c8f0ff', sig: 'speed' }, fear: { aura: 'drip', col: '#6a3a8a', flash: 0.15, sig: 'smoke' },
+  massCure: { aura: 'rise', col: '#7ae8c8', column: true, sig: 'spiral' }, deathRipple: { aura: 'drip', col: '#8a9a6a', burst: '#c8d0a0', shake: 6, sig: 'smoke' },
 };
 const BattleFX = {
-  reset() { this.parts = []; this.rings = []; this.bolts = []; this.projs = []; this.glows = []; this.flash = null; this.shake = 0; },
+  reset() { this.parts = []; this.rings = []; this.bolts = []; this.projs = []; this.glows = []; this.beams = []; this.domes = []; this.flash = null; this.shake = 0; },
+  // Słup światła z nieba (błogosławieństwo, modlitwa, święte światło) i półprzezroczysta kopuła tarczy wokół oddziału
+  beam(x, y, col, dur = 0.9, w = 26) { (this.beams = this.beams || []).push({ x, y, col, dur, w, t: 0 }); },
+  dome(x, y, col, dur = 1, r = 34) { (this.domes = this.domes || []).push({ x, y, col, dur, r, t: 0 }); },
+  // Cząsteczki ściągane do środka (implozja, rozproszenie, wysysanie życia): startują na okręgu i zdążają do (x, y)
+  implode(x, y, col, r = 70, n = 36, life = 0.45) { for (let i = 0; i < n; i++) { const a = Math.random() * TAU, rr = r * (0.7 + Math.random() * 0.5), v = rr / life;
+    this.parts.push({ x: x + Math.cos(a) * rr, y: y + Math.sin(a) * rr * 0.6, vx: -Math.cos(a) * v, vy: -Math.sin(a) * v * 0.6, g: 0, life, max: life, col: Array.isArray(col) ? col[i % col.length] : col, size: 3, glow: true, drag: 0, streak: true }); } },
+  // Spirala wokół oddziału: cząsteczki krążą i wznoszą się (leczenie, dusze) albo opadają (spowolnienie)
+  spiral(x, y, col, up = true, n = 26, life = 1) { for (let i = 0; i < n; i++) { const a0 = i / n * TAU * 2, d = Math.random() * 0.25;
+    this.parts.push({ x, y, vx: 0, vy: 0, g: 0, life: life + d, max: life + d, col: Array.isArray(col) ? col[i % col.length] : col, size: 3, glow: true, drag: 0, orb: { cx: x, cy: up ? y + 6 : y - 70, a: a0, w: up ? 7 : -6, r: 22 + Math.random() * 6, vy: (up ? -80 : 70) * (0.8 + Math.random() * 0.4), t: -i / n * 0.35 } }); } },
+  // Kłęby dymu (klątwy, trucizny, czarna magia): ciemne, rosnące, rysowane bez dodawania światła
+  smoke(x, y, col, n = 12) { for (let i = 0; i < n; i++) { const life = 0.8 + Math.random() * 0.6;
+    this.parts.push({ x: x + (Math.random() - 0.5) * 40, y: y - Math.random() * 30, vx: (Math.random() - 0.5) * 20, vy: -20 - Math.random() * 30, g: 0, life, max: life, col, size: 6, grow: 10 + Math.random() * 8, smoke: true, drag: 0.8 }); } },
+  // Odłamki (lód, kamień): wydłużone w kierunku lotu, spadają
+  shards(x, y, cols, n = 18, spd = 160) { for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.6, v = spd * (0.5 + Math.random() * 0.7), life = 0.5 + Math.random() * 0.35;
+    this.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 420, life, max: life, col: cols[i % cols.length], size: 3, glow: false, drag: 0.6, streak: true }); } },
+  // Bańki (trucizna, bagno): rosną, wznoszą się i pękają
+  bubbles(x, y, col, n = 14) { for (let i = 0; i < n; i++) { const life = 0.6 + Math.random() * 0.6;
+    this.parts.push({ x: x + (Math.random() - 0.5) * 44, y: y - Math.random() * 20, vx: (Math.random() - 0.5) * 10, vy: -30 - Math.random() * 40, g: 0, life, max: life, col, size: 2, grow: 4 + Math.random() * 4, bubble: true, drag: 0.5 }); } },
   glow(x, y, r, col, dur = 0.5) { this.glows.push({ x, y, r, col, dur, t: 0 }); },
   emit(x, y, o) {
     for (let i = 0; i < (o.n || 8); i++) {
@@ -242,8 +261,12 @@ const BattleFX = {
   },
   proj(kind, x0, y0, x1, y1, dur, col, arc = 0) { const p = { kind, x0, y0, x1, y1, dur, col, arc, t: 0 }; this.projs.push(p); return p; },
   update(dt) {
-    for (const p of this.parts) { p.vx *= 1 - p.drag * dt; p.vy = p.vy * (1 - p.drag * dt) + p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
+    for (const p of this.parts) { p.life -= dt;
+      if (p.orb) { const o = p.orb; o.t += dt; if (o.t < 0) { p.life += dt; continue; } o.a += o.w * dt; p.x = o.cx + Math.cos(o.a) * o.r; p.y = o.cy + o.vy * o.t + Math.sin(o.a) * o.r * 0.35; p.back = Math.sin(o.a) < 0; continue; }
+      p.vx *= 1 - p.drag * dt; p.vy = p.vy * (1 - p.drag * dt) + p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
     this.parts = this.parts.filter(p => p.life > 0);
+    for (const b of this.beams || []) b.t += dt; this.beams = (this.beams || []).filter(b => b.t < b.dur);
+    for (const d of this.domes || []) d.t += dt; this.domes = (this.domes || []).filter(d => d.t < d.dur);
     for (const r of this.rings) r.t += dt; this.rings = this.rings.filter(r => r.t < r.dur);
     for (const g of this.glows) g.t += dt; this.glows = this.glows.filter(g => g.t < g.dur);
     for (const b of this.bolts) b.t += dt; this.bolts = this.bolts.filter(b => b.t < b.dur);
@@ -258,7 +281,7 @@ const BattleFX = {
   },
   // Efekty jako pixel art: zwykłe (kręgi, kamienie, strzały, iskry) i świetlne (poświaty, pioruny, pociski magii) nakładane addytywnie
   draw(ctx) {
-    if (!(this.glows.length + this.rings.length + this.projs.length + this.bolts.length + this.parts.length)) return;
+    if (!(this.glows.length + this.rings.length + this.projs.length + this.bolts.length + this.parts.length + (this.beams || []).length + (this.domes || []).length)) return;
     pixLayer('fxN', ctx, 0, 0, W, H, g => this.drawLayer(g, false));
     pixLayer('fxA', ctx, 0, 0, W, H, g => this.drawLayer(g, true), { add: true });
   },
@@ -268,6 +291,17 @@ const BattleFX = {
       for (const [k, col, al] of [[1, g.col, 0.3], [0.62, g.col, 0.75], [0.3, LT(g.col, 0.5), 1], [0.14, '#ffffff', 1]]) { ctx.globalAlpha = (1 - f) * al; circ(ctx, g.x, g.y, r * k, col); } // pierścienie jak w pixel arcie
       ctx.restore();
     }
+    if (add) for (const b of this.beams || []) { // słup światła: od góry pola do oddziału, rozbłysk i wygaszanie, migotanie
+      const f = b.t / b.dur, a = (f < 0.2 ? f / 0.2 : 1 - (f - 0.2) / 0.8) * (0.85 + Math.random() * 0.15), w = b.w * (0.6 + 0.4 * Math.min(1, f * 4)); ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const gr = ctx.createLinearGradient(b.x - w, 0, b.x + w, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.5, b.col); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = a * 0.55; ctx.fillStyle = gr; ctx.fillRect(b.x - w, 38, w * 2, b.y - 38 + 8); ctx.globalAlpha = a * 0.9; ctx.fillStyle = '#ffffff'; ctx.fillRect(b.x - w * 0.12, 38, w * 0.24, b.y - 38);
+      ctx.globalAlpha = a * 0.7; ctx.beginPath(); ctx.ellipse(b.x, b.y + 6, w * 1.4, w * 0.45, 0, 0, TAU); ctx.fillStyle = b.col; ctx.fill(); ctx.restore(); }
+    if (add) for (const d of this.domes || []) { // kopuła tarczy: obrys półkuli z poziomymi pasami, pulsuje i gaśnie
+      const f = d.t / d.dur, a = (f < 0.15 ? f / 0.15 : 1 - (f - 0.15) / 0.85), r = d.r * (0.85 + 0.15 * ease(Math.min(1, f * 3))); ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = d.col;
+      ctx.globalAlpha = a * 0.25; ctx.fillStyle = d.col; ctx.beginPath(); ctx.ellipse(d.x, d.y, r, r * 1.05, 0, Math.PI, TAU); ctx.ellipse(d.x, d.y, r, r * 0.38, 0, 0, Math.PI); ctx.fill();
+      ctx.globalAlpha = a * 0.9; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(d.x, d.y, r, r * 1.05, 0, Math.PI, TAU); ctx.stroke();
+      ctx.lineWidth = 1; ctx.globalAlpha = a * 0.5; for (const k of [0.35, 0.7]) { ctx.beginPath(); ctx.ellipse(d.x, d.y - r * 1.05 * k, r * Math.sqrt(1 - k * k), r * 0.3 * Math.sqrt(1 - k * k), 0, 0, TAU); ctx.stroke(); }
+      for (const k of [-0.5, 0, 0.5]) { ctx.beginPath(); ctx.ellipse(d.x, d.y, r * Math.abs(Math.cos(k + f * 3)), r * 1.05, 0, Math.PI, TAU); ctx.stroke(); } ctx.restore(); }
     if (!add) for (const r of this.rings) { const f = r.t / r.dur; ctx.save(); ctx.globalAlpha = 1 - f; ctx.strokeStyle = r.col; ctx.lineWidth = r.w * (1 - f) + 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r1 * ease(f), r.r1 * ease(f) * 0.45, 0, 0, TAU); ctx.stroke(); ctx.restore(); }
     for (const p of this.projs) {
       if ((p.kind === 'rock' || p.kind === 'arrow') === add) continue;
@@ -288,6 +322,10 @@ const BattleFX = {
     }
     for (const p of this.parts) {
       if (p.fire) { drawFlamePuff(ctx, p, add); continue; }
+      if (p.smoke) { if (add) continue; const age = 1 - clamp(p.life / p.max, 0, 1); ctx.save(); ctx.globalAlpha = Math.min(1, age * 5) * (1 - age * age) * 0.55; circ(ctx, Math.round(p.x / 2) * 2, Math.round(p.y / 2) * 2, p.size + p.grow * Math.sqrt(age), p.col); ctx.restore(); continue; }
+      if (p.bubble) { if (add) continue; const age = 1 - clamp(p.life / p.max, 0, 1), r = p.size + p.grow * age; ctx.save(); ctx.globalAlpha = 0.85 * (1 - age * 0.5); ctx.strokeStyle = p.col; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.stroke(); ctx.fillStyle = LT(p.col, 0.5); ctx.fillRect(p.x - r * 0.4, p.y - r * 0.5, 2, 2); ctx.restore(); continue; }
+      if (p.streak) { if (p.glow !== add) continue; const a = clamp(p.life / p.max, 0, 1), L = Math.min(14, Math.hypot(p.vx, p.vy) * 0.045) + 2, ang = Math.atan2(p.vy, p.vx); ctx.save(); if (p.glow) ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a;
+        ctx.translate(p.x, p.y); ctx.rotate(ang); ctx.fillStyle = p.col; ctx.fillRect(-L, -1, L, 2.4); ctx.fillStyle = '#ffffff'; ctx.fillRect(-2, -1, 2, 2.4); ctx.restore(); continue; }
       if (p.glow !== add) continue; const a = clamp(p.life / p.max, 0, 1), s = Math.max(1, Math.round(p.size * (p.glow ? 0.6 + a * 0.6 : 1)));
       ctx.save(); if (p.glow) ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a; ctx.fillStyle = p.col;
       ctx.fillRect(Math.round(p.x / 2) * 2 - s / 2, Math.round(p.y / 2) * 2 - s / 2, s, s); ctx.restore();
@@ -316,7 +354,31 @@ function spellAura(x, y, fx) {
   else if (fx.aura === 'wind') { for (let i = 0; i < 3; i++) BattleFX.emit(x - 40, y - 15 - i * 14, { n: 8, col: c, dir: 0, spread: 0.1, spd: 180, life: 0.45, size: 2, glow: true }); }
   else if (fx.aura === 'orbit') BattleFX.emit(x, y - 25, { n: 24, col: [c, DK(c, 0.3)], spd: 70, life: 0.7, size: 4, drag: 3 });
   else if (fx.aura === 'drip') BattleFX.emit(x, y - 55, { n: 20, col: [c, DK(c, 0.35)], dir: Math.PI / 2, spread: 0.3, spd: 30, g: 180, jx: 30, life: 0.8, size: 3 });
-  BattleFX.ring(x, y + 14, c, 34, 0.6, 3); BattleFX.glow(x, y - 18, 46, c, 0.7);
+  BattleFX.ring(x, y + 14, c, 34, 0.6, 3); BattleFX.glow(x, y - 18, fx.sig ? 26 : 46, c, fx.sig ? 0.35 : 0.7); // czar z własnym znakiem: poświata tylko w tle
   if (fx.column) BattleFX.emit(x, y, { n: 30, col: [c, '#ffffff'], dir: -Math.PI / 2, spread: 0.15, spd: 160, jx: 14, life: 0.7, size: 2, glow: true });
+  if (fx.sig) spellSignature(x, y, fx);
+}
+// Znak rozpoznawczy czaru (na celu): słup światła, kopuła, dym, lód, ogień…
+function spellSignature(x, y, fx) {
+  const c = fx.col, F = BattleFX;
+  switch (fx.sig) {
+    case 'beam': F.beam(x, y + 10, c, 0.9, 24); F.emit(x, y, { n: 16, col: ['#ffffff', c], dir: -Math.PI / 2, spread: 1.6, spd: 60, life: 0.8, size: 2, glow: true, jx: 30 }); break;
+    case 'dome': F.dome(x, y + 12, c, 1.1, 36); break;
+    case 'firedome': F.dome(x, y + 12, c, 1.1, 38); for (let i = 0; i < 3; i++) F.flame(x - 24 + i * 24, y + 10, x - 24 + i * 24, y - 50, c); break;
+    case 'stone': F.dome(x, y + 12, '#c8b898', 0.8, 32); F.shards(x, y - 10, ['#9a948a', '#6e6a62', '#c8c0b0'], 16, 120); break;
+    case 'speed': for (let i = 0; i < 10; i++) F.parts.push({ x: x - 60 - Math.random() * 30, y: y - 50 + Math.random() * 56, vx: 380 + Math.random() * 160, vy: 0, g: 0, life: 0.28, max: 0.28, col: i % 2 ? c : '#ffffff', size: 2, glow: true, drag: 0, streak: true }); break;
+    case 'sink': F.spiral(x, y, [c, DK(c, 0.3)], false, 22, 0.9); F.smoke(x, y + 6, '#3a2a5a', 3); break;
+    case 'spiral': F.spiral(x, y, [c, '#ffffff'], true, 26, 1); break;
+    case 'souls': F.spiral(x, y, [c, '#ffffff'], true, 18, 1.2); for (let i = 0; i < 4; i++) F.emit(x + (i - 1.5) * 12, y, { n: 6, col: [c, '#ffffff'], dir: -Math.PI / 2, spread: 0.2, spd: 90, life: 1.1, size: 4, glow: true }); break;
+    case 'rage': F.ring(x, y + 10, '#ff3a2a', 46, 0.5, 5); F.smoke(x, y, '#5a1010', 6); F.emit(x, y - 20, { n: 20, col: ['#ff3a2a', '#ffb070'], spd: 120, life: 0.4, size: 3, glow: true }); break;
+    case 'smoke': F.smoke(x, y, '#140c18', 16); F.emit(x, y - 30, { n: 10, col: [c, DK(c, 0.4)], dir: -Math.PI / 2, spread: 1, spd: 40, life: 1, size: 3, glow: true }); break;
+    case 'bubbles': F.bubbles(x, y, c, 20); F.smoke(x, y, '#2a4014', 4); break;
+    case 'implode': F.implode(x, y - 20, [c, '#ffffff'], 80, 40, 0.45); F.glow(x, y - 20, 30, '#ffffff', 0.6); break;
+    case 'ice': F.shards(x, y - 20, ['#e8f6ff', '#9ad8ff', '#ffffff'], 22, 170); F.dome(x, y + 12, '#bfe8ff', 0.6, 30); break;
+    case 'flames': for (let i = 0; i < 5; i++) { const a = Math.random() * TAU; F.flame(x, y - 10, x + Math.cos(a) * 60, y - 10 + Math.sin(a) * 30 - 30, i % 2 ? '#ff7a2a' : '#ffb040'); } F.smoke(x, y - 20, '#3a302a', 5); break;
+    case 'firerain': for (let i = 0; i < 3; i++) { const sx = x + (Math.random() - 0.5) * 60; F.flame(sx - 40, y - 180, sx, y, '#ff6a2a'); } F.smoke(x, y, '#2a1a14', 5); break;
+    case 'spark': F.shards(x, y - 16, ['#ffffff', c, '#d8ecff'], 12, 140); F.ring(x, y - 16, c, 26, 0.35, 2); break;
+    case 'scorch': F.shards(x, y + 4, ['#ffffff', '#e0f0ff', '#ffe080'], 14, 200); F.smoke(x, y + 6, '#2a2a30', 5); break;
+  }
 }
 

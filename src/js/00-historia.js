@@ -354,5 +354,10 @@
    (morale +1 i plotka innRumor: odsłania najbliższe nieodkryte cenne miejsce albo ukryty skarb), Kurhan (artefakt za klątwę
    BARROW_CURSE), Karawanseraj (artefakt na sprzedaż co tydzień, BAZAAR_PRICE), Studnia życzeń (opłata, los). Nazwy własne
    (ob.title: INN_NAMES, BARROW_NAMES, HERMIT_NAMES). Przydrożne miejsca stawiane naprawdę przy drodze (dRoad ≤ 4).
+   Mapa zagadki: malowane bitwy frakcji (SD img2img na szkicu z jednostek gry, tools/tla-ai/zagadka, ekrany/zagadka_<frakcja>),
+   nowe kawałki zdejmują się po kolei (st.puzzleSeen) przy melodii odkrycia; wykopanie Graala z fanfarą (tools/muzyka/dzingle.py).
+   Dźwięki otoczenia (Ambient w 08a): pętle amb_* przy budynkach w promieniu AMB_R pól od bohatera (tartak, kuźnia, młyn, karczma…).
+   Czary: własne znaki (spellSignature: słup światła, kopuła, dym, implozja, spirala, odłamki, bańki, deszcz ognia) i dźwięki
+   żywiołów (SPELL_SND z zapasowymi SND_FALLBACK); czary przygody też brzmią.
    ===================================================================================== */
 
