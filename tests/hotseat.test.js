@@ -167,3 +167,17 @@ test('gra korespondencyjna: zasłona tury ma „Wyślij plikiem”, plik wczytan
   assert.equal(await page.evaluate(() => ME), who);
   require('fs').unlinkSync(file);
 });
+
+test('ekran nowej gry: widać tylko zajęte miejsca; „Dodaj gracza” do limitu mapy, usuwanie i przełączanie człowiek/komputer (zawsze jeden człowiek)', async () => {
+  const saved = await page.evaluate(() => JSON.stringify(G.settings));
+  await page.evaluate(sl => { G.settings.slots = sl; G.settings.mapSize = 'M'; setScreen('setup', {}); }, slots('ha'));
+  await frames(page, 3);
+  const r = await page.evaluate(() => { const s = G.screens.setup, S = G.settings, vis = () => s.buttons.filter(b => s.slotBtns.some(q => q.nm === b)).length, out = {};
+    out.v0 = vis(); s.bAdd.action(); s.bAdd.action(); out.v1 = vis(); s.relayout(); out.addShown = s.buttons.includes(s.bAdd);
+    s.slotBtns[3].rm.action(); out.v2 = vis(); s.slotBtns[0].ty.action(); out.onlyHuman = S.slots[0].type; s.slotBtns[1].ty.action(); s.slotBtns[0].ty.action(); out.swapped = [S.slots[0].type, S.slots[1].type];
+    s.slotBtns[1].rm.action(); out.keepLast = S.slots[1].type; return out; });
+  assert.equal(r.v0, 2); assert.equal(r.v1, 4); assert.equal(r.addShown, false, 'średnia mapa: 4 graczy, przycisk znika');
+  assert.equal(r.v2, 3); assert.equal(r.onlyHuman, 'human', 'jedynego człowieka nie da się zmienić w komputer'); assert.deepEqual(r.swapped, ['ai', 'human']);
+  assert.equal(r.keepLast, 'human', 'jedynego człowieka nie da się usunąć');
+  await page.evaluate(s => { Object.assign(G.settings, JSON.parse(s)); }, saved);
+});

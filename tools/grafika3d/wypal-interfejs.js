@@ -5,7 +5,7 @@
 const path = require('path'), fs = require('fs');
 const { ROOT, CACHE, openStudio } = require('./wspolne');
 const ITEMS = [['corner_tl', 112, 112], ['corner_tr', 112, 112, [-1, 1]], ['corner_bl', 112, 112, [1, -1]], ['corner_br', 112, 112, [-1, -1]], ['rivet', 40, 40], ['medal', 112, 112], ['divider', 320, 64], ['ring', 112, 112],
-  ...['crown', 'next', 'move', 'sleep', 'book', 'gear', 'dig', 'puzzle', 'stairs', 'hourglass', 'sword', 'shield', 'orb', 'scroll', 'up', 'down', 'left', 'right', 'plus', 'minus', 'swap'].map(k => ['ic_' + k, 96, 96]),
+  ...['crown', 'next', 'move', 'sleep', 'book', 'gear', 'dig', 'puzzle', 'stairs', 'hourglass', 'sword', 'shield', 'orb', 'scroll', 'up', 'down', 'left', 'right', 'plus', 'minus', 'swap', 'map', 'helm', 'dice', 'chest'].map(k => ['ic_' + k, 96, 96]),
   ...['wood', 'ore', 'mercury', 'sulfur', 'crystal', 'gems', 'gold'].map(k => ['res_' + k, 64, 64, null, { pitch: 0.55, yaw: 0.5 }])];
 (async () => {
   const st = await openStudio({ width: 400, height: 300 });

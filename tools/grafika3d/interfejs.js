@@ -62,6 +62,21 @@ UI3.ic_up = () => uiArrow(); UI3.ic_down = () => arRot(uiArrow(), 0, 0, Math.PI)
 UI3.ic_plus = () => arGrp(rbox(1.8, 0.5, 0.3, 0.1, '#f0cc66', 'gold', [0, 0, 0]), rbox(0.5, 1.8, 0.3, 0.1, '#f0cc66', 'gold', [0, 0, 0]));
 UI3.ic_minus = () => arGrp(rbox(1.8, 0.5, 0.3, 0.1, '#f0cc66', 'gold', [0, 0, 0]), rbox(0.02, 1.8, 0.02, 0.005, '#000', 'gold', [0, 0, -0.3]));
 UI3.ic_swap = () => { const g = new THREE.Group(), a = uiArrow(), b = arRot(uiArrow(), 0, 0, Math.PI); a.scale.setScalar(0.7); b.scale.setScalar(0.7); a.position.set(-0.45, 0.1, 0); b.position.set(0.45, -0.1, 0); g.add(a, b); return g; };
+// Ekran nowej gry: mapa (rozmiar świata), hełm (człowiek), kostka (losowo), skrzynia (bonus: artefakt)
+UI3.ic_map = () => { const g = new THREE.Group(), pg = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.5, 1, 1), mat('#ecd9a8', 'cloth').clone()); pg.material.side = THREE.DoubleSide; g.add(pg);
+  for (const x of [-1.05, 1.05]) { g.add(cyl(0.16, 0.16, 1.62, '#e2cc94', 'cloth', [x, 0, 0.06], null, null, 20)); for (const y of [-0.85, 0.85]) g.add(sph(0.12, '#8a5a2a', 'wood', [x, y, 0.06])); }
+  g.add(slab([[-0.85, 0.55], [-0.2, 0.62], [0.1, 0.3], [-0.05, -0.1], [-0.5, -0.25], [-0.85, 0.0]], 0.03, '#6a9a4a', 'cloth', [0, 0, 0.02])); // ląd
+  g.add(slab([[0.2, -0.05], [0.8, 0.05], [0.85, -0.55], [0.3, -0.6], [0.05, -0.35]], 0.03, '#4a7ab0', 'cloth', [0, 0, 0.02])); // jezioro
+  for (const [x, y] of [[-0.55, 0.25], [-0.35, 0.35]]) g.add(cone(0.12, 0.26, '#7a6a58', 'stone', [x, y, 0.08], [Math.PI / 2, 0, 0], 4));
+  for (let i = 0; i < 5; i++) g.add(sph(0.035, '#a83020', 'cloth', [-0.3 + i * 0.13, -0.35 - Math.sin(i) * 0.08, 0.05]));
+  g.add(arGrp(rbox(0.26, 0.06, 0.03, 0.01, '#a83020', 'cloth', [0.45, 0.45, 0.06], [0, 0, 0.78]), rbox(0.26, 0.06, 0.03, 0.01, '#a83020', 'cloth', [0.45, 0.45, 0.06], [0, 0, -0.78])));
+  return arRot(g, -0.35, -0.25, 0.05); };
+UI3.ic_helm = () => arRot(arHelm({ col: '#c8ccd6', gem: '#d83a3a' }), 0.05, 0.5, 0);
+UI3.ic_dice = () => { const g = new THREE.Group(); g.add(rbox(1.4, 1.4, 1.4, 0.22, '#f2ead8', 'marble', [0, 0, 0]));
+  const pip = (x, y, z) => g.add(sph(0.14, '#2a1a10', 'iron', [x, y, z], [1, 1, 0.4]));
+  pip(0, 0, 0.71); for (const [a, b] of [[-0.35, 0.35], [0.35, -0.35]]) pip(0.71, a, b); for (const [a, b] of [[-0.38, -0.38], [0, 0], [0.38, 0.38], [-0.38, 0.38], [0.38, -0.38]]) g.add(sph(0.13, '#a82a1a', 'iron', [a, 0.71, b], [1, 0.4, 1]));
+  return arRot(g, 0.55, 0.65, 0); };
+UI3.ic_chest = () => arRot(arBag({ col: '#8a5a2a', gem: '#e8c050' }, { chest: true }), 0.35, 0.6, 0);
 function arSwordIcon() { return arSword({ col: '#dfe3ea', gem: '#d84a3a' }, { guardCol: '#c8a040' }); }
 // Render: bryła wyśrodkowana i dopasowana do prostokąta w×h (pikseli), z marginesem
 // Ikony surowców: kupki z mapy (mapa3d.js) oglądane z ukosa z góry (view), jak bryłki na pasku surowców w H3

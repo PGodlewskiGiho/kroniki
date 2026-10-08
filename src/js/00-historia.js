@@ -375,5 +375,7 @@
    (Marszałek, Czempion, Łowca, Arcymistrz, Mędrzec, Wędrowiec, Namiestnik). Balans zmierzony tools/balans/bohaterowie.js
    (indeks siły w bitwie): magowie byli na 20. poziomie 1,5×, na 25. 1,7× silniejsi od wojowników; teraz 1,03× i 1,13× dzięki
    ścieżkom, drugiemu czarowi Bitewnego maga za potrójną manę (DOUBLE_CAST_COST) i mocy czarów powyżej SP_SOFT liczonej za pół.
+   Ekran nowej gry przebudowany: panel Świat (przełączniki ◀ ▶ mapy, krainy, trudności; bonus, podziemia, zasady) i panel Gracze
+   (tylko zajęte miejsca, Dodaj/Usuń gracza); ikony 3D ic_map, ic_helm, ic_dice, ic_chest, herb frakcji = portret stwora 7. poziomu.
    ===================================================================================== */
 
