@@ -10,6 +10,16 @@ function smoothTerrain(ter, n) {
     }
   }
 }
+// Skrawki terenu mniejsze niż minSize pól (łata śniegu w lesie, pół pola pustyni) wchłania otaczający teren: krainy są spójne
+function cleanupBiomes(ter, n, minSize) {
+  const N = n * n, comp = new Int32Array(N).fill(-1); let cid = 0;
+  for (let s = 0; s < N; s++) { if (comp[s] >= 0 || ter[s] === TER.WATER) continue; const t = ter[s], list = [s]; comp[s] = cid;
+    for (let k = 0; k < list.length; k++) { const i = list[k], x = i % n, y = (i / n) | 0;
+      for (let d = 0; d < 4; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X >= 0 && Y >= 0 && X < n && Y < n && comp[j] < 0 && ter[j] === t) { comp[j] = cid; list.push(j); } } }
+    if (list.length < minSize) { const cnt = {}; for (const i of list) { const x = i % n, y = (i / n) | 0; for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (X < 0 || Y < 0 || X >= n || Y >= n) continue; const u = ter[Y * n + X]; if (u !== t && u !== TER.WATER) cnt[u] = (cnt[u] || 0) + 1; } }
+      const best = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]; if (best) for (const i of list) ter[i] = +best[0]; }
+    cid++; }
+}
 // Teren jak w podróży: pasma górskie (grzbiety szumu) z przełęczami i pogórzem, zwarte puszcze z polanami i rzadkim skrajem,
 // rzeki spływające z gór do morza (brody co kilka pól), otwarte doliny między nimi z pojedynczymi drzewami i głazami.
 // land: rodzaj krainy (LAND_TYPES), kształt świata i kierunek klimatu losowane z ziarna – każda mapa inna
@@ -34,11 +44,12 @@ function generateMap(n, seed, land = 'random') {
   const elev = new Float32Array(N), moist = new Float32Array(N), temp = new Float32Array(N), forest = new Float32Array(N), volc = new Float32Array(N), clear = new Float32Array(N);
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
     const i = y * n + x;
-    elev[i] = nE(x / 14, y / 14) + shapeElev(x, y);
-    moist[i] = nM(x / 11, y / 11);
-    temp[i] = nT(x / 22, y / 22) * 0.55 + (((x / n - 0.5) * cs + (y / n - 0.5) * sn) + 0.5) * 0.45; // klimat: chłodniej w jedną stronę (losowy kierunek)
-    forest[i] = nF(x / 9, y / 9) * 0.75 + moist[i] * 0.25;
-    volc[i] = nV(x / 6, y / 6);
+    // duże skale szumu: krainy (śnieg, pustynia, bagna, puszcze) ciągną się po kilkadziesiąt pól, bez drobnych łat
+    elev[i] = nE(x / 18, y / 18) + shapeElev(x, y);
+    moist[i] = nM(x / 26, y / 26);
+    temp[i] = nT(x / 40, y / 40) * 0.45 + (((x / n - 0.5) * cs + (y / n - 0.5) * sn) + 0.5) * 0.55; // klimat: chłodniej w jedną stronę (losowy kierunek)
+    forest[i] = nF(x / 16, y / 16) * 0.7 + moist[i] * 0.3;
+    volc[i] = nV(x / 12, y / 12);
     clear[i] = nC(x / 3.2, y / 3.2);
   }
   const qWater = quantile(elev, shape === 'lakes' ? Math.min(LT.water, 0.1) : LT.water), qRough = quantile(elev, 0.8);
@@ -53,7 +64,7 @@ function generateMap(n, seed, land = 'random') {
     else if (e > qRough) terrain[i] = TER.ROUGH;
     else terrain[i] = m > qDry ? TER.GRASS : TER.DIRT;
   }
-  smoothTerrain(terrain, n);
+  smoothTerrain(terrain, n); cleanupBiomes(terrain, n, Math.max(14, Math.round(N / 300)));
   // plaże wzdłuż wybrzeża
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
     const i = y * n + x; if (terrain[i] === TER.WATER || terrain[i] === TER.SNOW) continue;
@@ -169,18 +180,22 @@ function generateMap(n, seed, land = 'random') {
     }
     if (pair) edges.push(pair);
   }
+  // zabudowa miasta (pola x-1..x+1, y-1..y): drogi jej omijają i wchodzą bramą od południa (pole pod miastem)
+  const townBlock = new Uint8Array(N); for (const s of sites) for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) { const x = s.x + dx, y = s.y + dy; if (x >= 0 && y >= 0 && x < n && y < n) townBlock[y * n + x] = 1; }
   const roadCost = (j, i, diag) => {
-    if (terrain[j] === TER.WATER) return Infinity;
+    if (terrain[j] === TER.WATER || townBlock[j]) return Infinity;
     const x = j % n, y = (j / n) | 0;
-    if (diag) { const px = i % n, py = (i / n) | 0; if (terrain[py * n + x] === TER.WATER || terrain[y * n + px] === TER.WATER) return Infinity; }
+    if (diag) { const px = i % n, py = (i / n) | 0, wa = terrain[py * n + x] === TER.WATER, wb = terrain[y * n + px] === TER.WATER; if (wa && wb) return 40; if (wa || wb) return Infinity; } // narożnik dwóch wód: tylko w ostateczności (grobla)
     if (road[j]) return 0.3;
     let c = TERRAINS[terrain[j]].cost / 100; if (obst[j] === OBST.MOUNT) c += 25; else if (obst[j]) c += 4;
     return c + (thash(x, y, seed) % 100) / 300;
   };
   edges.forEach(([a, b], k) => {
     const type = (a === 0 || b === 0) ? 3 : (k % 2 ? 2 : 1);
-    const p = findPath(n, sites[a].x, sites[a].y, sites[b].x, sites[b].y, roadCost, 0.3); if (!p) return;
-    for (const i of p) { road[i] = Math.max(road[i], type); obst[i] = OBST.NONE; }
+    const p = findPath(n, sites[a].x, Math.min(n - 1, sites[a].y + 1), sites[b].x, Math.min(n - 1, sites[b].y + 1), roadCost, 0.3); if (!p) return;
+    for (let k = 0; k < p.length; k++) { const i = p[k]; road[i] = Math.max(road[i], type); obst[i] = OBST.NONE;
+      if (k) { const j = p[k - 1], x = i % n, y = (i / n) | 0, px = j % n, py = (j / n) | 0; // przejście po skosie między dwiema wodami: grobla z piasku
+        if (x !== px && y !== py && terrain[py * n + x] === TER.WATER && terrain[y * n + px] === TER.WATER) { const g = py * n + x; terrain[g] = TER.SAND; road[g] = type; } } }
   });
   return { n, seed, terrain, obst, road, sites, start: sites[0], fords: rivers.flatMap(r => r.filter(i => wet[i] === 2 && terrain[i] !== TER.WATER).map(i => [i % n, (i / n) | 0])), land: LT.id, shape };
 }
@@ -232,7 +247,8 @@ function placeObjects(st) {
     const i = q.pop(), x = i % n, y = (i / n) | 0, g = gateTo.get(i); if (g != null && !reach[g]) { reach[g] = 1; q.push(g); } // przez bramę na drugi poziom
     for (let d = 0; d < 8; d++) { const nx = x + DX8[d], ny = y + DY8[d]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (!reach[j] && map.terrain[j] !== TER.WATER && !map.obst[j]) { reach[j] = 1; q.push(j); } }
   }
-  const ok = (x, y) => x >= 1 && y >= 1 && x < n - 1 && y < n - 1 && reach[y * n + x] && !occ[y * n + x];
+  // obiekty nie leżą na drodze (skarb czy kopalnia na jedynej drodze przez las zamknęłyby przejazd); na drogach stoją tylko strażnicy przejść (okRoad)
+  const okRoad = (x, y) => x >= 1 && y >= 1 && x < n - 1 && y < n - 1 && reach[y * n + x] && !occ[y * n + x], ok = (x, y) => okRoad(x, y) && !map.road[y * n + x];
   // Okolica pola (do rozmieszczania wg sensu): odległość od drogi, drzewa wokół (gąszcz, polana), góry i woda w pobliżu
   const dRoad = new Uint8Array(N).fill(99), rq = []; for (let i = 0; i < N; i++) if (map.road[i]) { dRoad[i] = 0; rq.push(i); }
   for (let h = 0; h < rq.length; h++) { const i = rq[h], x = i % n, y = (i / n) | 0; if (dRoad[i] >= 12) continue;
@@ -241,7 +257,7 @@ function placeObjects(st) {
   const trees = (x, y) => around(x, y, 2, j => map.obst[j] === OBST.TREE), mtNear = (x, y) => around(x, y, 2, j => map.obst[j] === OBST.MOUNT), wetNear = (x, y) => around(x, y, 2, j => map.terrain[j] === TER.WATER);
   // Co gdzie pasuje (wynik ~0–3): przy drodze gospoda i targ, nad wodą młyn, w gąszczu chata wiedźmy, w górach ołtarz i kuźnia…
   const FIT = {
-    road: (x, y) => { const d = dRoad[y * n + x]; return d === 1 ? 3 : d === 2 ? 2.2 : d <= 4 ? 1 : 0; },
+    road: (x, y) => { const d = dRoad[y * n + x]; return d === 2 ? 3 : d === 3 ? 2.2 : d <= 5 ? 1 : 0; }, // przy drodze, ale nie na niej (budynek odsunięty o pole)
     water: (x, y) => Math.min(3, wetNear(x, y) * 0.6) + (dRoad[y * n + x] <= 3 ? 0.5 : 0),
     open: (x, y) => (trees(x, y) <= 2 && !mtNear(x, y) ? 2 : 0) + (map.terrain[y * n + x] === TER.GRASS ? 1 : 0),
     forest: (x, y) => { const t = trees(x, y); return t >= 14 ? 3 : t >= 9 ? 2.4 : t >= 5 ? 1.2 : 0; },
@@ -252,6 +268,8 @@ function placeObjects(st) {
   const SITE_FIT = { well: 'road', stables: 'road', temple: 'road', market: 'road', school: 'road', hillFort: 'road', camp: 'road', post: 'road', dwelling: 'road', fountain: 'road',
     waterMill: 'water', magicSpring: 'water', windmill: 'open', arena: 'open', oasis: 'open', lookout: 'mountain', altar: 'mountain', stone: 'mountain', crystalCave: 'mountain', dwarfForge: 'mountain',
     witchHut: 'swamp', graveyard: 'swamp', shrine: 'forest', garden: 'forest', tree: 'forest', mushroomRing: 'forest', campfire: 'forest', library: 'hidden', sacrifice: 'hidden', prison: 'hidden' };
+  // Budynek nie dotyka drogi: w prostokącie x0..x1, y0..y1 (budynek z marginesem pola; pod wejściem droga może biec) nie ma drogi
+  const roadFree = (x0, y0, x1, y1) => { for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (map.road[y * n + x]) return false; return true; };
   // Najlepsze z kilkudziesięciu losowych miejsc: dopasowanie do okolicy i odstęp od innych obiektów (bez zbitych gromad)
   const near = new Float32Array(N).fill(99), markNear = (x0, y0) => { for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const X = x0 + dx, Y = y0 + dy; if (X >= 0 && Y >= 0 && X < n && Y < n) { const j = Y * n + X, d = Math.hypot(dx, dy); if (d < near[j]) near[j] = d; } } };
   const best = (cond, fit, tries = 70) => { let b = null, bs = -1; for (let k = 0; k < tries * 6 && k < 3000; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (!ok(x, y) || !cond(x, y)) continue;
@@ -281,7 +299,7 @@ function placeObjects(st) {
   };
   // Obiekt 2×2 (kopalnia, skarbiec): wejście w prawym dolnym polu, pozostałe trzy pola zablokowane, pole przed wejściem wolne
   const footprint = (near, dmin, dmax, extra = () => true) => pick((x, y) => {
-      const d = Math.hypot(x - near.x, y - near.y); if (d < dmin || d > dmax || y + 1 >= n || !extra(x, y)) return false;
+      const d = Math.hypot(x - near.x, y - near.y); if (d < dmin || d > dmax || y + 1 >= n || !extra(x, y) || !roadFree(x - 2, y - 2, x + 1, y)) return false;
       for (const [dx, dy] of [[-1, 0], [-1, -1], [0, -1]]) { const j = (y + dy) * n + x + dx; if (map.terrain[j] === TER.WATER || map.obst[j] || occ[j] || map.road[j]) return false; }
       const f = (y + 1) * n + x; return map.terrain[f] !== TER.WATER && !map.obst[f];
     }, 800);
@@ -308,9 +326,10 @@ function placeObjects(st) {
     hideIn(add({ type: 'chest', gold: Math.round((1000 + v * 500) * rule(st, 'treasure') / 100) * 100, exp: Math.round((500 + v * 500) * rule(st, 'treasure') / 100) * 100, x: p[0], y: p[1] }, [p[1] * n + p[0]]));
   }
   // potwory: część pilnuje przejść (przełęcze, brody, wąskie gardła dróg), reszta krąży przy drogach
-  for (const [fx, fy] of map.fords || []) { if (rng() < 0.45 && ok(fx, fy) && dStart(fx, fy) >= 8) monster(fx, fy); }
+  for (const [fx, fy] of map.fords || []) { if (rng() < 0.45 && okRoad(fx, fy) && dStart(fx, fy) >= 8) monster(fx, fy); }
   { const narrow = (x, y) => map.road[y * n + x] && around(x, y, 1, j => map.obst[j] === OBST.MOUNT || map.terrain[j] === TER.WATER) >= 4; // droga ściśnięta górami albo wodą
-    for (let k = Math.round(NL / 900); k > 0; k--) { const p = best((x, y) => dStart(x, y) >= 8 && narrow(x, y), null, 20); if (p) monster(p[0], p[1]); } }
+    const cand = []; for (let y = 1; y < n - 1; y++) for (let x = 1; x < n - 1; x++) if (okRoad(x, y) && dStart(x, y) >= 8 && narrow(x, y)) cand.push([x, y]);
+    for (let k = Math.round(NL / 900); k > 0 && cand.length; k--) { const [x, y] = cand.splice(Math.floor(rng() * cand.length), 1)[0]; monster(x, y); } }
   for (let k = Math.round(NL / 520); k > 0; k--) { const p = best((x, y) => dStart(x, y) >= 6, (x, y) => (dRoad[y * n + x] <= 2 ? 1.5 : 0), 25); if (p) monster(p[0], p[1]); }
   // pierwsze walki: tuż za okolicą każdego startu 2–3 słabe oddziały (przy drodze), do pokonania armią startową
   const homeEdge = (x, y) => { if (home[y * n + x]) return false; for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (X >= 0 && Y >= 0 && X < n && Y < n && home[Y * n + X]) return true; } return false; };
@@ -345,7 +364,7 @@ function placeObjects(st) {
     if (!S.per) continue; // obeliski rozmieszcza placeGrail
     const want = NL / (S.per * 1.7), cnt = Math.floor(want) + (rng() < want % 1 ? 1 : 0); // ~40% mniej niż dawniej: miejsca mają się wyróżniać
     for (let k = 0; k < cnt; k++) {
-      const base = (x, y) => dStart(x, y) >= (S.guard ? 7 : 4) && (!S.terr || map.terrain[y * n + x] === TER[S.terr]); // terr: tylko na danym terenie (oaza na piasku)
+      const base = (x, y) => dStart(x, y) >= (S.guard ? 7 : 4) && (!S.terr || map.terrain[y * n + x] === TER[S.terr]) && roadFree(x - 1, y - 1, x + 1, y); // terr: tylko na danym terenie (oaza na piasku); budynek nie na drodze ani tuż przy niej
       const fit = FIT[SITE_FIT[kind]] || null;
       const p = (S.ug && map.ln ? best((x, y) => base(x, y) && levelOf(map, x, y) === 1, fit) : null) || best(base, fit); if (!p) continue; // ug: najchętniej w podziemiach
       const o = { type: 'site', kind, x: p[0], y: p[1], seen: {} };
@@ -362,7 +381,7 @@ function placeObjects(st) {
   for (const st0 of starts) {
     const near = (o, r) => Math.hypot(o.x - st0.x, o.y - st0.y) <= r;
     if (!objs.some(o => o.type === 'site' && EARLY.includes(o.kind) && near(o, 12))) {
-      const kind = EARLY[Math.floor(rng() * EARLY.length)], p = pick((x, y) => { const d = Math.hypot(x - st0.x, y - st0.y); return d >= 5 && d <= 11; }, 1500);
+      const kind = EARLY[Math.floor(rng() * EARLY.length)], p = pick((x, y) => { const d = Math.hypot(x - st0.x, y - st0.y); return d >= 5 && d <= 11 && roadFree(x - 1, y - 1, x + 1, y); }, 1500);
       if (p) { const o = { type: 'site', kind, x: p[0], y: p[1], seen: {} }; if (kind === 'campfire') o.res = ['wood', 'ore', 'mercury', 'sulfur', 'crystal', 'gems'][Math.floor(rng() * 6)]; add(o, [p[1] * n + p[0]]); }
     }
     if (!objs.some(o => o.type === 'chest' && near(o, 10))) { const p = pick((x, y) => { const d = Math.hypot(x - st0.x, y - st0.y); return d >= 3 && d <= 9; }, 1500);
@@ -371,7 +390,7 @@ function placeObjects(st) {
   // portale w parach: oba końce daleko od siebie (skrót przez mapę); wraki na wodzie z dala od brzegu
   const size = (MAP_SIZES.find(m => m.n === levelSize(map)) || MAP_SIZES[1]).id;
   for (let k = 0; k < (PORTAL_PAIRS[size] || 1); k++) {
-    const a = pick((x, y) => dStart(x, y) >= 5); if (!a) continue; const b = pick((x, y) => dStart(x, y) >= 5 && Math.hypot(x - a[0], y - a[1]) >= n * 0.4); if (!b) continue;
+    const a = pick((x, y) => dStart(x, y) >= 5 && roadFree(x - 1, y - 1, x + 1, y)); if (!a) continue; const b = pick((x, y) => dStart(x, y) >= 5 && roadFree(x - 1, y - 1, x + 1, y) && Math.hypot(x - a[0], y - a[1]) >= n * 0.4); if (!b) continue;
     const pa = add({ type: 'site', kind: 'portal', x: a[0], y: a[1], seen: {} }, [a[1] * n + a[0]]), pb = add({ type: 'site', kind: 'portal', x: b[0], y: b[1], seen: {} }, [b[1] * n + b[0]]);
     pa.pair = pb.id; pb.pair = pa.id;
   }
@@ -391,7 +410,8 @@ function placeObjects(st) {
   // przesmyk) – taki obiekt znika. Potwory (do pokonania) i skarby (do podniesienia) drogi nie zamykają.
   { const solid = o => !o.dead && !['monster', 'res', 'chest', 'art', 'boat'].includes(o.type), tilesOf = o => [o.y * n + o.x, ...(o.blocks || [])];
     const blocked = new Uint8Array(N); for (const o of objs) if (solid(o)) for (const i of tilesOf(o)) blocked[i] = 1;
-    const reached = () => { const seen = new Uint8Array(N), q = [map.start.y * n + map.start.x]; seen[q[0]] = 1;
+    for (const s of map.sites) for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) { const x = s.x + dx, y = s.y + dy; if (x >= 0 && y >= 0 && x < n && y < n) blocked[y * n + x] = 1; } // zabudowa miast (wejście bramą od południa)
+    const reached = () => { const seen = new Uint8Array(N), q = [Math.min(n - 1, map.start.y + 1) * n + map.start.x]; seen[q[0]] = 1;
       while (q.length) { const i = q.pop(), x = i % n, y = (i / n) | 0, g = gateTo.get(i); if (g != null && !seen[g]) { seen[g] = 1; q.push(g); }
         for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X < 0 || Y < 0 || X >= n || Y >= n || seen[j] || blocked[j] || map.terrain[j] === TER.WATER || map.obst[j]) continue; seen[j] = 1; q.push(j); } }
       return map.sites.filter(s => seen[Math.min(n - 1, s.y + 1) * n + s.x]).length; };
@@ -407,6 +427,7 @@ function placeGrail(st) {
   const map = st.map, n = map.n, rng = mulberry32(st.seed ^ 0x6a41), reach = new Uint8Array(n * n), q = [map.start.y * n + map.start.x]; reach[q[0]] = 1;
   while (q.length) { const i = q.pop(), x = i % n, y = (i / n) | 0;
     for (let d = 0; d < 8; d++) { const nx = x + DX8[d], ny = y + DY8[d]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (!reach[j] && map.terrain[j] !== TER.WATER && !map.obst[j]) { reach[j] = 1; q.push(j); } } }
+  const nearRoad = i => { const x = i % n, y = (i / n) | 0; for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < n && Y < n && map.road[Y * n + X]) return true; } return false; };
   const taken = i => !reach[i] || map.obst[i] || map.sites.some(S => Math.abs(S.x - i % n) <= 3 && Math.abs(S.y - ((i / n) | 0)) <= 3) || st.objects.some(o => !o.dead && (o.y * n + o.x === i || (o.blocks || []).includes(i)));
   const starts = map.sites.slice(0, Math.max(1, st.players.length || playerSlots(st.settings).length)), dStart = (x, y) => Math.min(...starts.map(s => Math.hypot(x - s.x, y - s.y)));
   const pick = (minD, near) => { for (let k = 0; k < 3000; k++) { const x = 2 + Math.floor(rng() * (n - 4)), y = 2 + Math.floor(rng() * (n - 4)), i = y * n + x;
@@ -416,7 +437,7 @@ function placeGrail(st) {
   if (!st.objects.some(o => o.type === 'site' && o.kind === 'obelisk')) {
     const want = OBELISKS[(MAP_SIZES.find(m => m.n === n) || MAP_SIZES[1]).id] || 4, placed = [];
     for (let k = 0; k < want; k++) { // obeliski daleko od siebie (każdy w innej części mapy)
-      const p = pick(4, (x, y) => placed.some(([a, b]) => Math.hypot(a - x, b - y) < n / (Math.sqrt(want) + 1))) || pick(4); if (!p) continue;
+      const p = pick(4, (x, y) => nearRoad(y * n + x) || placed.some(([a, b]) => Math.hypot(a - x, b - y) < n / (Math.sqrt(want) + 1))) || pick(4, (x, y) => nearRoad(y * n + x)) || pick(4); if (!p) continue; // obelisk z dala od drogi
       placed.push(p); st.objects.push({ id: st.objects.length, type: 'site', kind: 'obelisk', x: p[0], y: p[1], seen: {} });
     }
   }

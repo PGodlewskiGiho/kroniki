@@ -97,9 +97,11 @@ function drawnObjectAt(st, tx, ty) {
 function removeObject(st, ob) { ob.dead = true; rebuildObjIndex(st); }
 // Obiekty i strefy strażników można tylko "odwiedzić" jako cel ścieżki, nie przejść przez nie.
 // Inny bohater zajmuje pole: można na nie tylko wejść jako cel (wrogi bohater = bitwa).
-function objBlocks(st, j, target, tg = 0) {
+// Nieodkryty ukryty skarb (o.hid) nie zamyka drogi: bohater wchodzi na pole i go znajduje (zatrzymuje się i podnosi)
+function objBlocks(st, j, target, tg = 0, owner = ME) {
   if (j !== target && heroAt(st, j % st.map.n, (j / st.map.n) | 0)) return true;
   const ob = objectAt(st, j);
+  if (ob && !objSeen(st, ob, owner)) return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
   if (ob) { if ((ob.type === 'mine' || ob.type === 'town' || ob.type === 'bank') && j !== ob.y * st.map.n + ob.x) return true; if (j !== target) return true; }
   return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
 }
@@ -107,13 +109,13 @@ function computePath(st, h, tx, ty) {
   if (!passableTile(st, tx, ty, h)) return null; const map = st.map, n = map.n, t = ty * n + tx;
   if (objBlocks(st, t, t)) return null;
   const tob = objectAt(st, t), tg = tob && tob.type === 'monster' ? tob.id + 1 : 0;
-  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0, h) && legOk(st, h, i, j, t) && !objBlocks(st, j, t, tg)) ? baseCost(map, i, j, h) : Infinity, 50);
+  const p = findPath(n, h.x, h.y, tx, ty, (j, i) => (passableTile(st, j % n, (j / n) | 0, h) && legOk(st, h, i, j, t) && !objBlocks(st, j, t, tg, h.owner)) ? baseCost(map, i, j, h) : Infinity, 50);
   return p && p.length > 1 ? p.slice(1).map(i => [i % n, (i / n) | 0]) : null;
 }
 function heroCanStillMove(st, h) {
   if (!armySize(h.army)) return false;
   const n = st.map.n;
-  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y, h) && legOk(st, h, h.y * n + h.x, j, j) && !objBlocks(st, j, j) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y, h) <= h.mp) return true; }
+  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], j = y * n + x; if (passableTile(st, x, y, h) && legOk(st, h, h.y * n + h.x, j, j) && !objBlocks(st, j, j, 0, h.owner) && !heroAt(st, x, y) && stepCost(st.map, h.x, h.y, x, y, h) <= h.mp) return true; }
   return false;
 }
 function heroStep(st, h) {

@@ -6,7 +6,7 @@
 // Fale na wodzie liczy shader (wzór fal × maska głębi, piana × maska brzegu) – dawniej składane w płótnie dla każdego kawałka.
 // Gotowy obraz trafia do płótna gry jednym drawImage (jak dawny bufor świata). Bez WebGL, w trybie pikseli albo po
 // wybraniu w ustawieniach „procesor” – dawne rysowanie (drawMapView sprawdza GLMap.use()).
-const HP = 'precision highp float;', GLSL_HASH = 'float wxH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }';
+const HP = 'precision highp float;', GLSL_HASH = 'float wxH(highp vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }'; // wzór fal w wodzie liczony jak dawniej (mediump), skrót losowy zawsze w highp
 const GLMap = {
   ok: null, canvas: null, gl: null, frame: 0, tex: new Map(), bytes: 0, BUDGET: 192 * 1024 * 1024, stats: { quads: 0, draws: 0, uploads: 0 },
   // Tryb rysowania mapy (G.settings.renderer): 'auto' (domyślnie) – karta graficzna, jeśli przeglądarka ma sprzętowy WebGL;
@@ -35,7 +35,7 @@ const GLMap = {
     // woda: dwie warstwy wzoru fal (przesuwane w przeciwne strony) w masce głębi i pulsująca piana w masce brzegu (jak WaterFx.draw)
     this.pWater = prog(`attribute vec2 aP; attribute vec2 aT; uniform vec2 uR; varying vec2 vT;
       void main() { gl_Position = vec4(aP.x / uR.x * 2.0 - 1.0, 1.0 - aP.y / uR.y * 2.0, 0.0, 1.0); vT = aT; }`,
-    `${HP} uniform sampler2D uPat, uDeep, uShore, uSky; uniform vec2 uW, uO1, uO2; uniform float uS, uT, uRefl; uniform vec3 uA; uniform vec4 uFoam, uGrid; varying vec2 vT; ${GLSL_HASH}
+    `precision mediump float; uniform sampler2D uPat, uDeep, uShore, uSky; uniform vec2 uW, uO1, uO2; uniform float uS, uT, uRefl; uniform vec3 uA; uniform vec4 uFoam, uGrid; varying vec2 vT; ${GLSL_HASH}
       void main() { vec2 q = vT * uS + uW; vec4 c1 = texture2D(uPat, fract((q - uO1) / 48.0)) * uA.x, c2 = texture2D(uPat, fract((q - uO2) / 48.0)) * uA.y;
         float deep = texture2D(uDeep, vT).a; vec4 w = c2 + c1 * (1.0 - c2.a);
         // pogoda: odbicie nieba (jaśniej i bardziej błękitnie bez chmur), błyski słońca, kręgi deszczu (q: piksele grafiki, 16 na pole)

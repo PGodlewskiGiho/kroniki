@@ -9,28 +9,25 @@ test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
 
-test('co pada, zależy od pola i pory roku', async () => {
+test('co pada, zależy od krainy i pory roku (śnieg w śniegach i zimą, piasek na pustyni, popiół nad lawą, mgła na bagnach, jesienią liście)', async () => {
   await newGame(page, { mapSize: 'L', land: 'mixed' }, 21);
   const r = await page.evaluate(() => {
-    const st = G.state, n = st.map.n, names = ['brak', 'deszcz', 'śnieg', 'liście', 'popiół', 'piasek'], out = {};
+    const st = G.state, n = st.map.n, out = { bad: [], seen: {} };
     for (const [label, month, w] of [['lato', 2, 'storm'], ['zima', 4, 'snow'], ['jesień', 3, 'rain']]) {
-      st.month = month; const by = {};
-      for (let y = 0; y < n; y += 2) for (let x = 0; x < n; x += 2) for (const t of [0, 40]) { const v = weatherAt(st, x, y, t, w), ter = TERRAINS[st.map.terrain[y * n + x]].name; (by[ter] = by[ter] || new Set()).add(names[v[0]]); if (v[2] > 0.05) (by[ter + ':mgła'] = 1); }
-      out[label] = Object.fromEntries(Object.entries(by).map(([k, s]) => [k, s === 1 ? 1 : [...s].sort()]));
+      st.month = month;
+      for (let y = 0; y < n; y += 2) for (let x = 0; x < n; x += 2) for (const t of [0, 40]) {
+        const v = weatherAt(st, x, y, t, w), [snow, sand, lava, swamp] = climateAt(st.map, x, y), k = `${label}:${v[0]}`; out.seen[k] = 1;
+        if (sand > 0.6 && (v[0] === WX.RAIN || v[0] === WX.SNOW)) out.bad.push(`${label}: opad na pustyni ${x},${y}`);
+        if (snow > 0.6 && v[0] === WX.RAIN) out.bad.push(`${label}: deszcz w krainie śniegu ${x},${y}`);
+        if (lava > 0.5 && v[0] !== WX.ASH) out.bad.push(`${label}: nad lawą bez popiołu ${x},${y}`);
+        if (swamp > 0.5 && v[2] < 0.3) out.bad.push(`${label}: bagno bez mgły ${x},${y}`);
+        if (label === 'zima' && v[0] === WX.RAIN) out.bad.push(`zima: deszcz ${x},${y}`);
+      }
     }
-    return out;
+    return { bad: out.bad.slice(0, 5), seen: Object.keys(out.seen).sort() };
   });
-  const has = (season, ter, kind) => (r[season][ter] || []).includes(kind);
-  for (const s of ['lato', 'zima', 'jesień']) {
-    for (const t of Object.keys(r[s])) if (/piasek|pustynia/i.test(t) && !t.includes(':')) assert.ok(!has(s, t, 'deszcz') && !has(s, t, 'śnieg'), `${s}: na piasku nie pada (${r[s][t]})`);
-    for (const t of Object.keys(r[s])) if (/śnieg/i.test(t) && !t.includes(':')) assert.ok(!has(s, t, 'deszcz'), `${s}: nad śniegiem nie ma deszczu`);
-  }
-  const grass = Object.keys(r.lato).find(t => /trawa|łąka/i.test(t)) || Object.keys(r.lato)[1];
-  assert.ok(has('lato', grass, 'deszcz') && !has('lato', grass, 'śnieg'), `lato na ${grass}: ${r.lato[grass]}`);
-  assert.ok(has('zima', grass, 'śnieg') && !has('zima', grass, 'deszcz'), `zima na ${grass}: ${r.zima[grass]}`);
-  assert.ok(Object.values(r['jesień']).some(v => Array.isArray(v) && v.includes('liście')), 'jesienią liście w lasach');
-  const lava = Object.keys(r.lato).find(t => /lawa/i.test(t) && !t.includes(':')); if (lava) assert.deepEqual(r.lato[lava], ['popiół']);
-  const swamp = Object.keys(r.lato).find(t => /bagno|moczar/i.test(t) && !t.includes(':')); if (swamp) assert.ok(r.lato[swamp + ':mgła'], 'mgła nad bagnem');
+  assert.deepEqual(r.bad, []);
+  assert.ok(r.seen.includes('lato:1') && r.seen.includes('zima:2') && r.seen.includes('jesień:3'), `deszcz latem, śnieg zimą, liście jesienią: ${r.seen}`);
 });
 
 test('pogoda rysuje się kartą graficzną i procesorem, tanio, a wyłączona znika', async () => {
@@ -45,4 +42,17 @@ test('pogoda rysuje się kartą graficzną i procesorem, tanio, a wyłączona zn
     return out;
   });
   assert.ok(r.gl && r.cpu, 'pogoda widoczna w obu trybach'); assert.ok(r.ms < 3, `pogoda: ${r.ms.toFixed(2)} ms na klatkę`); assert.ok(r.offSkips, 'wyłączona się nie liczy');
+});
+
+test('pogoda jest regionalna: sąsiednie pola prawie zawsze mają tę samą (granice tylko między dużymi obszarami)', async () => {
+  await newGame(page, { mapSize: 'L', land: 'mixed' }, 33);
+  const r = await page.evaluate(() => {
+    const st = G.state, n = st.map.n, out = {};
+    for (const [month, w] of [[2, 'storm'], [3, 'rain'], [4, 'snow']]) { st.month = month; let pairs = 0, diff = 0; const type = [];
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) type[y * n + x] = weatherAt(st, x, y, 10, w)[0];
+      for (let y = 0; y < n; y++) for (let x = 0; x + 1 < n; x++) { pairs += 2; if (type[y * n + x] !== type[y * n + x + 1]) diff++; if (y + 1 < n && type[y * n + x] !== type[(y + 1) * n + x]) diff++; }
+      out[w] = diff / pairs; }
+    return out;
+  });
+  for (const [w, v] of Object.entries(r)) assert.ok(v < 0.04, `${w}: ${(v * 100).toFixed(1)}% sąsiednich pól z inną pogodą`);
 });

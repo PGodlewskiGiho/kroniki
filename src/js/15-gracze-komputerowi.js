@@ -121,7 +121,7 @@ function aiReach(st, h) {
     hk[i] = d; hv[i] = v;
   };
   const heroCell = new Uint8Array(N); for (const o of st.heroes) if (o.garrison == null) heroCell[o.y * n + o.x] = 1;
-  const stop = i => !!(st.objAt[i] || st.guard[i] || heroCell[i]);
+  const stop = i => !!((st.objAt[i] && objSeen(st, st.objects[st.objAt[i] - 1], h.owner)) || st.guard[i] || heroCell[i]); // nieznany ukryty skarb: przechodzi (i go znajduje)
   dist[start] = 0; push(0, start);
   while (hn) {
     const d = hk[0], i = hv[0]; pop(); if (d > dist[i]) continue; if (i !== start && stop(i)) continue;

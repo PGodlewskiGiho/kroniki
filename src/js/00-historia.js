@@ -345,5 +345,9 @@
    graficznej shadery (GLMap.weather: cząstki punktami, niebo z cieniami chmur i mgłą; woda odbija niebo i błyska), na procesorze
    mgła/chmury jednym obrazkiem i ~220 cząstek. Okolica startu bez potworów, obiekty nie zamykają przejść do miast, pierwsze słabe
    potwory za okolicą startu; kawałek mapy zagadki z Graalem zawsze ostatni.
+   Większe krainy: szumy klimatu w większej skali, cleanupBiomes wchłania skrawki terenu, grobla przy przejściu po skosie między
+   wodami. Pogoda regionalna: climateAt (udział terenów w promieniu ~7 pól, siatka co 4 pola), duży front (skala 28 pól).
+   Drogi wchodzą do miast bramą (omijają zabudowę), obiekty nie leżą na drogach (ukryty skarb na jedynej drodze zamykał przejazd).
+   Budynki (miasta, kopalnie, skarbce, portale) z pasem wolnym od dróg; niewidziany ukryty obiekt nie blokuje ścieżki ani SI.
    ===================================================================================== */
 
