@@ -20,11 +20,15 @@ const FACS = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'du
       const poly = (pts, col) => { g.fillStyle = col; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill(); };
       const clouds = (n, y0, y1, col, a) => { for (let i = 0; i < n; i++) { const x = r() * W, y = y0 + r() * (y1 - y0), L = 50 + r() * 90; for (let k = 0; k < 5; k++) blob(x + k * L / 5, y - (k % 2) * 6, L / 3, 9 + r() * 6, col, a); } };
       const pine = (x, y, h, col) => poly([[x, y - h], [x + h * 0.3, y], [x - h * 0.3, y]], col);
-      const oak = (x, y, h, col) => { g.fillStyle = shadeHex(col, -0.3); g.fillRect(x - h * 0.05, y - h * 0.5, h * 0.1, h * 0.5); for (let k = 0; k < 6; k++) blob(x + (r() - 0.5) * h * 0.6, y - h * 0.55 - r() * h * 0.4, h * 0.25, h * 0.2, k % 2 ? col : shadeHex(col, 0.15)); };
+      const oak = (x, y, h, col) => { poly([[x - h * 0.07, y], [x + h * 0.07, y], [x + h * 0.025, y - h * 0.6], [x - h * 0.025, y - h * 0.6]], '#3a2a1a');
+        for (const s of [-1, 1]) { g.strokeStyle = '#3a2a1a'; g.lineWidth = h * 0.02; g.beginPath(); g.moveTo(x, y - h * 0.45); g.lineTo(x + s * h * 0.2, y - h * 0.7); g.stroke(); }
+        for (let k = 0; k < 26; k++) { const a = r() * TAU, d = Math.sqrt(r()) * h * 0.3; blob(x + Math.cos(a) * d * 1.2, y - h * 0.72 + Math.sin(a) * d * 0.8, h * (0.06 + r() * 0.07), h * (0.05 + r() * 0.05), shadeHex(col, (r() - 0.4) * 0.5)); } };
       const rays = (x, y, col, n, a) => { g.save(); g.globalCompositeOperation = 'lighter'; for (let i = 0; i < n; i++) { const ang = 0.35 + i / n * 1.1; g.globalAlpha = a * (0.5 + r() * 0.5); poly([[x, y], [x + Math.cos(ang - 0.04) * 900, y + Math.sin(ang - 0.04) * 900], [x + Math.cos(ang + 0.04) * 900, y + Math.sin(ang + 0.04) * 900]], col); } g.restore(); };
       const glow = (x, y, rad, col, a = 0.6) => { g.save(); g.globalCompositeOperation = 'lighter'; const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = a; g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); g.restore(); };
       const fog = (y, h, col, a) => { const gr = g.createLinearGradient(0, y - h, 0, y + h); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.5, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = a; g.fillStyle = gr; g.fillRect(0, y - h, W, h * 2); g.globalAlpha = 1; };
-      const put = (cid, x, y, k, dir = 1, pose = 'attack', fr = 4) => { try { drawSprite(g, battleSprite(cid, dir, pose, fr), x, y, k); } catch (e) { /* brak arkusza */ } };
+      let textured = false; const texture = () => { if (textured) return; textured = true; const c2 = document.createElement('canvas'); c2.width = W; c2.height = H; const t = c2.getContext('2d'); t.filter = 'blur(2.5px)'; t.drawImage(o, 0, 0); g.clearRect(0, 0, W, H); g.drawImage(c2, 0, 0);
+        const im = g.getImageData(0, 0, W, H), d = im.data; for (let i = 0; i < d.length; i += 4) { const n = (r() - 0.5) * 26; d[i] += n; d[i + 1] += n; d[i + 2] += n; } g.putImageData(im, 0, 0); };
+      const put = (cid, x, y, k, dir = 1, pose = 'attack', fr = 4) => { texture(); try { drawSprite(g, battleSprite(cid, dir, pose, fr), x, y, k); } catch (e) { /* brak arkusza */ } };
       const town = (f, x, y, k) => { const ts = townSprite(f, 3); g.imageSmoothingEnabled = true; const w = ts.c.width * ts.u / 2 * k, h = ts.c.height * ts.u / 2 * k; g.drawImage(ts.c, x - w / 2, y - h, w, h); };
       const crowd = (ids, n, x0, x1, y0, y1, k0, k1, dir, pose = 'walk') => { const L = []; for (let i = 0; i < n; i++) { const t = r(); L.push([ids[i % ids.length], x0 + r() * (x1 - x0), y0 + t * (y1 - y0), k0 + t * (k1 - k0)]); } L.sort((a, b) => a[2] - b[2]).forEach(([c, x, y, k], i) => put(c, x, y, k, dir, pose, i % 8)); };
       const bolt = (x0, y0, x1, y1) => { g.save(); g.globalCompositeOperation = 'lighter'; for (const [w, c] of [[10, 'rgba(160,200,255,.5)'], [3, '#ffffff']]) { g.strokeStyle = c; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); for (let i = 1; i < 10; i++) { const f = i / 10; g.lineTo(x0 + (x1 - x0) * f + (r() - 0.5) * 40, y0 + (y1 - y0) * f + (r() - 0.5) * 20); } g.lineTo(x1, y1); g.stroke(); } g.restore(); };
@@ -35,15 +39,15 @@ const FACS = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'du
           ridge(hor, 60, '#7a98b8', 40, 1); ridge(hor + 30, 40, '#5a8a4a', 30, 2); ground(hor + 30, ['#6aa04a', '#3a6a2a']);
           blob(170, 330, 210, 70, '#5a904a'); town('haven', 170, 320, 3.6);
           put('griffin', 520, 150, 0.9, -1, 'walk', 2); put('royalGriffin', 640, 110, 0.7, -1, 'walk', 5);
-          crowd(['pikeman', 'crusader', 'marksman'], 14, 260, 720, 380, 430, 0.7, 0.9, 1); crowd(['champion', 'cavalier'], 6, 250, 700, 440, 540, 1.2, 1.9, 1, 'walk');
-          put('dawnbringer', 560, 330, 2.8, -1, 'attack', 5); put('champion', 200, 560, 2.4, 1, 'walk', 3); },
+          crowd(['pikeman', 'crusader', 'marksman'], 14, 260, 720, 380, 430, 0.7, 0.9, 1); crowd(['champion', 'cavalier'], 4, 300, 720, 440, 530, 1.2, 1.7, 1, 'walk');
+          put('dawnbringer', 570, 250, 2.3, -1, 'attack', 5); put('champion', 190, 560, 2.2, 1, 'walk', 3); },
         sylvan() { // poranna polana: jezioro w lesie, jednorogi u wody, smok nad koronami, miasto-drzewo we mgle
           const hor = 330; sky(['#7ab0a0', '#c8e8c0', '#f8f0c8'], hor); disc(560, 120, 26, '#fff8d8', 0.2);
           town('sylvan', 400, hor + 10, 2.2); fog(hor, 40, '#e8f4e0', 0.7); ground(hor, ['#5a8a3a', '#2a5a22']);
           blob(400, 440, 250, 55, '#7ab8c8'); blob(400, 432, 220, 30, '#a8d8e0', 0.6);
-          for (let i = 0; i < 9; i++) { oak(20 + i * 20, 560 - (i % 3) * 30, 230 + r() * 80, '#2a5a2a'); oak(W - 20 - i * 20, 560 - (i % 3) * 30, 230 + r() * 80, '#2a5a2a'); }
+          for (const [x, y, h] of [[60, 560, 420], [170, 520, 300], [250, 470, 200], [W - 60, 570, 440], [W - 170, 520, 300], [W - 250, 470, 210]]) oak(x, y, h, '#2e6a2a');
           put('jadeDragon', 300, 250, 1.7, 1, 'walk', 3); put('sunPhoenix', 600, 230, 1.1, -1, 'walk', 6);
-          put('silverUnicorn', 330, 470, 1.6, 1, 'idle', 1); put('unicorn', 480, 490, 1.5, -1, 'idle', 3); put('starUnicorn', 400, 520, 1.4, 1, 'idle', 5);
+          put('silverUnicorn', 340, 470, 1.6, 1, 'idle', 1); put('silverUnicorn', 470, 490, 1.5, -1, 'idle', 3);
           crowd(['nymph', 'elfSharp', 'dryad'], 8, 230, 560, 380, 410, 0.6, 0.75, 1, 'idle'); put('treantKing', 150, 540, 2.2, 1, 'idle', 2); },
         barrow() { // cmentarz w pełni księżyca: kościany smok na tle tarczy, licz na krypcie, szkielety wstają z grobów
           const hor = 360; sky(['#0e0a1e', '#2a2448', '#4a3e5a'], hor); disc(384, 170, 80, '#e8ecf4', 0.18); clouds(4, 80, 260, '#8a88a8', 0.25);
@@ -52,7 +56,7 @@ const FACS = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'du
           for (let i = 0; i < 16; i++) { const x = r() * W, y = hor + 30 + r() * 180, s = 0.6 + (y - hor) / 180; g.fillStyle = '#5a5866'; g.fillRect(x - 7 * s, y - 20 * s, 14 * s, 20 * s); blob(x, y - 20 * s, 7 * s, 7 * s, '#5a5866'); }
           fog(H - 60, 60, '#5aff9a', 0.18); glow(384, 380, 120, '#60ff90', 0.35);
           crowd(['boneWarrior', 'boneGuard', 'boneLegionary', 'ghoul'], 16, 40, 730, 420, 540, 0.8, 1.4, 1, 'walk');
-          put('lich', 384, 400, 1.8, 1, 'attack', 4); put('dreadLord', 120, 560, 2.1, 1, 'walk', 2); put('banshee', 620, 330, 1.2, -1, 'walk', 3); put('wraith', 160, 300, 1.0, 1, 'walk', 5); },
+          put('lich', 384, 400, 1.8, 1, 'attack', 4); put('dreadLord', 120, 560, 2.1, 1, 'walk', 2); },
         fortress() { // hydra wynurza się z bagna o zmierzchu, jaszczuroludzie w łodziach z pochodniami, ważki, namorzyny
           const hor = 280; sky(['#2a3a4a', '#c87a5a', '#f0b070'], hor); disc(200, 240, 40, '#ffd8a0', 0.2);
           ridge(hor, 30, '#3a4a3a', 40, 4); town('fortress', 140, hor + 18, 1.6); g.fillStyle = lin(hor, H, ['#4a5a3a', '#1e2a1a']); g.fillRect(0, hor, W, H - hor);
