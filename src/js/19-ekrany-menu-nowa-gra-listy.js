@@ -271,7 +271,15 @@ G.screens.menu = {
 };
 // Nowa gra: mapa, trudność, bonus i 8 miejsc graczy (człowiek / komputer / wolne, kolor, frakcja).
 // Kilku ludzi = hot-seat: grają na zmianę przy jednym ekranie, każdy ze swoją mgłą wojny.
-const setupCap = S => (SITE_COUNT[(MAP_SIZES.find(m => m.id === S.mapSize) || MAP_SIZES[0]).n] || 4);
+const setupCap = S => Math.min(MAX_PLAYERS, PLAYER_CAP[(MAP_SIZES.find(m => m.id === S.mapSize) || MAP_SIZES[0]).n] || 2);
+// Za mało miejsca na wybranej mapie: wyłącza nadmiarowe miejsca od końca (najpierw komputer, potem ludzie; pierwszy człowiek zostaje)
+function fitSlots(S) {
+  const cap = setupCap(S), act = () => S.slots.filter(o => o.type !== 'off');
+  for (const kind of ['ai', 'human']) for (let i = S.slots.length - 1; i >= 0 && act().length > cap; i--) { const o = S.slots[i]; if (o.type === kind && !(kind === 'human' && S.slots.filter(q => q.type === 'human').length === 1)) o.type = 'off'; }
+}
+// Bohater startowy miejsca: 'random' albo imię z puli frakcji; opis do podpowiedzi (klasa i specjalność)
+const heroPickTip = (fac, name) => { const e = factionOf(fac).heroes.find(([n]) => n === name); if (!e) return ''; const h = { name: e[0], cls: e[1], female: !!e[2], level: 1 }, C = HERO_CLASSES[e[1]];
+  return `${e[0]} – ${e[2] ? C.nameF || C.name : C.name}${heroSpec(h) ? `, specjalność: ${specName(h)} (${specText(h)})` : ''}`; };
 const SLOT_LABEL = { human: 'Człowiek', ai: 'Komputer', off: '—' };
 G.screens.setup = {
   fps: smoothFps, // animowana scena menu w tle: płynnie
@@ -280,26 +288,28 @@ G.screens.setup = {
   enter(p = {}) {
     this.online = !!p.online;
     const S = G.settings, B = []; S.slots = validSlots(S.slots) || legacySlots(S);
-    MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 100, 114, 94, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 15, sub: `${m.n}×${m.n}`, tip: `Na tej mapie zmieści się do ${SITE_COUNT[m.n]} graczy.` })));
+    MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 90, 114, 86, 44, m.name, () => { S.mapSize = m.id; fitSlots(S); }, { selected: () => S.mapSize === m.id, size: 14, sub: `${m.n}×${m.n}`, tip: `${m.name} mapa ${m.n}×${m.n}: do ${Math.min(MAX_PLAYERS, PLAYER_CAP[m.n])} graczy, ${SITE_COUNT[m.n]} miast.` })));
     // rodzaj krainy (LAND_TYPES): kliknięcie przełącza; kształt świata i kierunek klimatu i tak losowe
     const land = () => LAND_TYPES.find(l => l.id === (S.land || 'random')) || LAND_TYPES[0];
-    const lb = new Button(632, 114, 92, 44, 'Kraina', () => { S.land = LAND_TYPES[(LAND_TYPES.indexOf(land()) + 1) % LAND_TYPES.length].id; saveSettings(); }, { size: 15 });
+    const lb = new Button(664, 250, 104, 42, 'Kraina', () => { S.land = LAND_TYPES[(LAND_TYPES.indexOf(land()) + 1) % LAND_TYPES.length].id; saveSettings(); }, { size: 15 });
     Object.defineProperty(lb, 'sub', { get: () => land().name.toLowerCase(), set() {} });
     Object.defineProperty(lb, 'tip', { get: () => `Kraina: ${land().name} – ${land().desc}. Kształt świata (kontynent, wybrzeże, morze śródlądowe, przesmyk, jeziora) i strona świata, gdzie jest zimno, losują się zawsze. Kliknij, aby zmienić.`, set() {} });
     B.push(lb);
     DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 168, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
-    BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 254, 100, 36, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, tip: `Bonus startowy: ${b.sub}.` })));
-    const ug = new Button(230 + BONUSES.length * 106 + 14, 254, 150, 36, '', () => { S.underground = !S.underground; saveSettings(); }, { size: 15, selected: () => S.underground,
+    BONUSES.forEach((b, i) => B.push(new Button(230 + i * 100, 250, 96, 42, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, tip: `Bonus startowy: ${b.sub}.` })));
+    const ug = new Button(230 + BONUSES.length * 100 + 4, 250, 126, 42, 'Podziemia', () => { S.underground = !S.underground; saveSettings(); }, { size: 15, selected: () => S.underground,
       tip: 'Podziemia: drugi poziom świata pod powierzchnią – sieć jaskiń z kopalniami, skarbcami i silnymi potworami. Schodzi się bramami podziemi.' });
-    Object.defineProperty(ug, 'label', { get: () => (S.underground ? 'Podziemia: tak' : 'Podziemia: nie'), set() {} }); B.push(ug);
+    Object.defineProperty(ug, 'sub', { get: () => (S.underground ? 'tak' : 'nie'), set() {} }); B.push(ug); fitSlots(S);
     this.slotBtns = S.slots.map((o, i) => {
-      const x = 80 + (i % 2) * 340, y = 318 + (i >> 1) * 42, col = () => S.slots[i];
-      const sw = new Button(x, y, 34, 34, '', () => this.nextColor(i), { swatch: () => colorHex(col().color), tip: 'Kolor gracza (kliknij, aby zmienić).' });
-      const ty = new Button(x + 38, y, 88, 34, '', () => this.nextType(i), { size: 13, selected: () => col().type === 'human', tip: 'Człowiek, komputer albo wolne miejsce. Kilku ludzi gra na zmianę przy jednym ekranie (hot-seat).' });
-      const nm = new Button(x + 130, y, 96, 34, '', () => askText(`Imię gracza (${PLAYER_COLORS.find(c => c.id === col().color).name.toLowerCase()}). Puste = nazwa od koloru.`, col().name, v => { col().name = v; saveSettings(); }), { size: 13, tip: 'Imię człowieka widoczne w turach i wieściach (kliknij, aby wpisać).' });
-      const fa = new Button(x + 230, y, 90, 34, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; }, { size: 13, tip: 'Frakcja gracza (kliknij, aby zmienić).' });
+      const x = 62 + (i % 2) * 350, y = 318 + (i >> 1) * 42, col = () => S.slots[i];
+      const sw = new Button(x, y, 30, 34, '', () => this.nextColor(i), { swatch: () => colorHex(col().color), tip: 'Kolor gracza (kliknij, aby zmienić).' });
+      const ty = new Button(x + 33, y, 70, 34, '', () => this.nextType(i), { size: 13, selected: () => col().type === 'human', tip: 'Człowiek, komputer albo wolne miejsce. Kilku ludzi gra na zmianę przy jednym ekranie (hot-seat).' });
+      const nm = new Button(x + 106, y, 72, 34, '', () => askText(`Imię gracza (${PLAYER_COLORS.find(c => c.id === col().color).name.toLowerCase()}). Puste = nazwa od koloru.`, col().name, v => { col().name = v; saveSettings(); }), { size: 13, tip: 'Imię człowieka widoczne w turach i wieściach (kliknij, aby wpisać).' });
+      const fa = new Button(x + 181, y, 76, 34, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; o.hero = 'random'; }, { size: 13, tip: 'Frakcja gracza (kliknij, aby zmienić).' });
+      const he = new Button(x + 260, y, 78, 34, '', () => { const o = col(), ids = ['random', ...factionOf(o.faction).heroes.map(([n]) => n)]; o.hero = ids[(ids.indexOf(o.hero || 'random') + 1) % ids.length]; saveSettings(); }, { size: 12 });
+      Object.defineProperty(he, 'tip', { get: () => { const o = col(); return o.faction === 'random' ? 'Bohater startowy: najpierw wybierz frakcję.' : !o.hero || o.hero === 'random' ? 'Bohater startowy: losowy z frakcji (kliknij, aby wybrać konkretnego).' : `Bohater startowy: ${heroPickTip(o.faction, o.hero)}. Kliknij, aby zmienić.`; }, set() {} });
       Object.defineProperty(fa, 'tip', { get: () => { const f = col().faction; return f === 'random' ? 'Frakcja gracza: losowa (kliknij, aby zmienić).' : `${factionOf(f).name}: ${factionOf(f).desc} Cecha: ${traitText(f)}. Magia: ${magicText(f)}. Kliknij, aby zmienić.`; }, set() {} });
-      B.push(sw, ty, nm, fa); return { sw, ty, nm, fa };
+      B.push(sw, ty, nm, fa, he); return { sw, ty, nm, fa, he };
     });
     this.bStart = new Button(90, 506, 190, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 19, primary: true });
     B.push(this.bStart, new Button(305, 506, 190, 46, 'Zasady…', () => G.go('rules'), { key: 'z', size: 19, sub: rulesSummary(G.settings.rules), tip: 'Limit bohaterów, rozejm z komputerem, siła potworów, skarby i odkryta mapa.' }),
@@ -315,6 +325,7 @@ G.screens.setup = {
   },
   nextType(i) {
     const S = G.settings, o = S.slots[i], t = SLOT_TYPES[(SLOT_TYPES.indexOf(o.type) + 1) % SLOT_TYPES.length];
+    if (o.type === 'off' && this.active() >= setupCap(S)) return; // mapa pełna: większa mapa mieści więcej graczy
     if (o.type === 'human' && !S.slots.some((q, j) => j !== i && q.type === 'human')) { o.type = 'ai'; S.slots[i === 0 ? 1 : 0].type = 'human'; return; } // zawsze choć jeden człowiek
     o.type = t;
   },
@@ -337,6 +348,7 @@ G.screens.setup = {
     const S = G.settings;
     for (const [i, b] of (this.slotBtns || []).entries()) {
       const o = S.slots[i]; b.ty.label = SLOT_LABEL[o.type]; b.fa.label = o.faction === 'random' ? 'Losowa' : factionOf(o.faction).name; b.fa.disabled = b.sw.disabled = o.type === 'off'; b.nm.disabled = o.type !== 'human'; b.nm.label = o.type !== 'human' ? '—' : o.name || 'Imię…';
+      b.he.label = o.type === 'off' ? '—' : !o.hero || o.hero === 'random' ? 'Losowy' : o.hero; b.he.disabled = o.type === 'off' || o.faction === 'random';
     }
     dimmedMenuScene(ctx, 0.5);
     drawParchment(ctx, 40, 22, 720, 556);

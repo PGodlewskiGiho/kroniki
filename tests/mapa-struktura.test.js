@@ -137,3 +137,16 @@ test('bez przestojów: z każdego startu da się wyjść, walcząc z oddziałami
     return out; });
   for (const [k, part] of r) assert.ok(part >= 0.1, `${k}: bez walki z silniejszymi dostępne ${(part * 100).toFixed(0)}% lądu`);
 });
+
+test('mapy gigantyczna (180) i bezkresna (216): komplet miejsc na miasta, wszystkie osiągalne; gra z 8 graczami startuje', async () => {
+  const r = await page.evaluate(() => {
+    const bad = []; for (const n of [180, 216]) for (const land of ['mixed', 'islands']) {
+      const m = generateMap(n, n * 7 + land.length, land), N = n * n, reach = new Uint8Array(N), q = [m.start.y * n + m.start.x]; reach[q[0]] = 1;
+      while (q.length) { const i = q.pop(), x = i % n, y = (i / n) | 0; for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X >= 0 && Y >= 0 && X < n && Y < n && !reach[j] && m.terrain[j] !== TER.WATER && !m.obst[j]) { reach[j] = 1; q.push(j); } } }
+      if (m.sites.length < SITE_COUNT[n]) bad.push(`${n} ${land}: miejsc ${m.sites.length}/${SITE_COUNT[n]}`);
+      if (land === 'mixed' && !m.sites.every(s => reach[s.y * n + s.x])) bad.push(`${n} ${land}: miasto nieosiągalne`); }
+    const st = createNewGame(Object.assign({}, G.settings, { mapSize: 'G', land: 'mixed', slots: null, opponents: 7, underground: false }), 3);
+    return { bad, players: st.players.length, towns: st.towns.length, sizes: MAP_SIZES.map(m => m.id) };
+  });
+  assert.deepEqual(r.bad, []); assert.equal(r.players, 8); assert.equal(r.towns, 14); assert.deepEqual(r.sizes, ['S', 'M', 'L', 'XL', 'XXL', 'G']);
+});

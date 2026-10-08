@@ -142,7 +142,7 @@ const SITES = {
 // Morze: potwory na wodzie wg poziomu (piraci płyną statkiem, reszta to morskie stwory), wiry w parach wg rozmiaru mapy,
 // latarnie (jedna na tyle pól wody) i dodatkowy ruch łodzi za każdą posiadaną latarnię
 const SEA_MONSTERS = { 1: ['rusalka', 'rogue'], 2: ['rogue', 'lizardWarrior'], 3: ['nomad', 'lizardSlayer'], 4: ['sharpshooter', 'nomad'], 5: ['naga', 'sharpshooter'], 6: ['nagaQueen', 'nagaEmpress'], 7: ['hydra', 'chaosHydra', 'primeHydra'] };
-const PIRATES = ['rogue', 'nomad', 'sharpshooter'], WHIRL_PAIRS = { S: 1, M: 1, L: 2, XL: 3 }, LIGHTHOUSE_PER = 1300, LIGHTHOUSE_MP = 400, SEA_MONSTER_PER = 380;
+const PIRATES = ['rogue', 'nomad', 'sharpshooter'], WHIRL_PAIRS = { S: 1, M: 1, L: 2, XL: 3, XXL: 4, G: 5 }, LIGHTHOUSE_PER = 1300, LIGHTHOUSE_MP = 400, SEA_MONSTER_PER = 380;
 // Miejsca bez strażnika (drobne, przydrożne albo same są wyzwaniem); resztę pilnuje potwór obok (placeObjects)
 const UNGUARDED_SITES = ['well', 'stables', 'temple', 'fountain', 'market', 'inn', 'caravanserai', 'questHut', 'sphinx', 'oasis', 'mushroomRing', 'campfire'];
 // Zagadki sfinksa: [pytanie, dobra odpowiedź, zła, zła] (kolejność odpowiedzi w oknie losowa)
@@ -170,12 +170,12 @@ const HERMIT_NAMES = ['Bogumił', 'Sędziwój', 'Radost', 'Mszczuj', 'Ostoja', '
 const BAZAAR_PRICE = { treasure: 2500, minor: 5000, major: 9000 }, QUEST_EXP = 1500, WISH_MORALE = 1, BARROW_CURSE = -3;
 // Nowe miejsca: portale w parach (PORTAL_PAIRS wg rozmiaru mapy), wraki na wodzie (jeden na WRECK_PER pól wody),
 // siedlisko: tygodniowy przyrost stworów (DWELL_WEEKS tygodni zapasu), ołtarz: doświadczenie za artefakt wg rzadkości.
-const PORTAL_PAIRS = { S: 1, M: 1, L: 2, XL: 3 }, WRECK_PER = 700, DWELL_WEEKS = 3;
+const PORTAL_PAIRS = { S: 1, M: 1, L: 2, XL: 3, XXL: 4, G: 5 }, WRECK_PER = 700, DWELL_WEEKS = 3;
 const SACRIFICE_EXP = { treasure: 800, minor: 2000, major: 4500, relic: 15000 };
 // Graal (jak w Heroes 3): zakopany na mapie; obeliski odsłaniają kolejne kawałki mapy zagadki (PUZZLE_COLS × PUZZLE_ROWS
 // kawałków, wycinek PUZZLE_W × PUZZLE_H pól wokół Graala). Kopać można z pełnymi punktami ruchu (zużywa wszystkie).
 // Bohater z Graalem wchodzi do własnego miasta i buduje tam budowlę Graala: +GRAIL_GOLD złota dziennie i +50% przyrostu.
-const OBELISKS = { S: 3, M: 5, L: 7, XL: 9 }, GRAIL_GOLD = 5000, GRAIL_GROWTH = 0.5;
+const OBELISKS = { S: 3, M: 5, L: 7, XL: 9, XXL: 11, G: 13 }, GRAIL_GOLD = 5000, GRAIL_GROWTH = 0.5;
 const PUZZLE_COLS = 8, PUZZLE_ROWS = 6, PUZZLE_W = 16, PUZZLE_H = 12;
 const SITE_EXP = 1000, SITE_MP = 400, LOOKOUT_R = 12;
 // Skarbce (obiekt type: 'bank', kind): silna załoga z kilku oddziałów, po zwycięstwie jednorazowy łup, potem obiekt stoi pusty.

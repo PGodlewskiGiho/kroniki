@@ -530,8 +530,9 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   });
   for (const s of sites.slice(slots.length)) createNeutralTown(st, s, trng);
   rebuildObjIndex(st);
-  for (const p of st.players) {
-    const t = st.towns.find(t => t.owner === p.id), h = createHero(st, p.id, t.x, t.y);
+  for (const p of st.players) { // bohater startowy: wybrany przy nowej grze (slots[].hero) albo losowy z puli frakcji
+    const t = st.towns.find(t => t.owner === p.id), want = slots[p.id].hero, pk = want && want !== 'random' && factionOf(p.faction).heroes.find(([n]) => n === want);
+    const h = createHero(st, p.id, t.x, t.y, pk ? { name: pk[0], cls: pk[1], female: !!pk[2], fac: p.faction } : null);
     if (p.human) p.bonusText = startBonus(st, S.bonus, p, h, rng);
     reveal(st, h.x, h.y, HERO_SIGHT + 6, p.id); // start: okolica własnego miasta odkryta (ok. dzień marszu)
     if (rule(st, 'reveal')) p.explored.fill(1); // zasada „odkryta mapa”

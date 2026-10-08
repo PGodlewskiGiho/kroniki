@@ -32,7 +32,8 @@ function loadSettings() {
 const SLOT_TYPES = ['human', 'ai', 'off'];
 function validSlots(a) {
   if (!Array.isArray(a) || a.length !== MAX_PLAYERS) return null;
-  const used = new Set(), out = a.map(o => ({ type: SLOT_TYPES.includes(o && o.type) ? o.type : 'off', color: o && o.color, name: o && typeof o.name === 'string' ? o.name.trim().slice(0, 16) : '', faction: o && (o.faction === 'random' || FACTIONS.some(f => f.id === o.faction)) ? o.faction : 'random' }));
+  const used = new Set(), out = a.map(o => ({ type: SLOT_TYPES.includes(o && o.type) ? o.type : 'off', color: o && o.color, name: o && typeof o.name === 'string' ? o.name.trim().slice(0, 16) : '', faction: o && (o.faction === 'random' || FACTIONS.some(f => f.id === o.faction)) ? o.faction : 'random', hero: 'random' }));
+  a.forEach((o, i) => { if (o && out[i].faction !== 'random' && factionOf(out[i].faction).heroes.some(([n]) => n === o.hero)) out[i].hero = o.hero; }); // bohater startowy z puli frakcji (inaczej losowy)
   for (const o of out) { if (!PLAYER_COLORS.some(c => c.id === o.color) || used.has(o.color)) o.color = null; else used.add(o.color); }
   for (const o of out) if (!o.color) { o.color = PLAYER_COLORS.find(c => !used.has(c.id)).id; used.add(o.color); }
   if (!out.some(o => o.type === 'human')) out[0].type = 'human';
@@ -40,7 +41,7 @@ function validSlots(a) {
 }
 function legacySlots(S) {
   const colors = [S.color || 'red', ...PLAYER_COLORS.map(c => c.id).filter(id => id !== (S.color || 'red'))], foes = S.opponents == null ? 1 : S.opponents;
-  return colors.map((color, i) => ({ type: i === 0 ? 'human' : i <= foes ? 'ai' : 'off', color, faction: i === 0 ? S.faction || 'haven' : 'random' }));
+  return colors.map((color, i) => ({ type: i === 0 ? 'human' : i <= foes ? 'ai' : 'off', color, faction: i === 0 ? S.faction || 'haven' : 'random', hero: i === 0 && S.hero ? S.hero : 'random' }));
 }
 // Aktywne miejsca do createNewGame. Bez S.slots (testy, stare ustawienia) liczą się kolor, frakcja i liczba rywali.
 const playerSlots = S => (validSlots(S.slots) || legacySlots(S)).filter(o => o.type !== 'off');

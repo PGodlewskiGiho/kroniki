@@ -46,7 +46,7 @@ test('czat: wiadomość gospodarza dociera do gościa', async () => {
 test('start gry: gość dostaje świat i ogląda turę gospodarza, podgląd zmian na żywo', async () => {
   await until(A.page, () => !G.fade.next);
   await A.page.evaluate(() => {
-    const S = G.settings; S.mapSize = 'S'; S.slots.forEach((o, i) => { o.type = i < 2 ? 'human' : 'off'; o.faction = 'haven'; }); S.slots[2].type = 'ai';
+    const S = G.settings; S.mapSize = 'M'; S.slots.forEach((o, i) => { o.type = i < 2 ? 'human' : 'off'; o.faction = 'haven'; }); S.slots[2].type = 'ai';
     G.go('setup', { online: true });
   });
   await until(A.page, () => G.screenName === 'setup');

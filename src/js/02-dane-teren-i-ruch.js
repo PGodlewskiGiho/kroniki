@@ -22,7 +22,8 @@ const ROADS = [null,
   { name: 'droga brukowana', cost: 50, pal: ['#8c826e', '#bdb29c', '#ddd4c0'] },
 ];
 const DX8 = [1, -1, 0, 0, 1, 1, -1, -1], DY8 = [0, 0, 1, -1, 1, -1, 1, -1];
-const SITE_COUNT = { 36: 4, 72: 6, 108: 8, 144: 10 }; // miejsca pod miasta = najwięcej graczy na mapie
+const SITE_COUNT = { 36: 4, 72: 6, 108: 8, 144: 10, 180: 12, 216: 14 }; // miejsca pod miasta (gracze + miasta niczyje)
+const PLAYER_CAP = { 36: 2, 72: 4, 108: 6, 144: 8, 180: 8, 216: 8 }; // najwięcej graczy na mapie danej wielkości (jak w H3: mała dla dwóch, olbrzymia i większe dla ośmiu)
 const STEP_TIME = 0.14, HERO_SIGHT = 5;
 // Rodzaj krainy (opcja nowej gry): proporcje terenu. water – część mapy pod wodą, ranges – mnożnik pasm górskich, forest – próg lasu
 // (mniej = więcej lasu), rivers – mnożnik rzek, cold/hot – część mapy w mrozie i w upale, swamp – próg bagien, shapes – możliwe kształty świata
@@ -41,7 +42,7 @@ const MAP_SHAPES = { continent: 'kontynent', coast: 'wybrzeże', inland: 'morze 
 // Podziemia (opcja nowej gry): mapa ma bok 2·ln; powierzchnia w lewej górnej ćwiartce (0..ln-1), podziemia w prawej dolnej
 // (ln..2ln-1); pozostałe dwie ćwiartki to lita skała, której nie widać. Przejścia między poziomami: pary bram (SITES.gate).
 // Bez podziemi ln nie istnieje i poziom jest jeden (cała mapa).
-const UNDER_GATES = { S: 2, M: 3, L: 4, XL: 5 };
+const UNDER_GATES = { S: 2, M: 3, L: 4, XL: 5, XXL: 6, G: 7 };
 const levelSize = map => map.ln || map.n;
 const levelOf = (map, x, y) => (map.ln && x >= map.ln && y >= map.ln ? 1 : 0);
 const levelOrigin = (map, L) => (L ? map.ln : 0);

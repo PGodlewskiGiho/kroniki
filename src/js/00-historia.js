@@ -369,5 +369,7 @@
    bitwa morska (B.naval): dwa pokłady, woda NAVAL_GAP, kładki NAVAL_PLANKS.
    Czaszka bramy wykuta w szarej skale (mqSkull: skośne oczodoły, kły nad paszczą); bitwa morska na rysowanym obrazie dwóch żaglowców
    (bitwy/morska.webp rysowany przez tools/tla-ai/szkic-morska.js, bez AI) z ruchomymi falami w szczelinie NAVAL_SEA.
+   Surowce na mapie 70% (RES_K 1,33). Mapy Gigantyczna 180 i Bezkresna 216 (SITE_COUNT 12/14); najwięcej graczy wg mapy PLAYER_CAP
+   (2/4/6/8/8/8, fitSlots wyłącza nadmiar); bohater startowy do wyboru na ekranie nowej gry (slots[].hero).
    ===================================================================================== */
 
