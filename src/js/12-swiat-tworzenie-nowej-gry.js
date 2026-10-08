@@ -366,7 +366,8 @@ function placeObjects(st) {
     for (let k = 0; k < cnt; k++) {
       const base = (x, y) => dStart(x, y) >= (S.guard ? 7 : 4) && (!S.terr || map.terrain[y * n + x] === TER[S.terr]) && roadFree(x - 1, y - 1, x + 1, y); // terr: tylko na danym terenie (oaza na piasku); budynek nie na drodze ani tuż przy niej
       const fit = FIT[SITE_FIT[kind]] || null;
-      const p = (S.ug && map.ln ? best((x, y) => base(x, y) && levelOf(map, x, y) === 1, fit) : null) || best(base, fit); if (!p) continue; // ug: najchętniej w podziemiach
+      const roadOk = SITE_FIT[kind] === 'road' ? (x, y) => base(x, y) && dRoad[y * n + x] <= 4 : null; // przydrożne naprawdę przy drodze (gdy tam ciasno, odstęp nie wygrywa z drogą)
+      const p = (S.ug && map.ln ? best((x, y) => base(x, y) && levelOf(map, x, y) === 1, fit) : null) || (roadOk && best(roadOk, fit)) || best(base, fit); if (!p) continue; // ug: najchętniej w podziemiach
       const o = { type: 'site', kind, x: p[0], y: p[1], seen: {} };
       if (kind === 'shrine') { const L = d01(p[0], p[1]) > 0.5 ? 2 : 1, pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L); o.spell = pool[Math.floor(rng() * pool.length)]; }
       if (kind === 'windmill') o.res = RARE[Math.floor(rng() * RARE.length)];
@@ -381,7 +382,8 @@ function placeObjects(st) {
   for (const st0 of starts) {
     const near = (o, r) => Math.hypot(o.x - st0.x, o.y - st0.y) <= r;
     if (!objs.some(o => o.type === 'site' && EARLY.includes(o.kind) && near(o, 12))) {
-      const kind = EARLY[Math.floor(rng() * EARLY.length)], p = pick((x, y) => { const d = Math.hypot(x - st0.x, y - st0.y); return d >= 5 && d <= 11 && roadFree(x - 1, y - 1, x + 1, y); }, 1500);
+      const kind = EARLY[Math.floor(rng() * EARLY.length)], cond = (x, y) => { const d = Math.hypot(x - st0.x, y - st0.y); return d >= 5 && d <= 11 && roadFree(x - 1, y - 1, x + 1, y); };
+      const p = (SITE_FIT[kind] === 'road' && best((x, y) => cond(x, y) && dRoad[y * n + x] <= 4, FIT.road, 40)) || best(cond, FIT[SITE_FIT[kind]] || null, 40) || pick(cond, 1500); // też wg okolicy (stajnia przy drodze, ołtarz w górach)
       if (p) { const o = { type: 'site', kind, x: p[0], y: p[1], seen: {} }; if (kind === 'campfire') o.res = ['wood', 'ore', 'mercury', 'sulfur', 'crystal', 'gems'][Math.floor(rng() * 6)]; add(o, [p[1] * n + p[0]]); }
     }
     if (!objs.some(o => o.type === 'chest' && near(o, 10))) { const p = pick((x, y) => { const d = Math.hypot(x - st0.x, y - st0.y); return d >= 3 && d <= 9; }, 1500);
@@ -396,13 +398,13 @@ function placeObjects(st) {
   }
   const water = map.terrain.reduce((s, t) => s + (t === TER.WATER ? 1 : 0), 0);
   for (let k = Math.floor(water / WRECK_PER), tries = 0; k > 0 && tries < 4000; tries++) {
-    const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x; if (map.terrain[i] !== TER.WATER || occ[i]) continue;
+    const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x; if (map.terrain[i] !== TER.WATER || occ[i] || !roadFree(x - 1, y - 1, x + 1, y + 1)) continue; // nie przy moście ani brodzie
     let wet = 0; for (let d = 0; d < 8; d++) if (map.terrain[(y + DY8[d]) * n + x + DX8[d]] === TER.WATER) wet++; if (wet < 7) continue;
     add({ type: 'site', kind: 'wreck', x, y, seen: {} }, [i]); k--;
   }
   // miejsca na wodzie (wper: jedno na tyle pól wody): boja, szczątki, skała syren – na otwartej wodzie, dostępne łodzią
   for (const [kind, S] of Object.entries(SITES)) if (S.wper) for (let k = Math.floor(water / S.wper) + (rng() < (water / S.wper) % 1 ? 1 : 0), tries = 0; k > 0 && tries < 4000; tries++) {
-    const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x; if (map.terrain[i] !== TER.WATER || occ[i]) continue;
+    const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x; if (map.terrain[i] !== TER.WATER || occ[i] || !roadFree(x - 1, y - 1, x + 1, y + 1)) continue; // nie przy moście ani brodzie
     let wet = 0; for (let d = 0; d < 8; d++) if (map.terrain[(y + DY8[d]) * n + x + DX8[d]] === TER.WATER && !occ[(y + DY8[d]) * n + x + DX8[d]]) wet++; if (wet < 6) continue;
     add({ type: 'site', kind, x, y, seen: {} }, [i]); k--;
   }
