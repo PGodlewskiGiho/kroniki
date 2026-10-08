@@ -10,6 +10,33 @@ const mqRock = (pal, x, z, rx, ry, rz, seed, peak = false) => { const m = mpRock
 const mqGlow = (r, col, x, y, z) => { const m = sph(r / PXU, col, 'glow', P(x, y, z), null, 14); m.material = lightMat(col); return m; };
 const mqTree = (x, z, s = 1, kind = 'oak') => { const R = rng(Math.round(x * 13 + z * 7)), t = kind === 'pine' ? mpPine(R, false, s) : kind === 'dead' ? mpDead(R, '#3a3020', s) : mpOak(R, 1, s); t.scale.multiplyScalar(2); t.position.set(...P(x, 0, z)); return t; };
 const ST = { stone: '#9a948a', stoneD: '#6e6a62', wood: '#7a5230', woodD: '#4a3020', roof: '#8a3a22', slate: '#4a5a7a', thatch: '#c8a860', plaster: '#e8dcc0' };
+const MQ_CLIFF = ['#5e5850', '#7e7568', '#3e3a34'];
+const mqCliff = (x, z, rx, ry, rz, seed) => { const m = mpRockMesh(rx / PXU, ry / PXU, rz / PXU, MQ_CLIFF, seed, 16); m.position.set(...P(x, 0, z)); return m; }; // ciemna, szara skała urwiska
+// Czaszka wykuta w skale: kula odkształcona w czerep, zwężone policzki i szczęka, spłaszczona twarz; skośne (groźne) oczodoły, nos i paszcza wciśnięte
+// w głąb i ciemne, łuki brwiowe i kości policzkowe wypchnięte; nierówna, ciosana powierzchnia (płaskie cieniowanie), brud ciekący z oczodołów.
+function mqSkull(seed) {
+  const geo = new THREE.SphereGeometry(1, 80, 60), p = geo.attributes.position, cav = new Float32Array(p.count), grime = new Float32Array(p.count), v = new THREE.Vector3();
+  const nz = (x, y, z) => Math.sin(x * 9.1 + seed) * Math.sin(y * 8.3 + 1.7) * Math.sin(z * 7.7 + 2.3) * 0.6 + Math.sin(x * 23 + y * 19 + seed) * Math.sin(z * 21 - y * 7) * 0.4;
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i); let { x, y, z } = v; const front = Math.max(0, z);
+    if (y < 0.15) { const t = (0.15 - y) / 1.15; x *= 1 - 0.34 * t; z *= 1 - 0.12 * t; } // policzki i szczęka węższe od czerepu
+    y *= 0.94; if (z > 0.52) z = 0.52 + (z - 0.52) * 0.3; // płaska twarz
+    let d = 0, bump = 0;
+    for (const s of [-1, 1]) { const dx = x - s * 0.35, dy = y + 0.02, a = s * 0.38, u = dx * Math.cos(a) + dy * Math.sin(a), w = -dx * Math.sin(a) + dy * Math.cos(a), r = Math.hypot(u / 0.27, w / (w > 0 ? 0.17 : 0.22)); // oczodół: górna krawędź skośna ku nosowi
+      if (r < 1) d = Math.max(d, 0.6 * Math.pow(1 - r * r, 0.5)); else if (r < 1.5 && w > 0) bump = Math.max(bump, 0.07 * (1 - (r - 1) / 0.5)); // łuk brwiowy nad oczodołem
+      const cb = Math.hypot((x - s * 0.5) / 0.2, (y + 0.3) / 0.14); if (cb < 1) bump = Math.max(bump, 0.06 * (1 - cb * cb)); // kość policzkowa
+      if (Math.abs(x - s * 0.33) < 0.07 && y < -0.15 && y > -0.5) grime[i] = Math.max(grime[i], 1 - Math.abs(x - s * 0.33) / 0.07); } // brud spływający z oczodołu
+    const ny = (y + 0.18) / -0.26; if (ny > 0 && ny < 1 && Math.abs(x) < 0.03 + 0.08 * ny) d = Math.max(d, 0.32 * (1 - Math.abs(x) / (0.03 + 0.08 * ny))); // otwór nosowy (wąski u góry)
+    const my = -(y + 0.46); if (my > 0 && Math.abs(x) < 0.42) d = Math.max(d, Math.min(0.8, my * 4) * Math.pow(1 - Math.abs(x) / 0.42, 0.25)); // paszcza: wejście w głąb
+    const n = nz(x, y, z) * 0.035; z -= d * (front > 0.25 ? 1 : front * 4); const k = 1 + bump * (front > 0.2 ? 1 : 0) + n; v.set(x * k, y * k, z + bump * front);
+    p.setXYZ(i, v.x, v.y, v.z); cav[i] = front > 0.2 ? d : 0;
+  }
+  geo.computeVertexNormals(); const ng = geo.toNonIndexed(), q = ng.attributes.position, idx = geo.index.array, cols = new Float32Array(q.count * 3);
+  const base = new THREE.Color('#8e877a'), lit = new THREE.Color('#b4ab98'), dark = new THREE.Color('#120c0a'), dirt = new THREE.Color('#4a4038'); ng.computeVertexNormals(); const nr = ng.attributes.normal;
+  for (let f = 0; f < q.count; f += 3) { let c = 0, gm = 0; for (let j = 0; j < 3; j++) { c += cav[idx[f + j]]; gm += grime[idx[f + j]]; } c /= 3; gm /= 3;
+    const col = base.clone().lerp(lit, Math.max(0, nr.getY(f)) * 0.55).lerp(dirt, gm * 0.6).lerp(dark, Math.min(1, c / 0.16)); for (let j = 0; j < 3; j++) cols.set([col.r, col.g, col.b], (f + j) * 3); }
+  ng.setAttribute('color', new THREE.BufferAttribute(cols, 3)); const m = mesh(ng, '#ffffff', 'stone'); m.material = m.material.clone(); m.material.vertexColors = true; m.material.flatShading = true; return m;
+}
 // --- miejsca (1 pole) ---
 const SITE3 = {
   shrine() { const g = new THREE.Group(); g.add(blk(44, 8, 34, ST.stoneD, 'ashlar')); g.add(blk(30, 34, 24, ST.stone, 'ashlar', 0, 8, 0)); g.add(gable(30, 24, 18, ST.slate, 'tiles', 0, 42, 0, 4, ST.stone, 'ashlar'));
@@ -57,23 +84,17 @@ const SITE3 = {
   portal(f = 0) { const g = new THREE.Group(); g.add(cyl3(24, 26, 4, ST.stoneD, 'ashlar')); const arch = torus(20 / PXU, 4 / PXU, '#6a6474', 'stone', P(0, 24, 0), null, [1, 1.15, 1]); g.add(arch); for (const s of [-1, 1]) g.add(blk(9, 8, 9, '#5a5464', 'ashlar', s * 20, 0, 0));
     const disc = cyl(17 / PXU, 17 / PXU, 1 / PXU, '#60a0ff', 'glow', P(0, 24, 0), [Math.PI / 2, 0, 0], [1, 1, 1.15], 28); disc.material = lightMat('#7ab4ff'); disc.material.transparent = true; disc.material.opacity = 0.85; g.add(disc); g.add(mqGlow(6, '#e0f0ff', 0, 24, 1));
     for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + f * Math.PI / 12; g.add(sph(1.6 / PXU, '#bfe0ff', 'gem', P(Math.cos(a) * 20, 24 + Math.sin(a) * 23, 3))); } disc.material.opacity = 0.7 + 0.08 * f; return g; },
-  gate() { /* brama podziemi jak w H3: wielka kamienna czaszka wrośnięta w skalny pagórek, odchylona ku niebu; wejście w paszczy, schody w ciemność, w oczodołach żar */
-    const g = new THREE.Group(), B = '#d8ceb4', BD = '#a89c80', face = new THREE.Group(); face.position.set(...P(0, 6, 4)); face.rotation.x = -0.75; // twarz odchylona ku kamerze
-    g.add(mqRock('def', 0, -22, 46, 40, 24, 101, true)); g.add(mqRock('def', -30, -2, 16, 20, 16, 102)); g.add(mqRock('def', 30, 0, 15, 18, 14, 103)); // pagórek za czaszką i po bokach
-    face.add(sph(1, B, 'bone', P(0, 22, -6), [24 / PXU, 23 / PXU, 15 / PXU])); // sklepienie (płytkie)
-    face.add(sph(1, BD, 'bone', P(0, 8, 2), [19 / PXU, 11 / PXU, 13 / PXU])); // szczęka i kości policzkowe
-    for (const sx of [-1, 1]) { face.add(sph(1, B, 'bone', P(sx * 15, 10, 3), [8 / PXU, 7 / PXU, 8 / PXU]));
-      face.add(sph(1, '#0c0806', 'stone', P(sx * 9, 21, 8), [8 / PXU, 7.5 / PXU, 3 / PXU])); face.add(mqGlow(2.4, '#ff5a10', sx * 9, 20, 10)); face.add(mqGlow(1.2, '#ffd080', sx * 9, 20, 11)); // oczodoły z żarem
-      face.add(blk(11, 3, 5, BD, 'bone', sx * 9, 28, 6, [0, 0, -sx * 0.22])); // łuki brwiowe
-      face.add(sph(1, '#100a08', 'stone', P(sx * 2.2, 12, 10), [2 / PXU, 3.6 / PXU, 1.6 / PXU])); } // otwór nosowy (dwa)
-    for (let k = 0; k < 8; k++) face.add(blk(2.8, 5, 2.6, '#efe6cc', 'bone', -12.25 + k * 3.5, 1, 12)); // zęby górne nad paszczą
-    g.add(face);
-    g.add(opening(24, 16, 0, 0, 14, { frame: '#3a3430', frameKind: 'stone', sill: false, inner: '#030203', frameW: 2, arch: true })); // paszcza = wejście
-    for (let k = 0; k < 7; k++) g.add(blk(3, 3.6, 2.6, '#e4dabe', 'bone', -10.5 + k * 3.5, -0.4, 17)); // zęby dolne
-    for (let i = 0; i < 4; i++) g.add(blk(20 - i * 2, 1.4, 4, '#6a6474', 'ashlar', 0, -0.4 - i * 0.25, 20 + i * 4)); // schody w dół
-    g.add(sph(4 / PXU, '#4a6a3a', 'fur', P(-16, 40, -12), [1.8, 0.5, 1.2])); g.add(sph(3 / PXU, '#4a6a3a', 'fur', P(18, 36, -8), [1.4, 0.5, 1]));
-    for (const s of [-1, 1]) { g.add(cyl3(1, 1, 16, '#3a2a1a', 'wood', s * 24, 0, 16, 6)); g.add(cone(2.2 / PXU, 6 / PXU, '#ffa040', 'glow', P(s * 24, 19, 16), null, 6)); g.add(mqGlow(1.8, '#ffd060', s * 24, 18, 17)); // pochodnie
-      g.add(sph(2.4 / PXU, '#e8e0c8', 'bone', P(s * 20, 1.5, 24))); g.add(sph(1, '#0c0806', 'stone', P(s * 20 - 0.8, 2.2, 26), [0.7 / PXU, 0.7 / PXU, 0.5 / PXU])); } // czaszki przy schodach
+  gate() { /* brama podziemi jak w H3: olbrzymia czaszka wykuta w szarej skale, wrośnięta w urwisko; skośne, głębokie oczodoły z ledwie tlącym się żarem,
+    ciężkie łuki brwiowe, kły nad rozwartą paszczą, która jest wejściem: schody w ciemność; wokół gruz i pochodnie */
+    const g = new THREE.Group(); g.add(mqCliff(-20, -26, 30, 50, 22, 111)); g.add(mqCliff(22, -28, 28, 42, 20, 114)); g.add(mqCliff(0, -34, 30, 34, 16, 115)); g.add(mqCliff(-38, -4, 18, 26, 18, 112)); g.add(mqCliff(38, -2, 18, 20, 17, 113)); // poszarpane urwisko za czaszką
+    const head = new THREE.Group(), sk = mqSkull(7); head.position.set(...P(0, 22, 0)); head.rotation.x = -0.72; sk.scale.set(30 / PXU, 28 / PXU, 25 / PXU); head.add(sk); g.add(head); // twarz odchylona ku niebu (ku kamerze)
+    const fang = (x, y, z, h, r, tilt, up = false) => head.add(cone(r / PXU, h / PXU, '#a29886', 'stone', P(x, y + (up ? h / 2 : -h / 2), z), [up ? -0.15 : Math.PI - 0.15, 0, tilt], 5));
+    for (const [x, h, r] of [[-11, 10, 2.6], [-6.5, 6, 1.9], [-2.2, 5, 1.7], [2.2, 5, 1.7], [6.5, 6.5, 1.9], [11, 10.5, 2.6]]) fang(x, -12.5 + Math.abs(x) * 0.12, 15.5 - Math.abs(x) * 0.25, h, r, x * 0.015); // kły górne nad paszczą
+    for (const [x, h, r] of [[-10, 7, 2.2], [-4, 4, 1.6], [4.5, 3.5, 1.6], [10, 7.5, 2.2]]) fang(x, -24, 10 - Math.abs(x) * 0.2, h, r, -x * 0.02, true); // kły dolne
+    for (const s of [-1, 1]) head.add(mqGlow(1.2, '#9a1a08', s * 10, 0, 9)); // żar głęboko w oczodołach
+    const pit = cyl3(10, 10, 0.5, '#0e0a08', 'stone', 0, 0, 19, 16); pit.scale.z = 0.6; g.add(pit); for (let i = 0; i < 3; i++) g.add(blk(15 - i * 2.5, 1, 2.4, LT('#3a3430', 0.12 - i * 0.05), 'ashlar', 0, 0.2, 25 - i * 2.8)); // ciemna gardziel i stopnie w dół
+    for (const s of [-1, 1]) { g.add(mqCliff(s * 27, 18, 9, 9, 8, 120 + s)); g.add(cyl3(1, 1, 14, '#2a2018', 'wood', s * 27, 6, 22, 6)); g.add(cone(2.2 / PXU, 6 / PXU, '#ff9a3a', 'glow', P(s * 27, 23, 22), null, 6)); g.add(mqGlow(2, '#ffc050', s * 27, 22, 23)); } // pochodnie na głazach
+    for (let i = 0; i < 6; i++) { const R = rng(i * 31 + 5); g.add(mqCliff((i % 2 ? 1 : -1) * (19 + R() * 20), 28 + R() * 8, 2.5 + R() * 3, 2 + R() * 3, 2.5 + R() * 2, 130 + i)); } // gruz u stóp
     return g; },
   wreck() { const g = new THREE.Group(), hull = lathe([[0.001, -0.5], [0.5, -0.45], [0.75, -0.2], [0.8, 0.1], [0.7, 0.35]].map(([r, y]) => [r, y]), '#5a3a22', 'wood', P(0, 2, 0), [0.55, 0.9, 1.6]); hull.rotation.set(0.3, 0.4, 0.5); g.add(hull);
     const m = cyl3(1.4, 1.2, 40, ST.woodD, 'wood', 0, 0, 0, 8); m.rotation.z = -0.6; m.position.set(...P(4, 10, -4)); g.add(m); g.add(slab([[0, 0], [14, 2], [12, -14], [2, -16]].map(([a, b]) => [a / PXU, b / PXU]), 0.3 / PXU, '#c8b890', 'cloth', P(12, 22, -4), [0, 0.3, -0.3]));

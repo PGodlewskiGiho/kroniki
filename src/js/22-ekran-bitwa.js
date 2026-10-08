@@ -197,9 +197,17 @@ const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thun
 const SND_FALLBACK = { wind: 'cast', earth: 'thud', holy: 'heal', poison: 'curse', teleport: 'cast', shield: 'buff', drain: 'curse', frost: 'ice', slowdn: 'curse', haste: 'buff', dark: 'curse' };
 const sndOr = n => (Sfx.has(n) ? n : SND_FALLBACK[n] || n);
 const spellLandSound = (id, x) => Sfx.play(sndOr(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff'), { vol: 0.9, pan: sfxPan(x) });
-// Pole bitwy morskiej (współrzędne pola): falujące morze, dwa pokłady z desek z relingami i masztami, kładki abordażowe nad wodą
+// Pole bitwy morskiej (współrzędne pola): malowany obraz dwóch żaglowców burta w burtę (pokłady pod kolumnami 0–4 i 8–12, kładki w rzędach NAVAL_PLANKS),
+// nad wodą w szczelinie ruchome błyski fal; bez obrazu – zapasowy rysunek: falujące morze, dwa pokłady z desek z relingami, kładki
+const NAVAL_SEA = [344, 460]; // woda między burtami (x pola) na obrazie tools/tla-ai/szkic-morska.js
 function drawNavalField(ctx, B) {
-  const t = G.time, [lx0, ty] = hexCenter(0, 0), [lx1] = hexCenter(NAVAL_GAP[0] - 1, 1), [rx0] = hexCenter(NAVAL_GAP[NAVAL_GAP.length - 1] + 1, 0), [rx1, by] = hexCenter(BCOLS - 1, BROWS - 1), hw = HEX.w / 2 + 4, top = ty - HEX.h / 2 - 6, bot = by + HEX.h / 2 + 6;
+  const pim = BATTLE_BG_IMG.morska, t = G.time;
+  if (pim && pim._ok) { ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(pim, 0, 0, W, 490);
+    ctx.beginPath(); ctx.rect(NAVAL_SEA[0], 40, NAVAL_SEA[1] - NAVAL_SEA[0], 450); for (const y of NAVAL_PLANKS) { const [, cy] = hexCenter(0, y); ctx.rect(NAVAL_SEA[1], cy - 18, NAVAL_SEA[0] - NAVAL_SEA[1], 36); } ctx.clip('evenodd');
+    ctx.globalCompositeOperation = 'screen'; ctx.strokeStyle = 'rgba(170,220,240,.22)'; ctx.lineWidth = 1.5; // fale płyną w dół szczeliny
+    for (let r = 0; r < 22; r++) { const y = 40 + ((r * 23 + t * 14) % 460); ctx.beginPath(); for (let x = NAVAL_SEA[0]; x <= NAVAL_SEA[1]; x += 6) ctx.lineTo(x, y + Math.sin(x / 14 + t * 2 + r) * 2.5); ctx.stroke(); }
+    ctx.restore(); return; }
+  const [lx0, ty] = hexCenter(0, 0), [lx1] = hexCenter(NAVAL_GAP[0] - 1, 1), [rx0] = hexCenter(NAVAL_GAP[NAVAL_GAP.length - 1] + 1, 0), [rx1, by] = hexCenter(BCOLS - 1, BROWS - 1), hw = HEX.w / 2 + 4, top = ty - HEX.h / 2 - 6, bot = by + HEX.h / 2 + 6;
   const sea = ctx.createLinearGradient(0, 40, 0, 500); sea.addColorStop(0, '#1e5070'); sea.addColorStop(1, '#0e2c42'); ctx.fillStyle = sea; ctx.fillRect(-400, 40, 1600, 470);
   ctx.save(); ctx.globalAlpha = 0.35; ctx.strokeStyle = '#bfe6f8'; ctx.lineWidth = 1.5; // fale
   for (let r = 0; r < 18; r++) { const y = 52 + r * 26; ctx.beginPath(); for (let x = -40; x <= 840; x += 8) ctx.lineTo(x, y + Math.sin(x / 34 + t * 1.6 + r) * 3); ctx.stroke(); } ctx.restore();
