@@ -519,8 +519,34 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
     reveal(st, h.x, h.y, HERO_SIGHT + 6, p.id); // start: okolica własnego miasta odkryta (ok. dzień marszu)
     if (rule(st, 'reveal')) p.explored.fill(1); // zasada „odkryta mapa”
   }
+  ensureProgress(st);
   st.cur = ME = st.players.find(p => p.human).id; st.bonusText = human(st).bonusText; st.selHero = st.heroes.findIndex(h => h.owner === ME);
   return st;
+}
+// Postęp bez przestojów: z każdego startu da się wyjść, walcząc z oddziałami w zasięgu armii. Kieszeń wokół startu = to, co bohater
+// osiągnie, nie walcząc ze strażnikiem silniejszym niż próg × armia startowa. Gdy jest mniejsza niż wymagana część lądu, najbliższy
+// strażnik na jej granicy słabnie (mniej stworów, a gdy nawet jeden jest za silny – słabszy gatunek). Najpierw próg 1 (pierwsze
+// wyjście za darmo przy rozsądnej grze), potem 2,2 (po tygodniu–dwóch rozwoju świat stoi otworem dalej).
+const PROGRESS = [[1.0, 0.12, 0.75], [2.2, 0.3, 1.7]]; // [próg siły × armia, część lądu poziomu, siła strażnika po osłabieniu × armia]
+function ensureProgress(st) {
+  const m = st.map, n = m.n, N = n * n, pw = o => o.count * CREATURES[o.cid].value;
+  for (const p of st.players) { const h = st.heroes.find(x => x.owner === p.id); if (!h) continue;
+    const army = Math.max(600, armyPower(h.army)), lv = levelOf(m, h.x, h.y); let landN = 0;
+    for (let i = 0; i < N; i++) if (m.terrain[i] !== TER.WATER && !m.obst[i] && levelOf(m, i % n, (i / n) | 0) === lv) landN++;
+    for (const [k, need, to] of PROGRESS) for (let iter = 0; iter < 16; iter++) {
+      const d = new Int32Array(N).fill(-1), q = [h.y * n + h.x], front = new Map(); d[q[0]] = 0;
+      for (let i = 0; i < q.length; i++) { const c = q[i], x = c % n, y = (c / n) | 0;
+        for (let dd = 0; dd < 8; dd++) { const X = x + DX8[dd], Y = y + DY8[dd], j = Y * n + X; if (X < 0 || Y < 0 || X >= n || Y >= n || d[j] >= 0 || m.terrain[j] === TER.WATER || m.obst[j]) continue;
+          const ob = objectAt(st, j); if (ob && ob.type !== 'monster' && ob.type !== 'town') continue; // budynek: wejście, nie przejście
+          const g = st.guard[j] && st.objects[st.guard[j] - 1]; if (g && !g.dead && pw(g) > army * k) { if (!front.has(g)) front.set(g, d[c]); continue; }
+          d[j] = d[c] + 1; q.push(j); } }
+      if (q.length >= need * landN || !front.size) break;
+      const g = [...front].sort((a, b) => a[1] - b[1])[0][0], want = army * to;
+      if (CREATURES[g.cid].value > want) { const lvl = Object.keys(NEUTRALS_BY_LEVEL).map(Number).filter(l => NEUTRALS_BY_LEVEL[l].some(c => CREATURES[c].value * 3 <= want)).pop() || 1;
+        g.cid = NEUTRALS_BY_LEVEL[lvl].filter(c => CREATURES[c].value * 3 <= want)[0] || NEUTRALS_BY_LEVEL[1][0]; }
+      g.count = g.base = Math.max(1, Math.floor(want / CREATURES[g.cid].value));
+    }
+  }
 }
 // Bonus startowy gracza-człowieka: złoto, drewno i ruda albo artefakt dla pierwszego bohatera
 function startBonus(st, bonus, p, h, rng) {

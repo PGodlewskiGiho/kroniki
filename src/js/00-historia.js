@@ -362,5 +362,7 @@
    Strażnicy przy większości miejsc (poza UNGUARDED_SITES), mniejsza strefa startu bez potworów (7–12 pól), więcej wędrownych
    potworów; surowce, skrzynie i artefakty na widoku (skrzynie i artefakty pilnowane), surowce większe (RES_K, siarka RES_SCALE)
    z jasną plamą pod spodem; pętla magii (portal) bez wysokiego świstu. Fort na wzgórzu: ulepszenie wybranego oddziału albo wszystkich.
+   Bez przestojów (ensureProgress): z każdego startu da się wyjść – kieszeń osiągalna bez walki ze strażnikiem silniejszym niż armia
+   ma co najmniej 12% lądu (do 2,2× armii: 30%); inaczej najbliższy strażnik na granicy kieszeni słabnie.
    ===================================================================================== */
 

@@ -122,3 +122,18 @@ test('większość miejsc, skrzyń i artefaktów ma strażnika; surowce, skrzyni
   for (const [size, guarded, hidRes, loot] of r) { assert.ok(guarded >= 0.85, `${size}: pilnowanych ${(guarded * 100).toFixed(0)}% miejsc`); assert.equal(hidRes, 0, `${size}: ukryte surowce, skrzynie, artefakty`);
     assert.ok(loot >= 0.85, `${size}: pilnowanych ${(loot * 100).toFixed(0)}% skrzyń i artefaktów`); }
 });
+
+test('bez przestojów: z każdego startu da się wyjść, walcząc z oddziałami w zasięgu armii (kieszeń startu nie zamknięta silnym strażnikiem)', async () => {
+  const r = await page.evaluate(() => { const out = [];
+    for (const [size, land, seed] of [['M', 'forest', 4242], ['M', 'mountains', 7], ['M', 'mixed', 9], ['L', 'islands', 21]]) {
+      const S = Object.assign({}, G.settings, { mapSize: size, land, difficulty: 1, faction: 'haven', bonus: 'gold', opponents: 1, slots: null, underground: false });
+      const st = createNewGame(S, seed), m = st.map, n = m.n, pw = o => o.count * CREATURES[o.cid].value;
+      for (const h of st.heroes) { const army = armyPower(h.army), d = new Uint8Array(n * n), q = [h.y * n + h.x]; d[q[0]] = 1; let land = 0;
+        for (let i = 0; i < n * n; i++) if (m.terrain[i] !== TER.WATER && !m.obst[i]) land++;
+        for (let i = 0; i < q.length; i++) { const c = q[i], x = c % n, y = (c / n) | 0;
+          for (let dd = 0; dd < 8; dd++) { const X = x + DX8[dd], Y = y + DY8[dd], j = Y * n + X; if (X < 0 || Y < 0 || X >= n || Y >= n || d[j] || m.terrain[j] === TER.WATER || m.obst[j]) continue;
+            const ob = objectAt(st, j); if (ob && ob.type !== 'monster' && ob.type !== 'town') continue; const g = st.guard[j] && st.objects[st.guard[j] - 1]; if (g && !g.dead && pw(g) > army) continue; d[j] = 1; q.push(j); } }
+        out.push([`${size}/${land} gracz ${h.owner}`, q.length / land]); } }
+    return out; });
+  for (const [k, part] of r) assert.ok(part >= 0.1, `${k}: bez walki z silniejszymi dostępne ${(part * 100).toFixed(0)}% lądu`);
+});
