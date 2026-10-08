@@ -1035,5 +1035,10 @@
   "opis": "epic fantasy oil painting, desert canyon at sunset, giant behemoth fighting a cyclops king, orc and wolf rider horde charging through dust behind them, giant thunderbirds in the sky, red rock cliffs",
   "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
+ },
+ "bitwa_morska": {
+  "opis": "two large wooden sailing ships moored side by side, their wide plank decks fill the left and right of the picture, narrow strip of dark blue sea water with white foam between the hulls, two wooden boarding planks bridging the ships, cannons on carriages along the bulwarks, barrels, coiled ropes, cargo hatch grating, mast bases, sail shadows",
+  "styl": "detailed fantasy matte painting, ship decks seen from above at an angle, Heroes of Might and Magic 3 naval battle background, {opis}, weathered oak planks, painterly, rich detail, crisp, warm daylight",
+  "negatyw_pelny": "people, figures, sailors, soldiers, creatures, animals, text, grid, hexagons, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, modern ship, metal hull"
  }
 }

@@ -420,6 +420,23 @@ function placeObjects(st) {
     let wet = 0; for (let d = 0; d < 8; d++) if (map.terrain[(y + DY8[d]) * n + x + DX8[d]] === TER.WATER && !occ[(y + DY8[d]) * n + x + DX8[d]]) wet++; if (wet < 6) continue;
     add({ type: 'site', kind, x, y, seen: {} }, [i]); k--;
   }
+  // Morze: wiry w parach (daleko od siebie, na otwartej wodzie), latarnie na brzegu, piraci i morskie stwory (strażnicy wraków i syren,
+  // reszta krąży po otwartej wodzie; siła jak na lądzie, rośnie z odległością od startu)
+  const openWater = (x, y, need) => { let wet = 0; for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (X >= 0 && Y >= 0 && X < n && Y < n && map.terrain[Y * n + X] === TER.WATER && !occ[Y * n + X]) wet++; } return wet >= need; };
+  const seaSpot = need => { for (let t = 0; t < 2500; t++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x; if (map.terrain[i] === TER.WATER && !occ[i] && openWater(x, y, need)) return [x, y]; } return null; };
+  if (water > 200) for (let k = WHIRL_PAIRS[size] || 1; k > 0; k--) { const a = seaSpot(8); if (!a) break; let b = null;
+    for (let t = 0; t < 40 && (!b || Math.hypot(b[0] - a[0], b[1] - a[1]) < levelSize(map) * 0.3); t++) b = seaSpot(8); if (!b || Math.hypot(b[0] - a[0], b[1] - a[1]) < levelSize(map) * 0.3) break;
+    const wa = add({ type: 'site', kind: 'whirlpool', x: a[0], y: a[1], seen: {} }, [a[1] * n + a[0]]), wb = add({ type: 'site', kind: 'whirlpool', x: b[0], y: b[1], seen: {} }, [b[1] * n + b[0]]); wa.pair = wb.id; wb.pair = wa.id; }
+  for (let k = water > 300 ? Math.max(1, Math.round(water / LIGHTHOUSE_PER)) : 0, tries = 0; k > 0 && tries < 3000; tries++) {
+    const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (!ok(x, y) || dStart(x, y) < 4 || !roadFree(x - 1, y - 1, x + 1, y)) continue; let wet = 0, open = false;
+    for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (map.terrain[Y * n + X] === TER.WATER) { wet++; if (openWater(X, Y, 6)) open = true; } } if (wet < 3 || !open || objs.some(o => o.kind === 'lighthouse' && Math.hypot(o.x - x, o.y - y) < 14)) continue;
+    add({ type: 'site', kind: 'lighthouse', x, y, owner: -1, seen: {} }, [y * n + x]); k--; }
+  const seaMonster = (x, y, boost = 0) => { const i = y * n + x; if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1 || map.terrain[i] !== TER.WATER || occ[i]) return null;
+    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), pool = SEA_MONSTERS[lvl], cid = pool[Math.floor(rng() * pool.length)];
+    const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff) * rule(st, 'monsters');
+    return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1, sea: 1, ...(PIRATES.includes(cid) ? { ship: 1 } : {}) }, [i]); };
+  for (const o of objs.filter(o => o.type === 'site' && ['wreck', 'sirens', 'flotsam'].includes(o.kind))) if (rng() < 0.75) for (const [dx, dy] of GUARD_AT) if (seaMonster(o.x + dx, o.y + dy, o.kind === 'flotsam' ? 0 : 1)) break;
+  for (let k = Math.round(water / SEA_MONSTER_PER), tries = 0; k > 0 && tries < 3000; tries++) { const p = seaSpot(7); if (p && dStart(p[0], p[1]) >= 8 && seaMonster(p[0], p[1])) k--; }
   // Przejścia: stały obiekt (kopalnia, skarbiec, miejsce) nie może zamknąć jedynej drogi do któregoś miasta (wąska dolina,
   // przesmyk) – taki obiekt znika. Potwory (do pokonania) i skarby (do podniesienia) drogi nie zamykają.
   { const solid = o => !o.dead && !['monster', 'res', 'chest', 'art', 'boat'].includes(o.type), tilesOf = o => [o.y * n + o.x, ...(o.blocks || [])];
@@ -519,8 +536,34 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
     reveal(st, h.x, h.y, HERO_SIGHT + 6, p.id); // start: okolica własnego miasta odkryta (ok. dzień marszu)
     if (rule(st, 'reveal')) p.explored.fill(1); // zasada „odkryta mapa”
   }
+  ensureProgress(st);
   st.cur = ME = st.players.find(p => p.human).id; st.bonusText = human(st).bonusText; st.selHero = st.heroes.findIndex(h => h.owner === ME);
   return st;
+}
+// Postęp bez przestojów: z każdego startu da się wyjść, walcząc z oddziałami w zasięgu armii. Kieszeń wokół startu = to, co bohater
+// osiągnie, nie walcząc ze strażnikiem silniejszym niż próg × armia startowa. Gdy jest mniejsza niż wymagana część lądu, najbliższy
+// strażnik na jej granicy słabnie (mniej stworów, a gdy nawet jeden jest za silny – słabszy gatunek). Najpierw próg 1 (pierwsze
+// wyjście za darmo przy rozsądnej grze), potem 2,2 (po tygodniu–dwóch rozwoju świat stoi otworem dalej).
+const PROGRESS = [[1.0, 0.12, 0.75], [2.2, 0.3, 1.7]]; // [próg siły × armia, część lądu poziomu, siła strażnika po osłabieniu × armia]
+function ensureProgress(st) {
+  const m = st.map, n = m.n, N = n * n, pw = o => o.count * CREATURES[o.cid].value;
+  for (const p of st.players) { const h = st.heroes.find(x => x.owner === p.id); if (!h) continue;
+    const army = Math.max(600, armyPower(h.army)), lv = levelOf(m, h.x, h.y); let landN = 0;
+    for (let i = 0; i < N; i++) if (m.terrain[i] !== TER.WATER && !m.obst[i] && levelOf(m, i % n, (i / n) | 0) === lv) landN++;
+    for (const [k, need, to] of PROGRESS) for (let iter = 0; iter < 16; iter++) {
+      const d = new Int32Array(N).fill(-1), q = [h.y * n + h.x], front = new Map(); d[q[0]] = 0;
+      for (let i = 0; i < q.length; i++) { const c = q[i], x = c % n, y = (c / n) | 0;
+        for (let dd = 0; dd < 8; dd++) { const X = x + DX8[dd], Y = y + DY8[dd], j = Y * n + X; if (X < 0 || Y < 0 || X >= n || Y >= n || d[j] >= 0 || m.terrain[j] === TER.WATER || m.obst[j]) continue;
+          const ob = objectAt(st, j); if (ob && ob.type !== 'monster' && ob.type !== 'town') continue; // budynek: wejście, nie przejście
+          const g = st.guard[j] && st.objects[st.guard[j] - 1]; if (g && !g.dead && pw(g) > army * k) { if (!front.has(g)) front.set(g, d[c]); continue; }
+          d[j] = d[c] + 1; q.push(j); } }
+      if (q.length >= need * landN || !front.size) break;
+      const g = [...front].sort((a, b) => a[1] - b[1])[0][0], want = army * to;
+      if (CREATURES[g.cid].value > want) { const lvl = Object.keys(NEUTRALS_BY_LEVEL).map(Number).filter(l => NEUTRALS_BY_LEVEL[l].some(c => CREATURES[c].value * 3 <= want)).pop() || 1;
+        g.cid = NEUTRALS_BY_LEVEL[lvl].filter(c => CREATURES[c].value * 3 <= want)[0] || NEUTRALS_BY_LEVEL[1][0]; }
+      g.count = g.base = Math.max(1, Math.floor(want / CREATURES[g.cid].value));
+    }
+  }
 }
 // Bonus startowy gracza-człowieka: złoto, drewno i ruda albo artefakt dla pierwszego bohatera
 function startBonus(st, bonus, p, h, rng) {

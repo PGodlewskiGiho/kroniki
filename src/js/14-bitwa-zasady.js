@@ -2,7 +2,7 @@
 // Pole bitwy: siatka heksów BCOLS×BROWS w układzie „odd-r” (co drugi rząd przesunięty w prawo).
 // Strona 0 = atakujący bohater (lewa krawędź), strona 1 = obrońca (prawa): potwór neutralny, bohater
 // albo miasto (bohater w mieście + garnizon). Stan bitwy (B) nie trafia do zapisu gry.
-const BCOLS = 13, BROWS = 9;
+const BCOLS = 13, BROWS = 9, NAVAL_GAP = [5, 6, 7], NAVAL_PLANKS = [2, 6]; // bitwa morska: woda między pokładami i rzędy z kładkami
 const hexKey = (x, y) => y * BCOLS + x;
 const inField = (x, y) => x >= 0 && y >= 0 && x < BCOLS && y < BROWS;
 // Kolejka ruchów do pokazania: działający oddział, reszta tej rundy, czekający, potem następna runda (wg szybkości)
@@ -152,6 +152,10 @@ function createBattle(st, h, foe) {
   for (const u of B.units) if (!isMachine(u)) { const t = Math.max(0, tac[u.side] - tac[1 - u.side]); if (t) u.tac = t; if (amb[u.side]) u.amb = true; }
   B.casts = [0, 0]; B.warded = [false, false];
   B.morale = [sideMorale(B, 0), sideMorale(B, 1)]; B.luck = [sideLuck(B, 0), sideLuck(B, 1)];
+  // Bitwa morska (bohater w łodzi): dwa pokłady, między nimi woda (NAVAL_GAP kolumn), przejście tylko kładkami abordażowymi (NAVAL_PLANKS);
+  // lotniki przelatują, strzelcy strzelają przez wodę. Bez drzew i skał.
+  B.naval = st.map.terrain[h.y * st.map.n + h.x] === TER.WATER && !D.town;
+  if (B.naval) { for (const x of NAVAL_GAP) for (let y = 0; y < BROWS; y++) if (!NAVAL_PLANKS.includes(y)) B.obst.set(hexKey(x, y), { o: 'sea', v: 0 }); return B; }
   // przeszkody ze środka pola: te same drzewa i skały co na mapie przygody (typ + wariant rysunku)
   const cnt = 3 + Math.floor(B.rng() * 4);
   const xMax = B.walls ? moatX(BROWS - 1) - 1 : BCOLS - 3; // przy oblężeniu przeszkody tylko przed murem (i fosą)

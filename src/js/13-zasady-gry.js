@@ -2,7 +2,8 @@
 // Ruch, odkrywanie mapy, obiekty, potyczki, dochód, budowanie.
 // Dzienny limit ruchu zależy od najwolniejszej jednostki w armii (jak w oryginale)
 function mpBySpeed(s) { return s <= 3 ? 1500 : s >= 11 ? 2000 : [1560, 1630, 1700, 1760, 1830, 1900, 1960][s - 4]; }
-function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp') + (heroPerk(h, 'forcedMarch') ? 300 : 0) + 150 * perkCount(h, 'explorer') + (G.state && h.stableWeek === weekIndex(G.state) ? STABLE_MP : 0); }
+function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp') + (heroPerk(h, 'forcedMarch') ? 300 : 0) + 150 * perkCount(h, 'explorer') + (G.state && h.stableWeek === weekIndex(G.state) ? STABLE_MP : 0) + (h.boat && G.state ? LIGHTHOUSE_MP * lighthousesOf(G.state, h.owner) : 0); }
+const lighthousesOf = (st, owner) => st.objects.reduce((k, o) => k + (o.kind === 'lighthouse' && !o.dead && o.owner === owner ? 1 : 0), 0);
 // Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
 function reveal(st, cx, cy, r, owner = ME) {
   const P = playerOf(st, owner); if (!P || !P.explored) return;
@@ -81,9 +82,9 @@ function rebuildObjIndex(st) {
   for (const ob of st.objects) {
     if (ob.dead) continue; const id = ob.id + 1;
     st.objAt[ob.y * n + ob.x] = id; if (ob.blocks) for (const i of ob.blocks) st.objAt[i] = id;
-    if (ob.type === 'monster') for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-      const x = ob.x + dx, y = ob.y + dy; if (x >= 0 && y >= 0 && x < n && y < n && st.map.terrain[y * n + x] !== TER.WATER) st.guard[y * n + x] = id;
-    }
+    if (ob.type === 'monster') { const wet = st.map.terrain[ob.y * n + ob.x] === TER.WATER; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { // morski strażnik pilnuje wody, lądowy lądu
+      const x = ob.x + dx, y = ob.y + dy; if (x >= 0 && y >= 0 && x < n && y < n && (st.map.terrain[y * n + x] === TER.WATER) === wet) st.guard[y * n + x] = id;
+    } }
   }
 }
 function objectAt(st, i) { const o = st.objAt[i]; return o ? st.objects[o - 1] : null; }
@@ -1187,6 +1188,13 @@ function useSite(st, h, ob, choice) {
       if (roll < 70) { h.boost = { ...(h.boost || {}), luck: 1, morale: Math.max(WISH_MORALE, (h.boost || {}).morale || 0) }; return { text: 'Woda rozbłyska srebrem: +1 do szczęścia i morale do następnej bitwy.', float: 'szczęście +1' }; }
       if (roll < 92) { R.gold += 1500; return { text: 'Z głębi wypływa zapomniana sakiewka: 1500 złota!', float: '+1500', res: 'gold' }; }
       const pool = ARTS_BY_RARITY('treasure'), art = pool[roll % pool.length]; giveArtifact(h, art); return { text: `Na dnie coś lśni: ${ARTIFACTS[art].name}. Życzenie spełnione!`, float: ARTIFACTS[art].name }; }
+    case 'whirlpool': { const to = st.objects[ob.pair]; if (!to || to.dead) return { text: 'Wir słabnie i znika w spokojnej wodzie.' }; if (heroAt(st, to.x, to.y)) return { text: 'Przy drugim wirze stoi inna łódź. Spróbuj później.' };
+      const w = h.army.map((x, i) => x && { x, i }).filter(Boolean).sort((a, b) => a.x.n * CREATURES[a.x.cid].value - b.x.n * CREATURES[b.x.cid].value)[0]; let lost = '';
+      if (w && (w.x.n > 1 || armyStacks(h.army).length > 1)) { const d = Math.ceil(w.x.n / 2); w.x.n -= d; lost = ` Morze zabiera ${d} (${CREATURES[w.x.cid].plural.toLowerCase()}).`; if (w.x.n <= 0) h.army[w.i] = null; }
+      h.x = to.x; h.y = to.y; h.path = null; h.dest = null; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); MapRender.miniDirty = true; if (h.owner === ME && G.state === st) centerCam(st, h.x, h.y);
+      return { text: `Wir wciąga łódź w głębinę i wyrzuca ją daleko stąd, przy drugim wirze.${lost}`, bad: !!lost }; }
+    case 'lighthouse': { if (ob.owner === h.owner) return { text: 'Latarnia już świeci dla twoich statków.' }; ob.owner = h.owner; MapRender.miniDirty = true; sfxFor(st, h.owner, 'flag');
+      return { text: `Latarnik zapala światło dla twoich statków: każdy twój bohater w łodzi ma +${LIGHTHOUSE_MP} punktów ruchu na morzu.`, float: 'latarnia' }; }
     case 'obelisk': { mark(); const k = obelisksSeen(st, h.owner), N = obelisksTotal(st);
       return { puzzle: true, text: k >= N ? 'Ostatni obelisk! Mapa zagadki jest kompletna: krzyżyk wskazuje, gdzie zakopano Graala.' : `Runy na obelisku odsłaniają kolejny fragment mapy zagadki (${k} z ${N}).` }; }
   }
@@ -1210,6 +1218,8 @@ function siteInfo(st, ob, h) {
 }
 // Stan miejsc przygody w dymku (null: zwykły opis)
 function adventureInfo(st, ob, viewer) {
+  if (ob.kind === 'lighthouse') return ob.owner >= 0 ? `${SITES.lighthouse.desc}; świeci dla: ${ownerName(st, ob.owner)}` : SITES.lighthouse.desc;
+  if (ob.kind === 'whirlpool' && st.objects[ob.pair]) return `${SITES.whirlpool.desc} (drugi wir: pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})`;
   if (ob.kind === 'barrow' && ob.looted != null) return 'rozkopany, komora grobowa jest pusta';
   if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o ? `kupcy sprzedają w tym tygodniu: ${ARTIFACTS[o.art].name} (${RARITY[ARTIFACTS[o.art].rarity]}) za ${o.price} złota` : 'towar z tego tygodnia wyprzedany, nowa karawana w następnym'; }
   if (ob.kind !== 'questHut') return null; const m = st.objects[ob.target];

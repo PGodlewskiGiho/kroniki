@@ -129,6 +129,8 @@ const SITES = {
   crystalCave: { name: 'Kryształowa grota', use: 'week', per: 2400, ai: 1000, ug: true, desc: 'co tydzień 3–5 kryształów dla pierwszego gościa' },
   dwarfForge: { name: 'Kuźnia krasnoludów', use: 'hero', per: 3200, ai: 1500, ug: true, cost: 2000, desc: 'za 2000 złota i 5 rudy krasnoludy wykuwają bohaterowi artefakt (raz na bohatera)' },
   hillFort: { name: 'Fort na wzgórzu', use: 'free', per: 3000, ai: 0, desc: 'kowale ulepszają stwory w armii bohatera za różnicę w cenie' },
+  whirlpool: { name: 'Wir', use: 'free', per: 0, ai: 0, desc: 'wciąga łódź i wyrzuca ją przy drugim wirze z pary; morze zabiera połowę najsłabszego oddziału' },
+  lighthouse: { name: 'Latarnia morska', use: 'free', per: 0, ai: 1200, desc: 'właściciel: każdy jego bohater w łodzi płynie dalej (+400 punktów ruchu na morzu)' },
   // miejsca przygody: zagadka, zadanie, plotki, klątwa za skarb, kupcy, hazard (opisy i nazwy własne w siteInfo)
   sphinx: { name: 'Sfinks', use: 'hero', per: 4200, ai: 1800, desc: 'zadaje zagadkę: dobra odpowiedź to 2000 doświadczenia i 1500 złota, zła – milczenie (raz na bohatera)' },
   questHut: { name: 'Chata pustelnika', use: 'free', per: 3600, ai: 0, desc: 'pustelnik prosi o pokonanie groźnych stworów w okolicy; za to daje artefakt i 1500 doświadczenia' },
@@ -137,6 +139,10 @@ const SITES = {
   caravanserai: { name: 'Karawanseraj', use: 'free', per: 3800, ai: 0, desc: 'kupcy z dalekich krain sprzedają co tydzień jeden artefakt' },
   wishingWell: { name: 'Studnia życzeń', use: 'day', per: 3000, ai: 0, cost: 500, desc: 'za 500 złota życzenie: szczęście, złoto, czasem artefakt… albo nic (raz dziennie)' },
 };
+// Morze: potwory na wodzie wg poziomu (piraci płyną statkiem, reszta to morskie stwory), wiry w parach wg rozmiaru mapy,
+// latarnie (jedna na tyle pól wody) i dodatkowy ruch łodzi za każdą posiadaną latarnię
+const SEA_MONSTERS = { 1: ['rusalka', 'rogue'], 2: ['rogue', 'lizardWarrior'], 3: ['nomad', 'lizardSlayer'], 4: ['sharpshooter', 'nomad'], 5: ['naga', 'sharpshooter'], 6: ['nagaQueen', 'nagaEmpress'], 7: ['hydra', 'chaosHydra', 'primeHydra'] };
+const PIRATES = ['rogue', 'nomad', 'sharpshooter'], WHIRL_PAIRS = { S: 1, M: 1, L: 2, XL: 3 }, LIGHTHOUSE_PER = 1300, LIGHTHOUSE_MP = 400, SEA_MONSTER_PER = 380;
 // Miejsca bez strażnika (drobne, przydrożne albo same są wyzwaniem); resztę pilnuje potwór obok (placeObjects)
 const UNGUARDED_SITES = ['well', 'stables', 'temple', 'fountain', 'market', 'inn', 'caravanserai', 'questHut', 'sphinx', 'oasis', 'mushroomRing', 'campfire'];
 // Zagadki sfinksa: [pytanie, dobra odpowiedź, zła, zła] (kolejność odpowiedzi w oknie losowa)

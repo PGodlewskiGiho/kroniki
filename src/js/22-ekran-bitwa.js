@@ -197,6 +197,31 @@ const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thun
 const SND_FALLBACK = { wind: 'cast', earth: 'thud', holy: 'heal', poison: 'curse', teleport: 'cast', shield: 'buff', drain: 'curse', frost: 'ice', slowdn: 'curse', haste: 'buff', dark: 'curse' };
 const sndOr = n => (Sfx.has(n) ? n : SND_FALLBACK[n] || n);
 const spellLandSound = (id, x) => Sfx.play(sndOr(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff'), { vol: 0.9, pan: sfxPan(x) });
+// Pole bitwy morskiej (współrzędne pola): rysowany obraz (tools/tla-ai/szkic-morska.js) dwóch żaglowców burta w burtę (pokłady pod kolumnami 0–4 i 8–12, kładki w rzędach NAVAL_PLANKS),
+// nad wodą w szczelinie ruchome błyski fal; bez obrazu – zapasowy rysunek: falujące morze, dwa pokłady z desek z relingami, kładki
+const NAVAL_SEA = [344, 460]; // woda między burtami (x pola) na obrazie tools/tla-ai/szkic-morska.js
+function drawNavalField(ctx, B) {
+  const pim = BATTLE_BG_IMG.morska, t = G.time;
+  if (pim && pim._ok) { ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(pim, 0, 0, W, 490);
+    ctx.beginPath(); ctx.rect(NAVAL_SEA[0], 40, NAVAL_SEA[1] - NAVAL_SEA[0], 450); for (const y of NAVAL_PLANKS) { const [, cy] = hexCenter(0, y); ctx.rect(NAVAL_SEA[1], cy - 18, NAVAL_SEA[0] - NAVAL_SEA[1], 36); } ctx.clip('evenodd');
+    ctx.globalCompositeOperation = 'screen'; ctx.strokeStyle = 'rgba(170,220,240,.22)'; ctx.lineWidth = 1.5; // fale płyną w dół szczeliny
+    for (let r = 0; r < 22; r++) { const y = 40 + ((r * 23 + t * 14) % 460); ctx.beginPath(); for (let x = NAVAL_SEA[0]; x <= NAVAL_SEA[1]; x += 6) ctx.lineTo(x, y + Math.sin(x / 14 + t * 2 + r) * 2.5); ctx.stroke(); }
+    ctx.restore(); return; }
+  const [lx0, ty] = hexCenter(0, 0), [lx1] = hexCenter(NAVAL_GAP[0] - 1, 1), [rx0] = hexCenter(NAVAL_GAP[NAVAL_GAP.length - 1] + 1, 0), [rx1, by] = hexCenter(BCOLS - 1, BROWS - 1), hw = HEX.w / 2 + 4, top = ty - HEX.h / 2 - 6, bot = by + HEX.h / 2 + 6;
+  const sea = ctx.createLinearGradient(0, 40, 0, 500); sea.addColorStop(0, '#1e5070'); sea.addColorStop(1, '#0e2c42'); ctx.fillStyle = sea; ctx.fillRect(-400, 40, 1600, 470);
+  ctx.save(); ctx.globalAlpha = 0.35; ctx.strokeStyle = '#bfe6f8'; ctx.lineWidth = 1.5; // fale
+  for (let r = 0; r < 18; r++) { const y = 52 + r * 26; ctx.beginPath(); for (let x = -40; x <= 840; x += 8) ctx.lineTo(x, y + Math.sin(x / 34 + t * 1.6 + r) * 3); ctx.stroke(); } ctx.restore();
+  const deck = (x0, x1, port) => { // kadłub (ciemne burty) i pokład z desek; dziób zaokrąglony od strony wody
+    ctx.fillStyle = '#3a2414'; ctx.beginPath(); ctx.roundRect(x0 - hw - 10, top - 10, x1 - x0 + hw * 2 + 20, bot - top + 20, 26); ctx.fill();
+    ctx.fillStyle = '#9a6a3a'; ctx.beginPath(); ctx.roundRect(x0 - hw, top, x1 - x0 + hw * 2, bot - top, 18); ctx.fill();
+    ctx.save(); ctx.clip(); ctx.strokeStyle = 'rgba(60,34,14,.55)'; ctx.lineWidth = 1.2; for (let y = top + 12; y < bot; y += 12) { ctx.beginPath(); ctx.moveTo(x0 - hw, y); ctx.lineTo(x1 + hw, y); ctx.stroke(); }
+    for (let y = top, k = 0; y < bot; y += 12, k++) for (let x = x0 - hw + (k % 3) * 40; x < x1 + hw; x += 120) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 12); ctx.stroke(); } ctx.restore();
+    ctx.strokeStyle = '#5a3a1e'; ctx.lineWidth = 4; ctx.beginPath(); ctx.roundRect(x0 - hw - 4, top - 4, x1 - x0 + hw * 2 + 8, bot - top + 8, 22); ctx.stroke(); // reling
+    const mx = port ? x0 + 6 : x1 - 6; for (const my of [top + (bot - top) * 0.3, top + (bot - top) * 0.72]) { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(mx + 4, my + 4, 9, 4, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#4a2c14'; ctx.beginPath(); ctx.arc(mx, my, 6, 0, TAU); ctx.fill(); } }; // podstawy masztów
+  deck(lx0, lx1, true); deck(rx0, rx1, false);
+  for (const y of NAVAL_PLANKS) { const [, cy] = hexCenter(0, y); ctx.fillStyle = '#7a5230'; ctx.fillRect(lx1 + hw - 6, cy - 9, rx0 - lx1 - hw * 2 + 12, 18); ctx.strokeStyle = 'rgba(40,24,10,.6)'; ctx.lineWidth = 1;
+    for (let x = lx1 + hw; x < rx0 - hw; x += 10) { ctx.beginPath(); ctx.moveTo(x, cy - 9); ctx.lineTo(x, cy + 9); ctx.stroke(); } ctx.fillStyle = '#4a3020'; ctx.fillRect(lx1 + hw - 6, cy - 11, rx0 - lx1 - hw * 2 + 12, 3); ctx.fillRect(lx1 + hw - 6, cy + 8, rx0 - lx1 - hw * 2 + 12, 3); } // kładki z linami
+}
 const UNIT_SCALE = 1.15;
 G.screens.battle = {
   fps: smoothFps, // płynnie także czekając na rozkaz (oddychające jednostki, płomienie)
@@ -512,6 +537,7 @@ G.screens.battle = {
     this.drawBack(ctx, L);
     ctx.save(); ctx.translate(L.fx, L.fy); ctx.scale(L.fs, L.fs); // pole walki w swoich współrzędnych
     const sh = BattleFX.shake; ctx.save(); ctx.beginPath(); ctx.rect(-L.fx / L.fs, 41, L.areaW / L.fs, (L.fieldBottom - L.fy) / L.fs - 41); ctx.clip(); if (sh > 0) ctx.translate((Math.random() - 0.5) * sh * 2, (Math.random() - 0.5) * sh * 2);
+    if (B.naval) drawNavalField(ctx, B); // morze, dwa pokłady i kładki
     if (this.phase === 'input' && this.casting) {
       const p = this.preview;
       if (p && p.kind === 'cast') { ctx.fillStyle = 'rgba(160,200,255,.3)'; for (const [ax, ay] of spellArea(p.id, p.x, p.y, B)) { hexPath(ctx, ax, ay, 2); ctx.fill(); } }
@@ -563,7 +589,7 @@ G.screens.battle = {
     const kx = keepO.length ? hexCenter(keep.x, keep.y)[0] + KEEP_DX : 0, hidden = keepO.length && keep.hp > 0 ? shown.filter(v => !v.dead && !v.keep && v.py < keepO[0].py && v.py > keepO[0].py - 200 && Math.abs(v.px - kx) < 62) : [];
     for (const u of [...shown, ...obst, ...keepO].sort((a, b) => a.py - b.py)) {
       if (u.keepW) { drawKeep3D(ctx, A3, u.keepW); continue; }
-      if (u.obst) { drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
+      if (u.obst) { if (u.obst.o !== 'sea') drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
       drawUnit(u);
     }
     for (const u of hidden) drawUnit(u, true);
