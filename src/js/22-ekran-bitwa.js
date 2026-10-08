@@ -197,7 +197,7 @@ const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thun
 const SND_FALLBACK = { wind: 'cast', earth: 'thud', holy: 'heal', poison: 'curse', teleport: 'cast', shield: 'buff', drain: 'curse', frost: 'ice', slowdn: 'curse', haste: 'buff', dark: 'curse' };
 const sndOr = n => (Sfx.has(n) ? n : SND_FALLBACK[n] || n);
 const spellLandSound = (id, x) => Sfx.play(sndOr(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff'), { vol: 0.9, pan: sfxPan(x) });
-// Pole bitwy morskiej (współrzędne pola): malowany obraz dwóch żaglowców burta w burtę (pokłady pod kolumnami 0–4 i 8–12, kładki w rzędach NAVAL_PLANKS),
+// Pole bitwy morskiej (współrzędne pola): rysowany obraz (tools/tla-ai/szkic-morska.js) dwóch żaglowców burta w burtę (pokłady pod kolumnami 0–4 i 8–12, kładki w rzędach NAVAL_PLANKS),
 // nad wodą w szczelinie ruchome błyski fal; bez obrazu – zapasowy rysunek: falujące morze, dwa pokłady z desek z relingami, kładki
 const NAVAL_SEA = [344, 460]; // woda między burtami (x pola) na obrazie tools/tla-ai/szkic-morska.js
 function drawNavalField(ctx, B) {
