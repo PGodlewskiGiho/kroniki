@@ -156,7 +156,7 @@ function update(dt) {
 function render() {
   // przesunięcie wyśrodkowanego ekranu w całych pikselach: przy ułamkowym każdy obraz byłby filtrowany (wolno i nieostro)
   const ctx = G.ctx, center = () => ctx.setTransform(G.rs, 0, 0, G.rs, Math.round(OX * G.rs), Math.round(OY * G.rs)), whole = () => ctx.setTransform(G.rs, 0, 0, G.rs, 0, 0);
-  setUnits('ui'); whole(); ctx.clearRect(0, 0, VW, VH);
+  setUnits('ui'); whole(); ctx.clearRect(0, 0, VW, VH); GLMap.shown = false;
   setUnits(screenUnits()); whole();
   if (G.screen.fill || G.screen.ui) G.screen.draw(ctx);
   else { if (OX || OY) drawBackdrop(ctx); center(); G.screen.draw(ctx); }
@@ -169,6 +169,7 @@ function render() {
   if (G.fade.a > 0) { ctx.fillStyle = `rgba(0,0,0,${G.fade.a.toFixed(3)})`; ctx.fillRect(0, 0, VW, VH); }
   if (G.showPerf) drawPerfInfo(ctx);
   if (needRotate()) drawRotateHint(ctx); // telefon trzymany pionowo
+  GLMap.hideUnused(); // mapy w tej klatce nie było (inny ekran): płótno WebGL schowane
   restUnits();
 }
 // Tło wokół wyśrodkowanego ekranu: kamień jak w ramkach gry, przyciemniony, ze złotą obwódką.
@@ -235,8 +236,8 @@ function gpuName() {
 }
 function drawPerfInfo(ctx) {
   const lines = [`${Perf.fps.toFixed(0)} kl/s (ekran chce ${screenFps()}), skrypt ${Perf.ms.toFixed(1)} ms`,
-    `płótno ${G.canvas.width}×${G.canvas.height}, gęstość ${G.dpr}, jakość: ${(QUALITIES.find(q => q.id === G.settings.quality) || QUALITIES[0]).name}`, `grafika: ${gpuName().slice(0, 60)}`];
-  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.72)'; ctx.fillRect(4, 4, 390, 58);
+    `płótno ${G.canvas.width}×${G.canvas.height}, gęstość ${G.dpr}, jakość: ${(QUALITIES.find(q => q.id === G.settings.quality) || QUALITIES[0]).name}`, `grafika: ${gpuName().slice(0, 60)}`, `mapa: ${GLMap.mode()}${GLMap.use() ? `, ${GLMap.stats.quads} prostokątów, ${GLMap.stats.draws} wywołań` : ''}`];
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.72)'; ctx.fillRect(4, 4, 390, 75);
   lines.forEach((l, i) => text(ctx, l, 10, 20 + i * 17, { size: 12, weight: 600, color: '#ffe9a0' })); ctx.restore();
 }
 // Dźwięk: osobno efekty i muzyka; każde kliknięcie przełącza poziom głośności (wyłączony → … → 100%).
@@ -263,13 +264,16 @@ function showGfxSettings(back) {
     action: () => { S.uiScale = UIS[(UIS.indexOf(uis) + 1) % UIS.length]; saveSettings(); resize(); showGfxSettings(back); } };
   const wxBtn = { label: 'Pogoda', sub: weatherOn() ? 'włączona' : 'wyłączona', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
     action: () => { S.weather = weatherOn() ? 'off' : 'on'; saveSettings(); showGfxSettings(back); } };
+  const RM = [['auto', 'automatycznie'], ['gl', 'karta graficzna'], ['cpu', 'procesor']], rm = S.renderer || 'auto';
+  const glBtn = { label: 'Mapa', sub: RM.find(r => r[0] === rm)[1], tip: `Kto rysuje mapę świata. Karta graficzna (WebGL): płynny ruch, przybliżanie i przewijanie; procesor: dawny sposób, gdy karta sprawia kłopoty. Teraz: ${GLMap.mode()}.`,
+    action: () => { S.renderer = RM[(RM.findIndex(r => r[0] === rm) + 1) % RM.length][0]; saveSettings(); G.dirty = true; showGfxSettings(back); } };
   showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało. Klawisz F pokazuje licznik klatek.`,
-    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id), selected: q.id === (S.quality || 'auto') })), ...(PIXEL_ART ? [fontBtn] : []), uiBtn, wxBtn, sndBtn, { label: 'OK', key: 'escape', primary: true, action: () => { if (back) back(); } }], { bw: PIXEL_ART ? 100 : 112 });
+    [...QUALITIES.map(q => ({ label: q.name, action: set(q.id), selected: q.id === (S.quality || 'auto') })), ...(PIXEL_ART ? [fontBtn] : [glBtn]), uiBtn, wxBtn, sndBtn, { label: 'OK', key: 'escape', primary: true, action: () => { if (back) back(); } }], { bw: PIXEL_ART ? 100 : 112 });
 }
 function init() {
   loadSettings(); loadUnitArt(); // arkusze jednostek dekodują się w tle (do tego czasu dawne rysunki)
   setPixelSize(G.settings.quality === 'low' ? 2 : PIX_DEFAULT); ZOOM = ZOOMS.includes(G.settings.zoom) ? G.settings.zoom : isTouchDevice() ? 1.25 : 1; // na telefonie domyślnie bliżej: pola pod palec // niska jakość: dawny, grubszy piksel (4 razy mniej pracy przy rysowaniu)
-  G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: false }); // nieprzezroczyste płótno: przeglądarka nie miesza go z tłem strony
+  G.canvas = document.getElementById('game'); G.ctx = G.canvas.getContext('2d', { alpha: true }); // przezroczyste płótno: pod nim, w oknie mapy, leży płótno WebGL (GLMap)
   App.init(); resize(); window.addEventListener('resize', resize); bindInput();
   SaveStore.init(); // ustala miejsce zapisów w tle (konto Claude albo przeglądarka)
   setScreen('menu'); G.fade.a = 1; G.fade.target = 0;
