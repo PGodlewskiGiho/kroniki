@@ -23,7 +23,7 @@ test('SI zaczyna z odkrytym otoczeniem i odkrywa mapę, człowiek nic nie zyskuj
   assert.ok(r.seesHome);
   assert.ok(!r.knowsHuman, 'SI nie zna na starcie miasta gracza');
   assert.ok(r.start > 0 && r.start < r.total / 4, `na starcie ${r.start}`);
-  assert.ok(r.after > r.start * 2, `po 5 dniach ${r.after} (start ${r.start})`);
+  assert.ok(r.after > r.start + 150, `po 5 dniach ${r.after} (start ${r.start})`); // zwiad: wyraźnie więcej pól (ile, zależy od ukształtowania mapy)
   assert.ok(r.humanSame, 'ruchy SI nie odkrywają mapy człowiekowi');
 });
 

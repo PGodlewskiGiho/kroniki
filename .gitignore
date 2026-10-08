@@ -10,3 +10,13 @@ tools/dzwieki/.cache/
 tools/muzyka/.cache/
 tools/.cache/
 tools/tla-ai/portrety-jednostek/.cache/
+# sekrety nigdy do repozytorium (klucze podpisu, hasła, tokeny)
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+.env
+.env.*
+sekrety*
+secrets*

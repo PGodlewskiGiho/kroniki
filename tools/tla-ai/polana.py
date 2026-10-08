@@ -108,7 +108,7 @@ if os.environ.get('SZKIC'): print(out.replace('.png', '-szkic.png')); sys.exit()
 import torch
 from diffusers import StableDiffusionImg2ImgPipeline, DPMSolverMultistepScheduler
 torch.set_num_threads(os.cpu_count())
-pipe = StableDiffusionImg2ImgPipeline.from_pretrained(os.environ.get('MODEL', 'Lykon/dreamshaper-8'), torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+pipe = StableDiffusionImg2ImgPipeline.from_pretrained(os.environ.get('MODEL', 'Lykon/dreamshaper-8'), torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False, use_safetensors=True)
 pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, algorithm_type='dpmsolver++', use_karras_sigmas=True); pipe.set_progress_bar_config(disable=True)
 res = pipe(P['opis'], image=sz.resize((768, 560), Image.LANCZOS), strength=strength, negative_prompt='buildings, houses, huts, tents, people, animals, text, watermark, blurry, lowres, fog, mist, haze, smoke, bushes, shrubs, flowers, trees',
            num_inference_steps=30, guidance_scale=7, generator=torch.Generator().manual_seed(seed)).images[0].resize((W, H), Image.LANCZOS)

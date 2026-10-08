@@ -22,7 +22,7 @@ import torch
 from diffusers import StableDiffusionImg2ImgPipeline, DPMSolverMultistepScheduler
 torch.set_num_threads(os.cpu_count())
 O = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'opisy.json'), encoding='utf-8'))
-pipe = StableDiffusionImg2ImgPipeline.from_pretrained('Lykon/dreamshaper-8', torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+pipe = StableDiffusionImg2ImgPipeline.from_pretrained('Lykon/dreamshaper-8', torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False, use_safetensors=True)
 pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, algorithm_type='dpmsolver++', use_karras_sigmas=True); pipe.set_progress_bar_config(disable=True)
 prompt = O['_styl'].replace('{opis}', O[fac].get('opis_bez_ramy', O[fac]['opis']))
 res = pipe(prompt, image=szi.resize((768, 560)), strength=strength, negative_prompt=O['_negatyw'] + ', trees, tree trunks, branches, frame, vignette',

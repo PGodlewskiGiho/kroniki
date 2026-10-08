@@ -34,7 +34,7 @@ for R in ([] if TYLKO == 'place' else U.get('drogi', [])):
         c = tuple(int(v) for v in np.array([166, 142, 104]) + rng.normal(0, 8, 3)); dd.ellipse([X - r, Y - k, X + r, Y + k], fill=c)
 draw = Image.blend(im_pl, draw, 0.85)
 torch.set_num_threads(os.cpu_count())
-pipe = StableDiffusionImg2ImgPipeline.from_pretrained(os.environ.get('MODEL', 'Lykon/dreamshaper-8'), torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+pipe = StableDiffusionImg2ImgPipeline.from_pretrained(os.environ.get('MODEL', 'Lykon/dreamshaper-8'), torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False, use_safetensors=True)
 pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, algorithm_type='dpmsolver++', use_karras_sigmas=True); pipe.set_progress_bar_config(disable=True)
 prompt = 'detailed fantasy matte painting, green river valley with winding dirt roads and worn cobblestone paths through the meadows, wheel ruts, grass edges, painterly, crisp'
 if len(sys.argv) > 6:

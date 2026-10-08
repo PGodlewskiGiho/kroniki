@@ -11,7 +11,8 @@ function puzzleOrigin(st) {
 // Kolejność zdejmowania kawałków: najdalsze od Graala najpierw (z odrobiną losu), kawałek z krzyżykiem na końcu
 function puzzleOrder(st) {
   const [x0, y0] = puzzleOrigin(st), gx = (st.grail.x - x0 + 0.5) / PUZZLE_W * PUZZLE_COLS, gy = (st.grail.y - y0 + 0.5) / PUZZLE_H * PUZZLE_ROWS, out = [];
-  for (let j = 0; j < PUZZLE_ROWS; j++) for (let i = 0; i < PUZZLE_COLS; i++) out.push({ i, j, d: Math.hypot(i + 0.5 - gx, j + 0.5 - gy) + (thash(i, j, st.seed) % 100) / 90 });
+  const gi = clamp(Math.floor(gx), 0, PUZZLE_COLS - 1), gj = clamp(Math.floor(gy), 0, PUZZLE_ROWS - 1); // kawałek z Graalem zawsze ostatni (los nie może go wyprzedzić)
+  for (let j = 0; j < PUZZLE_ROWS; j++) for (let i = 0; i < PUZZLE_COLS; i++) out.push({ i, j, d: i === gi && j === gj ? -1 : Math.hypot(i + 0.5 - gx, j + 0.5 - gy) + (thash(i, j, st.seed) % 100) / 90 });
   return out.sort((a, b) => b.d - a.d);
 }
 // Obraz wycinka mapy (teren i stałe obiekty, bez bohaterów i potworów, bez mgły) w połowie rozdzielczości, z krzyżykiem

@@ -10,7 +10,7 @@ NEG = 'text, watermark, signature, frame, blurry, lowres, deformed face, ugly, e
 s = float(sys.argv[1]) if len(sys.argv) > 1 else 0.55; only = sys.argv[2].split(',') if len(sys.argv) > 2 else None
 opisy = json.load(open(os.path.join(SRC, 'opisy.json')))
 torch.set_num_threads(os.cpu_count())
-p = StableDiffusionImg2ImgPipeline.from_pretrained(os.environ.get('MODEL', 'Lykon/dreamshaper-8'), torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+p = StableDiffusionImg2ImgPipeline.from_pretrained(os.environ.get('MODEL', 'Lykon/dreamshaper-8'), torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False, use_safetensors=True)
 p.scheduler = DPMSolverMultistepScheduler.from_config(p.scheduler.config, algorithm_type='dpmsolver++', use_karras_sigmas=True); p.set_progress_bar_config(disable=True)
 for i, (cid, opis) in enumerate(opisy.items()):
     dst = os.path.join(OUT, cid + '.png')

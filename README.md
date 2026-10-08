@@ -25,3 +25,18 @@ Poza CI testom trzeba wskazać Chromium, np. `CHROMIUM_PATH=/ścieżka/do/chromi
 
 Po każdej zmianie w `main` workflow „Publikacja (GitHub Pages)” uruchamia testy i publikuje grę
 jako `index.html` (jednorazowo: Settings → Pages → Source: „GitHub Actions”).
+
+## Bezpieczeństwo
+
+- Paczki npm tylko z oficjalnego rejestru, w wersjach i sumach kontrolnych z `package-lock.json` (`npm ci`);
+  skrypty instalacji paczek wyłączone (`.npmrc`: `ignore-scripts=true`) — tą drogą zainfekowane paczki uruchamiają kod.
+  Nowe paczki dodawaj tylko po sprawdzeniu (popularność, wydawca); `npm audit` działa w CI, a Dependabot co tydzień
+  zgłasza znane podatności jako pull request do przejrzenia.
+- Żadnych sekretów w repozytorium: klucz podpisu APK i hasło są wyłącznie w sekretach GitHuba (Settings → Secrets),
+  używane tylko przy wydaniu z `main`. `.gitignore` odrzuca pliki kluczy, `.env` i `sekrety*`.
+- Gra nie zbiera żadnych danych i nie łączy się z niczym poza grą online (PeerJS: serwer pośredniczący przy łączeniu,
+  potem połączenie bezpośrednie — drugi gracz widzi twój adres IP, jak w każdej grze sieciowej). Wiadomości od innych
+  graczy są sprawdzane (format, rozmiar, długość nazw) i rysowane na płótnie, nigdy wstawiane jako HTML.
+- Narzędzia AI (`tools/tla-ai`, `tools/portrety-ai`) wczytują wagi modeli tylko w bezpiecznym formacie safetensors
+  (bez plików pickle, które mogą wykonać kod); modele z Hugging Face od znanych autorów.
+- Zasady pilnuje `tests/bezpieczenstwo.test.js`.

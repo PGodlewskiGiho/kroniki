@@ -280,7 +280,13 @@ G.screens.setup = {
   enter(p = {}) {
     this.online = !!p.online;
     const S = G.settings, B = []; S.slots = validSlots(S.slots) || legacySlots(S);
-    MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 128, 114, 118, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 16, sub: `${m.n}×${m.n}`, tip: `Na tej mapie zmieści się do ${SITE_COUNT[m.n]} graczy.` })));
+    MAP_SIZES.forEach((m, i) => B.push(new Button(230 + i * 100, 114, 94, 44, m.name, () => { S.mapSize = m.id; }, { selected: () => S.mapSize === m.id, size: 15, sub: `${m.n}×${m.n}`, tip: `Na tej mapie zmieści się do ${SITE_COUNT[m.n]} graczy.` })));
+    // rodzaj krainy (LAND_TYPES): kliknięcie przełącza; kształt świata i kierunek klimatu i tak losowe
+    const land = () => LAND_TYPES.find(l => l.id === (S.land || 'random')) || LAND_TYPES[0];
+    const lb = new Button(632, 114, 92, 44, 'Kraina', () => { S.land = LAND_TYPES[(LAND_TYPES.indexOf(land()) + 1) % LAND_TYPES.length].id; saveSettings(); }, { size: 15 });
+    Object.defineProperty(lb, 'sub', { get: () => land().name.toLowerCase(), set() {} });
+    Object.defineProperty(lb, 'tip', { get: () => `Kraina: ${land().name} – ${land().desc}. Kształt świata (kontynent, wybrzeże, morze śródlądowe, przesmyk, jeziora) i strona świata, gdzie jest zimno, losują się zawsze. Kliknij, aby zmienić.`, set() {} });
+    B.push(lb);
     DIFFICULTIES.forEach((d, i) => B.push(new Button(230 + i * 102, 168, 96, 44, d.name, () => { S.difficulty = i; }, { selected: () => S.difficulty === i, size: 14, sub: `ocena ${d.rating}%` })));
     BONUSES.forEach((b, i) => B.push(new Button(230 + i * 106, 254, 100, 36, b.name, () => { S.bonus = b.id; }, { selected: () => S.bonus === b.id, size: 15, tip: `Bonus startowy: ${b.sub}.` })));
     const ug = new Button(230 + BONUSES.length * 106 + 14, 254, 150, 36, '', () => { S.underground = !S.underground; saveSettings(); }, { size: 15, selected: () => S.underground,

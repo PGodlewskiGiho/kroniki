@@ -329,5 +329,21 @@
    z pamięci (XRAY). Ustawienie „Karta graficzna” (auto: tylko sprzętowy WebGL). Teren w wątkach w tle (17h-teren-w-tle.js,
    TerrainPool): piksele kawałka (chunkPixelSteps) liczą Web Workery, wątek gry tylko kończy kawałek (chunkFinish). Testy: gpu,
    teren-w-tle; testy płynności (perf) uruchamiane osobno po reszcie (tests/uruchom.js).
+   Bezpieczeństwo: .npmrc ignore-scripts, npm ci --ignore-scripts i npm audit w CI, Dependabot, workflowy z minimalnymi
+   uprawnieniami (persist-credentials: false, klucz APK tylko na main), .gitignore na klucze i sekrety, safetensors w narzędziach
+   AI, sieć: Net.unpack z limitem NET_MAX (bomba gzip), netName, odrzucanie obcych wiadomości; Android: bezpieczna nazwa pliku.
+   Mapa jak podróż: generateMap – pasma górskie (kręte grzbiety z przełęczami i odnogami), pogórze, zwarte puszcze z polanami,
+   rzeki z gór do morza z brodami (map.fords). placeObjects – ~35% mniej obiektów, większe nagrody, miejsce wg okolicy (FIT:
+   przy drodze, nad wodą, w gąszczu, w górach, w zakamarkach) z odstępem; potwory na brodach i w wąskich przejściach; skarby
+   w gąszczu ukryte (o.hid, objSeen/spotHidden/uiObjectAt: widoczne z 2 pól). Poprawka: próbna walka SI nie zużywa many.
+   Różnorodne mapy: LAND_TYPES (kraina do wyboru w nowej grze: umiarkowana, górzysta, leśna, pustynna, mroźna, rzeczna,
+   wyspiarska, losowa) zmienia proporcje terenu; kształt świata (MAP_SHAPES: kontynent, wybrzeże, morze śródlądowe, przesmyk,
+   jeziora, archipelag) i kierunek klimatu losowane z ziarna (st.landInfo, w powitaniu). Bohater na mapie w 8 kierunkach
+   (HERO_MAP_ART, tools/grafika3d/wypal-bohaterowie-mapa.js: kamera mapy, 12 klatek chodu, zachodnie odbite; heroFacing).
+   Nowa pogoda (17w-pogoda.js, Weather): front opadów wędruje z wiatrem, rodzaj z pola i pory roku (weatherAt: śnieg nad śniegiem
+   i zimą, mżawka i mgła na bagnach, liście w lesie, popiół nad lawą, burza piaskowa na pustyni, kręgi deszczu na wodzie); na karcie
+   graficznej shadery (GLMap.weather: cząstki punktami, niebo z cieniami chmur i mgłą; woda odbija niebo i błyska), na procesorze
+   mgła/chmury jednym obrazkiem i ~220 cząstek. Okolica startu bez potworów, obiekty nie zamykają przejść do miast, pierwsze słabe
+   potwory za okolicą startu; kawałek mapy zagadki z Graalem zawsze ostatni.
    ===================================================================================== */
 

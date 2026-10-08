@@ -490,9 +490,9 @@ function screenToTile(st, x, y) { return { tx: Math.floor(((x - VIEW.x) / ZOOM +
 // dwóch pól – kliknięcie (i podświetlenie, kursor, opis) w głowę bohatera albo dach zamku trafia w nie, a nie w puste pole za nimi
 function pickTile(st, x, y) {
   const p = screenToTile(st, x, y), n = st.map.n; if (p.tx < 0 || p.ty < 0 || p.tx >= n || p.ty >= n) return p;
-  if (heroAt(st, p.tx, p.ty)) return p; const own = objectAt(st, p.ty * n + p.tx); if (own) return own.blocks ? { tx: own.x, ty: own.y } : p;
+  if (heroAt(st, p.tx, p.ty)) return p; const own = uiObjectAt(st, p.ty * n + p.tx); if (own) return own.blocks ? { tx: own.x, ty: own.y } : p;
   const ob = drawnObjectAt(st, p.tx, p.ty); if (ob) return { tx: ob.x, ty: ob.y };
-  if (p.ty + 1 < n) { if (heroAt(st, p.tx, p.ty + 1)) return { tx: p.tx, ty: p.ty + 1 }; const o = objectAt(st, (p.ty + 1) * n + p.tx); if (o && ['monster', 'art', 'res', 'chest', 'boat'].includes(o.type)) return { tx: p.tx, ty: p.ty + 1 }; }
+  if (p.ty + 1 < n) { if (heroAt(st, p.tx, p.ty + 1)) return { tx: p.tx, ty: p.ty + 1 }; const o = uiObjectAt(st, (p.ty + 1) * n + p.tx); if (o && ['monster', 'art', 'res', 'chest', 'boat'].includes(o.type)) return { tx: p.tx, ty: p.ty + 1 }; }
   return p;
 }
 // Zmienia przybliżenie o krok (d = -1 bliżej, +1 dalej), trzymając w miejscu punkt świata pod myszą (sx, sy)
@@ -601,7 +601,7 @@ function drawWorldPixel(b, st) {
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
   drawHoles(b, st, ox, oy, tx0, ty0, tx1, ty1);
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
-  for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
+  for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1 && objSeen(st, ob)) list.push({ y: ob.y, ob });
   for (const h of st.heroes) { if (h.garrison != null) continue; const [hx, hy] = heroDrawPos(h); list.push({ y: hy + 0.5, hero: h, hx, hy }); }
   for (const c of st.caravans || []) { if (c.owner !== ME) continue; const [cx, cy] = caravanPos(st, c); if (cx >= tx0 && cx <= tx1 && cy >= ty0 && cy <= ty1) list.push({ y: cy + 0.4, caravan: c, cx, cy }); } // własne karawany w drodze
   // drzewa, góry i skały są wtopione w teren (pod obiektami); te, które stoją tuż przed obiektem albo bohaterem
@@ -663,7 +663,7 @@ function drawWorldPixel(b, st) {
   drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, { x: VIEW.x, y: VIEW.y, w: VIEW.w * ZOOM, h: VIEW.h * ZOOM })) {
     const { tx, ty } = pickTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
-    { const n = st.map.n, i = ty * n + tx, live = tx >= 0 && ty >= 0 && tx < n && ty < n && (heroAt(st, tx, ty) || objectAt(st, i)); // bohater albo obiekt do kliknięcia: złoty pierścień pod nim
+    { const n = st.map.n, i = ty * n + tx, live = tx >= 0 && ty >= 0 && tx < n && ty < n && (heroAt(st, tx, ty) || uiObjectAt(st, i)); // bohater albo obiekt do kliknięcia: złoty pierścień pod nim
       if (live) { b.save(); b.strokeStyle = 'rgba(255,214,110,.9)'; b.lineWidth = 2 * PIX; b.shadowColor = '#ffd060'; b.shadowBlur = 8; b.beginPath(); b.ellipse(x + T / 2, y + T * 0.78, T * 0.55, T * 0.26, 0, 0, Math.PI * 2); b.stroke(); b.restore(); } }
     b.fillStyle = 'rgba(255,240,190,.55)'; const q = PIX; b.fillRect(x, y, T, q); b.fillRect(x, y + T - q, T, q); b.fillRect(x, y + q, q, T - 2 * q); b.fillRect(x + T - q, y + q, q, T - 2 * q);
   }
@@ -764,7 +764,7 @@ function drawMapView(ctx, st, scr) {
     const sc = Math.min(1, ZOOM) * (PIXEL_ART ? 1 / PIX : mapBufScale()), bw = Math.round(VIEW.w * sc), bh = Math.round(VIEW.h * sc); // gładko: bufor w rozdzielczości ekranu (ostry świat)
     // karta graficzna (GLMap): ten sam kod rysuje do kontekstu WebGL, wynik to płótno WebGL zamiast bufora w pamięci procesora
     const gpu = GLMap.use(), b = gpu ? GLMap.begin(bw, bh) : pixBuf('world', bw, bh)._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
-    b.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); b.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; drawWorldPixel(b, st); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore();
+    b.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); b.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; drawWorldPixel(b, st); Weather.draw(b, st, VIEW.x - Math.round(st.cam.x / PIX) * PIX, VIEW.y - Math.round(st.cam.y / PIX) * PIX); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore();
     const wb = gpu ? GLMap.end() : b.canvas;
     if (gpu) { ctx.clearRect(VIEW.x, VIEW.y, RW, RH); GLMap.place(ctx, VIEW.x, VIEW.y, RW, RH); } else { ctx.save(); ctx.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; ctx.drawImage(wb, VIEW.x, VIEW.y, RW, RH); ctx.restore(); } // karta graficzna: okno mapy w płótnie gry przezroczyste, pod nim płótno WebGL (bez kopiowania obrazu) // oddalenie: pomniejszenie z wygładzaniem
   ox = VIEW.x - Math.round(st.cam.x / PIX) * PIX; oy = VIEW.y - Math.round(st.cam.y / PIX) * PIX; // to samo zaokrąglenie co w drawWorldPixel
@@ -789,7 +789,6 @@ function drawMapView(ctx, st, scr) {
   ctx.restore();
   } finally { VIEW.w = RW; VIEW.h = RH; }
   ctx.save(); ctx.beginPath(); ctx.rect(VIEW.x, VIEW.y, VIEW.w, VIEW.h); ctx.clip();
-  if (!(st.map.ln && st.view)) { drawSeasonFx(ctx, seasonIdx(st)); drawWeather(ctx, st, ox, oy); } // w podziemiach bez pogody i pór roku
   if (scr.banner) {
     const a = clamp(1.8 - (G.time - scr.banner.t), 0, 1);
     if (a > 0) { ctx.globalAlpha = a; drawParchment(ctx, VIEW.x + VIEW.w / 2 - 90, VIEW.y + 16, 180, 44); text(ctx, scr.banner.text, VIEW.x + VIEW.w / 2, VIEW.y + 39, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' }); ctx.globalAlpha = 1; }
@@ -802,7 +801,7 @@ function tileInfo(st, tx, ty) {
   const i = ty * n + tx; if (!human(st).explored[i]) return 'Nieodkryty teren';
   const h = heroAt(st, tx, ty); if (h) return heroTitle(h);
   if ((st.holes || []).includes(i)) return 'Wykopany dół: tu już ktoś szukał Graala';
-  const ob = objectAt(st, i);
+  const ob = uiObjectAt(st, i);
   if (ob) {
     if (ob.type === 'monster') return `${qtyName(ob.count)} ${CREATURES[ob.cid].gen}`;
     if (ob.type === 'town') { const t = st.towns[ob.townId]; return `${t.name}, ${ob.owner === ME ? 'twoje miasto' : ob.owner < 0 ? 'miasto niezależne' : 'obce miasto'}`; }
@@ -822,66 +821,3 @@ function tileInfo(st, tx, ty) {
   return s;
 }
 
-// Opady pory roku nad mapą: płatki śniegu zimą, spadające liście jesienią (bez nich przy niskiej jakości)
-// ---- Pogoda na mapie (tylko wygląd): losowana codziennie wg pory roku. Nad śniegiem deszcz pada jako śnieg,
-// nad piaskiem i lawą nie pada wcale. Chmury rzucają cienie, burza błyska, mgła snuje się pasmami. Wyłącznik w ustawieniach grafiki.
-const WEATHERS = { clear: 'pogodnie', clouds: 'pochmurno', rain: 'deszcz', storm: 'burza', fog: 'mgła', snow: 'śnieżyca' };
-const WEATHER_ODDS = [ // wiosna, lato, jesień, zima: [pogoda, waga]
-  [['clear', 40], ['clouds', 25], ['rain', 25], ['fog', 10]], [['clear', 60], ['clouds', 20], ['storm', 12], ['rain', 8]],
-  [['clear', 20], ['clouds', 25], ['rain', 30], ['fog', 15], ['storm', 10]], [['clear', 25], ['clouds', 25], ['snow', 35], ['fog', 15]],
-];
-function weatherOf(st) {
-  if (!st || !st.dayTotal) return 'clear'; const L = WEATHER_ODDS[seasonIdx(st)]; let r = thash(st.seed, st.dayTotal, 77) % L.reduce((s, x) => s + x[1], 0);
-  for (const [k, w] of L) if ((r -= w) < 0) return k; return 'clear';
-}
-const weatherOn = () => G.settings.weather !== 'off';
-let WEATHER_BLOB = null; // miękka plama (cień chmury, pasmo mgły)
-function weatherBlob() {
-  if (WEATHER_BLOB) return WEATHER_BLOB; const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 2, 32, 32, 32);
-  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.setTransform(2, 0, 0, 1, 0, 0); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return (WEATHER_BLOB = c);
-}
-function drawWeather(ctx, st, ox, oy) {
-  const w = weatherOf(st); if (w === 'clear' || !weatherOn()) return;
-  const t = G.time, lo = G.settings.quality === 'low', map = st.map, n = map.n, V = VIEW, blob = weatherBlob();
-  const terAt = (x, y) => { const { tx, ty } = screenToTile(st, x, y); return tx < 0 || ty < 0 || tx >= n || ty >= n ? -1 : map.terrain[ty * n + tx]; };
-  const blobs = (k, col, a, sp, sw, sh) => { ctx.save(); ctx.globalAlpha = a; for (let i = 0; i < k; i++) { // plamy przesuwają się razem z mapą i z wiatrem
-      const x = V.x + ((((i * 263 + ox * 0.9 + t * sp) % (V.w + sw)) + V.w + sw) % (V.w + sw)) - sw / 2, y = V.y + ((((i * 181 + oy * 0.9 + (i % 2 ? 40 : 0)) % (V.h + sh)) + V.h + sh) % (V.h + sh)) - sh / 2;
-      ctx.drawImage(col, x - sw / 2, y - sh / 2, sw, sh); } ctx.restore(); };
-  if (w !== 'fog') { const sh = tintBlob('#0a1020'); blobs(lo ? 3 : 6, sh, w === 'clouds' ? 0.3 : 0.26, 9, 300, 150); }
-  if (w === 'rain' || w === 'storm' || w === 'snow') { ctx.fillStyle = w === 'storm' ? 'rgba(14,20,40,.26)' : w === 'snow' ? 'rgba(200,210,230,.08)' : 'rgba(20,30,50,.14)'; ctx.fillRect(V.x, V.y, V.w, V.h); }
-  if (w === 'fog') { ctx.fillStyle = 'rgba(210,215,220,.1)'; ctx.fillRect(V.x, V.y, V.w, V.h); blobs(lo ? 5 : 9, tintBlob('#e8ecf0'), 0.3, 6, 340, 110); }
-  if (w === 'rain' || w === 'storm') {
-    const N = (w === 'storm' ? 180 : 110) >> (lo ? 1 : 0), flakes = []; ctx.beginPath();
-    for (let i = 0; i < N; i++) {
-      const sp = 380 + (i % 5) * 45, x = V.x + (((i * 53.7 + t * 70) % V.w) + V.w) % V.w, y = V.y + ((i * 97.3 + t * sp) % V.h), ter = terAt(x, y);
-      if (ter === TER.SAND || ter === TER.LAVA) continue; if (ter === TER.SNOW) { flakes.push([x, y]); continue; }
-      ctx.moveTo(x, y); ctx.lineTo(x - 3, y - 12);
-      if ((i + Math.floor(t * 5)) % 19 === 0) { ctx.moveTo(x - 3, y + 2); ctx.lineTo(x + 3, y + 2); } // bryzg
-    }
-    ctx.strokeStyle = 'rgba(190,210,240,.5)'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,.8)'; for (const [x, y] of flakes) ctx.fillRect(x - 1, (y * 0.4 + V.y * 0.6) | 0, 2, 2);
-    if (w === 'storm') { const ph = (t + st.dayTotal * 1.7) % 6.5; if (ph < 0.25) { ctx.fillStyle = `rgba(230,240,255,${(0.4 * (1 - ph / 0.25) * (ph < 0.08 || ph > 0.14 ? 1 : 0.3)).toFixed(2)})`; ctx.fillRect(V.x, V.y, V.w, V.h); } } // błyskawica
-  }
-  if (w === 'snow') {
-    const N = lo ? 90 : 200; ctx.fillStyle = 'rgba(255,255,255,.9)';
-    for (let i = 0; i < N; i++) {
-      const u = (t * (0.07 + (i % 6) * 0.015) + i * 0.137) % 1, x = V.x + (((i * 83.1 + t * 22 + Math.sin(t * 1.1 + i) * 14) % V.w) + V.w) % V.w, y = V.y + u * V.h;
-      if (terAt(x, y) === TER.LAVA) continue; const r = i % 3 ? 3 : 4; ctx.fillRect(Math.round(x - r / 2), Math.round(y - r / 2), r, r);
-    }
-  }
-}
-const BLOB_TINTS = {};
-function tintBlob(col) {
-  if (BLOB_TINTS[col]) return BLOB_TINTS[col]; const b = weatherBlob(), c = document.createElement('canvas'); c.width = b.width; c.height = b.height; const g = c.getContext('2d');
-  g.drawImage(b, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height); return (BLOB_TINTS[col] = c);
-}
-function drawSeasonFx(ctx, S) {
-  if ((S !== 2 && S !== 3) || G.settings.quality === 'low') return;
-  const t = G.time, n = S === 3 ? 70 : 22;
-  for (let i = 0; i < n; i++) {
-    const sp = S === 3 ? 0.05 + (i % 5) * 0.012 : 0.035 + (i % 4) * 0.008, u = (t * sp + i * 0.137) % 1, sway = Math.sin(t * (S === 3 ? 0.9 : 1.6) + i * 1.7);
-    const x = VIEW.x + ((i * 97 + (S === 2 ? t * 14 : 0)) % VIEW.w) + sway * (S === 3 ? 10 : 18), y = VIEW.y + u * VIEW.h;
-    if (S === 3) { ctx.fillStyle = `rgba(255,255,255,${(0.55 + 0.35 * Math.sin(i)).toFixed(2)})`; const r = i % 3 ? 1.5 : 2.5; ctx.fillRect(x - r / 2, y - r / 2, r, r); }
-    else { ctx.save(); ctx.translate(x, y); ctx.rotate(t * 2 + i); ctx.fillStyle = ['#c8501e', '#e0a030', '#8a3a14', '#d87a2a'][i % 4]; ctx.fillRect(-3, -1.5, 6, 3); ctx.restore(); }
-  }
-}

@@ -148,8 +148,10 @@ function aiWorthFight(st, h, foe, maxLoss = 0.4) {
   return m.get(k) <= maxLoss;
 }
 // Jaką część armii bohater straci w próbnej walce (Infinity = przegra)
+// (próbna walka: czary w niej zużywają manę bohaterów, więc po niej mana wraca do stanu sprzed walki)
 function aiFightLoss(st, h, foe) {
-  const B = simulateBattle(createBattle(st, h, foe)); if (B.over !== 'win') return Infinity;
+  const mana = st.heroes.map(x => x.mana), B = simulateBattle(createBattle(st, h, foe)); st.heroes.forEach((x, k) => { x.mana = mana[k]; });
+  if (B.over !== 'win') return Infinity;
   const lost = B.units.filter(u => u.side === 0).reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].value, 0);
   return lost / Math.max(1, armyPower(h.army));
 }
@@ -184,7 +186,7 @@ function aiPickTarget(st, h, R) {
         const guarded = st.objects.find(o => !o.dead && o !== ob && o.type !== 'monster' && Math.abs(o.x - ob.x) <= 1 && Math.abs(o.y - ob.y) <= 1);
         if (best >= 0) add(best, (helper ? 400 : 700) + mp * (helper ? 0.3 : 0.8) + (guarded ? (guarded.type === 'mine' ? 3500 : 1500) : 0), 'monster', ob); continue;
       }
-      if (st.guard[i]) continue; // najpierw trzeba pokonać strażnika
+      if (st.guard[i] || !objSeen(st, ob, h.owner)) continue; // najpierw trzeba pokonać strażnika; ukrytego skarbu SI jeszcze nie zna
       if (ob.type === 'res') add(i, ob.res === 'gold' ? ob.amount : ob.amount * (RARE.includes(ob.res) ? 250 : 120), 'res');
       else if (ob.type === 'chest') add(i, 1500, 'chest');
       else if (ob.type === 'art') add(i, 2500, 'art');

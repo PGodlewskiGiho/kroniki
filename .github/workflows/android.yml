@@ -17,11 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: node build.js --check
       - uses: actions/setup-java@v4
         with:
@@ -39,8 +41,9 @@ jobs:
         run: mkdir -p android/app/src/main/assets && cp "Kroniki Królestw.html" android/app/src/main/assets/index.html
       - name: Budowa APK
         env:
-          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-          KRONIKI_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          # klucz podpisu tylko przy wydaniu z main; gałęzie robocze budują wersję testową (klucz debug)
+          KS_B64: ${{ github.ref == 'refs/heads/main' && secrets.ANDROID_KEYSTORE_B64 || '' }}
+          KRONIKI_KEYSTORE_PASS: ${{ github.ref == 'refs/heads/main' && secrets.ANDROID_KEYSTORE_PASS || '' }}
         run: |
           if [ -n "$KS_B64" ]; then echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/kroniki.keystore"; export KRONIKI_KEYSTORE="$RUNNER_TEMP/kroniki.keystore"; fi
           gradle -p android assembleRelease --no-daemon -PversionCode=${{ github.run_number }} -PversionName="1.1.${{ github.run_number }}"
