@@ -180,7 +180,7 @@ function battleSound(fx, sp) {
   else if (fx.kind === 'hit' && fx.a && !fx.splash) { const S = unitSound(fx.a.cid); if (hasAb(fx.a, 'breath')) Sfx.play('firebreath', { pan: sfxPan(fx.a.px) }); else if (S.voice) Sfx.play(S.voice, { vol: 0.7, pan: sfxPan(fx.a.px) }); if (S.weapon) Sfx.play('swing', { vol: 0.8, pan: sfxPan(fx.a.px), delay: 0.12 * sp }); }
   else if (fx.kind === 'shot') { const LK = CREATURES[fx.a.cid].look; Sfx.play(LK.weapon === 'staff' || LK.orb ? 'zap' : 'bow', { pan: sfxPan(fx.a.px), delay: 0.3 * sp }); }
   else if (fx.kind === 'siege') Sfx.play('catapult', { pan: sfxPan(fx.a.px), delay: 0.25 * sp });
-  else if (fx.kind === 'spell') Sfx.play(SPELL_SND[fx.id] ? SPELL_SND[fx.id][0] : 'cast', { vol: 0.8 });
+  else if (fx.kind === 'spell') Sfx.play(sndOr(SPELL_SND[fx.id] ? SPELL_SND[fx.id][0] : 'cast'), { vol: 0.8 });
 }
 // Trafienie: cios bronią dzwoni, pazury i kły tępo uderzają, strzała wbija się; zabity oddział pada
 function impactSound(p, tg) {
@@ -188,12 +188,15 @@ function impactSound(p, tg) {
   Sfx.play(shot ? 'arrowhit' : S && S.weapon ? 'clash' : 'hit', { vol: 0.85, pan });
   if (tg.dead) Sfx.play('death', { vol: 0.8, pan, delay: 0.15 });
 }
-// Czar: [dźwięk rzucenia, dźwięk trafienia]
-const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thunder'], chainLightning: ['cast', 'thunder'], fireball: ['fireball', 'explode'], meteorShower: ['fireball', 'explode'], armageddon: ['cast', 'explode'],
-  implosion: ['cast', 'explode'], iceBolt: ['cast', 'ice'], frostRing: ['cast', 'ice'], cure: ['cast', 'heal'], massCure: ['cast', 'heal'], resurrection: ['cast', 'heal'], animateDead: ['cast', 'curse'],
-  curse: ['cast', 'curse'], weakness: ['cast', 'curse'], slow: ['cast', 'curse'], deathRipple: ['cast', 'curse'],
-  blind: ['cast', 'curse'], poison: ['cast', 'curse'], fireWall: ['fireball', 'explode'], lifeSteal: ['zap', 'heal'], holyLight: ['cast', 'thunder'], vampirism: ['cast', 'curse'], blizzard: ['cast', 'ice'] };
-const spellLandSound = (id, x) => Sfx.play(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff', { vol: 0.9, pan: sfxPan(x) });
+// Czar: [dźwięk rzucenia, dźwięk trafienia]; brzmienia żywiołów i szkół (wiatr, ziemia, chór, trucizna…), a gdy którejś próbki brak – zastępcza
+const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thunder'], chainLightning: ['cast', 'thunder'], fireball: ['fireball', 'explode'], meteorShower: ['earth', 'explode'], armageddon: ['dark', 'explode'],
+  implosion: ['drain', 'explode'], iceBolt: ['frost', 'ice'], frostRing: ['frost', 'ice'], blizzard: ['wind', 'ice'], cure: ['cast', 'heal'], massCure: ['holy', 'heal'], resurrection: ['holy', 'heal'], animateDead: ['dark', 'holy'],
+  curse: ['dark', 'curse'], weakness: ['dark', 'curse'], slow: ['cast', 'slowdn'], deathRipple: ['dark', 'curse'], haste: ['cast', 'haste'], massHaste: ['wind', 'haste'], bless: ['cast', 'holy'], prayer: ['holy', 'buff'],
+  blind: ['cast', 'curse'], poison: ['cast', 'poison'], fireWall: ['fireball', 'firebreath'], lifeSteal: ['drain', 'heal'], holyLight: ['holy', 'thunder'], vampirism: ['dark', 'drain'], stoneSkin: ['cast', 'earth'],
+  shield: ['cast', 'shield'], airShield: ['wind', 'shield'], fireShield: ['fireball', 'shield'], teleport: ['teleport', 'teleport'], clone: ['teleport', 'shield'], dispel: ['cast', 'drain'], bloodlust: ['cast', 'growl'], fortune: ['cast', 'artifact'], tailwind: ['wind', 'haste'], fear: ['dark', 'growl'] };
+const SND_FALLBACK = { wind: 'cast', earth: 'thud', holy: 'heal', poison: 'curse', teleport: 'cast', shield: 'buff', drain: 'curse', frost: 'ice', slowdn: 'curse', haste: 'buff', dark: 'curse' };
+const sndOr = n => (Sfx.has(n) ? n : SND_FALLBACK[n] || n);
+const spellLandSound = (id, x) => Sfx.play(sndOr(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff'), { vol: 0.9, pan: sfxPan(x) });
 const UNIT_SCALE = 1.15;
 G.screens.battle = {
   fps: smoothFps, // płynnie także czekając na rozkaz (oddychające jednostki, płomienie)
@@ -406,7 +409,7 @@ G.screens.battle = {
         else { for (const [ax, ay] of p.area || spellArea(p.id, p.x, p.y, this.B)) { const [cx, cy] = hexCenter(ax, ay); spellAura(cx, cy, S); } p.hitAt = 0.3; }
       }
       if (!p.landed && p.t >= p.hitAt) {
-        p.landed = true; spellLandSound(p.id, tx);
+        p.landed = true; spellLandSound(p.id, tx); if (S.sig && (S.proj || S.strike || S.meteor)) spellSignature(aim[0], ty, S); // pocisk i piorun: znak czaru w miejscu trafienia
         if (S.burst) BattleFX.emit(aim[0], aim[1], { n: S.boom ? 60 : 24, col: [S.col, S.burst, '#ffffff'], spd: S.boom ? 170 : 110, life: S.boom ? 0.8 : 0.5, size: S.boom ? 4 : 3, glow: true, drag: 1.5 });
         BattleFX.glow(aim[0], aim[1], S.boom ? 110 : 55, S.col, S.boom ? 0.7 : 0.45);
         if (S.boom) { BattleFX.ring(tx, ty + 10, S.col, 90, 0.6, 6); BattleFX.emit(tx, ty, { n: 40, col: ['#ff8a2a', '#ffd060', '#ff5a1a'], dir: -Math.PI / 2, spread: 2.4, spd: 150, g: 120, life: 0.9, size: 4, glow: true, jx: 50, jy: 20 }); BattleFX.emit(tx, ty, { n: 24, col: ['#5a4e44', '#8a7a6a'], dir: -Math.PI / 2, spread: 1.2, spd: 60, life: 1.1, size: 5, drag: 1 }); }

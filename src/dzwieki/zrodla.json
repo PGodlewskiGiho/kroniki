@@ -464,5 +464,197 @@
    "user": "kalhan",
    "license": "CC0-1.0"
   }
+ ],
+ "wind": [
+  {
+   "freesound": 471854,
+   "title": "Wind gust.",
+   "user": "wintuh",
+   "license": "CC0-1.0"
+  }
+ ],
+ "earth": [
+  {
+   "freesound": 529244,
+   "title": "FX - Earthquake.",
+   "user": "bolkmar",
+   "license": "CC0-1.0"
+  }
+ ],
+ "holy": [
+  {
+   "freesound": 444491,
+   "title": "Short Choir.",
+   "user": "Breviceps",
+   "license": "CC0-1.0"
+  }
+ ],
+ "poison": [
+  {
+   "freesound": 202094,
+   "title": "Acid Bubbling.",
+   "user": "spookymodem",
+   "license": "CC0-1.0"
+  }
+ ],
+ "teleport": [
+  {
+   "freesound": 441225,
+   "title": "Teleport.",
+   "user": "MATRIXXX_",
+   "license": "CC0-1.0"
+  }
+ ],
+ "shield": [
+  {
+   "freesound": 249818,
+   "title": "Magic Shield.",
+   "user": "spookymodem",
+   "license": "CC0-1.0"
+  }
+ ],
+ "drain": [
+  {
+   "freesound": 537920,
+   "title": "Whirlpool Suck.",
+   "user": "belanhud",
+   "license": "CC0-1.0"
+  }
+ ],
+ "frost": [
+  {
+   "freesound": 369423,
+   "title": "Icy wind.",
+   "user": "Nakhas",
+   "license": "CC0-1.0"
+  }
+ ],
+ "slowdn": [
+  {
+   "freesound": 101118,
+   "title": "slowdown.",
+   "user": "DarkoZL",
+   "license": "CC0-1.0"
+  }
+ ],
+ "haste": [
+  {
+   "freesound": 590615,
+   "title": "SFX WHOOSHYKORN rising 15.",
+   "user": "MrFossy",
+   "license": "CC0-1.0"
+  }
+ ],
+ "dark": [
+  {
+   "freesound": 329518,
+   "title": "Ghost Moan 2.",
+   "user": "SirBedlam",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_saw": [
+  {
+   "freesound": 383725,
+   "title": "Hand Saw Sawing Wood.",
+   "user": "deleted_user_7146007",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_forge": [
+  {
+   "freesound": 395850,
+   "title": "Ambience blacksmithing room.",
+   "user": "jokallset",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_fire": [
+  {
+   "freesound": 558967,
+   "title": "Ambiance Campfire Loop Stereo.",
+   "user": "Nox_Sound",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_water": [
+  {
+   "freesound": 560965,
+   "title": "Creek / Brook 2.",
+   "user": "Bricklover",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_mill": [
+  {
+   "freesound": 263583,
+   "title": "Watermill.",
+   "user": "Berwitz",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_wind": [
+  {
+   "freesound": 545037,
+   "title": "windmill.",
+   "user": "gecop",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_mine": [
+  {
+   "freesound": 457585,
+   "title": "Mining with Pick Axe in a group.",
+   "user": "MiraclesHappen",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_tavern": [
+  {
+   "freesound": 326313,
+   "title": "Tavern Ambience Inside Laughter.",
+   "user": "ivolipa",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_bubble": [
+  {
+   "freesound": 361540,
+   "title": "MagicCauldronBubbling.",
+   "user": "katzlbt",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_crows": [
+  {
+   "freesound": 345298,
+   "title": "Crows.",
+   "user": "gtjuks",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_magic": [
+  {
+   "freesound": 35792,
+   "title": "Crystal Hum 1 (wav).",
+   "user": "necrodigits",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_birds": [
+  {
+   "freesound": 118577,
+   "title": "birds chirping.",
+   "user": "antwash",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_waves": [
+  {
+   "freesound": 531015,
+   "title": "Ocean Waves.",
+   "user": "Noted451",
+   "license": "CC0-1.0"
+  }
  ]
 }

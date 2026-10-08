@@ -222,6 +222,56 @@ function mqCaravan(f) { // kryty wóz (plandeka w barwie gracza), koń w zaprzę
   g.add(mast(-10, 22, 0, 18)); g.add(slab([[0, 0], [10, -1], [8, -5], [10, -9], [0, -8]].map(([a, b]) => [a / PXU, b / PXU]), 0.3 / PXU, K, 'cloth', P(-10, 39, 0)));
   return g; }
 function mqBoatHero(f) { const g = mqBoat(true); g.rotation.z = [0, 0.04, 0, -0.04][f]; return g; }
+// --- miejsca przygody ---
+Object.assign(SITE3, {
+  sphinx() { // sfinks: leżący lew z ludzką głową w pasiastej chuście, na piaskowcowym cokole; oczy świecą, przy nim złamane kolumny
+    const g = new THREE.Group(), S = '#d2b882', SD = '#b89a64'; g.add(blk(40, 8, 60, SD, 'ashlar', 0, 0, -4)); g.add(blk(44, 2, 64, DK(SD, 0.15), 'ashlar', 0, 0, -4));
+    g.add(sph(1, S, 'stone', P(0, 17, -10), [11 / PXU, 9 / PXU, 19 / PXU])); g.add(sph(1, S, 'stone', P(0, 16, -24), [12 / PXU, 10 / PXU, 10 / PXU])); g.add(sph(1, S, 'stone', P(0, 21, 4), [10 / PXU, 12 / PXU, 9 / PXU]));
+    for (const sx of [-1, 1]) { g.add(blk(6, 6, 18, S, 'ashlar', sx * 6, 8, 14)); g.add(sph(3.4 / PXU, S, 'stone', P(sx * 6, 11, 23), [1, 0.8, 1.2])); g.add(sph(1, S, 'stone', P(sx * 9, 13, -24), [4 / PXU, 6 / PXU, 8 / PXU])); }
+    g.add(tube([[0, 16, -32], [6, 10, -36], [10, 9, -30]].map(q => P(...q)), 1.4 / PXU, 0.9 / PXU, S, 'stone'));
+    g.add(blk(20, 18, 10, '#2a4a8a', 'cloth', 0, 24, 2)); for (const y of [27, 32, 37]) g.add(blk(20.6, 1.6, 10.6, '#d8b040', 'gold', 0, y, 2)); // chusta w pasy za głową
+    for (const sx of [-1, 1]) { g.add(blk(5, 16, 9, '#2a4a8a', 'cloth', sx * 9.5, 16, 7)); g.add(blk(5.4, 1.4, 9.4, '#d8b040', 'gold', sx * 9.5, 22, 7)); g.add(blk(5.4, 1.4, 9.4, '#d8b040', 'gold', sx * 9.5, 18, 7)); }
+    g.add(sph(1, S, 'stone', P(0, 32, 9), [7 / PXU, 8 / PXU, 6.5 / PXU])); g.add(blk(14, 3, 9, '#2a4a8a', 'cloth', 0, 38, 7)); g.add(blk(3, 6, 3, S, 'stone', 0, 30, 15)); /* nos */ g.add(cone(2 / PXU, 8 / PXU, SD, 'stone', P(0, 23, 13), [Math.PI, 0, 0], 8)); // broda
+    for (const sx of [-1, 1]) g.add(mqGlow(1.3, '#70e8ff', sx * 3, 33, 15)); g.add(cone(2.2 / PXU, 5 / PXU, '#d8b040', 'gold', P(0, 43, 9), null, 8)); // ureus
+    for (const [x, z, h] of [[-26, -18, 30], [26, -12, 18], [-26, 18, 12]]) { g.add(cyl3(4, 3.6, h, '#e0d0b0', 'marble', x, 0, z, 12)); g.add(blk(10, 3, 10, '#d0c0a0', 'ashlar', x, 0, z)); }
+    g.add(blk(9, 3, 6, '#e0d0b0', 'marble', 22, 0, 14, [0, 0.6, 0.2])); return g; },
+  questHut(f = 0) { // chata pustelnika: kamienna okrągła chata z dachem ze strzechy, latarnia na słupie, tablica z pergaminem (zadanie), zioła, sosny
+    const g = new THREE.Group(); g.add(cyl3(16, 15, 22, '#8a8478', 'rubble', -6, 0, -6, 18)); g.add(coneRoof(19, 22, '#9a8448', 'thatch', -6, 22, -6, 18)); g.add(sph(3 / PXU, '#5a7a3a', 'fur', P(-12, 40, -4), [1.4, 0.5, 1.2]));
+    g.add(door(8, 13, -6, 0, 9.5, '#4a3020', '#6a6458')); g.add(opening(5, 6, -17, 10, 5, { glow: '#ffd070', frame: '#4a3a2a' }));
+    g.add(cyl3(1.2, 1, 30, '#4a3020', 'wood', 18, 0, 8, 8)); g.add(blk(8, 1.2, 1.2, '#4a3020', 'wood', 15, 29, 8)); g.add(blk(5, 6, 5, '#3a3a40', 'iron', 12, 21, 8)); g.add(mqGlow(2.4, '#ffd070', 12, 23.5, 8)); // latarnia
+    g.add(cyl3(1.2, 1.2, 20, '#5a3a22', 'wood', 14, 0, -16, 8)); g.add(blk(16, 11, 1.6, '#7a5230', 'wood', 14, 12, -15)); g.add(blk(10, 8, 0.6, '#f0e0b0', 'cloth', 13, 13.5, -14)); g.add(blk(2, 2, 0.8, '#a82a20', 'cloth', 13, 13, -13.6)); // tablica z pergaminem i pieczęcią
+    for (const [x, z, c] of [[-24, 12, '#4a8a3a'], [-18, 16, '#6a9a3a'], [4, 18, '#5a8a2a']]) g.add(sph(3 / PXU, c, 'fur', P(x, 2, z), [1.2, 0.8, 1]));
+    g.add(blk(14, 4, 5, '#6a4a2a', 'wood', 4, 0, 14)); g.add(mqTree(-26, -20, 0.75, 'pine')); g.add(mqTree(24, -24, 0.65, 'pine')); return g; },
+  inn() { // karczma przydrożna: kamienny parter, piętro z muru pruskiego, dach z dachówki, komin, szyld z kuflem, beczki, ławka, latarnie
+    const g = new THREE.Group(); g.add(blk(44, 18, 30, '#8a8478', 'rubble', 0, 0, -4)); g.add(blk(48, 17, 33, '#e8dcc0', 'plaster', 0, 18, -4)); g.add(timberFrame(48, 17, 0, 18, 12.6, '#3a2416', 4));
+    g.add(gable(48, 33, 14, '#8a3a22', 'tiles', 0, 35, -4, 3, '#e8dcc0')); g.add(chimney(14, 38, -10, 16)); g.add(door(9, 14, -10, 0, 11.2, '#5a3a22', '#6a6458'));
+    for (const x of [6, 17]) g.add(opening(6, 8, x, 5, 11.2, { glow: '#ffc860', frame: '#4a3a2a' })); for (const x of [-15, 0, 15]) g.add(opening(5, 7, x, 23, 12.8, { glow: '#ffd890', frame: '#3a2416', arch: false }));
+    g.add(blk(12, 1.4, 1.4, '#2a2420', 'iron', 26, 30, 13)); g.add(blk(1, 3, 1, '#2a2420', 'iron', 30, 27, 13)); g.add(blk(11, 8, 1.4, '#7a5230', 'wood', 30, 19, 13)); g.add(cyl3(2, 2, 4, '#d8b040', 'gold', 30, 21, 14, 10)); g.add(cyl3(2.1, 2.1, 1, '#f4f0e0', 'cloth', 30, 25, 14, 10)); // szyld z kuflem
+    for (const [x, z] of [[-24, 16], [-17, 18]]) { g.add(cyl3(4, 4.6, 9, '#7a4a24', 'wood', x, 0, z, 12)); for (const y of [1.5, 7]) g.add(cyl3(4.7, 4.7, 0.8, '#3a3a40', 'iron', x, y, z, 12)); }
+    g.add(blk(16, 4, 4, '#6a4a2a', 'wood', 6, 0, 20)); g.add(blk(16, 1.4, 6, '#7a5230', 'wood', 6, 4, 20)); g.add(mqGlow(2, '#ffc060', -3, 15, 13)); g.add(mqGlow(2, '#ffc060', -17, 15, 13)); return g; },
+  barrow() { // kurhan: zarośnięty kopiec, kamienne wejście (dolmen) z czarną komorą, miecz wbity w szczyt, krąg głazów, błędne ogniki
+    const g = new THREE.Group(); g.add(sph(1, '#5a7436', 'fur', P(0, 0, -6), [26 / PXU, 17 / PXU, 22 / PXU])); g.add(sph(1, '#6a8440', 'fur', P(-6, 2, -12), [16 / PXU, 14 / PXU, 14 / PXU]));
+    g.add(blk(13, 15, 3, '#0a0806', 'stone', 0, 0, 12)); for (const sx of [-1, 1]) g.add(blk(5, 16, 6, '#7a7a74', 'ashlar', sx * 8.5, 0, 14)); g.add(blk(24, 5, 8, '#6a6a64', 'ashlar', 0, 16, 14)); g.add(blk(26, 2, 10, '#5a5a54', 'ashlar', 0, 0, 18));
+    g.add(blk(1.8, 16, 0.8, '#c8d0d8', 'steel', 2, 15, -8, [0, 0, 0.12])); g.add(blk(8, 1.4, 1.6, '#c8a040', 'gold', 0.4, 31, -8, [0, 0, 0.12])); g.add(blk(1.6, 6, 1.6, '#4a3020', 'leather', -0.3, 32, -8, [0, 0, 0.12])); g.add(sph(1.6 / PXU, '#c8a040', 'gold', P(-1.2, 38.5, -8)));
+    for (let i = 0; i < 7; i++) { const a = -0.3 + i / 6 * (Math.PI + 0.6), x = Math.cos(a) * 30, z = -6 - Math.sin(a) * 24; g.add(blk(5, 10 + (i % 3) * 4, 4, '#7a7a70', 'ashlar', x, 0, z, [0, a, (i % 2 ? 0.08 : -0.06)])); }
+    g.add(sph(2 / PXU, '#e8e0c8', 'bone', P(-14, 1, 18), [1, 0.9, 1.1])); for (const [x, y, z] of [[-12, 22, 6], [14, 18, 10], [6, 30, -16]]) g.add(mqGlow(1.6, '#9affd8', x, y, z)); return g; },
+  caravanserai() { // karawanseraj: namioty w pasy, dywan z towarem, skrzynie, dzbany, sztandar, latarnie na sznurze
+    const g = new THREE.Group(); for (const [x, z, r, h, c] of [[-14, -12, 15, 30, '#c8302a'], [14, -14, 13, 26, '#d8a030'], [20, 8, 9, 18, '#2a6ab0']]) {
+      g.add(cone(r / PXU, h / PXU, c, 'cloth', P(x, h / 2, z), null, 8)); g.add(cone((r + 0.4) / PXU, (h * 0.32) / PXU, '#f0e8d8', 'cloth', P(x, h * 0.36, z), null, 8)); g.add(cone(r * 0.4 / PXU, h * 0.2 / PXU, c, 'cloth', P(x, h * 0.9, z), null, 8));
+      g.add(finial(x, h - 1, z)); g.add(opening(6, 10, x, 0, z + r * 0.72, { frame: DK(c, 0.3), frameKind: 'cloth', arch: false, sill: false })); }
+    g.add(blk(26, 0.6, 16, '#8a2a4a', 'cloth', -4, 0, 14)); g.add(blk(24, 0.7, 2, '#d8b040', 'cloth', -4, 0, 21));
+    for (const [x, z, c] of [[-12, 12, '#c8a040'], [-6, 16, '#4a8ab0'], [2, 12, '#a04a2a']]) g.add(sph(2.6 / PXU, c, c === '#c8a040' ? 'gold' : 'stone', P(x, 3, z), [1, 1.3, 1]));
+    for (const [x, z, h] of [[-26, 6, 8], [-24, 16, 6], [8, 20, 7]]) g.add(blk(8, h, 7, '#8a5a30', 'wood', x, 0, z)); g.add(mqRes('gems', -1, 14, 0.4)); g.add(mqRes('gold', 7, 15, 0.35));
+    g.add(cyl3(1, 1, 36, '#5a3a22', 'wood', 0, 0, -26, 8)); g.add(hangBanner(4, 34, -26, 8, 16, '#7a2a8a')); for (let i = 0; i < 4; i++) g.add(mqGlow(1.4, '#ffc860', -22 + i * 9, 22 - (i % 2) * 2, 2)); return g; },
+  wishingWell() { // studnia życzeń: marmurowa cembrowina ze świecącą wodą, cztery kolumienki, niebieska kopułka ze złotą gwiazdą, monety, kwiaty
+    const g = new THREE.Group(); g.add(blk(44, 2, 44, '#b8b0a0', 'ashlar', 0, 0, 0)); g.add(cyl3(16, 17, 13, '#d8d0c0', 'marble', 0, 0, 0, 20)); g.add(cyl3(17.5, 17.5, 2, '#c8a040', 'gold', 0, 13, 0, 20));
+    const w = cyl(13 / PXU, 13 / PXU, 1 / PXU, '#7ad0ff', 'glow', P(0, 13.8, 0), null, null, 20); w.material = lightMat('#8adcff'); g.add(w); g.add(mqGlow(5, '#a8e4ff', 0, 17, 0));
+    for (let i = 0; i < 4; i++) { const a = Math.PI / 4 + i * Math.PI / 2; g.add(cyl3(1.8, 1.6, 26, '#f0ece0', 'marble', Math.cos(a) * 15, 13, Math.sin(a) * 15, 10)); }
+    g.add(cyl3(20, 20, 2.4, '#e8e0d0', 'marble', 0, 39, 0, 20)); g.add(dome(17, 7, '#3a5a9a', 'tiles', 0, 41, 0)); g.add(starTop(0, 52, 0, '#ffd040', 5));
+    for (let i = 0; i < 9; i++) { const a = i / 9 * 6.28; g.add(sph(1.3 / PXU, '#f0c040', 'gold', P(Math.cos(a) * (8 + (i % 3) * 2), 14.4, Math.sin(a) * (8 + (i % 3) * 2)), [1, 0.3, 1])); }
+    for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28 + 0.2, c = ['#f0a0c0', '#ffffff', '#f0d060'][i % 3]; g.add(sph(1.6 / PXU, c, 'cloth', P(Math.cos(a) * 21, 2.4, Math.sin(a) * 21))); g.add(sph(2 / PXU, '#4a7a2a', 'fur', P(Math.cos(a) * 21, 1, Math.sin(a) * 21), [1.3, 0.6, 1.3])); }
+    return g; },
+});
 // Kadłub łodzi: obrys burty (z boku) wyciągnięty na szerokość, potem zwężony ku dziobowi, rufie i stępce
 function mqHull(L, B, H, col) {
   const sh = new THREE.Shape(); sh.moveTo(-L / 2, H); sh.quadraticCurveTo(-L * 0.42, H * 0.2, -L * 0.3, 0); sh.lineTo(L * 0.32, 0); sh.quadraticCurveTo(L * 0.46, H * 0.25, L / 2 + L * 0.04, H * 1.15); sh.lineTo(-L / 2, H);

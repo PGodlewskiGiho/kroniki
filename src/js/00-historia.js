@@ -345,5 +345,19 @@
    graficznej shadery (GLMap.weather: cząstki punktami, niebo z cieniami chmur i mgłą; woda odbija niebo i błyska), na procesorze
    mgła/chmury jednym obrazkiem i ~220 cząstek. Okolica startu bez potworów, obiekty nie zamykają przejść do miast, pierwsze słabe
    potwory za okolicą startu; kawałek mapy zagadki z Graalem zawsze ostatni.
+   Większe krainy: szumy klimatu w większej skali, cleanupBiomes wchłania skrawki terenu, grobla przy przejściu po skosie między
+   wodami. Pogoda regionalna: climateAt (udział terenów w promieniu ~7 pól, siatka co 4 pola), duży front (skala 28 pól).
+   Drogi wchodzą do miast bramą (omijają zabudowę), obiekty nie leżą na drogach (ukryty skarb na jedynej drodze zamykał przejazd).
+   Budynki (miasta, kopalnie, skarbce, portale) z pasem wolnym od dróg; niewidziany ukryty obiekt nie blokuje ścieżki ani SI.
+   Miejsca przygody (SITES, modele 3D w mapa3d-miejsca.js): Sfinks (zagadka z RIDDLES, raz na bohatera), Chata pustelnika
+   (zadanie: pokonać wskazany silniejszy oddział 7–16 pól dalej, ob.target / m.quest; nagroda artefakt i QUEST_EXP), Karczma
+   (morale +1 i plotka innRumor: odsłania najbliższe nieodkryte cenne miejsce albo ukryty skarb), Kurhan (artefakt za klątwę
+   BARROW_CURSE), Karawanseraj (artefakt na sprzedaż co tydzień, BAZAAR_PRICE), Studnia życzeń (opłata, los). Nazwy własne
+   (ob.title: INN_NAMES, BARROW_NAMES, HERMIT_NAMES). Przydrożne miejsca stawiane naprawdę przy drodze (dRoad ≤ 4).
+   Mapa zagadki: malowane bitwy frakcji (SD img2img na szkicu z jednostek gry, tools/tla-ai/zagadka, ekrany/zagadka_<frakcja>),
+   nowe kawałki zdejmują się po kolei (st.puzzleSeen) przy melodii odkrycia; wykopanie Graala z fanfarą (tools/muzyka/dzingle.py).
+   Dźwięki otoczenia (Ambient w 08a): pętle amb_* przy budynkach w promieniu AMB_R pól od bohatera (tartak, kuźnia, młyn, karczma…).
+   Czary: własne znaki (spellSignature: słup światła, kopuła, dym, implozja, spirala, odłamki, bańki, deszcz ognia) i dźwięki
+   żywiołów (SPELL_SND z zapasowymi SND_FALLBACK); czary przygody też brzmią.
    ===================================================================================== */
 

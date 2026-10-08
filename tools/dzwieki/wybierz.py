@@ -1,6 +1,7 @@
 # Dźwięki gry z próbek CC0 (Freesound, przez zbiór benjamin-paine/freesound-laion-640k na HuggingFace).
 #   python3 tools/dzwieki/wybierz.py kandydaci INDEKS.jsonl    -> .cache/kandydaci.json + pobrane próbki i spektrogramy (do oceny)
 #   python3 tools/dzwieki/wybierz.py wypal                      -> src/dzwieki/<zdarzenie>_<n>.mp3 + src/dzwieki/zrodla.json
+#   ... kandydaci INDEKS.jsonl wind,amb_saw   /   wypal wind,amb_saw   -> tylko te zdarzenia (reszta plików zostaje)
 # Wybór próbek (wybor.json: zdarzenie -> [freesound_id, ...]) można poprawić ręcznie; bez wpisu brana jest najlepiej oceniona.
 import json, os, re, sys, subprocess, urllib.request, urllib.parse, io, math
 import numpy as np, soundfile as sf
@@ -16,7 +17,9 @@ def score(r, c):
     if any(w in t or w in tags or w in d for w in c.get('no', [])): return 0
     s = 0
     for q in c['q']: s += (3 if q in t else 0) + (2 if q in tags else 0) + (0.5 if q in d else 0)
-    if re.search(r'loop|ambien|ambience|music|song|melod|beat|field recording|soundscape', t + ' ' + tags): s -= 3 # chcemy pojedyncze efekty, nie podkłady
+    if re.search(r'music|song|melod|beat', t + ' ' + tags): s -= 3
+    if not c.get('amb') and re.search(r'loop|ambien|ambience|field recording|soundscape', t + ' ' + tags): s -= 3 # chcemy pojedyncze efekty, nie podkłady
+    if c.get('amb') and re.search(r'loop|ambien|ambience|field recording', t + ' ' + tags): s += 1.5 # otoczenie: długie nagrania i pętle
     if re.search(r'\bsfx\b|sound effect|foley|game|impact|one.?shot', t + ' ' + tags): s += 1
     return s
 
@@ -50,7 +53,8 @@ def onsets(x, min_gap=0.09):
         if e[i] > thr and e[i] - lo >= 8 and (i - last) * hop > min_gap * SR: out.append(i * hop); last = i
     return out
 
-def shape(seg, dur, gain=0.0, lp=None):
+def shape(seg, dur, gain=0.0, lp=None, loop=False):
+    if loop: return shape_loop(seg, dur, gain)
     n = int(dur * SR); seg = seg[:n].copy()
     if lp: seg = sosfilt(butter(4, lp, 'low', fs=SR, output='sos'), seg)
     fi = int(0.003 * SR); seg[:fi] *= np.linspace(0, 1, fi)
@@ -60,7 +64,17 @@ def shape(seg, dur, gain=0.0, lp=None):
     seg = seg * min(1.0, tgt / rms) # nie głośniej niż -14 dB RMS (wyrównanie głośności między zdarzeniami)
     return seg.astype(np.float32)
 
+# Pętla otoczenia: fragment dur s ze środka nagrania (bez wejścia), koniec przenika z początkiem (bez trzasku na szwie), głośność -20 dB RMS
+def shape_loop(x, dur, gain=0.0):
+    n, xf = int(dur * SR), int(0.6 * SR); st = min(max(0, len(x) // 4), max(0, len(x) - n - xf)); seg = x[st: st + n + xf].copy()
+    if len(seg) < n + xf: seg = np.tile(seg, (n + xf) // max(1, len(seg)) + 1)[: n + xf]
+    head, tail = seg[:xf], seg[n: n + xf]; w = np.linspace(0, 1, xf); out = seg[:n].copy(); out[:xf] = head * np.sqrt(w) + tail * np.sqrt(1 - w)
+    out = sosfilt(butter(2, 40, 'high', fs=SR, output='sos'), out)
+    rms = np.sqrt(np.mean(out ** 2)) + 1e-9; out = out * (10 ** ((-20 + gain) / 20) / rms); pk = np.abs(out).max(); out = out * min(1, 10 ** (-1 / 20) / (pk + 1e-9))
+    return out.astype(np.float32)
+
 def cut(x, c):
+    if c.get('loop'): return [x]
     start = np.argmax(np.abs(x) > np.abs(x).max() * 0.05); x = x[start:]
     if c.get('cut') == 'onsets':
         on = onsets(x); grp = c.get('group', 1); outs = []
@@ -78,11 +92,12 @@ def spectro(name, clips):
         a.specgram(x[: SR * 4] + 1e-9, Fs=SR, NFFT=512, noverlap=384, cmap='magma'); a.set_ylim(0, 12000); a.set_title(lab[:90], fontsize=7); a.tick_params(labelsize=6)
     fig.tight_layout(); fig.savefig(os.path.join(CACHE, f'spec_{name}.png'), dpi=70); plt.close(fig)
 
-def kandydaci(idx):
+def kandydaci(idx, only=None):
     rows = [json.loads(l) for l in open(idx)]; rows = [r for r in rows if r['license'] == 0]
-    print('próbek CC0:', len(rows)); out = {}
+    kp = os.path.join(CACHE, 'kandydaci.json'); out = json.load(open(kp)) if only and os.path.exists(kp) else {}
+    print('próbek CC0:', len(rows))
     for name, c in CAT.items():
-        if 'src' in c: continue
+        if 'src' in c or (only and name not in only): continue
         sc = sorted(((score(r, c), r) for r in rows), key=lambda t: -t[0])[:10]; got = []
         for s, r in sc:
             if s <= 0: break
@@ -96,14 +111,15 @@ def kandydaci(idx):
         except Exception as e: print('  spektrogram:', e)
     json.dump(out, open(os.path.join(CACHE, 'kandydaci.json'), 'w'), ensure_ascii=False, indent=1)
 
-def wypal():
+def wypal(only=None):
     K = json.load(open(os.path.join(CACHE, 'kandydaci.json'))); W = json.load(open(os.path.join(os.path.dirname(__file__), 'wybor.json'))) if os.path.exists(os.path.join(os.path.dirname(__file__), 'wybor.json')) else {}
     ff = __import__('imageio_ffmpeg').get_ffmpeg_exe(); os.makedirs(OUT, exist_ok=True)
-    for f in os.listdir(OUT):
-        if f.endswith('.mp3'): os.remove(os.path.join(OUT, f))
-    src_of, credits = {}, {}
+    for f in os.listdir(OUT): # tylko wybrane zdarzenia (only): reszta plików i podziękowań zostaje
+        if f.endswith('.mp3') and (not only or re.sub(r'_\d+\.mp3$', '', f) in only): os.remove(os.path.join(OUT, f))
+    src_of, credits = {}, (json.load(open(os.path.join(OUT, 'zrodla.json'))) if only else {})
     for name, c in CAT.items():
-        if 'src' in c: continue
+        if 'src' in c or (only and name not in only): continue
+        credits[name] = []
         ids = W.get(name) or [g['id'] for g in K.get(name, [])[:1]]; segs = []
         for fid in ids:
             g = next((g for g in K.get(name, []) if g['id'] == fid), None) or { 'id': fid, 'title': '?', 'user': '?' }
@@ -111,10 +127,11 @@ def wypal():
             segs += cut(x, c) if len(ids) == 1 else cut(x, c)[:1]
         src_of[name] = segs
     for name, c in CAT.items():
+        if only and name not in only: continue
         segs = src_of[c['src']] if 'src' in c else src_of[name]
         if 'src' in c: credits[name] = credits.get(c['src'], [])
         for i, sg in enumerate(segs[: c['n']]):
-            y = shape(sg, c['dur'], c.get('gain', 0), c.get('lp'))
+            y = shape(sg, c['dur'], c.get('gain', 0), c.get('lp'), c.get('loop', False))
             buf = io.BytesIO(); sf.write(buf, y, SR, format='WAV', subtype='PCM_16')
             subprocess.run([ff, '-y', '-loglevel', 'error', '-f', 'wav', '-i', 'pipe:0', '-ac', '1', '-ar', '44100', '-b:a', '96k', os.path.join(OUT, f'{name}_{i + 1}.mp3')], input=buf.getvalue(), check=True)
     json.dump(credits, open(os.path.join(OUT, 'zrodla.json'), 'w'), ensure_ascii=False, indent=1)
@@ -122,5 +139,5 @@ def wypal():
     print('plików:', len([f for f in os.listdir(OUT) if f.endswith('.mp3')]), 'razem KB:', tot // 1024)
 
 if __name__ == '__main__':
-    if sys.argv[1] == 'kandydaci': kandydaci(sys.argv[2])
-    else: wypal()
+    if sys.argv[1] == 'kandydaci': kandydaci(sys.argv[2], sys.argv[3].split(',') if len(sys.argv) > 3 else None)
+    else: wypal(sys.argv[2].split(',') if len(sys.argv) > 2 else None)

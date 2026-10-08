@@ -38,6 +38,44 @@ const Sfx = {
 // Panorama z położenia na ekranie (px logiczne): lewy brzeg -0.6, prawy 0.6
 const sfxPan = x => clamp((x / W - 0.5) * 1.2, -0.6, 0.6);
 
+// ==================== DŹWIĘKI OTOCZENIA (mapa przygody) ====================================
+// Pętle przy budynkach blisko wybranego bohatera: tartak – piła, kopalnia – kilofy, kuźnia – kowadło, młyn – koło wodne,
+// karczma – gwar, chata wiedźmy – kocioł, cmentarz – wrony… Głośność maleje z odległością (AMB_R pól), panorama wg strony;
+// grają najwyżej AMB_MAX naraz (najbliższe), a po wyjściu z mapy albo odejściu bohatera łagodnie cichną.
+const AMB_SITE = { waterMill: 'amb_mill', windmill: 'amb_wind', dwarfForge: 'amb_forge', hillFort: 'amb_forge', camp: 'amb_fire', campfire: 'amb_fire', dwelling: 'amb_fire', sacrifice: 'amb_fire',
+  fountain: 'amb_water', magicSpring: 'amb_water', oasis: 'amb_water', inn: 'amb_tavern', caravanserai: 'amb_tavern', market: 'amb_tavern', witchHut: 'amb_bubble', graveyard: 'amb_crows', barrow: 'amb_crows',
+  shrine: 'amb_magic', altar: 'amb_magic', obelisk: 'amb_magic', portal: 'amb_magic', sphinx: 'amb_magic', wishingWell: 'amb_magic', stone: 'amb_magic', library: 'amb_magic',
+  garden: 'amb_birds', tree: 'amb_birds', questHut: 'amb_birds', buoy: 'amb_waves', wreck: 'amb_waves', sirens: 'amb_waves', flotsam: 'amb_waves' };
+const AMB_MINE = { wood: 'amb_saw', ore: 'amb_mine', gold: 'amb_mine', gems: 'amb_mine', crystal: 'amb_mine', sulfur: 'amb_bubble', mercury: 'amb_bubble' };
+const AMB_R = 5, AMB_MAX = 3, AMB_VOL = 0.55;
+const ambientOf = ob => ob.type === 'site' ? AMB_SITE[ob.kind] : ob.type === 'mine' ? AMB_MINE[ob.kind] : ob.type === 'town' ? 'amb_tavern' : ob.type === 'bank' && !ob.cleared ? 'amb_crows' : null;
+const Ambient = {
+  voices: {}, t: 0, want: {},
+  // Co powinno grać: najbliższy obiekt każdego rodzaju dźwięku w zasięgu bohatera (odkryty i widoczny), głośność i panorama
+  pick(st, h) {
+    const out = {}, n = st.map.n, ex = human(st).explored;
+    for (const ob of st.objects) { if (ob.dead) continue; const nm = ambientOf(ob); if (!nm || !Sfx.has(nm)) continue;
+      const dx = ob.x - h.x, dy = ob.y - h.y, d = Math.max(Math.abs(dx), Math.abs(dy)); if (d > AMB_R || !ex[ob.y * n + ob.x] || !objSeen(st, ob)) continue;
+      const v = AMB_VOL * Math.pow(1 - d / (AMB_R + 1), 1.6), pan = clamp(dx / AMB_R * 0.7, -0.7, 0.7); if (!out[nm] || out[nm].v < v) out[nm] = { v, pan }; }
+    return Object.fromEntries(Object.entries(out).sort((a, b) => b[1].v - a[1].v).slice(0, AMB_MAX));
+  },
+  // Co klatkę (pętla gry): raz na 0,25 s przelicza, a głośność zmienia płynnie (setTargetAtTime)
+  tick(dt) {
+    if (!Sfx.ctx) return; this.t -= dt; if (this.t > 0) return; this.t = 0.25;
+    const st = G.state, scr = G.screens.adventure, on = G.screenName === 'adventure' && st && st.map && Sfx.vol() > 0 && !(scr && scr.aiRun), h = on && hero(st);
+    this.want = h ? this.pick(st, h) : {};
+    const now = Sfx.ctx.currentTime;
+    for (const [nm, w] of Object.entries(this.want)) { let V = this.voices[nm];
+      if (!V) { const b = Sfx.buf[(Sfx.groups[nm] || [])[0]]; if (!b) continue; const src = Sfx.ctx.createBufferSource(), g = Sfx.ctx.createGain(), p = Sfx.ctx.createStereoPanner ? Sfx.ctx.createStereoPanner() : null;
+        src.buffer = b; src.loop = true; g.gain.value = 0; src.connect(g); if (p) { g.connect(p); p.connect(Sfx.out); } else g.connect(Sfx.out);
+        src.start(now, Math.random() * b.duration); V = this.voices[nm] = { src, g, p }; }
+      V.g.gain.setTargetAtTime(w.v, now, 0.45); if (V.p) V.p.pan.setTargetAtTime(w.pan, now, 0.3); V.off = 0; }
+    for (const [nm, V] of Object.entries(this.voices)) { if (this.want[nm]) continue; if (!V.off) { V.off = now; V.g.gain.setTargetAtTime(0, now, 0.5); }
+      else if (now - V.off > 3) { try { V.src.stop(); } catch (e) { /* już zatrzymane */ } delete this.voices[nm]; } }
+  },
+  playing() { return Object.keys(this.voices).filter(k => !this.voices[k].off); },
+};
+
 // ==================== MUZYKA ===============================================================
 // Utwory orkiestrowe (tools/muzyka: kompozycje MIDI renderowane bankiem GeneralUser GS) wbudowane jako MUSIC_ART: { nazwa: { d: mp3 (kod 85-znakowy), loop: s } }.
 // Każdy ekran ma swój utwór (Music.forScreen); zmiana utworu to płynne przenikanie. Pliki są pętlami bez szwu (ogon pogłosu

@@ -44,6 +44,10 @@ const PUZZLE_ART = {
 let PUZZLE_COVER = null; PIX_CLEAR.push(() => { PUZZLE_COVER = null; });
 function puzzleCover(st, w, h) {
   const fac = (st.players[ME] || {}).faction || 'haven', key = `${fac}_${st.seed}_${w}x${h}`; if (PUZZLE_COVER && PUZZLE_COVER.key === key) return PUZZLE_COVER.c;
+  const art = typeof SCREEN_IMG !== 'undefined' && SCREEN_IMG['zagadka_' + fac]; // malowany obraz frakcji (bitwa w stylu H3, tools/tla-ai/zagadka)
+  if (art && art._ok) { const c = document.createElement('canvas'); c.width = Math.round(w / PIX); c.height = Math.round(h / PIX); const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(art, 0, 0, c.width, c.height);
+    const gr = g.createRadialGradient(c.width / 2, c.height / 2, Math.min(c.width, c.height) * 0.4, c.width / 2, c.height / 2, Math.max(c.width, c.height) * 0.75); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(30,16,4,.35)'); g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
+    PUZZLE_COVER = { key, c }; return c; }
   const A = PUZZLE_ART[fac] || PUZZLE_ART.haven, cw = Math.round(w / 2), ch = Math.round(h / 2), c = document.createElement('canvas'); c.width = Math.round(w / PIX); c.height = Math.round(h / PIX);
   const g = c.getContext('2d'); g.setTransform(2 / PIX, 0, 0, 2 / PIX, 0, 0); const r = mulberry32(st.seed * 31 + 7), hor = Math.round(ch * 0.58);
   let gr = g.createLinearGradient(0, 0, 0, hor); gr.addColorStop(0, A.sky[0]); gr.addColorStop(1, A.sky[1]); g.fillStyle = gr; g.fillRect(0, 0, cw, hor);
@@ -87,6 +91,9 @@ function showPuzzle(st) {
   if (!st.grail) return;
   const W0 = 544, H0 = 530, x = (W - W0) / 2, y = (H - H0) / 2, mw = PUZZLE_W * T, mh = PUZZLE_H * T, k = 512 / mw, mx = x + 16, my = y + 50, pw = mw * k / PUZZLE_COLS, ph = mh * k / PUZZLE_ROWS;
   const img = puzzleImage(st), cover = puzzleCover(st, mw * k, mh * k), shown = puzzlePieces(st, ME), order = puzzleOrder(st), open = new Set(order.slice(0, shown).map(p => p.i + ',' + p.j));
+  // nowe kawałki (od ostatniego oglądania) zdejmują się po kolei na oczach gracza, przy melodii odkrycia
+  const seenK = (st.puzzleSeen = st.puzzleSeen || {})[ME] || 0, fresh = new Map(order.slice(Math.min(seenK, shown), shown).map((p, n) => [p.i + ',' + p.j, n])), t0 = G.time;
+  st.puzzleSeen[ME] = shown; if (fresh.size) Sfx.play('puzzle', { vol: 0.9, jit: 0 });
   const N = obelisksTotal(st), seen = obelisksSeen(st, ME), btn = new Button(W / 2 - 70, y + H0 - 46, 140, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
   const found = st.grail.found >= 0, note = found ? (st.grail.found === ME ? 'Graal jest już twój.' : 'Ktoś inny już wykopał Graala.')
     : shown >= PUZZLE_COLS * PUZZLE_ROWS ? 'Mapa kompletna! Krzyżyk wskazuje miejsce Graala.' : `Odwiedzone obeliski: ${seen} z ${N}. Szukaj kolejnych, aby odsłonić mapę.`;
@@ -99,7 +106,14 @@ function showPuzzle(st) {
       ctx.beginPath(); ctx.rect(mx - 12, my - 12, mw * k + 24, mh * k + 24); ctx.clip();
       for (let j = 0; j < PUZZLE_ROWS; j++) for (let i = 0; i < PUZZLE_COLS; i++) {
         const px = mx + i * pw, py = my + j * ph; piecePath(ctx, i, j, px, py, pw, ph, st.seed);
-        if (open.has(i + ',' + j)) { ctx.strokeStyle = 'rgba(40,24,8,.28)'; ctx.lineWidth = 1; ctx.stroke(); continue; }
+        const key = i + ',' + j, fn = fresh.get(key), f = fn == null ? 1 : clamp((G.time - t0 - 0.5 - fn * 0.32) / 0.75, 0, 1);
+        if (open.has(key) && f >= 1) { ctx.strokeStyle = 'rgba(40,24,8,.28)'; ctx.lineWidth = 1; ctx.stroke(); continue; }
+        if (open.has(key)) { // kawałek właśnie się zdejmuje: unosi się, obraca, blednie; pod nim złoty błysk
+          G.dirty = true; const cx = px + pw / 2, cy = py + ph / 2, e = f * f, rot = (thash(i, j, 3) & 1 ? 1 : -1) * e * 0.7;
+          ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.sin(f * Math.PI) * 0.7; const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, pw); gl.addColorStop(0, '#ffe8a0'); gl.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gl; ctx.fillRect(px - pw / 2, py - ph / 2, pw * 2, ph * 2); ctx.restore();
+          ctx.save(); ctx.globalAlpha = 1 - e; ctx.translate(cx, cy - e * 40); ctx.rotate(rot); ctx.scale(1 + e * 0.35, 1 + e * 0.35); ctx.translate(-cx, -cy);
+          piecePath(ctx, i, j, px, py, pw, ph, st.seed); ctx.save(); ctx.clip(); ctx.drawImage(cover, mx, my, mw * k, mh * k); ctx.restore();
+          ctx.strokeStyle = '#ffe8a0'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); continue; }
         ctx.save(); ctx.clip(); ctx.drawImage(cover, mx, my, mw * k, mh * k); ctx.restore(); // zakryty kawałek: fragment obrazu
         ctx.strokeStyle = 'rgba(255,240,200,.35)'; ctx.lineWidth = 3; ctx.stroke(); ctx.strokeStyle = '#3a220c'; ctx.lineWidth = 1.5; ctx.stroke(); // wypukła krawędź
       }
@@ -114,6 +128,7 @@ function digHere(scr, st) {
   const h = hero(st); if (!h || scr.aiRun) return;
   const r = digGrail(st, h); if (r.error) { scr.flash(r.error); return; }
   scr.mapFx = scr.mapFx || []; scr.mapFx.push({ kind: 'ring', x: h.x, y: h.y, r: 1.2, col: 'rgba(150,110,60,.8)', t: G.time });
+  if (r.found) Sfx.play('grail', { vol: 1, jit: 0 });
   if (r.found) showDialog(`${h.name} wykopuje Graala! Święty kielich trafia do plecaka. Zanieś go do jednego ze swoich miast, aby wznieść tam budowlę Graala: +${GRAIL_GOLD} złota dziennie i +50% przyrostu stworów.`,
     [{ label: 'Wspaniale', key: 'enter' }], { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite('grail', true), cx, cy, 3) });
   else showDialog(`${h.name} kopie przez cały dzień, ale nic tu nie ma. ${st.grail && st.grail.found < 0 ? 'Mapa zagadki podpowie, gdzie szukać.' : ''}`, [{ label: 'OK', key: 'enter' }]);

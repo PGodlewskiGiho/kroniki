@@ -86,3 +86,26 @@ test('każda kraina i każdy kształt świata: komplet miejsc na miasta, wszystk
   assert.ok(r.sand.desert > r.sand.mixed * 2.5, `pustynna: piasku ${r.sand.desert.toFixed(2)} vs ${r.sand.mixed.toFixed(2)}`);
   assert.ok(r.water.islands > r.water.mixed * 1.5, `wyspiarska: wody ${r.water.islands.toFixed(2)} vs ${r.water.mixed.toFixed(2)}`);
 });
+
+test('krainy są duże: drobnych skrawków terenu (poniżej 10 pól, bez plaż i pogórza) jest mniej niż 5% lądu', async () => {
+  const r = await page.evaluate(() => { const out = [];
+    for (const L of ['mixed', 'mountains', 'forest', 'desert', 'frost', 'marsh', 'islands']) for (const n of [72, 144]) { const m = generateMap(n, 77, L), N = n * n, seen = new Uint8Array(N); let land = 0, small = 0;
+      for (let s = 0; s < N; s++) { if (seen[s] || m.terrain[s] === TER.WATER) continue; const t = m.terrain[s], list = [s]; seen[s] = 1;
+        for (let k = 0; k < list.length; k++) { const i = list[k], x = i % n, y = (i / n) | 0; for (let d = 0; d < 4; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X >= 0 && Y >= 0 && X < n && Y < n && !seen[j] && m.terrain[j] === t) { seen[j] = 1; list.push(j); } } }
+        land += list.length; if (list.length < 10 && t !== TER.SAND && t !== TER.ROUGH) small += list.length; }
+      out.push([L, n, small / land]); }
+    return out; });
+  for (const [L, n, v] of r) assert.ok(v < 0.05, `${L} ${n}: ${(v * 100).toFixed(1)}% lądu w drobnych skrawkach`);
+});
+
+test('budynki (miasta, kopalnie, skarbce) nie stoją na drodze ani tuż przy niej', async () => {
+  const r = await page.evaluate(() => { const out = [];
+    for (const [size, seed, land] of [['S', 1, 'mixed'], ['M', 4242, 'forest'], ['L', 21, 'islands'], ['M', 7, 'mountains']]) { const S = Object.assign({}, G.settings, { mapSize: size, land, difficulty: 1, faction: 'haven', bonus: 'gold', opponents: 1, slots: null, underground: false });
+      const st = createNewGame(S, seed), m = st.map, n = m.n; let bad = 0, tot = 0;
+      for (const o of st.objects) { if (o.dead || !['site', 'mine', 'bank'].includes(o.type)) continue; tot++; let near = false;
+        for (const i of [o.y * n + o.x, ...(o.blocks || [])]) { const x = i % n, y = (i / n) | 0; for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < n && Y < n && m.road[Y * n + X]) near = true; } }
+        if (near) bad++; }
+      out.push([`${size}/${land}`, tot, bad]); }
+    return out; });
+  for (const [k, tot, bad] of r) { assert.ok(tot > 10, `${k}: budynków ${tot}`); assert.equal(bad, 0, `${k}: ${bad} z ${tot} budynków przy drodze`); }
+});

@@ -995,5 +995,45 @@
   "opis": "fantasy painting, ornate white silk heraldic banner with gold trim and golden emblem hanging from a crossbar, swallowtail end, soft folds, plain dark background, centered",
   "styl": "{opis}, heroes of might and magic art, highly detailed",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate, people, room"
+ },
+ "zagadka_haven": {
+  "opis": "epic fantasy oil painting, heavy knights cavalry charging across a green meadow, giant golden archangel with sword and wings above them, white castle with blue roofs on a hill, god rays through clouds, banners",
+  "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
+ },
+ "zagadka_sylvan": {
+  "opis": "epic fantasy oil painting, enchanted forest glade with a clear lake, white unicorns drinking at the water, nymphs and elf archers on the shore, green dragon and fiery phoenix flying above giant trees, elven tree city in morning mist",
+  "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
+ },
+ "zagadka_barrow": {
+  "opis": "epic fantasy oil painting, haunted graveyard under a huge full moon, skeletal bone dragon flying across the moon, lich on a crypt raising undead skeletons from graves, death knight on a black horse, ghostly green mist",
+  "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
+ },
+ "zagadka_fortress": {
+  "opis": "epic fantasy oil painting, gigantic purple many-headed hydra rising from a murky swamp at dusk, lizardmen on wooden boats with torches, giant dragonflies, mangrove trees, wooden stilt fortress in fog",
+  "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
+ },
+ "zagadka_inferno": {
+  "opis": "epic fantasy oil painting, gate of hell, huge ring of fire portal, horned arch devil stepping out, swarms of imps and demons flying, river of glowing lava, three-headed hellhounds, volcano, black and red sky",
+  "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
+ },
+ "zagadka_academy": {
+  "opis": "epic fantasy oil painting, golden storm titan on a snowy mountain peak hurling a lightning bolt at a black dragon, floating white wizard tower with golden domes above the clouds, aurora borealis, golems and mages below",
+  "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
+ },
+ "zagadka_dungeon": {
+  "opis": "epic fantasy oil painting, dark cave treasure hoard, huge black dragon resting on a mountain of gold coins, glowing purple crystals, stalactites, floating beholder eyes, brave knights with torches entering",
+  "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
+ },
+ "zagadka_stronghold": {
+  "opis": "epic fantasy oil painting, desert canyon at sunset, giant behemoth fighting a cyclops king, orc and wolf rider horde charging through dust behind them, giant thunderbirds in the sky, red rock cliffs",
+  "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
  }
 }

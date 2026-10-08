@@ -17,28 +17,40 @@ function weatherOf(st) {
 const weatherOn = () => G.settings.weather !== 'off';
 const WX = { NONE: 0, RAIN: 1, SNOW: 2, LEAF: 3, ASH: 4, DUST: 5 }, WX_BASE = { clear: -0.34, clouds: -0.12, fog: -0.14, rain: 0.1, storm: 0.22, snow: 0.14 };
 const WX_WIND = [0.32, 0.11]; // pola na sekundę: front płynie z zachodu
-// Ile drzew wokół pola (0–9): las to osobny „klimat” (liście)
-function mapForest(map) {
-  if (map._forest) return map._forest; const n = map.n, F = new Uint8Array(n * n);
-  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { let c = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < n && Y < n && map.obst[Y * n + X] === OBST.TREE) c++; } F[y * n + x] = c; }
-  return (map._forest = F);
+// Klimat okolicy (pogoda jest regionalna, nie dla pojedynczego pola): udział śniegu, piasku, lawy, bagien, lasu i wody w promieniu
+// ok. 7 pól, w siatce co 4 pola, odczyt płynny (dwuliniowo) – granice pogody biegną łagodnie przez całe krainy
+const CLIM_K = ['snow', 'sand', 'lava', 'swamp', 'forest', 'water'], CLIM_C = 4, CLIM_R = 7;
+function mapClimate(map) {
+  if (map._clim) return map._clim; const n = map.n, C = CLIM_C, gw = Math.ceil(n / C) + 1, G = new Float32Array(gw * gw * 6);
+  for (let gy = 0; gy < gw; gy++) for (let gx = 0; gx < gw; gx++) { const cx = gx * C, cy = gy * C, acc = [0, 0, 0, 0, 0, 0]; let tot = 0;
+    for (let dy = -CLIM_R; dy <= CLIM_R; dy++) for (let dx = -CLIM_R; dx <= CLIM_R; dx++) { const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x, t = map.terrain[i]; tot++;
+      if (t === TER.SNOW) acc[0]++; else if (t === TER.SAND) acc[1]++; else if (t === TER.LAVA) acc[2]++; else if (t === TER.SWAMP) acc[3]++; else if (t === TER.WATER) acc[5]++; if (map.obst[i] === OBST.TREE) acc[4]++; }
+    for (let k = 0; k < 6; k++) G[(gy * gw + gx) * 6 + k] = tot ? acc[k] / tot : 0; }
+  return (map._clim = { G, gw });
+}
+const CLIM = new Float32Array(6);
+function climateAt(map, tx, ty) {
+  const { G, gw } = mapClimate(map), u = clamp(tx / CLIM_C, 0, gw - 1.001), v = clamp(ty / CLIM_C, 0, gw - 1.001), x0 = Math.floor(u), y0 = Math.floor(v), fx = u - x0, fy = v - y0;
+  for (let k = 0; k < 6; k++) { const a = G[(y0 * gw + x0) * 6 + k], b = G[(y0 * gw + x0 + 1) * 6 + k], c = G[((y0 + 1) * gw + x0) * 6 + k], d = G[((y0 + 1) * gw + x0 + 1) * 6 + k];
+    CLIM[k] = (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy; }
+  return CLIM;
 }
 // Pogoda na polu w chwili t: [rodzaj opadu (WX), natężenie 0–1, mgła 0–1, zachmurzenie 0–1, deszcz na wodzie 0–1]
+// Rodzaj wynika z klimatu okolicy (cała kraina śniegu – śnieg, pustynia – piasek, puszcza jesienią – liście), front opadów jest duży
 function weatherAt(st, tx, ty, t, w = weatherOf(st)) {
   const map = st.map, n = map.n; if (tx < 0 || ty < 0 || tx >= n || ty >= n) return [0, 0, 0, 0, 0];
   const i = ty * n + tx, S = seasonIdx(st), seed = (st.seed + st.dayTotal * 131) | 0, fx = tx - t * WX_WIND[0], fy = ty - t * WX_WIND[1];
-  const F = vnoise2(fx / 13, fy / 13, seed) * 0.65 + vnoise2(fx / 5, fy / 5, seed + 7) * 0.35, base = WX_BASE[w] || 0;
+  const F = vnoise2(fx / 28, fy / 28, seed) * 0.75 + vnoise2(fx / 12, fy / 12, seed + 7) * 0.25, base = WX_BASE[w] || 0;
   const cloud = clamp((F - 0.4 + base * 1.2) * 2.2, 0, 1) * (w === 'clear' ? 0.45 : 1), wet = clamp((F - 0.55 + base) * 3.2, 0, 1);
-  const ter = map.terrain[i], forest = mapForest(map)[i] / 9; let type = 0, amt = 0, fog = 0;
-  if (ter === TER.LAVA) { type = WX.ASH; amt = 0.45 + 0.45 * F; }
-  else if (ter === TER.SAND) { if (wet > 0.25 && w !== 'snow') { type = WX.DUST; amt = wet; } } // pustynia: zamiast deszczu piasek
-  else if (wet > 0) { type = ter === TER.SNOW || S === 3 ? WX.SNOW : WX.RAIN; amt = wet; }
-  else if (ter === TER.SWAMP && w !== 'clear') { type = WX.RAIN; amt = 0.28; } // mżawka nad bagnem
-  else if (ter === TER.SNOW && w !== 'clear' && F > 0.45) { type = WX.SNOW; amt = 0.35; } // w krainie śniegu prószy przy chmurach
-  if (!type && forest > 0.3 && (S === 2 || S === 0) && ter !== TER.SNOW) { type = WX.LEAF; amt = forest * (S === 2 ? 0.9 : 0.45); } // jesienią liście, wiosną płatki
-  if (ter === TER.SWAMP) fog = 0.32 + (w === 'fog' ? 0.3 : 0) + (w === 'rain' ? 0.1 : 0);
-  else if (w === 'fog') fog = clamp(F * 1.3 - 0.15, 0, 0.75) + (ter === TER.WATER ? 0.15 : 0);
-  return [type, amt, Math.min(0.85, fog), cloud, ter === TER.WATER && type === WX.RAIN ? amt : 0];
+  const c = climateAt(map, tx, ty), [snow, sand, lava, swamp, forest, water] = c; let type = 0, amt = 0, fog = 0;
+  if (lava > 0.3) { type = WX.ASH; amt = clamp(lava * 1.5, 0.3, 0.9); }
+  else if (sand > 0.45) { if (wet > 0.25 && w !== 'snow') { type = WX.DUST; amt = wet; } } // pustynia: zamiast deszczu piasek
+  else if (wet > 0) { type = snow > 0.35 || S === 3 ? WX.SNOW : WX.RAIN; amt = wet; }
+  else if (swamp > 0.3 && w !== 'clear') { type = S === 3 ? WX.SNOW : WX.RAIN; amt = 0.28; } // mżawka nad mokradłami (zimą prószy)
+  else if (snow > 0.5 && w !== 'clear' && F > 0.45) { type = WX.SNOW; amt = 0.35; } // w krainie śniegu prószy przy chmurach
+  if (!type && forest > 0.3 && (S === 2 || S === 0) && snow < 0.35) { type = WX.LEAF; amt = Math.min(1, forest * (S === 2 ? 1.3 : 0.65)); } // jesienią liście, wiosną płatki
+  fog = swamp * 0.8 + (w === 'fog' ? clamp(F * 1.3 - 0.15, 0, 0.6) + water * 0.25 : 0) + (w === 'rain' ? swamp * 0.2 : 0);
+  return [type, amt, Math.min(0.85, fog), cloud, map.terrain[i] === TER.WATER && type === WX.RAIN ? amt : 0];
 }
 // Siatka pogody dla widocznych pól (co klatkę, ok. 1000 pól): rodzaj i natężenie (tType) oraz mgła, chmury, deszcz (tSky)
 const Weather = {
