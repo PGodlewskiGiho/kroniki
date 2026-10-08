@@ -264,10 +264,12 @@ function placeObjects(st) {
     mountain: (x, y) => Math.min(3, mtNear(x, y) * 0.5) + (map.terrain[y * n + x] === TER.ROUGH ? 0.5 : 0),
     hidden: (x, y) => (dRoad[y * n + x] >= 3 ? 1 : 0) + Math.min(2, trees(x, y) * 0.15 + mtNear(x, y) * 0.3), // z dala od drogi, w zakamarkach
     swamp: (x, y) => (map.terrain[y * n + x] === TER.SWAMP ? 2 : 0) + Math.min(1.5, trees(x, y) * 0.15),
+    desert: (x, y) => around(x, y, 2, j => map.terrain[j] === TER.SAND) * 0.15 + (trees(x, y) <= 2 ? 1 : 0), // sfinks: wśród piasków, inaczej na otwartym
   };
   const SITE_FIT = { well: 'road', stables: 'road', temple: 'road', market: 'road', school: 'road', hillFort: 'road', camp: 'road', post: 'road', dwelling: 'road', fountain: 'road',
     waterMill: 'water', magicSpring: 'water', windmill: 'open', arena: 'open', oasis: 'open', lookout: 'mountain', altar: 'mountain', stone: 'mountain', crystalCave: 'mountain', dwarfForge: 'mountain',
-    witchHut: 'swamp', graveyard: 'swamp', shrine: 'forest', garden: 'forest', tree: 'forest', mushroomRing: 'forest', campfire: 'forest', library: 'hidden', sacrifice: 'hidden', prison: 'hidden' };
+    witchHut: 'swamp', graveyard: 'swamp', shrine: 'forest', garden: 'forest', tree: 'forest', mushroomRing: 'forest', campfire: 'forest', library: 'hidden', sacrifice: 'hidden', prison: 'hidden',
+    sphinx: 'desert', questHut: 'forest', inn: 'road', barrow: 'open', caravanserai: 'road', wishingWell: 'forest' };
   // Budynek nie dotyka drogi: w prostokącie x0..x1, y0..y1 (budynek z marginesem pola; pod wejściem droga może biec) nie ma drogi
   const roadFree = (x0, y0, x1, y1) => { for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (map.road[y * n + x]) return false; return true; };
   // Najlepsze z kilkudziesięciu losowych miejsc: dopasowanie do okolicy i odstęp od innych obiektów (bez zbitych gromad)
@@ -374,6 +376,13 @@ function placeObjects(st) {
       if (kind === 'campfire') { const pool = RESOURCES.filter(r => r.id !== 'gold'); o.res = pool[Math.floor(rng() * pool.length)].id; }
       if (kind === 'witchHut') { const pool = Object.keys(SKILLS).filter(id => id !== 'necromancy'); o.skill = pool[Math.floor(rng() * pool.length)]; }
       if (kind === 'dwelling') { const lv = 2 + Math.floor(rng() * 3), pool = NEUTRALS_BY_LEVEL[lv].filter(c => CREATURES[c].cost); o.cid = pool[Math.floor(rng() * pool.length)]; o.avail = CREATURES[o.cid].growth; o.week = 0; }
+      if (kind === 'inn') o.title = `Karczma „${INN_NAMES[Math.floor(rng() * INN_NAMES.length)]}”`;
+      if (kind === 'barrow') o.title = `Kurhan ${BARROW_NAMES[Math.floor(rng() * BARROW_NAMES.length)]}`;
+      if (kind === 'questHut') { // pustelnik wskazuje groźne stwory kilka dni drogi dalej (silniejsze niż okolica); bez celu nie ma chaty
+        o.title = `Chata pustelnika ${HERMIT_NAMES[Math.floor(rng() * HERMIT_NAMES.length)]}a`; o.taken = {};
+        const q = best((x, y) => { const d = Math.hypot(x - p[0], y - p[1]); return d >= 7 && d <= 16 && !home[y * n + x] && !map.road[y * n + x]; }, FIT.hidden, 30); if (!q) continue;
+        add(o, [p[1] * n + p[0]]); const m = monster(q[0], q[1], 1); if (!m) { o.dead = true; continue; } o.target = m.id; m.quest = o.id; continue;
+      }
       add(o, [p[1] * n + p[0]]); if (kind === 'campfire' || kind === 'graveyard') hideIn(o); if (S.guard) guard(o, kind === 'prison' ? 1 : 0);
     }
   }

@@ -129,7 +129,37 @@ const SITES = {
   crystalCave: { name: 'Kryształowa grota', use: 'week', per: 2400, ai: 1000, ug: true, desc: 'co tydzień 3–5 kryształów dla pierwszego gościa' },
   dwarfForge: { name: 'Kuźnia krasnoludów', use: 'hero', per: 3200, ai: 1500, ug: true, cost: 2000, desc: 'za 2000 złota i 5 rudy krasnoludy wykuwają bohaterowi artefakt (raz na bohatera)' },
   hillFort: { name: 'Fort na wzgórzu', use: 'free', per: 3000, ai: 0, desc: 'kowale ulepszają stwory w armii bohatera za różnicę w cenie' },
+  // miejsca przygody: zagadka, zadanie, plotki, klątwa za skarb, kupcy, hazard (opisy i nazwy własne w siteInfo)
+  sphinx: { name: 'Sfinks', use: 'hero', per: 4200, ai: 1800, desc: 'zadaje zagadkę: dobra odpowiedź to 2000 doświadczenia i 1500 złota, zła – milczenie (raz na bohatera)' },
+  questHut: { name: 'Chata pustelnika', use: 'free', per: 3600, ai: 0, desc: 'pustelnik prosi o pokonanie groźnych stworów w okolicy; za to daje artefakt i 1500 doświadczenia' },
+  inn: { name: 'Karczma', use: 'heroWeek', per: 3000, ai: 900, desc: 'kufel dla wojska (+1 do morale do następnej bitwy) i plotka: gdzie w okolicy czeka coś cennego (raz w tygodniu)' },
+  barrow: { name: 'Kurhan', use: 'free', per: 3800, ai: 0, desc: 'grób dawnego wodza z artefaktem; kto go rozkopie, ten ściąga na armię klątwę (morale −3 do następnej bitwy)' },
+  caravanserai: { name: 'Karawanseraj', use: 'free', per: 3800, ai: 0, desc: 'kupcy z dalekich krain sprzedają co tydzień jeden artefakt' },
+  wishingWell: { name: 'Studnia życzeń', use: 'day', per: 3000, ai: 0, cost: 500, desc: 'za 500 złota życzenie: szczęście, złoto, czasem artefakt… albo nic (raz dziennie)' },
 };
+// Zagadki sfinksa: [pytanie, dobra odpowiedź, zła, zła] (kolejność odpowiedzi w oknie losowa)
+const RIDDLES = [
+  ['Rano chodzi na czterech nogach, w południe na dwóch, a wieczorem na trzech. Co to?', 'Człowiek', 'Pies', 'Smok'],
+  ['Im więcej z niej zabierasz, tym większa się staje.', 'Dziura', 'Góra', 'Rzeka'],
+  ['Bez skrzydeł leci, bez oczu płacze.', 'Chmura', 'Ptak', 'Wiatr'],
+  ['Należy do ciebie, a inni używają tego częściej niż ty.', 'Imię', 'Miecz', 'Koń'],
+  ['Ma szyję, a nie ma głowy; ma ramiona, a nie ma rąk.', 'Koszula', 'Rycerz', 'Drzewo'],
+  ['Łamiesz ją, gdy tylko wypowiesz jej imię.', 'Cisza', 'Przysięga', 'Szklanka'],
+  ['Rośnie, choć nie żyje; potrzebuje powietrza, a woda ją zabija.', 'Ogień', 'Drzewo', 'Lód'],
+  ['Nie ma początku ani końca, a lśni na palcu króla.', 'Pierścień', 'Korona', 'Berło'],
+  ['Ma oko, a nie widzi.', 'Igła', 'Sowa', 'Sokół'],
+  ['Ma zęby, a nie gryzie.', 'Grzebień', 'Wilk', 'Smok'],
+  ['Im dłużej suszy, tym bardziej jest mokry.', 'Ręcznik', 'Piasek', 'Słońce'],
+  ['Przechodzi przez szybę, a jej nie tłucze.', 'Światło', 'Duch', 'Strzała'],
+  ['Ma koryto, a nie je; ma brzegi, a nie jest misą.', 'Rzeka', 'Koryto', 'Dolina'],
+  ['Biegnie bez nóg, a kto go goni, nigdy nie dogoni.', 'Czas', 'Zając', 'Wiatr'],
+];
+// Nazwy własne miejsc przygody (ob.title, losowane przy tworzeniu świata)
+const INN_NAMES = ['Pod Złotym Gryfem', 'Pod Pijanym Smokiem', 'Pod Kulawym Koniem', 'Pod Srebrnym Dzbanem', 'Pod Wesołym Trollem', 'Na Rozstajach', 'Pod Trzema Koronami', 'Pod Śpiącym Rycerzem', 'Pod Czarnym Kotem', 'Pod Dzikim Wieprzem'];
+const BARROW_NAMES = ['Wojmira', 'Bolesława Srogiego', 'Jarogniewa', 'Świętomira', 'Dobrogosta', 'Mieszka Jednookiego', 'Gniewomira', 'Racibora', 'Zbyluta Żelaznego', 'Krzesimira'];
+const HERMIT_NAMES = ['Bogumił', 'Sędziwój', 'Radost', 'Mszczuj', 'Ostoja', 'Lubomir', 'Wszebor', 'Ciechosław'];
+// Karawanseraj: cena artefaktu wg rzadkości; zadanie pustelnika: doświadczenie w nagrodę
+const BAZAAR_PRICE = { treasure: 2500, minor: 5000, major: 9000 }, QUEST_EXP = 1500, WISH_MORALE = 1, BARROW_CURSE = -3;
 // Nowe miejsca: portale w parach (PORTAL_PAIRS wg rozmiaru mapy), wraki na wodzie (jeden na WRECK_PER pól wody),
 // siedlisko: tygodniowy przyrost stworów (DWELL_WEEKS tygodni zapasu), ołtarz: doświadczenie za artefakt wg rzadkości.
 const PORTAL_PAIRS = { S: 1, M: 1, L: 2, XL: 3 }, WRECK_PER = 700, DWELL_WEEKS = 3;

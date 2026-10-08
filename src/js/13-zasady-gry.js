@@ -168,6 +168,7 @@ function visitObject(st, h, ob) {
       { label: 'Poświęć', key: 'enter', action: () => { const r = useSite(st, h, ob); advFloat(r.float, h.x, h.y); gainExp(st, h, r.exp); } }, { label: 'Nie', key: 'escape' },
     ], { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_sacrifice', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('sacrifice'), cx, cy + 30, 1.5) });
   } else if (ob.type === 'site' && ['arena', 'school', 'market', 'hillFort', 'dwarfForge'].includes(ob.kind) && !siteUsed(st, ob, h)) siteChoice(st, h, ob);
+  else if (ob.type === 'site' && (((ob.kind === 'sphinx' || ob.kind === 'wishingWell') && !siteUsed(st, ob, h)) || (ob.kind === 'barrow' && ob.looted == null) || (ob.kind === 'caravanserai' && bazaarOffer(st, ob)))) adventureSite(st, h, ob);
   else if (ob.type === 'site' && ob.kind === 'witchHut' && !siteUsed(st, ob, h) && !heroSkill(h, ob.skill) && h.skills.length < MAX_SKILLS) { // wiedźmie można odmówić (miejsce na umiejętność jest cenne)
     siteDiscover(ob, h.owner); const sk = ob.skill;
     showDialog(`Chata wiedźmy. Wiedźma proponuje naukę: ${skillText(sk, 1)}. ${h.name} ma ${h.skills.length} z ${MAX_SKILLS} umiejętności. Przyjąć?`, [
@@ -182,7 +183,7 @@ function visitObject(st, h, ob) {
   else if (ob.type === 'site') {
     const r = useSite(st, h, ob), S = SITES[ob.kind]; snd(r.res === 'gold' ? 'coins' : 'shrine');
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
-    showDialog(`${S.name}. ${r.text}`, [{ label: r.puzzle ? 'Mapa zagadki' : 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); if (r.puzzle) showPuzzle(st); } }],
+    showDialog(`${siteName(ob)}. ${r.text}`, [{ label: r.puzzle ? 'Mapa zagadki' : 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); if (r.puzzle) showPuzzle(st); } }],
       { iconH: 76, icon: (ctx, cx, cy) => { drawMap3dIcon(ctx, 'site_' + ob.kind, cx, cy, 90, 74) || drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5); if (ob.kind === 'witchHut') skillIcon(ctx, ob.skill, cx + 64, cy + 8, 48); } });
   } else if (ob.type === 'town') {
     const t = st.towns[ob.townId];
@@ -278,6 +279,42 @@ function siteChoice(st, h, ob) {
   const tot = {}; for (const p of plan) for (const [k, v] of Object.entries(p.cost)) tot[k] = (tot[k] || 0) + v;
   showDialog(`${S.name}: kowale ulepszą ${plan.map(p => `${CREATURES[p.from].plural.toLowerCase()} (${p.n}) → ${CREATURES[p.to].plural.toLowerCase()}`).join(', ')}. Razem: ${costText(tot)}${canPay(R, tot) ? '' : ' (nie na wszystko cię stać: ulepszą to, na co wystarczy)'}.`,
     [{ label: 'Ulepsz', key: 'enter', action: take() }, { label: 'Nie', key: 'escape' }], icon);
+}
+// Miejsca przygody z wyborem: zagadka sfinksa, rozkopanie kurhanu (klątwa), zakup u kupców, życzenie przy studni
+function adventureSite(st, h, ob) {
+  const S = SITES[ob.kind], R = playerOf(st, h.owner).resources, icon = { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_' + ob.kind, cx, cy, 90, 74) || drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5) };
+  const go = c => () => { const r = useSite(st, h, ob, c); Sfx.play(r.res === 'gold' ? 'coins' : r.bad ? 'death' : 'shrine'); if (r.float) advFloat(r.float, h.x, h.y, r.res);
+    showDialog(`${siteName(ob)}. ${r.text}`, [{ label: 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); } }], icon); };
+  if (ob.kind === 'sphinx') { const Q = sphinxRiddle(st, ob, h);
+    return showDialog(`Sfinks zagradza drogę i mówi: „Odpowiedz, a nagrodzę cię. Pomyl się, a nie usłyszysz ode mnie ani słowa więcej. ${Q.q}”`, [...Q.answers.map((a, i) => ({ label: a, key: String(i + 1), action: go(i) })), { label: 'Odejdź', key: 'escape' }], icon); }
+  if (ob.kind === 'barrow') return showDialog(`${siteName(ob)}: grób dawnego wodza. W komorze grobowej czeka artefakt, ale kto go rozkopie, ten ściągnie na armię klątwę duchów (morale ${BARROW_CURSE} do następnej bitwy).`,
+    [{ label: 'Rozkop', key: 'enter', action: go() }, { label: 'Odejdź', key: 'escape' }], icon);
+  if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob);
+    return showDialog(`${S.name}: kupcy z dalekich krain rozkładają towar. W tym tygodniu: ${artInfo(o.art)} Cena: ${o.price} złota (masz ${R.gold}).`, [...(R.gold >= o.price ? [{ label: 'Kup', key: 'enter', action: go() }] : []), { label: 'Odejdź', key: 'escape' }],
+      { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(o.art, true), cx, cy, 2) }); }
+  showDialog(`${S.name}: stara studnia lśni na dnie od monet. Wrzucić ${S.cost} złota i wypowiedzieć życzenie? (masz ${R.gold})`, [...(R.gold >= S.cost ? [{ label: 'Wrzuć', key: 'enter', action: go() }] : []), { label: 'Odejdź', key: 'escape' }], icon);
+}
+const siteName = ob => ob.title || SITES[ob.kind].name;
+const DIR8_NAMES = ['na wschodzie', 'na południowym wschodzie', 'na południu', 'na południowym zachodzie', 'na zachodzie', 'na północnym zachodzie', 'na północy', 'na północnym wschodzie'];
+const dirFrom = (x0, y0, x1, y1) => DIR8_NAMES[(Math.round(Math.atan2(y1 - y0, x1 - x0) / (Math.PI / 4)) + 8) % 8];
+// Zagadka dla bohatera (stała dla pary sfinks–bohater) i kolejność odpowiedzi; right = numer dobrej
+function sphinxRiddle(st, ob, h) { const Q = RIDDLES[thash(ob.id, h.id, st.seed) % RIDDLES.length], k = thash(h.id, ob.id, st.seed + 7) % 3, a = [Q[2], Q[3]]; a.splice(k, 0, Q[1]); return { q: Q[0], answers: a, right: k }; }
+// Towar karawanseraju w bieżącym tygodniu (null: już sprzedany)
+function bazaarOffer(st, ob) {
+  const wk = weekIndex(st); if (ob.sold === wk) return null; const r = mulberry32(st.seed ^ (ob.id * 4099) ^ (wk * 7919)), q = r(), rar = q < 0.55 ? 'treasure' : q < 0.88 ? 'minor' : 'major', pool = ARTS_BY_RARITY(rar);
+  return { art: pool[Math.floor(r() * pool.length)], price: BAZAAR_PRICE[rar] };
+}
+// Plotka z karczmy: najbliższe nieodkryte cenne miejsce (skarbiec, więzienie, kurhan, sfinks…) albo ukryty skarb na tym samym poziomie świata;
+// odsłania jego okolicę graczowi (ukryty skarb staje się widoczny). Zwraca zdanie albo null.
+const RUMOR_SITES = ['prison', 'tree', 'graveyard', 'barrow', 'sphinx', 'questHut', 'dwarfForge', 'arena', 'library', 'altar', 'stone', 'caravanserai', 'witchHut'];
+function innRumor(st, h, ob) {
+  const P = playerOf(st, h.owner), n = st.map.n, lv = levelOf(st.map, ob.x, ob.y); let best = null, bd = 34;
+  for (const o of st.objects) { if (o.dead || o === ob || levelOf(st.map, o.x, o.y) !== lv) continue;
+    const hidden = o.hid && !(o.fd && o.fd[h.owner]), worth = (o.type === 'bank' && !o.cleared) || (o.type === 'site' && RUMOR_SITES.includes(o.kind)) || o.type === 'art';
+    if (!hidden && !(worth && !P.explored[o.y * n + o.x])) continue; const d = Math.hypot(o.x - ob.x, o.y - ob.y); if (d < bd) { bd = d; best = o; } }
+  if (!best) return null; const o = best; reveal(st, o.x, o.y, 3, h.owner); if (o.hid) (o.fd = o.fd || {})[h.owner] = 1; MapRender.miniDirty = true;
+  const what = o.type === 'bank' ? `${BANKS[o.kind].name} pełna skarbów` : o.type === 'site' ? (o.title || SITES[o.kind].name) : o.type === 'art' ? 'zgubiony artefakt' : 'skarb ukryty w gąszczu';
+  return `Przy kuflu ktoś szepcze: „${what} ${dirFrom(ob.x, ob.y, o.x, o.y)}, jakieś ${Math.round(bd)} pól stąd”. Okolica pojawia się na twojej mapie.`;
 }
 // Skarbiec: opis załogi i łupu, potem zwykłe okno przed bitwą (odwrót cofa bohatera o pole)
 const bankPower = ob => ob.guards.reduce((s, [cid, n]) => s + n * CREATURES[cid].value, 0);
@@ -1121,6 +1158,31 @@ function useSite(st, h, ob, choice) {
       const g = 500 + Math.floor(r() * 3) * 250; R.gold += g; return { text: `W dryfującej skrzyni jest ${g} złota.`, float: `+${g}`, res: 'gold' }; }
     case 'sirens': { mark(); let lost = 0; for (const x of h.army) if (x && x.n > 1) { const d = Math.floor(x.n / 10); x.n -= d; lost += d; }
       return { text: `Śpiew syren porusza serca: +1500 doświadczenia.${lost ? ` Niestety ${lost} żołnierzy rzuca się w fale.` : ''}`, float: '+1500 dośw.', exp: 1500 }; }
+    case 'sphinx': { mark(); const ok = choice != null ? choice === sphinxRiddle(st, ob, h).right : thash(ob.id, h.id, st.seed + 3) % 2 === 0; // SI zgaduje (co druga zagadka)
+      if (!ok) return { text: 'Sfinks odwraca głowę z pogardą: to nie ta odpowiedź. Dla tego bohatera zagadka przepadła.', bad: true };
+      R.gold += 1500; return { text: 'Sfinks kiwa głową z uznaniem i odsuwa łapę znad skarbu: 1500 złota i 2000 doświadczenia.', float: '+2000 dośw.', exp: 2000 }; }
+    case 'questHut': { const m = st.objects[ob.target];
+      if (ob.done != null) return { text: 'Pustelnik już wynagrodził śmiałka, który oczyścił okolicę. Teraz modli się w spokoju.' };
+      if (m && !m.dead) { (ob.taken = ob.taken || {})[h.owner] = 1; reveal(st, m.x, m.y, 2, h.owner); MapRender.miniDirty = true;
+        return { text: `Pustelnik prosi: „${qtyName(m.count)} ${CREATURES[m.cid].gen} nęka okolicę ${dirFrom(ob.x, ob.y, m.x, m.y)}, jakieś ${Math.round(Math.hypot(m.x - ob.x, m.y - ob.y))} pól stąd. Pokonaj je, a wynagrodzę cię artefaktem.” Miejsce pojawia się na twojej mapie.` }; }
+      const r = mulberry32(st.seed ^ (ob.id * 7151)), pool = ARTS_BY_RARITY(r() < 0.4 ? 'major' : 'minor'), art = pool[Math.floor(r() * pool.length)];
+      ob.done = h.owner; giveArtifact(h, art); MapRender.miniDirty = true;
+      return { text: `Okolica znów jest bezpieczna! Pustelnik w podzięce daje: ${ARTIFACTS[art].name} i dzieli się mądrością (+${QUEST_EXP} doświadczenia).`, float: ARTIFACTS[art].name, exp: QUEST_EXP }; }
+    case 'inn': { mark(); h.boost = { ...(h.boost || {}), morale: Math.max(1, (h.boost || {}).morale || 0) }; // kufel zmywa też klątwę kurhanu
+      return { text: `Kufel dla każdego żołnierza: +1 do morale do następnej bitwy. ${innRumor(st, h, ob) || 'Plotki są nudne: okolica nie kryje już tajemnic.'}`, float: 'morale +1' }; }
+    case 'barrow': { if (ob.looted != null) return { text: 'Kurhan jest już rozkopany. Wiatr gwiżdże w pustej komorze grobowej.' };
+      const r = mulberry32(st.seed ^ (ob.id * 1931)), pool = ARTS_BY_RARITY(r() < 0.5 ? 'major' : 'minor'), art = pool[Math.floor(r() * pool.length)];
+      ob.looted = h.owner; giveArtifact(h, art); h.boost = { ...(h.boost || {}), morale: BARROW_CURSE }; MapRender.miniDirty = true;
+      return { text: `W komorze grobowej spoczywa ${ARTIFACTS[art].name}. Gdy ${h.name} sięga po skarb, z ciemności podnosi się zawodzenie duchów: armia jest przeklęta (morale ${BARROW_CURSE} do następnej bitwy).`, float: ARTIFACTS[art].name, bad: true }; }
+    case 'caravanserai': { const o = bazaarOffer(st, ob); if (!o) return { text: 'Kupcy sprzedali już towar z tego tygodnia. Nowa karawana przybędzie w następnym.' };
+      if (R.gold < o.price) return { text: `Kupcy oferują ${ARTIFACTS[o.art].name} za ${o.price} złota, a masz ${R.gold}.` };
+      R.gold -= o.price; ob.sold = weekIndex(st); giveArtifact(h, o.art); return { text: `${h.name} kupuje ${ARTIFACTS[o.art].name} za ${o.price} złota.`, float: ARTIFACTS[o.art].name }; }
+    case 'wishingWell': { if (R.gold < S.cost) return { text: `Studnia czeka na ${S.cost} złota, a masz ${R.gold}.` };
+      mark(); R.gold -= S.cost; const roll = thash(ob.id * 31 + h.id, st.dayTotal, st.seed) % 100;
+      if (roll < 35) return { text: 'Moneta znika w ciemnej toni. Nic się nie dzieje… tym razem.', float: `−${S.cost}`, res: 'gold' };
+      if (roll < 70) { h.boost = { ...(h.boost || {}), luck: 1, morale: Math.max(WISH_MORALE, (h.boost || {}).morale || 0) }; return { text: 'Woda rozbłyska srebrem: +1 do szczęścia i morale do następnej bitwy.', float: 'szczęście +1' }; }
+      if (roll < 92) { R.gold += 1500; return { text: 'Z głębi wypływa zapomniana sakiewka: 1500 złota!', float: '+1500', res: 'gold' }; }
+      const pool = ARTS_BY_RARITY('treasure'), art = pool[roll % pool.length]; giveArtifact(h, art); return { text: `Na dnie coś lśni: ${ARTIFACTS[art].name}. Życzenie spełnione!`, float: ARTIFACTS[art].name }; }
     case 'obelisk': { mark(); const k = obelisksSeen(st, h.owner), N = obelisksTotal(st);
       return { puzzle: true, text: k >= N ? 'Ostatni obelisk! Mapa zagadki jest kompletna: krzyżyk wskazuje, gdzie zakopano Graala.' : `Runy na obelisku odsłaniają kolejny fragment mapy zagadki (${k} z ${N}).` }; }
   }
@@ -1140,5 +1202,14 @@ function siteInfo(st, ob, h) {
     : ob.kind === 'witchHut' ? `uczy umiejętności ${skillText(ob.skill, 1)}` : ob.kind === 'dwelling' ? `${CREATURES[ob.cid].plural.toLowerCase()} do werbunku: ${ob.avail} (po ${costText(CREATURES[ob.cid].cost)}), co tydzień przybywa ${CREATURES[ob.cid].growth}`
     : ob.kind === 'campfire' ? `porzucony obóz: 400–600 złota i 4–6 jednostek surowca (${resName(ob.res || 'wood').toLowerCase()})` : ob.kind === 'portal' && st.objects[ob.pair] ? `${S.desc} (pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})` : ob.kind === 'gate' ? `${S.desc}: ${levelOf(st.map, ob.x, ob.y) ? 'wyjście na powierzchnię' : 'zejście do podziemi'}` : S.desc;
   const used = h && siteUsed(st, ob, h) ? { hero: ' Ten bohater już tu był.', day: ' Dziś już wykorzystane.', heroWeek: ' W tym tygodniu już wykorzystane.', week: ' Plon z tego tygodnia już zebrany.', player: ' Już odwiedzone.' }[S.use] : '';
-  return `${S.name}: ${what}.${used}${st.guard[ob.y * st.map.n + ob.x] ? ' Pilnuje go potwór.' : ''}`;
+  return `${siteName(ob)}: ${adventureInfo(st, ob, viewer) || what}.${used}${st.guard[ob.y * st.map.n + ob.x] ? ' Pilnuje go potwór.' : ''}`;
+}
+// Stan miejsc przygody w dymku (null: zwykły opis)
+function adventureInfo(st, ob, viewer) {
+  if (ob.kind === 'barrow' && ob.looted != null) return 'rozkopany, komora grobowa jest pusta';
+  if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o ? `kupcy sprzedają w tym tygodniu: ${ARTIFACTS[o.art].name} (${RARITY[ARTIFACTS[o.art].rarity]}) za ${o.price} złota` : 'towar z tego tygodnia wyprzedany, nowa karawana w następnym'; }
+  if (ob.kind !== 'questHut') return null; const m = st.objects[ob.target];
+  if (ob.done != null) return 'zadanie wykonane, pustelnik już wynagrodził śmiałka';
+  if (!m || m.dead) return `stwory, które nękały okolicę, są pokonane: pustelnik czeka z nagrodą (artefakt i ${QUEST_EXP} doświadczenia)`;
+  return ob.taken && ob.taken[viewer] ? `zadanie: pokonać ${CREATURES[m.cid].plural.toLowerCase()} ${dirFrom(ob.x, ob.y, m.x, m.y)} (pole ${m.x}, ${m.y}); nagroda: artefakt i ${QUEST_EXP} doświadczenia` : null;
 }

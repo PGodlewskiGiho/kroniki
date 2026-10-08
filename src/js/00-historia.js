@@ -349,5 +349,10 @@
    wodami. Pogoda regionalna: climateAt (udział terenów w promieniu ~7 pól, siatka co 4 pola), duży front (skala 28 pól).
    Drogi wchodzą do miast bramą (omijają zabudowę), obiekty nie leżą na drogach (ukryty skarb na jedynej drodze zamykał przejazd).
    Budynki (miasta, kopalnie, skarbce, portale) z pasem wolnym od dróg; niewidziany ukryty obiekt nie blokuje ścieżki ani SI.
+   Miejsca przygody (SITES, modele 3D w mapa3d-miejsca.js): Sfinks (zagadka z RIDDLES, raz na bohatera), Chata pustelnika
+   (zadanie: pokonać wskazany silniejszy oddział 7–16 pól dalej, ob.target / m.quest; nagroda artefakt i QUEST_EXP), Karczma
+   (morale +1 i plotka innRumor: odsłania najbliższe nieodkryte cenne miejsce albo ukryty skarb), Kurhan (artefakt za klątwę
+   BARROW_CURSE), Karawanseraj (artefakt na sprzedaż co tydzień, BAZAAR_PRICE), Studnia życzeń (opłata, los). Nazwy własne
+   (ob.title: INN_NAMES, BARROW_NAMES, HERMIT_NAMES). Przydrożne miejsca stawiane naprawdę przy drodze (dRoad ≤ 4).
    ===================================================================================== */
 
