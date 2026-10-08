@@ -19,7 +19,7 @@ def main():
     data = json.load(open(os.path.join(HERE, 'opisy.json'), encoding='utf-8'))
     d = data[fac]; prompt = d.get('styl', data['_styl']).format(opis=d['opis']); neg = d.get('negatyw_pelny') or data['_negatyw'] + ', ' + d.get('negatyw', '') # tła bitew: własny styl i negatyw
     torch.set_num_threads(os.cpu_count())
-    pipe = StableDiffusionImg2ImgPipeline.from_pretrained(MODEL, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+    pipe = StableDiffusionImg2ImgPipeline.from_pretrained(MODEL, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False, use_safetensors=True)
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, algorithm_type='dpmsolver++', use_karras_sigmas=True)
     pipe.set_progress_bar_config(disable=True)
     init = Image.open(sketch).convert('RGB').resize((W, H), Image.LANCZOS)

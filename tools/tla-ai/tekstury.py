@@ -55,7 +55,7 @@ def main():
     names = (sys.argv[1] if len(sys.argv) > 1 else ','.join(OPIS)).split(',')
     seeds = [int(s) for s in (sys.argv[2] if len(sys.argv) > 2 else '1').split(',')]
     torch.set_num_threads(os.cpu_count())
-    pipe = StableDiffusionImg2ImgPipeline.from_pretrained(MODEL, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+    pipe = StableDiffusionImg2ImgPipeline.from_pretrained(MODEL, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False, use_safetensors=True)
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, algorithm_type='dpmsolver++', use_karras_sigmas=True)
     pipe.set_progress_bar_config(disable=True); circular(pipe.unet); circular(pipe.vae)
     out = os.path.join(HERE, '.cache', 'teren'); os.makedirs(out, exist_ok=True)

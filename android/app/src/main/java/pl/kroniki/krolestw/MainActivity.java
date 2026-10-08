@@ -138,6 +138,8 @@ public class MainActivity extends Activity {
     private class Bridge {
         @JavascriptInterface
         public void saveFile(String name, String content) {
+            name = name == null ? "" : name.replaceAll("[^A-Za-z0-9._ -]", "_").replaceAll("^\\.+", ""); // sama nazwa pliku, bez katalogów
+            if (name.isEmpty()) name = "kroniki-zapis.json";
             byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
             try {
                 if (Build.VERSION.SDK_INT >= 29) {

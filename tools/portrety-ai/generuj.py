@@ -28,12 +28,12 @@ def main():
     if WZ:
         from transformers import CLIPVisionModelWithProjection
         from PIL import Image
-        enc = CLIPVisionModelWithProjection.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder', torch_dtype=torch.float32)
-        pipe = StableDiffusionPipeline.from_pretrained(MODEL, image_encoder=enc, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+        enc = CLIPVisionModelWithProjection.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder', torch_dtype=torch.float32, use_safetensors=True)
+        pipe = StableDiffusionPipeline.from_pretrained(MODEL, image_encoder=enc, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False, use_safetensors=True)
         pipe.load_ip_adapter('h94/IP-Adapter', subfolder='models', weight_name='ip-adapter-plus_sd15.safetensors'); pipe.set_ip_adapter_scale(float(os.environ.get('IPS', 0.4)))
         files = sorted(os.listdir(WZ)); style = lambda cls: [Image.open(os.path.join(WZ, files[i])).convert('RGB') for i in REFS[cls]]  # wzorce dobrane do klasy
     else:
-        pipe = StableDiffusionPipeline.from_pretrained(MODEL, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+        pipe = StableDiffusionPipeline.from_pretrained(MODEL, torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False, use_safetensors=True)
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, algorithm_type='dpmsolver++', use_karras_sigmas=True)  # ok. 1,7 min na obraz bez karty graficznej
     pipe.set_progress_bar_config(disable=True)
     for name in names:

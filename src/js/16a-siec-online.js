@@ -26,8 +26,14 @@ const Net = {
     const buf = await new Response(new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
     return { z: 1, b: new Uint8Array(buf) };
   },
+  // Stan od innego gracza: najwyżej NET_MAX bajtów po rozpakowaniu (spreparowana „bomba” gzip nie zapcha pamięci)
   async unpack(p) {
-    const json = p.z ? await new Response(new Blob([p.b]).stream().pipeThrough(new DecompressionStream('gzip'))).text() : p.s;
+    if (!p || typeof p !== 'object') throw new Error('zły stan gry');
+    let json = p.s;
+    if (p.z) { const rd = new Blob([p.b]).stream().pipeThrough(new DecompressionStream('gzip')).getReader(), parts = []; let n = 0;
+      for (;;) { const { done, value } = await rd.read(); if (done) break; n += value.length; if (n > NET_MAX) { rd.cancel(); throw new Error('za duży stan gry'); } parts.push(value); }
+      json = new TextDecoder().decode(await new Blob(parts).arrayBuffer()); }
+    if (typeof json !== 'string' || json.length > NET_MAX) throw new Error('za duży stan gry');
     return JSON.parse(json);
   },
   // --- połączenia ---
@@ -55,14 +61,15 @@ const Net = {
     conn.on('close', () => { const g = this.guests.find(g => g.conn === conn); if (g) { g.conn = null; this.lobbyUpdate(); if (this.inGame) netFlash(`${g.name} rozłączył się. Gra czeka na jego powrót.`); } });
   },
   hostData(conn, m) {
+    if (!m || typeof m !== 'object' || typeof m.t !== 'string') return; // wiadomości od innych graczy: tylko obiekty naszego protokołu
     if (m.t === 'hello') {
-      let g = this.guests.find(g => g.token === m.token);
+      const tok = String(m.token).slice(0, 64); let g = this.guests.find(g => g.token === tok);
       if (!g) {
         if (this.inGame) { conn.send({ t: 'deny', why: 'Ta gra już trwa.' }); setTimeout(() => conn.close(), 500); return; }
-        g = { token: m.token, name: m.name || `Gracz ${this.guests.length + 2}`, pid: -1 }; this.guests.push(g);
+        g = { token: tok, name: netName(m.name) || `Gracz ${this.guests.length + 2}`, pid: -1 }; this.guests.push(g);
       }
       if (g.conn && g.conn !== conn) { try { g.conn.close(); } catch (e) {} }
-      g.conn = conn; if (m.name) g.name = m.name; this.lobbyUpdate();
+      g.conn = conn; if (netName(m.name)) g.name = netName(m.name); this.lobbyUpdate();
       if (this.inGame && this.lastPacked) { conn.send({ t: 'state', kind: 'resume', d: this.lastPacked, you: g.pid, seq: this.seq }); netFlash(`${g.name} wrócił do gry.`); }
       return;
     }
@@ -122,6 +129,7 @@ const Net = {
     if (key === this.lastSyncKey) return; this.lastSyncKey = key; this.sendState(st, 'sync');
   },
   async onData(m) {
+    if (!m || typeof m !== 'object' || typeof m.t !== 'string') return;
     if (m.t === 'lobby') { this.lobby = m; G.dirty = true; return; }
     if (m.t === 'chat') { netChatAdd(m.from, m.text); return; }
     if (m.t === 'deny') { this.err = m.why; this.close(); G.dirty = true; return; }
@@ -137,7 +145,8 @@ const Net = {
 };
 // Czat: T (albo przycisk w poczekalni) otwiera pole wiadomości; ostatnie wiadomości widać w rogu ekranu przez 15 s
 const NetChat = { lines: [] };
-function netChatAdd(from, txt) { NetChat.lines.push({ from, text: String(txt).slice(0, 120), t: G.time }); NetChat.lines = NetChat.lines.slice(-30); Sfx.play('page', { vol: 0.3 }); G.dirty = true; }
+const NET_MAX = 64 * 1024 * 1024, netName = v => (v == null ? '' : String(v).replace(/[\u0000-\u001f]/g, '').slice(0, 24));
+function netChatAdd(from, txt) { NetChat.lines.push({ from: netName(from), text: String(txt).slice(0, 120), t: G.time }); NetChat.lines = NetChat.lines.slice(-30); Sfx.play('page', { vol: 0.3 }); G.dirty = true; }
 function netChatOpen() {
   if (!Net.peer || G.modal) return;
   askText('Wiadomość do graczy:', '', v => { v = (v || '').trim(); if (!v) return; const from = Net.name || (G.state && G.state.players[ME] ? playerName(G.state, ME) : 'Ty'); Net.send({ t: 'chat', from, text: v }); netChatAdd(from, v); }, 120);

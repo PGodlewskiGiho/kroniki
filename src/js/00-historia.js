@@ -329,5 +329,8 @@
    z pamięci (XRAY). Ustawienie „Karta graficzna” (auto: tylko sprzętowy WebGL). Teren w wątkach w tle (17h-teren-w-tle.js,
    TerrainPool): piksele kawałka (chunkPixelSteps) liczą Web Workery, wątek gry tylko kończy kawałek (chunkFinish). Testy: gpu,
    teren-w-tle; testy płynności (perf) uruchamiane osobno po reszcie (tests/uruchom.js).
+   Bezpieczeństwo: .npmrc ignore-scripts, npm ci --ignore-scripts i npm audit w CI, Dependabot, workflowy z minimalnymi
+   uprawnieniami (persist-credentials: false, klucz APK tylko na main), .gitignore na klucze i sekrety, safetensors w narzędziach
+   AI, sieć: Net.unpack z limitem NET_MAX (bomba gzip), netName, odrzucanie obcych wiadomości; Android: bezpieczna nazwa pliku.
    ===================================================================================== */
 

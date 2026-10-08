@@ -1,0 +1,15 @@
+# Dependabot: raz w tygodniu sprawdza paczki npm i akcje GitHuba; przy znanej podatności proponuje poprawkę jako pull request
+# (nic nie wchodzi samo – zmianę trzeba przejrzeć i scalić). Wszystkie aktualizacje paczek w jednym zbiorczym PR.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+    groups:
+      npm: { patterns: ['*'] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      akcje: { patterns: ['*'] }

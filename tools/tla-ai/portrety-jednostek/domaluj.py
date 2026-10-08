@@ -11,7 +11,7 @@ src, dst, opis = sys.argv[1:4]; s = float(sys.argv[4]) if len(sys.argv) > 4 else
 im = Image.open(src).convert('RGBA'); w, h = im.size; W, H = 512, int(512 * h / w) // 8 * 8
 bg = Image.new('RGBA', im.size, (120, 112, 96, 255)); bg.alpha_composite(im); base = bg.convert('RGB').resize((W, H), Image.LANCZOS)
 torch.set_num_threads(os.cpu_count())
-p = StableDiffusionImg2ImgPipeline.from_pretrained(os.environ.get('MODEL', 'Lykon/dreamshaper-8'), torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False)
+p = StableDiffusionImg2ImgPipeline.from_pretrained(os.environ.get('MODEL', 'Lykon/dreamshaper-8'), torch_dtype=torch.float32, variant='fp16', safety_checker=None, requires_safety_checker=False, use_safetensors=True)
 p.scheduler = DPMSolverMultistepScheduler.from_config(p.scheduler.config, algorithm_type='dpmsolver++', use_karras_sigmas=True); p.set_progress_bar_config(disable=True)
 out = p(opis + STYLE, image=base, strength=s, negative_prompt=NEG, num_inference_steps=int(os.environ.get('STEPS', 30)), guidance_scale=7, generator=torch.Generator().manual_seed(seed)).images[0]
 out = out.resize((w, h), Image.LANCZOS).convert('RGBA')
