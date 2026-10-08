@@ -264,9 +264,10 @@ function showGfxSettings(back) {
     action: () => { S.uiScale = UIS[(UIS.indexOf(uis) + 1) % UIS.length]; saveSettings(); resize(); showGfxSettings(back); } };
   const wxBtn = { label: 'Pogoda', sub: weatherOn() ? 'włączona' : 'wyłączona', tip: 'Deszcz, śnieg, mgła i cienie chmur na mapie świata (tylko wygląd).',
     action: () => { S.weather = weatherOn() ? 'off' : 'on'; saveSettings(); showGfxSettings(back); } };
-  const RM = [['auto', 'automatycznie'], ['gl', 'karta graficzna'], ['cpu', 'procesor']], rm = S.renderer || 'auto';
-  const glBtn = { label: 'Mapa', sub: RM.find(r => r[0] === rm)[1], tip: `Kto rysuje mapę świata. Karta graficzna (WebGL): płynny ruch, przybliżanie i przewijanie; procesor: dawny sposób, gdy karta sprawia kłopoty. Teraz: ${GLMap.mode()}.`,
-    action: () => { S.renderer = RM[(RM.findIndex(r => r[0] === rm) + 1) % RM.length][0]; saveSettings(); G.dirty = true; showGfxSettings(back); } };
+  const RM = ['auto', 'gl', 'cpu'], rm = S.renderer || 'auto', glOn = GLMap.use();
+  const glBtn = { label: 'Karta graficzna', sub: rm === 'auto' ? (glOn ? 'auto: włączona' : 'auto: wyłączona') : rm === 'gl' ? 'zawsze' : 'wyłączona',
+    tip: `Kto rysuje mapę świata. Karta graficzna (WebGL): płynny ruch, przybliżanie i przewijanie. „Auto” włącza ją tylko przy sprzętowym WebGL${GLMap.name ? ` (tu: ${GLMap.hw ? 'jest' : 'brak – sterownik programowy'})` : ''}; „wyłączona”: dawny sposób, procesorem. Teraz mapę rysuje: ${GLMap.mode()}.`,
+    action: () => { S.renderer = RM[(RM.indexOf(rm) + 1) % RM.length]; saveSettings(); G.dirty = true; showGfxSettings(back); } };
   showDialog(`Jakość grafiki: ${cur} (${Math.round(G.dpr * 100)}% ostrości). Na słabym komputerze wybierz Niską: obraz jest trochę mniej ostry, ale gra działa znacznie płynniej. Automatyczna sama obniża jakość, gdy klatek jest za mało. Klawisz F pokazuje licznik klatek.`,
     [...QUALITIES.map(q => ({ label: q.name, action: set(q.id), selected: q.id === (S.quality || 'auto') })), ...(PIXEL_ART ? [fontBtn] : [glBtn]), uiBtn, wxBtn, sndBtn, { label: 'OK', key: 'escape', primary: true, action: () => { if (back) back(); } }], { bw: PIXEL_ART ? 100 : 112 });
 }

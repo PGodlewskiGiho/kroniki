@@ -7,7 +7,7 @@
     "watch": "node build.js --watch",
     "grafika": "node tools/grafika3d/wypal.js",
     "podglad": "node tools/grafika3d/podglad.js",
-    "test": "node build.js --check && node --test tests/*.test.js"
+    "test": "node build.js --check && node tests/uruchom.js"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

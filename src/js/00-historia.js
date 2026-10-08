@@ -324,5 +324,10 @@
    kamerą o ogniskowej f dopasowanej do kąta obrazu (scena.js: applyPaintedLayout, paintedFinish: placyk i cień styku,
    zasłanianie z głębi, wtopienie barw/ostrości/światła), wypal-miasta.js składa arkusz (tło + klatki w miejscach kadru);
    gra rysuje je w paintTown3D (bez sceny 2D, ludzi i stworów na ścieżkach). Gotowa: Przystań (Graal: Kolos Archanioła).
+   Mapa na karcie graficznej (17g-mapa-gpu.js, GLMap): drawWorldPixel rysuje do GLCtx (prostokąty WebGL), płótno WebGL pod płótnem
+   gry (okno mapy przezroczyste), woda w shaderze; atlas małych obrazków (mniej poleceń rysowania), sylwetki zasłoniętych obiektów
+   z pamięci (XRAY). Ustawienie „Karta graficzna” (auto: tylko sprzętowy WebGL). Teren w wątkach w tle (17h-teren-w-tle.js,
+   TerrainPool): piksele kawałka (chunkPixelSteps) liczą Web Workery, wątek gry tylko kończy kawałek (chunkFinish). Testy: gpu,
+   teren-w-tle; testy płynności (perf) uruchamiane osobno po reszcie (tests/uruchom.js).
    ===================================================================================== */
 
