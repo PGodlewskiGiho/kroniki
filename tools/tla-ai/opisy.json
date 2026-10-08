@@ -997,42 +997,42 @@
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, extra arms, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, people crowd, duplicate, people, room"
  },
  "zagadka_haven": {
-  "opis": "epic fantasy oil painting, epic battle on a green plain before a white castle, golden armored angels and knights on horses charging against black-winged devils and demons, griffins in the sky, banners, sunset",
+  "opis": "epic fantasy oil painting, heavy knights cavalry charging across a green meadow, giant golden archangel with sword and wings above them, white castle with blue roofs on a hill, god rays through clouds, banners",
   "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle"
  },
  "zagadka_sylvan": {
-  "opis": "epic fantasy oil painting, epic battle in an enchanted elven valley, green dragon and phoenix fighting a skeletal bone dragon, elves and centaurs charging undead skeletons, giant tree city behind, misty sky",
+  "opis": "epic fantasy oil painting, enchanted forest glade with a clear lake, white unicorns drinking at the water, nymphs and elf archers on the shore, green dragon and fiery phoenix flying above giant trees, elven tree city in morning mist",
   "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle"
  },
  "zagadka_barrow": {
-  "opis": "epic fantasy oil painting, epic battle before a dark necropolis under a crescent moon, bone dragons and black knights on skeletal horses fighting golden angels and crusaders, ghosts in the sky, green mist",
+  "opis": "epic fantasy oil painting, haunted graveyard under a huge full moon, skeletal bone dragon flying across the moon, lich on a crypt raising undead skeletons from graves, death knight on a black horse, ghostly green mist",
   "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle"
  },
  "zagadka_fortress": {
-  "opis": "epic fantasy oil painting, epic battle in a misty swamp, many-headed purple hydras and dragonflies fighting a huge horned behemoth and orc warriors, wooden stilt fortress behind, murky water",
+  "opis": "epic fantasy oil painting, gigantic purple many-headed hydra rising from a murky swamp at dusk, lizardmen on wooden boats with torches, giant dragonflies, mangrove trees, wooden stilt fortress in fog",
   "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle"
  },
  "zagadka_inferno": {
-  "opis": "epic fantasy oil painting, epic battle in a burning hellscape, huge red devil with bat wings and fiery demons fighting golden angels and knights, black volcano citadel spewing lava, red sky",
+  "opis": "epic fantasy oil painting, gate of hell, huge ring of fire portal, horned arch devil stepping out, swarms of imps and demons flying, river of glowing lava, three-headed hellhounds, volcano, black and red sky",
   "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle"
  },
  "zagadka_academy": {
-  "opis": "epic fantasy oil painting, epic battle on a snowy plain, giant golden titan and stone golems and genies fighting a black dragon and minotaurs, floating white wizard tower with golden domes, pale sky",
+  "opis": "epic fantasy oil painting, golden storm titan on a snowy mountain peak hurling a lightning bolt at a black dragon, floating white wizard tower with golden domes above the clouds, aurora borealis, golems and mages below",
   "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle"
  },
  "zagadka_dungeon": {
-  "opis": "epic fantasy oil painting, epic battle under a violet night sky, black dragon and minotaurs and manticore fighting a giant golden titan and mages, dark elven fortress carved in rock, crystals",
+  "opis": "epic fantasy oil painting, dark cave treasure hoard, huge black dragon resting on a mountain of gold coins, glowing purple crystals, stalactites, floating beholder eyes, brave knights with torches entering",
   "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle"
  },
  "zagadka_stronghold": {
-  "opis": "epic fantasy oil painting, epic battle in a desert canyon at sunset, giant behemoth and cyclops and orc riders fighting many-headed hydras, barbarian war camp with spiked palisade, dust",
+  "opis": "epic fantasy oil painting, desert canyon at sunset, giant behemoth fighting a cyclops king, orc and wolf rider horde charging through dust behind them, giant thunderbirds in the sky, red rock cliffs",
   "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
   "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle"
  }
