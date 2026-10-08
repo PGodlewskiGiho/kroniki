@@ -253,6 +253,7 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'inn' && h.boost && h.boost.morale > 0) return 300; // plotka i tak się przyda
   if (ob.kind === 'questHut') { const m = st.objects[ob.target]; return ob.done == null && (!m || m.dead) ? 4000 : 0; } // nagroda za pokonane stwory
   if (ob.kind === 'barrow') return ob.looted == null ? 3500 : 0; // artefakt wart klątwy
+  if (ob.kind === 'lighthouse') return ob.owner === h.owner ? 0 : S.ai;
   if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o && playerOf(st, h.owner).resources.gold >= o.price + 4000 ? 2000 : 0; }
   if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
   return S.ai;

@@ -364,5 +364,8 @@
    z jasną plamą pod spodem; pętla magii (portal) bez wysokiego świstu. Fort na wzgórzu: ulepszenie wybranego oddziału albo wszystkich.
    Bez przestojów (ensureProgress): z każdego startu da się wyjść – kieszeń osiągalna bez walki ze strażnikiem silniejszym niż armia
    ma co najmniej 12% lądu (do 2,2× armii: 30%); inaczej najbliższy strażnik na granicy kieszeni słabnie.
+   Brama podziemi jak w H3: kamienna czaszka w skale, wejście w paszczy. Morze: piraci na statkach i morskie stwory (SEA_MONSTERS,
+   strefa strażnika tylko na wodzie), wiry w parach (połowa najsłabszego oddziału), latarnie (LIGHTHOUSE_MP ruchu łodzi właściciela),
+   bitwa morska (B.naval): dwa pokłady, woda NAVAL_GAP, kładki NAVAL_PLANKS.
    ===================================================================================== */
 

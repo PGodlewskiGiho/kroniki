@@ -420,6 +420,23 @@ function placeObjects(st) {
     let wet = 0; for (let d = 0; d < 8; d++) if (map.terrain[(y + DY8[d]) * n + x + DX8[d]] === TER.WATER && !occ[(y + DY8[d]) * n + x + DX8[d]]) wet++; if (wet < 6) continue;
     add({ type: 'site', kind, x, y, seen: {} }, [i]); k--;
   }
+  // Morze: wiry w parach (daleko od siebie, na otwartej wodzie), latarnie na brzegu, piraci i morskie stwory (strażnicy wraków i syren,
+  // reszta krąży po otwartej wodzie; siła jak na lądzie, rośnie z odległością od startu)
+  const openWater = (x, y, need) => { let wet = 0; for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (X >= 0 && Y >= 0 && X < n && Y < n && map.terrain[Y * n + X] === TER.WATER && !occ[Y * n + X]) wet++; } return wet >= need; };
+  const seaSpot = need => { for (let t = 0; t < 2500; t++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)), i = y * n + x; if (map.terrain[i] === TER.WATER && !occ[i] && openWater(x, y, need)) return [x, y]; } return null; };
+  if (water > 200) for (let k = WHIRL_PAIRS[size] || 1; k > 0; k--) { const a = seaSpot(8); if (!a) break; let b = null;
+    for (let t = 0; t < 40 && (!b || Math.hypot(b[0] - a[0], b[1] - a[1]) < levelSize(map) * 0.3); t++) b = seaSpot(8); if (!b || Math.hypot(b[0] - a[0], b[1] - a[1]) < levelSize(map) * 0.3) break;
+    const wa = add({ type: 'site', kind: 'whirlpool', x: a[0], y: a[1], seen: {} }, [a[1] * n + a[0]]), wb = add({ type: 'site', kind: 'whirlpool', x: b[0], y: b[1], seen: {} }, [b[1] * n + b[0]]); wa.pair = wb.id; wb.pair = wa.id; }
+  for (let k = water > 300 ? Math.max(1, Math.round(water / LIGHTHOUSE_PER)) : 0, tries = 0; k > 0 && tries < 3000; tries++) {
+    const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (!ok(x, y) || dStart(x, y) < 4 || !roadFree(x - 1, y - 1, x + 1, y)) continue; let wet = 0, open = false;
+    for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (map.terrain[Y * n + X] === TER.WATER) { wet++; if (openWater(X, Y, 6)) open = true; } } if (wet < 3 || !open || objs.some(o => o.kind === 'lighthouse' && Math.hypot(o.x - x, o.y - y) < 14)) continue;
+    add({ type: 'site', kind: 'lighthouse', x, y, owner: -1, seen: {} }, [y * n + x]); k--; }
+  const seaMonster = (x, y, boost = 0) => { const i = y * n + x; if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1 || map.terrain[i] !== TER.WATER || occ[i]) return null;
+    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), pool = SEA_MONSTERS[lvl], cid = pool[Math.floor(rng() * pool.length)];
+    const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff) * rule(st, 'monsters');
+    return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1, sea: 1, ...(PIRATES.includes(cid) ? { ship: 1 } : {}) }, [i]); };
+  for (const o of objs.filter(o => o.type === 'site' && ['wreck', 'sirens', 'flotsam'].includes(o.kind))) if (rng() < 0.75) for (const [dx, dy] of GUARD_AT) if (seaMonster(o.x + dx, o.y + dy, o.kind === 'flotsam' ? 0 : 1)) break;
+  for (let k = Math.round(water / SEA_MONSTER_PER), tries = 0; k > 0 && tries < 3000; tries++) { const p = seaSpot(7); if (p && dStart(p[0], p[1]) >= 8 && seaMonster(p[0], p[1])) k--; }
   // Przejścia: stały obiekt (kopalnia, skarbiec, miejsce) nie może zamknąć jedynej drogi do któregoś miasta (wąska dolina,
   // przesmyk) – taki obiekt znika. Potwory (do pokonania) i skarby (do podniesienia) drogi nie zamykają.
   { const solid = o => !o.dead && !['monster', 'res', 'chest', 'art', 'boat'].includes(o.type), tilesOf = o => [o.y * n + o.x, ...(o.blocks || [])];

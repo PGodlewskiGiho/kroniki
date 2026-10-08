@@ -57,10 +57,24 @@ const SITE3 = {
   portal(f = 0) { const g = new THREE.Group(); g.add(cyl3(24, 26, 4, ST.stoneD, 'ashlar')); const arch = torus(20 / PXU, 4 / PXU, '#6a6474', 'stone', P(0, 24, 0), null, [1, 1.15, 1]); g.add(arch); for (const s of [-1, 1]) g.add(blk(9, 8, 9, '#5a5464', 'ashlar', s * 20, 0, 0));
     const disc = cyl(17 / PXU, 17 / PXU, 1 / PXU, '#60a0ff', 'glow', P(0, 24, 0), [Math.PI / 2, 0, 0], [1, 1, 1.15], 28); disc.material = lightMat('#7ab4ff'); disc.material.transparent = true; disc.material.opacity = 0.85; g.add(disc); g.add(mqGlow(6, '#e0f0ff', 0, 24, 1));
     for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + f * Math.PI / 12; g.add(sph(1.6 / PXU, '#bfe0ff', 'gem', P(Math.cos(a) * 20, 24 + Math.sin(a) * 23, 3))); } disc.material.opacity = 0.7 + 0.08 * f; return g; },
-  gate() { /* brama podziemi: kamienny portal w skalnym pagórku, schody w dół w ciemność, pochodnie */ const g = new THREE.Group(); g.add(mqRock('def', 0, -10, 34, 34, 22, 101, false));
-    g.add(blk(34, 30, 12, '#6a6474', 'ashlar', 0, 0, 6)); g.add(opening(20, 24, 0, 0, 12.5, { frame: '#4a4454', frameKind: 'ashlar', sill: false, inner: '#050406', frameW: 4 })); g.add(blk(38, 5, 14, '#5a5464', 'ashlar', 0, 30, 6));
-    for (let i = 0; i < 4; i++) g.add(blk(20, 1.5, 4, '#7a7484', 'ashlar', 0, -0.5 - i * 0.2, 13 + i * 4)); for (const s of [-1, 1]) { g.add(cyl3(1, 1, 12, '#3a2a1a', 'wood', s * 16, 14, 13, 6)); g.add(cone(2 / PXU, 5 / PXU, '#ffa040', 'glow', P(s * 16, 28, 13), null, 6)); g.add(mqGlow(1.6, '#ffd060', s * 16, 27, 14)); }
-    g.add(sph(3 / PXU, '#8a6ac0', 'gem', P(0, 36, 12))); return g; },
+  gate() { /* brama podziemi jak w H3: wielka kamienna czaszka wrośnięta w skalny pagórek, odchylona ku niebu; wejście w paszczy, schody w ciemność, w oczodołach żar */
+    const g = new THREE.Group(), B = '#d8ceb4', BD = '#a89c80', face = new THREE.Group(); face.position.set(...P(0, 6, 4)); face.rotation.x = -0.75; // twarz odchylona ku kamerze
+    g.add(mqRock('def', 0, -22, 46, 40, 24, 101, true)); g.add(mqRock('def', -30, -2, 16, 20, 16, 102)); g.add(mqRock('def', 30, 0, 15, 18, 14, 103)); // pagórek za czaszką i po bokach
+    face.add(sph(1, B, 'bone', P(0, 22, -6), [24 / PXU, 23 / PXU, 15 / PXU])); // sklepienie (płytkie)
+    face.add(sph(1, BD, 'bone', P(0, 8, 2), [19 / PXU, 11 / PXU, 13 / PXU])); // szczęka i kości policzkowe
+    for (const sx of [-1, 1]) { face.add(sph(1, B, 'bone', P(sx * 15, 10, 3), [8 / PXU, 7 / PXU, 8 / PXU]));
+      face.add(sph(1, '#0c0806', 'stone', P(sx * 9, 21, 8), [8 / PXU, 7.5 / PXU, 3 / PXU])); face.add(mqGlow(2.4, '#ff5a10', sx * 9, 20, 10)); face.add(mqGlow(1.2, '#ffd080', sx * 9, 20, 11)); // oczodoły z żarem
+      face.add(blk(11, 3, 5, BD, 'bone', sx * 9, 28, 6, [0, 0, -sx * 0.22])); // łuki brwiowe
+      face.add(sph(1, '#100a08', 'stone', P(sx * 2.2, 12, 10), [2 / PXU, 3.6 / PXU, 1.6 / PXU])); } // otwór nosowy (dwa)
+    for (let k = 0; k < 8; k++) face.add(blk(2.8, 5, 2.6, '#efe6cc', 'bone', -12.25 + k * 3.5, 1, 12)); // zęby górne nad paszczą
+    g.add(face);
+    g.add(opening(24, 16, 0, 0, 14, { frame: '#3a3430', frameKind: 'stone', sill: false, inner: '#030203', frameW: 2, arch: true })); // paszcza = wejście
+    for (let k = 0; k < 7; k++) g.add(blk(3, 3.6, 2.6, '#e4dabe', 'bone', -10.5 + k * 3.5, -0.4, 17)); // zęby dolne
+    for (let i = 0; i < 4; i++) g.add(blk(20 - i * 2, 1.4, 4, '#6a6474', 'ashlar', 0, -0.4 - i * 0.25, 20 + i * 4)); // schody w dół
+    g.add(sph(4 / PXU, '#4a6a3a', 'fur', P(-16, 40, -12), [1.8, 0.5, 1.2])); g.add(sph(3 / PXU, '#4a6a3a', 'fur', P(18, 36, -8), [1.4, 0.5, 1]));
+    for (const s of [-1, 1]) { g.add(cyl3(1, 1, 16, '#3a2a1a', 'wood', s * 24, 0, 16, 6)); g.add(cone(2.2 / PXU, 6 / PXU, '#ffa040', 'glow', P(s * 24, 19, 16), null, 6)); g.add(mqGlow(1.8, '#ffd060', s * 24, 18, 17)); // pochodnie
+      g.add(sph(2.4 / PXU, '#e8e0c8', 'bone', P(s * 20, 1.5, 24))); g.add(sph(1, '#0c0806', 'stone', P(s * 20 - 0.8, 2.2, 26), [0.7 / PXU, 0.7 / PXU, 0.5 / PXU])); } // czaszki przy schodach
+    return g; },
   wreck() { const g = new THREE.Group(), hull = lathe([[0.001, -0.5], [0.5, -0.45], [0.75, -0.2], [0.8, 0.1], [0.7, 0.35]].map(([r, y]) => [r, y]), '#5a3a22', 'wood', P(0, 2, 0), [0.55, 0.9, 1.6]); hull.rotation.set(0.3, 0.4, 0.5); g.add(hull);
     const m = cyl3(1.4, 1.2, 40, ST.woodD, 'wood', 0, 0, 0, 8); m.rotation.z = -0.6; m.position.set(...P(4, 10, -4)); g.add(m); g.add(slab([[0, 0], [14, 2], [12, -14], [2, -16]].map(([a, b]) => [a / PXU, b / PXU]), 0.3 / PXU, '#c8b890', 'cloth', P(12, 22, -4), [0, 0.3, -0.3]));
     for (let i = 0; i < 3; i++) g.add(blk(6, 4, 5, ST.wood, 'wood', -18 + i * 8, -1, 14 + (i % 2) * 4, [0.2, i, 0.3])); return g; },
@@ -222,6 +236,34 @@ function mqCaravan(f) { // kryty wóz (plandeka w barwie gracza), koń w zaprzę
   g.add(mast(-10, 22, 0, 18)); g.add(slab([[0, 0], [10, -1], [8, -5], [10, -9], [0, -8]].map(([a, b]) => [a / PXU, b / PXU]), 0.3 / PXU, K, 'cloth', P(-10, 39, 0)));
   return g; }
 function mqBoatHero(f) { const g = mqBoat(true); g.rotation.z = [0, 0.04, 0, -0.04][f]; return g; }
+// Statek piracki: większy kadłub, dwa maszty z czarnymi żaglami (biała czaszka), proporzec, latarnia na rufie; kołysze się (4 klatki)
+function mqPirate(f) {
+  const g = new THREE.Group(), L = 2.6, B = 0.8, H = 0.42; g.add(mqHull(L, B, H, '#3a2618')); const inner = mqHull(L * 0.9, B * 0.82, H * 0.9, '#1e140c'); inner.position.y = 0.06; g.add(inner);
+  for (const y of [0.14, 0.28]) { const st = mqHull(L * 1.002, B * 1.01, 0.03, '#7a1e18'); st.position.y = y; g.add(st); } // czerwone pasy burty
+  for (const [x, h, w] of [[-0.35, 1.7, 0.95], [0.55, 1.35, 0.75]]) { g.add(cyl(0.03, 0.024, h, '#2a1a10', 'wood', [x, H + h / 2, 0]));
+    const sail = new THREE.PlaneGeometry(w, h * 0.62, 8, 8), sp = sail.attributes.position; for (let i = 0; i < sp.count; i++) { const u = sp.getX(i) / (w / 2), v = sp.getY(i) / (h * 0.62) + 0.5; sp.setZ(i, 0.14 * (1 - u * u) * Math.sin(v * Math.PI)); }
+    sail.computeVertexNormals(); const sm = new THREE.Mesh(sail, new THREE.MeshStandardMaterial({ color: '#1a1818', roughness: 0.95, side: THREE.DoubleSide })); sm.position.set(x, H + h * 0.55, 0.03); g.add(sm);
+    g.add(sph(0.09, '#e8e0cc', 'bone', [x, H + h * 0.6, 0.18], [1, 1.05, 0.4])); for (const s2 of [-1, 1]) g.add(sph(0.022, '#1a1818', 'stone', [x + s2 * 0.035, H + h * 0.62, 0.22])); } // czaszka na żaglu
+  g.add(slab([[0, 0], [0.32, -0.04], [0.24, -0.11], [0.32, -0.18], [0, -0.17]], 0.008, '#c81e1e', 'cloth', [-0.35, H + 1.68, 0])); // czerwony proporzec
+  g.add(box(0.36, 0.22, B * 0.7, '#3a2618', 'wood', [-L * 0.42, H + 0.11, 0])); g.add(sph(0.05, '#ffc860', 'glow', [-L * 0.52, H + 0.3, 0.1])); // nadbudówka rufowa z latarnią
+  g.add(cyl(0.016, 0.016, 0.7, '#2a1a10', 'wood', [L / 2 + 0.12, H + 0.16, 0], [0, 0, -1.1]));
+  g.rotation.z = [0, 0.05, 0, -0.05][f]; const w = mpGrp(g); w.scale.setScalar(30 / PXU * 0.85); return w;
+}
+// --- morze: wir i latarnia ---
+Object.assign(SITE3, {
+  whirlpool(f = 0) { // wir: spiralne pasma piany wokół ciemnego leja, obracają się (4 klatki = ćwierć obrotu)
+    const g = new THREE.Group(), funnel = cyl(24 / PXU, 2 / PXU, 6 / PXU, '#0e2a3a', 'win', P(0, -1, 0), null, null, 24); funnel.material = new THREE.MeshStandardMaterial({ color: '#0e2a3a', roughness: 0.1, metalness: 0.4 }); g.add(funnel);
+    for (let arm = 0; arm < 3; arm++) { const pts = []; for (let t = 0; t <= 1.001; t += 0.05) { const a = arm * 2.094 + t * 5.2 + f * Math.PI / 6, r = 26 * (1 - t * 0.85); pts.push(P(Math.cos(a) * r, 1.2 - t * 1.5, Math.sin(a) * r * 0.9)); }
+      g.add(tube(pts, 2.4 / PXU, 0.5 / PXU, '#e8f4f8', 'cloth')); }
+    for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28 + f * 0.5; g.add(sph(1.6 / PXU, '#f4fbff', 'cloth', P(Math.cos(a) * 28, 0.6, Math.sin(a) * 25), [1.6, 0.4, 1])); }
+    g.add(mqGlow(3, '#7ad0ff', 0, 0, 0)); return g; },
+  lighthouse() { // latarnia morska: skała przy brzegu, wieża w czerwone i białe pasy, galeria, jarzące się światło; maszt z flagą właściciela
+    const g = new THREE.Group(); g.add(mqRock('def', 0, 2, 26, 12, 22, 131, false)); g.add(blk(24, 6, 22, '#8a8478', 'rubble', 0, 8, 0));
+    for (let k = 0; k < 5; k++) g.add(cyl3(10 - k * 1.1, 9 - k * 1.1, 11, k % 2 ? '#f0ece0' : '#b02a20', 'plaster', 0, 14 + k * 11, 0, 18));
+    g.add(cyl3(10, 10, 2, '#3a3a40', 'iron', 0, 69, 0, 18)); for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28; g.add(cyl3(0.5, 0.5, 6, '#3a3a40', 'iron', Math.cos(a) * 9, 71, Math.sin(a) * 9, 4)); }
+    const lamp = cyl(5 / PXU, 5 / PXU, 8 / PXU, '#ffe080', 'glow', P(0, 75, 0), null, null, 12); lamp.material = lightMat('#fff0a0'); g.add(lamp); g.add(mqGlow(9, '#ffe890', 0, 75, 0));
+    g.add(coneRoof(7, 9, '#3a3a40', 'iron', 0, 79, 0, 12)); g.add(door(7, 10, 0, 14, 10, '#3a2a1a', '#8a8478')); g.add(mast(14, 14, 6, 26)); return g; },
+});
 // --- miejsca przygody ---
 Object.assign(SITE3, {
   sphinx() { // sfinks: leżący lew z ludzką głową w pasiastej chuście, na piaskowcowym cokole; oczy świecą, przy nim złamane kolumny
@@ -289,12 +331,12 @@ function mqBoat(hero = false) { // łódź żaglowa: kadłub z deskami, ciemne w
   if (hero) g.add(slab([[0, 0], [0.3, -0.03], [0.22, -0.1], [0.3, -0.17], [0, -0.16]], 0.008, '#ff00ff', 'cloth', [0.05, H + 1.52, 0]));
   g.add(cyl(0.012, 0.012, 0.5, '#4a3020', 'wood', [L / 2 + 0.05, H + 0.1, 0], [0, 0, -1.1])); // bukszpryt
   const w = mpGrp(g); w.scale.setScalar(30 / PXU * 0.95); return w; }
-const SITE3_ANIM = ['windmill', 'waterMill', 'camp', 'sacrifice', 'portal', 'campfire', 'buoy', 'dwarfForge']; // klatki 1–3 (klatka 0 = klucz bez numeru)
+const SITE3_ANIM = ['windmill', 'waterMill', 'camp', 'sacrifice', 'portal', 'campfire', 'buoy', 'dwarfForge', 'whirlpool']; // klatki 1–3 (klatka 0 = klucz bez numeru)
 for (const k of Object.keys(SITE3)) { MAP3['site_' + k] = () => mqWrap(SITE3[k](0)); if (SITE3_ANIM.includes(k)) for (let f = 1; f < 4; f++) MAP3[`site_${k}_${f}`] = () => mqWrap(SITE3[k](f)); }
 for (const k of Object.keys(MINE3)) MAP3['mine_' + k] = () => mqWrap(MINE3[k]());
 for (const k of Object.keys(BANK3)) for (const c of [0, 1]) MAP3[`bank_${k}_${c}`] = () => mqWrap(BANK3[k](!!c));
 MAP3.boat = () => mqWrap(mqBoat());
-for (let f = 0; f < 4; f++) { MAP3['boatHero_' + f] = () => mqWrap(mqBoatHero(f)); MAP3['caravan_' + f] = () => mqWrap(mqCaravan(f)); }
+for (let f = 0; f < 4; f++) { MAP3['boatHero_' + f] = () => mqWrap(mqBoatHero(f)); MAP3['caravan_' + f] = () => mqWrap(mqCaravan(f)); MAP3['pirate_' + f] = () => mqWrap(mqPirate(f)); }
 // --- miasta na mapie: fort frakcji (bez fortu: ratusz) z modeli miast (TOWN3), zmniejszony do ok. 3 pól szerokości ---
 function mqFit(g, width) { const b = new THREE.Box3().setFromObject(g), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3()), k = width / Math.max(sz.x, sz.z * 0.8);
   g.position.set(-c.x, -b.min.y, -c.z); const w = mpGrp(g); w.scale.setScalar(k); return mpGrp(w); }
