@@ -1,5 +1,5 @@
 // Morze: piraci na statkach i morskie stwory (strażnicy wody), wiry w parach (połowa najsłabszego oddziału), latarnie (ruch łodzi),
-// bitwa morska na dwóch pokładach z kładkami; brama podziemi jako kamienna czaszka. Uruchom: npm test
+// bitwa morska na dwóch pokładach z kładkami (malowane żaglowce); brama podziemi jako kamienna czaszka. Uruchom: npm test
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openGame, newGame } = require('./harness');
@@ -44,9 +44,9 @@ test('bitwa morska: dwa pokłady, woda między nimi, przejście kładkami; bitwa
     h.x = spot[0]; h.y = spot[1]; h.boat = true; h.army = [{ cid: 'swordsman', n: 30 }, { cid: 'archer', n: 30 }, null, null, null, null, null]; m.count = 3;
     const B = createBattle(st, h, m), water = [...B.obst.values()].filter(o => o.o === 'sea').length, planks = NAVAL_PLANKS.every(y => NAVAL_GAP.every(x => !B.obst.has(hexKey(x, y))));
     setScreen('battle', { battle: B }); G.fade.a = 0; B.auto = true; for (let i = 0; i < 4000 && !B.over; i++) await new Promise(res => setTimeout(res, 15));
-    const out = { naval: B.naval, water, planks, over: B.over }; setScreen('adventure', {}); return out;
+    const out = { naval: B.naval, water, planks, over: B.over, painted: !!(BATTLE_BG_IMG.morska && BATTLE_BG_IMG.morska._ok) }; setScreen('adventure', {}); return out;
   });
-  assert.equal(r.naval, true); assert.equal(r.water, 3 * (9 - 2), 'woda: 3 kolumny bez 2 kładek'); assert.ok(r.planks); assert.equal(r.over, 'win');
+  assert.equal(r.naval, true); assert.equal(r.water, 3 * (9 - 2), 'woda: 3 kolumny bez 2 kładek'); assert.ok(r.planks); assert.equal(r.over, 'win'); assert.ok(r.painted, 'malowany obraz statków');
 });
 
 test('brama podziemi i obiekty morskie mają modele (czaszka, wir w 4 klatkach, latarnia, statek piracki)', async () => {
