@@ -279,9 +279,9 @@ function placeObjects(st) {
   // odległość od najbliższego startu gracza (pierwsze miejsca na liście); d01 = 0 przy starcie, 1 daleko od wszystkich graczy
   const starts = map.sites.slice(0, clamp(playerSlots(st.settings).length, 1, map.sites.length)), spread = levelSize(map) / Math.sqrt(starts.length) * 0.7;
   const dStart = (x, y) => Math.min(...starts.map(s => Math.hypot(x - s.x, y - s.y))), d01 = (x, y) => clamp(dStart(x, y) / spread, 0, 1);
-  // Okolica startu (ok. dzień marszu po ziemi, nie w linii prostej): bez potworów, żeby żadnego gracza nie zamknął strażnik w wąskim
+  // Okolica startu (ok. pół dnia marszu po ziemi, nie w linii prostej): bez potworów, żeby żadnego gracza nie zamknął strażnik w wąskim
   // przejściu tuż za miastem (półwysep, dolina w górach)
-  const home = new Uint8Array(N); { const H = clamp(Math.round(levelSize(map) / 4), 9, 16), dist = new Int16Array(N).fill(-1), q = [];
+  const home = new Uint8Array(N); { const H = clamp(Math.round(levelSize(map) / 6), 7, 12), dist = new Int16Array(N).fill(-1), q = [];
     for (const s of starts) { const i = s.y * n + s.x; dist[i] = 0; q.push(i); }
     for (let k = 0; k < q.length; k++) { const i = q[k], x = i % n, y = (i / n) | 0; home[i] = 1; if (dist[i] >= H) continue;
       for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X < 0 || Y < 0 || X >= n || Y >= n || dist[j] >= 0 || map.terrain[j] === TER.WATER || map.obst[j]) continue; dist[j] = dist[i] + 1; q.push(j); } } }
@@ -310,7 +310,9 @@ function placeObjects(st) {
     if (!p) return null; const [x, y] = p, blocks = [y * n + x - 1, (y - 1) * n + x - 1, (y - 1) * n + x];
     const m = add({ type: 'mine', kind, x, y, owner: -1, blocks }, [y * n + x, ...blocks]); occ[(y + 1) * n + x] = 1; return m;
   };
-  const guard = (m, boost) => { for (const [dx, dy] of [[1, 0], [1, 1], [-1, 1], [1, -1]]) { const x = m.x + dx, y = m.y + dy; if (ok(x, y) && dStart(x, y) >= 6) { monster(x, y, boost); return; } } };
+  // Strażnik obok obiektu: najchętniej przed wejściem (pola poniżej i z boku), w razie potrzeby dwa pola dalej; nie w okolicy startu
+  const GUARD_AT = [[1, 1], [0, 1], [-1, 1], [1, 0], [-1, 0], [1, -1], [-1, -1], [0, -1], [2, 1], [-2, 1], [1, 2], [-1, 2], [0, 2], [2, 0], [-2, 0], [2, 2], [-2, 2]];
+  const guard = (m, boost) => { for (const [dx, dy] of GUARD_AT) { const x = m.x + dx, y = m.y + dy; if (ok(x, y) && dStart(x, y) >= 5 && !home[y * n + x] && monster(x, y, boost)) return; } };
   map.sites.forEach((s, k) => {
     for (const kind of ['wood', 'ore']) { const m = placeMine(kind, s, 4, 9); if (m && k >= starts.length) guard(m, 0); }
     const m = placeMine(RARE[Math.floor(rng() * 4)], s, 6, 14); if (m) guard(m, 0);
@@ -321,18 +323,18 @@ function placeObjects(st) {
   for (let k = Math.round(NL / 190); k > 0; k--) {
     const p = best((x, y) => dStart(x, y) >= 2, rng() < 0.5 ? FIT.hidden : FIT.road, 30); if (!p) continue; const res = RESOURCES[Math.floor(rng() * 7)].id;
     const amount = res === 'gold' ? 800 + Math.floor(rng() * 6) * 100 : (res === 'wood' || res === 'ore') ? 8 + Math.floor(rng() * 6) : 4 + Math.floor(rng() * 4);
-    hideIn(add({ type: 'res', res, amount: Math.max(1, Math.round(amount * rule(st, 'treasure') / (res === 'gold' ? 100 : 1)) * (res === 'gold' ? 100 : 1)), x: p[0], y: p[1] }, [p[1] * n + p[0]]));
+    add({ type: 'res', res, amount: Math.max(1, Math.round(amount * rule(st, 'treasure') / (res === 'gold' ? 100 : 1)) * (res === 'gold' ? 100 : 1)), x: p[0], y: p[1] }, [p[1] * n + p[0]]); // surowce zawsze widać (ukryte bywają tylko skrzynie i artefakty)
   }
   for (let k = Math.round(NL / 480); k > 0; k--) {
     const p = best((x, y) => dStart(x, y) >= 3, FIT.hidden, 40); if (!p) continue; const v = Math.floor(rng() * 3);
     hideIn(add({ type: 'chest', gold: Math.round((1000 + v * 500) * rule(st, 'treasure') / 100) * 100, exp: Math.round((500 + v * 500) * rule(st, 'treasure') / 100) * 100, x: p[0], y: p[1] }, [p[1] * n + p[0]]));
   }
   // potwory: część pilnuje przejść (przełęcze, brody, wąskie gardła dróg), reszta krąży przy drogach
-  for (const [fx, fy] of map.fords || []) { if (rng() < 0.45 && okRoad(fx, fy) && dStart(fx, fy) >= 8) monster(fx, fy); }
+  for (const [fx, fy] of map.fords || []) { if (rng() < 0.65 && okRoad(fx, fy) && dStart(fx, fy) >= 8) monster(fx, fy); }
   { const narrow = (x, y) => map.road[y * n + x] && around(x, y, 1, j => map.obst[j] === OBST.MOUNT || map.terrain[j] === TER.WATER) >= 4; // droga ściśnięta górami albo wodą
     const cand = []; for (let y = 1; y < n - 1; y++) for (let x = 1; x < n - 1; x++) if (okRoad(x, y) && dStart(x, y) >= 8 && narrow(x, y)) cand.push([x, y]);
-    for (let k = Math.round(NL / 900); k > 0 && cand.length; k--) { const [x, y] = cand.splice(Math.floor(rng() * cand.length), 1)[0]; monster(x, y); } }
-  for (let k = Math.round(NL / 520); k > 0; k--) { const p = best((x, y) => dStart(x, y) >= 6, (x, y) => (dRoad[y * n + x] <= 2 ? 1.5 : 0), 25); if (p) monster(p[0], p[1]); }
+    for (let k = Math.round(NL / 650); k > 0 && cand.length; k--) { const [x, y] = cand.splice(Math.floor(rng() * cand.length), 1)[0]; monster(x, y); } }
+  for (let k = Math.round(NL / 340); k > 0; k--) { const p = best((x, y) => dStart(x, y) >= 6, (x, y) => (dRoad[y * n + x] <= 2 ? 1.5 : 0), 25); if (p) monster(p[0], p[1]); }
   // pierwsze walki: tuż za okolicą każdego startu 2–3 słabe oddziały (przy drodze), do pokonania armią startową
   const homeEdge = (x, y) => { if (home[y * n + x]) return false; for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (X >= 0 && Y >= 0 && X < n && Y < n && home[Y * n + X]) return true; } return false; };
   for (const s0 of starts) for (let k = 0; k < 2 + (rng() < 0.5 ? 1 : 0); k++) {
@@ -383,7 +385,8 @@ function placeObjects(st) {
         const q = best((x, y) => { const d = Math.hypot(x - p[0], y - p[1]); return d >= 7 && d <= 16 && !home[y * n + x] && !map.road[y * n + x]; }, FIT.hidden, 30); if (!q) continue;
         add(o, [p[1] * n + p[0]]); const m = monster(q[0], q[1], 1); if (!m) { o.dead = true; continue; } o.target = m.id; m.quest = o.id; continue;
       }
-      add(o, [p[1] * n + p[0]]); if (kind === 'campfire' || kind === 'graveyard') hideIn(o); if (S.guard) guard(o, kind === 'prison' ? 1 : 0);
+      add(o, [p[1] * n + p[0]]); if (kind === 'campfire' || kind === 'graveyard') hideIn(o);
+      if (S.guard || !UNGUARDED_SITES.includes(kind)) guard(o, kind === 'prison' || S.ai >= 2500 ? 1 : 0); // większość miejsc ma strażnika (cenne: silniejszego)
     }
   }
   // Pierwsze dni: przy każdym starcie w zasięgu 1–2 dni marszu ciekawe miejsce bez strażnika i skrzynia (jeśli los ich tam nie postawił)

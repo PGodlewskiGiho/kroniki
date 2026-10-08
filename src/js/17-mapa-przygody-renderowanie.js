@@ -612,6 +612,7 @@ function drawWorldPixel(b, st) {
         list.push({ y: y + 0.45, occ: i, s: obstacleSprite(map.obst[i], map.terrain[i], thash(x, y, map.seed + 2) % (map.obst[i] === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y)), x, ty: y, ug: levelOf(map, x, y) }); } } }
   list.sort((a, c) => a.y - c.y);
   const shadow = (w, x, y) => { b.globalAlpha = 0.3; blitG(b, shadowSprite(w), x, y); b.globalAlpha = 1; };
+  const resGlow = (x, y) => { b.globalAlpha = 0.55 + 0.15 * Math.sin(G.time * 2.4 + x * 0.05); blit(b, resGlowSprite(), x, y); b.globalAlpha = 1; };
   // każdy rysowany obiekt zapamiętuje swoje sprite'y (do sylwetek zasłoniętych obiektów)
   const recs = [], bl = (sp, x, y) => { const g = gradedSprite(sp); blit(b, g, x, y); if (cur) cur.push([g, x, y]); }; let cur = null;
   for (const it of list) {
@@ -622,7 +623,7 @@ function drawWorldPixel(b, st) {
     if (it.caravan) { const x = ox + it.cx * T + 16, y = oy + it.cy * T + 16, c3 = map3dTinted(`caravan_${Math.floor(G.time * 6) % 4}`, ownerColor(st, it.caravan.owner)); if (c3) { bl(c3, x, y + 8); continue; } shadow(12, x, y + 10); bl(caravanSprite(ownerColor(st, it.caravan.owner), Math.floor(G.time * 3) % 2), x, y + 8); continue; }
     const ob = it.ob, px = ox + ob.x * T + 16, py = oy + ob.y * T + 16;
     if (ob.type === 'monster') { shadow(10, px, py + 10); bl(creatureSprite(ob.cid, ob.dir, Math.floor(G.time * 3 + ob.x * 0.7 + ob.y * 0.3) % 4), px, py + 10); }
-    else if (ob.type === 'res') { const s3 = map3dSprite('res_' + ob.res); if (s3) bl(s3, px, py + 6); else { shadow(10, px, py + 9); bl(resSprite(ob.res), px, py + 2); } } // 3D: własny cień na ziemi
+    else if (ob.type === 'res') { const s3 = map3dSprite('res_' + ob.res); resGlow(px, py + 7); if (s3) bl(s3.big || (s3.big = { c: s3.c, ax: s3.ax, ay: s3.ay, u: s3.u * RES_K, raw: true }), px, py + 7); else { shadow(10, px, py + 9); bl(resSprite(ob.res), px, py + 2); } } // 3D: własny cień; większe niż model i z poświatą, żeby były widoczne na każdym terenie
     else if (ob.type === 'chest') { const s3 = map3dSprite('chest'); if (s3) bl(s3, px, py + 6); else { shadow(10, px, py + 9); bl(chestSprite(), px, py + 2); } }
     else if (ob.type === 'boat') { const s3 = map3dSprite('boat'); if (s3) bl(s3, px, py + 4 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.2)); else bl(boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py); }
     else if (ob.type === 'site') { const f3 = siteFrame(ob), s3 = (f3 && map3dSprite(`site_${ob.kind}_${f3}`)) || map3dSprite('site_' + ob.kind); /* klatki ruchu: wiatrak, młyn, ogień, portal */ if (s3) bl(s3, px, py + 6); else { shadow(14, px, py + 12); bl(siteSprite(ob.kind, siteFrame(ob)), px, py + 14); } }

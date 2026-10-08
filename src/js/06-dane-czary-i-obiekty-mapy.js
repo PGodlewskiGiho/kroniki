@@ -137,6 +137,8 @@ const SITES = {
   caravanserai: { name: 'Karawanseraj', use: 'free', per: 3800, ai: 0, desc: 'kupcy z dalekich krain sprzedają co tydzień jeden artefakt' },
   wishingWell: { name: 'Studnia życzeń', use: 'day', per: 3000, ai: 0, cost: 500, desc: 'za 500 złota życzenie: szczęście, złoto, czasem artefakt… albo nic (raz dziennie)' },
 };
+// Miejsca bez strażnika (drobne, przydrożne albo same są wyzwaniem); resztę pilnuje potwór obok (placeObjects)
+const UNGUARDED_SITES = ['well', 'stables', 'temple', 'fountain', 'market', 'inn', 'caravanserai', 'questHut', 'sphinx', 'oasis', 'mushroomRing', 'campfire'];
 // Zagadki sfinksa: [pytanie, dobra odpowiedź, zła, zła] (kolejność odpowiedzi w oknie losowa)
 const RIDDLES = [
   ['Rano chodzi na czterech nogach, w południe na dwóch, a wieczorem na trzech. Co to?', 'Człowiek', 'Pies', 'Smok'],

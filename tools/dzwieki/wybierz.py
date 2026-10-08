@@ -54,7 +54,7 @@ def onsets(x, min_gap=0.09):
     return out
 
 def shape(seg, dur, gain=0.0, lp=None, loop=False):
-    if loop: return shape_loop(seg, dur, gain)
+    if loop: return shape_loop(sosfilt(butter(4, lp, 'low', fs=SR, output='sos'), seg) if lp else seg, dur, gain)
     n = int(dur * SR); seg = seg[:n].copy()
     if lp: seg = sosfilt(butter(4, lp, 'low', fs=SR, output='sos'), seg)
     fi = int(0.003 * SR); seg[:fi] *= np.linspace(0, 1, fi)

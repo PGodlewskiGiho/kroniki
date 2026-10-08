@@ -70,7 +70,7 @@ CAT = {
   'amb_tavern': dict(q=['tavern', 'medieval tavern', 'pub crowd', 'crowd chatter', 'inn'], need=['tavern', 'pub', 'inn', 'chatter'], no=['football', 'stadium', 'applause', 'cheer'], dur=4.0, n=1, loop=True, amb=True),
   'amb_bubble': dict(q=['bubbling', 'cauldron', 'boiling', 'bubbles', 'swamp bubbles'], need=['bubbl', 'cauldron', 'boil'], no=['kettle whistle', 'aquarium pump', 'underwater'], dur=4.0, n=1, loop=True, amb=True),
   'amb_crows': dict(q=['crows', 'raven', 'crow', 'ravens cawing', 'crow caw'], need=['crow', 'raven'], no=['music'], dur=4.0, n=1, loop=True, amb=True),
-  'amb_magic': dict(q=['magic hum', 'mystical drone', 'magical ambience', 'crystal hum', 'magic loop'], need=['magic', 'mystical', 'magical', 'hum'], no=['8bit', 'retro', 'arcade', 'speech'], dur=4.0, n=1, loop=True, amb=True),
+  'amb_magic': dict(q=['magic hum', 'mystical drone', 'magical ambience', 'crystal hum', 'magic loop'], need=['magic', 'mystical', 'magical', 'hum'], no=['8bit', 'retro', 'arcade', 'speech'], dur=4.0, n=1, loop=True, amb=True, lp=1300, gain=-4), # bez wysokiego świstu (portal, ołtarze)
   'amb_birds': dict(q=['birds chirping', 'forest birds', 'songbirds', 'birdsong', 'bird chirp'], need=['bird', 'birds', 'birdsong'], no=['crow', 'seagull', 'parrot', 'city', 'traffic'], dur=4.0, n=1, loop=True, amb=True),
   'amb_waves': dict(q=['waves', 'sea waves', 'shore', 'lapping water', 'ocean waves'], need=['wave', 'waves', 'shore', 'lapping'], no=['radio', 'synth', 'music', 'storm'], dur=4.0, n=1, loop=True, amb=True),
 }
