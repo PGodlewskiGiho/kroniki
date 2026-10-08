@@ -16,24 +16,24 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
       - run: node build.js --check
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.7'
       - name: Klucz debug z pamięci podręcznej (gdy nie ma sekretu)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.android/debug.keystore
           key: android-debug-keystore-v1
@@ -49,7 +49,7 @@ jobs:
           gradle -p android assembleRelease --no-daemon -PversionCode=${{ github.run_number }} -PversionName="1.1.${{ github.run_number }}"
           cp android/app/build/outputs/apk/release/app-release.apk kroniki-krolestw.apk
           ls -la kroniki-krolestw.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: kroniki-krolestw-apk
           path: kroniki-krolestw.apk
