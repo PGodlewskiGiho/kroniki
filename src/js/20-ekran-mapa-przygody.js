@@ -280,7 +280,7 @@ G.screens.adventure = {
       if (!human(st).explored[i]) return 'Nieodkryty teren. Wyślij tam bohatera, żeby zobaczyć, co się kryje.';
       const hh = heroAt(st, tx, ty);
       if (hh) return `${heroTitle(hh)}. Punkty ruchu: ${hh.mp} z ${heroMaxMP(hh)}. Doświadczenie: ${hh.exp}.`;
-      const ob = objectAt(st, i) || drawnObjectAt(st, tx, ty);
+      const ob = uiObjectAt(st, i) || drawnObjectAt(st, tx, ty);
       if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid]; return `${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}. Usposobienie: ${MONSTER_MOODS[monsterMood(ob)]}${hero(st) ? (r => r ? (r.kind === 'join' ? ' – chcą dołączyć do twojego bohatera' : ' – uciekną przed twoim bohaterem') : '')(neutralReaction(st, hero(st), ob)) : ''}.`; }
       if (ob && ob.type === 'town') {
         const t = st.towns[ob.townId];
@@ -331,7 +331,7 @@ G.screens.adventure = {
     const other = heroAt(st, tx, ty); // własny bohater: obok = spotkanie i wymiana, dalej = ścieżka do niego (spotkanie po dojściu, jak w Heroes 3)
     if (other && other !== h && other.owner === ME && Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) { showMeeting(st, h, other); return; }
     if (tx === h.x && ty === h.y) {
-      const here = objectAt(st, ty * n + tx);
+      const here = uiObjectAt(st, ty * n + tx);
       if (here && here.type === 'town' && here.owner === h.owner) G.go('town', { townId: here.townId }); else this.heroInfo();
       return;
     }

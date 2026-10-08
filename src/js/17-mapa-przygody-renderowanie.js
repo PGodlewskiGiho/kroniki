@@ -490,9 +490,9 @@ function screenToTile(st, x, y) { return { tx: Math.floor(((x - VIEW.x) / ZOOM +
 // dwóch pól – kliknięcie (i podświetlenie, kursor, opis) w głowę bohatera albo dach zamku trafia w nie, a nie w puste pole za nimi
 function pickTile(st, x, y) {
   const p = screenToTile(st, x, y), n = st.map.n; if (p.tx < 0 || p.ty < 0 || p.tx >= n || p.ty >= n) return p;
-  if (heroAt(st, p.tx, p.ty)) return p; const own = objectAt(st, p.ty * n + p.tx); if (own) return own.blocks ? { tx: own.x, ty: own.y } : p;
+  if (heroAt(st, p.tx, p.ty)) return p; const own = uiObjectAt(st, p.ty * n + p.tx); if (own) return own.blocks ? { tx: own.x, ty: own.y } : p;
   const ob = drawnObjectAt(st, p.tx, p.ty); if (ob) return { tx: ob.x, ty: ob.y };
-  if (p.ty + 1 < n) { if (heroAt(st, p.tx, p.ty + 1)) return { tx: p.tx, ty: p.ty + 1 }; const o = objectAt(st, (p.ty + 1) * n + p.tx); if (o && ['monster', 'art', 'res', 'chest', 'boat'].includes(o.type)) return { tx: p.tx, ty: p.ty + 1 }; }
+  if (p.ty + 1 < n) { if (heroAt(st, p.tx, p.ty + 1)) return { tx: p.tx, ty: p.ty + 1 }; const o = uiObjectAt(st, (p.ty + 1) * n + p.tx); if (o && ['monster', 'art', 'res', 'chest', 'boat'].includes(o.type)) return { tx: p.tx, ty: p.ty + 1 }; }
   return p;
 }
 // Zmienia przybliżenie o krok (d = -1 bliżej, +1 dalej), trzymając w miejscu punkt świata pod myszą (sx, sy)
@@ -601,7 +601,7 @@ function drawWorldPixel(b, st) {
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
   drawHoles(b, st, ox, oy, tx0, ty0, tx1, ty1);
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
-  for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1) list.push({ y: ob.y, ob });
+  for (const ob of st.objects) if (!ob.dead && ob.x >= tx0 && ob.x <= tx1 && ob.y >= ty0 && ob.y <= ty1 && objSeen(st, ob)) list.push({ y: ob.y, ob });
   for (const h of st.heroes) { if (h.garrison != null) continue; const [hx, hy] = heroDrawPos(h); list.push({ y: hy + 0.5, hero: h, hx, hy }); }
   for (const c of st.caravans || []) { if (c.owner !== ME) continue; const [cx, cy] = caravanPos(st, c); if (cx >= tx0 && cx <= tx1 && cy >= ty0 && cy <= ty1) list.push({ y: cy + 0.4, caravan: c, cx, cy }); } // własne karawany w drodze
   // drzewa, góry i skały są wtopione w teren (pod obiektami); te, które stoją tuż przed obiektem albo bohaterem
@@ -663,7 +663,7 @@ function drawWorldPixel(b, st) {
   drawFogPixel(b, st, ox, oy, c0, c1, r0, r1);
   if (G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, { x: VIEW.x, y: VIEW.y, w: VIEW.w * ZOOM, h: VIEW.h * ZOOM })) {
     const { tx, ty } = pickTile(st, G.mouse.x, G.mouse.y), x = ox + tx * T, y = oy + ty * T;
-    { const n = st.map.n, i = ty * n + tx, live = tx >= 0 && ty >= 0 && tx < n && ty < n && (heroAt(st, tx, ty) || objectAt(st, i)); // bohater albo obiekt do kliknięcia: złoty pierścień pod nim
+    { const n = st.map.n, i = ty * n + tx, live = tx >= 0 && ty >= 0 && tx < n && ty < n && (heroAt(st, tx, ty) || uiObjectAt(st, i)); // bohater albo obiekt do kliknięcia: złoty pierścień pod nim
       if (live) { b.save(); b.strokeStyle = 'rgba(255,214,110,.9)'; b.lineWidth = 2 * PIX; b.shadowColor = '#ffd060'; b.shadowBlur = 8; b.beginPath(); b.ellipse(x + T / 2, y + T * 0.78, T * 0.55, T * 0.26, 0, 0, Math.PI * 2); b.stroke(); b.restore(); } }
     b.fillStyle = 'rgba(255,240,190,.55)'; const q = PIX; b.fillRect(x, y, T, q); b.fillRect(x, y + T - q, T, q); b.fillRect(x, y + q, q, T - 2 * q); b.fillRect(x + T - q, y + q, q, T - 2 * q);
   }
@@ -802,7 +802,7 @@ function tileInfo(st, tx, ty) {
   const i = ty * n + tx; if (!human(st).explored[i]) return 'Nieodkryty teren';
   const h = heroAt(st, tx, ty); if (h) return heroTitle(h);
   if ((st.holes || []).includes(i)) return 'Wykopany dół: tu już ktoś szukał Graala';
-  const ob = objectAt(st, i);
+  const ob = uiObjectAt(st, i);
   if (ob) {
     if (ob.type === 'monster') return `${qtyName(ob.count)} ${CREATURES[ob.cid].gen}`;
     if (ob.type === 'town') { const t = st.towns[ob.townId]; return `${t.name}, ${ob.owner === ME ? 'twoje miasto' : ob.owner < 0 ? 'miasto niezależne' : 'obce miasto'}`; }

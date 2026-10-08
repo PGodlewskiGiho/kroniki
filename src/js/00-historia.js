@@ -332,5 +332,9 @@
    Bezpieczeństwo: .npmrc ignore-scripts, npm ci --ignore-scripts i npm audit w CI, Dependabot, workflowy z minimalnymi
    uprawnieniami (persist-credentials: false, klucz APK tylko na main), .gitignore na klucze i sekrety, safetensors w narzędziach
    AI, sieć: Net.unpack z limitem NET_MAX (bomba gzip), netName, odrzucanie obcych wiadomości; Android: bezpieczna nazwa pliku.
+   Mapa jak podróż: generateMap – pasma górskie (kręte grzbiety z przełęczami i odnogami), pogórze, zwarte puszcze z polanami,
+   rzeki z gór do morza z brodami (map.fords). placeObjects – ~35% mniej obiektów, większe nagrody, miejsce wg okolicy (FIT:
+   przy drodze, nad wodą, w gąszczu, w górach, w zakamarkach) z odstępem; potwory na brodach i w wąskich przejściach; skarby
+   w gąszczu ukryte (o.hid, objSeen/spotHidden/uiObjectAt: widoczne z 2 pól). Poprawka: próbna walka SI nie zużywa many.
    ===================================================================================== */
 

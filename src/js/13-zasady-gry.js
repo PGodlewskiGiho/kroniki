@@ -12,7 +12,17 @@ function reveal(st, cx, cy, r, owner = ME) {
     if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; if (!ex[i]) { ex[i] = 1; changed = true; }
   }
   if (changed && owner === ME) MapRender.miniDirty = true;
+  spotHidden(st, cx, cy, owner);
 }
+// Skarby ukryte w gąszczu albo wśród skał (o.hid, rozmieszczenie: placeObjects): gracz widzi je dopiero, gdy jego bohater
+// przejdzie najwyżej 2 pola od nich (o.fd[gracz]); do tego czasu na mapie jest tylko las
+const objSeen = (st, o, owner = ME) => !o.hid || !!(o.fd && o.fd[owner]);
+function spotHidden(st, cx, cy, owner) {
+  let found = 0; for (const o of st.objects) if (o.hid && !o.dead && Math.abs(o.x - cx) <= 2 && Math.abs(o.y - cy) <= 2 && !(o.fd && o.fd[owner])) { (o.fd = o.fd || {})[owner] = 1; found++; }
+  if (found && owner === ME && G.state === st && G.screen === G.screens.adventure) { G.dirty = true; G.screens.adventure.flash(found > 1 ? 'Bohater dostrzega w gąszczu ukryte skarby!' : 'Bohater dostrzega coś ukrytego w gąszczu!', '#ffd870'); Sfx.play('chest', { vol: 0.25 }); }
+}
+// Obiekt na polu, jaki widzi gracz (ukryty nieodkryty skarb = puste pole): podpowiedzi, kursor, wskazywanie myszą
+function uiObjectAt(st, i) { const o = objectAt(st, i); return o && objSeen(st, o) ? o : null; }
 // Pole, na które można wejść. Woda tylko dla bohatera w łodzi albo jako pole z łodzią (wsiadanie).
 function passableTile(st, x, y, h = null) {
   const map = st.map, n = map.n; if (x < 0 || y < 0 || x >= n || y >= n) return false;

@@ -124,7 +124,7 @@ test('telefon: dawny ekran (nowa gra) w pełnej wielkości, przewijany kółkiem
 
 test('dotyk na mapie: pierwsze stuknięcie pokazuje opis celu, drugie wysyła bohatera', async () => {
   await newGame(page, { opponents: 0 }, 5);
-  const r = await page.evaluate(() => { const st = G.state, h = hero(st), S = G.screens.adventure, ob = st.objects.find(o => o.type === 'mine' && Math.abs(o.x - h.x) < 6 && Math.abs(o.y - h.y) < 6);
+  const r = await page.evaluate(() => { const st = G.state, h = hero(st), S = G.screens.adventure, ob = st.objects.filter(o => o.type === 'mine').sort((a, b) => Math.hypot(a.x - h.x, a.y - h.y) - Math.hypot(b.x - h.x, b.y - h.y))[0]; // najbliższa kopalnia (w odkrytej okolicy startu)
     G.mouse.type = 'touch'; S.tileClick(ob.x, ob.y); const first = { info: S.tapInfo && S.tapInfo.text, moving: !!(h.moving || h.anim) };
     S.tileClick(ob.x, ob.y); const second = !!(h.moving || h.anim) || h.path === null; G.mouse.type = 'mouse'; return { first, second, tap: S.tapInfo }; });
   assert.match(r.first.info, /Właściciel: nikt/); assert.equal(r.first.moving, false); assert.ok(r.second); assert.equal(r.tap, null);

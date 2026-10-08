@@ -151,7 +151,7 @@ test('bitwy automatyczne kończą się, są powtarzalne i zapisują wynik', asyn
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), army0 = JSON.stringify(h.army), out = [];
     for (const m of st.objects.filter(o => o.type === 'monster').slice(0, 25)) {
-      const a = simulateBattle(createBattle(st, h, m)), b = simulateBattle(createBattle(st, h, m));
+      const m0 = h.mana, a = simulateBattle(createBattle(st, h, m)); h.mana = m0; const b = simulateBattle(createBattle(st, h, m)); h.mana = m0; // czary w bitwie zużywają manę bohatera
       const units = B => B.units.map(u => [u.cid, u.n, u.dead]);
       out.push({ over: a.over, same: a.over === b.over && JSON.stringify(units(a)) === JSON.stringify(units(b)), rounds: a.round });
     }
@@ -163,6 +163,13 @@ test('bitwy automatyczne kończą się, są powtarzalne i zapisują wynik', asyn
     assert.ok(b.same, 'ten sam przebieg przy tym samym stanie');
   }
   assert.ok(r.armyUntouched, 'symulacja nie zmienia armii przed resolveBattle');
+});
+
+test('próbna walka komputera (aiFightLoss) nie zużywa many bohaterów', async () => {
+  await newGame(page, { mapSize: 'M' }, 2024);
+  const r = await page.evaluate(() => { const st = G.state, h = hero(st), m = st.objects.find(o => o.type === 'monster'); h.mana = 40;
+    for (let k = 0; k < 3; k++) aiFightLoss(st, h, m); return h.mana; });
+  assert.equal(r, 40);
 });
 
 test('wygrana usuwa potwora i daje doświadczenie, porażka: bohater znika i po tygodniu czeka w tawernach', async () => {
