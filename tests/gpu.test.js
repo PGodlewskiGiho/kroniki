@@ -33,6 +33,11 @@ test('mapa na karcie graficznej wygląda tak samo jak rysowana procesorem (teren
   assert.ok(r.same, 'ten sam rozmiar zrzutów');
   assert.ok(r.mean < 2, `średnia różnica ${r.mean.toFixed(2)}`); assert.ok(r.big < 0.5, `wyraźnie różnych pikseli ${r.big.toFixed(2)}%`);
   assert.ok(st.shown && st.quads > 30, `prostokątów w klatce: ${st.quads}`);
+  // atlas: małe obrazki we wspólnych teksturach (mniej poleceń rysowania niż prostokątów); nieruchomy widok niczego nie wgrywa na nowo
+  // (sylwetki zasłoniętych obiektów z pamięci XRAY, a nie płótna roboczego przy każdej klatce)
+  await frames(page, 3); const s2 = await page.evaluate(() => ({ ...GLMap.stats, pages: GLMap.pages.length }));
+  assert.ok(s2.pages >= 1 && s2.draws * 2 < s2.quads, `poleceń rysowania ${s2.draws} przy ${s2.quads} prostokątach`);
+  assert.equal(s2.uploads, 0, 'wgrań na kartę w nieruchomej klatce');
   await page.evaluate(() => { window.update = window.__upd; });
 });
 

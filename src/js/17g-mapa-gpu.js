@@ -17,7 +17,7 @@ const GLMap = {
     try {
       const c = document.createElement('canvas'), o = { alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false, powerPreference: 'high-performance' };
       const gl = c.getContext('webgl', o) || c.getContext('experimental-webgl', o); if (!gl) return (this.ok = false);
-      c.addEventListener('webglcontextlost', e => { e.preventDefault(); this.ok = false; this.tex.clear(); this.bytes = 0; G.dirty = true; }); // utrata kontekstu: dalej rysuje procesor
+      c.addEventListener('webglcontextlost', e => { e.preventDefault(); this.ok = false; this.tex.clear(); this.pages = []; this.bytes = 0; G.dirty = true; }); // utrata kontekstu: dalej rysuje procesor
       const ext = gl.getExtension('WEBGL_debug_renderer_info'), name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
       this.hw = !/swiftshader|llvmpipe|softpipe|software|basic render/i.test(name); this.name = name;
       this.canvas = c; this.gl = gl; this.setup(gl); return (this.ok = true);
@@ -47,20 +47,38 @@ const GLMap = {
     this.ring = mk(128, 128, g => { g.strokeStyle = '#fff'; g.lineWidth = 7; g.shadowColor = '#fff'; g.shadowBlur = 10; g.beginPath(); g.arc(64, 64, 52, 0, TAU); g.stroke(); });
     gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND);
   },
-  // Tekstura obrazka: raz wgrana zostaje na karcie; płótna robocze (pixBuf, np. sylwetki zasłoniętych obiektów) wgrywane przy każdym użyciu
-  texOf(img) {
+  newTex(w, h) { const gl = this.gl, t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    if (w) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); return t; },
+  // Tekstura obrazka: { t, u0, v0, su, sv } (wycinek tekstury). Raz wgrana zostaje na karcie; małe obrazki (sprite'y obiektów,
+  // bohaterów, flagi, koła) trafiają do wspólnych tekstur atlasu, więc kolejne prostokąty idą jednym poleceniem rysowania.
+  // Płótna robocze (pixBuf, np. sylwetki zasłoniętych obiektów) wgrywane przy każdym użyciu; own: osobna tekstura (wzór fal, maski wody)
+  texOf(img, own) {
     const gl = this.gl; let r = this.tex.get(img); const dyn = !!img._ctx;
-    if (r && !dyn) { r.used = this.frame; return r.t; }
-    if (!r) { r = { t: gl.createTexture(), b: 0, used: this.frame }; this.tex.set(img, r); gl.bindTexture(gl.TEXTURE_2D, r.t);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); }
+    if (r && !dyn) { r.used = this.frame; return r; }
+    if (!r && !dyn && !own && !img._noAtlas && img.width <= this.AMAX && img.height <= this.AMAX) { r = this.atlasPut(img); this.tex.set(img, r); return r; }
+    if (!r) { r = { t: this.newTex(), u0: 0, v0: 0, su: 1, sv: 1, b: 0, used: this.frame }; this.tex.set(img, r); }
     else { this.flush(); gl.bindTexture(gl.TEXTURE_2D, r.t); }
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); this.stats.uploads++;
-    const b = (img.width || 1) * (img.height || 1) * 4; this.bytes += b - r.b; r.b = b; r.used = this.frame; return r.t;
+    const b = (img.width || 1) * (img.height || 1) * 4; this.bytes += b - r.b; r.b = b; r.used = this.frame; return r;
   },
+  // Atlas: strony AT×AT pikseli dzielone na półki (rzędy obrazków podobnej wysokości), 1 px pustego odstępu wokół obrazka
+  // (gładkie skalowanie nie łapie sąsiada). Pełne strony (najwyżej APAGES): atlas zaczyna się od nowa, obrazki wgrają się ponownie
+  AT: 2048, AMAX: 256, APAGES: 4, pages: [],
+  atlasPut(img) {
+    const w = img.width + 2, h = img.height + 2, A = this.AT, gl = this.gl;
+    const fit = pg => { for (const s of pg.shelves) if (h <= s.h && s.h <= h + 24 && s.x + w <= A) { const x = s.x; s.x += w; return [x, s.y]; } if (pg.y + h > A) return null; pg.shelves.push({ y: pg.y, h, x: w }); pg.y += h; return [0, pg.y - h]; };
+    let pg = null, at = null; for (const p of this.pages) if ((at = fit(p))) { pg = p; break; }
+    if (!pg) { if (this.pages.length >= this.APAGES) this.atlasReset(); pg = { t: this.newTex(A, A), shelves: [], y: 0 }; this.pages.push(pg); this.bytes += A * A * 4; at = fit(pg); }
+    this.flush(); gl.bindTexture(gl.TEXTURE_2D, pg.t); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, at[0] + 1, at[1] + 1, gl.RGBA, gl.UNSIGNED_BYTE, img); this.stats.uploads++;
+    return { t: pg.t, pg, u0: (at[0] + 1) / A, v0: (at[1] + 1) / A, su: img.width / A, sv: img.height / A, b: 0, used: this.frame };
+  },
+  atlasReset() { this.flush(); const gl = this.gl; for (const p of this.pages) { gl.deleteTexture(p.t); this.bytes -= this.AT * this.AT * 4; } this.pages = []; for (const [k, r] of this.tex) if (r.pg) this.tex.delete(k); },
   // Obrazki nieużywane od dawna wypadają z karty (kawałki terenu daleko od kamery wrócą przy powrocie, w ~1 ms każdy)
   evict() {
-    if (this.bytes <= this.BUDGET && this.frame % 300) return; const gl = this.gl, old = [...this.tex].filter(([, r]) => r.used < this.frame - 2).sort((a, b) => a[1].used - b[1].used);
+    if (this.bytes <= this.BUDGET && this.frame % 300) return; const gl = this.gl, old = [...this.tex].filter(([, r]) => !r.pg && r.used < this.frame - 2).sort((a, b) => a[1].used - b[1].used);
     for (const [k, r] of old) { if (this.bytes <= this.BUDGET * 0.75 && r.used > this.frame - 900) break; gl.deleteTexture(r.t); this.bytes -= r.b; this.tex.delete(k); }
   },
   flush() {
@@ -71,8 +89,9 @@ const GLMap = {
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 32, 0); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 32, 8); gl.vertexAttribPointer(2, 4, gl.FLOAT, false, 32, 16);
     gl.drawArrays(gl.TRIANGLES, 0, this.n * 6); this.stats.draws++; this.n = 0;
   },
-  // Prostokąt (x0,y0)-(x1,y1) w przestrzeni rysowania, przekształcony macierzą m, z wycinkiem tekstury u0..u1, v0..v1 i barwą c
-  quad(tex, m, x0, y0, x1, y1, u0, v0, u1, v1, c, add) {
+  // Prostokąt (x0,y0)-(x1,y1) w przestrzeni rysowania, przekształcony macierzą m, z wycinkiem obrazka u0..u1, v0..v1 (0..1) i barwą c
+  quad(r, m, x0, y0, x1, y1, u0, v0, u1, v1, c, add) {
+    const tex = r.t; u0 = r.u0 + u0 * r.su; u1 = r.u0 + u1 * r.su; v0 = r.v0 + v0 * r.sv; v1 = r.v0 + v1 * r.sv;
     if (tex !== this.cur || add !== this.add || this.n >= this.N) { this.flush(); this.cur = tex; this.add = add; }
     const [a, b, cc, d, e, f] = m, B = this.buf, P = [[x0, y0, u0, v0], [x1, y0, u1, v0], [x0, y1, u0, v1], [x1, y0, u1, v0], [x1, y1, u1, v1], [x0, y1, u0, v1]];
     let k = this.n * 48; for (const [x, y, u, v] of P) { B[k++] = a * x + cc * y + e; B[k++] = b * x + d * y + f; B[k++] = u; B[k++] = v; B[k++] = c[0]; B[k++] = c[1]; B[k++] = c[2]; B[k++] = c[3]; }
@@ -98,7 +117,7 @@ const GLMap = {
   hideUnused() { if (!this.shown && this.canvas && this.canvas.style.display !== 'none') this.canvas.style.display = 'none'; },
   // Fale na kawałku terenu (WaterFx.draw): jeden prostokąt shadera wody zamiast składania warstw w płótnie
   water(ctx, ch, dx, dy, size, wx, wy) {
-    const gl = this.gl, t = G.time, D = MapRender.D, S = Math.round(ch.width / D), pat = this.texOf(WaterFx.pattern()), deep = this.texOf(ch._deep), shore = this.texOf(ch._shore);
+    const gl = this.gl, t = G.time, D = MapRender.D, S = Math.round(ch.width / D), pat = this.texOf(WaterFx.pattern(), true).t, deep = this.texOf(ch._deep, true).t, shore = this.texOf(ch._shore, true).t;
     this.flush(); const U = this.uw, fc = WaterFx.foamRgb || (WaterFx.foamRgb = gradeRgb(hexRgb('#eef8fc')).map(v => v / 255)), fa = 0.22 + 0.2 * Math.sin(t * 2.2);
     gl.useProgram(this.pWater); gl.uniform2f(U.uR, this.W, this.H); gl.uniform1f(U.uS, S); gl.uniform2f(U.uW, wx / D, wy / D);
     gl.uniform2f(U.uO1, Math.floor(t * 4), Math.floor(t * 1.5)); gl.uniform2f(U.uO2, -Math.floor(t * 3) + 21, Math.floor(t * 2) + 13);
