@@ -371,5 +371,9 @@
    (bitwy/morska.webp rysowany przez tools/tla-ai/szkic-morska.js, bez AI) z ruchomymi falami w szczelinie NAVAL_SEA.
    Surowce na mapie 70% (RES_K 1,33). Mapy Gigantyczna 180 i Bezkresna 216 (SITE_COUNT 12/14); najwięcej graczy wg mapy PLAYER_CAP
    (2/4/6/8/8/8, fitSlots wyłącza nadmiar); bohater startowy do wyboru na ekranie nowej gry (slots[].hero).
+   Etapy rozwoju: ścieżka mistrzowska na 10. poziomie (HERO_PATHS, 3 do wyboru wg CLASS_PATHS, h.mastery) i legenda na 20.
+   (Marszałek, Czempion, Łowca, Arcymistrz, Mędrzec, Wędrowiec, Namiestnik). Balans zmierzony tools/balans/bohaterowie.js
+   (indeks siły w bitwie): magowie byli na 20. poziomie 1,5×, na 25. 1,7× silniejsi od wojowników; teraz 1,03× i 1,13× dzięki
+   ścieżkom, drugiemu czarowi Bitewnego maga za potrójną manę (DOUBLE_CAST_COST) i mocy czarów powyżej SP_SOFT liczonej za pół.
    ===================================================================================== */
 

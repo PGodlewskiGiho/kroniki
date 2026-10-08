@@ -95,7 +95,7 @@ G.screens.hero = {
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
     if (inRect(x, y, SPEC_BOX)) return heroSpec(h) ? `Specjalność: ${specText(h)}.` : null;
     if (x >= 32 && x <= 310 && y >= 32 && y <= 104) { const f = heroFaction(h); return f ? `${heroTitle(h)}. Cecha frakcji (${factionOf(f).name}) — ${traitText(f)}.` : null; }
-    const tr = hitRect(this.talentRects || [], x, y); if (tr) return `Talent — ${talentText(tr.id)}.`;
+    const tr = hitRect(this.talentRects || [], x, y); if (tr) return tr.id.startsWith('path:') ? `Ścieżka mistrzowska — ${pathText(tr.id.slice(5), pathLv(h, tr.id.slice(5)))}${pathLv(h, tr.id.slice(5)) < 2 ? ` (na ${PATH_LEVELS[1]}. poziomie: ${pathText(tr.id.slice(5), 2)})` : ''}.` : `Talent — ${talentText(tr.id)}.`;
     const si = this.skillAt(x, y);
     if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
@@ -123,7 +123,7 @@ G.screens.hero = {
     text(ctx, `Doświadczenie: ${h.exp} / ${e1}`, 210, 142, { size: 13, weight: 500, align: 'center', color: '#5a3814' });
     // cechy
     PRIMARY.forEach((p, i) => {
-      const bx = 32 + i * 90, b = heroBonus(h, p.id);
+      const bx = 32 + i * 90, b = heroBonus(h, p.id) + pathStat(h, p.id);
       ctx.fillStyle = 'rgba(90,55,20,.12)'; rr(ctx, bx, 164, 84, 80, 4); ctx.fill(); if (!PIXEL_ART) { ctx.strokeStyle = 'rgba(120,80,30,.35)'; ctx.lineWidth = 1; ctx.stroke(); }
       if (PIXEL_ART || !drawUiPiece(ctx, { att: 'ic_sword', def: 'ic_shield', sp: 'ic_orb', kn: 'ic_scroll' }[p.id], bx + 28, 168, 28, 28)) iconStat(ctx, p.id, bx + 42, 184, '#6a4418');
       text(ctx, p.name, bx + 42, 208, { size: 12, weight: 500, align: 'center', color: '#5a3814' });
@@ -136,10 +136,11 @@ G.screens.hero = {
      `Zasięg widzenia: ${heroSight(h)}${sB ? ` (+${sB})` : ''} · mana ${h.mana} / ${heroMaxMana(h)} · czary: ${(h.spells || []).length}`,
      `Siła armii: ${Math.round(armyPower(h.army) * heroFactor(h))} (premia bohatera +${Math.round((heroFactor(h) - 1) * 100)}%)`,
      `Morale: ${signed(armyMorale(armyStacks(h.army).map(s => s.cid), h, null))} · Szczęście: ${signed(heroLuck(h))}`,
-     gold ? `Złoto z artefaktów: +${gold} dziennie` : null, (h.talents || []).length ? 'Talenty:' : null].filter(Boolean)
-      .forEach((l, i, L) => { const y = L.length > 4 && (h.talents || []).length ? 276 + i * 19 : 286 + i * 22; text(ctx, l, 32, y, { size: 15, weight: 500, color: '#2a1606' });
-        if (l === 'Talenty:') this.talentRects = h.talents.map((id, k) => { const r = { x: 100 + k * 26, y: y - 12, w: 24, h: 24, id }; skillIcon(ctx, 't_' + id, r.x + 12, y, 24); return r; }); });
-    if (!(h.talents || []).length) this.talentRects = [];
+     gold ? `Złoto z artefaktów: +${gold} dziennie` : null, (h.talents || []).length || h.mastery ? 'Talenty:' : null].filter(Boolean)
+      .forEach((l, i, L) => { const y = L.length > 4 && ((h.talents || []).length || h.mastery) ? 276 + i * 19 : 286 + i * 22; text(ctx, l, 32, y, { size: 15, weight: 500, color: '#2a1606' });
+        if (l === 'Talenty:') this.talentRects = [...(h.mastery ? ['path:' + h.mastery] : []), ...(h.talents || [])].map((id, k) => { const r = { x: 100 + k * 26, y: y - 12, w: 24, h: 24, id }, pa = id.startsWith('path:');
+          if (pa) { ctx.fillStyle = 'rgba(200,150,40,.35)'; ctx.beginPath(); ctx.arc(r.x + 12, y, 13, 0, TAU); ctx.fill(); } skillIcon(ctx, pa ? HERO_PATHS[id.slice(5)].icon : 't_' + id, r.x + 12, y, 24); return r; }); }); // ścieżka mistrzowska (złota obwódka), potem talenty
+    if (!(h.talents || []).length && !h.mastery) this.talentRects = [];
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });
     if (h.machines.length) text(ctx, `Machiny wojenne: ${h.machines.map(id => CREATURES[id].name.toLowerCase()).join(', ')}`, 210, 480, { size: 13, weight: 700, align: 'center', color: '#5a3814' });

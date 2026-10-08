@@ -2,7 +2,7 @@
 // Ruch, odkrywanie mapy, obiekty, potyczki, dochód, budowanie.
 // Dzienny limit ruchu zależy od najwolniejszej jednostki w armii (jak w oryginale)
 function mpBySpeed(s) { return s <= 3 ? 1500 : s >= 11 ? 2000 : [1560, 1630, 1700, 1760, 1830, 1900, 1960][s - 4]; }
-function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp') + (heroPerk(h, 'forcedMarch') ? 300 : 0) + 150 * perkCount(h, 'explorer') + (G.state && h.stableWeek === weekIndex(G.state) ? STABLE_MP : 0) + (h.boat && G.state ? LIGHTHOUSE_MP * lighthousesOf(G.state, h.owner) : 0); }
+function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp') + (heroPerk(h, 'forcedMarch') ? 300 : 0) + 150 * perkCount(h, 'explorer') + (pathV(h, 'wanderer') || [0])[0] + (G.state && h.stableWeek === weekIndex(G.state) ? STABLE_MP : 0) + (h.boat && G.state ? LIGHTHOUSE_MP * lighthousesOf(G.state, h.owner) : 0); }
 const lighthousesOf = (st, owner) => st.objects.reduce((k, o) => k + (o.kind === 'lighthouse' && !o.dead && o.owner === owner ? 1 : 0), 0);
 // Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
 function reveal(st, cx, cy, r, owner = ME) {
@@ -399,10 +399,20 @@ function initHeroProgress(h) {
 // --- umiejętności drugorzędne ---
 const heroSkill = (h, id) => { const s = h && h.skills && h.skills.find(s => s.id === id); return s ? s.lv : 0; };
 const heroPerk = (h, id) => !!(h && ((h.talents && h.talents.includes(id)) || (h.equip && Object.values(h.equip).some(a => a && ARTIFACTS[a].perk === id)))); // talent bohatera (TALENTS) albo z założonego artefaktu
+// Ścieżka mistrzowska bohatera (HERO_PATHS): 0 = nie ta, 1 = ścieżka (od 10. poziomu), 2 = legenda (od 20.); pathV = wartość działania
+const pathLv = (h, id) => (h && h.mastery === id ? (h.level >= PATH_LEVELS[1] ? 2 : 1) : 0);
+const pathV = (h, id) => { const L = pathLv(h, id); return L ? HERO_PATHS[id].v[L - 1] : null; };
+const pathTitle = h => (h && h.mastery ? HERO_PATHS[h.mastery][pathLv(h, h.mastery) === 2 ? 'legend' : 'name'] : '');
+const pathText = (id, L = 1) => `${HERO_PATHS[id][L === 2 ? 'legend' : 'name']}: ${HERO_PATHS[id].desc(HERO_PATHS[id].v[L - 1])}`;
+const pathStat = (h, key) => (key === 'att' || key === 'def' ? pathV(h, 'champion') || 0 : key === 'sp' ? (pathV(h, 'archmage') || [0])[0] : 0);
+const pathOffer = h => CLASS_PATHS[h.cls] || CLASS_PATHS.knight;
 const perkCount = (h, id) => (h && h.talents ? h.talents.filter(t => t === id).length : 0); // talenty brane wielokrotnie (Odkrywca)
 // Szkoły magii: poziom umiejętności szkoły czaru u bohatera, koszt many po zniżce, mnożnik obrażeń i leczenia
 const spellSchoolLv = (h, id) => { const S = SPELLS[id]; return S && S.school ? heroSkill(h, SCHOOLS[S.school].skill) : 0; };
-const spellCost = (h, id) => Math.max(1, Math.round(SPELLS[id].cost * (1 - SCHOOL_COST[spellSchoolLv(h, id)] / 100)));
+// Moc czarów w bitwie (obrażenia, leczenie, trucizna, czas działania): do SP_SOFT pełna, powyżej każdy punkt liczy się za pół – późni magowie
+// nie rosną bez końca (pomiar tools/balans/bohaterowie.js: bez limitu mag 20. poziomu był o 1/5 silniejszy od wojownika nawet bez Bitewnego maga)
+let SP_SOFT = 6; const effSp = sp => (sp <= SP_SOFT ? sp : SP_SOFT + Math.floor((sp - SP_SOFT) / 2)), spellPow = h => effSp(heroStat(h, 'sp'));
+const spellCost = (h, id) => Math.max(1, Math.round(SPELLS[id].cost * (1 - SCHOOL_COST[spellSchoolLv(h, id)] / 100) * (1 - (pathV(h, 'archmage') || [0, 0])[1] / 100)));
 const schoolMul = (h, id) => 1 + SCHOOL_POWER[spellSchoolLv(h, id)] / 100;
 const skillVal = (h, id) => { const L = heroSkill(h, id); if (!L) return 0; const sp = heroSpec(h), v = SKILLS[id].v[L - 1]; return sp && sp.skill === id ? Math.round(v * (1 + 0.05 * h.level)) : v; };
 // --- specjalności bohaterów (HERO_SPECS) ---
@@ -440,7 +450,7 @@ function learnSkill(h, id) {
   h.mana = Math.min(h.mana, heroMaxMana(h));
 }
 // --- talenty (co TALENT_EVERY poziomów, wybór z trzech) ---
-let TALENTS_ON = true; // wyłącznik do pomiarów balansu (rozgrywka SI bez talentów)
+let TALENTS_ON = true, PATHS_ON = true; // wyłączniki do pomiarów balansu (rozgrywka bez talentów / bez ścieżek mistrzowskich)
 const talentLevel = L => TALENTS_ON && L >= TALENT_EVERY && L % TALENT_EVERY === 0;
 const talentReady = (h, id) => { const T = TALENTS[id]; return (T.again || !heroPerk(h, id)) && (!T.req || T.req.some(([sk, lv]) => heroSkill(h, sk) >= lv)); };
 function talentOffer(st, h, L) {
@@ -464,8 +474,8 @@ const aiPickTalent = offer => offer.slice().sort((a, b) => AI_TALENT_ORDER.index
 const aiPickSkill = offer => offer.slice().sort((a, b) => AI_SKILL_ORDER.indexOf(a) - AI_SKILL_ORDER.indexOf(b))[0];
 // Suma premii z założonych artefaktów (plecak nie działa)
 const heroBonus = (h, key) => Object.values(h.equip || {}).reduce((s, id) => s + (id ? ARTIFACTS[id].bonus[key] || 0 : 0), 0);
-const heroStat = (h, key) => h.stats[key] + heroBonus(h, key);
-const heroSight = h => h.sight + heroBonus(h, 'sight') + skillVal(h, 'scouting') + perkCount(h, 'explorer') + (heroTrait(h, 'dungeon') ? 2 : 0);
+const heroStat = (h, key) => h.stats[key] + heroBonus(h, key) + pathStat(h, key);
+const heroSight = h => h.sight + heroBonus(h, 'sight') + skillVal(h, 'scouting') + perkCount(h, 'explorer') + (heroTrait(h, 'dungeon') ? 2 : 0) + (pathV(h, 'wanderer') || [0, 0])[1];
 // Premia bohatera do siły armii w potyczce: +5% za każdy punkt ataku i obrony
 const heroFactor = h => 1 + 0.05 * (heroStat(h, 'att') + heroStat(h, 'def'));
 // Doświadczenie z awansami. Wzrost cechy losowany deterministycznie (ziarno gry, bohater, poziom).
@@ -480,14 +490,24 @@ function gainExp(st, h, amount, then, silent = false) { // silent: awans bez oki
   }
   if (h.owner !== ME || silent || !ups.length) {
     for (const u of ups) { const offer = skillOffer(st, h, u.level); if (offer.length) learnSkill(h, aiPickSkill(offer)); if (talentLevel(u.level)) learnTalent(st, h, aiPickTalent(talentOffer(st, h, u.level))); }
+    if (!h.mastery && h.level >= PATH_LEVELS[0] && PATHS_ON) h.mastery = pathOffer(h)[0]; // ścieżka mistrzowska: komputer (i awans bez okien) bierze pierwszą ze swojej klasy
     if (then) then(); return ups.length;
   }
   const portrait = locked => ({ iconH: 76, locked, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) });
   // talent po wyborze umiejętności (co TALENT_EVERY poziomów)
   const talent = (i, u) => {
-    if (!talentLevel(u.level)) return next(i + 1);
+    if (!talentLevel(u.level)) return path(i, u);
     showDialog(`${h.name}: poziom ${u.level} odsłania talent. Wybierz jeden:`, talentOffer(st, h, u.level).map((id, k) => ({ label: TALENTS[id].name, sub: 'talent', tip: talentText(id) + '.', key: String(k + 1),
-      lead: (ctx, cx, cy) => skillIcon(ctx, 't_' + id, cx, cy), action: () => { learnTalent(st, h, id); next(i + 1); } })), Object.assign(portrait(true), { bw: 200 }));
+      lead: (ctx, cx, cy) => skillIcon(ctx, 't_' + id, cx, cy), action: () => { learnTalent(st, h, id); path(i, u); } })), Object.assign(portrait(true), { bw: 200 }));
+  };
+  // etapy rozwoju: na 10. poziomie wybór ścieżki mistrzowskiej, na 20. ścieżka staje się legendą (okno z wieścią)
+  const path = (i, u) => {
+    if (PATHS_ON && u.level >= PATH_LEVELS[0] && !h.mastery) return showDialog(`${h.name} osiąga mistrzostwo (poziom ${u.level}). Wybierz ścieżkę mistrzowską – na zawsze; na ${PATH_LEVELS[1]}. poziomie stanie się legendą:`,
+      pathOffer(h).map((id, k) => ({ label: HERO_PATHS[id].name, sub: 'ścieżka', tip: `${pathText(id, 1)}. Legenda (${PATH_LEVELS[1]}. poziom) – ${pathText(id, 2)}.`, key: String(k + 1),
+        lead: (ctx, cx, cy) => skillIcon(ctx, HERO_PATHS[id].icon, cx, cy), action: () => { h.mastery = id; h.mana = Math.min(h.mana, heroMaxMana(h)); next(i + 1); } })), Object.assign(portrait(true), { bw: 200 }));
+    if (PATHS_ON && u.level === PATH_LEVELS[1] && h.mastery) return showDialog(`${h.name} staje się legendą! Ścieżka ${HERO_PATHS[h.mastery].name} → ${pathText(h.mastery, 2)}.`, [{ label: 'Chwała!', key: 'enter', action: () => next(i + 1) }],
+      { iconH: 76, icon: (ctx, cx, cy) => skillIcon(ctx, HERO_PATHS[h.mastery].icon, cx, cy, 64) });
+    next(i + 1);
   };
   const next = i => {
     if (i >= ups.length) { if (then) then(); return; }
@@ -550,7 +570,7 @@ function giveArtifact(h, id) {
 }
 
 // --- czary: mana, nauka w gildii, czary na mapie -----------------------------------------------
-const heroMaxMana = h => Math.floor(10 * heroStat(h, 'kn') * (1 + skillVal(h, 'intelligence') / 100));
+const heroMaxMana = h => Math.floor(10 * heroStat(h, 'kn') * (1 + skillVal(h, 'intelligence') / 100 + (pathV(h, 'sage') || [0])[0] / 100));
 const knows = (h, id) => (h.spells || []).includes(id);
 // Czary gildii losowane raz, gdy powstaje dany poziom (deterministycznie z ziarna gry i miasta)
 function rollGuildLevel(st, t, L) {
@@ -825,7 +845,7 @@ function dailyIncomeAll(st, owner = ME) {
     inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; }
     if (autumn) { inc.wood += 1; inc.ore += 1; } if (t.faction === 'inferno') inc.sulfur += 1; // jesienne zbiory, cecha Inferna
   }
-  for (const h of st.heroes) if (h.owner === owner) { inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates') + (heroPerk(h, 'treasurer') ? 500 : 0); const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; // specjalność: surowiec
+  for (const h of st.heroes) if (h.owner === owner) { inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates') + (heroPerk(h, 'treasurer') ? 500 : 0); const gv = pathV(h, 'governor'); if (gv) { inc.gold += gv[0]; if (gv[1]) inc[PATH_RARE[st.dayTotal % 4]] += gv[1]; } const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; // specjalność: surowiec
     for (const id of Object.values(h.equip || {})) if (id && ARTIFACTS[id].bonus.res) for (const [r, n] of Object.entries(ARTIFACTS[id].bonus.res)) inc[r] += n; } // relikwia kupiecka
   return inc;
 }
@@ -1091,7 +1111,7 @@ function useSite(st, h, ob, choice) {
       const sp = SPELLS[ob.spell]; if (h.spells.includes(ob.spell)) { mark(); return { text: `Kapliczka uczy czaru „${sp.name}”, który ${h.name} już zna.` }; }
       if (!hasBook(h)) return { text: `Kapliczka uczy czaru „${sp.name}”, ale ${h.name} nie ma księgi czarów. Kupisz ją w mieście z gildią magów (${SPELLBOOK_COST} złota).` };
       if (sp.level > spellCap(h)) return { text: `Kapliczka uczy czaru „${sp.name}” (poziom ${sp.level}), ale ${h.name} go nie pojmuje: potrzebna Mądrość (${SKILL_LEVELS[sp.level - 2]}).` };
-      mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(heroStat(h, 'sp'))}.` };
+      mark(); h.spells.push(ob.spell); return { text: `${h.name} poznaje czar „${sp.name}” (poziom ${sp.level}): ${sp.desc(sp.kind === 'adv' ? heroStat(h, 'sp') : spellPow(h))}.` };
     }
     case 'well': {
       const max = heroMaxMana(h); if (h.mana >= max) return { text: 'Woda jest orzeźwiająca, ale mana bohatera jest już pełna.' };

@@ -332,7 +332,7 @@ G.screens.battle = {
     if (this.phase !== 'input') return; const B = this.B;
     const mh = sideHero(B, this.me); if (!mh) return;
     if (B.cast[this.me]) { B.log.push('W tej rundzie bohater już rzucił czar.'); return; }
-    showSpellbook(mh, 'battle', id => { this.casting = id; this.tele = null; this.onPointerMove(G.mouse.x, G.mouse.y); });
+    showSpellbook(mh, 'battle', id => { this.casting = id; this.tele = null; this.onPointerMove(G.mouse.x, G.mouse.y); }, id => battleCost(B, casterSide(B), mh, id));
   },
   // Koniec bitwy: zwycięzcy wiwatują przez chwilę, potem okno wyniku nad polem bitwy (jak w Heroes 3). Klik albo klawisz przyspiesza.
   startEnding() {
@@ -625,7 +625,7 @@ G.screens.battle = {
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'remote' && u0 ? `Ruch gracza ${playerName(st, B.sides[u0.side].owner)}: ${cu.plural.toLowerCase()}…` : this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
     if (this.casting && SPELLS[this.casting].teleport) tip = this.tele ? (pv && pv.kind === 'cast' ? 'Teleportacja: kliknij, aby przenieść oddział tutaj.' : 'Teleportacja: wskaż wolne pole (Esc anuluje).') : 'Teleportacja: wskaż swój oddział do przeniesienia (Esc anuluje).';
-    else if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(heroStat(sideHero(B, this.me) || B.h, 'sp'))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
+    else if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(spellPow(sideHero(B, this.me) || B.h))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
     else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots}${shotPenaltyText(B, u0, pv.target)})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';
     if (this.touchKey && pv && G.mouse.type !== 'mouse') tip += ' Stuknij jeszcze raz, aby wykonać.';

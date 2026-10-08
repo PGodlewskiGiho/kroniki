@@ -1,0 +1,821 @@
+{
+ "sila": {
+  "base": 1.498,
+  "klasy": {
+   "knight": {
+    "1": 1.13,
+    "5": 1.25,
+    "10": 1.57,
+    "15": 1.97,
+    "20": 2.57,
+    "25": 2.9
+   },
+   "cleric": {
+    "1": 1.08,
+    "5": 1.21,
+    "10": 1.44,
+    "15": 2.09,
+    "20": 2.84,
+    "25": 3.85
+   },
+   "ranger": {
+    "1": 1.1,
+    "5": 1.25,
+    "10": 1.69,
+    "15": 1.98,
+    "20": 2.64,
+    "25": 2.97
+   },
+   "druid": {
+    "1": 1.08,
+    "5": 1.19,
+    "10": 1.52,
+    "15": 2.09,
+    "20": 3.21,
+    "25": 3.55
+   },
+   "deathKnight": {
+    "1": 1.1,
+    "5": 1.21,
+    "10": 1.57,
+    "15": 1.86,
+    "20": 2.63,
+    "25": 2.93
+   },
+   "necro": {
+    "1": 1.04,
+    "5": 1.21,
+    "10": 1.42,
+    "15": 1.77,
+    "20": 2.57,
+    "25": 2.9
+   },
+   "beastmaster": {
+    "1": 1.1,
+    "5": 1.29,
+    "10": 1.75,
+    "15": 1.98,
+    "20": 2.9,
+    "25": 3.38
+   },
+   "witch": {
+    "1": 1.06,
+    "5": 1.1,
+    "10": 1.42,
+    "15": 1.86,
+    "20": 2.43,
+    "25": 2.9
+   },
+   "demoniac": {
+    "1": 1.08,
+    "5": 1.29,
+    "10": 1.67,
+    "15": 1.9,
+    "20": 2.97,
+    "25": 3.31
+   },
+   "heretic": {
+    "1": 1.02,
+    "5": 1.21,
+    "10": 1.47,
+    "15": 1.77,
+    "20": 2.34,
+    "25": 3.17
+   },
+   "alchemist": {
+    "1": 1.09,
+    "5": 1.25,
+    "10": 1.57,
+    "15": 2.03,
+    "20": 2.43,
+    "25": 2.82
+   },
+   "wizard": {
+    "1": 1,
+    "5": 1.17,
+    "10": 1.5,
+    "15": 2.43,
+    "20": 3.66,
+    "25": 4.44
+   },
+   "overlord": {
+    "1": 1.08,
+    "5": 1.21,
+    "10": 1.43,
+    "15": 1.77,
+    "20": 2.24,
+    "25": 2.57
+   },
+   "warlock": {
+    "1": 1.09,
+    "5": 1.17,
+    "10": 1.42,
+    "15": 1.7,
+    "20": 2.43,
+    "25": 3.19
+   },
+   "barbarian": {
+    "1": 1.1,
+    "5": 1.31,
+    "10": 1.77,
+    "15": 1.95,
+    "20": 3.08,
+    "25": 3.31
+   },
+   "battleMage": {
+    "1": 1.09,
+    "5": 1.31,
+    "10": 1.68,
+    "15": 1.91,
+    "20": 2.8,
+    "25": 3.08
+   }
+  }
+ },
+ "postep": [
+  {
+   "seed": 11,
+   "week": 1,
+   "cls": "cleric",
+   "level": 2,
+   "n": 4,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 11,
+   "week": 1,
+   "cls": "deathKnight",
+   "level": 1,
+   "n": 4,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 11,
+   "week": 1,
+   "cls": "alchemist",
+   "level": 1,
+   "n": 4,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 11,
+   "week": 1,
+   "cls": "witch",
+   "level": 1,
+   "n": 4,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 11,
+   "week": 2,
+   "cls": "cleric",
+   "level": 4,
+   "n": 3,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 11,
+   "week": 2,
+   "cls": "deathKnight",
+   "level": 2,
+   "n": 1,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 11,
+   "week": 2,
+   "cls": "alchemist",
+   "level": 1,
+   "n": 6,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 11,
+   "week": 2,
+   "cls": "witch",
+   "level": 3,
+   "n": 3,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 11,
+   "week": 3,
+   "cls": "cleric",
+   "level": 5,
+   "n": 1,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 11,
+   "week": 3,
+   "cls": "deathKnight",
+   "level": 5,
+   "n": 5,
+   "talents": 1,
+   "skills": 2
+  },
+  {
+   "seed": 11,
+   "week": 3,
+   "cls": "wizard",
+   "level": 3,
+   "n": 6,
+   "talents": 0,
+   "skills": 5
+  },
+  {
+   "seed": 11,
+   "week": 3,
+   "cls": "witch",
+   "level": 4,
+   "n": 1,
+   "talents": 1,
+   "skills": 4
+  },
+  {
+   "seed": 11,
+   "week": 4,
+   "cls": "deathKnight",
+   "level": 6,
+   "n": 6,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 11,
+   "week": 4,
+   "cls": "wizard",
+   "level": 4,
+   "n": 5,
+   "talents": 1,
+   "skills": 5
+  },
+  {
+   "seed": 11,
+   "week": 4,
+   "cls": "witch",
+   "level": 4,
+   "n": 4,
+   "talents": 1,
+   "skills": 4
+  },
+  {
+   "seed": 11,
+   "week": 5,
+   "cls": "deathKnight",
+   "level": 6,
+   "n": 3,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 11,
+   "week": 5,
+   "cls": "wizard",
+   "level": 4,
+   "n": 3,
+   "talents": 1,
+   "skills": 5
+  },
+  {
+   "seed": 11,
+   "week": 5,
+   "cls": "witch",
+   "level": 7,
+   "n": 2,
+   "talents": 1,
+   "skills": 6
+  },
+  {
+   "seed": 11,
+   "week": 6,
+   "cls": "deathKnight",
+   "level": 6,
+   "n": 6,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 11,
+   "week": 6,
+   "cls": "wizard",
+   "level": 4,
+   "n": 2,
+   "talents": 1,
+   "skills": 5
+  },
+  {
+   "seed": 11,
+   "week": 6,
+   "cls": "witch",
+   "level": 8,
+   "n": 1,
+   "talents": 2,
+   "skills": 7
+  },
+  {
+   "seed": 11,
+   "week": 7,
+   "cls": "deathKnight",
+   "level": 8,
+   "n": 6,
+   "talents": 2,
+   "skills": 4
+  },
+  {
+   "seed": 11,
+   "week": 7,
+   "cls": "witch",
+   "level": 8,
+   "n": 2,
+   "talents": 2,
+   "skills": 7
+  },
+  {
+   "seed": 11,
+   "week": 8,
+   "cls": "deathKnight",
+   "level": 9,
+   "n": 6,
+   "talents": 2,
+   "skills": 4
+  },
+  {
+   "seed": 11,
+   "week": 8,
+   "cls": "witch",
+   "level": 9,
+   "n": 6,
+   "talents": 2,
+   "skills": 8
+  },
+  {
+   "seed": 22,
+   "week": 1,
+   "cls": "cleric",
+   "level": 1,
+   "n": 2,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 1,
+   "cls": "overlord",
+   "level": 1,
+   "n": 3,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 22,
+   "week": 1,
+   "cls": "druid",
+   "level": 2,
+   "n": 4,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 1,
+   "cls": "necro",
+   "level": 1,
+   "n": 4,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 2,
+   "cls": "cleric",
+   "level": 1,
+   "n": 6,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 2,
+   "cls": "overlord",
+   "level": 4,
+   "n": 6,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 2,
+   "cls": "druid",
+   "level": 2,
+   "n": 5,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 2,
+   "cls": "necro",
+   "level": 4,
+   "n": 6,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 3,
+   "cls": "cleric",
+   "level": 3,
+   "n": 6,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 3,
+   "cls": "overlord",
+   "level": 5,
+   "n": 4,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 3,
+   "cls": "druid",
+   "level": 3,
+   "n": 6,
+   "talents": 0,
+   "skills": 4
+  },
+  {
+   "seed": 22,
+   "week": 3,
+   "cls": "necro",
+   "level": 4,
+   "n": 6,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 4,
+   "cls": "cleric",
+   "level": 5,
+   "n": 6,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 4,
+   "cls": "overlord",
+   "level": 6,
+   "n": 6,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 4,
+   "cls": "ranger",
+   "level": 1,
+   "n": 3,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 22,
+   "week": 4,
+   "cls": "necro",
+   "level": 4,
+   "n": 6,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 5,
+   "cls": "cleric",
+   "level": 6,
+   "n": 6,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 5,
+   "cls": "overlord",
+   "level": 7,
+   "n": 5,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 5,
+   "cls": "ranger",
+   "level": 1,
+   "n": 3,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 22,
+   "week": 5,
+   "cls": "necro",
+   "level": 5,
+   "n": 6,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 6,
+   "cls": "cleric",
+   "level": 2,
+   "n": 4,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 6,
+   "cls": "overlord",
+   "level": 7,
+   "n": 6,
+   "talents": 1,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 6,
+   "cls": "druid",
+   "level": 3,
+   "n": 3,
+   "talents": 0,
+   "skills": 4
+  },
+  {
+   "seed": 22,
+   "week": 6,
+   "cls": "necro",
+   "level": 10,
+   "n": 6,
+   "talents": 2,
+   "skills": 5
+  },
+  {
+   "seed": 22,
+   "week": 7,
+   "cls": "cleric",
+   "level": 4,
+   "n": 4,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 7,
+   "cls": "overlord",
+   "level": 8,
+   "n": 6,
+   "talents": 2,
+   "skills": 4
+  },
+  {
+   "seed": 22,
+   "week": 7,
+   "cls": "druid",
+   "level": 3,
+   "n": 5,
+   "talents": 0,
+   "skills": 4
+  },
+  {
+   "seed": 22,
+   "week": 7,
+   "cls": "necro",
+   "level": 16,
+   "n": 6,
+   "talents": 4,
+   "skills": 6
+  },
+  {
+   "seed": 22,
+   "week": 8,
+   "cls": "cleric",
+   "level": 6,
+   "n": 6,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 22,
+   "week": 8,
+   "cls": "overlord",
+   "level": 9,
+   "n": 3,
+   "talents": 2,
+   "skills": 5
+  },
+  {
+   "seed": 22,
+   "week": 8,
+   "cls": "druid",
+   "level": 3,
+   "n": 4,
+   "talents": 0,
+   "skills": 4
+  },
+  {
+   "seed": 22,
+   "week": 8,
+   "cls": "necro",
+   "level": 18,
+   "n": 5,
+   "talents": 4,
+   "skills": 8
+  },
+  {
+   "seed": 33,
+   "week": 1,
+   "cls": "knight",
+   "level": 1,
+   "n": 3,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 33,
+   "week": 1,
+   "cls": "druid",
+   "level": 2,
+   "n": 4,
+   "talents": 0,
+   "skills": 3
+  },
+  {
+   "seed": 33,
+   "week": 1,
+   "cls": "barbarian",
+   "level": 1,
+   "n": 4,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 33,
+   "week": 2,
+   "cls": "knight",
+   "level": 1,
+   "n": 3,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 33,
+   "week": 2,
+   "cls": "ranger",
+   "level": 5,
+   "n": 4,
+   "talents": 1,
+   "skills": 5
+  },
+  {
+   "seed": 33,
+   "week": 2,
+   "cls": "barbarian",
+   "level": 3,
+   "n": 5,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 33,
+   "week": 3,
+   "cls": "knight",
+   "level": 2,
+   "n": 2,
+   "talents": 0,
+   "skills": 2
+  },
+  {
+   "seed": 33,
+   "week": 3,
+   "cls": "ranger",
+   "level": 5,
+   "n": 4,
+   "talents": 1,
+   "skills": 5
+  },
+  {
+   "seed": 33,
+   "week": 3,
+   "cls": "barbarian",
+   "level": 6,
+   "n": 6,
+   "talents": 1,
+   "skills": 4
+  },
+  {
+   "seed": 33,
+   "week": 4,
+   "cls": "ranger",
+   "level": 6,
+   "n": 4,
+   "talents": 1,
+   "skills": 6
+  },
+  {
+   "seed": 33,
+   "week": 4,
+   "cls": "barbarian",
+   "level": 6,
+   "n": 6,
+   "talents": 1,
+   "skills": 4
+  },
+  {
+   "seed": 33,
+   "week": 5,
+   "cls": "ranger",
+   "level": 9,
+   "n": 5,
+   "talents": 2,
+   "skills": 7
+  },
+  {
+   "seed": 33,
+   "week": 5,
+   "cls": "barbarian",
+   "level": 6,
+   "n": 5,
+   "talents": 1,
+   "skills": 4
+  },
+  {
+   "seed": 33,
+   "week": 6,
+   "cls": "ranger",
+   "level": 14,
+   "n": 5,
+   "talents": 3,
+   "skills": 7
+  },
+  {
+   "seed": 33,
+   "week": 6,
+   "cls": "barbarian",
+   "level": 6,
+   "n": 6,
+   "talents": 1,
+   "skills": 4
+  },
+  {
+   "seed": 33,
+   "week": 7,
+   "cls": "ranger",
+   "level": 16,
+   "n": 6,
+   "talents": 4,
+   "skills": 7
+  },
+  {
+   "seed": 33,
+   "week": 7,
+   "cls": "barbarian",
+   "level": 6,
+   "n": 6,
+   "talents": 1,
+   "skills": 4
+  },
+  {
+   "seed": 33,
+   "week": 8,
+   "cls": "ranger",
+   "level": 17,
+   "n": 6,
+   "talents": 4,
+   "skills": 7
+  },
+  {
+   "seed": 33,
+   "week": 8,
+   "cls": "barbarian",
+   "level": 6,
+   "n": 6,
+   "talents": 1,
+   "skills": 4
+  }
+ ]
+}

@@ -41,7 +41,7 @@ test('umiejętność szkoły: tańszy i mocniejszy czar, dłuższe działanie, e
     const dmg = lv => { h.skills = lv ? [{ id: 'airMagic', lv }] : []; return spellDamage(h, SPELLS.lightningBolt, 2); };
     const costs = [0, 1, 2, 3].map(cost), dmgs = [0, 3].map(dmg);
     h.skills = [{ id: 'earthMagic', lv: 2 }]; castBattle(B, 'stoneSkin', pike.x, pike.y); B.cast[0] = false; const rounds = pike.buffs.stoneSkin, others = B.units.filter(u => u.side === 0 && u.buffs.stoneSkin).length;
-    h.skills = [{ id: 'earthMagic', lv: 3 }]; const area = spellArea('slow', foe.x, foe.y, B).length; const mana0 = h.mana; castBattle(B, 'slow', foe.x, foe.y);
+    h.skills = [{ id: 'earthMagic', lv: 3 }]; B.casts = [0, 0]; /* nowa runda: drugi czar w tej samej rundzie byłby droższy */ const area = spellArea('slow', foe.x, foe.y, B).length; const mana0 = h.mana; castBattle(B, 'slow', foe.x, foe.y);
     return { costs, dmgs, rounds, others, slowed: B.units.filter(u => u.side === 1 && u.buffs.slow).length, foes: B.units.filter(u => u.side === 1).length, area, paid: mana0 - h.mana };
   });
   assert.deepEqual(r.costs, [10, 9, 8, 7]);
