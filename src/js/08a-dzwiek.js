@@ -47,7 +47,7 @@ const AMB_SITE = { waterMill: 'amb_mill', windmill: 'amb_wind', dwarfForge: 'amb
   shrine: 'amb_magic', altar: 'amb_magic', obelisk: 'amb_magic', portal: 'amb_magic', sphinx: 'amb_magic', wishingWell: 'amb_magic', stone: 'amb_magic', library: 'amb_magic',
   garden: 'amb_birds', tree: 'amb_birds', questHut: 'amb_birds', buoy: 'amb_waves', wreck: 'amb_waves', sirens: 'amb_waves', flotsam: 'amb_waves' };
 const AMB_MINE = { wood: 'amb_saw', ore: 'amb_mine', gold: 'amb_mine', gems: 'amb_mine', crystal: 'amb_mine', sulfur: 'amb_bubble', mercury: 'amb_bubble' };
-const AMB_R = 5, AMB_MAX = 3, AMB_VOL = 0.55;
+const AMB_R = 5, AMB_MAX = 3, AMB_VOL = 0.55, AMB_GAIN = { amb_magic: 0.5, amb_crows: 0.8 }; // magia (portal, ołtarze) cicho, w tle
 const ambientOf = ob => ob.type === 'site' ? AMB_SITE[ob.kind] : ob.type === 'mine' ? AMB_MINE[ob.kind] : ob.type === 'town' ? 'amb_tavern' : ob.type === 'bank' && !ob.cleared ? 'amb_crows' : null;
 const Ambient = {
   voices: {}, t: 0, want: {},
@@ -56,7 +56,7 @@ const Ambient = {
     const out = {}, n = st.map.n, ex = human(st).explored;
     for (const ob of st.objects) { if (ob.dead) continue; const nm = ambientOf(ob); if (!nm || !Sfx.has(nm)) continue;
       const dx = ob.x - h.x, dy = ob.y - h.y, d = Math.max(Math.abs(dx), Math.abs(dy)); if (d > AMB_R || !ex[ob.y * n + ob.x] || !objSeen(st, ob)) continue;
-      const v = AMB_VOL * Math.pow(1 - d / (AMB_R + 1), 1.6), pan = clamp(dx / AMB_R * 0.7, -0.7, 0.7); if (!out[nm] || out[nm].v < v) out[nm] = { v, pan }; }
+      const v = AMB_VOL * (AMB_GAIN[nm] || 1) * Math.pow(1 - d / (AMB_R + 1), 1.6), pan = clamp(dx / AMB_R * 0.7, -0.7, 0.7); if (!out[nm] || out[nm].v < v) out[nm] = { v, pan }; }
     return Object.fromEntries(Object.entries(out).sort((a, b) => b[1].v - a[1].v).slice(0, AMB_MAX));
   },
   // Co klatkę (pętla gry): raz na 0,25 s przelicza, a głośność zmienia płynnie (setTargetAtTime)

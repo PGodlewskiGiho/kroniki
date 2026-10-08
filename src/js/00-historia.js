@@ -359,5 +359,8 @@
    Dźwięki otoczenia (Ambient w 08a): pętle amb_* przy budynkach w promieniu AMB_R pól od bohatera (tartak, kuźnia, młyn, karczma…).
    Czary: własne znaki (spellSignature: słup światła, kopuła, dym, implozja, spirala, odłamki, bańki, deszcz ognia) i dźwięki
    żywiołów (SPELL_SND z zapasowymi SND_FALLBACK); czary przygody też brzmią.
+   Strażnicy przy większości miejsc (poza UNGUARDED_SITES), mniejsza strefa startu bez potworów (7–12 pól), więcej wędrownych
+   potworów; surowce, skrzynie i artefakty na widoku (skrzynie i artefakty pilnowane), surowce większe (RES_K, siarka RES_SCALE)
+   z jasną plamą pod spodem; pętla magii (portal) bez wysokiego świstu. Fort na wzgórzu: ulepszenie wybranego oddziału albo wszystkich.
    ===================================================================================== */
 

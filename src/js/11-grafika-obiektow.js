@@ -780,6 +780,12 @@ function decor3dKey(t, v, season, under) {
 const decorSprite = (t, v, season = 0, under = 0) => (map3dSprite(decor3dKey(t, v, season, under) || '')) || (decor3dKey(t, v % 4, season) && map3dSprite(decor3dKey(t, v % 4, season))) || sprite(`dec${t}_${v % 4}_${season}`, 12, 10, 6, 7, p => { SEASON_DRAW = season; drawDecor(p, t, v % 4); SEASON_DRAW = 0; }, null);
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
+// Surowiec na mapie: model 3D powiększony o RES_K i jasna plama pod nim (widać go także w trawie i na śniegu)
+const RES_K = 1.9, RES_SCALE = { sulfur: 1.15 }; // siarka (płaski kopiec) i tak jest duża
+let RES_GLOW = null; // miękka plama światła (własne płótno: sprite() ucina półprzezroczystość)
+const resGlowSprite = () => { if (RES_GLOW) return RES_GLOW; const c = document.createElement('canvas'); c.width = 64; c.height = 28; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 14, 0, 32, 14, 30);
+  gr.addColorStop(0, 'rgba(255,244,200,.95)'); gr.addColorStop(0.5, 'rgba(255,226,150,.45)'); gr.addColorStop(1, 'rgba(255,220,140,0)'); g.fillStyle = gr; g.save(); g.translate(32, 14); g.scale(1, 0.44); g.translate(-32, -14); g.beginPath(); g.arc(32, 14, 30, 0, TAU); g.fill(); g.restore();
+  return (RES_GLOW = { c, ax: 32, ay: 14, u: 0.9, raw: true }); };
 // Karawana na mapie: kryty wóz z koniem i chorągiewką koloru gracza (fr: klatka kół)
 const caravanSprite = (col, fr) => sprite(`caravan_${col}_${fr}`, 26, 22, 13, 18, p => {
   p.fillStyle = '#6a4424'; p.fillRect(-3, 4, 14, 5); p.fillStyle = '#e8dcc0'; p.beginPath(); p.moveTo(-3, 4); p.quadraticCurveTo(4, -6, 11, 4); p.closePath(); p.fill();

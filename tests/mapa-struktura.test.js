@@ -109,3 +109,16 @@ test('budynki (miasta, kopalnie, skarbce) nie stoją na drodze ani tuż przy nie
     return out; });
   for (const [k, tot, bad] of r) { assert.ok(tot > 10, `${k}: budynków ${tot}`); assert.equal(bad, 0, `${k}: ${bad} z ${tot} budynków przy drodze`); }
 });
+
+test('większość miejsc, skrzyń i artefaktów ma strażnika; surowce, skrzynie i artefakty nie chowają się w gąszczu', async () => {
+  const r = await page.evaluate(() => { const out = [];
+    for (const [size, seed] of [['M', 9], ['L', 31]]) { const S = Object.assign({}, G.settings, { mapSize: size, land: 'mixed', difficulty: 1, faction: 'haven', bonus: 'gold', opponents: 1, slots: null, underground: false });
+      const st = createNewGame(S, seed), alive = st.objects.filter(o => !o.dead), near = (o, d) => alive.some(m => m.type === 'monster' && Math.max(Math.abs(m.x - o.x), Math.abs(m.y - o.y)) <= d);
+      const homeT = st.towns.filter(t => t.owner >= 0), far = o => Math.min(...homeT.map(t => Math.hypot(t.x - o.x, t.y - o.y))) > 12;
+      const sites = alive.filter(o => o.type === 'site' && SITES[o.kind].per && !UNGUARDED_SITES.includes(o.kind) && far(o));
+      const loot = alive.filter(o => (o.type === 'chest' || o.type === 'art') && far(o));
+      out.push([size, sites.filter(o => near(o, 2)).length / sites.length, alive.filter(o => ['res', 'chest', 'art'].includes(o.type) && o.hid).length, loot.filter(o => near(o, 2)).length / loot.length]); }
+    return out; });
+  for (const [size, guarded, hidRes, loot] of r) { assert.ok(guarded >= 0.85, `${size}: pilnowanych ${(guarded * 100).toFixed(0)}% miejsc`); assert.equal(hidRes, 0, `${size}: ukryte surowce, skrzynie, artefakty`);
+    assert.ok(loot >= 0.85, `${size}: pilnowanych ${(loot * 100).toFixed(0)}% skrzyń i artefaktów`); }
+});

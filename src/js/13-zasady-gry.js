@@ -276,9 +276,12 @@ function siteChoice(st, h, ob) {
   if (ob.kind === 'market') { G.marketMin = 2; return showMarket(st, h.owner, () => { G.marketMin = 0; }); }
   const plan = hillFortPlan(h); // fort na wzgórzu
   if (!plan.length) return showDialog(`${S.name}: kowale nie mają czego ulepszyć w armii ${h.name}.`, [{ label: 'OK', key: 'enter' }], icon);
+  // wybór: jeden oddział (okno wraca z resztą) albo wszystkie naraz
   const tot = {}; for (const p of plan) for (const [k, v] of Object.entries(p.cost)) tot[k] = (tot[k] || 0) + v;
-  showDialog(`${S.name}: kowale ulepszą ${plan.map(p => `${CREATURES[p.from].plural.toLowerCase()} (${p.n}) → ${CREATURES[p.to].plural.toLowerCase()}`).join(', ')}. Razem: ${costText(tot)}${canPay(R, tot) ? '' : ' (nie na wszystko cię stać: ulepszą to, na co wystarczy)'}.`,
-    [{ label: 'Ulepsz', key: 'enter', action: take() }, { label: 'Nie', key: 'escape' }], icon);
+  const one = p => () => { if (!canPay(R, p.cost)) { showDialog(`Na ulepszenie: ${CREATURES[p.from].plural.toLowerCase()} → ${CREATURES[p.to].plural.toLowerCase()} potrzeba ${costText(p.cost)}.`, [{ label: 'OK', key: 'enter', action: () => siteChoice(st, h, ob) }], icon); return; }
+    useSite(st, h, ob, [p.slot]); Sfx.play('build'); advFloat(CREATURES[p.to].plural, h.x, h.y); siteChoice(st, h, ob); };
+  showDialog(`${S.name}: kowale mogą ulepszyć oddziały ${h.name}. Wybierz jeden albo wszystkie naraz (razem ${costText(tot)}${canPay(R, tot) ? '' : ', nie na wszystko cię stać: ulepszą to, na co wystarczy'}).`,
+    [...plan.map(p => ({ label: `${CREATURES[p.to].plural} (${p.n})`, sub: costText(p.cost), action: one(p) })), { label: 'Wszystkie', sub: costText(tot), key: 'enter', action: take() }, { label: 'Wyjdź', key: 'escape' }], icon);
 }
 // Miejsca przygody z wyborem: zagadka sfinksa, rozkopanie kurhanu (klątwa), zakup u kupców, życzenie przy studni
 function adventureSite(st, h, ob) {
@@ -1066,10 +1069,10 @@ function hillFortPlan(h) {
   return out;
 }
 const canPay = (R, cost) => Object.entries(cost).every(([k, v]) => R[k] >= v);
-// Ulepsza po kolei (najcenniejsze oddziały pierwsze), na ile starcza surowców; zwraca listę ulepszonych
-function hillFortUpgrade(st, h) {
+// Ulepsza po kolei (najcenniejsze oddziały pierwsze), na ile starcza surowców; slots: tylko te miejsca armii (wybór gracza). Zwraca listę ulepszonych
+function hillFortUpgrade(st, h, slots) {
   const R = playerOf(st, h.owner).resources, done = [];
-  for (const p of hillFortPlan(h).sort((a, b) => b.n * CREATURES[b.to].value - a.n * CREATURES[a.to].value)) {
+  for (const p of hillFortPlan(h).filter(p => !slots || slots.includes(p.slot)).sort((a, b) => b.n * CREATURES[b.to].value - a.n * CREATURES[a.to].value)) {
     if (!canPay(R, p.cost)) continue; for (const [k, v] of Object.entries(p.cost)) R[k] -= v;
     const x = h.army[p.slot], same = h.army.find(y => y && y !== x && y.cid === p.to); if (same) { same.n += x.n; h.army[p.slot] = null; } else x.cid = p.to; done.push(p);
   }
@@ -1142,7 +1145,7 @@ function useSite(st, h, ob, choice) {
       R.gold += 500; return { text: 'Ogrodnicy oddają tygodniowy utarg: 500 złota.', float: '+500', res: 'gold' }; }
     case 'campfire': { const r = mulberry32(st.seed ^ (ob.id * 977)), gold = 400 + Math.floor(r() * 3) * 100, k = 4 + Math.floor(r() * 3), res = ob.res || 'wood';
       removeObject(st, ob); R.gold += gold; R[res] += k; return { text: `Przy wygasłym ognisku ktoś zostawił zapasy: ${gold} złota i ${k} (${resName(res).toLowerCase()}).`, float: `+${gold}`, res: 'gold' }; }
-    case 'hillFort': { const d = hillFortUpgrade(st, h); return { text: d.length ? `Kowale ulepszają: ${d.map(p => `${CREATURES[p.from].plural.toLowerCase()} → ${CREATURES[p.to].plural.toLowerCase()} (${p.n})`).join(', ')}.` : 'Kowale nie mają czego ulepszyć albo brakuje surowców.' }; }
+    case 'hillFort': { const d = hillFortUpgrade(st, h, Array.isArray(choice) ? choice : null); return { text: d.length ? `Kowale ulepszają: ${d.map(p => `${CREATURES[p.from].plural.toLowerCase()} → ${CREATURES[p.to].plural.toLowerCase()} (${p.n})`).join(', ')}.` : 'Kowale nie mają czego ulepszyć albo brakuje surowców.' }; }
     case 'market': return { text: 'Targowisko: wymiana surowców.' };
     case 'mushroomRing': mark(); h.boost = { ...(h.boost || {}), luck: 1 }; return { text: 'Taniec w grzybowym kręgu przynosi szczęście: +1 do następnej bitwy.', float: 'szczęście +1' };
     case 'crystalCave': { const a = 3 + thash(ob.id, weekIndex(st), st.seed) % 3; mark(); R.crystal += a; return { text: `Z groty udaje się wydobyć ${a} kryształów.`, float: `+${a}`, res: 'crystal' }; }

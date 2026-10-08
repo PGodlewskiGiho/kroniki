@@ -104,3 +104,16 @@ test('nowy skarbiec: zwycięstwo daje łup i golemy do armii', async () => {
   });
   assert.deepEqual(r, [4000, 10, true, true]);
 });
+
+test('fort na wzgórzu: okno z wyborem oddziału albo wszystkich; jeden ulepszony, okno wraca z resztą', async () => {
+  await newGame(page, {}, 5);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), R = human(st).resources, ob = { id: 9100, type: 'site', kind: 'hillFort', x: h.x, y: h.y, seen: {} }; st.objects.push(ob);
+    h.army = [{ cid: 'pikeman', n: 10 }, { cid: 'archer', n: 6 }, null, null, null, null, null]; R.gold = 50000; G.modal = null; siteChoice(st, h, ob);
+    const labels = G.modal.buttons.map(b => b.label); G.modal.buttons[1].action(); // tylko łucznicy
+    const after = [h.army[0].cid, h.army[1].cid], again = G.modal && G.modal.buttons.map(b => b.label); G.modal = null; ob.dead = true;
+    return { labels, after, again };
+  });
+  assert.equal(r.labels.length, 4); assert.deepEqual(r.labels.slice(2), ['Wszystkie', 'Wyjdź']);
+  assert.deepEqual(r.after, ['pikeman', 'marksman'], 'ulepszony tylko wybrany oddział'); assert.equal(r.again.length, 3, 'okno wraca z pikinierami');
+});
