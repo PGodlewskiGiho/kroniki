@@ -327,7 +327,7 @@ function placeObjects(st) {
   }
   for (let k = Math.round(NL / 480); k > 0; k--) {
     const p = best((x, y) => dStart(x, y) >= 3, FIT.hidden, 40); if (!p) continue; const v = Math.floor(rng() * 3);
-    hideIn(add({ type: 'chest', gold: Math.round((1000 + v * 500) * rule(st, 'treasure') / 100) * 100, exp: Math.round((500 + v * 500) * rule(st, 'treasure') / 100) * 100, x: p[0], y: p[1] }, [p[1] * n + p[0]]));
+    guard(add({ type: 'chest', gold: Math.round((1000 + v * 500) * rule(st, 'treasure') / 100) * 100, exp: Math.round((500 + v * 500) * rule(st, 'treasure') / 100) * 100, x: p[0], y: p[1] }, [p[1] * n + p[0]]), 0); // skrzynia na widoku, ale pilnowana
   }
   // potwory: część pilnuje przejść (przełęcze, brody, wąskie gardła dróg), reszta krąży przy drogach
   for (const [fx, fy] of map.fords || []) { if (rng() < 0.65 && okRoad(fx, fy) && dStart(fx, fy) >= 8) monster(fx, fy); }
@@ -344,7 +344,7 @@ function placeObjects(st) {
   for (let k = Math.max(3, Math.round(NL / 600)); k > 0; k--) {
     const p = best((x, y) => dStart(x, y) >= 7, FIT.hidden, 40); if (!p) continue;
     const dd = d01(p[0], p[1]), rar = dd > 0.6 && rng() < 0.5 ? 'major' : dd > 0.3 ? 'minor' : 'treasure', pool = ARTS_BY_RARITY(rar);
-    const a = hideIn(add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x: p[0], y: p[1] }, [p[1] * n + p[0]]));
+    const a = add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x: p[0], y: p[1] }, [p[1] * n + p[0]]); // artefakt na widoku, zawsze pilnowany
     guard(a, rar === 'major' ? 2 : rar === 'minor' ? 1 : 0);
   }
   // skarbce: jedna na tyle pól (co najmniej min), dalej od startu niż BANKS[].dd; Smocza Utopia możliwie na krańcu mapy
