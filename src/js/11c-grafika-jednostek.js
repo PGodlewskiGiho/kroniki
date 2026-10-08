@@ -3,14 +3,14 @@
 // opis klatek i obrazek w kodzie 85-znakowym, zob. unpackBin). Klatka = [x, y, w, h, ax, ay] w arkuszu, (ax, ay) = stopy. Bitwa: 1 piksel arkusza = u px
 // logicznych (1,3), mapa: mu (1,8). Dla dir = -1 klatka jest odbita w poziomie. Jednostka bez arkusza (albo zanim obrazek
 // się wczyta) korzysta z dawnego rysunku wektorowego (battleSprite2D, creatureSprite2D).
-const MENU_IMG = {}, SCREEN_IMG = {}, ICON_IMG = {}, SIEGE_IMG = {}, UNIT_IMG = {}, HERO_IMG = {}, PORTRAIT_IMG = {}, TOWN_IMG = {}, ARTIFACT_IMG = {}, SKILL_IMG = {}, UI_IMG = {}, SPELL_IMG = {}, MAP3D_IMG = {}, BATTLE_BG_IMG = {};
+const MENU_IMG = {}, SCREEN_IMG = {}, ICON_IMG = {}, SIEGE_IMG = {}, UNIT_IMG = {}, HERO_IMG = {}, HERO_MAP_IMG = {}, PORTRAIT_IMG = {}, TOWN_IMG = {}, ARTIFACT_IMG = {}, SKILL_IMG = {}, UI_IMG = {}, SPELL_IMG = {}, MAP3D_IMG = {}, BATTLE_BG_IMG = {};
 function loadUnitArt() {
   if (typeof UNIT_ART === 'undefined') return;
   const load = (set, store) => { for (const [id, A] of Object.entries(set)) { const png = typeof A === 'string' ? A : A.png; if (store[id] || !png) continue; const im = new Image(); im.onload = () => { im._ok = true; G.dirty = true; }; im.src = binUrl(png, `image/${A.webp ? 'webp' : 'png'}`); store[id] = im; } };
   if (typeof MENU_ART !== 'undefined' && MENU_ART) load({ menu: MENU_ART }, MENU_IMG); // obraz menu najpierw: pierwszy ekran gry
   if (typeof SCREEN_ART !== 'undefined' && SCREEN_ART) load(SCREEN_ART, SCREEN_IMG);
   if (typeof UNIT_ICON_ART !== 'undefined' && UNIT_ICON_ART) load({ sheet: UNIT_ICON_ART }, ICON_IMG); // portrety jednostek w okienkach armii // malowane ekrany: ładowanie, koniec gry
-  load(UNIT_ART, UNIT_IMG); if (typeof HERO_ART !== 'undefined') load(HERO_ART, HERO_IMG); if (typeof HERO_PORTRAITS !== 'undefined') load(HERO_PORTRAITS, PORTRAIT_IMG); if (typeof TOWN_BUILD_ART !== 'undefined') load(TOWN_BUILD_ART, TOWN_IMG); if (typeof SIEGE_ART !== 'undefined') load(SIEGE_ART, SIEGE_IMG); if (typeof ARTIFACT_ART !== 'undefined' && ARTIFACT_ART) load({ sheet: ARTIFACT_ART }, ARTIFACT_IMG); if (typeof SKILL_ART !== 'undefined' && SKILL_ART) load({ sheet: SKILL_ART }, SKILL_IMG); if (typeof UI_ART !== 'undefined' && UI_ART) load({ sheet: UI_ART }, UI_IMG); if (typeof SPELL_ART !== 'undefined' && SPELL_ART) load({ sheet: SPELL_ART }, SPELL_IMG); if (typeof BATTLE_BG_ART !== 'undefined') load(BATTLE_BG_ART, BATTLE_BG_IMG);
+  load(UNIT_ART, UNIT_IMG); if (typeof HERO_ART !== 'undefined') load(HERO_ART, HERO_IMG); if (typeof HERO_MAP_ART !== 'undefined') load(HERO_MAP_ART, HERO_MAP_IMG); if (typeof HERO_PORTRAITS !== 'undefined') load(HERO_PORTRAITS, PORTRAIT_IMG); if (typeof TOWN_BUILD_ART !== 'undefined') load(TOWN_BUILD_ART, TOWN_IMG); if (typeof SIEGE_ART !== 'undefined') load(SIEGE_ART, SIEGE_IMG); if (typeof ARTIFACT_ART !== 'undefined' && ARTIFACT_ART) load({ sheet: ARTIFACT_ART }, ARTIFACT_IMG); if (typeof SKILL_ART !== 'undefined' && SKILL_ART) load({ sheet: SKILL_ART }, SKILL_IMG); if (typeof UI_ART !== 'undefined' && UI_ART) load({ sheet: UI_ART }, UI_IMG); if (typeof SPELL_ART !== 'undefined' && SPELL_ART) load({ sheet: SPELL_ART }, SPELL_IMG); if (typeof BATTLE_BG_ART !== 'undefined') load(BATTLE_BG_ART, BATTLE_BG_IMG);
   if (typeof TERRAIN_ART !== 'undefined' && TERRAIN_ART) for (const [k, b] of Object.entries(TERRAIN_ART)) { // tekstury terenu: po wczytaniu teren maluje się od nowa (MapRender.refresh: raz dla kilku tekstur)
     const im = new Image(); im.onload = () => { TERRAIN_TEX[k] = texData(im); if (typeof MapRender !== 'undefined') MapRender.refresh(); G.dirty = true; }; im.src = binUrl(b, 'image/webp'); }
   if (typeof MAP3D_ART !== 'undefined' && MAP3D_ART) { load({ sheet: MAP3D_ART }, MAP3D_IMG); // teren z drzewami i górami malowany wcześniej dawnymi rysunkami: od nowa
@@ -97,9 +97,24 @@ function drawCreatureAnim(ctx, cid, x, y, k = 2, ph = 0) {
   const i = atk ? Math.min(BATTLE_FRAMES.attack - 1, Math.floor((t - (T - 1.1)) / 1.1 * BATTLE_FRAMES.attack)) : Math.floor(G.time * 7 + ph * 3) % BATTLE_FRAMES.idle;
   drawSprite(ctx, battleSprite(cid, 1, pose, i), x, y, k / 2); G.dirty = true;
 }
-// Bohater na mapie przygody: ten sam jeździec 3D co w bitwie (klatki spoczynku, w ruchu szybciej), zmniejszony do ok. 46 px; na łodzi dawny rysunek
-const HERO_MAP_H = 46;
+// Bohater na mapie przygody: jeździec 3D wypalony kamerą mapy w 8 kierunkach (HERO_MAP_ART: wschód, płd.-wsch., południe,
+// płn.-wsch., północ; zachodnie to odbicia), 12 klatek chodu i 4 spoczynku, ok. 46 px; kierunek z ostatniego kroku (h.face).
+// Bez arkusza mapy: jeździec z bitwy bokiem; na łodzi dawny rysunek
+const HERO_MAP_H = 46, HERO_FACE = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'], HERO_FACE_SRC = { SW: 'SE', W: 'E', NW: 'NE' };
+function heroFace(h) { // 0 = wschód, dalej zgodnie z ruchem wskazówek zegara na ekranie (2 = w dół, 6 = w górę)
+  if (h.anim) { const dx = Math.sign(h.x - h.anim.fx), dy = Math.sign(h.y - h.anim.fy); if (dx || dy) h.face = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) & 7; }
+  return h.face != null ? h.face : h.dir < 0 ? 4 : 0;
+}
 function heroMap3d(h, col) {
+  const M = typeof HERO_MAP_ART !== 'undefined' && HERO_MAP_ART[h.cls], mim = HERO_MAP_IMG[h.cls];
+  if (!h.boat && M && mim && mim._ok) {
+    const fd = HERO_FACE[heroFace(h)], src = HERO_FACE_SRC[fd] || fd, flip = !!HERO_FACE_SRC[fd], walk = !!h.anim, pose = (walk ? 'walk_' : 'idle_') + src, F = M.f[pose];
+    const i = walk ? Math.floor(G.time * 36) % F.length : Math.floor(G.time * 4) % F.length, key = `hm_${h.cls}_${col}_${pose}_${i}_${flip ? 1 : 0}`; let s = SPR.get(key);
+    if (!s) { const [x, y, w, hh, ax, ay] = F[i], c = document.createElement('canvas'); c.width = w; c.height = hh; const g = c.getContext('2d', { willReadFrequently: true });
+      if (flip) { g.translate(w, 0); g.scale(-1, 1); } g.drawImage(mim, x, y, w, hh, 0, 0, w, hh); g.setTransform(1, 0, 0, 1, 0, 0); keyTint(g, w, hh, col);
+      s = { c, ax: flip ? w - ax : ax, ay, u: HERO_MAP_H / M.f.idle_E[0][3], raw: true }; SPR.set(key, s); }
+    if (walk) G.dirty = true; return s;
+  }
   const A = typeof HERO_ART !== 'undefined' && HERO_ART[h.cls], im = HERO_IMG[h.cls]; if (h.boat || !A || !im || !im._ok) return null;
   const walk = !!(h.anim && A.f.walk), n = (walk ? A.f.walk : A.f.idle).length, s = heroBattleSprite(h, col, h.dir < 0 ? -1 : 1, Math.floor(G.time * (walk ? 12 : 3)) % n, walk ? 'walk' : false);
   return s._map || (s._map = { c: s.c, ax: s.ax, ay: s.ay, u: HERO_MAP_H / A.f.idle[0][3], raw: true });
