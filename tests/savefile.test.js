@@ -15,6 +15,7 @@ test('gra zapisana do pliku wczytuje się z pliku taka sama', async () => {
   await page.waitForFunction(() => G.screenName === 'load');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.evaluate(() => G.screen.toFile())]);
   const file = path.join(os.tmpdir(), 'kk-test-zapis.json'); await dl.saveAs(file);
+  await page.waitForFunction(() => G.screenName === 'adventure' && !G.fade.next); // „Do pliku” wraca na mapę płynnym przejściem: najpierw niech się skończy
   assert.match(dl.suggestedFilename(), /^kroniki-.*\.json$/);
   const before = await page.evaluate(() => JSON.stringify(serializeGame(G.state)));
   await page.evaluate(() => { G.state.players[G.state.cur].resources.gold = 1; setScreen('load', { mode: 'load' }); });

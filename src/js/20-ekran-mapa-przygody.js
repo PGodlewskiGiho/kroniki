@@ -196,7 +196,7 @@ G.screens.adventure = {
   welcomeText(st) {
     const me = human(st), h = hero(st), t = myTowns(st)[0], foes = st.players.filter(q => q.id !== ME);
     const goal = foes.length ? ` Twoi rywale: ${foes.map(q => `${ownerName(st, q.id)}${q.human ? ' (człowiek)' : ''} (${factionOf(q.faction).name})`).join(', ')}. Pokonaj ich wszystkich: zdobądź ich miasta i rozbij ich bohaterów.` : ' Nie masz rywali: to gra swobodna, bez zwycięstwa.';
-    return `Rozpoczyna się twoja kronika. ${h.name} (${heroTitle(h).split(', ')[1]}) czeka na rozkazy w mieście ${t ? t.name : ''}.${goal} Bonus startowy: ${me.bonusText || st.bonusText}.`;
+    return `Rozpoczyna się twoja kronika. ${h.name} (${heroTitle(h).split(', ')[1]}) czeka na rozkazy w mieście ${t ? t.name : ''}.${goal} Bonus startowy: ${me.bonusText || st.bonusText}.${st.landInfo ? ` Kraina: ${(LAND_TYPES.find(l => l.id === st.landInfo.land) || {}).name.toLowerCase()} – ${MAP_SHAPES[st.landInfo.shape]}.` : ''}`;
   },
   // Początek tury człowieka. W hot-seat najpierw zasłona: mapa ukryta, dopóki właściwy gracz nie usiądzie do ekranu.
   // Potem powitanie (pierwsza tura) i wieści ze skrzynki (ataki komputera, nowy tydzień, brak miasta).

@@ -12,23 +12,38 @@ function smoothTerrain(ter, n) {
 }
 // Teren jak w podróży: pasma górskie (grzbiety szumu) z przełęczami i pogórzem, zwarte puszcze z polanami i rzadkim skrajem,
 // rzeki spływające z gór do morza (brody co kilka pól), otwarte doliny między nimi z pojedynczymi drzewami i głazami.
-function generateMap(n, seed) {
-  const rng = mulberry32(seed ^ 0x5bd1e995);
+// land: rodzaj krainy (LAND_TYPES), kształt świata i kierunek klimatu losowane z ziarna – każda mapa inna
+function generateMap(n, seed, land = 'random') {
+  const rng = mulberry32(seed ^ 0x5bd1e995), lr = mulberry32(seed ^ 0x1a2b3c);
+  const pickL = land === 'random' ? (() => { const w = { mixed: 3, mountains: 2, forest: 2, desert: 1, frost: 1, marsh: 1, islands: 1 }, tot = Object.values(w).reduce((a, b) => a + b, 0); let r = lr() * tot; for (const [k, v] of Object.entries(w)) if ((r -= v) < 0) return k; return 'mixed'; })() : land;
+  const LT = LAND_TYPES.find(l => l.id === pickL) || LAND_TYPES[1], shapes = LT.shapes || ['continent', 'continent', 'coast', 'coast', 'inland', 'isthmus', 'lakes'], shape = shapes[Math.floor(lr() * shapes.length)];
+  const ca = lr() * Math.PI * 2, cs = Math.cos(ca), sn = Math.sin(ca), side = Math.floor(lr() * 4), side2 = lr() < 0.5 ? (side + 1) % 4 : -1, ia = lr() * Math.PI, ic = [lr() < 0.5 ? -0.22 : 0.22, (lr() - 0.5) * 0.3];
+  const shapeElev = (x, y) => { // dodatek do wysokości: gdzie ma być morze
+    const u = x / (n - 1), v = y / (n - 1), eA = Math.min(x, y, n - 1 - x, n - 1 - y) / Math.max(4, n * 0.1), fall = k => -(1 - clamp(k, 0, 1)) * 0.3;
+    if (shape === 'continent') return fall(eA);
+    if (shape === 'coast') { const d = [y, n - 1 - x, n - 1 - y, x], e1 = d[side], e2 = side2 >= 0 ? d[side2] : 1e9; return fall(Math.min(e1, e2) / Math.max(4, n * 0.16)) - 0.02; }
+    if (shape === 'inland') { const r = Math.hypot(u - 0.5, v - 0.5); return -0.32 * clamp(1 - r / 0.3, 0, 1) + fall(eA) * 0.25; }
+    if (shape === 'isthmus') { const d = Math.abs((u - 0.5) * Math.sin(ia) - (v - 0.5) * Math.cos(ia)), t = (u - 0.5) * Math.cos(ia) + (v - 0.5) * Math.sin(ia), bridge = ic.some(c => Math.abs(t - c) < 0.045);
+      return (bridge ? 0.05 : -0.36 * clamp(1 - d / 0.075, 0, 1)) + fall(eA) * 0.6; }
+    if (shape === 'islands') return fall(eA) * 1.2 + (nI(x / 5, y / 5) - 0.5) * 0.35; // poszarpane wybrzeże i wysepki
+    return 0; // lakes: bez morza, woda tylko w nieckach
+  };
+  const nI = makeNoise(lr);
   const nE = makeNoise(rng), nM = makeNoise(rng), nT = makeNoise(rng), nF = makeNoise(rng), nV = makeNoise(rng), nG = makeNoise(rng), nW = makeNoise(rng), nC = makeNoise(rng);
   const N = n * n, terrain = new Uint8Array(N), obst = new Uint8Array(N), road = new Uint8Array(N);
   const elev = new Float32Array(N), moist = new Float32Array(N), temp = new Float32Array(N), forest = new Float32Array(N), volc = new Float32Array(N), clear = new Float32Array(N);
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-    const i = y * n + x, edge = clamp(Math.min(x, y, n - 1 - x, n - 1 - y) / Math.max(4, n * 0.1), 0, 1);
-    elev[i] = nE(x / 14, y / 14) - (1 - edge) * 0.3;
+    const i = y * n + x;
+    elev[i] = nE(x / 14, y / 14) + shapeElev(x, y);
     moist[i] = nM(x / 11, y / 11);
-    temp[i] = nT(x / 22, y / 22) * 0.55 + (y / n) * 0.45;
+    temp[i] = nT(x / 22, y / 22) * 0.55 + (((x / n - 0.5) * cs + (y / n - 0.5) * sn) + 0.5) * 0.45; // klimat: chłodniej w jedną stronę (losowy kierunek)
     forest[i] = nF(x / 9, y / 9) * 0.75 + moist[i] * 0.25;
     volc[i] = nV(x / 6, y / 6);
     clear[i] = nC(x / 3.2, y / 3.2);
   }
-  const qWater = quantile(elev, 0.2), qRough = quantile(elev, 0.8);
-  const qCold = quantile(temp, 0.16), qHot = quantile(temp, 0.8), qSwamp = quantile(moist, 0.88), qDry = quantile(moist, 0.35), qMid = quantile(moist, 0.6);
-  const qVolc = quantile(volc, 0.85), qForest = quantile(forest, 0.64), qClear = quantile(clear, 0.86);
+  const qWater = quantile(elev, shape === 'lakes' ? Math.min(LT.water, 0.1) : LT.water), qRough = quantile(elev, 0.8);
+  const qCold = quantile(temp, LT.cold), qHot = quantile(temp, 1 - LT.hot), qSwamp = quantile(moist, LT.swamp), qDry = quantile(moist, 0.35), qMid = quantile(moist, LT.sandM || 0.6); // qMid: w upale piasek poniżej tej wilgotności
+  const qVolc = quantile(volc, 0.85), qForest = quantile(forest, LT.forest), qClear = quantile(clear, 0.86);
   for (let i = 0; i < N; i++) {
     const e = elev[i], m = moist[i], t = temp[i];
     if (e < qWater) terrain[i] = TER.WATER;
@@ -61,11 +76,11 @@ function generateMap(n, seed) {
       if (spur && rng() < 0.035) chain(x, y, ang + (rng() < 0.5 ? 1 : -1) * (0.9 + rng() * 0.6), len * (0.2 + rng() * 0.2), w0 * 0.6, false); // odnoga
     }
   };
-  { const ranges = Math.max(2, Math.round(n / 16)), cands = [];
+  { const ranges = Math.max(1, Math.round(n / 16 * LT.ranges)), cands = [];
     for (let y = 6; y < n - 6; y += 2) for (let x = 6; x < n - 6; x += 2) { const i = y * n + x; if (terrain[i] !== TER.WATER && elev[i] > qRough * 0.97) cands.push([x, y, elev[i]]); }
     cands.sort((a, b) => b[2] - a[2]); const used = [];
-    for (const [x, y] of cands) { if (used.length >= ranges) break; if (used.some(([a, b]) => Math.hypot(a - x, b - y) < n * 0.28)) continue; used.push([x, y]);
-      const ang = rng() * Math.PI * 2, len = n * (0.35 + rng() * 0.3), w0 = 0.9 + rng() * 0.8;
+    for (const [x, y] of cands) { if (used.length >= ranges) break; if (used.some(([a, b]) => Math.hypot(a - x, b - y) < n * 0.28 / Math.sqrt(LT.ranges))) continue; used.push([x, y]);
+      const ang = rng() * Math.PI * 2, len = n * (0.35 + rng() * 0.3), w0 = (0.9 + rng() * 0.8) * (LT.rangeW || 1);
       chain(x, y, ang, len / 2, w0, true); chain(x, y, ang + Math.PI, len / 2, w0, true); } // od środka w obie strony
   }
   // pojedyncze szczyty na najwyższych wzniesieniach
@@ -77,11 +92,11 @@ function generateMap(n, seed) {
   for (let i = 0; i < N; i++) if (nearMt[i] && !obst[i] && (terrain[i] === TER.GRASS || terrain[i] === TER.DIRT) && thash(i, 7, seed) % 10 < nearMt[i] * 3) terrain[i] = TER.ROUGH;
   // rzeki: od podnóża gór w dół zbocza (i coraz dalej od źródła) do wody; płyną krętym korytem szerokości pola
   const rivers = [], wet = new Uint8Array(N);
-  { const want = Math.max(2, Math.round(n / 14)), src = [];
+  { const want = Math.max(1, Math.round(n / 14 * LT.rivers)), src = [];
     for (let i = 0; i < N; i++) if (nearMt[i] === 2 && !obst[i] && terrain[i] !== TER.WATER && terrain[i] !== TER.LAVA && terrain[i] !== TER.SAND) src.push(i);
     for (let k = src.length - 1; k > 0; k--) { const j = Math.floor(rng() * (k + 1)); [src[k], src[j]] = [src[j], src[k]]; }
     for (const s0 of src) {
-      if (rivers.length >= want) break; const sx = s0 % n, sy = (s0 / n) | 0; if (rivers.some(r => r.some(i => Math.hypot(i % n - sx, ((i / n) | 0) - sy) < n / 6))) continue;
+      if (rivers.length >= want) break; const sx = s0 % n, sy = (s0 / n) | 0; if (rivers.some(r => r.some(i => Math.hypot(i % n - sx, ((i / n) | 0) - sy) < n / 6 / Math.sqrt(LT.rivers)))) continue;
       const path = [], seen = new Set([s0]); let cur = s0, ok = false;
       for (let step = 0; step < n * 2; step++) {
         const x = cur % n, y = (cur / n) | 0; let best = -1, bv = Infinity;
@@ -167,7 +182,7 @@ function generateMap(n, seed) {
     const p = findPath(n, sites[a].x, sites[a].y, sites[b].x, sites[b].y, roadCost, 0.3); if (!p) return;
     for (const i of p) { road[i] = Math.max(road[i], type); obst[i] = OBST.NONE; }
   });
-  return { n, seed, terrain, obst, road, sites, start: sites[0], fords: rivers.flatMap(r => r.filter(i => wet[i] === 2 && terrain[i] !== TER.WATER).map(i => [i % n, (i / n) | 0])) };
+  return { n, seed, terrain, obst, road, sites, start: sites[0], fords: rivers.flatMap(r => r.filter(i => wet[i] === 2 && terrain[i] !== TER.WATER).map(i => [i % n, (i / n) | 0])), land: LT.id, shape };
 }
 // Podziemia: korytarze i pieczary w litej skale (ściany = góry), dno jaskiń z ziemi, nierównego terenu, bagien i lawy;
 // zostaje tylko największa spójna sieć pieczar. caves: środki dużych pieczar (kopalnie podziemi).
@@ -244,6 +259,12 @@ function placeObjects(st) {
   // odległość od najbliższego startu gracza (pierwsze miejsca na liście); d01 = 0 przy starcie, 1 daleko od wszystkich graczy
   const starts = map.sites.slice(0, clamp(playerSlots(st.settings).length, 1, map.sites.length)), spread = levelSize(map) / Math.sqrt(starts.length) * 0.7;
   const dStart = (x, y) => Math.min(...starts.map(s => Math.hypot(x - s.x, y - s.y))), d01 = (x, y) => clamp(dStart(x, y) / spread, 0, 1);
+  // Okolica startu (ok. dzień marszu po ziemi, nie w linii prostej): bez potworów, żeby żadnego gracza nie zamknął strażnik w wąskim
+  // przejściu tuż za miastem (półwysep, dolina w górach)
+  const home = new Uint8Array(N); { const H = clamp(Math.round(levelSize(map) / 4), 9, 16), dist = new Int16Array(N).fill(-1), q = [];
+    for (const s of starts) { const i = s.y * n + s.x; dist[i] = 0; q.push(i); }
+    for (let k = 0; k < q.length; k++) { const i = q[k], x = i % n, y = (i / n) | 0; home[i] = 1; if (dist[i] >= H) continue;
+      for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X < 0 || Y < 0 || X >= n || Y >= n || dist[j] >= 0 || map.terrain[j] === TER.WATER || map.obst[j]) continue; dist[j] = dist[i] + 1; q.push(j); } } }
   const pick = (cond, tries = 500) => { for (let k = 0; k < tries; k++) { const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (ok(x, y) && cond(x, y)) return [x, y]; } return null; };
   const add = (o, tiles) => { o.id = objs.length; objs.push(o); for (const i of tiles) occ[i] = 1; markNear(o.x, o.y); return o; };
   // skarb w gąszczu albo wśród skał (dużo drzew wokół): widać go dopiero z bliska (objSeen)
@@ -252,8 +273,8 @@ function placeObjects(st) {
   // Potwór: siła rośnie wykładniczo z odległością od startu (blisko ~armia startowa, na krańcach mapy kilkanaście razy więcej),
   // strażnicy cenniejszych rzeczy (boost) są mocniejsi, a poziom trudności mnoży liczebność
   const diff = DIFFICULTIES[st.settings.difficulty].rating / 100;
-  const monster = (x, y, boost = 0) => {
-    const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), all = NEUTRALS_BY_LEVEL[lvl];
+  const monster = (x, y, boost = 0, ddFix = null) => { // ddFix: siła jak przy samym starcie (pierwsze walki)
+    if (home[y * n + x]) return null; const dd = ddFix != null ? ddFix : d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), all = NEUTRALS_BY_LEVEL[lvl];
     const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff) * rule(st, 'monsters');
     const fit = all.filter(c => CREATURES[c].value <= power * 1.3), list = fit.length ? fit : [all.reduce((a, c) => (CREATURES[c].value < CREATURES[a].value ? c : a))], cid = list[Math.floor(rng() * list.length)]; // bez smoka silniejszego niż cała okolica
     return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
@@ -291,6 +312,11 @@ function placeObjects(st) {
   { const narrow = (x, y) => map.road[y * n + x] && around(x, y, 1, j => map.obst[j] === OBST.MOUNT || map.terrain[j] === TER.WATER) >= 4; // droga ściśnięta górami albo wodą
     for (let k = Math.round(NL / 900); k > 0; k--) { const p = best((x, y) => dStart(x, y) >= 8 && narrow(x, y), null, 20); if (p) monster(p[0], p[1]); } }
   for (let k = Math.round(NL / 520); k > 0; k--) { const p = best((x, y) => dStart(x, y) >= 6, (x, y) => (dRoad[y * n + x] <= 2 ? 1.5 : 0), 25); if (p) monster(p[0], p[1]); }
+  // pierwsze walki: tuż za okolicą każdego startu 2–3 słabe oddziały (przy drodze), do pokonania armią startową
+  const homeEdge = (x, y) => { if (home[y * n + x]) return false; for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (X >= 0 && Y >= 0 && X < n && Y < n && home[Y * n + X]) return true; } return false; };
+  for (const s0 of starts) for (let k = 0; k < 2 + (rng() < 0.5 ? 1 : 0); k++) {
+    const p = best((x, y) => homeEdge(x, y) && Math.hypot(x - s0.x, y - s0.y) < levelSize(map) * 0.35 && dStart(x, y) === Math.hypot(x - s0.x, y - s0.y), (x, y) => (dRoad[y * n + x] <= 1 ? 2 : 0), 25);
+    if (p) monster(p[0], p[1], 0, 0.02); }
   // artefakty: im dalej od startu, tym rzadsze; każdego pilnuje potwór
   for (let k = Math.max(3, Math.round(NL / 600)); k > 0; k--) {
     const p = best((x, y) => dStart(x, y) >= 7, FIT.hidden, 40); if (!p) continue;
@@ -361,6 +387,18 @@ function placeObjects(st) {
     let wet = 0; for (let d = 0; d < 8; d++) if (map.terrain[(y + DY8[d]) * n + x + DX8[d]] === TER.WATER && !occ[(y + DY8[d]) * n + x + DX8[d]]) wet++; if (wet < 6) continue;
     add({ type: 'site', kind, x, y, seen: {} }, [i]); k--;
   }
+  // Przejścia: stały obiekt (kopalnia, skarbiec, miejsce) nie może zamknąć jedynej drogi do któregoś miasta (wąska dolina,
+  // przesmyk) – taki obiekt znika. Potwory (do pokonania) i skarby (do podniesienia) drogi nie zamykają.
+  { const solid = o => !o.dead && !['monster', 'res', 'chest', 'art', 'boat'].includes(o.type), tilesOf = o => [o.y * n + o.x, ...(o.blocks || [])];
+    const blocked = new Uint8Array(N); for (const o of objs) if (solid(o)) for (const i of tilesOf(o)) blocked[i] = 1;
+    const reached = () => { const seen = new Uint8Array(N), q = [map.start.y * n + map.start.x]; seen[q[0]] = 1;
+      while (q.length) { const i = q.pop(), x = i % n, y = (i / n) | 0, g = gateTo.get(i); if (g != null && !seen[g]) { seen[g] = 1; q.push(g); }
+        for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X < 0 || Y < 0 || X >= n || Y >= n || seen[j] || blocked[j] || map.terrain[j] === TER.WATER || map.obst[j]) continue; seen[j] = 1; q.push(j); } }
+      return map.sites.filter(s => seen[Math.min(n - 1, s.y + 1) * n + s.x]).length; };
+    let got = reached();
+    for (let k = objs.length - 1; k >= 0 && got < map.sites.length; k--) { const o = objs[k]; if (!solid(o) || o.kind === 'gate') continue;
+      for (const i of tilesOf(o)) blocked[i] = 0; const now = reached(); if (now > got) { o.dead = true; got = now; } else for (const i of tilesOf(o)) blocked[i] = 1; }
+  }
   return objs;
 }
 // Graal i obeliski: Graal zakopany na wolnym polu lądu (osiągalnym ze startu, z dala od graczy), obeliski rozsiane po mapie.
@@ -428,7 +466,7 @@ function previewHero(st, owner, pick) {
 function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   const rng = mulberry32(seed), d = DIFFICULTIES[S.difficulty];
   const st = { seed, day: 1, week: 1, month: 1, dayTotal: 1, settings: { ...S, rules: validRules(S.rules) }, bonusText: '', selHero: 0, cam: null, players: [], heroes: [], towns: [], objects: [] };
-  const surf = generateMap(MAP_SIZES.find(m => m.id === S.mapSize).n, seed), map = st.map = S.underground ? withUnderground(surf, seed) : surf;
+  const surf = generateMap(MAP_SIZES.find(m => m.id === S.mapSize).n, seed, S.land || 'random'), map = st.map = S.underground ? withUnderground(surf, seed) : surf; st.landInfo = { land: surf.land, shape: surf.shape };
   st.objects = placeObjects(st);
   placeGrail(st);
   // gracze (ludzie i komputer) w kolejnych miejscach startowych (pierwsze = map.start, drugie = najdalej od niego), reszta miast jest niezależna

@@ -98,17 +98,18 @@ function drawCreatureAnim(ctx, cid, x, y, k = 2, ph = 0) {
   drawSprite(ctx, battleSprite(cid, 1, pose, i), x, y, k / 2); G.dirty = true;
 }
 // Bohater na mapie przygody: jeździec 3D wypalony kamerą mapy w 8 kierunkach (HERO_MAP_ART: wschód, płd.-wsch., południe,
-// płn.-wsch., północ; zachodnie to odbicia), 12 klatek chodu i 4 spoczynku, ok. 46 px; kierunek z ostatniego kroku (h.face).
+// płn.-wsch., północ; zachodnie to odbicia), 12 klatek chodu i 4 spoczynku, ok. 46 px; kierunek z ostatniego kroku (heroFacing).
 // Bez arkusza mapy: jeździec z bitwy bokiem; na łodzi dawny rysunek
 const HERO_MAP_H = 46, HERO_FACE = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'], HERO_FACE_SRC = { SW: 'SE', W: 'E', NW: 'NE' };
-function heroFace(h) { // 0 = wschód, dalej zgodnie z ruchem wskazówek zegara na ekranie (2 = w dół, 6 = w górę)
-  if (h.anim) { const dx = Math.sign(h.x - h.anim.fx), dy = Math.sign(h.y - h.anim.fy); if (dx || dy) h.face = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) & 7; }
-  return h.face != null ? h.face : h.dir < 0 ? 4 : 0;
+const HERO_FACING = new WeakMap(); // kierunek to tylko wygląd: poza stanem gry (zapis, tura na żywo i natychmiastowa są takie same)
+function heroFacing(h) { // 0 = wschód, dalej zgodnie z ruchem wskazówek zegara na ekranie (2 = w dół, 6 = w górę)
+  if (h.anim) { const dx = Math.sign(h.x - h.anim.fx), dy = Math.sign(h.y - h.anim.fy); if (dx || dy) HERO_FACING.set(h, Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) & 7); }
+  const f = HERO_FACING.get(h); return f != null ? f : h.dir < 0 ? 4 : 0;
 }
 function heroMap3d(h, col) {
   const M = typeof HERO_MAP_ART !== 'undefined' && HERO_MAP_ART[h.cls], mim = HERO_MAP_IMG[h.cls];
   if (!h.boat && M && mim && mim._ok) {
-    const fd = HERO_FACE[heroFace(h)], src = HERO_FACE_SRC[fd] || fd, flip = !!HERO_FACE_SRC[fd], walk = !!h.anim, pose = (walk ? 'walk_' : 'idle_') + src, F = M.f[pose];
+    const fd = HERO_FACE[heroFacing(h)], src = HERO_FACE_SRC[fd] || fd, flip = !!HERO_FACE_SRC[fd], walk = !!h.anim, pose = (walk ? 'walk_' : 'idle_') + src, F = M.f[pose];
     const i = walk ? Math.floor(G.time * 36) % F.length : Math.floor(G.time * 4) % F.length, key = `hm_${h.cls}_${col}_${pose}_${i}_${flip ? 1 : 0}`; let s = SPR.get(key);
     if (!s) { const [x, y, w, hh, ax, ay] = F[i], c = document.createElement('canvas'); c.width = w; c.height = hh; const g = c.getContext('2d', { willReadFrequently: true });
       if (flip) { g.translate(w, 0); g.scale(-1, 1); } g.drawImage(mim, x, y, w, hh, 0, 0, w, hh); g.setTransform(1, 0, 0, 1, 0, 0); keyTint(g, w, hh, col);

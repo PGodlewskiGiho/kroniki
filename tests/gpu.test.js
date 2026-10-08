@@ -26,7 +26,7 @@ const diff = (a, b) => page.evaluate(async ([a, b]) => {
 test('mapa na karcie graficznej wygląda tak samo jak rysowana procesorem (teren, woda, obiekty, mgła, światło)', async () => {
   await newGame(page, { weather: 'off' }, 5); await page.waitForFunction(() => MapRender.warmed || MapRender.cache.size > 4, null, { timeout: 30000 });
   await page.evaluate(() => { G.settings.weather = 'off'; window.__upd = update; window.update = () => { G.time = 12.3; G.dirty = true; }; G.mouse.x = G.mouse.y = -100; }); // stały czas: fale i dym w tej samej fazie
-  const ok = await page.evaluate(() => { G.settings.renderer = 'gl'; return GLMap.use(); });
+  const ok = await page.evaluate(() => { G.settings.renderer = 'gl'; GLMap.reflect = false; return GLMap.use(); }); // odbicia nieba na wodzie są tylko na karcie: do porównania wyłączone
   if (!ok) return; // przeglądarka bez WebGL: nie ma czego porównać
   const cpu = await viewShot('cpu'), gpu = await viewShot('gl'), r = await diff(cpu, gpu);
   const st = await page.evaluate(() => ({ ...GLMap.stats, shown: GLMap.canvas.style.display !== 'none' }));
@@ -38,7 +38,7 @@ test('mapa na karcie graficznej wygląda tak samo jak rysowana procesorem (teren
   await frames(page, 3); const s2 = await page.evaluate(() => ({ ...GLMap.stats, pages: GLMap.pages.length }));
   assert.ok(s2.pages >= 1 && s2.draws * 2 < s2.quads, `poleceń rysowania ${s2.draws} przy ${s2.quads} prostokątach`);
   assert.equal(s2.uploads, 0, 'wgrań na kartę w nieruchomej klatce');
-  await page.evaluate(() => { window.update = window.__upd; });
+  await page.evaluate(() => { window.update = window.__upd; GLMap.reflect = true; });
 });
 
 test('płótno WebGL tylko na mapie: poza nią schowane, okno mapy w płótnie gry przezroczyste tylko przy karcie graficznej', async () => {

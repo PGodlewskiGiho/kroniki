@@ -6,6 +6,7 @@
 // Fale na wodzie liczy shader (wzór fal × maska głębi, piana × maska brzegu) – dawniej składane w płótnie dla każdego kawałka.
 // Gotowy obraz trafia do płótna gry jednym drawImage (jak dawny bufor świata). Bez WebGL, w trybie pikseli albo po
 // wybraniu w ustawieniach „procesor” – dawne rysowanie (drawMapView sprawdza GLMap.use()).
+const HP = 'precision highp float;', GLSL_HASH = 'float wxH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }';
 const GLMap = {
   ok: null, canvas: null, gl: null, frame: 0, tex: new Map(), bytes: 0, BUDGET: 192 * 1024 * 1024, stats: { quads: 0, draws: 0, uploads: 0 },
   // Tryb rysowania mapy (G.settings.renderer): 'auto' (domyślnie) – karta graficzna, jeśli przeglądarka ma sprzętowy WebGL;
@@ -34,11 +35,51 @@ const GLMap = {
     // woda: dwie warstwy wzoru fal (przesuwane w przeciwne strony) w masce głębi i pulsująca piana w masce brzegu (jak WaterFx.draw)
     this.pWater = prog(`attribute vec2 aP; attribute vec2 aT; uniform vec2 uR; varying vec2 vT;
       void main() { gl_Position = vec4(aP.x / uR.x * 2.0 - 1.0, 1.0 - aP.y / uR.y * 2.0, 0.0, 1.0); vT = aT; }`,
-    `precision mediump float; uniform sampler2D uPat, uDeep, uShore; uniform vec2 uW, uO1, uO2; uniform float uS; uniform vec3 uA; uniform vec4 uFoam; varying vec2 vT;
+    `${HP} uniform sampler2D uPat, uDeep, uShore, uSky; uniform vec2 uW, uO1, uO2; uniform float uS, uT, uRefl; uniform vec3 uA; uniform vec4 uFoam, uGrid; varying vec2 vT; ${GLSL_HASH}
       void main() { vec2 q = vT * uS + uW; vec4 c1 = texture2D(uPat, fract((q - uO1) / 48.0)) * uA.x, c2 = texture2D(uPat, fract((q - uO2) / 48.0)) * uA.y;
-        vec4 w = c2 + c1 * (1.0 - c2.a); gl_FragColor = (w * texture2D(uDeep, vT).a + uFoam * texture2D(uShore, vT).a) * uA.z; }`, ['aP', 'aT']);
+        float deep = texture2D(uDeep, vT).a; vec4 w = c2 + c1 * (1.0 - c2.a);
+        // pogoda: odbicie nieba (jaśniej i bardziej błękitnie bez chmur), błyski słońca, kręgi deszczu (q: piksele grafiki, 16 na pole)
+        vec4 s = texture2D(uSky, (q / 16.0 - uGrid.xy) / uGrid.zw); float sky = 1.0 - s.g;
+        vec3 refl = mix(vec3(0.09, 0.11, 0.15), vec3(0.56, 0.72, 0.88), sky); float fr = 0.11;
+        float gl = step(0.993, wxH(floor(q / 1.6) + floor(uT * 3.0))) * sky * 0.7;
+        vec2 cell = floor(q / 10.0), lp = fract(q / 10.0) - 0.5 - (vec2(wxH(cell), wxH(cell + 3.1)) - 0.5) * 0.4; float ph = fract(uT * 0.9 + wxH(cell + 7.3));
+        float ring = smoothstep(0.06, 0.0, abs(length(lp) - ph * 0.45)) * (1.0 - ph) * step(wxH(cell + 11.7), s.b) * 0.55;
+        vec4 add = vec4(refl * fr + vec3(1.0, 0.97, 0.88) * gl + vec3(0.82, 0.88, 0.95) * ring, fr + gl + ring) * uRefl;
+        gl_FragColor = ((w + add * (1.0 - w.a)) * deep + uFoam * texture2D(uShore, vT).a) * uA.z; }`, ['aP', 'aT']);
     this.uR = gl.getUniformLocation(this.pQuad, 'uR'); this.uTex = gl.getUniformLocation(this.pQuad, 'uTex');
-    this.uw = {}; for (const k of ['uR', 'uPat', 'uDeep', 'uShore', 'uW', 'uO1', 'uO2', 'uS', 'uA', 'uFoam']) this.uw[k] = gl.getUniformLocation(this.pWater, k);
+    this.uw = {}; for (const k of ['uR', 'uPat', 'uDeep', 'uShore', 'uW', 'uO1', 'uO2', 'uS', 'uA', 'uFoam', 'uSky', 'uGrid', 'uT', 'uRefl']) this.uw[k] = gl.getUniformLocation(this.pWater, k);
+    // pogoda: cząstki (punkty: deszcz, śnieg, liście, popiół, piasek) i niebo (cienie chmur, mgła, błyskawica) – Weather w 17w-pogoda.js
+    this.pWxP = prog(`attribute vec4 aS; uniform vec2 uR; uniform vec3 uM; uniform vec4 uV; uniform vec2 uO; uniform float uT, uTs; varying vec2 vTile; varying float vC, vS, vR;
+      void main() { float c = aS.w < 0.4 ? 1.0 : aS.w < 0.7 ? 2.0 : aS.w < 0.8 ? 3.0 : aS.w < 0.9 ? 4.0 : 5.0, k = 0.7 + aS.z * 0.6; // jak wxClass
+        float fall = c < 1.5 ? 620.0 : c < 2.5 ? 42.0 : c < 3.5 ? 34.0 : c < 4.5 ? 28.0 : 8.0, drift = c < 1.5 ? 90.0 : c < 2.5 ? 18.0 : c < 3.5 ? 40.0 : c < 4.5 ? 10.0 : 170.0;
+        float sway = (c > 1.5 && c < 3.5) ? sin(uT * (1.3 + aS.z) + aS.x * 40.0) * 14.0 : 0.0;
+        vec2 p = uV.xy + mod(vec2(aS.x * uV.z + uT * drift * k + sway, aS.y * uV.w + uT * fall * k), uV.zw);
+        vTile = (p - uO) / uTs; vC = c; vS = aS.z; vR = aS.x; vec2 b = uM.x * p + uM.yz;
+        gl_Position = vec4(b.x / uR.x * 2.0 - 1.0, 1.0 - b.y / uR.y * 2.0, 0.0, 1.0);
+        gl_PointSize = (c < 1.5 ? 17.0 : c < 2.5 ? 4.0 + aS.z * 3.0 : c < 3.5 ? 8.0 : c < 4.5 ? 3.5 : 20.0) * uM.x; }`,
+    `${HP} uniform sampler2D uType; uniform vec4 uGrid; uniform float uT, uSeason; varying vec2 vTile; varying float vC, vS, vR;
+      void main() { vec2 g = (vTile - uGrid.xy) / uGrid.zw; if (g.x < 0.0 || g.y < 0.0 || g.x > 1.0 || g.y > 1.0) discard;
+        vec4 w = texture2D(uType, g); if (abs(floor(w.r * 255.0 / 40.0 + 0.5) - vC) > 0.5 || vS > w.g) discard;
+        vec2 p = gl_PointCoord - 0.5; vec4 col;
+        if (vC < 1.5) { float a = smoothstep(0.07, 0.0, abs(p.x + p.y * 0.2)) * smoothstep(0.5, 0.2, abs(p.y)) * 0.75; col = vec4(vec3(0.8, 0.86, 0.97) * a, a); }
+        else if (vC < 2.5) { float a = smoothstep(0.5, 0.12, length(p)) * 0.92; col = vec4(vec3(a), a); }
+        else if (vC < 3.5) { float an = uT * 2.0 + vR * 30.0; vec2 q = mat2(cos(an), -sin(an), sin(an), cos(an)) * p; float a = smoothstep(0.5, 0.36, length(q * vec2(1.0, 2.3)));
+          vec3 c3 = uSeason > 1.5 ? mix(vec3(0.82, 0.32, 0.1), vec3(0.95, 0.68, 0.18), fract(vR * 7.0)) : mix(vec3(1.0, 0.78, 0.86), vec3(1.0), fract(vR * 7.0)); col = vec4(c3 * a, a); }
+        else if (vC < 4.5) { float a = smoothstep(0.5, 0.1, length(p)) * 0.85, e = step(0.78, fract(vR * 11.0)); vec3 c3 = mix(vec3(0.42, 0.4, 0.4), vec3(1.0, 0.55, 0.15) * (0.7 + 0.3 * sin(uT * 9.0 + vR * 50.0)), e); col = vec4(c3 * a, a); }
+        else { float a = smoothstep(0.5, 0.0, length(p)) * 0.2; col = vec4(vec3(0.78, 0.66, 0.45) * a, a); }
+        gl_FragColor = col; }`, ['aS']);
+    this.pWxS = prog(`attribute vec2 aP; uniform vec2 uR; uniform vec3 uM; varying vec2 vL; void main() { vL = aP; vec2 b = uM.x * aP + uM.yz; gl_Position = vec4(b.x / uR.x * 2.0 - 1.0, 1.0 - b.y / uR.y * 2.0, 0.0, 1.0); }`,
+    `${HP} uniform sampler2D uSky; uniform vec4 uGrid; uniform vec2 uO; uniform float uTs, uT, uFlash; varying vec2 vL; ${GLSL_HASH}
+      float wxN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(wxH(i), wxH(i + vec2(1.0, 0.0)), f.x), mix(wxH(i + vec2(0.0, 1.0)), wxH(i + vec2(1.0, 1.0)), f.x), f.y); }
+      void main() { vec2 tile = (vL - uO) / uTs; vec4 s = texture2D(uSky, (tile - uGrid.xy) / uGrid.zw);
+        float nn = wxN(tile * 0.9 - vec2(uT * 0.32, uT * 0.11)) * 0.6 + wxN(tile * 2.3 - vec2(uT * 0.5, 0.0)) * 0.4;
+        float sh = s.g * (0.5 + 0.5 * nn) * 0.3 + s.b * 0.06, fog = s.r * (0.55 + 0.45 * wxN(tile * 1.3 - vec2(uT * 0.15, uT * 0.05))) * 0.8;
+        vec4 c = vec4(vec3(0.03, 0.04, 0.08) * sh, sh); c = c * (1.0 - fog) + vec4(vec3(0.86, 0.88, 0.9) * fog, fog);
+        gl_FragColor = c + vec4(vec3(0.9, 0.94, 1.0) * uFlash, uFlash) * (1.0 - c.a); }`, ['aP']);
+    this.ux = {}; for (const [P, ks] of [[this.pWxP, ['uR', 'uM', 'uV', 'uO', 'uT', 'uTs', 'uType', 'uGrid', 'uSeason']], [this.pWxS, ['uR', 'uM', 'uSky', 'uGrid', 'uO', 'uTs', 'uT', 'uFlash']]]) for (const k of ks) this.ux[(P === this.pWxP ? 'p_' : 's_') + k] = gl.getUniformLocation(P, k);
+    const seeds = Weather.seeds(2500); this.wxN = 2500; this.wxVbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.wxVbo); gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
+    this.tType = this.newTex(); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    this.tSky = this.newTex(); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 70, 0, 255])); this.wxGrid = [0, 0, 1e4, 1e4];
     this.vbo = gl.createBuffer(); this.N = 4096; this.buf = new Float32Array(this.N * 6 * 8); this.n = 0; this.cur = null; this.add = false;
     // stałe obrazki: biały piksel (prostokąty w kolorze), miękkie koło (dym, iskry, dołki) i pierścień (podświetlenie)
     const mk = (w, h, f) => { const c = document.createElement('canvas'); c.width = w; c.height = h; f(c.getContext('2d'), w, h); return c; };
@@ -122,13 +163,35 @@ const GLMap = {
     gl.useProgram(this.pWater); gl.uniform2f(U.uR, this.W, this.H); gl.uniform1f(U.uS, S); gl.uniform2f(U.uW, wx / D, wy / D);
     gl.uniform2f(U.uO1, Math.floor(t * 4), Math.floor(t * 1.5)); gl.uniform2f(U.uO2, -Math.floor(t * 3) + 21, Math.floor(t * 2) + 13);
     gl.uniform3f(U.uA, 0.5 + 0.2 * Math.sin(t * 1.3), 0.35 + 0.2 * Math.sin(t * 1.7 + 2), ctx.globalAlpha); gl.uniform4f(U.uFoam, fc[0] * fa, fc[1] * fa, fc[2] * fa, fa);
-    [[pat, U.uPat], [deep, U.uDeep], [shore, U.uShore]].forEach(([tx, u], i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tx); gl.uniform1i(u, i); });
+    [[pat, U.uPat], [deep, U.uDeep], [shore, U.uShore], [this.tSky, U.uSky]].forEach(([tx, u], i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tx); gl.uniform1i(u, i); });
+    gl.uniform4f(U.uGrid, ...this.wxGrid); gl.uniform1f(U.uT, t % 1000); gl.uniform1f(U.uRefl, this.reflect === false ? 0 : 1); // odbicia nieba, błyski i kręgi deszczu (tylko karta graficzna)
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, pat); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); // wzór fal: ostre piksele (jak w płótnie), maski gładko
     const [a, b, c, d, e, f] = ctx.m, x0 = dx, y0 = dy, x1 = dx + size, y1 = dy + size, V = new Float32Array(24); let k = 0;
     for (const [x, y, u, v] of [[x0, y0, 0, 0], [x1, y0, 1, 0], [x0, y1, 0, 1], [x1, y0, 1, 0], [x1, y1, 1, 1], [x0, y1, 0, 1]]) { V[k++] = a * x + c * y + e; V[k++] = b * x + d * y + f; V[k++] = u; V[k++] = v; }
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo); gl.bufferData(gl.ARRAY_BUFFER, V, gl.STREAM_DRAW);
     gl.enableVertexAttribArray(0); gl.enableVertexAttribArray(1); gl.disableVertexAttribArray(2); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 16, 0); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 16, 8);
     gl.drawArrays(gl.TRIANGLES, 0, 6); this.stats.draws++; this.cur = null;
+  },
+  // Pogoda (Weather.draw): siatka pól do tekstur, potem prostokąt nieba (chmury, mgła, błysk) i cząstki jednym poleceniem
+  weather(ctx, g, ox, oy, season, flash) {
+    const gl = this.gl, [a, , , , e, f] = ctx.m, t = G.time % 1000, V = VIEW; this.flush();
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    if (this.wxVer !== g.ver || this.wxFor !== g) { this.wxVer = g.ver; this.wxFor = g; // tekstury pogody tylko po przeliczeniu siatki
+      gl.bindTexture(gl.TEXTURE_2D, this.tType); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, g.cols, g.rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, g.type);
+      gl.bindTexture(gl.TEXTURE_2D, this.tSky); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, g.cols, g.rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, g.sky); }
+    this.wxGrid = [g.tx0, g.ty0, g.cols, g.rows]; const X = this.ux; gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2);
+    // niebo: prostokąt widoku (współrzędne logiczne mapy)
+    gl.useProgram(this.pWxS); gl.uniform2f(X.s_uR, this.W, this.H); gl.uniform3f(X.s_uM, a, e, f); gl.uniform4f(X.s_uGrid, ...this.wxGrid); gl.uniform2f(X.s_uO, ox, oy); gl.uniform1f(X.s_uTs, T); gl.uniform1f(X.s_uT, t); gl.uniform1f(X.s_uFlash, flash);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tSky); gl.uniform1i(X.s_uSky, 0);
+    const x0 = V.x, y0 = V.y, x1 = V.x + V.w, y1 = V.y + V.h; gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([x0, y0, x1, y0, x0, y1, x1, y0, x1, y1, x0, y1]), gl.STREAM_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0); gl.drawArrays(gl.TRIANGLES, 0, 6); this.stats.draws++;
+    // cząstki: tyle punktów, ile ziaren; każdy pokazuje się tylko tam, gdzie pada jego rodzaj (tekstura tType)
+    if (G.settings.quality !== 'low') {
+      gl.useProgram(this.pWxP); gl.uniform2f(X.p_uR, this.W, this.H); gl.uniform3f(X.p_uM, a, e, f); gl.uniform4f(X.p_uV, V.x, V.y, V.w, V.h); gl.uniform2f(X.p_uO, ox, oy); gl.uniform1f(X.p_uT, t); gl.uniform1f(X.p_uTs, T);
+      gl.uniform4f(X.p_uGrid, ...this.wxGrid); gl.uniform1f(X.p_uSeason, season); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tType); gl.uniform1i(X.p_uType, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.wxVbo); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 16, 0); gl.drawArrays(gl.POINTS, 0, this.wxN); this.stats.draws++;
+    }
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); this.cur = null;
   },
 };
 // Kolor CSS (#rgb, #rrggbb, rgb(), rgba()) -> [r, g, b, a] 0..1; nieznany (gradient, wzór) -> biały

@@ -64,3 +64,25 @@ test('skarb w gąszczu: niewidoczny z daleka, odkrywa go bohater przechodzący o
   assert.deepEqual(r.after, { seen: true, ui: true, ai: false });
   assert.ok(r.saved, 'odkrycie zapisuje się w grze');
 });
+
+test('każda kraina i każdy kształt świata: komplet miejsc na miasta, wszystkie osiągalne lądem; mapy się różnią', async () => {
+  const r = await page.evaluate(() => {
+    const reachOk = m => { const n = m.n, reach = new Uint8Array(n * n), q = [m.start.y * n + m.start.x]; reach[q[0]] = 1;
+      while (q.length) { const i = q.pop(), x = i % n, y = (i / n) | 0; for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X >= 0 && Y >= 0 && X < n && Y < n && !reach[j] && m.terrain[j] !== TER.WATER && !m.obst[j]) { reach[j] = 1; q.push(j); } } }
+      return m.sites.every(s => reach[s.y * n + s.x]); };
+    const bad = [], shapes = new Set(), water = {}, snow = {}, sand = {};
+    for (const L of LAND_TYPES) for (const n of [36, 72, 144]) for (let seed = 1; seed <= 6; seed++) {
+      const m = generateMap(n, seed * 31 + n, L.id); shapes.add(m.shape);
+      if (!reachOk(m)) bad.push(`${L.id} ${n} ${seed} ${m.shape}: miasto nieosiągalne`);
+      if (m.sites.length < SITE_COUNT[n]) bad.push(`${L.id} ${n} ${seed} ${m.shape}: miejsc ${m.sites.length}/${SITE_COUNT[n]}`);
+      if (n === 72) { const N = n * n; let w = 0, s = 0, d = 0; for (let i = 0; i < N; i++) { if (m.terrain[i] === TER.WATER) w++; if (m.terrain[i] === TER.SNOW) s++; if (m.terrain[i] === TER.SAND) d++; }
+        water[m.land] = (water[m.land] || 0) + w / N / 6; snow[m.land] = (snow[m.land] || 0) + s / N / 6; sand[m.land] = (sand[m.land] || 0) + d / N / 6; }
+    }
+    return { bad, shapes: [...shapes].sort(), water, snow, sand };
+  });
+  assert.deepEqual(r.bad, []);
+  assert.deepEqual(r.shapes, ['coast', 'continent', 'inland', 'islands', 'isthmus', 'lakes']);
+  assert.ok(r.snow.frost > r.snow.mixed * 2.5, `mroźna: śniegu ${r.snow.frost.toFixed(2)} vs ${r.snow.mixed.toFixed(2)}`);
+  assert.ok(r.sand.desert > r.sand.mixed * 2.5, `pustynna: piasku ${r.sand.desert.toFixed(2)} vs ${r.sand.mixed.toFixed(2)}`);
+  assert.ok(r.water.islands > r.water.mixed * 1.5, `wyspiarska: wody ${r.water.islands.toFixed(2)} vs ${r.water.mixed.toFixed(2)}`);
+});

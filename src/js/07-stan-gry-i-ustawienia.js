@@ -6,7 +6,7 @@ const G = {
   mouse: { x: -1, y: -1, down: false },
   hover: null, downTarget: null, modal: null, keys: new Set(), popup: null, pressTimer: 0, longPress: false,
   fade: { a: 1, target: 0, next: null },
-  settings: { mapSize: 'M', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, quality: 'auto', underground: false, font: 'classic', fontV: 2, aiMoves: 'fast' }, rs: 1,
+  settings: { mapSize: 'M', land: 'random', difficulty: 1, color: 'red', faction: 'haven', bonus: 'gold', opponents: 1, slots: null, quality: 'auto', underground: false, font: 'classic', fontV: 2, aiMoves: 'fast' }, rs: 1,
   state: null,
 };
 function loadSettings() {
