@@ -24,7 +24,7 @@ test('repozytorium bez sekretów: klucze podpisu, hasła i tokeny tylko w sekret
   const files = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
   assert.deepEqual(files.filter(f => /\.(keystore|jks|p12|pem|key)$|(^|\/)\.env|sekret|secret/i.test(f)), []);
   const pat = /-----BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{30}|github_pat_|AKIA[0-9A-Z]{16}|\bsk-[A-Za-z0-9]{32}|hf_[A-Za-z0-9]{30}|(storePassword|keyPassword)\s+['"]/;
-  const hits = files.filter(f => /\.(js|py|json|ya?ml|gradle|java|xml|md|sh|properties|html)$/.test(f) && !f.endsWith('.html') && !f.startsWith('src/grafika/'))
+  const hits = files.filter(f => f !== 'tests/bezpieczenstwo.test.js').filter(f => /\.(js|py|json|ya?ml|gradle|java|xml|md|sh|properties|html)$/.test(f) && !f.endsWith('.html') && !f.startsWith('src/grafika/'))
     .filter(f => pat.test(fs.readFileSync(path.join(ROOT, f), 'utf8')));
   assert.deepEqual(hits, []);
 });
