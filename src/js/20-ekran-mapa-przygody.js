@@ -6,6 +6,86 @@ function paintAdvChrome(c) {
   for (const r of [LIST, INFOBOX]) if (r.h > 0) insetBox(c, r.x, r.y, r.w, r.h);
   insetBox(c, 8, VH - 31, VW - 16, 27, 7);
 }
+// Okienka pod prawym przyciskiem na mapie (jak w Heroes 3): bohater (portret, cechy, umiejętności, armia) i miasto (widok miasta,
+// mury, gildia, garnizon, bohaterowie w murach). Obcy: armia tylko jako rodzaje jednostek z przybliżoną liczebnością, bez doświadczenia i ruchu.
+const PRIM_ICO = { att: 'ic_sword', def: 'ic_shield', sp: 'ic_orb', kn: 'ic_scroll' };
+function mapCardAt(st, x, y) {
+  if (!inRect(x, y, VIEW)) return null; const { tx, ty } = pickTile(st, x, y), n = st.map.n;
+  if (tx < 0 || ty < 0 || tx >= n || ty >= n || !human(st).explored[ty * n + tx]) return null;
+  const hh = heroAt(st, tx, ty), ob = uiObjectAt(st, ty * n + tx) || drawnObjectAt(st, tx, ty);
+  if (ob && ob.type === 'town') return { mapTown: st.towns[ob.townId] };
+  if (hh) return { mapHero: hh };
+  return ob && ob.type === 'monster' ? monsterCard(st, ob) : null;
+}
+// Potwory neutralne: karta jednostki z przybliżoną liczebnością i nastawieniem (bez zdradzania, czy dołączą albo uciekną)
+function monsterCard(st, ob) {
+  const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], me = hero(st) ? armyPower(hero(st).army) : 0;
+  const extra = [...(q && !q.dead && q.taken && q.taken[ME] ? [`Cel zadania: ${siteName(q)}.`] : []), ...(ob.ship ? ['Statek piracki.'] : []), `Nastawienie: ${MONSTER_MOODS[monsterMood(ob)]}.`, `Siła ok. ${monsterPower(ob)} · twoja armia ${me}.`];
+  return { cid: ob.cid, n: 0, qty: qtyName(ob.count), extra };
+}
+const monsterPower = ob => Math.max(100, Math.round(ob.count * CREATURES[ob.cid].value / 100) * 100); // siła potworów w przybliżeniu
+const isMine = (st, owner) => owner === ME || allied(st, owner, ME);
+function cardFrame(ctx, p, W0, H0) {
+  const x = clamp(p.x + 14, 8, VW - W0 - 8), y = clamp(p.y - H0 / 2, 8, VH - H0 - 8);
+  ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(x + 4, y + 6, W0, H0); leatherFill(ctx, x, y, W0, H0, 13, -0.08); goldRim(ctx, x, y, W0, H0, 3); return [x, y];
+}
+// Rząd armii w okienku: własna z liczbami, obca z przybliżoną liczebnością pod miejscem
+function cardArmy(ctx, army, x, y, exact) {
+  const w = 46, h = 42, gap = 5; drawArmyRow(ctx, army, x, y, { w, h, gap, noNum: !exact });
+  if (!exact) army.forEach((s, i) => { if (s) text(ctx, qtyName(s.n), x + i * (w + gap) + w / 2, y + h + 12, { size: 11, weight: 600, align: 'center', color: '#e8d8b0' }); });
+  return y + h + (exact ? 4 : 16);
+}
+function cardStats(ctx, h, x, y) {
+  PRIMARY.forEach((P, i) => { const bx = x + i * 84; if (!drawUiPiece(ctx, PRIM_ICO[P.id], bx, y, 26, 26)) iconStat(ctx, P.id, bx + 13, y + 13, '#e8c870');
+    text(ctx, String(heroStat(h, P.id)), bx + 32, y + 19, { size: 18, weight: 700, color: '#fff0c8' }); text(ctx, P.name, bx, y + 38, { size: 11, weight: 500, color: '#c8b890' }); });
+}
+function cardStatsMini(ctx, h, x, y) {
+  PRIMARY.forEach((P, i) => { const bx = x + i * 50; if (!drawUiPiece(ctx, PRIM_ICO[P.id], bx, y - 13, 17, 17)) iconStat(ctx, P.id, bx + 8, y - 5, '#e8c870'); text(ctx, String(heroStat(h, P.id)), bx + 21, y, { size: 13, weight: 700, color: '#fff0c8' }); });
+}
+function cardSkills(ctx, h, x, y, maxW) {
+  if (!h.skills.length) { text(ctx, 'Bez umiejętności drugorzędnych.', x, y + 18, { size: 13, italic: true, color: '#c8b890' }); return y + 28; }
+  const s = 30, step = Math.min(44, (maxW - s) / Math.max(1, h.skills.length - 1));
+  h.skills.forEach((k, i) => { const cx = x + s / 2 + i * step; skillIcon(ctx, k.id, cx, y + s / 2, s); text(ctx, ['', 'I', 'II', 'III'][k.lv] || '', cx, y + s + 12, { size: 11, weight: 700, align: 'center', color: '#ffd970' }); });
+  return y + s + 16;
+}
+// Porównanie sił: zielone, gdy twoja armia (wybrany bohater) jest silniejsza
+function cardPower(ctx, label, P, x, y) {
+  const st = G.state, me = hero(st) ? armyPower(hero(st).army) : 0;
+  text(ctx, `${label} ${P} · twoja armia ${me}`, x, y, { size: 13, weight: 700, align: 'center', color: me > P ? '#a8e070' : '#ff9a7a' });
+}
+function drawHeroCard(ctx, p) {
+  const st = G.state, h = p.mapHero, mine = isMine(st, h.owner), W0 = 384, H0 = 152 + (h.skills.length ? 46 : 28) + 4 + (mine ? 46 : 58) + 30, col = ownerColor(st, h.owner);
+  ctx.save(); const [x, y] = cardFrame(ctx, p, W0, H0);
+  drawHeroMedal(ctx, x + 50, y + 50, 34, h, col);
+  goldText(ctx, h.name, x + 96, y + 34, 22, 'left');
+  text(ctx, `${h.female ? heroClass(h).nameF : heroClass(h).name}${mine ? `, poziom ${h.level}` : ''}`, x + 96, y + 56, { size: 14, weight: 600, color: '#e8d8b0' });
+  ctx.fillStyle = col; ctx.fillRect(x + 96, y + 66, 10, 10); text(ctx, ownerName(st, h.owner), x + 112, y + 76, { size: 13, weight: 500, color: '#c8b890' });
+  cardStats(ctx, h, x + 22, y + 100);
+  let yy = cardSkills(ctx, h, x + 22, y + 152, W0 - 44);
+  yy = cardArmy(ctx, h.army, x + 15, yy + 4, mine);
+  if (mine) text(ctx, `Ruch ${h.mp}/${heroMaxMP(h)} · Mana ${h.mana}/${heroMaxMana(h)} · Doświadczenie ${h.exp}`, x + W0 / 2, yy + 16, { size: 13, weight: 600, align: 'center', color: '#e8d8b0' });
+  else cardPower(ctx, 'Siła armii ok.', Math.round(armyPower(h.army) * heroFactor(h) / 100) * 100, x + W0 / 2, yy + 14);
+  ctx.restore();
+}
+function drawTownCard(ctx, p) {
+  const st = G.state, t = p.mapTown, mine = isMine(st, t.owner), gh = garrisonHero(st, t), vis = heroInTown(st, t), lv = townLevel(t), g = guildLevel(t), W0 = 384;
+  const row = mine ? 46 : 58, H0 = 166 + row + (gh ? 50 : 0) + (vis ? 52 + row : 0) + 30; // wysokość z rzędów armii i bohaterów
+  ctx.save(); const [x, y] = cardFrame(ctx, p, W0, H0);
+  if (!drawMap3dIcon(ctx, `town_${t.faction}_${lv}`, x + 66, y + 58, 110, 84)) drawSpriteBox(ctx, townIconSprite(t.faction, lv, ownerColor(st, t.owner)), x + 26, y + 18, 2);
+  goldText(ctx, t.name, x + 130, y + 32, 22, 'left');
+  text(ctx, factionOf(t.faction).name, x + 130, y + 54, { size: 14, weight: 600, color: '#e8d8b0' });
+  ctx.fillStyle = ownerColor(st, t.owner); ctx.fillRect(x + 130, y + 64, 10, 10); text(ctx, t.owner < 0 ? 'Miasto niezależne' : ownerName(st, t.owner), x + 146, y + 74, { size: 13, weight: 500, color: '#c8b890' });
+  const L = (k, v, yy) => { text(ctx, k, x + 130, yy, { size: 13, color: '#c8b890' }); text(ctx, v, x + W0 - 18, yy, { size: 13, weight: 700, align: 'right', color: '#fff0c8' }); };
+  L('Mury', ['brak', 'fort', 'cytadela', 'zamek'][lv], y + 96); L('Gildia magów', g ? `poziom ${g}` : 'brak', y + 114); L('Budowle · dochód', `${t.built.length} · ${townGold(t)} zł`, y + 132);
+  text(ctx, 'Garnizon', x + 18, y + 158, { size: 15, fam: 'title', color: '#ffd970' });
+  let yy = cardArmy(ctx, gh ? gh.army : t.garrison, x + 15, y + 166, mine);
+  const heroLine = (h, note) => { drawHeroMedal(ctx, x + 36, yy + 24, 18, h, ownerColor(st, h.owner)); text(ctx, `${heroTitle(h)}${note}`, x + 62, yy + 20, { size: 14, weight: 700, color: '#fff0c8' }); cardStatsMini(ctx, h, x + 62, yy + 40); yy += 50; };
+  if (gh) heroLine(gh, ' – dowodzi garnizonem');
+  if (vis) { heroLine(vis, ' – w mieście'); yy = cardArmy(ctx, vis.army, x + 15, yy + 2, mine); }
+  if (!mine) cardPower(ctx, 'Siła obrońców', townPower(st, t), x + W0 / 2, yy + 16);
+  else text(ctx, 'Twoje miasto – wejdź bohaterem albo wybierz je z listy.', x + W0 / 2, yy + 16, { size: 12, italic: true, align: 'center', color: '#c8b890' });
+  ctx.restore();
+}
 // Obcy bohater (jak w H3): cechy, umiejętności i rodzaje jednostek z przybliżoną liczebnością; bez doświadczenia i punktów ruchu
 const foeHeroInfo = (st, hh) => `${heroTitle(hh)} (${ownerName(st, hh.owner)}). ${PRIMARY.map(p => `${p.name} ${heroStat(hh, p.id)}`).join(', ')}.${hh.skills.length ? ` Umiejętności: ${hh.skills.map(s => `${SKILLS[s.id].name} (${SKILL_LEVELS[s.lv]})`).join(', ')}.` : ''} Armia: ${armyKinds(hh.army) || 'brak'}.`;
 // Obce miasto (jak w H3): frakcja, mury, gildia, garnizon i bohater w murach z przybliżoną liczebnością, porównanie sił
@@ -303,6 +383,7 @@ G.screens.adventure = {
     for (let k = 1; k <= mine.length; k++) { const h = mine[(i0 + k) % mine.length]; if ((!h.asleep && h.garrison == null) || k === mine.length) { this.selectHero(h); break; } }
   },
   toggleSleep() { const h = hero(G.state); if (!h) return; h.asleep = !h.asleep; if (h.asleep) { h.path = null; h.dest = null; } this.flash(h.asleep ? `${h.name} odpoczywa` : `${h.name} znów rusza w drogę`); },
+  rightCard(x, y) { return mapCardAt(G.state, x, y); }, // okienko bohatera albo miasta pod prawym przyciskiem
   rightInfo(x, y) {
     const st = G.state;
     if (inRect(x, y, { x: INFOBOX.x, y: INFOBOX.y, w: INFOBOX.w, h: 32 })) { const W = weekInfo(st), M = monthInfo(st); const S = seasonOf(st); return `${S.name}: ${S.text}. Tydzień ${W.name}: ${W.text || 'spokojny tydzień, bez szczególnych skutków'}.${M.name ? ` Miesiąc ${M.name}: ${M.text}.` : ''} Co tydzień los wybiera nowy efekt, a co miesiąc zmienia się pora roku. Pogoda dziś: ${WEATHERS[weatherOf(st)]}.`; }
@@ -315,7 +396,7 @@ G.screens.adventure = {
       if (hh && (hh.owner === ME || allied(st, hh.owner, ME))) return `${heroTitle(hh)}. Punkty ruchu: ${hh.mp} z ${heroMaxMP(hh)}. Doświadczenie: ${hh.exp}.`;
       if (hh) return foeHeroInfo(st, hh);
       const ob = uiObjectAt(st, i) || drawnObjectAt(st, tx, ty);
-      if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], qt = q && !q.dead && q.taken && q.taken[ME] ? `Cel zadania: ${siteName(q)}. ` : ''; return `${qt}${ob.ship ? 'Statek piracki: ' : ''}${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}. Usposobienie: ${MONSTER_MOODS[monsterMood(ob)]}${hero(st) ? (r => r ? (r.kind === 'join' ? ' – chcą dołączyć do twojego bohatera' : ' – uciekną przed twoim bohaterem') : '')(neutralReaction(st, hero(st), ob)) : ''}.`; }
+      if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], qt = q && !q.dead && q.taken && q.taken[ME] ? `Cel zadania: ${siteName(q)}. ` : ''; return `${qt}${ob.ship ? 'Statek piracki: ' : ''}${qtyName(ob.count)} ${c.gen} (siła ok. ${monsterPower(ob)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}. Nastawienie: ${MONSTER_MOODS[monsterMood(ob)]}.`; } // bez zdradzania, czy dołączą albo uciekną
       if (ob && ob.type === 'town') {
         const t = st.towns[ob.townId];
         if (t.owner !== ME) return foeTownInfo(st, t);

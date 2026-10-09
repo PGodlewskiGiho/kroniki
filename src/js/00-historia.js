@@ -415,5 +415,8 @@
    w opisie: cechy (atak, obrona, moc, wiedza), umiejętności i rodzaje jednostek z przybliżoną liczebnością (bez doświadczenia i ruchu).
    Obce miasto w opisie: frakcja, mury, poziom gildii magów, liczba budowli, garnizon i bohater w murach (rodzaje jednostek, przybliżona
    liczebność), porównanie sił.
+   Okienka mapy jak w Heroes 3 (prawy przycisk): bohater – portret, cechy z ikonami, umiejętności z poziomem, armia (obca z przybliżoną
+   liczebnością, własna z liczbami, ruchem, maną i doświadczeniem); miasto – widok, frakcja, mury, gildia, garnizon, bohaterowie w murach.
+   Potwór na mapie: karta jednostki z przybliżoną liczebnością, nastawieniem i przybliżoną siłą – już bez podpowiedzi, czy dołączy albo ucieknie.
    ===================================================================================== */
 

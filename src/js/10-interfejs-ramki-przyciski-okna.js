@@ -325,6 +325,8 @@ function dimScreen(ctx, a) { viewportDraw(ctx, c => { c.fillStyle = `rgba(0,0,0,
 // Dymek z opisem; p.x, p.y w układzie okna (VW×VH)
 function drawPopup(ctx, p) {
   if (p.cid) return drawUnitCard(ctx, p); // karta oddziału
+  if (p.mapHero) return drawHeroCard(ctx, p); // okienka mapy: bohater i miasto
+  if (p.mapTown) return drawTownCard(ctx, p);
   ctx.font = font(16, 500, 'body');
   const lines = wrapText(ctx, p.text, 250), tw = Math.max(...lines.map(l => ctx.measureText(l).width));
   const w = clamp(tw + 36, 140, 286), h = 26 + lines.length * 20;

@@ -115,8 +115,12 @@ test('mapa i dymki pokazują miasta niezależne bez błędów', async () => {
   const r = await page.evaluate(() => {
     const st = G.state, t = st.towns[1]; human(st).explored.fill(1); MapRender.reset(st.map, human(st).explored); centerCam(st, t.x, t.y);
     const sx = VIEW.x + t.x * T - st.cam.x + T / 2, sy = VIEW.y + t.y * T - st.cam.y + T / 2;
-    return { tile: tileInfo(st, t.x, t.y), tip: G.screens.adventure.rightInfo(sx, sy) };
+    const tip = G.screens.adventure.rightInfo(sx, sy), card = G.screens.adventure.rightCard(sx, sy), pop = rightPopup({ x: sx, y: sy, vx: sx, vy: sy }); drawPopup(G.ctx, pop); // okienko miasta jak w H3
+    const h = hero(st); centerCam(st, h.x, h.y);
+    const hp = rightPopup({ x: VIEW.x + h.x * T - st.cam.x + T / 2, y: VIEW.y + h.y * T - st.cam.y + T / 2, vx: 50, vy: 50 }); if (hp) drawPopup(G.ctx, hp);
+    return { tile: tileInfo(st, t.x, t.y), tip, town: card && card.mapTown === t, hero: !!hp && (hp.mapHero === h || hp.mapTown != null) };
   });
+  assert.ok(r.town, 'prawy przycisk na mieście: okienko miasta'); assert.ok(r.hero, 'prawy przycisk na bohaterze: okienko bohatera (albo miasta, gdy stoi w bramie)');
   assert.match(r.tile, /miasto niezależne/);
   assert.match(r.tip, /Miasto niezależne\. Mury: (brak|fort|cytadela|zamek)\. Gildia magów: .*Garnizon: [^.]+\..*Siła obrońców \d+/); // obce miasto jak w H3: mury, gildia, rodzaje jednostek garnizonu
   await frames(page, 10);
