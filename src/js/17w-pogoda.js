@@ -72,7 +72,7 @@ const Weather = {
     this.stormFlash(st, g, t); return g;
   },
   // błyskawica: co kilka sekund, gdy nad widokiem jest burza
-  stormFlash(st, g, t) { const ph = (t + st.dayTotal * 1.7) % 6.5; this.flash = g.storm > 4 && ph < 0.25 ? 0.38 * (1 - ph / 0.25) * (ph < 0.08 || ph > 0.14 ? 1 : 0.3) : 0; },
+  stormFlash(st, g, t) { const ph = (t + st.dayTotal * 1.7) % 6.5; this.flash = g.storm > 4 && ph < 0.25 ? 0.22 * (1 - ph / 0.25) * (ph < 0.08 || ph > 0.14 ? 1 : 0.3) : 0; },
   // Rysowanie w buforze świata (współrzędne logiczne mapy; ox, oy: położenie pola (0,0)); b: płótno procesora albo GLCtx
   draw(b, st, ox, oy) {
     if (!weatherOn() || !st || (st.map.ln && st.view)) return; // w podziemiach bez pogody
@@ -91,14 +91,14 @@ const Weather = {
     sg.putImageData(img, 0, 0); }
     b.save(); b.imageSmoothingEnabled = true; b.drawImage(c, ox + g.tx0 * T, oy + g.ty0 * T, cols * T, rows * T); // piksel = pole (środek piksela w środku pola) b.restore();
     if (G.settings.quality === 'low') return;
-    const t = G.time, V = VIEW, P = this.seeds(2500).subarray(0, 4 * 220), rain = [], dots = { 2: [], 4: [], 5: [] }, leaves = [];
+    const t = G.time, V = VIEW, P = this.seeds(2500).subarray(0, 4 * 140), rain = [], dots = { 2: [], 4: [], 5: [] }, leaves = [];
     for (let i = 0; i < P.length; i += 4) {
       const c5 = wxClass(P[i + 3]), [x, y] = wxPos(c5, P[i], P[i + 1], P[i + 2], t, V), tx = Math.floor((x - ox) / T) - g.tx0, ty = Math.floor((y - oy) / T) - g.ty0;
       if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) continue; const k = (ty * cols + tx) * 4; if (Math.round(g.type[k] / 40) !== c5 || P[i + 2] > g.type[k + 1] / 255) continue;
       if (c5 === WX.RAIN) rain.push(x, y); else if (c5 === WX.LEAF) leaves.push(x, y, P[i]); else dots[c5].push(x, y);
     }
-    if (rain.length) { b.beginPath(); for (let i = 0; i < rain.length; i += 2) { b.moveTo(rain[i], rain[i + 1]); b.lineTo(rain[i] - 2.5, rain[i + 1] - 11); } b.strokeStyle = 'rgba(190,210,240,.5)'; b.lineWidth = 1.3; b.stroke(); }
-    b.fillStyle = 'rgba(255,255,255,.9)'; for (let i = 0; i < dots[2].length; i += 2) b.fillRect(dots[2][i] - 1.5, dots[2][i + 1] - 1.5, 3, 3);
+    if (rain.length) { b.beginPath(); for (let i = 0; i < rain.length; i += 2) { b.moveTo(rain[i], rain[i + 1]); b.lineTo(rain[i] - 2, rain[i + 1] - 8); } b.strokeStyle = 'rgba(190,210,240,.3)'; b.lineWidth = 1.1; b.stroke(); }
+    b.fillStyle = 'rgba(255,255,255,.65)'; for (let i = 0; i < dots[2].length; i += 2) b.fillRect(dots[2][i] - 1.5, dots[2][i + 1] - 1.5, 3, 3);
     b.fillStyle = 'rgba(120,112,108,.8)'; for (let i = 0; i < dots[4].length; i += 2) b.fillRect(dots[4][i] - 1, dots[4][i + 1] - 1, 2, 2);
     b.fillStyle = 'rgba(200,170,110,.25)'; for (let i = 0; i < dots[5].length; i += 2) b.fillRect(dots[5][i] - 6, dots[5][i + 1] - 3, 12, 6);
     for (let i = 0; i < leaves.length; i += 3) { b.fillStyle = S === 2 ? ['#c8501e', '#e0a030', '#8a3a14', '#d87a2a'][Math.floor(leaves[i + 2] * 4)] : '#f4d0dc'; b.fillRect(leaves[i] - 2.5, leaves[i + 1] - 1.2, 5, 2.4); }

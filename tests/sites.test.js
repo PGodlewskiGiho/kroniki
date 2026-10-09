@@ -51,7 +51,7 @@ test('miasto: ulepszanie kupionych stworów (zwykłe -> ulepszone -> elitarne), 
   assert.deepEqual(r, { none: null, toUp: true, err: null, cid: true, paid: true, toElite: true, elite: true });
   await page.waitForFunction(() => G.screenName === 'town');
   const dlg = await page.evaluate(() => { const s = G.screen, t = s.town(); t.garrison[0] = { cid: factionOf(t.faction).dw.dw2[1], n: 5 }; t.built.push('dw2', 'dw2u'); s.showUpgrade(t.garrison, 0); return G.modal && G.modal.buttons.map(b => b.label); });
-  assert.deepEqual(dlg, ['Ulepsz', 'Ulepsz wszystkie', 'Nie']);
+  assert.deepEqual(dlg, ['Ulepsz', 'Ulepsz wszystkie', 'Zwolnij', 'Nie']);
 });
 
 test('druga paczka: oaza na piasku, obiekty wodne na otwartej wodzie, działanie', async () => {

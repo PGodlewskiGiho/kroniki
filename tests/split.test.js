@@ -1,7 +1,7 @@
 // Podział oddziału: część jednostek na wolne miejsce albo do takiego samego oddziału (spotkanie, miasto, bohater). Uruchom: npm test
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openGame, newGame, frames } = require('./harness');
+const { openGame, newGame, frames, dialog, pressDialog } = require('./harness');
 
 let browser, page, errors;
 test.before(async () => { ({ browser, page, errors } = await openGame()); });
@@ -67,4 +67,15 @@ test('miasto: Shift+klik dzieli oddział między garnizon a bohatera', async () 
   });
   assert.equal(r.n, 4); assert.equal(r.gar, 4); assert.deepEqual(r.hero, { cid: 'griffin', n: 4 }); assert.equal(r.modal, null);
   await frames(page, 3);
+});
+
+test('zwolnienie oddziału: drugie kliknięcie w zaznaczony oddział na ekranie bohatera, ostatniego oddziału nie można zwolnić', async () => {
+  await newGame(page);
+  await page.evaluate(() => { const st = G.state, h = hero(st); h.army = emptyArmy(); h.army[0] = { cid: 'pikeman', n: 10 }; h.army[1] = { cid: 'archer', n: 5 }; setScreen('hero', { heroId: st.heroes.indexOf(h) }); });
+  await frames(page, 3);
+  const click = async i => { await page.evaluate(i => { const s = G.screens.hero, r = s.armyRects[i]; s.onClick(r.x + 5, r.y + 5); }, i); await frames(page, 1); };
+  await click(1); await click(1); let d = await dialog(page); assert.match(d.msg, /Zwolnić oddział/); await pressDialog(page, 'Zwolnij'); await page.evaluate(() => { G.modal = null; }); // okno zamyka kliknięcie; tu sama akcja przycisku
+  let r = await page.evaluate(() => hero(G.state).army.filter(Boolean).map(s => s.cid)); assert.deepEqual(r, ['pikeman']);
+  await click(0); await click(0); d = await dialog(page); assert.match(d.msg, /ostatni oddział/); await pressDialog(page, 'OK');
+  r = await page.evaluate(() => hero(G.state).army.filter(Boolean).length); assert.equal(r, 1);
 });
