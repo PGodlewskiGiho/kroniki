@@ -406,5 +406,10 @@
    Karta oddziału jak w Heroes 3: prawy przycisk (długie dotknięcie) na oddziale bohatera, w garnizonie i u gościa w mieście, przy
    spotkaniu, werbunku i w bitwie pokazuje żywą postać na tle frakcji, liczebność, statystyki (z premią bohatera; w bitwie bieżące
    życie, strzały, morale i czary) oraz zdolności.
+   Online: gość sam wybiera w poczekalni frakcję (zamek) i bohatera; gospodarz ustawia świat i zasady, a wybór gości widzi na swoim
+   ekranie. Nikt nie jest uwięziony: w turze innego gracza działa Menu (gość: wyjście z możliwością powrotu; gospodarz: koniec gry
+   u wszystkich z zapisem do wznowienia). Gdy tura wypada na rozłączonego gracza, gospodarz może czekać, oddać jego tury komputerowi
+   (po powrocie gra znów sam) albo zakończyć grę. W bitwie z rozłączonym przeciwnikiem dowodzenie nim może przejąć komputer, a drugi
+   gracz może wrócić na mapę. Tura zakończona bez połączenia dociera do gospodarza przy powrocie.
    ===================================================================================== */
 

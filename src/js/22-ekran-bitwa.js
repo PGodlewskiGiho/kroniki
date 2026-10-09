@@ -264,7 +264,7 @@ G.screens.battle = {
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
     Sfx.play('battlestart', { vol: 0.8, jit: 0 });
-    const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null; this.net = p.net || null;
+    const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null; this.net = p.net || null; this.remoteAi = false; this.netAsked = false; this.netLost = 0;
     this.me = B.sides[0].owner === ME ? 0 : 1; this.floats = []; this.preview = null; this.timer = 0; this.ending = null; // strona gracza: 0 gdy atakuje, 1 gdy się broni
     this.terr = B.st.map.terrain[B.h.y * B.st.map.n + B.h.x] || TER.GRASS;
     for (const u of B.units) { [u.px, u.py] = unitPos(u); u.anim = null; u.dieT = null; u.flashT = null; u.face = null; }
@@ -317,6 +317,16 @@ G.screens.battle = {
     if (this.net) Net.send({ t: 'bcmd', c }, this.net.foe);
     this.applyOrder(c);
   },
+  // Online: przeciwnik w bitwie rozłączył się (albo wyszedł) – po kilku sekundach wybór zamiast czekania bez końca. Prowadzący bitwę
+  // może oddać dowodzenie przeciwnikiem komputerowi; drugi gracz wraca na mapę (wynik i tak liczy prowadzący, stan przyjdzie od niego).
+  netLostCheck() {
+    const n = this.net, gone = Net.role === 'guest' ? !Net.host : !Net.guestOn(n.foe);
+    if (!gone) { this.netLost = 0; return; } if (!this.netLost) this.netLost = G.time; if (G.time - this.netLost < 4 || G.modal || this.netAsked) return; this.netAsked = true;
+    if (n.lead) showDialog('Przeciwnik rozłączył się w trakcie bitwy. Dowodzenie jego oddziałami może przejąć komputer.', [
+      { label: 'Komputer dowodzi', key: 'enter', action: () => { this.remoteAi = true; } }, { label: 'Czekaj', key: 'escape', action: () => { this.netAsked = false; this.netLost = G.time + 20; } }]);
+    else showDialog('Prowadzący bitwę gracz rozłączył się. Możesz wrócić na mapę – wynik bitwy dotrze, gdy wróci, albo zdecyduje gospodarz.', [
+      { label: 'Wróć na mapę', key: 'enter', action: () => { this.phase = 'done'; Net.battleQ = null; G.go('adventure'); } }, { label: 'Czekaj', key: 'escape', action: () => { this.netAsked = false; this.netLost = G.time + 20; } }]);
+  },
   applyOrder(c) {
     const B = this.B, u = B.active, T = c.t != null ? B.units[c.t] : null;
     if (B.units.indexOf(u) !== c.u) console.warn('bitwa online: rozbieżność kolejki', c, B.units.indexOf(u));
@@ -359,6 +369,8 @@ G.screens.battle = {
     }
     if (this.phase === 'ai') { this.timer -= dt; if (this.timer <= 0) { aiAct(B, B.active); this.phase = 'play'; } return; }
     if (this.phase === 'remote' && Net.battleQ && Net.battleQ.length) { this.applyOrder(Net.battleQ.shift()); return; }
+    if (this.phase === 'remote' && this.remoteAi) { this.applyOrder({ a: 'ai', u: B.units.indexOf(B.active), r: B.round }); return; } // przeciwnik rozłączony: dowodzi za niego komputer
+    if (this.phase === 'remote') this.netLostCheck();
     if (this.phase === 'over') { const E = this.ending; E.t += dt; if (E.t >= E.dur) this.finish(false); }
   },
   // Czasy efektów (w sekundach); walka automatyczna odtwarza się szybciej
