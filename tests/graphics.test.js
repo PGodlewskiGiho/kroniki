@@ -140,11 +140,12 @@ test('kursor zmienia się wg celu: mapa (ruch, atak – także pole w zasięgu s
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), n = st.map.n; human(st).explored.fill(1); centerCam(st, h.x, h.y); G.modal = null;
     const at = (tx, ty) => adventureCursor(st, VIEW.x + (tx * T - st.cam.x) * ZOOM + 5, VIEW.y + (ty * T - st.cam.y) * ZOOM + 5);
-    const m = st.objects.find(o => o.type === 'monster' && !o.dead), res = st.objects.find(o => o.type === 'res');
+    const m = st.objects.find(o => o.type === 'monster' && !o.dead), res = st.objects.find(o => o.type === 'res' && !st.guard[o.y * n + o.x]);
     let free = null; for (let d = 1; d < 6 && !free; d++) for (const [dx, dy] of [[d, 0], [0, d], [-d, 0], [0, -d]]) { const x = h.x + dx, y = h.y + dy; if (passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && !st.guard[y * n + x]) { free = [x, y]; break; } }
     let gt = null; for (let i = 0; i < n * n && !gt; i++) if (st.guard[i] && !objectAt(st, i) && passableTile(st, i % n, Math.floor(i / n), h)) gt = [i % n, Math.floor(i / n)]; // pole w zasięgu strażnika
+    const gob = st.objects.find(o => !o.dead && o.type !== 'monster' && o.type !== 'town' && st.guard[o.y * n + o.x]), fob = st.objects.find(o => !o.dead && (o.type === 'site' || o.type === 'mine') && !st.guard[o.y * n + o.x]); // obiekt pilnowany i wolny
     let wall = null; for (let i = 0; i < n * n && !wall; i++) if (st.map.obst[i] && !objectAt(st, i)) wall = [i % n, Math.floor(i / n)];
-    const out = { monster: at(m.x, m.y), guarded: gt ? at(...gt) : 'attack', res: res ? at(res.x, res.y) : 'visit', free: free ? at(...free) : 'move', wall: at(...wall) };
+    const out = { monster: at(m.x, m.y), guarded: gt ? at(...gt) : 'attack', guardedObj: gob ? at(gob.x, gob.y) : 'attack', freeObj: fob ? at(fob.x, fob.y) : 'visit', res: res ? at(res.x, res.y) : 'visit', free: free ? at(...free) : 'move', wall: at(...wall) };
     out.css = cursorCss('attack').startsWith('url(data:image/png'); setCursor('attack'); out.set = G.canvas.style.cursor.includes('url(');
     const B = createBattle(st, h, m), scr = G.screens.battle; setScreen('battle', { battle: B }); scr.phase = 'input';
     const tg = (x, y) => { const [px, py] = hexCenter(x, y); return { px, py }; }; // miecz obraca się w stronę ciosu
@@ -152,7 +153,7 @@ test('kursor zmienia się wg celu: mapa (ruch, atak – także pole w zasięgu s
     scr.preview.target = tg(3, 5); out.bAttD = battleCursor(scr); out.rot = cursorCss(out.bAttD).startsWith('url(data:image/png') && cursorCss(out.bAttD) !== cursorCss(out.bAtt); scr.preview = { kind: 'shoot' }; out.bShoot = battleCursor(scr); scr.preview = { kind: 'far' }; out.bFar = battleCursor(scr);
     return out;
   });
-  assert.deepEqual(r, { monster: 'attack', guarded: 'attack', res: 'visit', free: 'move', wall: 'no', css: true, set: true, bAtt: 'attack0', bAttL: 'attack6', bAttD: 'attack2', rot: true, bShoot: 'shoot', bFar: 'no' });
+  assert.deepEqual(r, { monster: 'attack', guarded: 'attack', guardedObj: 'attack', freeObj: 'visit', res: 'visit', free: 'move', wall: 'no', css: true, set: true, bAtt: 'attack0', bAttL: 'attack6', bAttD: 'attack2', rot: true, bShoot: 'shoot', bFar: 'no' });
 });
 
 test('kółko myszy przybliża i oddala mapę wokół kursora; pole pod kursorem zostaje to samo', async () => {

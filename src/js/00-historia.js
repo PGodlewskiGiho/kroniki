@@ -398,6 +398,6 @@
    Portrety jednostek: koniec z domalowywaniem przez AI – wszystkie 197 to rendery 3D (usunięte domaluj.py i domaluj-wszystkie.py).
    Woda: bez pikselowego wzoru fal i kwadratowych błysków w siatce (miękkie, rzadkie błyski), tekstura wody bez obrotu drugiej próbki
    (fale w jednym kierunku, TX.keep). Dźwięk magicznych miejsc (amb_magic) bez czystego tonu 693 Hz – niski szum. Kursor: miecz także
-   na polach w zasięgu strażnika. Bitwa: szybsze strzały, kule, głazy i pociski czarów.
+   na polach w zasięgu strażnika i na obiektach, których pilnuje potwór obok (wiatrak, kopalnia…). Bitwa: szybsze strzały, kule, głazy i pociski czarów.
    ===================================================================================== */
 
