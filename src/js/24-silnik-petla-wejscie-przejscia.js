@@ -42,7 +42,7 @@ function boxUnits() {
 function restUnits() { setUnits(topUnits()); }
 // Przewijanie dawnego ekranu, który nie mieści się w wysokości okna (telefon): przeciągnięcie palcem albo kółko myszy
 function legScrollTo(v) { const L = UNITS.leg; if (!L) return; G.legScroll = clamp(v, 0, G.legScrollMax || 0); if (L.scroll) L.oy = -G.legScroll / LS; if (UNIT === 'leg') OY = L.oy; G.dirty = true; }
-const legScrollable = () => G.legScrollMax > 0 && topUnits() === 'leg';
+const legScrollable = () => G.legScrollMax > 0 && topUnits() === 'leg' && !(!G.modal && G.screen && G.screen.fitsView && G.screen.fitsView()); // ekran ułożony pod widok (np. nowa gra na telefonie) nie przewija się
 // Współrzędne myszy: vx, vy w całym oknie w jednostkach interfejsu; x, y w układzie aktywnej warstwy: dawne okna dialogowe
 // i zwykłe ekrany leżą w wyśrodkowanym obszarze W×H (przesunięcie OX, OY, skala LS), dawne ekrany fill w całym oknie (skala LS).
 function layerXY(vx, vy) {
@@ -162,7 +162,7 @@ function render() {
   else { if (OX || OY) drawBackdrop(ctx); center(); G.screen.draw(ctx); }
   if (G.modal) { setUnits(modalUnits()); if (G.modal.ui) whole(); else center(); G.modal.draw(ctx); }
   setUnits('ui'); whole();
-  if (G.legScrollMax > 0 && topUnits() === 'leg') { const h = VH * VH / (VH + G.legScrollMax), y = (VH - h) * G.legScroll / G.legScrollMax; // pasek przewijania dawnego ekranu
+  if (legScrollable()) { const h = VH * VH / (VH + G.legScrollMax), y = (VH - h) * G.legScroll / G.legScrollMax; // pasek przewijania dawnego ekranu
     ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(VW - 7, 0, 7, VH); ctx.fillStyle = 'rgba(214,174,92,.85)'; ctx.fillRect(VW - 6, y + 2, 5, h - 4); }
   if (G.popup) drawPopup(ctx, G.popup);
   drawNetChat(ctx); // czat gry online

@@ -381,5 +381,7 @@
    komputer nie celuje w sojuszników (aiPeace), zwycięstwo drużyny (gameResult); odznaka drużyny w wierszu gracza.
    Statystyki (20c): wykres potęgi co tydzień (st.hist, HIST_KEYS), liczniki zdarzeń (st.tally), 14 osiągnięć (ACHIEVEMENTS, localStorage
    kk_ach); okno showStats z końca gry („Statystyki”) i z Kroniki tawerny („Wykres potęgi”).
+   Czarodziej: wolniej rośnie Wiedza (CLASS_GROWTH; na 20. poziomie 3,66 → 3,28 indeksu siły). Nowa gra na telefonie: układ zwarty
+   (metrics, fitsView – ekran bez przewijania). Ekran bohatera: wiersz „Ścieżka” (wybrana albo trzy do wyboru, z legendą w podpowiedzi).
    ===================================================================================== */
 

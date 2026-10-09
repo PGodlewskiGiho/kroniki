@@ -321,10 +321,10 @@ G.screens.setup = {
   enter(p = {}) {
     this.online = !!p.online;
     const S = G.settings, B = []; S.slots = validSlots(S.slots) || legacySlots(S); fitSlots(S);
-    const X = 60, Wl = 250, step = (y, get, n, set, lead, label, sub, tip) => { // przełącznik ◀ wartość ▶
+    const X = 60, Wl = 250; this.rows = []; const step = (y, get, n, set, lead, label, sub, tip) => { // przełącznik ◀ wartość ▶
       const mv = d => () => { set((get() + d + n) % n); fitSlots(S); saveSettings(); };
       const c = new Button(X + 38, y, Wl - 76, 46, '', mv(1), { size: 15, lead }); Object.defineProperty(c, 'label', { get: label, set() {} }); Object.defineProperty(c, 'sub', { get: sub, set() {} }); Object.defineProperty(c, 'tip', { get: tip, set() {} });
-      B.push(new Button(X, y, 34, 46, '', mv(-1), { icon: icoK3('ic_left'), tip: 'Poprzednia' }), c, new Button(X + Wl - 34, y, 34, 46, '', mv(1), { icon: icoK3('ic_right'), tip: 'Następna' }));
+      const row = [new Button(X, y, 34, 46, '', mv(-1), { icon: icoK3('ic_left'), tip: 'Poprzednia' }), c, new Button(X + Wl - 34, y, 34, 46, '', mv(1), { icon: icoK3('ic_right'), tip: 'Następna' })]; B.push(...row); this.rows.push(row);
     };
     const msz = () => MAP_SIZES.findIndex(m => m.id === S.mapSize), M = () => MAP_SIZES[Math.max(0, msz())], land = () => Math.max(0, LAND_TYPES.findIndex(l => l.id === (S.land || 'random')));
     step(134, msz, MAP_SIZES.length, i => { S.mapSize = MAP_SIZES[i].id; }, (ctx, cx, cy) => uiIco(ctx, 'ic_map', cx, cy, 34 + msz() * 2), () => M().name, () => `${M().n}×${M().n} · do ${setupCap(S)} graczy`,
@@ -336,9 +336,9 @@ G.screens.setup = {
     this.bonusBtns = BONUSES.map((b, i) => new Button(X + i * 85, 340, 80, 52, '', () => { S.bonus = b.id; saveSettings(); }, { selected: () => S.bonus === b.id, tip: `Bonus startowy: ${b.name} – ${b.sub}.` })); B.push(...this.bonusBtns);
     const ug = new Button(X, 400, Wl, 46, 'Podziemia', () => { S.underground = !S.underground; saveSettings(); }, { size: 15, selected: () => S.underground, lead: (ctx, cx, cy) => { const s3 = map3dSprite('site_gate'); if (s3) drawSprite(ctx, s3, cx, cy + 19, 0.6); else uiIco(ctx, 'ic_stairs', cx, cy, 30); },
       tip: 'Podziemia: drugi poziom świata pod powierzchnią – sieć jaskiń z kopalniami, skarbcami i silnymi potworami. Schodzi się bramami (kamienne czaszki). Kliknij, aby włączyć lub wyłączyć.' });
-    Object.defineProperty(ug, 'sub', { get: () => (S.underground ? 'tak – drugi poziom świata' : 'nie'), set() {} }); B.push(ug);
+    Object.defineProperty(ug, 'sub', { get: () => (S.underground ? 'tak – drugi poziom świata' : 'nie'), set() {} }); B.push(ug); this.bUg = ug;
     const ru = new Button(X, 452, Wl, 46, 'Zasady…', () => G.go('rules'), { key: 'z', size: 15, lead: (ctx, cx, cy) => uiIco(ctx, 'ic_scroll', cx, cy, 30), tip: 'Limit bohaterów, rozejm z komputerem, siła potworów, skarby i odkryta mapa.' });
-    Object.defineProperty(ru, 'sub', { get: () => rulesSummary(G.settings.rules), set() {} }); B.push(ru);
+    Object.defineProperty(ru, 'sub', { get: () => rulesSummary(G.settings.rules), set() {} }); B.push(ru); this.bRules = ru;
     // gracze: przyciski każdego miejsca (rozmieszczane w relayout, wolne miejsca są ukryte)
     this.slotBtns = S.slots.map((o, i) => {
       const col = () => S.slots[i];
@@ -359,11 +359,21 @@ G.screens.setup = {
     this.bBack = new Button(326, 512, 180, 46, 'Wróć', () => G.go(this.online ? 'online' : 'menu'), { key: 'escape', size: 19 });
     this.fixed = [...B, this.bStart, this.bBack]; this.relayout();
   },
+  // Układ zależny od wysokości widoku: na telefonie (dawne ekrany przewijane) wszystko ciaśniej, tak by mieściło się bez przewijania
+  metrics() {
+    const L = UNITS.leg, hv = L && L.scroll ? L.vh : H; this.compact = hv < 560;
+    return this.compact ? { top: 4, ph: hv - 8, title: 28, tsz: 24, div: 44, py: 48, pb: 378, head: 62, rows: [72, 114, 156], rh: 38, res: 204, resN: 224, bonus: 236, bh: 44, ug: 286, ru: 330, slot0: 72, step: 38, sh: 34, bottom: hv - 52, bth: 40 }
+      : { top: 22, ph: 556, title: 56, tsz: 30, div: 96, py: 104, pb: 504, head: 124, rows: [134, 186, 238], rh: 46, res: 300, resN: 326, bonus: 340, bh: 52, ug: 400, ru: 452, slot0: 134, step: 44, sh: 40, bottom: 512, bth: 46 };
+  },
+  fitsView() { return !!this.compact; },
   relayout() { // zajęte miejsca jedno pod drugim, pod nimi „Dodaj gracza” (gdy mapa mieści więcej)
-    const S = G.settings, X = 326; let row = 0; const vis = [];
-    S.slots.forEach((o, i) => { const b = this.slotBtns[i]; if (o.type === 'off') return; const y = 134 + row++ * 44, xs = [0, 34, 76, 140, 256, 358, 386];
-      ['sw', 'ty', 'nm', 'fa', 'he', 'tm', 'rm'].forEach((k, j) => { b[k].x = X + xs[j]; b[k].y = y; }); vis.push(b.sw, b.ty, b.nm, b.fa, b.he, b.tm, b.rm); });
-    const add = this.active() < setupCap(S) && S.slots.some(o => o.type === 'off'); if (add) { this.bAdd.x = X; this.bAdd.y = 134 + row * 44; vis.push(this.bAdd); }
+    const S = G.settings, X = 326, M = this.M = this.metrics(); let row = 0; const vis = [];
+    this.rows.forEach((r, k) => r.forEach(b => { b.y = M.rows[k]; b.h = M.rh; }));
+    this.bonusBtns.forEach(b => { b.y = M.bonus; b.h = M.bh; }); this.bUg.y = M.ug; this.bUg.h = M.rh; this.bRules.y = M.ru; this.bRules.h = M.rh;
+    for (const b of [this.bStart, this.bBack]) { b.y = M.bottom; b.h = M.bth; }
+    S.slots.forEach((o, i) => { const b = this.slotBtns[i]; if (o.type === 'off') return; const y = M.slot0 + row++ * M.step, xs = [0, 34, 76, 140, 256, 358, 386];
+      ['sw', 'ty', 'nm', 'fa', 'he', 'tm', 'rm'].forEach((k, j) => { b[k].x = X + xs[j]; b[k].y = y; b[k].h = M.sh; }); vis.push(b.sw, b.ty, b.nm, b.fa, b.he, b.tm, b.rm); });
+    const add = this.active() < setupCap(S) && S.slots.some(o => o.type === 'off'); if (add) { this.bAdd.x = X; this.bAdd.y = M.slot0 + row * M.step; this.bAdd.h = M.sh; vis.push(this.bAdd); }
     this.buttons = [...this.fixed, ...vis];
   },
   nextColor(i) {
@@ -409,25 +419,25 @@ G.screens.setup = {
       b.rm.disabled = this.active() <= 1 || (o.type === 'human' && S.slots.filter(q => q.type === 'human').length === 1);
     }
     dimmedMenuScene(ctx, 0.5);
-    drawParchment(ctx, 40, 22, 720, 556);
-    text(ctx, 'Nowa gra', W / 2, 56, { size: 30, align: 'center', color: '#3a1e08', fam: 'title' });
-    if (this.online) text(ctx, `Gra online: ${1 + Net.guests.filter(g => g.conn).length} graczy w pokoju ${Net.code} – tyle miejsc „Człowiek”`, W / 2, 84, { size: 16, align: 'center', color: '#5a3814', italic: true, weight: 500 });
-    divider(ctx, 80, 720, 96);
-    const panel = (x, w) => { ctx.fillStyle = 'rgba(90,55,20,.10)'; rr(ctx, x - 8, 104, w + 16, 400, 6); ctx.fill(); ctx.strokeStyle = 'rgba(120,80,30,.3)'; ctx.lineWidth = 1; ctx.stroke(); };
+    const M = this.M; drawParchment(ctx, 40, M.top, 720, M.ph);
+    text(ctx, 'Nowa gra', W / 2, M.title, { size: M.tsz, align: 'center', color: '#3a1e08', fam: 'title' });
+    if (this.online) text(ctx, `Gra online: ${1 + Net.guests.filter(g => g.conn).length} graczy w pokoju ${Net.code} – tyle miejsc „Człowiek”`, W / 2, M.div - 12, { size: 14, align: 'center', color: '#5a3814', italic: true, weight: 500 });
+    divider(ctx, 80, 720, M.div);
+    const panel = (x, w) => { ctx.fillStyle = 'rgba(90,55,20,.10)'; rr(ctx, x - 8, M.py, w + 16, M.pb - M.py, 6); ctx.fill(); ctx.strokeStyle = 'rgba(120,80,30,.3)'; ctx.lineWidth = 1; ctx.stroke(); };
     panel(60, 250); panel(326, 414);
-    text(ctx, 'Świat', 60, 124, { size: 18, color: '#3a1e08', fam: 'title' });
+    text(ctx, 'Świat', 60, M.head, { size: 18, color: '#3a1e08', fam: 'title' });
     const n = this.active(), cap = setupCap(S), hu = S.slots.filter(o => o.type === 'human').length;
-    text(ctx, 'Gracze', 326, 124, { size: 18, color: '#3a1e08', fam: 'title' });
-    text(ctx, `${n} z ${cap} na tej mapie${hu > 1 ? ` · hot-seat: ${hu} ludzi` : ''}`, 740, 124, { size: 14, align: 'right', weight: 600, color: n > cap ? '#a02010' : '#5a3814' });
+    text(ctx, 'Gracze', 326, M.head, { size: 18, color: '#3a1e08', fam: 'title' });
+    text(ctx, `${n} z ${cap} na tej mapie${hu > 1 ? ` · hot-seat: ${hu} ludzi` : ''}`, 740, M.head, { size: 14, align: 'right', weight: 600, color: n > cap ? '#a02010' : '#5a3814' });
     // zasoby na start (wg trudności)
     const d = DIFFICULTIES[S.difficulty];
-    RESOURCES.forEach((r, i) => { const x = 60 + 18 + i * 35.5; resIcon(ctx, r.id, x, 300, 22); text(ctx, String(d.res[r.id] >= 1000 ? `${d.res[r.id] / 1000}k` : d.res[r.id]), x, 326, { size: 12, align: 'center', weight: 700, color: '#3a1e08' }); });
+    RESOURCES.forEach((r, i) => { const x = 60 + 18 + i * 35.5; resIcon(ctx, r.id, x, M.res, 22); text(ctx, String(d.res[r.id] >= 1000 ? `${d.res[r.id] / 1000}k` : d.res[r.id]), x, M.resN, { size: 12, align: 'center', weight: 700, color: '#3a1e08' }); });
     this.buttons.forEach(b => b.draw(ctx));
     // bonus: ikona nad nazwą
     const BI = { gold: 'res_gold', resource: 'res_wood', artifact: 'ic_chest' };
-    this.bonusBtns.forEach((b, i) => { const B0 = BONUSES[i]; uiIco(ctx, BI[B0.id] || 'ic_chest', b.x + b.w / 2, b.y + 20, 28); if (B0.id === 'resource') uiIco(ctx, 'res_ore', b.x + b.w / 2 + 14, b.y + 24, 20);
-      text(ctx, B0.name, b.x + b.w / 2, b.y + 43, { size: 13, align: 'center', weight: 700, color: S.bonus === B0.id ? '#fff4cc' : '#f0dca6', fam: 'title' }); });
-    if (n >= cap && cap < MAX_PLAYERS) text(ctx, 'Większa mapa pomieści więcej graczy.', 533, 134 + n * 44 + 16, { size: 14, align: 'center', italic: true, weight: 500, color: '#6a4a24' });
+    this.bonusBtns.forEach((b, i) => { const B0 = BONUSES[i]; uiIco(ctx, BI[B0.id] || 'ic_chest', b.x + b.w / 2, b.y + b.h * 0.38, b.h * 0.54); if (B0.id === 'resource') uiIco(ctx, 'res_ore', b.x + b.w / 2 + 14, b.y + b.h * 0.46, b.h * 0.38);
+      text(ctx, B0.name, b.x + b.w / 2, b.y + b.h - 9, { size: 13, align: 'center', weight: 700, color: S.bonus === B0.id ? '#fff4cc' : '#f0dca6', fam: 'title' }); });
+    if (n >= cap && cap < MAX_PLAYERS) text(ctx, 'Większa mapa pomieści więcej graczy.', 533, M.slot0 + n * M.step + 16, { size: 14, align: 'center', italic: true, weight: 500, color: '#6a4a24' });
   },
 };
 // Zasady gry (RULES): każda w osobnym wierszu, wartość wybierana przyciskiem; zapisują się w ustawieniach i trafiają do nowej gry
