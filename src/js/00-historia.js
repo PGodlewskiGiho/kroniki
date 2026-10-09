@@ -393,5 +393,8 @@
    Horda Twierdzy tylko dla poziomów 1–4 (+30%), Cytadela mocniejsze ważki i wywerny. Artefakty jako nagroda: kuźnia krasnoludów raz na grę
    (ze strażnikiem), karawanseraj raz w miesiącu, studnia życzeń raz w tygodniu i najwyżej jeden artefakt. Drewno na mapie mniejsze (RES_SCALE).
    Dźwięki: portal – niski szum wiru (amb_portal, bez wysokich tonów); każde miasto na mapie brzmi jak jego frakcja (amb_town_*).
+   Przegląd obrazów AI (tools/tla-ai/retusz.py: maska wielokątów, wypełnienie z brzegu, SD img2img wycinka): smok w menu bez nadmiarowych
+   skrzydeł, rycerz na ekranie zwycięstwa unosi świetlisty miecz (bez ostrza w dół), z obrazu zagadki Inferna zniknął kolczasty łuk;
+   portret czempiona namalowany od nowa (zły opis dawał lisa zamiast konia).
    ===================================================================================== */
 
