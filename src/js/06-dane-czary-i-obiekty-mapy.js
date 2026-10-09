@@ -127,7 +127,7 @@ const SITES = {
   sirens: { name: 'Skała syren', use: 'hero', per: 0, wper: 1400, ai: 1200, desc: 'śpiew syren: +1500 doświadczenia, ale co dziesiąty żołnierz rzuca się w fale (raz na bohatera, dostępna łodzią)' },
   mushroomRing: { name: 'Grzybowy krąg', use: 'day', per: 2200, ai: 300, ug: true, desc: '+1 do szczęścia do następnej bitwy (raz dziennie)' },
   crystalCave: { name: 'Kryształowa grota', use: 'week', per: 2400, ai: 1000, ug: true, desc: 'co tydzień 3–5 kryształów dla pierwszego gościa' },
-  dwarfForge: { name: 'Kuźnia krasnoludów', use: 'hero', per: 3200, ai: 1500, ug: true, cost: 2000, desc: 'za 2000 złota i 5 rudy krasnoludy wykuwają bohaterowi artefakt (raz na bohatera)' },
+  dwarfForge: { name: 'Kuźnia krasnoludów', use: 'once', per: 3200, ai: 1500, ug: true, guard: true, cost: 2500, desc: 'za 2500 złota i 5 rudy krasnoludy wykuwają artefakt (raz na całą grę, pilnuje jej strażnik)' },
   hillFort: { name: 'Fort na wzgórzu', use: 'free', per: 3000, ai: 0, desc: 'kowale ulepszają stwory w armii bohatera za różnicę w cenie' },
   whirlpool: { name: 'Wir', use: 'free', per: 0, ai: 0, desc: 'wciąga łódź i wyrzuca ją przy drugim wirze z pary; morze zabiera połowę najsłabszego oddziału' },
   lighthouse: { name: 'Latarnia morska', use: 'free', per: 0, ai: 1200, desc: 'właściciel: każdy jego bohater w łodzi płynie dalej (+400 punktów ruchu na morzu)' },
@@ -136,8 +136,8 @@ const SITES = {
   questHut: { name: 'Chata pustelnika', use: 'free', per: 3600, ai: 0, desc: 'pustelnik prosi o pokonanie groźnych stworów w okolicy; za to daje artefakt i 1500 doświadczenia' },
   inn: { name: 'Karczma', use: 'heroWeek', per: 3000, ai: 900, desc: 'kufel dla wojska (+1 do morale do następnej bitwy) i plotka: gdzie w okolicy czeka coś cennego (raz w tygodniu)' },
   barrow: { name: 'Kurhan', use: 'free', per: 3800, ai: 0, desc: 'grób dawnego wodza z artefaktem; kto go rozkopie, ten ściąga na armię klątwę (morale −3 do następnej bitwy)' },
-  caravanserai: { name: 'Karawanseraj', use: 'free', per: 3800, ai: 0, desc: 'kupcy z dalekich krain sprzedają co tydzień jeden artefakt' },
-  wishingWell: { name: 'Studnia życzeń', use: 'day', per: 3000, ai: 0, cost: 500, desc: 'za 500 złota życzenie: szczęście, złoto, czasem artefakt… albo nic (raz dziennie)' },
+  caravanserai: { name: 'Karawanseraj', use: 'free', per: 3800, ai: 0, desc: 'kupcy z dalekich krain sprzedają raz w miesiącu jeden artefakt' },
+  wishingWell: { name: 'Studnia życzeń', use: 'heroWeek', per: 3000, ai: 0, cost: 500, desc: 'za 500 złota życzenie: szczęście, złoto, rzadko artefakt (tylko jeden na studnię)… albo nic (raz w tygodniu)' },
 };
 // Morze: potwory na wodzie wg poziomu (piraci płyną statkiem, reszta to morskie stwory), wiry w parach wg rozmiaru mapy,
 // latarnie (jedna na tyle pól wody) i dodatkowy ruch łodzi za każdą posiadaną latarnię

@@ -20,3 +20,4 @@ tools/tla-ai/portrety-jednostek/.cache/
 .env.*
 sekrety*
 secrets*
+tools/balans/wynik-gry.json

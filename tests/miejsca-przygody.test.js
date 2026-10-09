@@ -57,18 +57,18 @@ test('karczma: morale +1 (zmywa klątwę kurhanu) i plotka odsłania nieodkryte 
   assert.deepEqual(r, { curse: -3, art: true, empty: true, barrowInfo: true, morale: 1, rumor: true, lit: true, week: true });
 });
 
-test('karawanseraj: artefakt za złoto raz w tygodniu, w następnym nowy towar; studnia życzeń pobiera opłatę raz dziennie', async () => {
+test('karawanseraj: artefakt za złoto raz w miesiącu, potem nowy towar; studnia życzeń pobiera opłatę raz w tygodniu, artefakt daje najwyżej jeden', async () => {
   await newGame(page, { mapSize: 'L' }, 3);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), R = human(st).resources, out = {}, bz = st.objects.find(o => o.kind === 'caravanserai' && !o.dead), well = st.objects.find(o => o.kind === 'wishingWell' && !o.dead);
     R.gold = 100; out.poor = /a masz 100/.test(useSite(st, h, bz).text); R.gold = 20000; const o = bazaarOffer(st, bz); useSite(st, h, bz); out.paid = 20000 - R.gold === o.price; out.sold = bazaarOffer(st, bz) === null;
-    st.dayTotal += 7; out.restock = !!bazaarOffer(st, bz);
-    R.gold = 1000; useSite(st, h, well); out.fee = R.gold !== 1000; out.today = /Dziś już/.test(useSite(st, h, well).text);
+    st.dayTotal += 7; out.week = bazaarOffer(st, bz) === null; st.dayTotal += 21; out.restock = !!bazaarOffer(st, bz);
+    R.gold = 1000; useSite(st, h, well); out.fee = R.gold !== 1000; out.today = /W tym tygodniu już/.test(useSite(st, h, well).text);
     // los studni: w 200 dniach wszystkie cztery wyniki
-    const seen = new Set(); for (let d = 0; d < 200; d++) { st.dayTotal++; R.gold = 1000; seen.add(useSite(st, h, well).text.slice(0, 12)); } out.outcomes = seen.size;
+    const seen = new Set(); let arts = 0; for (let d = 0; d < 400; d++) { st.dayTotal += 7; R.gold = 1000; const t = useSite(st, h, well).text; seen.add(t.slice(0, 12)); if (/Życzenie spełnione/.test(t)) arts++; } out.outcomes = seen.size; out.oneArt = arts === 1;
     return out;
   });
-  assert.deepEqual({ ...r, outcomes: r.outcomes >= 4 }, { poor: true, paid: true, sold: true, restock: true, fee: true, today: true, outcomes: true });
+  assert.deepEqual({ ...r, outcomes: r.outcomes >= 4 }, { poor: true, paid: true, sold: true, week: true, restock: true, fee: true, today: true, outcomes: true, oneArt: true });
 });
 
 test('okna: sfinks pyta z trzema odpowiedziami, kurhan i studnia pytają o zgodę; dymki z nazwą własną; SI odwiedza bez błędów', async () => {

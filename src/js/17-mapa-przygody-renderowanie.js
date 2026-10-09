@@ -216,7 +216,8 @@ function texSmp(TX, u, v, k) { // próbka dwuliniowa (płynnie między pikselami
   TEXS[k] = d[a] * w00 + d[b] * w10 + d[c] * w01 + d[e] * w11; TEXS[k + 1] = d[a + 1] * w00 + d[b + 1] * w10 + d[c + 1] * w01 + d[e + 1] * w11; TEXS[k + 2] = d[a + 2] * w00 + d[b + 2] * w10 + d[c + 2] * w01 + d[e + 2] * w11;
 }
 function texShade(TX, col, ax, ay, w) { const P = TEX_TILES * AP, M = TX.mean;
-  texSmp(TX, ax * TX.w / P, ay * TX.h / P, 0); texSmp(TX, (ay + 11 * AP) * TX.w / (P * 1.618), (ax + 37 * AP) * TX.h / (P * 1.618), 3);
+  texSmp(TX, ax * TX.w / P, ay * TX.h / P, 0); // druga próbka z zamienionymi osiami (obrót o 90°), ale nie dla wody: fale mają jeden kierunek
+  if (TX.keep) texSmp(TX, (ax + 37 * AP) * TX.w / (P * 1.618), (ay + 11 * AP) * TX.h / (P * 1.618), 3); else texSmp(TX, (ay + 11 * AP) * TX.w / (P * 1.618), (ax + 37 * AP) * TX.h / (P * 1.618), 3);
   const m = clamp((vnoise2(ax / (AP * 3.5), ay / (AP * 3.5), 91) - 0.5) * 3 + 0.5, 0, 1), a = (1 - m) * w, b = m * w, u = 1 - w;
   return [Math.min(255, col[0] * ((TEXS[0] * a + TEXS[3] * b) / M[0] + u)), Math.min(255, col[1] * ((TEXS[1] * a + TEXS[4] * b) / M[1] + u)), Math.min(255, col[2] * ((TEXS[2] * a + TEXS[5] * b) / M[2] + u))]; }
 function texData(im) {
@@ -364,13 +365,7 @@ const WaterFx = {
   draw(b, ch, dx, dy, size, wx, wy) {
     if (!ch._deep || G.settings.quality === 'low' || ZOOM < 1) return; if (b.isGL) return GLMap.water(b, ch, dx, dy, size, wx, wy); const S = Math.round(ch.width / MapRender.D), t = G.time; // karta graficzna: shader wody (GLMap.water). Fale liczone w dawnych (grubych) pikselach: 4 razy mniej pracy. Fale na wodzie: nie przy niskiej jakości ani po oddaleniu (za drobne, a kosztowne)
     const tmp = this.tmp || (this.tmp = document.createElement('canvas')); if (tmp.width !== S) { tmp.width = tmp.height = S; }
-    const g = tmp.getContext('2d'), pat = g.createPattern(this.pattern(), 'repeat');
-    const layer = (ox, oy, a) => { g.save(); g.globalAlpha = a; g.translate(ox, oy); g.fillStyle = pat; g.fillRect(-ox, -oy, S, S); g.restore(); };
-    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S);
-    wx /= MapRender.D; wy /= MapRender.D; layer(Math.floor(t * 4) - wx, Math.floor(t * 1.5) - wy, 0.5 + 0.2 * Math.sin(t * 1.3));
-    layer(-Math.floor(t * 3) - wx + 21, Math.floor(t * 2) - wy + 13, 0.35 + 0.2 * Math.sin(t * 1.7 + 2));
-    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._deep, 0, 0, S, S);
-    b.drawImage(tmp, dx, dy, size, size);
+    const g = tmp.getContext('2d'); // bez pikselowego wzoru fal (na teksturze wody wyglądał jak siatka kropek); zostaje piana przy brzegu
     g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = this.foam || (this.foam = `rgb(${gradeRgb(hexRgb('#eef8fc')).map(Math.round).join(',')})`); g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
     g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0, S, S); g.globalCompositeOperation = 'source-over';
     b.drawImage(tmp, dx, dy, size, size);
@@ -701,8 +696,8 @@ function drawMapAmbient(b, st, ox, oy, tx0, ty0, tx1, ty1) {
       const h = thash(x, y, map.seed + 77); if (h % 4) continue;
       const px = ox + x * T + 4 + (h >> 3) % 24, py = oy + y * T + 4 + (h >> 8) % 24, p = (t * (ter === TER.LAVA ? 0.45 : 0.3) + (h % 997) / 997) % 1;
       if (ter === TER.WATER) { // błysk: krótko rozbłyska i gaśnie
-        if (p > 0.12) continue; const a = Math.sin(p / 0.12 * Math.PI), r = 1 + a * 2.2;
-        b.globalAlpha = 0.55 * a; b.fillStyle = '#fff6d8'; b.fillRect(px - r, py - 0.5, r * 2, 1); b.fillRect(px - 0.5, py - r, 1, r * 2);
+        if (p > 0.12 || h % 3) continue; const a = Math.sin(p / 0.12 * Math.PI); // rzadko i miękko (okrągła plamka zamiast pikselowego krzyżyka)
+        b.globalAlpha = 0.3 * a; b.fillStyle = '#fff6d8'; b.beginPath(); b.arc(px, py, 0.8 + a * 1.2, 0, TAU); b.fill();
       } else { // iskra unosi się nad lawą
         b.globalAlpha = 0.8 * (1 - p) * Math.min(1, p * 6); b.fillStyle = p < 0.4 ? '#ffd070' : '#ff7a30';
         b.beginPath(); b.arc(px + Math.sin(p * 6 + h) * 3, py - p * 26, 1.3 * (1 - p * 0.5), 0, TAU); b.fill();

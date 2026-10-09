@@ -883,10 +883,7 @@ function paintTown3D(c, t, col, Wd, T3) {
   Wd.slots.map((S, i) => ({ S, i })).sort((a, b) => b.S.Z - a.S.Z).forEach(({ S, i }) => {
     const B = slotBuilding(t, i), e = B ? T3.b[groupOf(B).join('')] : null, r = e || top(i);
     if (r) fx.rects[i] = { x: r.o[0], y: r.o[1], w: r.f[2] / d, h: r.f[3] / d, z: S.Z };
-    if (!e) { // pusty plac: blady zarys budowli, którą można tu już postawić (wymagania spełnione), żeby było widać, co da się zbudować
-      const nb = t.id >= 0 && BUILDINGS.find(B2 => B2.slot === i && !hasB(t, B2.id) && bAllowed(t, B2) && reqMet(t, B2) && (!B2.faction || B2.faction === t.faction)), g2 = nb && T3.b[groupOf(nb).join('')];
-      if (g2) { c.save(); c.globalAlpha = 0.3; c.filter = 'grayscale(0.6) brightness(1.25)'; put(g2.f, g2.o[0], g2.o[1]); c.restore(); }
-      return; }
+    if (!e) return; // pusty plac: niezbudowanej budowli nie rysujemy wcale (pole kliknięcia zostaje)
     put(e.f, e.o[0], e.o[1]);
     // znaczniki efektów (dym, flagi, poświaty) pomijane: namalowane miasto ma być spokojne, bez nakładanych detali
   });

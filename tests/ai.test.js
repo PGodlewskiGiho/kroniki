@@ -222,6 +222,23 @@ test('SI jak zawodowiec: główny bohater i pomocnicy do limitu, pomocnik oddaje
   assert.ok(f.gain > 0 && f.art && !f.artLeft);
 });
 
+test('SI bez zakleszczeń (długie gry): pomocnik nie wozi armii, której pełna armia głównego nie przyjmie; wartość miasta rośnie z siłą bohatera', async () => {
+  await newGame(page, { mapSize: 'M', opponents: 1 }, 4);
+  const r = await page.evaluate(() => {
+    const st = G.state, a = createHero(st, 1, 2, 2), m = createHero(st, 1, 3, 2), F = ['pikeman', 'archer', 'griffin', 'swordsman', 'monk', 'cavalier', 'lightGuard'];
+    m.army = F.map(cid => ({ cid, n: 50 })); a.army = emptyArmy(); a.army[0] = { cid: 'imp', n: 30 }; a.army[1] = { cid: 'gog', n: 20 }; // inne rodzaje, słabsze od każdego oddziału głównego
+    const stuck = feedGain(a, m), fed = aiFeed(st, a, m); a.army[0] = { cid: 'pikeman', n: 30 }; const same = feedGain(a, m);
+    removeHero(st, a); removeHero(st, m);
+    const t = st.towns.find(t => t.owner === 0), h = st.heroes.find(h => h.owner === 1), n = st.map.n; playerOf(st, 1).explored.fill(1); st.dayTotal = 99;
+    const near = [[0, 2], [1, 2], [-1, 2], [2, 1], [-2, 1], [0, 3]].map(([dx, dy]) => [t.x + dx, t.y + dy]).find(([x, y]) => passableTile(st, x, y) && !objectAt(st, y * n + x) && !st.guard[y * n + x]);
+    [h.x, h.y] = near; h.army = emptyArmy(); h.army[0] = { cid: 'lightGuard', n: 4000 }; // ogromna armia późnej gry tuż przy mieście gracza
+    const keep = aiWorthFight; aiWorthFight = () => true; const pick = aiPickTarget(st, h, aiReach(st, h)); aiWorthFight = keep;
+    return { stuck, fed, same, big: pick && pick.what };
+  });
+  assert.equal(r.stuck, 0, 'nic nie przejdzie, więc nie ma dowozu'); assert.equal(r.fed, 0); assert.ok(r.same > 0, 'ten sam rodzaj przechodzi');
+  assert.equal(r.big, 'town', 'silny bohater idzie na miasto wroga');
+});
+
 test('SI omija pola, do których w jeden dzień dojdzie silniejszy wróg; limit 1 = bez pomocników', async () => {
   await newGame(page, { mapSize: 'M', opponents: 1 }, 4);
   const r = await page.evaluate(() => {

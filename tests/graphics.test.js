@@ -135,15 +135,16 @@ test('rozmiar piksela: 2 (niska jakość), 1 (drobny) i domyślny, bez błędów
   assert.equal(r.b, r.a * 2); assert.equal(r.u, 1); assert.equal(r.unit, r.raw ? 0.6 : 0.9, 'jednostki z arkuszy: stały piksel 0,9 (bez pikselizacji: 0,6)'); assert.equal(r.world, r.view, 'bufor mapy: 1 piksel grafiki = 1 px logiczny'); assert.ok(r.mid, 'domyślny piksel PIX_DEFAULT (gładko: bufor mapy w rozdzielczości ekranu)');
 });
 
-test('kursor zmienia się wg celu: mapa (ruch, atak, odwiedziny, zakaz), przyciski, bitwa (miecz, strzała)', async () => {
+test('kursor zmienia się wg celu: mapa (ruch, atak – także pole w zasięgu strażnika, odwiedziny, zakaz), przyciski, bitwa (miecz, strzała)', async () => {
   await newGame(page);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), n = st.map.n; human(st).explored.fill(1); centerCam(st, h.x, h.y); G.modal = null;
     const at = (tx, ty) => adventureCursor(st, VIEW.x + (tx * T - st.cam.x) * ZOOM + 5, VIEW.y + (ty * T - st.cam.y) * ZOOM + 5);
     const m = st.objects.find(o => o.type === 'monster' && !o.dead), res = st.objects.find(o => o.type === 'res');
-    let free = null; for (let d = 1; d < 6 && !free; d++) for (const [dx, dy] of [[d, 0], [0, d], [-d, 0], [0, -d]]) { const x = h.x + dx, y = h.y + dy; if (passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y)) { free = [x, y]; break; } }
+    let free = null; for (let d = 1; d < 6 && !free; d++) for (const [dx, dy] of [[d, 0], [0, d], [-d, 0], [0, -d]]) { const x = h.x + dx, y = h.y + dy; if (passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && !st.guard[y * n + x]) { free = [x, y]; break; } }
+    let gt = null; for (let i = 0; i < n * n && !gt; i++) if (st.guard[i] && !objectAt(st, i) && passableTile(st, i % n, Math.floor(i / n), h)) gt = [i % n, Math.floor(i / n)]; // pole w zasięgu strażnika
     let wall = null; for (let i = 0; i < n * n && !wall; i++) if (st.map.obst[i] && !objectAt(st, i)) wall = [i % n, Math.floor(i / n)];
-    const out = { monster: at(m.x, m.y), res: res ? at(res.x, res.y) : 'visit', free: free ? at(...free) : 'move', wall: at(...wall) };
+    const out = { monster: at(m.x, m.y), guarded: gt ? at(...gt) : 'attack', res: res ? at(res.x, res.y) : 'visit', free: free ? at(...free) : 'move', wall: at(...wall) };
     out.css = cursorCss('attack').startsWith('url(data:image/png'); setCursor('attack'); out.set = G.canvas.style.cursor.includes('url(');
     const B = createBattle(st, h, m), scr = G.screens.battle; setScreen('battle', { battle: B }); scr.phase = 'input';
     const tg = (x, y) => { const [px, py] = hexCenter(x, y); return { px, py }; }; // miecz obraca się w stronę ciosu
@@ -151,7 +152,7 @@ test('kursor zmienia się wg celu: mapa (ruch, atak, odwiedziny, zakaz), przycis
     scr.preview.target = tg(3, 5); out.bAttD = battleCursor(scr); out.rot = cursorCss(out.bAttD).startsWith('url(data:image/png') && cursorCss(out.bAttD) !== cursorCss(out.bAtt); scr.preview = { kind: 'shoot' }; out.bShoot = battleCursor(scr); scr.preview = { kind: 'far' }; out.bFar = battleCursor(scr);
     return out;
   });
-  assert.deepEqual(r, { monster: 'attack', res: 'visit', free: 'move', wall: 'no', css: true, set: true, bAtt: 'attack0', bAttL: 'attack6', bAttD: 'attack2', rot: true, bShoot: 'shoot', bFar: 'no' });
+  assert.deepEqual(r, { monster: 'attack', guarded: 'attack', res: 'visit', free: 'move', wall: 'no', css: true, set: true, bAtt: 'attack0', bAttL: 'attack6', bAttD: 'attack2', rot: true, bShoot: 'shoot', bFar: 'no' });
 });
 
 test('kółko myszy przybliża i oddala mapę wokół kursora; pole pod kursorem zostaje to samo', async () => {

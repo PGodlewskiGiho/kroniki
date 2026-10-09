@@ -5,6 +5,7 @@
 // shield, robe, hair, longHair, beard, ears, tusks, wings, halo, bony, hunch, claws, eyes, orb, glow.
 // abil: zdolności bitewne (opisy w ABILITIES, działanie w BITWA: ZASADY)
 const ARMOR_PIERCE = 40, DEATH_BLOW = 20; // Przebicie: % pomijanej obrony celu; Cios śmiertelny: % szans na podwójne obrażenia
+const REGEN_MAX = 50; // Regeneracja i Polowy cyrulik leczą najwyżej tyle życia na rundę (inaczej samotna hydra chaosu z 235 życia była prawie nieśmiertelna)
 const ABILITIES = {
   fly: { name: 'Lot', desc: 'przelatuje nad przeszkodami i oddziałami' },
   doubleStrike: { name: 'Podwójny atak', desc: 'w walce wręcz uderza dwa razy' },
@@ -16,7 +17,7 @@ const ABILITIES = {
   jousting: { name: 'Szarża', desc: '+5% obrażeń za każde pole rozpędu przed atakiem' },
   breath: { name: 'Zionięcie', desc: 'rani też oddział stojący za celem' },
   lifeDrain: { name: 'Wysysanie życia', desc: 'leczy się i wskrzesza poległych o zadane obrażenia' },
-  regen: { name: 'Regeneracja', desc: 'na początku rundy leczy rany pierwszego stwora' },
+  regen: { name: 'Regeneracja', desc: 'na początku rundy leczy rany pierwszego stwora (najwyżej 50 życia)' },
   undead: { name: 'Nieumarły', desc: 'odporny na wysysanie życia; ważne też przy czarach' },
   machine: { name: 'Machina', desc: 'stoi w miejscu, działa sama, nie kontratakuje i nie zna morale' },
   maxDamage: { name: 'Mistrzostwo', desc: 'zawsze zadaje najwyższe obrażenia' },
@@ -122,20 +123,20 @@ const isMachine = u => MACHINES.includes(u.cid) || SIEGE_UNITS.includes(u.cid);
 // Jednostki frakcji Twierdza (bagna). Nowe rodzaje ciała: 'insect' (ważka), 'lizard' (bazyliszek), 'bull' (gorgona), 'hydra'.
 // Postać: tail (ogon), snout (pysk), horns (rogi na gołej głowie), flame (dół ciała z ognia, ifryt).
 Object.assign(CREATURES, {
-  gnoll: mkU('Gnoll', 'Gnolle', 'gnolli', 1, 3, 5, 2, 3, 7, 4, 12, 70, { gold: 50 }, { faction: 'fortress', up: 'gnollMarauder', look: { kind: 'hum', hide: 'fur', bareArms: true, tail: '#6a5030', tailK: 0.45, skin: '#9a7a4a', cloth: '#5a4a2a', leather: '#3a2a18', size: 0.98, weapon: 'club', ears: true, snout: 'dog', shield: '#6a4a2a', shieldMark: '#c8a050', legs: 'beast', hunch: 0.2, mohawk: '#3a2a18', shieldShape: 'round' } }),
+  gnoll: mkU('Gnoll', 'Gnolle', 'gnolli', 1, 4, 5, 2, 3, 8, 4, 12, 70, { gold: 50 }, { faction: 'fortress', up: 'gnollMarauder', look: { kind: 'hum', hide: 'fur', bareArms: true, tail: '#6a5030', tailK: 0.45, skin: '#9a7a4a', cloth: '#5a4a2a', leather: '#3a2a18', size: 0.98, weapon: 'club', ears: true, snout: 'dog', shield: '#6a4a2a', shieldMark: '#c8a050', legs: 'beast', hunch: 0.2, mohawk: '#3a2a18', shieldShape: 'round' } }),
   gnollMarauder: mkU('Gnoll maruder', 'Gnolle maruderzy', 'gnolli maruderów', 1, 4, 6, 2, 3, 7, 5, 12, 90, { gold: 70 }, { faction: 'fortress', look: { kind: 'hum', hide: 'fur', bareArms: true, tail: '#5a4020', tailK: 0.45, skin: '#8a6a3a', cloth: '#6a3a2a', leather: '#2a1a10', size: 1.02, weapon: 'axe', ears: true, snout: 'dog', helm: 'cap', helmCol: '#5a4a3a', shield: '#5a3a1a', shieldMark: '#b8b0a0', metal: '#9a948a', legs: 'beast', hunch: 0.18, mohawk: '#2a1a10', armor: 'brig' } }),
   lizardman: mkU('Jaszczuroczłek', 'Jaszczuroludzie', 'jaszczuroludzi', 2, 5, 6, 2, 3, 14, 4, 9, 126, { gold: 110 }, { shots: 12, faction: 'fortress', up: 'lizardWarrior', look: { kind: 'hum', skin: '#5a8a4a', cloth: '#5a4a2a', size: 1.0, weapon: 'bow', snout: 'lizard', tail: '#4a7a3e', eyes: '#f0d040', legs: 'beast', bare: true, hide: 'scale', build: 'lanky', backSpikes: '#3a5a2a', quiver: '#5a3a1a' } }),
   lizardWarrior: mkU('Jaszczurzy wojownik', 'Jaszczurzy wojownicy', 'jaszczurzych wojowników', 2, 6, 7, 2, 4, 15, 5, 9, 195, { gold: 140 }, { abil: ['noMeleePenalty'], shots: 24, faction: 'fortress', look: { kind: 'hum', skin: '#4a7a5a', cloth: '#3a4a2a', size: 0.97, weapon: 'bow', snout: 'lizard', tail: '#3e6a4a', helm: 'cap', helmCol: '#6a4a2a', feather: '#c83a2a', eyes: '#f0d040', legs: 'beast', hide: 'scale', build: 'lanky', armor: 'brig', backSpikes: '#2a4a3a', quiver: '#4a2a1a' } }),
-  dragonfly: mkU('Ważka', 'Ważki', 'ważek', 3, 7, 10, 1, 3, 20, 9, 8, 268, { gold: 220 }, { abil: ['fly'], fly: true, faction: 'fortress', up: 'venomFly', look: { kind: 'insect', fur: '#3a7ac8', wing: '#a8d8f8', eyes: '#a0f070', size: 1.7 } }),
-  venomFly: mkU('Ważka jadowita', 'Ważki jadowite', 'ważek jadowitych', 3, 8, 10, 2, 5, 20, 13, 8, 312, { gold: 240 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'fortress', look: { kind: 'insect', fur: '#5aa83a', wing: '#c8e8a0', eyes: '#ff5a3a', size: 1.8 } }),
-  basilisk: mkU('Bazyliszek', 'Bazyliszki', 'bazyliszków', 4, 11, 11, 6, 10, 35, 5, 4, 552, { gold: 325 }, { faction: 'fortress', up: 'greatBasilisk', look: { kind: 'lizard', fur: '#6a7a3a', spikes: '#3a4a1e', eyes: '#f0e040', size: 1.3 } }),
-  greatBasilisk: mkU('Wielki bazyliszek', 'Wielkie bazyliszki', 'wielkich bazyliszków', 4, 12, 12, 6, 10, 40, 7, 4, 714, { gold: 400 }, { abil: ['noRetal'], faction: 'fortress', look: { kind: 'lizard', fur: '#8a8a4a', spikes: '#6a2a1a', eyes: '#ff9a2a', size: 1.4 } }),
+  dragonfly: mkU('Ważka', 'Ważki', 'ważek', 3, 7, 10, 2, 4, 20, 9, 8, 268, { gold: 220 }, { abil: ['fly'], fly: true, faction: 'fortress', up: 'venomFly', look: { kind: 'insect', fur: '#3a7ac8', wing: '#a8d8f8', eyes: '#a0f070', size: 1.7 } }),
+  venomFly: mkU('Ważka jadowita', 'Ważki jadowite', 'ważek jadowitych', 3, 8, 10, 3, 6, 20, 13, 8, 312, { gold: 240 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'fortress', look: { kind: 'insect', fur: '#5aa83a', wing: '#c8e8a0', eyes: '#ff5a3a', size: 1.8 } }),
+  basilisk: mkU('Bazyliszek', 'Bazyliszki', 'bazyliszków', 4, 11, 11, 7, 10, 40, 5, 4, 552, { gold: 325 }, { faction: 'fortress', up: 'greatBasilisk', look: { kind: 'lizard', fur: '#6a7a3a', spikes: '#3a4a1e', eyes: '#f0e040', size: 1.3 } }),
+  greatBasilisk: mkU('Wielki bazyliszek', 'Wielkie bazyliszki', 'wielkich bazyliszków', 4, 12, 12, 7, 11, 45, 7, 4, 714, { gold: 400 }, { abil: ['noRetal'], faction: 'fortress', look: { kind: 'lizard', fur: '#8a8a4a', spikes: '#6a2a1a', eyes: '#ff9a2a', size: 1.4 } }),
   gorgon: mkU('Gorgona', 'Gorgony', 'gorgon', 5, 10, 12, 12, 16, 66, 5, 3, 850, { gold: 525 }, { faction: 'fortress', up: 'mightyGorgon', look: { kind: 'bull', fur: '#748458', horn: '#e8e0cc', beast: 'gorgon', eyes: '#a0ff80', size: 1.4, plate: '#98a66e' } }),
   mightyGorgon: mkU('Potężna gorgona', 'Potężne gorgony', 'potężnych gorgon', 5, 11, 14, 12, 16, 76, 6, 3, 980, { gold: 600 }, { abil: ['breath'], faction: 'fortress', look: { kind: 'bull', fur: '#6a7c84', horn: '#f0d890', breath: '#a0f0a0', size: 1.45, beast: 'gorgon', eyes: '#e0ff60', plate: '#8a9aa2' } }),
-  wyvern: mkU('Wywern', 'Wywerny', 'wywern', 6, 14, 14, 14, 18, 76, 7, 2, 1350, { gold: 800 }, { abil: ['fly'], fly: true, faction: 'fortress', up: 'wyvernKing', look: { kind: 'dragon', fur: '#7a8a3a', horn: '#d8c890', size: 0.85, form: 'wyvern' } }),
-  wyvernKing: mkU('Król wywern', 'Królowie wywern', 'królów wywern', 6, 14, 14, 18, 22, 78, 11, 2, 1518, { gold: 1100 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'fortress', look: { kind: 'dragon', fur: '#9a6a2a', horn: '#f0e0a0', form: 'wyvern', size: 0.9 } }),
-  hydra: mkU('Hydra', 'Hydry', 'hydr', 7, 16, 17, 25, 45, 175, 5, 1, 3900, { gold: 2200, sulfur: 1 }, { abil: ['noRetal'], faction: 'fortress', up: 'chaosHydra', look: { kind: 'hydra', fur: '#4a7a4a', heads: 5, size: 1.15 } }),
-  chaosHydra: mkU('Hydra chaosu', 'Hydry chaosu', 'hydr chaosu', 7, 18, 20, 25, 45, 235, 7, 1, 5600, { gold: 3500, sulfur: 1 }, { abil: ['noRetal', 'regen', 'breath'], faction: 'fortress', look: { kind: 'hydra', fur: '#6a4a7a', heads: 7, size: 1.22, horns: '#e8d8c0', eyes: '#ff6a40' } }),
+  wyvern: mkU('Wywern', 'Wywerny', 'wywern', 6, 14, 14, 16, 21, 90, 7, 2, 1350, { gold: 800 }, { abil: ['fly'], fly: true, faction: 'fortress', up: 'wyvernKing', look: { kind: 'dragon', fur: '#7a8a3a', horn: '#d8c890', size: 0.85, form: 'wyvern' } }),
+  wyvernKing: mkU('Król wywern', 'Królowie wywern', 'królów wywern', 6, 14, 14, 18, 22, 92, 11, 2, 1518, { gold: 1100 }, { abil: ['fly', 'noRetal'], fly: true, faction: 'fortress', look: { kind: 'dragon', fur: '#9a6a2a', horn: '#f0e0a0', form: 'wyvern', size: 0.9 } }),
+  hydra: mkU('Hydra', 'Hydry', 'hydr', 7, 17, 17, 28, 45, 195, 5, 1, 3900, { gold: 2200, sulfur: 1 }, { abil: ['noRetal'], faction: 'fortress', up: 'chaosHydra', look: { kind: 'hydra', fur: '#4a7a4a', heads: 5, size: 1.15 } }),
+  chaosHydra: mkU('Hydra chaosu', 'Hydry chaosu', 'hydr chaosu', 7, 19, 20, 30, 48, 250, 7, 1, 5600, { gold: 3500, sulfur: 1 }, { abil: ['noRetal', 'regen', 'breath'], faction: 'fortress', look: { kind: 'hydra', fur: '#6a4a7a', heads: 7, size: 1.22, horns: '#e8d8c0', eyes: '#ff6a40' } }),
 });
 // Jednostki frakcji Inferno (lawa)
 Object.assign(CREATURES, {
@@ -264,15 +265,15 @@ elite('gnollMarauder', 'gnollBerserker', ['Gnoll berserker', 'Gnolle berserkerzy
   { dual: true, shield: null, helm: null, build: 'stocky', armor: null, bare: true, skulls: '#e8e0cc', backSpikes: '#e8e0cc', pauldrons: 'spiked', size: 1.1 });
 elite('lizardWarrior', 'lizardSlayer', ['Jaszczur zabójca', 'Jaszczury zabójcy', 'jaszczurów zabójców'], [8, 9, 3, 5, 19, 6, 275], { gold: 190 }, ['noMeleePenalty', 'sharpshooter'],
   { helm: null, frill: '#c86a2a', armor: 'breast', metal: '#8a7a4a', skulls: '#e8e0cc', pauldrons: 'spiked', cape: '#3a4a2a', size: 1.04 });
-elite('venomFly', 'queenFly', ['Królowa ważek', 'Królowe ważek', 'królowych ważek', 'królowe ważek'], [10, 12, 3, 6, 25, 15, 430], { gold: 320 }, ['fly', 'noRetal', 'deathBlow'],
+elite('venomFly', 'queenFly', ['Królowa ważek', 'Królowe ważek', 'królowych ważek', 'królowe ważek'], [10, 12, 4, 7, 28, 15, 430], { gold: 320 }, ['fly', 'noRetal', 'deathBlow'],
   { wingPairs: 3, stinger: '#c83a1a', longTail: true, size: 2.0 });
 elite('greatBasilisk', 'royalBasilisk', ['Bazyliszek królewski', 'Bazyliszki królewskie', 'bazyliszków królewskich', 'bazyliszki królewskie'], [15, 15, 8, 12, 50, 8, 960], { gold: 540 }, ['noRetal', 'deathBlow'],
   { frill: '#8a3a1a', sail: '#8a3a1a', crown: '#e0b040', size: 1.52 });
 elite('mightyGorgon', 'armoredGorgon', ['Pancerna gorgona', 'Pancerne gorgony', 'pancernych gorgon', 'pancerne gorgony'], [14, 17, 14, 20, 95, 7, 1320], { gold: 800, mercury: 1 }, ['breath', 'armorPierce'],
   { heavyScales: true, hornScale: 1.35, size: 1.52, plate: '#7a8894' });
-elite('wyvernKing', 'stormWyvern', ['Wywern burzy', 'Wywerny burzy', 'wywernów burzy', 'wywerny burzy'], [17, 17, 20, 26, 100, 13, 2100], { gold: 1450, sulfur: 1 }, ['fly', 'noRetal', 'deathBlow'],
+elite('wyvernKing', 'stormWyvern', ['Wywern burzy', 'Wywerny burzy', 'wywernów burzy', 'wywerny burzy'], [17, 17, 20, 26, 115, 13, 2100], { gold: 1450, sulfur: 1 }, ['fly', 'noRetal', 'deathBlow'],
   { bolts: '#e8f4ff', mane: '#6a4a1a', size: 0.98 });
-elite('chaosHydra', 'primeHydra', ['Pradawna hydra', 'Pradawne hydry', 'pradawnych hydr', 'pradawne hydry'], [21, 23, 30, 48, 280, 8, 7500], { gold: 4600, sulfur: 3 }, ['noRetal', 'regen', 'breath', 'unlimitedRetal'],
+elite('chaosHydra', 'primeHydra', ['Pradawna hydra', 'Pradawne hydry', 'pradawnych hydr', 'pradawne hydry'], [22, 24, 33, 53, 300, 8, 7500], { gold: 4600, sulfur: 3 }, ['noRetal', 'regen', 'breath', 'unlimitedRetal'],
   { heads: 9, horns: '#e0c060', frill: '#9a6aaa', size: 1.32 });
 // Inferno
 elite('familiar', 'bies', ['Bies', 'Biesy', 'biesów', 'biesy'], [6, 5, 2, 3, 9, 8, 110], { gold: 80 }, ['deathBlow'],

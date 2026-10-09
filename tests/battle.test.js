@@ -201,3 +201,16 @@ test('SI w bitwie: leczy rannych, czeka na ruch wroga i nie wchodzi pod cios', a
   });
   assert.deepEqual(r, { heal: true, wait: true, threat: true });
 });
+
+test('regeneracja leczy najwyżej REGEN_MAX życia na rundę: samotna hydra chaosu nie jest nieśmiertelna (tygodniowa armia Kniei ją pokonuje)', async () => {
+  await newGame(page, { opponents: 1 });
+  const r = await page.evaluate(() => {
+    const st = G.state, t = st.towns[0], mk = (owner, fac, army) => { const h = createHero(st, owner, t.x, t.y, { name: 'Próba', cls: factionOf(fac).heroes[0][1], female: false, fac });
+      h.stats = { att: 0, def: 0, sp: 0, kn: 0 }; h.skills = []; h.talents = []; h.spells = []; h.book = false; h.machines = []; h.army = army.concat(Array(7 - army.length).fill(null)); return h; };
+    const elf = mk(0, 'sylvan', [{ cid: 'nymph', n: 14 }, { cid: 'elfSharp', n: 8 }, { cid: 'centaurChief', n: 6 }, { cid: 'elderTreant', n: 4 }, { cid: 'silverUnicorn', n: 2 }, { cid: 'sunPhoenix', n: 2 }, { cid: 'jadeDragon', n: 1 }]), hy = mk(1, 'fortress', [{ cid: 'chaosHydra', n: 1 }]);
+    const B = createBattle(st, elf, hy); simulateBattle(B);
+    return { over: B.over, rounds: B.round, max: REGEN_MAX, cap: Math.min(REGEN_MAX, CREATURES.chaosHydra.hp - 5) };
+  });
+  assert.equal(r.over, 'win', `armia Kniei pokonuje samotną hydrę (rund: ${r.rounds})`); assert.ok(r.rounds <= 8);
+  assert.equal(r.max, 50); assert.equal(r.cap, 50);
+});

@@ -1,0 +1,141 @@
+{
+ "facs": [
+  "haven",
+  "sylvan",
+  "barrow",
+  "fortress",
+  "inferno",
+  "academy",
+  "dungeon",
+  "stronghold"
+ ],
+ "M": {
+  "haven": {
+   "sylvan": 1.07,
+   "barrow": 1.25,
+   "fortress": 1.38,
+   "inferno": 1.17,
+   "academy": 0.84,
+   "dungeon": 1.07,
+   "stronghold": 0.84
+  },
+  "sylvan": {
+   "haven": 1.07,
+   "barrow": 1.18,
+   "fortress": 1.18,
+   "inferno": 1.04,
+   "academy": 1.12,
+   "dungeon": 1.04,
+   "stronghold": 0.86
+  },
+  "barrow": {
+   "haven": 0.5,
+   "sylvan": 0.96,
+   "fortress": 0.75,
+   "inferno": 0.9,
+   "academy": 0.61,
+   "dungeon": 1.06,
+   "stronghold": 0.84
+  },
+  "fortress": {
+   "haven": 0.75,
+   "sylvan": 0.75,
+   "barrow": 1.17,
+   "inferno": 1.04,
+   "academy": 0.84,
+   "dungeon": 1.06,
+   "stronghold": 0.7
+  },
+  "inferno": {
+   "haven": 0.82,
+   "sylvan": 0.93,
+   "barrow": 0.93,
+   "fortress": 0.84,
+   "academy": 1.08,
+   "dungeon": 0.93,
+   "stronghold": 0.75
+  },
+  "academy": {
+   "haven": 0.94,
+   "sylvan": 0.93,
+   "barrow": 1.25,
+   "fortress": 1.18,
+   "inferno": 1.06,
+   "dungeon": 0.87,
+   "stronghold": 0.84
+  },
+  "dungeon": {
+   "haven": 0.89,
+   "sylvan": 0.93,
+   "barrow": 1.21,
+   "fortress": 1.21,
+   "inferno": 1.12,
+   "academy": 0.97,
+   "stronghold": 0.84
+  },
+  "stronghold": {
+   "haven": 1.25,
+   "sylvan": 1.07,
+   "barrow": 1.25,
+   "fortress": 1.5,
+   "inferno": 1.17,
+   "academy": 1.25,
+   "dungeon": 1.21
+  }
+ },
+ "cost": {
+  "haven": {
+   "gold": 14430,
+   "gems": 6
+  },
+  "sylvan": {
+   "gold": 15140,
+   "mercury": 4,
+   "crystal": 2
+  },
+  "barrow": {
+   "gold": 13250,
+   "mercury": 3
+  },
+  "fortress": {
+   "gold": 13120,
+   "sulfur": 1
+  },
+  "inferno": {
+   "gold": 13550,
+   "mercury": 2
+  },
+  "academy": {
+   "gold": 15080,
+   "gems": 2
+  },
+  "dungeon": {
+   "gold": 13375,
+   "sulfur": 2
+  },
+  "stronghold": {
+   "gold": 14835,
+   "crystal": 1
+  }
+ },
+ "army": {
+  "haven": "14 halberdier, 9 marksman, 7 royalGriffin, 4 crusader, 3 priest, 2 champion, 1 dawnbringer",
+  "sylvan": "14 nymph, 8 elfSharp, 7 centaurChief, 4 elderTreant, 2 silverUnicorn, 2 sunPhoenix, 1 jadeDragon",
+  "barrow": "12 boneGuard, 8 plagueGhoul, 7 banshee, 4 vampireLord, 3 archNecro, 2 dreadLord, 1 ghostWyvern",
+  "fortress": "12 gnollMarauder, 9 lizardWarrior, 8 venomFly, 4 greatBasilisk, 3 mightyGorgon, 2 wyvernKing, 1 chaosHydra",
+  "inferno": "15 familiar, 8 magog, 5 cerberus, 4 hornedDemon, 3 pitLord, 2 efreetSultan, 1 archDevil",
+  "academy": "16 masterGremlin, 9 obsidianGargoyle, 6 ironGolem, 4 archMage, 3 masterGenie, 2 nagaQueen, 1 titan",
+  "dungeon": "14 infernalTroglodyte, 8 harpyHag, 7 evilEye, 4 medusaQueen, 3 minotaurKing, 2 scorpicore, 1 blackDragon",
+  "stronghold": "19 hobgoblinRaider, 10 wargRider, 9 orcChief, 5 warAurochs, 4 thunderbird, 3 cyclopsKing, 1 ancientBehemoth"
+ },
+ "idx": {
+  "haven": 1.117532876439152,
+  "sylvan": 1.0626357726782734,
+  "barrow": 0.8159639723100955,
+  "fortress": 0.8895177467264066,
+  "inferno": 0.9139361833533876,
+  "academy": 1.0333212916154628,
+  "dungeon": 0.9927724966137298,
+  "stronghold": 1.237452883720652
+ }
+}

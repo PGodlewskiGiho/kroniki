@@ -385,5 +385,19 @@
    (metrics, fitsView – ekran bez przewijania). Ekran bohatera: wiersz „Ścieżka” (wybrana albo trzy do wyboru, z legendą w podpowiedzi).
    Nowi neutralni: olbrzymi pająk (2), syrena (3, morze), yeti (4, śnieg), olbrzym górski (6), kraken (7, morze); siedliska (habitat)
    w wyborze potworów na mapie; modele 3D spider i kraken (zwierzeta.js).
+   Długie gry samych komputerów (tools/balans/gry.js: niezmienniki stanu, zapis/odczyt, rozwój frakcji) i bitwy tygodniowych armii
+   (tools/balans/frakcje.js). Poprawki: pomocnik SI dowozi tylko armię, którą główny przyjmie (feedGain; wcześniej zakleszczał drogę),
+   wartość miast i wrogich bohaterów rośnie z siłą armii; regeneracja i Polowy cyrulik leczą najwyżej REGEN_MAX (50) życia na rundę.
+   Ekran miasta: niezbudowane budowle nie są już rysowane (wcześniej blady zarys).
+   Balans frakcji (pomiary gry.js/frakcje.js): nekromancja z liczby poległych, nie z ich życia (jak w H3; Kurhan miał 2–4× większą armię),
+   Horda Twierdzy tylko dla poziomów 1–4 (+30%), Cytadela mocniejsze ważki i wywerny. Artefakty jako nagroda: kuźnia krasnoludów raz na grę
+   (ze strażnikiem), karawanseraj raz w miesiącu, studnia życzeń raz w tygodniu i najwyżej jeden artefakt. Drewno na mapie mniejsze (RES_SCALE).
+   Dźwięki: portal – niski szum wiru (amb_portal, bez wysokich tonów); każde miasto na mapie brzmi jak jego frakcja (amb_town_*).
+   Przegląd obrazów AI (tools/tla-ai/retusz.py: maska wielokątów, wypełnienie z brzegu, SD img2img wycinka): smok w menu bez nadmiarowych
+   skrzydeł, rycerz na ekranie zwycięstwa unosi świetlisty miecz (bez ostrza w dół), z obrazu zagadki Inferna zniknął kolczasty łuk.
+   Portrety jednostek: koniec z domalowywaniem przez AI – wszystkie 197 to rendery 3D (usunięte domaluj.py i domaluj-wszystkie.py).
+   Woda: bez pikselowego wzoru fal i kwadratowych błysków w siatce (miękkie, rzadkie błyski), tekstura wody bez obrotu drugiej próbki
+   (fale w jednym kierunku, TX.keep). Dźwięk magicznych miejsc (amb_magic) bez czystego tonu 693 Hz – niski szum. Kursor: miecz także
+   na polach w zasięgu strażnika. Bitwa: szybsze strzały, kule, głazy i pociski czarów.
    ===================================================================================== */
 

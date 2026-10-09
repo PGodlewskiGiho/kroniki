@@ -81,6 +81,7 @@ function adventureCursor(st, x, y) {
   const ob = objectAt(st, i);
   if (ob) { if (ob.type === 'monster') return 'attack'; if (ob.type === 'town') return st.towns[ob.townId].owner === h.owner ? 'visit' : 'attack'; if (ob.type === 'boat') return 'boat'; return 'visit'; }
   if (!passableTile(st, tx, ty, h)) return 'no';
+  const gd = st.guard && st.guard[i], gm = gd && st.objects[gd - 1]; if (gm && !gm.dead && gm.type === 'monster') return 'attack'; // pole w zasięgu strażnika: wejście to walka
   if (h.path && h.path.length) { const e = h.path[h.path.length - 1]; if (e[0] === tx && e[1] === ty && pathCostMp(st, h) > h.mp) return 'far'; }
   return 'move';
 }
