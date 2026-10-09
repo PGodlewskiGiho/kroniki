@@ -79,3 +79,20 @@ test('zwolnienie oddziału: drugie kliknięcie w zaznaczony oddział na ekranie 
   await click(0); await click(0); d = await dialog(page); assert.match(d.msg, /ostatni oddział/); await pressDialog(page, 'OK');
   r = await page.evaluate(() => hero(G.state).army.filter(Boolean).length); assert.equal(r, 1);
 });
+
+test('karta oddziału pod prawym przyciskiem: bohater (atak z premią), garnizon miasta, bitwa (bieżące życie); machina zostaje dymkiem', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const st = G.state, t = st.towns[0], h = hero(st); h.stats.att = 3; h.army = emptyArmy(); h.army[0] = { cid: 'griffin', n: 12 }; h.machines = ['firstAid'];
+    setScreen('hero', { heroId: st.heroes.indexOf(h) }); G.screens.hero.draw(G.ctx); const ar = G.screens.hero.armyRects[0];
+    const hc = rightPopup({ x: ar.x + 5, y: ar.y + 5, vx: 100, vy: 100 }); drawPopup(G.ctx, hc); const rows = unitCardRows(hc);
+    t.garrison = emptyArmy(); t.garrison[2] = { cid: 'pikeman', n: 30 }; h.x = t.x + 3; setScreen('town', { townId: t.id }); const T = G.screens.town; T.draw(G.ctx);
+    const g = T.garRects[2], tc = rightPopup({ x: g.x + 5, y: g.y + 5, vx: 50, vy: 50 }); drawPopup(G.ctx, tc);
+    const foe = createHero(st, ME, h.x + 1, h.y); foe.army = emptyArmy(); foe.army[0] = { cid: 'skeleton', n: 20 };
+    const B = createBattle(st, h, foe), u = B.units.find(x => x.cid === 'griffin'); u.hp = 7; const bc = unitCard(u, null, B, u); bc.x = bc.y = 10; drawPopup(G.ctx, bc);
+    return { hc: [hc.cid, hc.n], att: rows.find(x => x[0] === 'Atak')[1], tc: [tc.cid, tc.n], life: unitCardRows(bc).find(x => x[0] === 'Pozostało życia')[1], tent: unitCard({ cid: 'firstAid', n: 1 }) };
+  });
+  assert.deepEqual(r.hc, ['griffin', 12]); assert.match(r.att, /^8 \(\d+\)$/);
+  assert.deepEqual(r.tc, ['pikeman', 30]); assert.equal(r.life, '7/25'); assert.equal(r.tent, null);
+  await page.evaluate(() => { G.popup = null; });
+});

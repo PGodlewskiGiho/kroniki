@@ -324,6 +324,7 @@ function viewportDraw(ctx, fn) { ctx.save(); ctx.setTransform(G.rs, 0, 0, G.rs, 
 function dimScreen(ctx, a) { viewportDraw(ctx, c => { c.fillStyle = `rgba(0,0,0,${a})`; c.fillRect(0, 0, VW, VH); }); }
 // Dymek z opisem; p.x, p.y w układzie okna (VW×VH)
 function drawPopup(ctx, p) {
+  if (p.cid) return drawUnitCard(ctx, p); // karta oddziału
   ctx.font = font(16, 500, 'body');
   const lines = wrapText(ctx, p.text, 250), tw = Math.max(...lines.map(l => ctx.measureText(l).width));
   const w = clamp(tw + 36, 140, 286), h = 26 + lines.length * 20;
@@ -332,6 +333,9 @@ function drawPopup(ctx, p) {
   ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x + 3, y + 5, w, h); leatherFill(ctx, x, y, w, h, 9, -0.1); goldRim(ctx, x, y, w, h, 2); ctx.restore(); // podpowiedź: ciemna skóra (okno to pergamin)
   lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 22 + i * 20, { size: 17, weight: 600, align: 'center', color: UI.txt }));
 }
+// Karta oddziału pod prawym przyciskiem (okno albo ekran z metodą rightCard), inaczej zwykły dymek z rightInfoAt
+function rightCardAt(x, y) { const o = G.modal || G.screen; return o && o.rightCard ? o.rightCard(x, y) : null; }
+function rightPopup(p) { const card = rightCardAt(p.x, p.y); if (card) return Object.assign(card, { x: p.vx, y: p.vy }); const txt = rightInfoAt(p.x, p.y); return txt ? { text: txt, x: p.vx, y: p.vy } : null; }
 function rightInfoAt(x, y) {
   const list = G.modal ? G.modal.buttons : (G.screen.buttons || []), b = list.find(b => b.hit(x, y));
   if (b && b.tip) return b.tip;
