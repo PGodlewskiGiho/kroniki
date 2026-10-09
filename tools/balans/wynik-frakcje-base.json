@@ -11,63 +11,63 @@
  ],
  "M": {
   "haven": {
-   "sylvan": 1.11,
-   "barrow": 0.87,
-   "fortress": 1.25,
-   "inferno": 1.12,
-   "academy": 1.05,
+   "sylvan": 1.12,
+   "barrow": 0.93,
+   "fortress": 1.18,
+   "inferno": 1.1,
+   "academy": 1.12,
    "dungeon": 0.84,
    "stronghold": 0.87
   },
   "sylvan": {
-   "haven": 1.12,
+   "haven": 0.94,
    "barrow": 1.25,
-   "fortress": 1.18,
-   "inferno": 1.06,
-   "academy": 0.94,
-   "dungeon": 1.18,
-   "stronghold": 0.86
+   "fortress": 1.17,
+   "inferno": 0.94,
+   "academy": 0.97,
+   "dungeon": 1.17,
+   "stronghold": 0.87
   },
   "barrow": {
-   "haven": 1.21,
-   "sylvan": 0.87,
+   "haven": 1.12,
+   "sylvan": 0.75,
    "fortress": 1.17,
    "inferno": 1.25,
    "academy": 0.84,
-   "dungeon": 1.18,
+   "dungeon": 1.17,
    "stronghold": 0.7
   },
   "fortress": {
    "haven": 0.75,
-   "sylvan": 0.78,
-   "barrow": 0.87,
+   "sylvan": 0.75,
+   "barrow": 0.84,
    "inferno": 0.84,
-   "academy": 0.78,
-   "dungeon": 1.06,
-   "stronghold": 0.7
+   "academy": 0.75,
+   "dungeon": 0.84,
+   "stronghold": 0.65
   },
   "inferno": {
-   "haven": 1.05,
-   "sylvan": 0.96,
-   "barrow": 0.75,
-   "fortress": 1.05,
+   "haven": 1.07,
+   "sylvan": 1.11,
+   "barrow": 0.87,
+   "fortress": 1.12,
    "academy": 0.84,
    "dungeon": 1.21,
    "stronghold": 0.84
   },
   "academy": {
-   "haven": 0.94,
+   "haven": 0.93,
    "sylvan": 0.87,
-   "barrow": 1.25,
-   "fortress": 1.17,
-   "inferno": 1.25,
-   "dungeon": 1.25,
+   "barrow": 1.18,
+   "fortress": 1.25,
+   "inferno": 1.17,
+   "dungeon": 1.17,
    "stronghold": 0.84
   },
   "dungeon": {
    "haven": 1.12,
-   "sylvan": 0.89,
-   "barrow": 0.93,
+   "sylvan": 0.82,
+   "barrow": 0.82,
    "fortress": 1.12,
    "inferno": 0.84,
    "academy": 0.84,
@@ -76,9 +76,9 @@
   "stronghold": {
    "haven": 1.36,
    "sylvan": 1.25,
-   "barrow": 1.32,
+   "barrow": 1.25,
    "fortress": 1.5,
-   "inferno": 1.25,
+   "inferno": 1.3,
    "academy": 1.25,
    "dungeon": 1.5
   }
@@ -127,13 +127,13 @@
   "stronghold": "19 hobgoblin, 10 warg, 9 orcAxe, 5 aurochs, 4 roc, 3 cyclops, 1 behemoth"
  },
  "idx": {
-  "haven": 0.9727183247169522,
-  "sylvan": 1.064107468931438,
-  "barrow": 0.9986330608649882,
-  "fortress": 0.8265530947522282,
-  "inferno": 0.9389883008328462,
-  "academy": 1.0749936645375309,
-  "dungeon": 0.8818136876025242,
-  "stronghold": 1.3149456212611554
+  "haven": 0.994417305178862,
+  "sylvan": 1.0524675123563954,
+  "barrow": 0.9861401499246425,
+  "fortress": 0.7984205587665977,
+  "inferno": 0.9760597467393056,
+  "academy": 1.0604122559308404,
+  "dungeon": 0.8886416746532229,
+  "stronghold": 1.3193938570793042
  }
 }

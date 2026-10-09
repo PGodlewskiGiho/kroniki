@@ -1,25 +1,27 @@
 {
  "games": [
   {
-   "tag": "gra 1 (ziarno 1001, M, random, stronghold/barrow)",
+   "tag": "gra 32 (ziarno 1032, L, mountains, fortress/inferno/haven)",
    "cfg": {
-    "seed": 1001,
-    "mapSize": "M",
-    "land": "random",
+    "seed": 1032,
+    "mapSize": "L",
+    "land": "mountains",
     "underground": false,
     "slots": [
      {
       "type": "human",
-      "faction": "stronghold",
+      "faction": "fortress",
       "team": 0
      },
      {
       "type": "ai",
-      "faction": "barrow",
+      "faction": "inferno",
       "team": 0
      },
      {
-      "type": "off"
+      "type": "ai",
+      "faction": "haven",
+      "team": 0
      },
      {
       "type": "off"
@@ -38,85 +40,34 @@
      }
     ]
    },
-   "np": 2,
+   "np": 3,
    "teams": false,
    "factions": [
-    "stronghold",
-    "barrow"
+    "fortress",
+    "inferno",
+    "haven"
    ],
-   "slowest": 262,
-   "days": 40,
-   "winner": null,
-   "out": [],
-   "towns": [
-    2,
-    1
-   ],
-   "maxLevel": 14
-  },
-  {
-   "tag": "gra 2 (ziarno 1002, S, random, barrow/stronghold)",
-   "cfg": {
-    "seed": 1002,
-    "mapSize": "S",
-    "land": "random",
-    "underground": false,
-    "slots": [
-     {
-      "type": "human",
-      "faction": "barrow",
-      "team": 0
-     },
-     {
-      "type": "ai",
-      "faction": "stronghold",
-      "team": 0
-     },
-     {
-      "type": "off"
-     },
-     {
-      "type": "off"
-     },
-     {
-      "type": "off"
-     },
-     {
-      "type": "off"
-     },
-     {
-      "type": "off"
-     },
-     {
-      "type": "off"
-     }
-    ]
-   },
-   "np": 2,
-   "teams": false,
-   "factions": [
-    "barrow",
-    "stronghold"
-   ],
-   "slowest": 109,
-   "days": 38,
+   "slowest": 357,
+   "days": 160,
    "winner": [
     1
    ],
    "out": [],
    "towns": [
     0,
-    4
+    8,
+    0
    ],
-   "maxLevel": 8
+   "maxLevel": 24
   }
  ],
  "errors": [],
  "wins": {
-  "stronghold": 1
+  "inferno": 1
  },
  "plays": {
-  "stronghold": 2,
-  "barrow": 2
+  "fortress": 1,
+  "inferno": 1,
+  "haven": 1
  }
 }
