@@ -291,7 +291,7 @@ function decal(w, h, draw, pos, rot) { // płaski obrazek (herb na tarczy, tabar
 // Model jednostki wg look.kind (humanoid w postacie.js, zwierzęta i potwory w zwierzeta.js); null = brak modelu 3D
 function buildUnit(L, P = {}) {
   const f = { hum: 'humanoid', rider: 'rider', centaur: 'centaur', wolf: 'wolf', unicorn: 'unicorn', bull: 'bull', griffin: 'griffin', bird: 'bird', phoenix: 'phoenix',
-    dragon: 'dragon', hydra: 'hydra', lizard: 'lizard', insect: 'insect', eye: 'eyeBeast', ghost: 'ghost', treant: 'treant',
+    dragon: 'dragon', hydra: 'hydra', lizard: 'lizard', insect: 'insect', eye: 'eyeBeast', ghost: 'ghost', treant: 'treant', spider: 'spider', kraken: 'kraken',
     ballista: 'ballista', tent: 'tent', cart: 'cart', catapult: 'catapult', tower: 'tower' }[L.kind];
   const fn = L.golem ? globalThis.golem : L.beast ? globalThis[L.beast] : L.biped ? globalThis.humanoid : f && typeof globalThis[f] === 'function' ? globalThis[f] : null; return fn ? fn(L, P) : null;
 }

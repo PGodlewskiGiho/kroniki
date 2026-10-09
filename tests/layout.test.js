@@ -109,14 +109,26 @@ test('miasto w oknie telefonu: szuflada armii i kliknięcie oddziału w garnizon
   await size(800, 600);
 });
 
-test('telefon: dawny ekran (nowa gra) w pełnej wielkości, przewijany kółkiem; przycisk na dole klikalny po przewinięciu', async () => {
-  await size(844, 390); await page.evaluate(() => { setScreen('setup'); G.fade.a = 0; G.fade.target = 0; }); await frames(page, 3);
+test('telefon: dawny ekran (zasady) w pełnej wielkości, przewijany kółkiem; przycisk na dole klikalny po przewinięciu', async () => {
+  await size(844, 390); await page.evaluate(() => { setScreen('rules'); G.fade.a = 0; G.fade.target = 0; }); await frames(page, 3);
   const r0 = await page.evaluate(() => ({ max: G.legScrollMax, ls: LS }));
   assert.ok(r0.max > 100 && r0.ls === 1, JSON.stringify(r0));
   await page.mouse.move(400, 200); await page.mouse.wheel(0, 2000); await frames(page, 3);
-  const p = await page.evaluate(() => { const b = G.screen.buttons.find(b => b.label === 'Wróć'), c = G.canvas.getBoundingClientRect(), k = c.width / UNITS.ui.vw;
+  const p = await page.evaluate(() => { const b = G.screen.buttons.find(b => b.label === 'OK'), c = G.canvas.getBoundingClientRect(), k = c.width / UNITS.ui.vw;
     return { s: G.legScroll, x: c.left + (OX + b.x + b.w / 2) * LS * k, y: c.top + (OY + b.y + b.h / 2) * LS * k }; });
   assert.ok(p.s > 100 && p.y < 390, JSON.stringify(p));
+  await page.mouse.move(p.x, p.y); await page.mouse.click(p.x, p.y);
+  assert.equal(await page.evaluate(() => G.fade.next && G.fade.next.name), 'setup');
+  await page.waitForFunction(() => G.screenName === 'setup'); await size(800, 600);
+});
+
+test('telefon: ekran nowej gry układa się zwarto i mieści bez przewijania (8 graczy); przyciski na dole klikalne od razu', async () => {
+  await size(844, 390); await page.evaluate(() => { G.settings.mapSize = 'XL'; setScreen('setup'); G.fade.a = 0; G.fade.target = 0; G.screens.setup.addSlot(); }); await frames(page, 3);
+  await page.mouse.move(400, 200); await page.mouse.wheel(0, 2000); await frames(page, 3);
+  const p = await page.evaluate(() => { const s = G.screen, b = s.buttons.find(b => b.label === 'Wróć'), c = G.canvas.getBoundingClientRect(), k = c.width / UNITS.ui.vw;
+    const low = Math.max(...s.buttons.map(b => b.y + b.h));
+    return { compact: s.compact, scroll: G.legScroll, low, vh: UNITS.leg.vh, x: c.left + (OX + b.x + b.w / 2) * LS * k, y: c.top + (OY + b.y + b.h / 2) * LS * k }; });
+  assert.equal(p.compact, true); assert.equal(p.scroll, 0, 'bez przewijania'); assert.ok(p.low <= p.vh, JSON.stringify(p)); assert.ok(p.y < 390, JSON.stringify(p));
   await page.mouse.move(p.x, p.y); await page.mouse.click(p.x, p.y);
   assert.equal(await page.evaluate(() => G.fade.next && G.fade.next.name), 'menu');
   await page.waitForFunction(() => G.screenName === 'menu'); await size(800, 600);

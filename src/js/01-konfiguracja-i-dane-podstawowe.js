@@ -28,6 +28,7 @@ const DIFFICULTIES = [
 const MAP_SIZES = [
   { id: 'S', name: 'Mała', n: 36 }, { id: 'M', name: 'Średnia', n: 72 },
   { id: 'L', name: 'Duża', n: 108 }, { id: 'XL', name: 'Olbrzymia', n: 144 },
+  { id: 'XXL', name: 'Gigantyczna', n: 180 }, { id: 'G', name: 'Bezkresna', n: 216 },
 ];
 const PLAYER_COLORS = [
   { id: 'red', name: 'Czerwony', hex: '#c42a2a' }, { id: 'blue', name: 'Niebieski', hex: '#2f5bd0' },

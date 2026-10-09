@@ -369,5 +369,21 @@
    bitwa morska (B.naval): dwa pokłady, woda NAVAL_GAP, kładki NAVAL_PLANKS.
    Czaszka bramy wykuta w szarej skale (mqSkull: skośne oczodoły, kły nad paszczą); bitwa morska na rysowanym obrazie dwóch żaglowców
    (bitwy/morska.webp rysowany przez tools/tla-ai/szkic-morska.js, bez AI) z ruchomymi falami w szczelinie NAVAL_SEA.
+   Surowce na mapie 70% (RES_K 1,33). Mapy Gigantyczna 180 i Bezkresna 216 (SITE_COUNT 12/14); najwięcej graczy wg mapy PLAYER_CAP
+   (2/4/6/8/8/8, fitSlots wyłącza nadmiar); bohater startowy do wyboru na ekranie nowej gry (slots[].hero).
+   Etapy rozwoju: ścieżka mistrzowska na 10. poziomie (HERO_PATHS, 3 do wyboru wg CLASS_PATHS, h.mastery) i legenda na 20.
+   (Marszałek, Czempion, Łowca, Arcymistrz, Mędrzec, Wędrowiec, Namiestnik). Balans zmierzony tools/balans/bohaterowie.js
+   (indeks siły w bitwie): magowie byli na 20. poziomie 1,5×, na 25. 1,7× silniejsi od wojowników; teraz 1,03× i 1,13× dzięki
+   ścieżkom, drugiemu czarowi Bitewnego maga za potrójną manę (DOUBLE_CAST_COST) i mocy czarów powyżej SP_SOFT liczonej za pół.
+   Ekran nowej gry przebudowany: panel Świat (przełączniki ◀ ▶ mapy, krainy, trudności; bonus, podziemia, zasady) i panel Gracze
+   (tylko zajęte miejsca, Dodaj/Usuń gracza); ikony 3D ic_map, ic_helm, ic_dice, ic_chest, herb frakcji = portret stwora 7. poziomu.
+   Drużyny (slots[].team → players[].team, allied/teamOf): sojusznicy nie walczą, nie przejmują kopalń i miast, wspólna mgła (reveal),
+   komputer nie celuje w sojuszników (aiPeace), zwycięstwo drużyny (gameResult); odznaka drużyny w wierszu gracza.
+   Statystyki (20c): wykres potęgi co tydzień (st.hist, HIST_KEYS), liczniki zdarzeń (st.tally), 14 osiągnięć (ACHIEVEMENTS, localStorage
+   kk_ach); okno showStats z końca gry („Statystyki”) i z Kroniki tawerny („Wykres potęgi”).
+   Czarodziej: wolniej rośnie Wiedza (CLASS_GROWTH; na 20. poziomie 3,66 → 3,28 indeksu siły). Nowa gra na telefonie: układ zwarty
+   (metrics, fitsView – ekran bez przewijania). Ekran bohatera: wiersz „Ścieżka” (wybrana albo trzy do wyboru, z legendą w podpowiedzi).
+   Nowi neutralni: olbrzymi pająk (2), syrena (3, morze), yeti (4, śnieg), olbrzym górski (6), kraken (7, morze); siedliska (habitat)
+   w wyborze potworów na mapie; modele 3D spider i kraken (zwierzeta.js).
    ===================================================================================== */
 

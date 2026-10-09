@@ -99,7 +99,7 @@ test('zwycięstwo: po pokonaniu rywali okno końca gry i wpis w wynikach', async
   });
   const d = await dialog(page);
   assert.match(d.msg, /Zwycięstwo! Wszyscy przeciwnicy/);
-  assert.deepEqual(d.labels, ['Menu główne', 'Wyniki']);
+  assert.deepEqual(d.labels, ['Menu główne', 'Statystyki', 'Wyniki']);
   const scores = await page.evaluate(() => loadScores());
   assert.equal(scores.length, 1);
   assert.ok(scores[0].score > 0);
@@ -143,28 +143,29 @@ test('gracz bez bohatera: mapa działa, można nająć nowego', async () => {
 });
 
 test('ekran nowej gry: miejsca graczy (człowiek, komputer, wolne)', async () => {
-  const saved = await page.evaluate(() => JSON.stringify(G.settings.slots));
+  const saved = await page.evaluate(() => JSON.stringify({ slots: G.settings.slots, mapSize: G.settings.mapSize }));
   await page.evaluate(() => setScreen('setup', {}));
   await frames(page, 3);
   const r = await page.evaluate(() => {
-    const scr = G.screens.setup, S = G.settings; S.slots = legacySlots({ color: 'red', faction: 'haven', opponents: 1 });
-    scr.slotBtns[2].ty.action(); scr.slotBtns[2].ty.action(); scr.slotBtns[2].ty.action(); // wolne -> człowiek -> komputer -> wolne
-    const cyc = S.slots[2].type; scr.slotBtns[2].ty.action(); scr.slotBtns[0].ty.action(); // 2 = człowiek, 0 = komputer
+    const scr = G.screens.setup, S = G.settings; S.mapSize = 'M'; S.slots = legacySlots({ color: 'red', faction: 'haven', opponents: 1 });
+    scr.nextType(2); scr.nextType(2); scr.nextType(2); // wolne -> człowiek -> komputer -> wolne
+    const cyc = S.slots[2].type; scr.addSlot(); const added = S.slots[2].type; scr.slotBtns[2].ty.action(); scr.slotBtns[0].ty.action(); // dodany komputer -> człowiek, 0: człowiek -> komputer
     const types = S.slots.map(o => o.type).join(','); scr.slotBtns[1].sw.action();
     const colors = new Set(S.slots.map(o => o.color)).size;
-    scr.slotBtns[1].ty.action(); scr.slotBtns[1].ty.action(); scr.slotBtns[1].ty.action(); // komputer -> wolne -> człowiek -> komputer
+    scr.slotBtns[1].ty.action(); scr.slotBtns[1].ty.action(); // komputer -> człowiek -> komputer
     const lone = S.slots.map(o => o.type).filter(t => t === 'human').length;
-    S.slots[2].type = 'ai'; scr.slotBtns[0].ty.action(); scr.slotBtns[0].ty.action(); // ostatni człowiek nie znika
-    return { cyc, types, colors, lone, humans: S.slots.filter(o => o.type === 'human').length };
+    scr.slotBtns[2].ty.action(); scr.slotBtns[2].rm.action(); // ostatni człowiek nie znika ani nie staje się komputerem
+    return { cyc, added, types, colors, lone, humans: S.slots.filter(o => o.type === 'human').length };
   });
-  assert.equal(r.cyc, 'off');
+  assert.equal(r.cyc, 'off'); assert.equal(r.added, 'ai');
   assert.equal(r.types, 'ai,ai,human,off,off,off,off,off');
   assert.equal(r.colors, 8);
   assert.equal(r.lone, 1);
-  assert.ok(r.humans >= 1);
+  assert.equal(r.humans, 1);
   await frames(page, 3);
-  await page.evaluate(s => { G.settings.slots = JSON.parse(s); G.settings.opponents = 1; }, saved);
+  await page.evaluate(s => { const o = JSON.parse(s); G.settings.slots = o.slots; G.settings.mapSize = o.mapSize; G.settings.opponents = 1; }, saved);
 });
+
 
 test('zapis i odczyt z przeciwnikami', async () => {
   await newGame(page, { mapSize: 'M', opponents: 2 }, 3);

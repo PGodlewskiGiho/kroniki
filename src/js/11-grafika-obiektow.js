@@ -781,11 +781,11 @@ const decorSprite = (t, v, season = 0, under = 0) => (map3dSprite(decor3dKey(t, 
 const shadowSprite = w => sprite(`sh${w}`, w + 2, 6, (w + 2) / 2, 3, p => { p.fillStyle = '#000000'; p.beginPath(); p.ellipse(0, 0, w, 4, 0, 0, TAU); p.fill(); }, null);
 const resSprite = r => sprite(`res_${r}`, 16, 16, 8, 8, p => drawResIcon(p, r, 0, 0, 24));
 // Surowiec na mapie: model 3D powiększony o RES_K i jasna plama pod nim (widać go także w trawie i na śniegu)
-const RES_K = 1.9, RES_SCALE = { sulfur: 1.15 }; // siarka (płaski kopiec) i tak jest duża
+const RES_K = 1.33, RES_SCALE = { sulfur: 0.8 }; // 70% dawnego 1,9; siarka (płaski kopiec) i tak jest duża
 let RES_GLOW = null; // miękka plama światła (własne płótno: sprite() ucina półprzezroczystość)
 const resGlowSprite = () => { if (RES_GLOW) return RES_GLOW; const c = document.createElement('canvas'); c.width = 64; c.height = 28; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 14, 0, 32, 14, 30);
   gr.addColorStop(0, 'rgba(255,244,200,.95)'); gr.addColorStop(0.5, 'rgba(255,226,150,.45)'); gr.addColorStop(1, 'rgba(255,220,140,0)'); g.fillStyle = gr; g.save(); g.translate(32, 14); g.scale(1, 0.44); g.translate(-32, -14); g.beginPath(); g.arc(32, 14, 30, 0, TAU); g.fill(); g.restore();
-  return (RES_GLOW = { c, ax: 32, ay: 14, u: 0.9, raw: true }); };
+  return (RES_GLOW = { c, ax: 32, ay: 14, u: 0.65, raw: true }); };
 // Karawana na mapie: kryty wóz z koniem i chorągiewką koloru gracza (fr: klatka kół)
 const caravanSprite = (col, fr) => sprite(`caravan_${col}_${fr}`, 26, 22, 13, 18, p => {
   p.fillStyle = '#6a4424'; p.fillRect(-3, 4, 14, 5); p.fillStyle = '#e8dcc0'; p.beginPath(); p.moveTo(-3, 4); p.quadraticCurveTo(4, -6, 11, 4); p.closePath(); p.fill();
@@ -1310,7 +1310,7 @@ function skillSprite(id, size = 32) {
 }
 function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id, size), cx, cy, size / 32); }
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
-function showSpellbook(h, mode, onPick) {
+function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id)) { // costOf: koszt w bitwie (drugi czar Bitewnego maga droższy)
   Sfx.play('book', { vol: 0.6 });
   // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły
   const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
@@ -1320,7 +1320,7 @@ function showSpellbook(h, mode, onPick) {
   const list = () => all.filter(id => !school || SPELLS[id].school === school), pages = () => Math.max(1, Math.ceil(list().length / PER)), shown = () => list().slice(page * PER, page * PER + PER);
   const cell = i => BOOK ? (k => ({ x: x + 34 + (k >= 10 ? (w - 68) / 2 + 14 : 0) + (k % 2) * cw, y: y + 108 + Math.floor((k % 10) / 2) * rh, w: cw - 10, h: rh - 4 }))(i) // księga: 2 kolumny na stronę, lewa strona, potem prawa
     : ({ x: x + 24 + (i % cols) * cw, y: y + 104 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
-  const usable = id => mode !== 'view' && SPELLS[id].kind === mode && spellCost(h, id) <= h.mana;
+  const usable = id => mode !== 'view' && SPELLS[id].kind === mode && costOf(id) <= h.mana;
   const close = new Button(W / 2 - 70, y + hh - 54, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const prev = new Button(W / 2 - 124, y + hh - 50, 44, 32, 'Poprzednia strona', () => { page = Math.max(0, page - 1); }, { icon: side(-1), key: 'arrowleft', tip: 'Poprzednia strona księgi.' });
   const next = new Button(W / 2 + 80, y + hh - 50, 44, 32, 'Następna strona', () => { page = Math.min(pages() - 1, page + 1); }, { icon: side(1), key: 'arrowright', tip: 'Następna strona księgi.' });
@@ -1330,7 +1330,7 @@ function showSpellbook(h, mode, onPick) {
   G.modal = { box: { x, y, w, h: hh },
     buttons: [close, prev, next, ...tabBtns],
     onClick(px, py) { const i = at(px, py), id = shown()[i]; if (i >= 0 && usable(id)) { G.modal = null; onPick(id); } },
-    rightInfo(px, py) { const i = at(px, py); if (i < 0) return null; const id = shown()[i], S = SPELLS[id]; return `${S.name} (magia ${SCHOOLS[S.school].name}, poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${spellCost(h, id)} many): ${S.desc(sp)}.${schoolNote(h, id)}`; },
+    rightInfo(px, py) { const i = at(px, py); if (i < 0) return null; const id = shown()[i], S = SPELLS[id]; return `${S.name} (magia ${SCHOOLS[S.school].name}, poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${costOf(id)} many): ${S.desc(S.kind === 'adv' ? sp : effSp(sp))}.${schoolNote(h, id)}`; },
     draw(ctx) {
       page = Math.min(page, pages() - 1); prev.disabled = page === 0; next.disabled = page >= pages() - 1;
       const L = shown(); hover = at(G.mouse.x, G.mouse.y);
@@ -1348,12 +1348,12 @@ function showSpellbook(h, mode, onPick) {
         drawSprite(ctx, spellSprite(id), r.x + 24, r.y + r.h / 2, BOOK ? 1.1 : 1);
         ctx.font = font(13, 700, 'title'); let fs = 13; while (fs > 10 && ctx.measureText(S.name).width > r.w - 50) { fs--; ctx.font = font(fs, 700, 'title'); }
         text(ctx, S.name, r.x + 46, r.y + r.h / 2 - 7, { size: fs, color: '#2a1606', fam: 'title' });
-        const c0 = spellCost(h, id);
+        const c0 = costOf(id);
         text(ctx, `${S.level} poz. · ${c0} many${c0 < S.cost ? ' ↓' : ''}`, r.x + 46, r.y + r.h / 2 + 11, { size: BOOK ? 14 : 12, weight: 600, color: c0 < S.cost ? '#2a6a1e' : '#5a3814' });
         ctx.restore();
       });
       const hs = hover >= 0 ? L[hover] : null;
-      text(ctx, hs ? `${SPELLS[hs].name}: ${SPELLS[hs].desc(sp)}.` : mode === 'view' ? 'Prawy przycisk na czarze: pełny opis.' : `Kliknij czar, aby go rzucić (${mode === 'battle' ? 'jeden na rundę' : 'na mapie'}).`,
+      text(ctx, hs ? `${SPELLS[hs].name}: ${SPELLS[hs].desc(SPELLS[hs].kind === 'adv' ? sp : effSp(sp))}.` : mode === 'view' ? 'Prawy przycisk na czarze: pełny opis.' : `Kliknij czar, aby go rzucić (${mode === 'battle' ? 'jeden na rundę' : 'na mapie'}).`,
         W / 2, y + hh - 76, { size: BOOK ? 15 : 13, italic: true, weight: 500, align: 'center', color: '#6a4418' });
       if (pages() > 1) { prev.draw(ctx); next.draw(ctx); text(ctx, `strona ${page + 1}/${pages()}`, W / 2 + 170, y + hh - 34, { size: 12, weight: 600, align: 'center', color: '#5a3814' }); }
       close.draw(ctx);

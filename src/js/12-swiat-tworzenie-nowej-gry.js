@@ -296,7 +296,9 @@ function placeObjects(st) {
   const monster = (x, y, boost = 0, ddFix = null) => { // ddFix: siła jak przy samym starcie (pierwsze walki)
     if (home[y * n + x]) return null; const dd = ddFix != null ? ddFix : d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), all = NEUTRALS_BY_LEVEL[lvl];
     const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff) * rule(st, 'monsters');
-    const fit = all.filter(c => CREATURES[c].value <= power * 1.3), list = fit.length ? fit : [all.reduce((a, c) => (CREATURES[c].value < CREATURES[a].value ? c : a))], cid = list[Math.floor(rng() * list.length)]; // bez smoka silniejszego niż cała okolica
+    const ter = map.terrain[y * n + x], home2 = c => !CREATURES[c].habitat || CREATURES[c].habitat.includes(ter); // siedlisko: yeti na śniegu, pająk na bagnach i bezdrożach; syrena i kraken tylko w morzu
+    const fit0 = all.filter(c => home2(c) && CREATURES[c].value <= power * 1.3), fit = fit0.flatMap(c => (CREATURES[c].habitat ? [c, c] : [c])); // stwór u siebie losuje się częściej
+    const list = fit.length ? fit : [all.filter(home2).reduce((a, c) => (CREATURES[c].value < CREATURES[a].value ? c : a))], cid = list[Math.floor(rng() * list.length)]; // bez smoka silniejszego niż cała okolica
     return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
   };
   // Obiekt 2×2 (kopalnia, skarbiec): wejście w prawym dolnym polu, pozostałe trzy pola zablokowane, pole przed wejściem wolne
@@ -525,18 +527,19 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
   const trng = mulberry32(seed ^ 0x70a7), slots = playerSlots(S).slice(0, map.sites.length), others = map.sites.filter(s => s !== map.start), sites = [map.start, ...others];
   slots.forEach((o, id) => {
     const fac = o.faction === 'random' ? FACTIONS[Math.floor(trng() * FACTIONS.length)].id : o.faction, isHuman = o.type === 'human';
-    st.players.push({ id, color: o.color, ...(isHuman && o.name ? { name: o.name } : {}), human: isHuman, faction: fac, resources: { ...(isHuman ? d : DIFFICULTIES[1]).res }, explored: new Uint8Array(map.n * map.n) });
+    st.players.push({ id, color: o.color, ...(isHuman && o.name ? { name: o.name } : {}), ...(o.team ? { team: o.team } : {}), human: isHuman, faction: fac, resources: { ...(isHuman ? d : DIFFICULTIES[1]).res }, explored: new Uint8Array(map.n * map.n) });
     createTown(st, sites[id].x, sites[id].y, id, fac);
   });
   for (const s of sites.slice(slots.length)) createNeutralTown(st, s, trng);
   rebuildObjIndex(st);
-  for (const p of st.players) {
-    const t = st.towns.find(t => t.owner === p.id), h = createHero(st, p.id, t.x, t.y);
+  for (const p of st.players) { // bohater startowy: wybrany przy nowej grze (slots[].hero) albo losowy z puli frakcji
+    const t = st.towns.find(t => t.owner === p.id), want = slots[p.id].hero, pk = want && want !== 'random' && factionOf(p.faction).heroes.find(([n]) => n === want);
+    const h = createHero(st, p.id, t.x, t.y, pk ? { name: pk[0], cls: pk[1], female: !!pk[2], fac: p.faction } : null);
     if (p.human) p.bonusText = startBonus(st, S.bonus, p, h, rng);
     reveal(st, h.x, h.y, HERO_SIGHT + 6, p.id); // start: okolica własnego miasta odkryta (ok. dzień marszu)
     if (rule(st, 'reveal')) p.explored.fill(1); // zasada „odkryta mapa”
   }
-  ensureProgress(st);
+  ensureProgress(st); recordHistory(st); // wykres potęgi: stan na dzień 1
   st.cur = ME = st.players.find(p => p.human).id; st.bonusText = human(st).bonusText; st.selHero = st.heroes.findIndex(h => h.owner === ME);
   return st;
 }

@@ -32,7 +32,7 @@ const hasAiMain = (st, h) => { const p = playerOf(st, h.owner), m = st.heroes.fi
 function aiDanger(st, h) {
   const n = st.map.n, ex = playerOf(st, h.owner).explored, power = armyStrength(h), D = new Uint8Array(n * n);
   for (const o of st.heroes) {
-    if (o.owner === h.owner || o.garrison != null || !ex[o.y * n + o.x] || armyStrength(o) <= power * 0.8) continue; // rozejm chroni tylko ludzi przed SI, nie odwrotnie
+    if (allied(st, o.owner, h.owner) || o.garrison != null || !ex[o.y * n + o.x] || armyStrength(o) <= power * 0.8) continue; // rozejm chroni tylko ludzi przed SI, nie odwrotnie
     const r = Math.ceil(heroMaxMP(o) / 100) + 1;
     for (let y = Math.max(0, o.y - r); y <= Math.min(n - 1, o.y + r); y++) for (let x = Math.max(0, o.x - r); x <= Math.min(n - 1, o.x + r); x++) D[y * n + x] = 1;
   }
@@ -60,7 +60,7 @@ function aiFeed(st, h, m) {
 // Rozejm: przez tyle dni SI nie atakuje miast ani bohaterów człowieka (zasada „rozejm”; wg trudności: Łatwy 21, Normalny 14, Trudny 7, wyżej 0)
 const AI_PEACE_DAYS = [21, 14, 7, 0, 0];
 const truceDays = st => { const r = rule(st, 'truce'); return r === 'auto' ? AI_PEACE_DAYS[st.settings.difficulty] : r; };
-const aiPeace = (st, owner) => owner >= 0 && playerOf(st, owner).human && st.dayTotal <= truceDays(st);
+const aiPeace = (st, owner, me = -1) => owner >= 0 && (allied(st, owner, me) || (playerOf(st, owner).human && st.dayTotal <= truceDays(st))); // rozejm z ludźmi albo sojusz
 // Daily bonus złota SI na wyższych poziomach trudności (Trudny +300, Ekspert +600, Niemożliwy +1000)
 const aiGoldBonus = st => Math.max(0, DIFFICULTIES[st.settings.difficulty].rating - 100) * 10;
 const armyStrength = h => Math.round(armyPower(h.army) * heroFactor(h));
@@ -173,7 +173,7 @@ function aiPickTarget(st, h, R) {
   for (const t of st.towns) {
     const i = t.y * n + t.x, occupant = heroAt(st, t.x, t.y);
     if (t.owner === h.owner) { const take = armyPower(takeableArmy(t.garrison, h.army)); if (!occupant && take > 0) add(i, take * (!hasArmy ? 20 : !helper && take > armyPower(h.army) * 0.3 ? 4 : 3), 'reinforce'); continue; }
-    if (!hasArmy || aiPeace(st, t.owner)) continue;
+    if (!hasArmy || aiPeace(st, t.owner, h.owner)) continue;
     const tp = townPower(st, t); if (power > tp * 0.8 * fightK) add(i, (t.owner >= 0 && playerOf(st, t.owner).human ? 30000 : 20000) + (tp ? 0 : 5000), 'town', t);
   }
   if (hasArmy) {
@@ -191,10 +191,10 @@ function aiPickTarget(st, h, R) {
       else if (ob.type === 'chest') add(i, 1500, 'chest');
       else if (ob.type === 'art') add(i, 2500, 'art');
       else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob); if (v > 0) add(i, v, 'site'); }
-      else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
+      else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner, h.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
       else if (ob.type === 'bank' && !ob.cleared && !helper && power > bankPower(ob) * 1.3) add(i, 2000 + bankPower(ob) * 0.4, 'bank', ob);
     }
-    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8 * fightK) add(o.y * n + o.x, playerOf(st, o.owner).human ? 15000 : 8000, 'hero', o);
+    for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner, h.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8 * fightK) add(o.y * n + o.x, playerOf(st, o.owner).human ? 15000 : 8000, 'hero', o);
     // zwiad: wolne pole na skraju odkrytego terenu, tym cenniejsze, im więcej mgły wokół
     const r = 3, m = n + 1, S = new Int32Array(m * m); let best = -1, bestScore = 0; // sumy prefiksowe nieodkrytych pól
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) S[(y + 1) * m + x + 1] = (ex[y * n + x] ? 0 : 1) + S[y * m + x + 1] + S[(y + 1) * m + x] - S[y * m + x];
@@ -267,12 +267,13 @@ function* aiVisit(st, h, i, news) {
   const other = st.heroes.find(o => o !== h && o.x === x && o.y === y), ob = objectAt(st, i);
   if (ob && ob.type === 'town') {
     const t = st.towns[ob.townId];
+    if (t.owner !== h.owner && allied(st, h.owner, t.owner)) return; // miasto sojusznika
     if (t.owner === h.owner) { if (buildGrail(st, t, h)) tell(st, -1, `${ownerName(st, h.owner)} wznosi budowlę Graala w mieście ${t.name}.`); armyTransfer(t.garrison, h.army); return; }
     if (!armySize(t.garrison) && !townHero(st, t)) { tell(st, t.owner, `${h.name} (${ownerName(st, h.owner)}) zajmuje bezbronne miasto ${t.name}.`); captureTown(st, t, h.owner); rebuildObjIndex(st); }
     else yield* aiBattle(st, h, t, news);
     return;
   }
-  if (other && other.owner !== h.owner) { yield* aiBattle(st, h, other, news); return; }
+  if (other && !allied(st, other.owner, h.owner)) { yield* aiBattle(st, h, other, news); return; }
   if (!ob) return;
   if (ob.type === 'res') { R[ob.res] += ob.amount; removeObject(st, ob); }
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
@@ -280,6 +281,7 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'site' && ob.kind === 'witchHut' && skillWeight(h.cls, ob.skill) < 1) siteDiscover(ob, h.owner); // odmawia wiedźmie
   else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); }
   else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
+  else if (ob.type === 'mine' && ob.owner >= 0 && ob.owner !== h.owner && allied(st, h.owner, ob.owner)) return;
   else if (ob.type === 'mine') { if (ob.owner >= 0 && ob.owner !== h.owner) tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
 const aiKnowsGrail = (st, pid) => obelisksTotal(st) > 0 && obelisksSeen(st, pid) >= obelisksTotal(st);
@@ -306,7 +308,7 @@ function* aiMoveHero(st, h, news) {
     if (!path.length) return;
     for (const [nx, ny] of path) {
       const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
-      const blocker = heroAt(st, nx, ny); if (blocker && blocker !== h && blocker.owner === h.owner && blocker.garrison == null) return; // pole zajmuje własny bohater (np. stoi w kapliczce): nie wchodzimy na niego
+      const blocker = heroAt(st, nx, ny); if (blocker && blocker !== h && allied(st, blocker.owner, h.owner) && blocker.garrison == null) return; // pole zajmuje własny bohater (np. stoi w kapliczce): nie wchodzimy na niego
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
       reveal(st, nx, ny, heroSight(h), h.owner);
       yield { kind: 'step', h, fx, fy };
@@ -352,7 +354,7 @@ function advanceDay(st) {
     if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
     if (t) { const m = specialVisit(st, t, h); if (m && h.owner !== ME) h.mp = heroMaxMP(h); } // budowla specjalna (stajnie, wir many, klatka, Walhalla)
   }
-  collectIncome(st); caravanArrivals(st);
+  collectIncome(st); caravanArrivals(st); tallyDaily(st); if (newWeek) recordHistory(st); // statystyki: szczyty i wykres potęgi co tydzień
   for (const t of st.towns) t.builtToday = false;
   if (newWeek) st.weekNews = { wk: st.month * 10 + st.week, month: newMonth, text: startWeek(st, newMonth) }; // ludzie zobaczą ogłoszenie astrologów (KRONIKA TYGODNIA)
   dailyTownCheck(st); rebuildObjIndex(st); MapRender.miniDirty = true;
@@ -390,10 +392,10 @@ function gameResult(st) {
   if (hotseat(st)) {
     const left = st.players.filter(p => !p.out);
     if (!left.some(p => p.human)) return 'lose';
-    if (left.length === 1) { st.winner = left[0].id; return 'win'; }
+    if (left.every(p => allied(st, p.id, left[0].id))) { st.winner = (left.find(p => p.human) || left[0]).id; return 'win'; } // został jeden gracz albo jedna drużyna
     return null;
   }
   const me = human(st); if (me.out) return 'lose';
-  const foes = st.players.filter(p => !p.human); if (!foes.length) return null;
+  const foes = st.players.filter(p => !allied(st, p.id, me.id)); if (!foes.length) return null; // sojusznicy komputerowi nie są rywalami
   return foes.every(p => p.out) ? 'win' : null;
 }

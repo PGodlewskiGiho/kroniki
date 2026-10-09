@@ -146,7 +146,7 @@ function createBattle(st, h, foe) {
   placeSide(B, 1, D.stacks);
   if (D.town) setupSiege(B, D.town);
   placeMachines(B, 0, h); placeMachines(B, 1, D.hero);
-  for (const u of B.units) { const sb = specBonus(B.sides[u.side].hero, u.cid); if (sb) u.spec = sb; } // specjalność bohatera
+  for (const u of B.units) { const sb = specBonus(B.sides[u.side].hero, u.cid); if (sb) u.spec = sb; const mv = pathV(B.sides[u.side].hero, 'marshal'); if (mv && !isMachine(u)) u.pathSpd = mv[0]; } // specjalność bohatera, Marszałek: szybkość
   // Taktyka (przewaga nad Taktyką wroga): premia w dwóch pierwszych rundach (u.tac), talent Zasadzka w pierwszej (u.amb); zdejmuje je nextActive
   const tac = [0, 1].map(s => skillVal(B.sides[s].hero, 'tactics')), amb = [0, 1].map(s => heroPerk(B.sides[s].hero, 'ambush'));
   for (const u of B.units) if (!isMachine(u)) { const t = Math.max(0, tac[u.side] - tac[1 - u.side]); if (t) u.tac = t; if (amb[u.side]) u.amb = true; }
@@ -176,6 +176,7 @@ function armyMorale(cids, hero, town) {
   if (heroTrait(hero, 'haven')) m += 1; // cecha Przystani
   if (town && hasB(town, 'tavern')) m += 1;
   if (heroPerk(hero, 'warlord')) m = Math.max(0, m) + 1; // talent Wódz
+  m += (pathV(hero, 'marshal') || [0, 0])[1]; // ścieżka Marszałek
   return clamp(m, -3, 3);
 }
 const heroLuck = h => clamp(h ? heroBonus(h, 'luck') + skillVal(h, 'luck') + ((h.boost || {}).luck || 0) + (heroTrait(h, 'sylvan') ? 1 : 0) : 0, -3, 3);
@@ -269,7 +270,8 @@ function damageRoll(B, a, t, ranged, moved = 0) {
   // strzał atakującego zza muru w obrońcę za murem: połowa obrażeń, dopóki ten fragment muru stoi
   if (ranged && B.walls && a.side === 0 && beforeWall(a.x, a.y) && behindWall(t.x, t.y)) { const w = wallAt(B, wallX(t.y), t.y); if (w && w.hp > 0) mult *= 0.5; }
   if (t.buffs[ranged ? 'airShield' : 'shield']) mult *= 1 - SHIELD_CUT / 100; // Tarcza (wręcz) i Tarcza powietrza (strzały)
-  const ha = sideHero(B, a.side), volley = heroPerk(ha, 'volley'); // talent Salwa: bez kary za odległość
+  const ha = sideHero(B, a.side), volley = heroPerk(ha, 'volley') || pathLv(ha, 'hunter') > 0; // talent Salwa i ścieżka Łowca: bez kary za odległość
+  if (ranged && a.cid !== 'ballista') mult *= 1 + (pathV(ha, 'hunter') || 0) / 100; // Łowca: mocniejsi strzelcy
   if (ranged && !volley && farShot(a, t)) mult *= 0.5; if (ranged && shotBlocked(B, a, t)) mult *= 0.5; // odległość i przeszkody na torze lotu
   if (a.amb) mult *= 1.5; if (ct.level >= 6 && heroPerk(ha, 'giantSlayer')) mult *= 1.25; // talenty Zasadzka (1. runda) i Pogromca olbrzymów
   // umiejętności bohaterów: Atak / Łucznictwo napastnika, Zbroja obrońcy
@@ -496,11 +498,15 @@ function nextActive(B) {
 // --- czary w bitwie: bohater rzuca jeden czar na rundę, zanim ruszy oddział ---
 const unitAtt = u => CREATURES[u.cid].att + (u.tac || 0) + (u.spec ? u.spec.att : 0) + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
 const unitDef = u => CREATURES[u.cid].def + (u.tac || 0) + (u.spec ? u.spec.def : 0) + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
-const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.tac || 0) + (u.spec ? u.spec.spd : 0) + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
+const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.tac || 0) + (u.spec ? u.spec.spd : 0) + (u.pathSpd || 0) + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
 const battleSpells = h => (hasBook(h) ? h.spells || [] : []).filter(id => SPELLS[id].kind === 'battle'); // bez księgi nie ma czarów
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
-const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => spellCost(h, id) <= h.mana)); };
+// Koszt czaru w tej rundzie: drugi czar Bitewnego maga kosztuje DOUBLE_CAST_COST razy więcej (pomiar tools/balans/bohaterowie.js: dwa pełne
+// czary na rundę czyniły maga 20. poziomu o 1/3 silniejszym od wojownika; przy potrójnym koszcie różnica mieści się w kilku procentach)
+let DOUBLE_CAST_COST = 3;
+const battleCost = (B, s, h, id) => Math.round(spellCost(h, id) * ((B.casts || [0, 0])[s] >= 1 ? DOUBLE_CAST_COST : 1));
+const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => battleCost(B, s, h, id) <= h.mana)); };
 // Czary bez celu: działają na całe pole (armagedon) albo na wszystkich swoich (przyspieszenie armii)
 const MASS_TARGETS = ['all', 'allies', 'enemies'];
 // Żywy (nie nieumarły, nie machina) oddział rzucającego, także poległy: cel wskrzeszenia
@@ -524,6 +530,7 @@ const teleportOk = (B, u, x, y) => inField(x, y) && canStand(B, u, x, y) && !(B.
 function cloneSpot(B, u) { for (let r = 1; r <= 3; r++) { const c = []; for (let y = u.y - r; y <= u.y + r; y++) for (let x = u.x - r; x <= u.x + r; x++) if (canStand(B, u, x, y) && hexDistance(u, { x, y }) === r) c.push([x, y]); if (c.length) return c.sort((a, b) => (u.side ? b[0] - a[0] : a[0] - b[0]))[0]; } return null; }
 // Zakłócanie bohatera strony przeciwnej: mnożnik obrażeń i leczenia czarów rzucanych przez stronę s
 const interfMul = (B, s) => 1 - skillVal(sideHero(B, 1 - s), 'interference') / 100;
+const sageWard = (B, side, caster) => (side === caster ? 1 : 1 - (pathV(sideHero(B, side), 'sage') || [0, 0])[1] / 100); // Mędrzec: wrogie czary słabsze dla jego armii
 // Czy czar uderza we wroga rzucającego (obrażenia albo klątwa na jego oddział) — tylko takie zatrzymuje Bariera
 const hostileSpell = (B, id, s, area) => { const S = SPELLS[id]; return (!!S.dmg || S.target === 'enemy') && area.some(([ax, ay]) => { const v = unitAt(B, ax, ay); return v && v.side !== s; }); };
 // Odporność bohatera strony oddziału: szansa, że wrogi czar go nie tknie (sprawdzana osobno dla każdego oddziału)
@@ -555,9 +562,9 @@ function learnBySight(B, s, id) {
   if (B.rng() * 100 < v) { o.spells.push(id); B.log.push(`${o.name} podpatruje czar „${SPELLS[id].name}” (Orle oko).`); }
 }
 function castBattle(B, id, x, y, x2, y2) {
-  const s = casterSide(B), h = sideHero(B, s), S = SPELLS[id], sp = heroStat(h, 'sp'), tu = spellUnitAt(B, id, x, y);
+  const s = casterSide(B), h = sideHero(B, s), S = SPELLS[id], sp = spellPow(h), tu = spellUnitAt(B, id, x, y);
   const area = spellArea(id, x, y, B);
-  h.mana -= spellCost(h, id); B.casts = B.casts || [0, 0]; B.casts[s]++; B.cast[s] = B.casts[s] >= (heroPerk(h, 'doubleCast') ? 2 : 1); B.log.push(`${h.name} rzuca: ${S.name}.`); // Bitewny mag: dwa czary na rundę
+  h.mana -= battleCost(B, s, h, id); B.casts = B.casts || [0, 0]; B.casts[s]++; B.cast[s] = B.casts[s] >= (heroPerk(h, 'doubleCast') ? 2 : 1); B.log.push(`${h.name} rzuca: ${S.name}.`); // Bitewny mag: dwa czary na rundę
   if (B.fx) B.fx.push({ kind: 'spell', id, x, y, area, side: s });
   learnBySight(B, s, id);
   const o = sideHero(B, 1 - s); B.warded = B.warded || [false, false];
@@ -568,7 +575,7 @@ function castBattle(B, id, x, y, x2, y2) {
   if (S.dmg) area.forEach(([ax, ay], i) => {
     const v = unitAt(B, ax, ay); if (!v || !targetable(v) || hitOnce.has(v)) return; hitOnce.add(v);
     if (resists(B, v, s)) { B.log.push(`${CREATURES[v.cid].plural}: odporność, czar nie działa.`); return; }
-    const pool = (v.n - 1) * CREATURES[v.cid].hp + v.hp, d = Math.max(1, Math.floor(spellDamage(h, S, sp) * hitMul(S, i) * im * holyMul(S, v))), k = applyDamage(v, d); dealt += Math.min(d, pool);
+    const pool = (v.n - 1) * CREATURES[v.cid].hp + v.hp, d = Math.max(1, Math.floor(spellDamage(h, S, sp) * hitMul(S, i) * im * holyMul(S, v) * sageWard(B, v.side, s))), k = applyDamage(v, d); dealt += Math.min(d, pool);
     B.log.push(`${CREATURES[v.cid].plural}: ${d} obrażeń${k ? `, tracą ${k}` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: v, dmg: d, killed: k });
   });
   if (S.wall) { const d = Math.max(1, Math.floor(spellDamage(h, S, sp) * im / 2)), r = SPELL_ROUNDS(sp) + spellSchoolLv(h, id); B.fire = (B.fire || []).filter(f => !area.some(([ax, ay]) => ax === f.x && ay === f.y)).concat(area.map(([ax, ay]) => ({ x: ax, y: ay, r, d }))); }
@@ -628,9 +635,9 @@ function aiSupportOptions(B, s, h, id, sp) {
 // SI bohatera (tryb Auto i walka automatyczna): czar zadający najwięcej wartości, jeśli jakiś się opłaca
 function aiHeroCast(B) {
   if (!canCastNow(B)) return false;
-  const s = casterSide(B), h = sideHero(B, s), sp = heroStat(h, 'sp'); let best = null;
+  const s = casterSide(B), h = sideHero(B, s), sp = spellPow(h); let best = null;
   for (const id of battleSpells(h)) {
-    const S = SPELLS[id]; if (!S.dmg || spellCost(h, id) > h.mana) continue;
+    const S = SPELLS[id]; if (!S.dmg || battleCost(B, s, h, id) > h.mana) continue;
     const cells = S.target === 'hex' || S.target === 'ring' || S.target === 'wall' ? B.units.filter(u => !u.dead).map(u => [u.x, u.y]) : MASS_TARGETS.includes(S.target) ? [[0, 0]] : alive(B, 1 - s).filter(targetable).map(u => [u.x, u.y]);
     for (const [x, y] of cells) {
       let val = 0; const seen = new Set();
@@ -642,7 +649,7 @@ function aiHeroCast(B) {
     }
   }
   for (const id of battleSpells(h)) { // czary wsparcia: wzmocnienia, klątwy, leczenie, wskrzeszanie
-    const S = SPELLS[id]; if (S.dmg || spellCost(h, id) > h.mana) continue;
+    const S = SPELLS[id]; if (S.dmg || battleCost(B, s, h, id) > h.mana) continue;
     for (const c of aiSupportOptions(B, s, h, id, sp)) if (c.val > 0 && (!best || c.val > best.val)) best = { ...c, id };
   }
   if (!best) return false; castBattle(B, best.id, best.x, best.y); return true;
@@ -691,6 +698,7 @@ function lootHero(winner, loser) {
 // Zmiana właściciela miasta (i jego obiektu na mapie)
 function captureTown(st, t, owner) {
   for (const o of st.heroes.filter(o => o.x === t.x && o.y === t.y && o.owner !== owner)) retireHero(st, o, false, true); // bohaterowie poprzedniego właściciela w murach i bramie
+  if (t.owner !== owner) { tallyAdd(st, owner, 'towns'); tallyAdd(st, t.owner, 'townsLost'); } // statystyki: zdobyte i stracone miasta
   t.owner = owner; if (owner >= 0) reveal(st, t.x, t.y, HERO_SIGHT, owner);
   for (const ob of st.objects) if (ob.type === 'town' && ob.townId === t.id) ob.owner = owner;
   MapRender.miniDirty = true;
@@ -724,7 +732,7 @@ const spoilsText = sp => !sp ? '' : [sp.gold ? ` Grabież: +${sp.gold} złota.` 
 const raisedText = n => (n ? ` Nekromancja: ${n === 1 ? 'wstaje 1 kościotrup' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? `wstają ${n} kościotrupy` : `wstaje ${n} kościotrupów`}.` : '');
 function resolveBattle(B, fled) {
   const { st, h } = B, D = B.sides[1], outcome = fled ? 'fled' : B.over;
-  const res = { outcome, lost: sideLosses(B, 0), foeLost: sideLosses(B, 1), exp: 0, foeExp: 0, captured: null, heroDefeated: null, sides: [sideSummary(B, 0), sideSummary(B, 1)] };
+  const res = { outcome, lost: sideLosses(B, 0), foeLost: sideLosses(B, 1), exp: 0, foeExp: 0, captured: null, heroDefeated: null, sides: [sideSummary(B, 0), sideSummary(B, 1)] }; tallyBattle(B, outcome);
   writeBackSide(B, 0); writeBackSide(B, 1);
   for (const S of B.sides) if (S.hero) delete S.hero.boost; // premie ze świątyni i fontanny trwają do końca bitwy
   if (outcome === 'win') {

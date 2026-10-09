@@ -11,7 +11,7 @@ const CLASS_GROWTH = {
   deathKnight: { base: [1, 2, 2, 1], grow: [30, 25, 25, 20] }, necro: { base: [1, 0, 2, 2], grow: [15, 15, 35, 35] },
   beastmaster: { base: [0, 4, 1, 1], grow: [30, 50, 10, 10] }, witch: { base: [0, 1, 2, 2], grow: [5, 15, 40, 40] },
   demoniac: { base: [2, 2, 1, 1], grow: [40, 35, 15, 10] }, heretic: { base: [1, 1, 2, 1], grow: [15, 15, 40, 30] },
-  alchemist: { base: [1, 1, 2, 2], grow: [30, 30, 20, 20] }, wizard: { base: [0, 0, 2, 3], grow: [10, 10, 40, 40] },
+  alchemist: { base: [1, 1, 2, 2], grow: [30, 30, 20, 20] }, wizard: { base: [0, 1, 2, 2], grow: [10, 20, 40, 30] },
   overlord: { base: [2, 2, 1, 1], grow: [35, 35, 15, 15] }, warlock: { base: [0, 0, 3, 2], grow: [10, 10, 50, 30] },
   barbarian: { base: [4, 0, 1, 1], grow: [55, 35, 5, 5] }, battleMage: { base: [2, 1, 1, 1], grow: [30, 20, 25, 25] },
 };
@@ -68,7 +68,7 @@ const TALENTS = {
   warlord: { name: 'Wódz', req: [['leadership', 2]], desc: 'morale armii nigdy nie spada poniżej zera, do tego +1' },
   fortunate: { name: 'Ulubieniec losu', req: [['luck', 2]], desc: 'szczęśliwe ciosy zadają potrójne obrażenia zamiast podwójnych' },
   fieldMedic: { name: 'Polowy cyrulik', req: [['firstAid', 1], ['triage', 2]], desc: 'na początku każdej rundy ranne stwory na czele twoich oddziałów wracają do pełni sił' },
-  doubleCast: { name: 'Bitewny mag', req: [['sorcery', 2], ['wisdom', 3]], desc: 'w bitwie rzucasz dwa czary na rundę' },
+  doubleCast: { name: 'Bitewny mag', req: [['sorcery', 2], ['wisdom', 3]], desc: 'w bitwie rzucasz dwa czary na rundę (drugi za potrójną manę)' },
   spellWard: { name: 'Bariera', req: [['resistance', 2], ['interference', 2]], desc: 'pierwszy wrogi czar w każdej bitwie rozbija się o barierę' },
   manaSiphon: { name: 'Wysysanie many', req: [['mysticism', 2], ['intelligence', 2]], desc: 'po każdej wygranej bitwie wraca trzecia część many' },
   scholar: { name: 'Uczony', req: [['wisdom', 2], ['learning', 2], ['eagleSight', 1]], desc: 'od razu poznaje dwa nowe czary (do limitu Mądrości)' },
@@ -77,6 +77,29 @@ const TALENTS = {
   treasurer: { name: 'Skarbnik', req: [['estates', 2], ['plunder', 2]], desc: '+500 złota dziennie' },
   diplomat: { name: 'Poseł', req: [['diplomacy', 2]], desc: 'przyjazne i obojętne stwory dołączają za darmo' },
 };
+// Ścieżki mistrzowskie (etapy rozwoju): na 10. poziomie (PATH_LEVELS[0]) bohater wybiera jedną z trzech ścieżek swojej klasy (CLASS_PATHS),
+// na 20. (PATH_LEVELS[1]) staje się Legendą tej ścieżki: to samo działanie, mocniejsze. v: [ścieżka, legenda].
+// Wartości dobrane pomiarem tools/balans/bohaterowie.js (indeks siły w bitwie: ile razy większą armię pokonuje armia z bohaterem):
+// ścieżka bojowa wojownika daje ok. +15% siły na 10. poziomie i +30% na 20., ścieżka maga mniej (magowie i tak rosną szybciej
+// z mocą czarów), a ścieżki przygody i skarbu tyle, ile warte są w złocie i ruchu dwa talenty (Skarbnik +500 zł, Forsowny marsz +300).
+const PATH_LEVELS = [10, 20];
+const HERO_PATHS = {
+  marshal: { name: 'Marszałek', legend: 'Hetman', icon: 't_warlord', v: [[2, 1], [3, 2]], desc: ([s, m]) => `wszystkie twoje oddziały +${s} do szybkości i +${m} do morale` },
+  champion: { name: 'Czempion', legend: 'Niezwyciężony', icon: 't_counter', v: [4, 10], desc: v => `+${v} do ataku i +${v} do obrony bohatera` },
+  hunter: { name: 'Łowca', legend: 'Mistrz łuku', icon: 't_volley', v: [25, 60], desc: v => `strzelcy zadają o ${v}% więcej obrażeń i nie tracą ich przez odległość` },
+  archmage: { name: 'Arcymistrz', legend: 'Arcymistrz wieków', icon: 't_doubleCast', v: [[1, 15], [1, 25]], desc: ([s, c]) => `+${s} do mocy czarów, czary tańsze o ${c}%` },
+  sage: { name: 'Mędrzec', legend: 'Wielki mędrzec', icon: 't_scholar', v: [[50, 25], [75, 40]], desc: ([m, w]) => `+${m}% maksymalnej many; czary wroga zadają twojej armii o ${w}% mniej obrażeń` },
+  wanderer: { name: 'Wędrowiec', legend: 'Pan szlaków', icon: 't_forcedMarch', v: [[400, 2], [800, 3]], desc: ([mp, s]) => `+${mp} punktów ruchu dziennie i +${s} do zasięgu widzenia` },
+  governor: { name: 'Namiestnik', legend: 'Książę', icon: 't_treasurer', v: [[750, 0], [1500, 1]], desc: ([g, r]) => `+${g} złota dziennie${r ? ' i 1 rzadki surowiec dziennie (na zmianę: rtęć, siarka, kryształ, klejnoty)' : ''}` },
+};
+// Ścieżki do wyboru dla klasy; pierwsza = wybór komputera
+const CLASS_PATHS = {
+  knight: ['marshal', 'champion', 'governor'], ranger: ['hunter', 'marshal', 'wanderer'], deathKnight: ['champion', 'marshal', 'governor'], beastmaster: ['champion', 'hunter', 'wanderer'],
+  demoniac: ['champion', 'marshal', 'wanderer'], alchemist: ['hunter', 'champion', 'governor'], overlord: ['marshal', 'champion', 'governor'], barbarian: ['champion', 'marshal', 'wanderer'],
+  battleMage: ['champion', 'archmage', 'wanderer'], cleric: ['sage', 'archmage', 'governor'], druid: ['sage', 'archmage', 'wanderer'], necro: ['archmage', 'sage', 'governor'],
+  witch: ['sage', 'archmage', 'wanderer'], heretic: ['archmage', 'sage', 'governor'], wizard: ['archmage', 'sage', 'wanderer'], warlock: ['archmage', 'sage', 'governor'],
+};
+const PATH_RARE = ['mercury', 'sulfur', 'crystal', 'gems'];
 // Kolejność wyboru talentów przez SI (wcześniejszy = ważniejszy)
 const AI_TALENT_ORDER = ['doubleCast', 'counter', 'giantSlayer', 'ambush', 'warlord', 'volley', 'deathLord', 'spellWard', 'fortunate', 'fieldMedic', 'forcedMarch', 'treasurer', 'diplomat', 'manaSiphon', 'scholar', 'veteran', 'archmage', 'explorer'];
 // Magowie zaczynają z Mądrością (jak w oryginale): bez niej bohater zna czary najwyżej 2. poziomu

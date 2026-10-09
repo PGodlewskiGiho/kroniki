@@ -42,9 +42,10 @@ function chronicleTable(st, pid) {
 }
 function showChronicle(st) {
   const T0 = chronicleTable(st, ME), cols = T0.players.length, W0 = Math.min(760, 250 + cols * 110), H0 = 172 + T0.rows.length * 34, x = (W - W0) / 2, y = (H - H0) / 2, cw = (W0 - 230) / cols;
-  const btn = new Button(W / 2 - 70, y + H0 - 46, 140, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
+  const btn = new Button(W / 2 + 10, y + H0 - 46, 140, 36, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 16 });
+  const bStats = new Button(W / 2 - 170, y + H0 - 46, 170, 36, 'Wykres potęgi', () => { G.modal = null; showStats(st, ME, () => showChronicle(st)); }, { key: 'w', size: 15, tip: 'Siła armii, złoto, miasta i poziom bohaterów wszystkich graczy tydzień po tygodniu; osiągnięcia.' });
   G.modal = { box: { x, y, w: W0, h: H0 },
-    msg: `Kronika tawerny. Tawerny: ${T0.taverns}.`, buttons: [btn], chronicle: T0,
+    msg: `Kronika tawerny. Tawerny: ${T0.taverns}.`, buttons: [btn, bStats], chronicle: T0,
     draw(ctx) {
       dimScreen(ctx, 0.55); drawParchment(ctx, x, y, W0, H0);
       text(ctx, 'Kronika tawerny', W / 2, y + 30, { size: 24, align: 'center', color: '#3a1e08', fam: 'title' });
@@ -60,7 +61,7 @@ function showChronicle(st) {
           if (r.lead[i]) { ctx.fillStyle = 'rgba(224,178,74,.35)'; rr(ctx, cx - cw / 2 + 6, ry + 3, cw - 12, 26, 4); ctx.fill(); }
           text(ctx, r.fmt ? r.fmt(v) : String(v), cx, ry + 16, { size: 14, weight: r.lead[i] ? 800 : 500, align: 'center', color: '#2a1606' }); });
       });
-      btn.draw(ctx);
+      btn.draw(ctx); bStats.draw(ctx);
     },
   };
 }
