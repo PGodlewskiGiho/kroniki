@@ -389,5 +389,9 @@
    (tools/balans/frakcje.js). Poprawki: pomocnik SI dowozi tylko armię, którą główny przyjmie (feedGain; wcześniej zakleszczał drogę),
    wartość miast i wrogich bohaterów rośnie z siłą armii; regeneracja i Polowy cyrulik leczą najwyżej REGEN_MAX (50) życia na rundę.
    Ekran miasta: niezbudowane budowle nie są już rysowane (wcześniej blady zarys).
+   Balans frakcji (pomiary gry.js/frakcje.js): nekromancja z liczby poległych, nie z ich życia (jak w H3; Kurhan miał 2–4× większą armię),
+   Horda Twierdzy tylko dla poziomów 1–4 (+30%), Cytadela mocniejsze ważki i wywerny. Artefakty jako nagroda: kuźnia krasnoludów raz na grę
+   (ze strażnikiem), karawanseraj raz w miesiącu, studnia życzeń raz w tygodniu i najwyżej jeden artefakt. Drewno na mapie mniejsze (RES_SCALE).
+   Dźwięki: portal – niski szum wiru (amb_portal, bez wysokich tonów); każde miasto na mapie brzmi jak jego frakcja (amb_town_*).
    ===================================================================================== */
 

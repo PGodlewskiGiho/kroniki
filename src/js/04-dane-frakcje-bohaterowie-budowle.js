@@ -147,6 +147,7 @@ const factionOf = id => FACTIONS.find(f => f.id === id) || FACTIONS[0];
 // Cechy frakcji: jedna premia na frakcję. Bohater ma cechę frakcji swojej klasy, miasto: frakcji miasta.
 // Działanie: morale i szczęście (BITWA: ZASADY armyMorale/heroLuck), nekromancja (raiseDead), koszt terenu (baseCost),
 // zima (seasonMpMul), widzenie (heroSight), dochód (dailyIncomeAll), przyrost (weeklyGrowth).
+const HORDE_K = 1.3, HORDE_LEVELS = 4; // Horda Twierdzy: tylko słabsze siedliska (z premią dla wszystkich poziomów Twierdza wygrywała każdy pomiar bitew tygodniowych armii)
 const FACTION_TRAITS = {
   haven: { name: 'Rycerski duch', desc: 'armia bohatera Przystani ma +1 do morale' },
   sylvan: { name: 'Łaska lasu', desc: 'armia bohatera Kniei ma +1 do szczęścia' },
@@ -155,7 +156,7 @@ const FACTION_TRAITS = {
   inferno: { name: 'Siarkowe źródła', desc: 'każde miasto Inferna daje dziennie +1 siarki' },
   academy: { name: 'Dzieci zimy', desc: 'bohaterowie Akademii nie tracą ruchu zimą ani na śniegu' },
   dungeon: { name: 'Oczy ciemności', desc: 'bohaterowie Lochu widzą o 2 pola dalej' },
-  stronghold: { name: 'Horda', desc: 'siedliska w miastach Twierdzi dają o 25% więcej jednostek' },
+  stronghold: { name: 'Horda', desc: 'siedliska poziomów 1–4 w miastach Twierdzy dają o 30% więcej jednostek' },
 };
 const CLASS_FACTION = {}; for (const F of FACTIONS) for (const [, cls] of F.heroes) CLASS_FACTION[cls] = F.id;
 const heroFaction = h => (h && CLASS_FACTION[h.cls]) || null;

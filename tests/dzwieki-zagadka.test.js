@@ -18,10 +18,12 @@ test('dźwięki otoczenia: tartak piłuje, kuźnia dzwoni… tylko blisko bohate
     const near = Ambient.pick(st, h); for (const o of [saw, forge, far]) o.dead = true; was.forEach((d, i) => { st.objects[i].dead = d; }); Sfx.has = has;
     const kinds = Object.keys(SITES).filter(k => !['portal', 'gate', 'obelisk'].includes(k));
     return { saw: near.amb_saw && near.amb_saw.v, forge: near.amb_forge && near.amb_forge.v, inn: !!near.amb_tavern, n: Object.keys(near).length, pan: [near.amb_saw.pan > 0, near.amb_forge.pan < 0],
-      mapped: kinds.filter(k => AMB_SITE[k]).length, mines: Object.keys(MINES).every(m => AMB_MINE[m]) };
+      mapped: kinds.filter(k => AMB_SITE[k]).length, mines: Object.keys(MINES).every(m => AMB_MINE[m]), portal: AMB_SITE.portal,
+      towns: (() => { const h0 = Sfx.has; Sfx.has = nm => !!SOUND_ART[nm + '_1']; const n = new Set(FACTIONS.map(f => ambientOf({ type: 'town', townId: 0 }, { towns: [{ faction: f.id }] }))).size; Sfx.has = h0; return n; })() };
   });
   assert.ok(r.saw > r.forge && r.forge > 0, `głośność: piła ${r.saw}, kuźnia ${r.forge}`); assert.equal(r.inn, false, 'karczma 12 pól dalej milczy');
   assert.ok(r.n <= 3); assert.deepEqual(r.pan, [true, true], 'piła z prawej, kuźnia z lewej'); assert.ok(r.mapped >= 25, `miejsc z dźwiękiem: ${r.mapped}`); assert.ok(r.mines);
+  assert.equal(r.portal, 'amb_portal', 'portal: niski szum wiru'); assert.equal(r.towns, 8, 'każda frakcja ma własny dźwięk miasta');
 });
 
 test('czary: każdy czar bitewny ma własny znak (słup światła, kopuła, dym, lód…) i dźwięk rzucenia i trafienia; efekty rysują się bez błędów', async () => {

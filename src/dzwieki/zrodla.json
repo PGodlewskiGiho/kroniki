@@ -656,5 +656,77 @@
    "user": "Noted451",
    "license": "CC0-1.0"
   }
+ ],
+ "amb_portal": [
+  {
+   "freesound": 489396,
+   "title": "wooshing vortex.",
+   "user": "ShlockFest",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_town_haven": [
+  {
+   "freesound": 462036,
+   "title": "church bells 2.",
+   "user": "15HVojta_Michael",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_town_sylvan": [
+  {
+   "freesound": 609952,
+   "title": "Sunny Forest Ambience 1.",
+   "user": "deadrobotmusic",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_town_barrow": [
+  {
+   "freesound": 427569,
+   "title": "Haunted.",
+   "user": "MATRIXXX_",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_town_fortress": [
+  {
+   "freesound": 569543,
+   "title": "Many Frogs at Night in Marsh.",
+   "user": "bmacphail",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_town_inferno": [
+  {
+   "freesound": 501742,
+   "title": "burningMountain 2.",
+   "user": "DavidLamhauge",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_town_academy": [
+  {
+   "freesound": 452237,
+   "title": "gears Mitchel animation table mechanism turn metal rattle4.",
+   "user": "kyles",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_town_dungeon": [
+  {
+   "freesound": 177958,
+   "title": "Water Dripping in Cave.",
+   "user": "Sclolex",
+   "license": "CC0-1.0"
+  }
+ ],
+ "amb_town_stronghold": [
+  {
+   "freesound": 571222,
+   "title": "Drums boss [loop] - for games..",
+   "user": "TiagoThanos",
+   "license": "CC0-1.0"
+  }
  ]
 }

@@ -105,7 +105,7 @@ test('cechy frakcji: morale Przystani, szczęście Kniei, wzrok Lochu, bagna Cyt
   });
   assert.deepEqual(r.morale, [2, 1]); assert.deepEqual(r.luck, [1, 0]); assert.equal(r.sight, 2);
   if (r.swamp) assert.deepEqual(r.swamp, [100, 175]); if (r.snow) assert.deepEqual(r.snow, [100, 150]);
-  assert.equal(r.sulfur, 1); assert.equal(r.horde[0], Math.floor(r.horde[1] * 1.25)); assert.ok(r.traits);
+  assert.equal(r.sulfur, 1); assert.equal(r.horde[0], Math.floor(r.horde[1] * 1.3)); // Horda: poziomy 1–4 +30% assert.ok(r.traits);
 });
 
 test('pory roku: miesiąc zmienia porę, lato i zima zmieniają ruch (Akademia bez kary), jesień daje drewno i rudę', async () => {

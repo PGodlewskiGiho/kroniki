@@ -704,12 +704,13 @@ function captureTown(st, t, owner) {
   MapRender.miniDirty = true;
 }
 // Zapisuje wynik w stanie gry i zwraca opis dla okna podsumowania (z punktu widzenia atakującego, strona 0)
-// Nekromancja zwycięzcy: z pct% życia poległych żywych wrogów wstają kościotrupy w armii bohatera (gdy jest miejsce)
+// Nekromancja zwycięzcy: pct% poległych żywych wrogów (liczba stworów, najwyżej ich życie / życie kościotrupa) wstaje jako kościotrupy w armii bohatera (gdy jest miejsce)
 function raiseDead(B, side) {
   const h = sideHero(B, side), pct = skillVal(h, 'necromancy') + (heroTrait(h, 'barrow') ? 10 : 0); if (!pct) return 0; // cecha Kurhanu
   const amp = B.st && h ? necroAmplifiers(B.st, h.owner) * 10 : 0; // Wzmacniacze nekromancji właściciela
-  const hp = B.units.filter(u => u.side !== side && !hasAb(u, 'undead') && !isMachine(u) && u.src !== 'clone').reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
-  const n = Math.floor(hp * (pct + amp) / 100 / CREATURES.boneWarrior.hp * (heroPerk(h, 'deathLord') ? 1.5 : 1)); // talent Pan śmierci
+  const fallen = B.units.filter(u => u.side !== side && !hasAb(u, 'undead') && !isMachine(u) && u.src !== 'clone'), k = (pct + amp) / 100 * (heroPerk(h, 'deathLord') ? 1.5 : 1); // talent Pan śmierci
+  const killed = fallen.reduce((s, u) => s + (u.n0 - u.n), 0), hp = fallen.reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
+  const n = Math.floor(Math.min(killed, hp / CREATURES.boneWarrior.hp) * k); // jak w H3: część liczby poległych (nie ich życia), najwyżej tyle, ile życia mieli – inaczej z kilku smoków wstawała setka kościotrupów
   const i = h.army.findIndex(s => s && s.cid === 'boneWarrior'), k = i >= 0 ? i : h.army.findIndex(s => !s);
   if (!n || k < 0) return 0;
   if (h.army[k]) h.army[k].n += n; else h.army[k] = { cid: 'boneWarrior', n };

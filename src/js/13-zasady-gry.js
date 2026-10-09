@@ -274,7 +274,7 @@ function siteChoice(st, h, ob) {
     if (R.gold < S.cost) return showDialog(`${S.name}: mistrzowie uczą za ${S.cost} złota, a masz ${R.gold}. Wróć, gdy uzbierasz.`, [{ label: 'OK', key: 'enter' }], icon);
     return showDialog(`${S.name}: za ${S.cost} złota mistrzowie nauczą ${h.name}…`, [{ label: 'Moc czarów +1', key: 'm', action: take('sp') }, { label: 'Wiedza +1', key: 'w', action: take('kn') }, { label: 'Nie', key: 'escape' }], icon);
   }
-  if (ob.kind === 'dwarfForge') return showDialog(`${S.name}: za ${S.cost} złota i 5 rudy krasnoludy wykują artefakt (masz ${R.gold} złota, ${R.ore} rudy).`,
+  if (ob.kind === 'dwarfForge') return showDialog(`${S.name}: za ${S.cost} złota i 5 rudy krasnoludy wykują artefakt, jedyny taki na całą grę (masz ${R.gold} złota, ${R.ore} rudy).`,
     [{ label: 'Zamów', key: 'enter', action: take() }, { label: 'Nie', key: 'escape' }], icon);
   if (ob.kind === 'market') { G.marketMin = 2; return showMarket(st, h.owner, () => { G.marketMin = 0; }); }
   const plan = hillFortPlan(h); // fort na wzgórzu
@@ -296,7 +296,7 @@ function adventureSite(st, h, ob) {
   if (ob.kind === 'barrow') return showDialog(`${siteName(ob)}: grób dawnego wodza. W komorze grobowej czeka artefakt, ale kto go rozkopie, ten ściągnie na armię klątwę duchów (morale ${BARROW_CURSE} do następnej bitwy).`,
     [{ label: 'Rozkop', key: 'enter', action: go() }, { label: 'Odejdź', key: 'escape' }], icon);
   if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob);
-    return showDialog(`${S.name}: kupcy z dalekich krain rozkładają towar. W tym tygodniu: ${artInfo(o.art)} Cena: ${o.price} złota (masz ${R.gold}).`, [...(R.gold >= o.price ? [{ label: 'Kup', key: 'enter', action: go() }] : []), { label: 'Odejdź', key: 'escape' }],
+    return showDialog(`${S.name}: kupcy z dalekich krain rozkładają towar. W tym miesiącu: ${artInfo(o.art)} Cena: ${o.price} złota (masz ${R.gold}).`, [...(R.gold >= o.price ? [{ label: 'Kup', key: 'enter', action: go() }] : []), { label: 'Odejdź', key: 'escape' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(o.art, true), cx, cy, 2) }); }
   showDialog(`${S.name}: stara studnia lśni na dnie od monet. Wrzucić ${S.cost} złota i wypowiedzieć życzenie? (masz ${R.gold})`, [...(R.gold >= S.cost ? [{ label: 'Wrzuć', key: 'enter', action: go() }] : []), { label: 'Odejdź', key: 'escape' }], icon);
 }
@@ -306,8 +306,9 @@ const dirFrom = (x0, y0, x1, y1) => DIR8_NAMES[(Math.round(Math.atan2(y1 - y0, x
 // Zagadka dla bohatera (stała dla pary sfinks–bohater) i kolejność odpowiedzi; right = numer dobrej
 function sphinxRiddle(st, ob, h) { const Q = RIDDLES[thash(ob.id, h.id, st.seed) % RIDDLES.length], k = thash(h.id, ob.id, st.seed + 7) % 3, a = [Q[2], Q[3]]; a.splice(k, 0, Q[1]); return { q: Q[0], answers: a, right: k }; }
 // Towar karawanseraju w bieżącym tygodniu (null: już sprzedany)
+const bazaarMonth = st => Math.floor(weekIndex(st) / 4); // karawana przybywa co 4 tygodnie (artefakt to nagroda, nie towar na każdy tydzień)
 function bazaarOffer(st, ob) {
-  const wk = weekIndex(st); if (ob.sold === wk) return null; const r = mulberry32(st.seed ^ (ob.id * 4099) ^ (wk * 7919)), q = r(), rar = q < 0.55 ? 'treasure' : q < 0.88 ? 'minor' : 'major', pool = ARTS_BY_RARITY(rar);
+  const wk = bazaarMonth(st); if (ob.sold === wk) return null; const r = mulberry32(st.seed ^ (ob.id * 4099) ^ (wk * 7919)), q = r(), rar = q < 0.55 ? 'treasure' : q < 0.88 ? 'minor' : 'major', pool = ARTS_BY_RARITY(rar);
   return { art: pool[Math.floor(r() * pool.length)], price: BAZAAR_PRICE[rar] };
 }
 // Plotka z karczmy: najbliższe nieodkryte cenne miejsce (skarbiec, więzienie, kurhan, sfinks…) albo ukryty skarb na tym samym poziomie świata;
@@ -702,7 +703,7 @@ function townUpgrade(st, t, a, i) {
 // Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
 function weeklyGrowth(t, L, st) {
   const cid = factionOf(t.faction).dw['dw' + L][1], base = CREATURES[cid].growth, W = st && weekInfo(st);
-  return Math.floor(base * ((hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) + (hasB(t, 'grail') ? GRAIL_GROWTH : 0)) * (t.faction === 'stronghold' ? 1.25 : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
+  return Math.floor(base * ((hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) + (hasB(t, 'grail') ? GRAIL_GROWTH : 0)) * (t.faction === 'stronghold' && L <= HORDE_LEVELS ? HORDE_K : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
 }
 // Nowy tydzień: przyrost w siedliskach; w Miesiącu Zarazy zamiast przyrostu pula topnieje o połowę
 function townGrowthWeek(t, st) {
@@ -1201,15 +1202,15 @@ function useSite(st, h, ob, choice) {
       const r = mulberry32(st.seed ^ (ob.id * 1931)), pool = ARTS_BY_RARITY(r() < 0.5 ? 'major' : 'minor'), art = pool[Math.floor(r() * pool.length)];
       ob.looted = h.owner; giveArtifact(h, art); h.boost = { ...(h.boost || {}), morale: BARROW_CURSE }; MapRender.miniDirty = true;
       return { text: `W komorze grobowej spoczywa ${ARTIFACTS[art].name}. Gdy ${h.name} sięga po skarb, z ciemności podnosi się zawodzenie duchów: armia jest przeklęta (morale ${BARROW_CURSE} do następnej bitwy).`, float: ARTIFACTS[art].name, bad: true }; }
-    case 'caravanserai': { const o = bazaarOffer(st, ob); if (!o) return { text: 'Kupcy sprzedali już towar z tego tygodnia. Nowa karawana przybędzie w następnym.' };
+    case 'caravanserai': { const o = bazaarOffer(st, ob); if (!o) return { text: 'Kupcy sprzedali już towar. Nowa karawana przybędzie w przyszłym miesiącu.' };
       if (R.gold < o.price) return { text: `Kupcy oferują ${ARTIFACTS[o.art].name} za ${o.price} złota, a masz ${R.gold}.` };
-      R.gold -= o.price; ob.sold = weekIndex(st); giveArtifact(h, o.art); return { text: `${h.name} kupuje ${ARTIFACTS[o.art].name} za ${o.price} złota.`, float: ARTIFACTS[o.art].name }; }
+      R.gold -= o.price; ob.sold = bazaarMonth(st); giveArtifact(h, o.art); return { text: `${h.name} kupuje ${ARTIFACTS[o.art].name} za ${o.price} złota.`, float: ARTIFACTS[o.art].name }; }
     case 'wishingWell': { if (R.gold < S.cost) return { text: `Studnia czeka na ${S.cost} złota, a masz ${R.gold}.` };
       mark(); R.gold -= S.cost; const roll = thash(ob.id * 31 + h.id, st.dayTotal, st.seed) % 100;
       if (roll < 35) return { text: 'Moneta znika w ciemnej toni. Nic się nie dzieje… tym razem.', float: `−${S.cost}`, res: 'gold' };
       if (roll < 70) { h.boost = { ...(h.boost || {}), luck: 1, morale: Math.max(WISH_MORALE, (h.boost || {}).morale || 0) }; return { text: 'Woda rozbłyska srebrem: +1 do szczęścia i morale do następnej bitwy.', float: 'szczęście +1' }; }
-      if (roll < 92) { R.gold += 1500; return { text: 'Z głębi wypływa zapomniana sakiewka: 1500 złota!', float: '+1500', res: 'gold' }; }
-      const pool = ARTS_BY_RARITY('treasure'), art = pool[roll % pool.length]; giveArtifact(h, art); return { text: `Na dnie coś lśni: ${ARTIFACTS[art].name}. Życzenie spełnione!`, float: ARTIFACTS[art].name }; }
+      if (roll < 92 || ob.gave) { R.gold += 1500; return { text: 'Z głębi wypływa zapomniana sakiewka: 1500 złota!', float: '+1500', res: 'gold' }; } // artefakt tylko raz na studnię
+      const pool = ARTS_BY_RARITY('treasure'), art = pool[roll % pool.length]; ob.gave = 1; giveArtifact(h, art); return { text: `Na dnie coś lśni: ${ARTIFACTS[art].name}. Życzenie spełnione!`, float: ARTIFACTS[art].name }; }
     case 'whirlpool': { const to = st.objects[ob.pair]; if (!to || to.dead) return { text: 'Wir słabnie i znika w spokojnej wodzie.' }; if (heroAt(st, to.x, to.y)) return { text: 'Przy drugim wirze stoi inna łódź. Spróbuj później.' };
       const w = h.army.map((x, i) => x && { x, i }).filter(Boolean).sort((a, b) => a.x.n * CREATURES[a.x.cid].value - b.x.n * CREATURES[b.x.cid].value)[0]; let lost = '';
       if (w && (w.x.n > 1 || armyStacks(h.army).length > 1)) { const d = Math.ceil(w.x.n / 2); w.x.n -= d; lost = ` Morze zabiera ${d} (${CREATURES[w.x.cid].plural.toLowerCase()}).`; if (w.x.n <= 0) h.army[w.i] = null; }
@@ -1243,7 +1244,7 @@ function adventureInfo(st, ob, viewer) {
   if (ob.kind === 'lighthouse') return ob.owner >= 0 ? `${SITES.lighthouse.desc}; świeci dla: ${ownerName(st, ob.owner)}` : SITES.lighthouse.desc;
   if (ob.kind === 'whirlpool' && st.objects[ob.pair]) return `${SITES.whirlpool.desc} (drugi wir: pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})`;
   if (ob.kind === 'barrow' && ob.looted != null) return 'rozkopany, komora grobowa jest pusta';
-  if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o ? `kupcy sprzedają w tym tygodniu: ${ARTIFACTS[o.art].name} (${RARITY[ARTIFACTS[o.art].rarity]}) za ${o.price} złota` : 'towar z tego tygodnia wyprzedany, nowa karawana w następnym'; }
+  if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o ? `kupcy sprzedają w tym miesiącu: ${ARTIFACTS[o.art].name} (${RARITY[ARTIFACTS[o.art].rarity]}) za ${o.price} złota` : 'towar wyprzedany, nowa karawana w przyszłym miesiącu'; }
   if (ob.kind !== 'questHut') return null; const m = st.objects[ob.target];
   if (ob.done != null) return 'zadanie wykonane, pustelnik już wynagrodził śmiałka';
   if (!m || m.dead) return `stwory, które nękały okolicę, są pokonane: pustelnik czeka z nagrodą (artefakt i ${QUEST_EXP} doświadczenia)`;
