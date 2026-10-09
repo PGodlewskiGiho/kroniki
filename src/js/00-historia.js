@@ -385,5 +385,9 @@
    (metrics, fitsView – ekran bez przewijania). Ekran bohatera: wiersz „Ścieżka” (wybrana albo trzy do wyboru, z legendą w podpowiedzi).
    Nowi neutralni: olbrzymi pająk (2), syrena (3, morze), yeti (4, śnieg), olbrzym górski (6), kraken (7, morze); siedliska (habitat)
    w wyborze potworów na mapie; modele 3D spider i kraken (zwierzeta.js).
+   Długie gry samych komputerów (tools/balans/gry.js: niezmienniki stanu, zapis/odczyt, rozwój frakcji) i bitwy tygodniowych armii
+   (tools/balans/frakcje.js). Poprawki: pomocnik SI dowozi tylko armię, którą główny przyjmie (feedGain; wcześniej zakleszczał drogę),
+   wartość miast i wrogich bohaterów rośnie z siłą armii; regeneracja i Polowy cyrulik leczą najwyżej REGEN_MAX (50) życia na rundę.
+   Ekran miasta: niezbudowane budowle nie są już rysowane (wcześniej blady zarys).
    ===================================================================================== */
 
