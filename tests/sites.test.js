@@ -118,3 +118,19 @@ test('fort na wzgórzu: okno z wyborem oddziału albo wszystkich; jeden ulepszon
   assert.equal(r.labels.length, 4); assert.deepEqual(r.labels.slice(2), ['Wszystkie', 'Wyjdź']);
   assert.deepEqual(r.after, ['pikeman', 'marksman'], 'ulepszony tylko wybrany oddział'); assert.equal(r.again.length, 3, 'okno wraca z pikinierami');
 });
+
+test('spacja na budynku: bohater stojący w portalu korzysta z niego jeszcze raz (tam i z powrotem); opis obcego bohatera: cechy, umiejętności, rodzaje jednostek', async () => {
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), n = st.map.n; setScreen('adventure', {}); G.modal = null;
+    let a = st.objects.find(o => o.kind === 'portal' && !o.dead && st.objects[o.pair] && !heroAt(st, st.objects[o.pair].x, st.objects[o.pair].y));
+    if (!a) { const free = []; for (let y = 2; y < n - 2 && free.length < 2; y++) for (let x = 2; x < n - 2 && free.length < 2; x++) if (passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && (!free.length || Math.abs(free[0][0] - x) > 5)) free.push([x, y]);
+      const id = st.objects.length; a = { id, type: 'site', kind: 'portal', x: free[0][0], y: free[0][1], seen: {}, pair: id + 1 }; st.objects.push(a, { id: id + 1, type: 'site', kind: 'portal', x: free[1][0], y: free[1][1], seen: {}, pair: id }); rebuildObjIndex(st); }
+    const b = st.objects[a.pair]; h.x = a.x; h.y = a.y; h.path = null; h.moving = false; h.anim = null; h.pending = null;
+    G.screens.adventure.onKey(' '); G.modal = null; const there = [h.x, h.y]; G.screens.adventure.onKey(' '); G.modal = null; const back = [h.x, h.y];
+    h.skills = [{ id: 'leadership', lv: 2 }]; h.army = emptyArmy(); h.army[0] = { cid: 'pikeman', n: 12 }; h.army[2] = { cid: 'archer', n: 3 };
+    return { there, back, b: [b.x, b.y], a: [a.x, a.y], info: foeHeroInfo(st, h) };
+  });
+  assert.deepEqual(r.there, r.b); assert.deepEqual(r.back, r.a);
+  assert.match(r.info, /Atak \d+, Obrona \d+, Moc czarów \d+, Wiedza \d+/); assert.match(r.info, /Przywództwo \(zaawansowane\)/);
+  assert.match(r.info, /oddział pikinierów, kilka łuczników/); assert.doesNotMatch(r.info, /Doświadczenie|ruchu|12/);
+});
