@@ -99,7 +99,7 @@ test('zwycięstwo: po pokonaniu rywali okno końca gry i wpis w wynikach', async
   });
   const d = await dialog(page);
   assert.match(d.msg, /Zwycięstwo! Wszyscy przeciwnicy/);
-  assert.deepEqual(d.labels, ['Menu główne', 'Wyniki']);
+  assert.deepEqual(d.labels, ['Menu główne', 'Statystyki', 'Wyniki']);
   const scores = await page.evaluate(() => loadScores());
   assert.equal(scores.length, 1);
   assert.ok(scores[0].score > 0);
