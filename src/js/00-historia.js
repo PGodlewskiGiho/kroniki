@@ -399,5 +399,9 @@
    Woda: bez pikselowego wzoru fal i kwadratowych błysków w siatce (miękkie, rzadkie błyski), tekstura wody bez obrotu drugiej próbki
    (fale w jednym kierunku, TX.keep). Dźwięk magicznych miejsc (amb_magic) bez czystego tonu 693 Hz – niski szum. Kursor: miecz także
    na polach w zasięgu strażnika i na obiektach, których pilnuje potwór obok (wiatrak, kopalnia…). Bitwa: szybsze strzały, kule, głazy i pociski czarów.
+   Zwalnianie oddziałów (showDismiss): drugie kliknięcie w zaznaczony oddział na ekranie bohatera, w mieście przycisk „Zwolnij”; ostatniego
+   oddziału bohatera nie można zwolnić. Naprawa: pierwszego oddziału (miejsce 0) nie dało się zaznaczyć na ekranie bohatera.
+   Obcy bohater na mapie: bez doświadczenia i punktów ruchu w opisie (tylko przybliżona armia). Pogoda łagodniejsza: o połowę mniej
+   cząstek, bledszy i krótszy deszcz, delikatniejszy śnieg i popiół, słabsza błyskawica.
    ===================================================================================== */
 

@@ -1033,6 +1033,14 @@ function showMeeting(st, a, b, onMsg) {
 }
 // Okno podziału oddziału: ile jednostek przenieść (−10, −1, +1, +10, połowa). Po zamknięciu wraca poprzednie okno
 // (np. spotkanie bohaterów), potem done(błąd albo null). Shift+klik albo przycisk „Dziel” otwiera je w armiach.
+// Zwolnienie oddziału (jak w H3): pytanie o zgodę; ostatniego oddziału bohatera nie da się zwolnić (bohater musi mieć wojsko)
+function showDismiss(a, i, isHero, done) {
+  const x = a[i]; if (!x) return; const C = CREATURES[x.cid], last = isHero && armyStacks(a).length <= 1;
+  if (last) return showDialog(`${C.plural} (${x.n}): to ostatni oddział bohatera – nie można go zwolnić.`, [{ label: 'OK', key: 'enter' }]);
+  showDialog(`Zwolnić oddział: ${C.plural.toLowerCase()} (${x.n})? Odejdą na zawsze.`, [
+    { label: 'Zwolnij', key: 'enter', action: () => { a[i] = null; Sfx.play('click'); if (done) done(`Zwolniono: ${C.plural.toLowerCase()} (${x.n})`); } },
+    { label: 'Anuluj', key: 'escape' }], { iconH: 70, icon: (ctx, cx, cy) => drawCreatureIcon(ctx, x.cid, cx, cy + 30, 2) });
+}
 function showSplit(fromA, i, toA, j, heroArmies, done) {
   const L = splitLimit(fromA, i, toA, j, heroArmies); if (L.err) { done(L.err); return; }
   const prev = G.modal, s = fromA[i], c = CREATURES[s.cid], have = toA[j] ? toA[j].n : 0;

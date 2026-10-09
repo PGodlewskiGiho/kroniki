@@ -58,17 +58,17 @@ const GLMap = {
         vec2 p = uV.xy + mod(vec2(aS.x * uV.z + uT * drift * k + sway, aS.y * uV.w + uT * fall * k), uV.zw);
         vTile = (p - uO) / uTs; vC = c; vS = aS.z; vR = aS.x; vec2 b = uM.x * p + uM.yz;
         gl_Position = vec4(b.x / uR.x * 2.0 - 1.0, 1.0 - b.y / uR.y * 2.0, 0.0, 1.0);
-        gl_PointSize = (c < 1.5 ? 17.0 : c < 2.5 ? 4.0 + aS.z * 3.0 : c < 3.5 ? 8.0 : c < 4.5 ? 3.5 : 20.0) * uM.x; }`,
+        gl_PointSize = (c < 1.5 ? 13.0 : c < 2.5 ? 4.0 + aS.z * 3.0 : c < 3.5 ? 8.0 : c < 4.5 ? 3.5 : 20.0) * uM.x; }`,
     `${HP} uniform sampler2D uType; uniform vec4 uGrid; uniform float uT, uSeason; varying vec2 vTile; varying float vC, vS, vR;
       void main() { vec2 g = (vTile - uGrid.xy) / uGrid.zw; if (g.x < 0.0 || g.y < 0.0 || g.x > 1.0 || g.y > 1.0) discard;
         vec4 w = texture2D(uType, g); if (abs(floor(w.r * 255.0 / 40.0 + 0.5) - vC) > 0.5 || vS > w.g) discard;
         vec2 p = gl_PointCoord - 0.5; vec4 col;
-        if (vC < 1.5) { float a = smoothstep(0.07, 0.0, abs(p.x + p.y * 0.2)) * smoothstep(0.5, 0.2, abs(p.y)) * 0.75; col = vec4(vec3(0.8, 0.86, 0.97) * a, a); }
-        else if (vC < 2.5) { float a = smoothstep(0.5, 0.12, length(p)) * 0.92; col = vec4(vec3(a), a); }
+        if (vC < 1.5) { float a = smoothstep(0.07, 0.0, abs(p.x + p.y * 0.2)) * smoothstep(0.5, 0.2, abs(p.y)) * 0.38; col = vec4(vec3(0.8, 0.86, 0.97) * a, a); }
+        else if (vC < 2.5) { float a = smoothstep(0.5, 0.12, length(p)) * 0.65; col = vec4(vec3(a), a); }
         else if (vC < 3.5) { float an = uT * 2.0 + vR * 30.0; vec2 q = mat2(cos(an), -sin(an), sin(an), cos(an)) * p; float a = smoothstep(0.5, 0.36, length(q * vec2(1.0, 2.3)));
           vec3 c3 = uSeason > 1.5 ? mix(vec3(0.82, 0.32, 0.1), vec3(0.95, 0.68, 0.18), fract(vR * 7.0)) : mix(vec3(1.0, 0.78, 0.86), vec3(1.0), fract(vR * 7.0)); col = vec4(c3 * a, a); }
-        else if (vC < 4.5) { float a = smoothstep(0.5, 0.1, length(p)) * 0.85, e = step(0.78, fract(vR * 11.0)); vec3 c3 = mix(vec3(0.42, 0.4, 0.4), vec3(1.0, 0.55, 0.15) * (0.7 + 0.3 * sin(uT * 9.0 + vR * 50.0)), e); col = vec4(c3 * a, a); }
-        else { float a = smoothstep(0.5, 0.0, length(p)) * 0.2; col = vec4(vec3(0.78, 0.66, 0.45) * a, a); }
+        else if (vC < 4.5) { float a = smoothstep(0.5, 0.1, length(p)) * 0.6, e = step(0.78, fract(vR * 11.0)); vec3 c3 = mix(vec3(0.42, 0.4, 0.4), vec3(1.0, 0.55, 0.15) * (0.7 + 0.3 * sin(uT * 9.0 + vR * 50.0)), e); col = vec4(c3 * a, a); }
+        else { float a = smoothstep(0.5, 0.0, length(p)) * 0.14; col = vec4(vec3(0.78, 0.66, 0.45) * a, a); }
         gl_FragColor = col; }`, ['aS']);
     this.pWxS = prog(`attribute vec2 aP; uniform vec2 uR; uniform vec3 uM; varying vec2 vL; void main() { vL = aP; vec2 b = uM.x * aP + uM.yz; gl_Position = vec4(b.x / uR.x * 2.0 - 1.0, 1.0 - b.y / uR.y * 2.0, 0.0, 1.0); }`,
     `${HP} uniform sampler2D uSky; uniform vec4 uGrid; uniform vec2 uO; uniform float uTs, uT, uFlash; varying vec2 vL; ${GLSL_HASH}
@@ -79,7 +79,7 @@ const GLMap = {
         vec4 c = vec4(vec3(0.03, 0.04, 0.08) * sh, sh); c = c * (1.0 - fog) + vec4(vec3(0.86, 0.88, 0.9) * fog, fog);
         gl_FragColor = c + vec4(vec3(0.9, 0.94, 1.0) * uFlash, uFlash) * (1.0 - c.a); }`, ['aP']);
     this.ux = {}; for (const [P, ks] of [[this.pWxP, ['uR', 'uM', 'uV', 'uO', 'uT', 'uTs', 'uType', 'uGrid', 'uSeason']], [this.pWxS, ['uR', 'uM', 'uSky', 'uGrid', 'uO', 'uTs', 'uT', 'uFlash']]]) for (const k of ks) this.ux[(P === this.pWxP ? 'p_' : 's_') + k] = gl.getUniformLocation(P, k);
-    const seeds = Weather.seeds(2500); this.wxN = 2500; this.wxVbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.wxVbo); gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
+    const seeds = Weather.seeds(2500); this.wxN = 1300; // cząstek rysowanych naraz: dawniej 2500, deszcz zasłaniał mapę this.wxVbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.wxVbo); gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
     this.tType = this.newTex(); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     this.tSky = this.newTex(); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 70, 0, 255])); this.wxGrid = [0, 0, 1e4, 1e4];
     this.vbo = gl.createBuffer(); this.N = 4096; this.buf = new Float32Array(this.N * 6 * 8); this.n = 0; this.cur = null; this.add = false;

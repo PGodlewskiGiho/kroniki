@@ -121,14 +121,14 @@ G.screens.town = {
   // Okno ulepszenia oddziału (drugie kliknięcie w zaznaczony oddział); „Ulepsz wszystkie” = każdy oddział w mieście, na który starczy
   showUpgrade(a, i) {
     const st = G.state, t = this.town(), x = a[i], to = x && townUpgradeTarget(t, x.cid), R = playerOf(st, t.owner).resources; if (!x) return;
-    const C = CREATURES[x.cid];
-    if (!to) return showDialog(`${C.plural} (${x.n}): ${townUpgradeTarget(t, x.cid) === null && C.faction === t.faction ? 'zbuduj wyższy stopień ich siedliska, aby je ulepszyć (albo to już najwyższy stopień).' : 'tych stworów nie da się ulepszyć w tym mieście.'}`, [{ label: 'OK', key: 'enter' }],
+    const C = CREATURES[x.cid], dismiss = { label: 'Zwolnij', key: 'z', tip: 'Oddział odejdzie na zawsze (ostatniego oddziału bohatera nie można zwolnić).', action: () => showDismiss(a, i, a !== t.garrison, m => this.say(m)) };
+    if (!to) return showDialog(`${C.plural} (${x.n}): ${townUpgradeTarget(t, x.cid) === null && C.faction === t.faction ? 'zbuduj wyższy stopień ich siedliska, aby je ulepszyć (albo to już najwyższy stopień).' : 'tych stworów nie da się ulepszyć w tym mieście.'}`, [dismiss, { label: 'OK', key: 'enter' }],
       { iconH: 70, icon: (ctx, cx, cy) => drawCreatureIcon(ctx, x.cid, cx, cy + 30, 2) });
     const cost = upgradeCostFor(x.cid, to, x.n), ok = Object.entries(cost).every(([k, v]) => R[k] >= v), all = () => { let n = 0; for (const arr of [garrisonHero(st, t) ? garrisonHero(st, t).army : t.garrison, (heroInTown(st, t) || {}).army].filter(Boolean)) for (let j = 0; j < arr.length; j++) if (arr[j] && townUpgradeTarget(t, arr[j].cid) && !townUpgrade(st, t, arr, j)) n++; return n; };
     showDialog(`${C.plural} (${x.n}) → ${CREATURES[to].plural.toLowerCase()}. Koszt: ${costText(cost) || 'bez opłaty'}${ok ? '' : ' (brakuje surowców)'}. Po ulepszeniu: ${unitStats(CREATURES[to])}.`, [
       { label: 'Ulepsz', key: 'enter', primary: ok, action: () => { const e = townUpgrade(st, t, a, i); Sfx.play(e ? 'click' : 'build'); this.say(e || `Ulepszono: ${CREATURES[to].plural.toLowerCase()} (${x.n})`); } },
       { label: 'Ulepsz wszystkie', key: 'w', tip: 'Ulepsza każdy oddział garnizonu i bohatera w mieście, na który starczy surowców.', action: () => { const n = all(); Sfx.play(n ? 'build' : 'click'); this.say(n ? `Ulepszono oddziałów: ${n}` : 'Nie ma czego ulepszyć albo brakuje surowców'); } },
-      { label: 'Nie', key: 'escape' },
+      dismiss, { label: 'Nie', key: 'escape' },
     ], { iconH: 76, icon: (ctx, cx, cy) => { drawCreatureIcon(ctx, x.cid, cx - 50, cy + 32, 2); drawCreatureIcon(ctx, to, cx + 50, cy + 32, 2); iconArrowSide(1)(ctx, cx, cy, '#5a3814'); } });
   },
   onClick(x, y) {

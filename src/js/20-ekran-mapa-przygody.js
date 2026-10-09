@@ -279,7 +279,8 @@ G.screens.adventure = {
       const i = ty * n + tx;
       if (!human(st).explored[i]) return 'Nieodkryty teren. Wyślij tam bohatera, żeby zobaczyć, co się kryje.';
       const hh = heroAt(st, tx, ty);
-      if (hh) return `${heroTitle(hh)}. Punkty ruchu: ${hh.mp} z ${heroMaxMP(hh)}. Doświadczenie: ${hh.exp}.`;
+      if (hh && (hh.owner === ME || allied(st, hh.owner, ME))) return `${heroTitle(hh)}. Punkty ruchu: ${hh.mp} z ${heroMaxMP(hh)}. Doświadczenie: ${hh.exp}.`;
+      if (hh) return `${heroTitle(hh)} (${ownerName(st, hh.owner)}). Armia: ${qtyName(armySize(hh.army)).toLowerCase()}.`; // obcy bohater: bez doświadczenia i ruchu (jak w H3), tylko przybliżona liczebność
       const ob = uiObjectAt(st, i) || drawnObjectAt(st, tx, ty);
       if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], qt = q && !q.dead && q.taken && q.taken[ME] ? `Cel zadania: ${siteName(q)}. ` : ''; return `${qt}${ob.ship ? 'Statek piracki: ' : ''}${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}. Usposobienie: ${MONSTER_MOODS[monsterMood(ob)]}${hero(st) ? (r => r ? (r.kind === 'join' ? ' – chcą dołączyć do twojego bohatera' : ' – uciekną przed twoim bohaterem') : '')(neutralReaction(st, hero(st), ob)) : ''}.`; }
       if (ob && ob.type === 'town') {

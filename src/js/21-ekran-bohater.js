@@ -70,8 +70,9 @@ G.screens.hero = {
     if (this.preview) return; // podgląd kandydata: tylko oglądanie
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y);
     if (ar) {
-      if (!this.sel) { if (h.army[ar.i]) this.sel = ar.i; return; }
+      if (this.sel == null) { if (h.army[ar.i]) this.sel = ar.i; return; } // (sel 0 to pierwszy oddział – dawniej uznawany za brak zaznaczenia)
       const from = this.sel; this.sel = null;
+      if (from === ar.i) return showDismiss(h.army, from, true, m => this.say(m)); // drugie kliknięcie w zaznaczony oddział: zwolnienie
       if (G.keys.has('shift')) { showSplit(h.army, from, h.army, ar.i, [], err => { if (err) this.say(err); }); return; } // Shift+klik: część oddziału na wolne miejsce
       armyMove(h.army, from, h.army, ar.i); return;
     }
