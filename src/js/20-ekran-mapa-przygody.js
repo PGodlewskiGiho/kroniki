@@ -7,7 +7,14 @@ function paintAdvChrome(c) {
   insetBox(c, 8, VH - 31, VW - 16, 27, 7);
 }
 // Obcy bohater (jak w H3): cechy, umiejętności i rodzaje jednostek z przybliżoną liczebnością; bez doświadczenia i punktów ruchu
-const foeHeroInfo = (st, hh) => `${heroTitle(hh)} (${ownerName(st, hh.owner)}). ${PRIMARY.map(p => `${p.name} ${heroStat(hh, p.id)}`).join(', ')}.${hh.skills.length ? ` Umiejętności: ${hh.skills.map(s => `${SKILLS[s.id].name} (${SKILL_LEVELS[s.lv]})`).join(', ')}.` : ''} Armia: ${hh.army.filter(Boolean).map(s => `${qtyName(s.n).toLowerCase()} ${CREATURES[s.cid].gen}`).join(', ') || 'brak'}.`;
+const foeHeroInfo = (st, hh) => `${heroTitle(hh)} (${ownerName(st, hh.owner)}). ${PRIMARY.map(p => `${p.name} ${heroStat(hh, p.id)}`).join(', ')}.${hh.skills.length ? ` Umiejętności: ${hh.skills.map(s => `${SKILLS[s.id].name} (${SKILL_LEVELS[s.lv]})`).join(', ')}.` : ''} Armia: ${armyKinds(hh.army) || 'brak'}.`;
+// Obce miasto (jak w H3): frakcja, mury, gildia, garnizon i bohater w murach z przybliżoną liczebnością, porównanie sił
+const armyKinds = a => a.filter(Boolean).map(s => `${qtyName(s.n).toLowerCase()} ${CREATURES[s.cid].gen}`).join(', ');
+function foeTownInfo(st, t) {
+  const hh = townHero(st, t), lv = townLevel(t), g = guildLevel(t);
+  return `${t.name} (${factionOf(t.faction).name}). ${t.owner < 0 ? 'Miasto niezależne' : `Właściciel: ${ownerName(st, t.owner)}`}. Mury: ${['brak', 'fort', 'cytadela', 'zamek'][lv]}. Gildia magów: ${g ? `poziom ${g}` : 'brak'}. Budowli: ${t.built.length}, dochód ${townGold(t)} złota dziennie.`
+    + ` Garnizon: ${armyKinds(t.garrison) || 'pusty'}.${hh ? ` W murach bohater: ${foeHeroInfo(st, hh)}` : ''} Siła obrońców ${townPower(st, t)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}. Wejdź, aby je zdobyć.`;
+}
 function showKingdom(st) {
   const R = human(st).resources, x = 150, y = 62, w = 500, h = 480, mines = {};
   for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === ME) mines[ob.kind] = (mines[ob.kind] || 0) + 1;
@@ -311,7 +318,8 @@ G.screens.adventure = {
       if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], qt = q && !q.dead && q.taken && q.taken[ME] ? `Cel zadania: ${siteName(q)}. ` : ''; return `${qt}${ob.ship ? 'Statek piracki: ' : ''}${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}. Usposobienie: ${MONSTER_MOODS[monsterMood(ob)]}${hero(st) ? (r => r ? (r.kind === 'join' ? ' – chcą dołączyć do twojego bohatera' : ' – uciekną przed twoim bohaterem') : '')(neutralReaction(st, hero(st), ob)) : ''}.`; }
       if (ob && ob.type === 'town') {
         const t = st.towns[ob.townId];
-        return `${t.name}. Dochód: ${townGold(t)} złota dziennie. Budowli: ${t.built.length}. ` + (t.owner === ME ? 'Wejdź bohaterem albo wybierz miasto z listy po prawej.' : `${t.owner < 0 ? 'Miasto niezależne' : `Właściciel: ${ownerName(st, t.owner)}`}. Siła obrońców ${townPower(st, t)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}. Wejdź, aby je zdobyć.`);
+        if (t.owner !== ME) return foeTownInfo(st, t);
+        return `${t.name}. Dochód: ${townGold(t)} złota dziennie. Budowli: ${t.built.length}. Wejdź bohaterem albo wybierz miasto z listy po prawej.`;
       }
       if (ob && ob.type === 'mine') { const M = MINES[ob.kind]; return `${M.name}. Właściciel: ${ownerName(st, ob.owner)}. Dochód dzienny: ${M.income} (${resName(ob.kind).toLowerCase()}).`; }
       if (ob && ob.type === 'bank') { const B = BANKS[ob.kind]; return ob.cleared ? `${B.name}: splądrowane, nic tu już nie ma.` : `${B.name}: ${B.desc}. Załoga: ${bankGuardText(ob)} (siła ${bankPower(ob)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Łup: ${bankLootText(ob.kind)}.`; }

@@ -118,7 +118,7 @@ test('mapa i dymki pokazują miasta niezależne bez błędów', async () => {
     return { tile: tileInfo(st, t.x, t.y), tip: G.screens.adventure.rightInfo(sx, sy) };
   });
   assert.match(r.tile, /miasto niezależne/);
-  assert.match(r.tip, /Miasto niezależne\. Siła obrońców \d+/);
+  assert.match(r.tip, /Miasto niezależne\. Mury: (brak|fort|cytadela|zamek)\. Gildia magów: .*Garnizon: [^.]+\..*Siła obrońców \d+/); // obce miasto jak w H3: mury, gildia, rodzaje jednostek garnizonu
   await frames(page, 10);
 });
 

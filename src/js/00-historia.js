@@ -413,5 +413,7 @@
    gracz może wrócić na mapę. Tura zakończona bez połączenia dociera do gospodarza przy powrocie.
    Spacja na budynku (portal, kapliczka, siedlisko…): bohater korzysta z niego jeszcze raz (portal: tam i z powrotem). Obcy bohater
    w opisie: cechy (atak, obrona, moc, wiedza), umiejętności i rodzaje jednostek z przybliżoną liczebnością (bez doświadczenia i ruchu).
+   Obce miasto w opisie: frakcja, mury, poziom gildii magów, liczba budowli, garnizon i bohater w murach (rodzaje jednostek, przybliżona
+   liczebność), porównanie sił.
    ===================================================================================== */
 
