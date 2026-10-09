@@ -379,5 +379,7 @@
    (tylko zajęte miejsca, Dodaj/Usuń gracza); ikony 3D ic_map, ic_helm, ic_dice, ic_chest, herb frakcji = portret stwora 7. poziomu.
    Drużyny (slots[].team → players[].team, allied/teamOf): sojusznicy nie walczą, nie przejmują kopalń i miast, wspólna mgła (reveal),
    komputer nie celuje w sojuszników (aiPeace), zwycięstwo drużyny (gameResult); odznaka drużyny w wierszu gracza.
+   Statystyki (20c): wykres potęgi co tydzień (st.hist, HIST_KEYS), liczniki zdarzeń (st.tally), 14 osiągnięć (ACHIEVEMENTS, localStorage
+   kk_ach); okno showStats z końca gry („Statystyki”) i z Kroniki tawerny („Wykres potęgi”).
    ===================================================================================== */
 

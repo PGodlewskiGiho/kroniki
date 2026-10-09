@@ -354,7 +354,7 @@ function advanceDay(st) {
     if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
     if (t) { const m = specialVisit(st, t, h); if (m && h.owner !== ME) h.mp = heroMaxMP(h); } // budowla specjalna (stajnie, wir many, klatka, Walhalla)
   }
-  collectIncome(st); caravanArrivals(st);
+  collectIncome(st); caravanArrivals(st); tallyDaily(st); if (newWeek) recordHistory(st); // statystyki: szczyty i wykres potęgi co tydzień
   for (const t of st.towns) t.builtToday = false;
   if (newWeek) st.weekNews = { wk: st.month * 10 + st.week, month: newMonth, text: startWeek(st, newMonth) }; // ludzie zobaczą ogłoszenie astrologów (KRONIKA TYGODNIA)
   dailyTownCheck(st); rebuildObjIndex(st); MapRender.miniDirty = true;

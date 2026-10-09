@@ -537,7 +537,7 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
     reveal(st, h.x, h.y, HERO_SIGHT + 6, p.id); // start: okolica własnego miasta odkryta (ok. dzień marszu)
     if (rule(st, 'reveal')) p.explored.fill(1); // zasada „odkryta mapa”
   }
-  ensureProgress(st);
+  ensureProgress(st); recordHistory(st); // wykres potęgi: stan na dzień 1
   st.cur = ME = st.players.find(p => p.human).id; st.bonusText = human(st).bonusText; st.selHero = st.heroes.findIndex(h => h.owner === ME);
   return st;
 }

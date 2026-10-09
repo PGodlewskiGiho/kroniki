@@ -698,6 +698,7 @@ function lootHero(winner, loser) {
 // Zmiana właściciela miasta (i jego obiektu na mapie)
 function captureTown(st, t, owner) {
   for (const o of st.heroes.filter(o => o.x === t.x && o.y === t.y && o.owner !== owner)) retireHero(st, o, false, true); // bohaterowie poprzedniego właściciela w murach i bramie
+  if (t.owner !== owner) { tallyAdd(st, owner, 'towns'); tallyAdd(st, t.owner, 'townsLost'); } // statystyki: zdobyte i stracone miasta
   t.owner = owner; if (owner >= 0) reveal(st, t.x, t.y, HERO_SIGHT, owner);
   for (const ob of st.objects) if (ob.type === 'town' && ob.townId === t.id) ob.owner = owner;
   MapRender.miniDirty = true;
@@ -731,7 +732,7 @@ const spoilsText = sp => !sp ? '' : [sp.gold ? ` Grabież: +${sp.gold} złota.` 
 const raisedText = n => (n ? ` Nekromancja: ${n === 1 ? 'wstaje 1 kościotrup' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? `wstają ${n} kościotrupy` : `wstaje ${n} kościotrupów`}.` : '');
 function resolveBattle(B, fled) {
   const { st, h } = B, D = B.sides[1], outcome = fled ? 'fled' : B.over;
-  const res = { outcome, lost: sideLosses(B, 0), foeLost: sideLosses(B, 1), exp: 0, foeExp: 0, captured: null, heroDefeated: null, sides: [sideSummary(B, 0), sideSummary(B, 1)] };
+  const res = { outcome, lost: sideLosses(B, 0), foeLost: sideLosses(B, 1), exp: 0, foeExp: 0, captured: null, heroDefeated: null, sides: [sideSummary(B, 0), sideSummary(B, 1)] }; tallyBattle(B, outcome);
   writeBackSide(B, 0); writeBackSide(B, 1);
   for (const S of B.sides) if (S.hero) delete S.hero.boost; // premie ze świątyni i fontanny trwają do końca bitwy
   if (outcome === 'win') {

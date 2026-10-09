@@ -1081,7 +1081,7 @@ function digGrail(st, h) {
 // Bohater z Graalem w swoim mieście: Graal zostaje wbudowany (jedna budowla Graala na miasto). Zwraca true, gdy powstała.
 function buildGrail(st, t, h) {
   if (!hasGrail(h) || t.owner !== h.owner || hasB(t, 'grail')) return false;
-  h.bag.splice(h.bag.indexOf('grail'), 1); t.built.push('grail'); return true;
+  h.bag.splice(h.bag.indexOf('grail'), 1); t.built.push('grail'); tallyOf(st, h.owner).grail = 1; return true;
 }
 // Fort na wzgórzu: oddziały, które da się ulepszyć (stwór ma wersję ulepszoną), z kosztem = różnica cen × liczba
 function hillFortPlan(h) {
