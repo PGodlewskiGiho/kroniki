@@ -2,8 +2,8 @@
 // i w zbliżeniu na głowę i tułów (głowa: punkt 'head' z modeli, przy jeźdźcu i centaurze najwyższy). Tło (barwy frakcji)
 // dorysowuje gra, więc portret jest przezroczysty. Arkusz: src/grafika/ikony.webp + ikony.json { f: { cid: [x, y, w, h] } }.
 //   node tools/grafika3d/wypal-ikony.js            wszystkie jednostki      node tools/grafika3d/wypal-ikony.js pikeman,orc   wybrane (do podglądu)
-//   node tools/grafika3d/wypal-ikony.js --do-ai    portrety 256×292 do domalowania (tools/grafika3d/.cache/portrety/<cid>.png + opisy.json);
-//     potem tools/tla-ai/portrety-jednostek/domaluj-wszystkie.py (AI) i sklej.py (arkusz do gry)
+//   node tools/grafika3d/wypal-ikony.js --do-ai    portrety 256×292 (tools/grafika3d/.cache/portrety/<cid>.png + opisy.json);
+//     potem tools/tla-ai/portrety-jednostek/sklej.py (arkusz do gry, same rendery 3D – bez domalowywania przez AI)
 // Podgląd zawsze w tools/grafika3d/.cache/ikony.png.
 'use strict';
 const path = require('path'), fs = require('fs');
