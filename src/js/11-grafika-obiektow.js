@@ -878,6 +878,49 @@ const unitStats = c => `atak ${c.att}, obrona ${c.def}, obrażenia ${c.dmin}–$
 const abilText = c => (c.abil || []).map(a => `${ABILITIES[a].name} (${ABILITIES[a].desc})`).join('; ');
 const machineInfo = id => { const c = CREATURES[id]; return `${c.name}: ${c.desc}. Życie ${c.hp}, cena ${c.cost.gold} złota.`; };
 const stackInfo = s => { if (MACHINES.includes(s.cid)) return machineInfo(s.cid); const c = CREATURES[s.cid], ab = abilText(c); return `${c.plural}: ${s.n}. Poziom ${c.level}, ${unitStats(c)}${c.shots ? `, strzały ${c.shots}` : ''}.${ab ? ` Zdolności: ${ab}.` : ''}`; };
+// Karta oddziału pod prawym przyciskiem (jak w Heroes 3): żywa postać na tle barw frakcji i pełne statystyki. Z bohaterem atak
+// i obrona mają w nawiasie wartość z jego premią; w bitwie (B, u) wartości bieżące: czary, życie pierwszego, strzały, morale.
+const unitCard = (s, h = null, B = null, u = null) => (s && CREATURES[s.cid] && !MACHINES.includes(s.cid) && !SIEGE_UNITS.includes(s.cid) ? { cid: s.cid, n: s.n, h, B, u } : null);
+function unitCardRows(p) {
+  const c = CREATURES[p.cid], { h, B, u } = p, both = (base, eff) => (eff !== base ? `${base} (${eff})` : String(base)), R = [];
+  const att = u ? unitAtt(u) + sideAtt(B, u.side) : h ? c.att + heroStat(h, 'att') : c.att, def = u ? unitDef(u) + sideDef(B, u.side) : h ? c.def + heroStat(h, 'def') : c.def;
+  R.push(['Atak', both(c.att, att)], ['Obrona', both(c.def, def)]);
+  if (c.shots) R.push(['Strzały', u ? `${u.shots}/${c.shots}` : String(c.shots)]);
+  R.push(['Obrażenia', c.dmin === c.dmax ? String(c.dmin) : `${c.dmin}–${c.dmax}`], ['Życie', String(c.hp)]);
+  if (u) R.push(['Pozostało życia', `${u.hp}/${c.hp}`]);
+  R.push(['Szybkość', u ? both(c.spd, unitSpd(u)) : String(c.spd)]);
+  if (u) R.push(['Morale', signed(unitMorale(B, u))], ['Szczęście', signed(unitLuck(B, u))]);
+  else R.push(['Poziom', String(c.level)], ['Przyrost', c.faction ? `${c.growth} na tydzień` : '—']);
+  return R;
+}
+// Prostokąt widocznych (nieprzezroczystych) pikseli sprite'a, liczony raz
+function spriteBounds(s) {
+  if (s._bb) return s._bb; const W = s.c.width, H = s.c.height; let x0 = W, y0 = H, x1 = 0, y1 = 0;
+  try { const d = s.c.getContext('2d').getImageData(0, 0, W, H).data; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } } catch (e) {}
+  return x1 > x0 && y1 > y0 ? (s._bb = { x0, y0, x1: x1 + 1, y1: y1 + 1 }) : { x0: 0, y0: 0, x1: W, y1: H }; // pusty (grafika jeszcze się wczytuje): bez zapamiętania
+}
+function drawUnitCard(ctx, p) {
+  const c = CREATURES[p.cid], R = unitCardRows(p), W0 = 400, PW = 150, PH = 176;
+  ctx.font = font(14, 500, 'body');
+  const notes = [...(c.abil || []).map(a => `${ABILITIES[a].name}: ${ABILITIES[a].desc}.`), ...(p.u ? Object.entries(p.u.buffs).map(([k, r]) => `Czar: ${BUFF_NAMES[k]} (${r} r.)`) : []), ...(p.u && p.u.defending ? ['Broni się.'] : [])];
+  const lines = notes.flatMap(s => wrapText(ctx, s, W0 - 40)), H0 = Math.max(56 + PH, 56 + R.length * 22) + 14 + lines.length * 18 + (lines.length ? 8 : 0);
+  const x = clamp(p.x + 14, 8, VW - W0 - 8), y = clamp(p.y - H0 / 2, 8, VH - H0 - 8);
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(x + 4, y + 6, W0, H0); leatherFill(ctx, x, y, W0, H0, 11, -0.08); goldRim(ctx, x, y, W0, H0, 3);
+  goldText(ctx, p.n > 1 ? c.plural : c.name, x + W0 / 2, y + 30, 22);
+  const px = x + 16, py = y + 46, fac = c.faction || '', bg = ICON_BG[fac] || ICON_BG[''];
+  ctx.save(); ctx.beginPath(); ctx.rect(px, py, PW, PH); ctx.clip();
+  const g = ctx.createLinearGradient(0, py, 0, py + PH); g.addColorStop(0, bg[0]); g.addColorStop(0.66, LT(bg[0], 0.15)); g.addColorStop(0.67, bg[1]); g.addColorStop(1, DK(bg[1], 0.35)); ctx.fillStyle = g; ctx.fillRect(px, py, PW, PH);
+  const s = battleSprite(p.cid, 1, 'idle', 0), b = spriteBounds(s), f = (s.u || 2) / 2, k = Math.min(3.4, (PW - 18) / ((b.x1 - b.x0) * f), (PH - 22) / ((b.y1 - b.y0) * f)), fk = f * k;
+  drawCreatureAnim(ctx, p.cid, px + PW / 2 - ((b.x0 + b.x1) / 2 - s.ax) * fk, py + PH - 10 - (b.y1 - s.ay) * fk, k); // postać przycięta do widocznych pikseli i wpasowana w ramkę
+  const v = ctx.createRadialGradient(px + PW / 2, py + PH * 0.45, PW * 0.35, px + PW / 2, py + PH * 0.45, PH * 0.8); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)'); ctx.fillStyle = v; ctx.fillRect(px, py, PW, PH);
+  ctx.restore(); goldRim(ctx, px - 2, py - 2, PW + 4, PH + 4, 2);
+  if (p.n > 0) { const t = String(p.n); ctx.font = font(16, 700, 'body'); const tw = ctx.measureText(t).width + 12; ctx.fillStyle = 'rgba(20,12,6,.85)'; ctx.fillRect(px + PW - tw - 4, py + PH - 24, tw, 20); text(ctx, t, px + PW - 10, py + PH - 9, { size: 16, weight: 700, align: 'right', color: '#ffe8b0' }); }
+  const tx = px + PW + 18, tw2 = x + W0 - 16;
+  R.forEach(([k2, v2], i) => { const ry = y + 66 + i * 22; text(ctx, k2, tx, ry, { size: 15, weight: 500, color: '#d8c8a0' }); text(ctx, v2, tw2, ry, { size: 15, weight: 700, align: 'right', color: '#fff0c8' }); });
+  let ly = y + Math.max(56 + PH, 56 + R.length * 22) + 26;
+  for (const l of lines) { text(ctx, l, x + 20, ly, { size: 14, weight: 500, color: '#e8d8b0' }); ly += 18; }
+  ctx.restore();
+}
 // Rząd 7 miejsc armii z tymi samymi sprite'ami co na mapie. Zwraca prostokąty miejsc (do klikania i dymków).
 function drawArmyRow(ctx, army, x, y, o = {}) {
   const w = o.w || 62, h = o.h || 50, gap = o.gap || 6, rects = [];
@@ -919,6 +962,7 @@ function showRecruit(st, t, L, onDone, backToList) {
   G.modal = { box: { x, y, w, h: hh },
     buttons: btns,
     rightInfo(px, py) { return px < x + 150 && py > y + 100 && py < y + 250 ? stackInfo({ cid, n: t.avail[L] || 0 }) : null; },
+    rightCard(px, py) { return px < x + 150 && py > y + 100 && py < y + 250 ? unitCard({ cid, n: t.avail[L] || 0 }) : null; },
     draw(ctx) {
       const c = CREATURES[cid], cost = unitCost(cid), total = {}; for (const r of RESOURCES) if (cost[r.id]) total[r.id] = cost[r.id] * n;
       bBuy.disabled = n <= 0; bMinus.disabled = n <= 0; bPlus.disabled = bMax.disabled = n >= maxN();
@@ -1010,6 +1054,7 @@ function showMeeting(st, a, b, onMsg) {
       if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
       sel = null;
     },
+    rightCard(px, py) { const s = armyAt(px, py); return s ? unitCard(armies[s.k][s.i], heroes[s.k]) : null; },
     rightInfo(px, py) {
       const s = armyAt(px, py); if (s) return armies[s.k][s.i] ? stackInfo(armies[s.k][s.i]) : 'Wolne miejsce.';
       const g = bagAt(px, py); if (g) return `${artInfo(heroes[g.k].bag[g.i])} Kliknij, aby oddać drugiemu bohaterowi.`;

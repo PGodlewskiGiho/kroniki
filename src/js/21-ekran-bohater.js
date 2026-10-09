@@ -96,6 +96,7 @@ G.screens.hero = {
       { label: 'Złóż relikwię', key: 'enter', action: () => { assembleRelic(h, r); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(`Złożono: ${A.name}`); } },
       { label: 'Nie teraz', key: 'escape', action: () => {} }], { iconH: 56, icon: (ctx, cx, cy) => drawSprite(ctx, artSprite(r, true), cx, cy, 3) });
   },
+  rightCard(x, y) { const h = this.hero(), ar = hitRect(this.armyRects, x, y); return ar ? unitCard(h.army[ar.i], h) : null; },
   rightInfo(x, y) {
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y), p = this.statAt(x, y);
     if (e && (h.locked || {})[e.id]) return `Miejsce zajęte przez relikwię: ${artInfo(h.locked[e.id])}`;

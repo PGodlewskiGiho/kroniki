@@ -94,13 +94,13 @@ function bindInput() {
     G.scrollDrag = e.pointerType !== 'mouse' && legScrollable() ? { y0: e.clientY, s0: G.legScroll, moved: false } : null; // dźwięk: kontekst audio dopiero po geście gracza
     if (e.button === 2) {
       e.preventDefault(); const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; updateHover();
-      const txt = rightInfoAt(p.x, p.y); if (txt) G.popup = { text: txt, x: p.vx, y: p.vy };
+      const pop = rightPopup(p); if (pop) G.popup = pop;
       return;
     }
     if (e.button !== 0) return; e.preventDefault(); G.popup = null;
     if (e.pointerType !== 'mouse') {
       const p0 = toLogical(e); clearTimeout(G.pressTimer);
-      G.pressTimer = setTimeout(() => { G.dirty = true; const txt = rightInfoAt(p0.x, p0.y); if (txt) { G.popup = { text: txt, x: p0.vx, y: p0.vy }; G.longPress = true; } }, 420);
+      G.pressTimer = setTimeout(() => { G.dirty = true; const pop = rightPopup(p0); if (pop) { G.popup = pop; G.longPress = true; } }, 420);
     }
     const p = toLogical(e); G.mouse.x = p.x; G.mouse.y = p.y; G.mouse.vx = p.vx; G.mouse.vy = p.vy; G.mouse.type = e.pointerType; G.mouse.down = true;
     updateHover(); G.downTarget = G.hover;

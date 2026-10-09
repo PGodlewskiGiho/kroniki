@@ -189,6 +189,7 @@ G.screens.adventure = {
     if (p.flash) this.flash(p.flash);
     if (p.after) p.after();
     this.netWatch(Net.online(st) && st.cur !== ME); // gra online: nie moja tura = oglądanie
+    if (Net.online(st) && st.cur !== ME) setTimeout(() => netAbsent(st.cur), 600); // tura rozłączonego gracza: gospodarz wybiera, co dalej
     if (Net.pending) { const [d, k] = Net.pending; Net.pending = null; setTimeout(() => netApplyState(d, k), 0); } // stan, który przyszedł w trakcie bitwy
     if (p.welcome && Net.myTurn(st)) this.startHumanTurn(st, true); else human(st).welcomed = human(st).welcomed || !Net.online(st); // gra wczytana albo powrót z innego ekranu
   },
@@ -230,15 +231,32 @@ G.screens.adventure = {
   },
   flash(msg, col) { this.flashMsg = { text: msg, t: G.time, col }; }, // col: kolor (np. złoty dla nagród); bez koloru – ostrzeżenie
   // Gra online: tura innego gracza (watching) – przyciski zablokowane, mapę można tylko oglądać
-  netWatch(on) { this.watching = on; if (on || !this.aiRun) this.lockButtons(on); },
+  netWatch(on) { this.watching = on; if (on || !this.aiRun) this.lockButtons(on); if (on) { const m = this.buttons.find(b => b.label === 'Menu'); if (m && !this.aiRun && m._was !== undefined) { m.disabled = m._was; delete m._was; } } },
+  // Gospodarz: komputer rozgrywa turę nieobecnego gracza (i jego kolejne tury, aż ten wróci), potem gra idzie dalej jak zwykle
+  netTakeOver(pid) {
+    const st = G.state, p = st.players[pid]; if (!p || this.aiRun || st.cur !== pid || Net.guestOn(pid)) return;
+    p.human = false; p.away = true; G.modal = null; this.netWatch(false); this.flash(`Komputer gra za: ${playerName(st, pid)}`);
+    const news = [], gen = (function* () { yield* aiTurn(st, p, news); return yield* turnsAfter(st, pid, news); })();
+    this.aiRun = { st, gen, news, input: undefined, wait: false, who: null, anim: null, seen: new Set() }; this.lockButtons(true);
+  },
   netUpdate(st, kind) {
     MapRender.miniDirty = true; this.layout(true);
-    if (kind === 'sync') return;
+    if (kind === 'sync') { if (st.cur !== ME && !this.watching) this.netWatch(true); return; } // podgląd: tura na pewno nie moja
     const mine = st.cur === ME; this.netWatch(!mine);
     if (mine) { const h = hero(st) || myTowns(st)[0]; if (h) centerCam(st, h.x, h.y); this.autosave(st); this.startHumanTurn(st, true); }
     else this.flash(`Tura: ${playerName(st, st.cur)}`);
   },
   systemMenu() {
+    const st = G.state;
+    if (Net.online(st)) { // gra online: bez zapisu i wczytywania (stan trzyma gospodarz), za to wyjście i koniec gry
+      const host = Net.role === 'host', away = host && st.cur !== ME && !Net.guestOn(st.cur) && !this.aiRun && st.players[st.cur] && st.players[st.cur].human;
+      return showDialog(host ? 'Gra online. Co chcesz zrobić?' : 'Gra online. Możesz wyjść i wrócić później: „Gra online” → „Wróć do gry”.', [
+        { label: 'Wróć do gry', key: 'escape' },
+        ...(away ? [{ label: `Komputer za: ${playerName(st, st.cur)}`, key: 'k', tip: 'Gracz jest rozłączony: jego tury rozegra komputer, dopóki nie wróci.', action: () => this.netTakeOver(st.cur) }] : []),
+        { label: 'Grafika', key: 'g', action: () => showGfxSettings(() => this.systemMenu()) },
+        host ? { label: 'Zakończ grę', key: 'z', tip: 'Kończy grę u wszystkich. Stan zostaje zapisany: „Gra online” → „Wznów grę”.', action: () => showDialog('Zakończyć grę online u wszystkich graczy? Stan zostanie zapisany i da się ją wznowić.', [{ label: 'Zakończ', key: 'enter', action: () => netEndGame() }, { label: 'Nie', key: 'escape' }]) }
+          : { label: 'Wyjdź z gry', key: 'w', tip: 'Wychodzisz do menu; gospodarz może w tym czasie oddać twoje tury komputerowi. Wrócisz przez „Gra online” → „Wróć do gry”.', action: () => G.go('menu') }]);
+    }
     showDialog('Gra jest wstrzymana. Co chcesz zrobić?', [
       { label: 'Wróć do gry', key: 'escape' },
       { label: 'Zapisz', key: 'z', action: () => this.openSaves('save') },
@@ -357,14 +375,15 @@ G.screens.adventure = {
   },
   nextHuman(st, id, live) {
     if (Net.online(st)) { // online: kolejka przechodzi do innego człowieka – wysyłamy mu stan, sami oglądamy
-      st.cur = id; if (id !== ME) { Net.sendState(st, 'turn'); this.netWatch(true); this.flash(`Tura: ${playerName(st, id)}`); return; }
-      this.netWatch(false);
+      st.cur = id; if (id !== ME) { Net.sendState(st, 'turn'); this.netWatch(true); this.flash(`Tura: ${playerName(st, id)}`); setTimeout(() => netAbsent(id), 600); return; } // gracz rozłączony: gospodarz wybiera, co dalej
+      this.netWatch(false); if (Net.role === 'host') Net.sendState(st, 'sync'); // gospodarz: aktualny stan dla powracających (np. po turze komputera za nieobecnego)
     }
     if (id !== ME) this.setViewer(st, id);
     if (live) this.autosave(st);
     this.startHumanTurn(st, live);
   },
-  lockButtons(on) { for (const b of this.buttons) { if (on) { if (b._was === undefined) { b._was = b.disabled; b.disabled = true; } } else if (b._was !== undefined) { b.disabled = b._was; delete b._was; } } },
+  // Blokada przycisków w turze przeciwnika; oglądając turę innego gracza online menu zostaje (wyjście, koniec gry)
+  lockButtons(on) { for (const b of this.buttons) { if (on && !(this.watching && !this.aiRun && b.label === 'Menu')) { if (b._was === undefined) { b._was = b.disabled; b.disabled = true; } } else if (b._was !== undefined) { b.disabled = b._was; delete b._was; } } },
   skipAi() { const R = this.aiRun; if (!R || R.skip) return; R.skip = true; if (R.anim) { R.anim.anim = null; R.anim = null; } },
   // Odtwarzanie tury SI: widoczne kroki (na odkrytej mapie) z animacją i kamerą, reszta od razu; atak na gracza czeka na jego decyzję
   updateAi(st, dt) {
@@ -502,7 +521,8 @@ G.screens.adventure = {
     drawLayer(ctx, Layers.get(`advChrome_${VW}x${VH}_${uiArtReady() ? 1 : 0}`, VW, VH, paintAdvChrome), 0, 0);
     drawMapView(ctx, st, this); drawPanel(ctx, st, this); drawTapInfo(ctx, st, this);
     if (this.watching && st.players[st.cur]) { // online: czyja tura (oglądamy)
-      const msg = `Tura: ${cap1(playerName(st, st.cur))}${st.players[st.cur].human ? '' : ' (komputer)'} – oglądasz`, w = 300, x = VIEW.x + VIEW.w / 2 - w / 2;
+      const lost = Net.role === 'guest' && !Net.host, away = Net.role === 'host' && st.players[st.cur].human && !Net.guestOn(st.cur);
+      const msg = lost ? 'Brak połączenia z gospodarzem – ponawiam…' : `Tura: ${cap1(playerName(st, st.cur))}${st.players[st.cur].human ? (away ? ' – rozłączony (Menu)' : '') : ' (komputer)'}${away ? '' : ' – oglądasz'}`, w = lost || away ? 380 : 300, x = VIEW.x + VIEW.w / 2 - w / 2;
       drawParchment(ctx, x, VIEW.y + 10, w, 36); text(ctx, msg, x + w / 2, VIEW.y + 33, { size: 16, align: 'center', color: '#3a1e08', fam: 'title' });
     }
     this.buttons.forEach(b => b.draw(ctx));

@@ -115,9 +115,10 @@ G.screens.town = {
   onPointerMove(x, y) { this.hoverSlot = this.slotAt(x, y); },
   // Miejsca armii: [{ a: tablica armii, i: indeks }] garnizonu i bohatera w mieście
   armySlotAt(x, y) {
-    const t = this.town(), hh = heroInTown(G.state, t), gh = garrisonHero(G.state, t), g = hitRect(this.garRects, x, y); if (g) return { a: gh ? gh.army : t.garrison, i: g.i };
-    const r = hh && hitRect(this.heroRects, x, y); return r ? { a: hh.army, i: r.i } : null;
+    const t = this.town(), hh = heroInTown(G.state, t), gh = garrisonHero(G.state, t), g = hitRect(this.garRects, x, y); if (g) return { a: gh ? gh.army : t.garrison, i: g.i, h: gh };
+    const r = hh && hitRect(this.heroRects, x, y); return r ? { a: hh.army, i: r.i, h: hh } : null;
   },
+  rightCard(x, y) { const slot = this.armySlotAt(x, y); return slot ? unitCard(slot.a[slot.i], slot.h) : null; },
   // Okno ulepszenia oddziału (drugie kliknięcie w zaznaczony oddział); „Ulepsz wszystkie” = każdy oddział w mieście, na który starczy
   showUpgrade(a, i) {
     const st = G.state, t = this.town(), x = a[i], to = x && townUpgradeTarget(t, x.cid), R = playerOf(st, t.owner).resources; if (!x) return;

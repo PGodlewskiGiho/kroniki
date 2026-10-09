@@ -9,7 +9,8 @@
 const NET_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const Net = {
   peer: null, role: null, code: null, guests: [], host: null, me: -1, name: '', status: '', err: '', inGame: false,
-  seq: 0, inSeq: 0, sendQ: Promise.resolve(), lastPacked: null, lastSyncT: 0, lastSyncKey: '', battleQ: null, retry: null,
+  seq: 0, inSeq: 0, sendQ: Promise.resolve(), lastPacked: null, lastSyncT: 0, lastSyncKey: '', battleQ: null, retry: null, pendingTurn: null,
+  pick() { return netPick(G.settings.netPick || {}); }, // frakcja i bohater, które gość wybiera sobie w poczekalni
   token() { let t = null; try { t = localStorage.getItem('kk_net_token'); } catch (e) {} if (!t) { t = Math.random().toString(36).slice(2) + Date.now().toString(36); try { localStorage.setItem('kk_net_token', t); } catch (e) {} } return t; },
   peerOpts() { return Object.assign({ debug: 0 }, window.KK_PEER || {}); },
   peerId(code) { return 'kroniki-krolestw-' + code.toLowerCase(); },
@@ -58,7 +59,7 @@ const Net = {
   },
   hostConn(conn) {
     conn.on('data', m => this.hostData(conn, m));
-    conn.on('close', () => { const g = this.guests.find(g => g.conn === conn); if (g) { g.conn = null; this.lobbyUpdate(); if (this.inGame) netFlash(`${g.name} rozłączył się. Gra czeka na jego powrót.`); } });
+    conn.on('close', () => { const g = this.guests.find(g => g.conn === conn); if (g) { g.conn = null; this.lobbyUpdate(); if (this.inGame) { netFlash(`${g.name} rozłączył się. Może wrócić; jego tury może też rozegrać komputer (Menu).`); netAbsent(g.pid); } } });
   },
   hostData(conn, m) {
     if (!m || typeof m !== 'object' || typeof m.t !== 'string') return; // wiadomości od innych graczy: tylko obiekty naszego protokołu
@@ -69,13 +70,21 @@ const Net = {
         g = { token: tok, name: netName(m.name) || `Gracz ${this.guests.length + 2}`, pid: -1 }; this.guests.push(g);
       }
       if (g.conn && g.conn !== conn) { try { g.conn.close(); } catch (e) {} }
-      g.conn = conn; if (netName(m.name)) g.name = netName(m.name); this.lobbyUpdate();
+      g.conn = conn; if (netName(m.name)) g.name = netName(m.name); if (!this.inGame) Object.assign(g, netPick(m)); this.lobbyUpdate();
+      const st = this.inGame && G.state, P = st && st.players[g.pid];
+      if (P && P.away) { P.human = true; P.away = false; } // wrócił: jego tury znów rozgrywa on, nie komputer
+      if (st && m.turn && st.cur === g.pid) { // turę zakończył bez połączenia: przyjmujemy ją, jeśli gra wciąż na niego czekała
+        this.lastPacked = m.turn; this.seq++; for (const o of this.guests) if (o !== g && o.conn) o.conn.send({ t: 'state', kind: 'turn', d: m.turn, seq: this.seq });
+        this.onData({ t: 'state', kind: 'turn', d: m.turn });
+      }
       if (this.inGame && this.lastPacked) { conn.send({ t: 'state', kind: 'resume', d: this.lastPacked, you: g.pid, seq: this.seq }); netFlash(`${g.name} wrócił do gry.`); }
       return;
     }
+    if (m.t === 'pick') { const g = this.guests.find(g => g.conn === conn); if (g && !this.inGame) { Object.assign(g, netPick(m)); this.lobbyUpdate(); } return; } // gość wybrał frakcję i bohatera
     if (m.to != null && m.to !== this.me) { const g = this.guests.find(g => g.pid === m.to); if (g && g.conn) g.conn.send(m); return; } // wiadomość do konkretnego gracza: dalej
     if (m.to == null && (m.t === 'state' || m.t === 'step' || m.t === 'chat')) for (const g of this.guests) if (g.conn && g.conn !== conn) g.conn.send(m); // do wszystkich: rozsyłamy pozostałym gościom
     if (m.t === 'state') this.lastPacked = m.d;
+    if (m.t === 'end') return; // koniec gry ogłasza tylko gospodarz
     this.onData(m);
   },
   join(code, name) {
@@ -89,7 +98,7 @@ const Net = {
   connectHost() {
     if (!this.peer || this.peer.destroyed) return;
     const conn = this.peer.connect(this.peerId(this.code), { reliable: true });
-    conn.on('open', () => { this.host = conn; this.err = ''; this.status = this.inGame ? 'Połączono ponownie.' : `Połączono z grą ${this.code}. Czekaj, aż gospodarz ją rozpocznie.`; conn.send({ t: 'hello', token: this.token(), name: this.name }); G.dirty = true; });
+    conn.on('open', () => { this.host = conn; this.err = ''; this.status = this.inGame ? 'Połączono ponownie.' : `Połączono z grą ${this.code}. Czekaj, aż gospodarz ją rozpocznie.`; conn.send({ t: 'hello', token: this.token(), name: this.name, ...this.pick(), turn: this.pendingTurn }); G.dirty = true; });
     conn.on('data', m => this.onData(m));
     conn.on('close', () => { if (this.host === conn) { this.host = null; this.status = 'Utracono połączenie z gospodarzem. Ponawiam…'; netFlash(this.status); this.scheduleRetry(); } });
   },
@@ -100,7 +109,9 @@ const Net = {
     if (this.role === 'guest') { if (this.host && this.host.open) this.host.send(m); return; }
     for (const g of this.guests) if (g.conn && g.conn.open && (to == null || g.pid === to)) g.conn.send(m);
   },
-  lobbyUpdate() { G.dirty = true; if (this.role === 'host') this.send({ t: 'lobby', host: this.name, players: this.guests.map(g => ({ name: g.name, on: !!g.conn })) }); },
+  lobbyUpdate() { G.dirty = true; if (this.role === 'host') this.send({ t: 'lobby', host: this.name, players: this.guests.map(g => ({ name: g.name, on: !!g.conn, faction: g.faction || 'random', hero: g.hero || 'random' })) }); },
+  sendPick() { if (this.role === 'guest') this.send({ t: 'pick', ...this.pick() }); },
+  guestOn(pid) { return this.guests.some(g => g.pid === pid && g.conn); }, // gospodarz: czy gracz pid jest połączony
   // --- gra ---
   // Gospodarz: nowa gra gotowa (createNewGame) -> ludzie po kolei: gospodarz, potem goście w kolejności dołączenia
   async startGame(st) {
@@ -116,7 +127,9 @@ const Net = {
   // Wysłanie stanu: 'turn' (koniec tury, gra przechodzi dalej) albo 'sync' (podgląd w trakcie tury)
   sendState(st, kind) {
     const seq = ++this.seq;
-    this.sendQ = this.sendQ.then(async () => { const d = await this.pack(st); if (this.role === 'host') this.lastPacked = d; this.send({ t: 'state', kind, d, seq, from: ME }); if (kind === 'turn') this.saveHost(st); }).catch(() => {});
+    this.sendQ = this.sendQ.then(async () => { const d = await this.pack(st); if (this.role === 'host') this.lastPacked = d;
+      if (this.role === 'guest' && kind === 'turn' && !(this.host && this.host.open)) this.pendingTurn = d; // bez połączenia: tura pójdzie do gospodarza przy powrocie
+      this.send({ t: 'state', kind, d, seq, from: ME }); if (kind === 'turn') this.saveHost(st); }).catch(() => {});
     return this.sendQ;
   },
   computing(st = G.state) { return this.online(st) && (st.cur === ME || !!G.screens.adventure.aiRun); }, // ta przeglądarka liczy teraz grę (swoja tura albo tury komputera po niej)
@@ -125,7 +138,7 @@ const Net = {
   tick() {
     const st = G.state; if (!this.computing(st)) return;
     if (G.time - this.lastSyncT < 1 || st.heroes.some(h => h.anim)) return; this.lastSyncT = G.time;
-    const key = JSON.stringify([st.dayTotal, st.heroes.map(h => [h.id, h.x, h.y, h.mp, armySize(h.army)]), st.towns.map(t => [t.owner, t.built.length]), st.objects.filter(o => o.dead).length, st.players.map(p => RESOURCES.map(r => p.resources[r.id]).join())]);
+    const key = JSON.stringify([st.dayTotal, st.cur, st.heroes.map(h => [h.id, h.x, h.y, h.mp, armySize(h.army)]), st.towns.map(t => [t.owner, t.built.length]), st.objects.filter(o => o.dead).length, st.players.map(p => RESOURCES.map(r => p.resources[r.id]).join())]);
     if (key === this.lastSyncKey) return; this.lastSyncKey = key; this.sendState(st, 'sync');
   },
   async onData(m) {
@@ -133,11 +146,12 @@ const Net = {
     if (m.t === 'lobby') { this.lobby = m; G.dirty = true; return; }
     if (m.t === 'chat') { netChatAdd(m.from, m.text); return; }
     if (m.t === 'deny') { this.err = m.why; this.close(); G.dirty = true; return; }
+    if (m.t === 'end') { if (this.role === 'guest') netEnded(); return; }
     if (m.t === 'step') { netStep(m); return; }
     if (m.t === 'bcmd') { if (this.battleQ) this.battleQ.push(m.c); return; }
     if (m.t === 'bstart') { await netBattleStart(m); return; }
     if (m.t === 'state') {
-      if (m.you != null) this.me = m.you;
+      if (m.you != null) this.me = m.you; if (m.kind === 'resume') this.pendingTurn = null;
       if (m.seq != null && m.kind === 'sync' && m.seq < this.inSeq) return; this.inSeq = Math.max(this.inSeq, m.seq || 0);
       const d = await this.unpack(m.d); netApplyState(d, m.kind); return;
     }
@@ -146,6 +160,28 @@ const Net = {
 // Czat: T (albo przycisk w poczekalni) otwiera pole wiadomości; ostatnie wiadomości widać w rogu ekranu przez 15 s
 const NetChat = { lines: [] };
 const NET_MAX = 64 * 1024 * 1024, netName = v => (v == null ? '' : String(v).replace(/[\u0000-\u001f]/g, '').slice(0, 24));
+// Wybór gościa: frakcja z listy (albo losowa) i bohater tej frakcji (albo losowy)
+function netPick(m) {
+  const faction = FACTIONS.some(f => f.id === m.faction) ? m.faction : 'random', hero = faction !== 'random' && factionOf(faction).heroes.some(([n]) => n === m.hero) ? m.hero : 'random';
+  return { faction, hero };
+}
+// Gospodarz: tura gracza, który się rozłączył – okno z wyborem (czekać, komputer gra za niego, koniec gry); nikt nie jest uwięziony
+function netAbsent(pid) {
+  const a = G.screens.adventure, st = G.state;
+  if (Net.role !== 'host' || !Net.online(st) || st.cur !== pid || pid === ME || Net.guestOn(pid) || !st.players[pid].human) return;
+  if (G.screen !== a || a.aiRun || G.modal) { setTimeout(() => netAbsent(pid), 1000); return; } // otwarte okno albo inny ekran: zapytamy, gdy się zamknie
+  const key = `${pid}:${st.dayTotal}`; if (Net.absentAsked === key) return; Net.absentAsked = key; // „Czekaj” – w tej turze już nie pytamy (zostaje Menu)
+  const nm = cap1(playerName(st, pid));
+  showDialog(`${nm} jest rozłączony, a teraz jego tura. Możesz poczekać na jego powrót, oddać jego tury komputerowi (gdy wróci, znów gra sam) albo zakończyć grę – stan zostaje zapisany i da się ją wznowić.`, [
+    { label: 'Czekaj', key: 'escape' }, { label: 'Komputer gra', key: 'k', action: () => a.netTakeOver(pid) }, { label: 'Zakończ grę', key: 'z', action: () => netEndGame() }]);
+}
+const netPickText = g => (g.faction && g.faction !== 'random' ? ` – ${factionOf(g.faction).name}${g.hero && g.hero !== 'random' ? `, ${g.hero}` : ''}` : ' – frakcja losowa');
+// Gospodarz kończy grę online: goście dostają wiadomość, stan zostaje (Gra online → Wznów grę)
+function netEndGame() { if (Net.role === 'host') { Net.saveHost(G.state); Net.send({ t: 'end' }); } setTimeout(() => G.go('menu'), 300); }
+function netEnded() {
+  G.modal = null; Net.close();
+  showDialog('Gospodarz zakończył grę. Jej stan jest zapisany u niego – gdy ją wznowi, wrócisz przez „Gra online” → „Wróć do gry”.', [{ label: 'OK', key: 'enter', action: () => G.go('menu') }], { locked: true });
+}
 function netChatAdd(from, txt) { NetChat.lines.push({ from: netName(from), text: String(txt).slice(0, 120), t: G.time }); NetChat.lines = NetChat.lines.slice(-30); Sfx.play('page', { vol: 0.3 }); G.dirty = true; }
 function netChatOpen() {
   if (!Net.peer || G.modal) return;
@@ -169,6 +205,7 @@ function netFlash(msg) { const a = G.screens.adventure; if (G.screen === a) a.fl
 // Nowy stan od innego gracza: start gry, powrót po rozłączeniu, podgląd tury albo koniec tury (przejście kolejki)
 function netApplyState(d, kind) {
   if (G.screenName === 'battle') { Net.pending = [d, kind]; return; } // w trakcie wspólnej bitwy (i jej wyniku) stan poczeka na powrót na mapę
+  if (G.fade.next) { setTimeout(() => netApplyState(d, kind), 150); return; } // trwa przejście ekranu (G.go nic by nie zrobił): stan poczeka chwilę
   const old = G.state, st = deserializeGame(d); ME = Net.me; Net.inGame = true;
   const same = old && old.online && old.map.n === st.map.n && old.map.seed === st.map.seed;
   if (same) { // ta sama gra: zostaje mapa (namalowany teren), moja mgła wojny i kamera
@@ -223,7 +260,18 @@ G.screens.online = {
       btn(368, 'Czat (T)', () => netChatOpen(), { size: 15 });
       btn(420, 'Wybierz mapę i graj', () => G.go('setup', { online: true }), { key: 'enter', primary: true, tip: 'Ustawienia nowej gry. Miejsc „Człowiek” musi być tyle, ilu jest graczy w pokoju.' });
       btn(472, 'Zamknij pokój', () => { Net.close(); this.setMode('start'); }, { key: 'escape' });
-    } else {
+    } else { // gość: gospodarz ustawia świat i zasady, a frakcję (zamek) i bohatera każdy wybiera sobie sam
+      const set = o => { G.settings.netPick = Object.assign(Net.pick(), o); saveSettings(); Net.sendPick(); };
+      const fa = new Button(170, 196, 225, 44, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)]; set({ faction: ids[(ids.indexOf(Net.pick().faction) + 1) % ids.length], hero: 'random' }); },
+        { size: 15, lead: (ctx, cx, cy) => factionMedal(ctx, Net.pick().faction, cx, cy, 30) });
+      Object.defineProperty(fa, 'label', { get: () => { const f = Net.pick().faction; return f === 'random' ? 'Frakcja: losowa' : factionOf(f).name; }, set() {} });
+      Object.defineProperty(fa, 'tip', { get: () => { const f = Net.pick().faction; return `Twoja frakcja (zamek)${f === 'random' ? ': losowa' : ` – ${factionOf(f).name}: ${factionOf(f).desc}`}. Mapę i zasady ustawia gospodarz, frakcję każdy wybiera sam. Kliknij, aby zmienić.`; }, set() {} });
+      const he = new Button(405, 196, 225, 44, '', () => { const o = Net.pick(), ids = ['random', ...factionOf(o.faction).heroes.map(([n]) => n)]; set({ hero: ids[(ids.indexOf(o.hero) + 1) % ids.length] }); },
+        { size: 15, lead: (ctx, cx, cy) => heroPickMedal(ctx, { ...Net.pick(), color: 'red' }, cx, cy, 16) });
+      Object.defineProperty(he, 'label', { get: () => { const o = Net.pick(); return o.hero === 'random' ? 'Bohater: losowy' : o.hero; }, set() {} });
+      Object.defineProperty(he, 'disabled', { get: () => Net.pick().faction === 'random', set() {} });
+      Object.defineProperty(he, 'tip', { get: () => (Net.pick().faction === 'random' ? 'Bohater startowy: najpierw wybierz frakcję.' : `Bohater startowy${Net.pick().hero === 'random' ? ': losowy z frakcji' : `: ${heroPickTip(Net.pick().faction, Net.pick().hero)}`}. Kliknij, aby zmienić.`), set() {} });
+      B.push(fa, he);
       btn(420, 'Czat (T)', () => netChatOpen(), { size: 15 });
       btn(472, 'Rozłącz', () => { Net.close(); this.setMode('start'); }, { key: 'escape' });
     }
@@ -249,11 +297,11 @@ G.screens.online = {
       if (Net.code && Net.peer && Net.peer.open) { L('Kod gry:', 140); goldText(ctx, Net.code, W / 2, 184, 40); L('Podaj go znajomym: wybierają „Gra online” → „Dołącz do gry”.', 222, { size: 14, italic: true }); }
       else L(Net.err || Net.status || 'Zakładanie pokoju…', 160, { color: Net.err ? '#9a2a1a' : '#3a1e08' });
       L('Gracze w pokoju:', 262, { fam: 'title', size: 17 });
-      const rows = [{ name: `${Net.name || 'Ty'} (gospodarz)`, on: true }, ...Net.guests.map(g => ({ name: g.name, on: !!g.conn }))];
+      const rows = [{ name: `${Net.name || 'Ty'} (gospodarz)`, on: true }, ...Net.guests.map(g => ({ name: g.name + netPickText(g), on: !!g.conn }))];
       rows.forEach((r, i) => L(`${r.name}${r.on ? '' : ' – rozłączony'}`, 290 + i * 24, { color: r.on ? '#3a1e08' : '#8a6a44' }));
     } else {
       L(Net.err || Net.status, 160, { color: Net.err ? '#9a2a1a' : '#3a1e08' });
-      if (Net.lobby) { L('Gracze w pokoju:', 262, { fam: 'title', size: 17 }); [`${Net.lobby.host || 'Gospodarz'} (gospodarz)`, ...Net.lobby.players.map(p => p.name + (p.on ? '' : ' – rozłączony'))].forEach((s, i) => L(s, 290 + i * 24)); }
+      if (Net.lobby) { L('Gracze w pokoju:', 262, { fam: 'title', size: 17 }); [`${Net.lobby.host || 'Gospodarz'} (gospodarz)`, ...Net.lobby.players.map(p => p.name + netPickText(p) + (p.on ? '' : ' – rozłączony'))].forEach((s, i) => L(s, 290 + i * 24)); }
     }
     this.buttons.forEach(b => b.draw(ctx));
   },

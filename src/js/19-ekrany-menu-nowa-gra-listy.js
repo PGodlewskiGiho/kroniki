@@ -346,7 +346,7 @@ G.screens.setup = {
       const ty = new Button(0, 0, 38, 40, '', () => this.toggleType(i), { tip: 'Człowiek (hełm) albo komputer (tryby). Kilku ludzi gra na zmianę przy jednym ekranie (hot-seat). Kliknij, aby zmienić.' });
       const nm = new Button(0, 0, 60, 40, '', () => askText(`Imię gracza (${PLAYER_COLORS.find(c => c.id === col().color).name.toLowerCase()}). Puste = nazwa od koloru.`, col().name, v => { col().name = v; saveSettings(); }), { size: 13, tip: 'Imię człowieka widoczne w turach i wieściach (kliknij, aby wpisać).' });
       const fa = new Button(0, 0, 112, 40, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; o.hero = 'random'; saveSettings(); }, { size: 13, lead: (ctx, cx, cy) => factionMedal(ctx, col().faction, cx, cy, 32) });
-      Object.defineProperty(fa, 'tip', { get: () => { const f = col().faction; return f === 'random' ? 'Frakcja gracza: losowa (kliknij, aby zmienić).' : `${factionOf(f).name}: ${factionOf(f).desc} Cecha: ${traitText(f)}. Magia: ${magicText(f)}. Kliknij, aby zmienić.`; }, set() {} });
+      Object.defineProperty(fa, 'tip', { get: () => { const g = this.guestOf(i); if (g) return `Frakcję i bohatera wybiera ${g.name} u siebie, w poczekalni gry online.`; const f = col().faction; return f === 'random' ? 'Frakcja gracza: losowa (kliknij, aby zmienić).' : `${factionOf(f).name}: ${factionOf(f).desc} Cecha: ${traitText(f)}. Magia: ${magicText(f)}. Kliknij, aby zmienić.`; }, set() {} });
       const he = new Button(0, 0, 98, 40, '', () => { const o = col(), ids = ['random', ...factionOf(o.faction).heroes.map(([n]) => n)]; o.hero = ids[(ids.indexOf(o.hero || 'random') + 1) % ids.length]; saveSettings(); }, { size: 12, lead: (ctx, cx, cy) => heroPickMedal(ctx, col(), cx, cy, 16) });
       Object.defineProperty(he, 'tip', { get: () => { const o = col(); return o.faction === 'random' ? 'Bohater startowy: najpierw wybierz frakcję.' : !o.hero || o.hero === 'random' ? 'Bohater startowy: losowy z frakcji (kliknij, aby wybrać konkretnego).' : `Bohater startowy: ${heroPickTip(o.faction, o.hero)}. Kliknij, aby zmienić.`; }, set() {} });
       const tm = new Button(0, 0, 24, 40, '', () => { const o = col(); o.team = ((o.team || 0) + 1) % (TEAMS + 1); saveSettings(); }, { icon: (ctx, cx, cy, c) => teamBadge(ctx, col().team || 0, cx, cy, c) });
@@ -396,6 +396,13 @@ G.screens.setup = {
   addSlot() { const S = G.settings, o = S.slots.find(q => q.type === 'off'); if (!o || this.active() >= setupCap(S)) return; o.type = 'ai'; o.faction = 'random'; o.hero = 'random'; saveSettings(); this.relayout(); },
   removeSlot(i) { const S = G.settings, o = S.slots[i]; if (o.type === 'human' && !S.slots.some((q, j) => j !== i && q.type === 'human')) return; if (this.active() <= 1) return; o.type = 'off'; saveSettings(); this.relayout(); },
   active() { return G.settings.slots.filter(o => o.type !== 'off').length; },
+  // Gra online: kolejne miejsca „Człowiek” po gospodarzu należą do połączonych gości (w kolejności dołączenia); ich frakcję i bohatera
+  // wybierają oni sami w poczekalni, tu tylko je widać
+  guestOf(i) {
+    if (!this.online) return null; const hu = G.settings.slots.map((o, j) => (o.type === 'human' ? j : -1)).filter(j => j >= 0), k = hu.indexOf(i);
+    return k >= 1 ? Net.guests.filter(g => g.conn)[k - 1] || null : null;
+  },
+  syncGuests() { if (this.online) G.settings.slots.forEach((o, i) => { const g = this.guestOf(i); if (g) Object.assign(o, { faction: g.faction || 'random', hero: g.hero || 'random', name: g.name }); }); },
   start() {
     const n = this.active(), cap = setupCap(G.settings);
     if (n > cap) { showDialog(`Na tej mapie zmieści się najwyżej ${cap} graczy, a wybranych jest ${n}. Wybierz większą mapę albo zwolnij miejsca.`, [{ label: 'OK', key: 'enter' }]); return; }
@@ -404,19 +411,20 @@ G.screens.setup = {
     if (this.online) { // gra online: ludzi tylu, ilu graczy w pokoju (gospodarz + połączeni goście)
       const need = 1 + Net.guests.filter(g => g.conn).length, hu = G.settings.slots.filter(o => o.type === 'human').length;
       if (hu !== need) { showDialog(`W pokoju jest ${need} graczy, a miejsc „Człowiek” jest ${hu}. Ustaw tyle samo.`, [{ label: 'OK', key: 'enter' }]); return; }
-      Net.guests = Net.guests.filter(g => g.conn); saveSettings(); const st = G.state = createNewGame(G.settings);
+      this.syncGuests(); Net.guests = Net.guests.filter(g => g.conn); saveSettings(); const st = G.state = createNewGame(G.settings);
       Net.startGame(st).then(() => G.go('adventure', { welcome: st.cur === ME }));
       return;
     }
     startNewGame();
   },
   draw(ctx) {
-    const S = G.settings; this.relayout();
+    const S = G.settings; this.syncGuests(); this.relayout();
     for (const [i, b] of (this.slotBtns || []).entries()) {
       const o = S.slots[i]; b.ty.icon = icoK3(o.type === 'human' ? 'ic_helm' : 'ic_gear'); b.fa.label = o.faction === 'random' ? 'Losowa' : factionOf(o.faction).name;
       b.nm.disabled = o.type !== 'human'; b.nm.label = o.type !== 'human' ? 'Komputer' : o.name || 'Imię…';
       b.he.label = !o.hero || o.hero === 'random' ? 'Losowy' : o.hero; b.he.disabled = o.faction === 'random';
       b.rm.disabled = this.active() <= 1 || (o.type === 'human' && S.slots.filter(q => q.type === 'human').length === 1);
+      b.fa.disabled = false; if (this.guestOf(i)) b.fa.disabled = b.he.disabled = b.nm.disabled = true; // wybór gościa
     }
     dimmedMenuScene(ctx, 0.5);
     const M = this.M; drawParchment(ctx, 40, M.top, 720, M.ph);

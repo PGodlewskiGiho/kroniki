@@ -36,6 +36,12 @@ test('pokój: gospodarz z kodem, gość dołącza i widzi listę graczy', async 
   await until(A.page, () => Net.guests.length === 1 && Net.guests[0].conn && Net.guests[0].conn.open);
   await until(B.page, () => Net.lobby && Net.lobby.players.length === 1);
   assert.deepEqual(await B.page.evaluate(() => [Net.lobby.host, Net.lobby.players[0].name]), ['Ala', 'Bob']);
+  // gość sam wybiera swoją frakcję i bohatera (gospodarz ustawia tylko świat i zasady)
+  const hero = await B.page.evaluate(() => { const fa = G.screens.online.buttons.find(b => /Frakcja/.test(b.label)); while (Net.pick().faction !== 'inferno') fa.action();
+    const he = G.screens.online.buttons.find(b => /Bohater/.test(b.label)); he.action(); return Net.pick().hero; });
+  assert.notEqual(hero, 'random');
+  await until(A.page, h => Net.guests[0].faction === 'inferno' && Net.guests[0].hero === h, hero);
+  await until(B.page, () => Net.lobby.players[0].faction === 'inferno');
 });
 
 test('czat: wiadomość gospodarza dociera do gościa', async () => {
@@ -55,6 +61,8 @@ test('start gry: gość dostaje świat i ogląda turę gospodarza, podgląd zmia
   await until(B.page, () => G.screenName === 'adventure' && G.state && G.state.online);
   const r = await B.page.evaluate(() => ({ me: ME, cur: G.state.cur, watching: G.screens.adventure.watching, name: G.state.players[ME].name }));
   assert.deepEqual(r, { me: 1, cur: 0, watching: true, name: 'Bob' });
+  const fac = await B.page.evaluate(() => [G.state.players[ME].faction, G.state.players[0].faction, G.state.heroes.find(h => h.owner === ME).name === Net.pick().hero]);
+  assert.deepEqual(fac, ['inferno', 'haven', true]); // frakcja i bohater gościa z jego wyboru w poczekalni
   await A.page.evaluate(() => { G.modal = null; G.state.players[0].resources.gold = 77777; });
   await until(B.page, () => G.state.players[0].resources.gold === 77777);
 });
@@ -145,4 +153,28 @@ test('gospodarz wznawia grę po przeładowaniu: ten sam kod, gość wraca sam', 
   await A.page.evaluate(() => G.screens.online.resumeHost(window.__last));
   await until(A.page, () => G.screenName === 'adventure' && G.state && G.state.players[0].resources.gold === 6262, null, 20000);
   await until(B.page, () => Net.host && G.state.players[0].resources.gold === 6262, null, 30000);
+});
+
+test('gość wychodzi do menu: gospodarz nie jest uwięziony – komputer gra za nieobecnego, a ten potem wraca', async () => {
+  await until(A.page, () => G.screenName === 'adventure' && !G.fade.next);
+  await B.page.evaluate(() => { G.modal = null; G.go('menu'); });
+  await until(A.page, () => !Net.guests[0].conn, null, 20000);
+  await A.page.evaluate(() => { G.modal = null; G.screens.adventure.doEndTurn({ live: true }); });
+  await until(A.page, () => G.modal && G.modal.buttons.some(b => b.label === 'Komputer gra'), null, 40000);
+  assert.equal(await A.page.evaluate(() => { const a = G.screens.adventure; return a.watching && !a.buttons.find(b => b.label === 'Menu').disabled; }), true); // menu działa w czasie cudzej tury
+  await A.page.evaluate(() => G.modal.buttons.find(b => b.label === 'Komputer gra').action());
+  await until(A.page, () => G.state.cur === ME && !G.screens.adventure.watching && !G.screens.adventure.aiRun, null, 60000);
+  assert.equal(await A.page.evaluate(() => G.state.players[1].away && !G.state.players[1].human), true);
+  await until(B.page, () => G.screenName === 'menu' && !G.fade.next);
+  await B.page.evaluate(() => { G.go('online'); Net.join(Net.recalled().code, 'Bob'); });
+  await until(A.page, () => Net.guests[0].conn && G.state.players[1].human && !G.state.players[1].away, null, 20000);
+  await until(B.page, () => G.screenName === 'adventure' && G.state && G.state.online && G.screens.adventure.watching, null, 30000);
+});
+
+test('gospodarz kończy grę: gość dostaje wiadomość i wraca do menu, gra zostaje do wznowienia', async () => {
+  await A.page.evaluate(() => { G.modal = null; netEndGame(); });
+  await until(B.page, () => !Net.peer && !!G.modal && G.modal.buttons.length === 1, null, 20000);
+  await B.page.evaluate(() => G.modal.buttons[0].action());
+  await until(B.page, () => G.screenName === 'menu'); await until(A.page, () => G.screenName === 'menu');
+  assert.equal(await A.page.evaluate(() => Net.recalled().role), 'host');
 });
