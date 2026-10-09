@@ -13,7 +13,7 @@
   "haven": {
    "sylvan": 1.07,
    "barrow": 1.25,
-   "fortress": 0.87,
+   "fortress": 1.38,
    "inferno": 1.17,
    "academy": 0.84,
    "dungeon": 1.07,
@@ -22,7 +22,7 @@
   "sylvan": {
    "haven": 1.07,
    "barrow": 1.18,
-   "fortress": 0.25,
+   "fortress": 1.18,
    "inferno": 1.04,
    "academy": 1.12,
    "dungeon": 1.04,
@@ -31,26 +31,26 @@
   "barrow": {
    "haven": 0.5,
    "sylvan": 0.96,
-   "fortress": 0.25,
+   "fortress": 0.75,
    "inferno": 0.9,
    "academy": 0.61,
    "dungeon": 1.06,
    "stronghold": 0.84
   },
   "fortress": {
-   "haven": 0.96,
-   "sylvan": 1.5,
-   "barrow": 1.79,
-   "inferno": 1.5,
-   "academy": 1.47,
-   "dungeon": 1.5,
-   "stronghold": 1.38
+   "haven": 0.75,
+   "sylvan": 0.75,
+   "barrow": 1.17,
+   "inferno": 1.04,
+   "academy": 0.84,
+   "dungeon": 1.06,
+   "stronghold": 0.7
   },
   "inferno": {
    "haven": 0.82,
    "sylvan": 0.93,
    "barrow": 0.93,
-   "fortress": 0.25,
+   "fortress": 0.84,
    "academy": 1.08,
    "dungeon": 0.93,
    "stronghold": 0.75
@@ -59,7 +59,7 @@
    "haven": 0.94,
    "sylvan": 0.93,
    "barrow": 1.25,
-   "fortress": 0.25,
+   "fortress": 1.18,
    "inferno": 1.06,
    "dungeon": 0.87,
    "stronghold": 0.84
@@ -68,7 +68,7 @@
    "haven": 0.89,
    "sylvan": 0.93,
    "barrow": 1.21,
-   "fortress": 0.25,
+   "fortress": 1.21,
    "inferno": 1.12,
    "academy": 0.97,
    "stronghold": 0.84
@@ -77,7 +77,7 @@
    "haven": 1.25,
    "sylvan": 1.07,
    "barrow": 1.25,
-   "fortress": 0.25,
+   "fortress": 1.5,
    "inferno": 1.17,
    "academy": 1.25,
    "dungeon": 1.21
@@ -129,13 +129,13 @@
   "stronghold": "19 hobgoblinRaider, 10 wargRider, 9 orcChief, 5 warAurochs, 4 thunderbird, 3 cyclopsKing, 1 ancientBehemoth"
  },
  "idx": {
-  "haven": 1.062407276939644,
-  "sylvan": 0.9051979780956839,
-  "barrow": 0.7318134410845354,
-  "fortress": 2.1818093420400575,
-  "inferno": 0.8165051512963682,
-  "academy": 0.8886623961223361,
-  "dungeon": 0.8652902816198424,
-  "stronghold": 1.0372672139051888
+  "haven": 1.117532876439152,
+  "sylvan": 1.0626357726782734,
+  "barrow": 0.8159639723100955,
+  "fortress": 0.8895177467264066,
+  "inferno": 0.9139361833533876,
+  "academy": 1.0333212916154628,
+  "dungeon": 0.9927724966137298,
+  "stronghold": 1.237452883720652
  }
 }

@@ -1,0 +1,146 @@
+{
+ "facs": [
+  "haven",
+  "sylvan",
+  "barrow",
+  "fortress",
+  "inferno",
+  "academy",
+  "dungeon",
+  "stronghold"
+ ],
+ "M": {
+  "haven": {
+   "sylvan": 0.78,
+   "barrow": 1.17,
+   "fortress": 1.25,
+   "inferno": 1.17,
+   "academy": 0.84,
+   "dungeon": 1.04,
+   "stronghold": 0.84
+  },
+  "sylvan": {
+   "haven": 1.12,
+   "barrow": 0.75,
+   "fortress": 1.25,
+   "inferno": 1.17,
+   "academy": 1.12,
+   "dungeon": 1.17,
+   "stronghold": 0.84
+  },
+  "barrow": {
+   "haven": 0.94,
+   "sylvan": 1.12,
+   "fortress": 1.18,
+   "inferno": 0.94,
+   "academy": 0.84,
+   "dungeon": 0.84,
+   "stronghold": 0.84
+  },
+  "fortress": {
+   "haven": 0.75,
+   "sylvan": 0.75,
+   "barrow": 0.75,
+   "inferno": 1.04,
+   "academy": 0.75,
+   "dungeon": 0.84,
+   "stronghold": 0.62
+  },
+  "inferno": {
+   "haven": 0.84,
+   "sylvan": 0.75,
+   "barrow": 1.04,
+   "fortress": 1.12,
+   "academy": 0.85,
+   "dungeon": 0.87,
+   "stronghold": 0.84
+  },
+  "academy": {
+   "haven": 1.17,
+   "sylvan": 1.04,
+   "barrow": 1.25,
+   "fortress": 1.25,
+   "inferno": 1.1,
+   "dungeon": 0.84,
+   "stronghold": 0.84
+  },
+  "dungeon": {
+   "haven": 1.12,
+   "sylvan": 0.87,
+   "barrow": 1.17,
+   "fortress": 1.25,
+   "inferno": 1.12,
+   "academy": 1.08,
+   "stronghold": 0.77
+  },
+  "stronghold": {
+   "haven": 1.25,
+   "sylvan": 1.25,
+   "barrow": 1.25,
+   "fortress": 1.5,
+   "inferno": 1.38,
+   "academy": 1.25,
+   "dungeon": 1.25
+  }
+ },
+ "cost": {
+  "haven": {
+   "gold": 19780,
+   "mercury": 3,
+   "crystal": 2,
+   "gems": 8
+  },
+  "sylvan": {
+   "gold": 20180,
+   "gems": 2,
+   "mercury": 6,
+   "crystal": 3
+  },
+  "barrow": {
+   "gold": 18210,
+   "mercury": 10
+  },
+  "fortress": {
+   "gold": 17470,
+   "mercury": 3,
+   "sulfur": 5
+  },
+  "inferno": {
+   "gold": 18750,
+   "mercury": 7,
+   "sulfur": 4
+  },
+  "academy": {
+   "gold": 20265,
+   "gems": 11
+  },
+  "dungeon": {
+   "gold": 18410,
+   "sulfur": 8
+  },
+  "stronghold": {
+   "gold": 20455,
+   "crystal": 10
+  }
+ },
+ "army": {
+  "haven": "14 guardsman, 9 arbalester, 7 imperialGriffin, 4 templar, 3 inquisitor, 2 paladin, 1 seraph",
+  "sylvan": "14 rusalka, 8 elfHunter, 7 centaurKhan, 4 treantKing, 2 starUnicorn, 2 celestialPhoenix, 1 forestDragon",
+  "barrow": "12 boneLegionary, 8 devourer, 7 zmora, 4 nosferatu, 3 lich, 2 abyssKnight, 1 boneDragon",
+  "fortress": "12 gnollBerserker, 9 lizardSlayer, 8 queenFly, 4 royalBasilisk, 3 armoredGorgon, 2 stormWyvern, 1 primeHydra",
+  "inferno": "15 bies, 8 firebrand, 5 abyssCerberus, 4 doomDemon, 3 archFiend, 2 flameLord, 1 hellLord",
+  "academy": "16 gremlinEngineer, 9 runeGargoyle, 6 mithrilGolem, 4 battleMage, 3 genieLord, 2 nagaEmpress, 1 stormTitan",
+  "dungeon": "14 shadowTroglodyte, 8 fury, 7 doomEye, 4 archMedusa, 3 minotaurLord, 2 ancientManticore, 1 shadowDragon",
+  "stronghold": "19 hobgoblinSlasher, 10 wargChief, 9 orcWarlord, 5 ramAurochs, 4 tempestBird, 3 elderCyclops, 1 primalBehemoth"
+ },
+ "idx": {
+  "haven": 0.9926209187463437,
+  "sylvan": 1.0655722407551584,
+  "barrow": 0.9585877079516327,
+  "fortress": 0.7877085752824577,
+  "inferno": 0.8915128738023881,
+  "academy": 1.0568870257355518,
+  "dungeon": 1.038293062051776,
+  "stronghold": 1.279853062021581
+ }
+}

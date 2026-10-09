@@ -1,27 +1,25 @@
 {
  "games": [
   {
-   "tag": "gra 32 (ziarno 1032, L, mountains, fortress/inferno/haven)",
+   "tag": "gra 1 (ziarno 1001, S, mountains, inferno/barrow)",
    "cfg": {
-    "seed": 1032,
-    "mapSize": "L",
+    "seed": 1001,
+    "mapSize": "S",
     "land": "mountains",
     "underground": false,
     "slots": [
      {
       "type": "human",
-      "faction": "fortress",
-      "team": 0
-     },
-     {
-      "type": "ai",
       "faction": "inferno",
       "team": 0
      },
      {
       "type": "ai",
-      "faction": "haven",
+      "faction": "barrow",
       "team": 0
+     },
+     {
+      "type": "off"
      },
      {
       "type": "off"
@@ -40,34 +38,254 @@
      }
     ]
    },
-   "np": 3,
+   "np": 2,
    "teams": false,
    "factions": [
-    "fortress",
     "inferno",
-    "haven"
+    "barrow"
    ],
-   "slowest": 357,
-   "days": 160,
-   "winner": [
-    1
+   "slowest": 215,
+   "days": 28,
+   "winner": null,
+   "out": [],
+   "towns": [
+    1,
+    2
    ],
+   "maxLevel": 3,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 21465,
+       "lv": 2,
+       "gold": 6690,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 5610,
+       "lv": 1,
+       "gold": 4610,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 39615,
+       "lv": 3,
+       "gold": 7370,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 10045,
+       "lv": 2,
+       "gold": 3120,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 1,
+       "built": 21,
+       "army": 46975,
+       "lv": 3,
+       "gold": 20,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 12715,
+       "lv": 3,
+       "gold": 1310,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 1,
+       "built": 23,
+       "army": 86535,
+       "lv": 3,
+       "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 20,
+       "army": 22145,
+       "lv": 3,
+       "gold": 1520,
+       "out": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 2 (ziarno 1002, S, mountains, inferno/sylvan)",
+   "cfg": {
+    "seed": 1002,
+    "mapSize": "S",
+    "land": "mountains",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "inferno",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "sylvan",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 2,
+   "teams": false,
+   "factions": [
+    "inferno",
+    "sylvan"
+   ],
+   "slowest": 113,
+   "days": 28,
+   "winner": null,
    "out": [],
    "towns": [
     0,
-    8,
-    0
+    2
    ],
-   "maxLevel": 24
+   "maxLevel": 4,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 9105,
+       "lv": 2,
+       "gold": 6200,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 5325,
+       "lv": 2,
+       "gold": 10685,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 9740,
+       "lv": 3,
+       "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 5355,
+       "lv": 3,
+       "gold": 6905,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 18970,
+       "lv": 4,
+       "gold": 65,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 35,
+       "army": 22515,
+       "lv": 4,
+       "gold": 4490,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 20125,
+       "lv": 4,
+       "gold": 2020,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 37,
+       "army": 56730,
+       "lv": 4,
+       "gold": 4375,
+       "out": false
+      }
+     ]
+    }
+   ]
   }
  ],
  "errors": [],
- "wins": {
-  "inferno": 1
- },
+ "wins": {},
  "plays": {
-  "fortress": 1,
-  "inferno": 1,
-  "haven": 1
+  "inferno": 2,
+  "barrow": 1,
+  "sylvan": 1
  }
 }

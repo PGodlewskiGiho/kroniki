@@ -70,13 +70,15 @@ G.state = createNewGame(S, cfg.seed); ME = 0; G.state.players[0].human = false; 
         const left = st.players.filter(q => !q.out && playerAlive(st, q)); for (const q of st.players) if (!q.out && !playerAlive(st, q)) q.out = true;
         const bad = SOAK.check(st); if (d % SAVE_EVERY === 0) { try { const s = SOAK.save(st); if (s) bad.push(s); } catch (e) { bad.push('zapis: ' + e); } G.state = st; ME = 0; }
         const over = left.length <= 1 || left.every(q => allied(st, q.id, left[0].id));
-        return { bad, over, left: left.map(q => q.id), lv: Math.max(0, ...st.heroes.map(h => h.level)), towns: st.players.map(q => st.towns.filter(t => t.owner === q.id).length) };
+        const dev = d % 7 ? null : st.players.map(q => { const ts = st.towns.filter(t => t.owner === q.id), hs = st.heroes.filter(h => h.owner === q.id); // rozwój co tydzień: miasta, budowle, siła armii, poziom, złoto
+          return { towns: ts.length, built: ts.reduce((s, t) => s + t.built.length, 0), army: Math.round(hs.reduce((s, h) => s + armyPower(h.army), 0) + ts.reduce((s, t) => s + armyPower(t.garrison), 0)), lv: Math.max(0, ...hs.map(h => h.level)), gold: q.resources.gold, out: !!q.out }; });
+        return { bad, over, dev, left: left.map(q => q.id), lv: Math.max(0, ...st.heroes.map(h => h.level)), towns: st.players.map(q => st.towns.filter(t => t.owner === q.id).length) };
       }, [d, SAVE_EVERY]).catch(e => ({ err: 'przeglądarka: ' + e }));
       const ms = Date.now() - t0; rec.slowest = Math.max(rec.slowest, ms); rec.days = d;
       if (pageErr.length) errors.push({ tag, day: d, what: 'błąd strony: ' + pageErr.splice(0).join(' | ') });
       if (res.err) { errors.push({ tag, day: d, what: res.err }); dead = true; break; }
       for (const w of [...new Set(res.bad)].slice(0, 8)) if (!errors.some(e => e.tag === tag && e.what === w)) errors.push({ tag, day: d, what: w });
-      rec.towns = res.towns; rec.maxLevel = res.lv;
+      rec.towns = res.towns; rec.maxLevel = res.lv; if (res.dev) (rec.dev = rec.dev || []).push({ day: d, p: res.dev });
       if (res.over) { rec.winner = res.left; break; }
     }
     if (DUMP && !rec.winner) { fs.mkdirSync(DUMP, { recursive: true }); fs.writeFileSync(path.join(DUMP, `gra-${g}.json`), await p.evaluate(() => JSON.stringify(serializeGame(G.state)))); }
@@ -84,6 +86,11 @@ G.state = createNewGame(S, cfg.seed); ME = 0; G.state.players[0].human = false; 
     console.log(`${tag}: ${rec.winner ? `koniec w dniu ${rec.days}, wygrywa ${rec.winner.map(i => rec.factions[i]).join('+')}` : `po ${rec.days} dniach bez rozstrzygnięcia (miasta ${rec.towns})`}, najwolniejszy dzień ${rec.slowest} ms`);
   }
   const wins = {}, plays = {}; for (const g of games) { g.factions.forEach(f => { plays[f] = (plays[f] || 0) + 1; }); if (g.winner) for (const i of g.winner) wins[g.factions[i]] = (wins[g.factions[i]] || 0) + 1 / g.winner.length; }
+  // rozwój frakcji: średnio po graczach danej frakcji (tylko ci, którzy jeszcze grają), tygodnie 2, 4, 8
+  const W = [14, 28, 56], dev = {}; for (const g of games) for (const s of g.dev || []) if (W.includes(s.day)) s.p.forEach((q, i) => { if (q.out) return; const k = g.factions[i] + '|' + s.day; (dev[k] = dev[k] || []).push(q); });
+  const avg = (a, f) => a && a.length ? a.reduce((s, q) => s + f(q), 0) / a.length : NaN;
+  console.log('\nRozwój (średnio): budowle / siła armii (tys.) / poziom bohatera w dniach ' + W.join(', '));
+  for (const f of facs) console.log('  ' + f.padEnd(11) + W.map(d => { const a = dev[f + '|' + d]; return a ? `${avg(a, q => q.built).toFixed(0).padStart(3)} ${(avg(a, q => q.army) / 1000).toFixed(0).padStart(4)}k ${avg(a, q => q.lv).toFixed(1).padStart(4)}` : '      -       '; }).join('   |'));
   console.log('\nFrakcje: wygrane / gry'); for (const f of facs) console.log(`  ${f.padEnd(11)} ${(wins[f] || 0).toFixed(1).padStart(5)} / ${plays[f] || 0}`);
   console.log(`\nBłędy: ${errors.length}`); for (const e of errors) console.log(`  [${e.tag}, dzień ${e.day}] ${e.what.slice(0, 600)}`);
   fs.writeFileSync(path.join(__dirname, 'wynik-gry.json'), JSON.stringify({ games, errors, wins, plays }, null, 1)); await b.close();
