@@ -1,21 +1,741 @@
 {
  "games": [
   {
-   "tag": "gra 1 (ziarno 1001, S, mountains, inferno/barrow)",
+   "tag": "gra 101 (ziarno 1101, L, random, podziemia, haven/inferno/academy/stronghold)",
    "cfg": {
-    "seed": 1001,
-    "mapSize": "S",
-    "land": "mountains",
-    "underground": false,
+    "seed": 1101,
+    "mapSize": "L",
+    "land": "random",
+    "underground": true,
     "slots": [
      {
       "type": "human",
+      "faction": "haven",
+      "team": 0
+     },
+     {
+      "type": "ai",
       "faction": "inferno",
       "team": 0
      },
      {
       "type": "ai",
+      "faction": "academy",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "stronghold",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 4,
+   "teams": false,
+   "factions": [
+    "haven",
+    "inferno",
+    "academy",
+    "stronghold"
+   ],
+   "slowest": 720,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    2,
+    2,
+    3,
+    0
+   ],
+   "maxLevel": 22,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 17543,
+       "lv": 2,
+       "gold": 8840,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 7075,
+       "lv": 1,
+       "gold": 6050,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 3322,
+       "lv": 1,
+       "gold": 8590,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 7,
+       "army": 6978,
+       "lv": 2,
+       "gold": 10950,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 11,
+       "army": 47708,
+       "lv": 5,
+       "gold": 5565,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 15430,
+       "lv": 3,
+       "gold": 4410,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 14383,
+       "lv": 4,
+       "gold": 9630,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 11,
+       "army": 1520,
+       "lv": 2,
+       "gold": 1310,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 2,
+       "built": 21,
+       "army": 62412,
+       "lv": 6,
+       "gold": 15,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 18,
+       "army": 23870,
+       "lv": 4,
+       "gold": 5350,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 25,
+       "army": 24686,
+       "lv": 4,
+       "gold": 5452,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 10076,
+       "lv": 2,
+       "gold": 2750,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 1,
+       "built": 6,
+       "army": 81424,
+       "lv": 8,
+       "gold": 315,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 27,
+       "army": 45745,
+       "lv": 4,
+       "gold": 5030,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 32,
+       "army": 46011,
+       "lv": 5,
+       "gold": 8838,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 34,
+       "army": 18416,
+       "lv": 2,
+       "gold": 4750,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 3,
+       "built": 45,
+       "army": 101002,
+       "lv": 11,
+       "gold": 5,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 33,
+       "army": 63909,
+       "lv": 7,
+       "gold": 5030,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 39,
+       "army": 73877,
+       "lv": 6,
+       "gold": 6689,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 16496,
+       "lv": 7,
+       "gold": 2025,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 2,
+       "built": 45,
+       "army": 71375,
+       "lv": 12,
+       "gold": 1025,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 35,
+       "army": 129731,
+       "lv": 11,
+       "gold": 11890,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 49,
+       "army": 111052,
+       "lv": 7,
+       "gold": 9552,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 1122,
+       "lv": 2,
+       "gold": 1625,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 1,
+       "built": 30,
+       "army": 93314,
+       "lv": 13,
+       "gold": 35,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 41,
+       "army": 352476,
+       "lv": 20,
+       "gold": 6558,
+       "out": false
+      },
+      {
+       "towns": 4,
+       "built": 71,
+       "army": 161067,
+       "lv": 8,
+       "gold": 12377,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1625,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 1,
+       "built": 32,
+       "army": 126050,
+       "lv": 13,
+       "gold": 40,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 47,
+       "army": 423048,
+       "lv": 22,
+       "gold": 6850,
+       "out": false
+      },
+      {
+       "towns": 4,
+       "built": 76,
+       "army": 227594,
+       "lv": 8,
+       "gold": 8381,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1625,
+       "out": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 102 (ziarno 1102, M, mixed, sylvan/haven/fortress/barrow)",
+   "cfg": {
+    "seed": 1102,
+    "mapSize": "M",
+    "land": "mixed",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "sylvan",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "haven",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "fortress",
+      "team": 0
+     },
+     {
+      "type": "ai",
       "faction": "barrow",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 4,
+   "teams": false,
+   "factions": [
+    "sylvan",
+    "haven",
+    "fortress",
+    "barrow"
+   ],
+   "slowest": 276,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    0,
+    4,
+    1,
+    0
+   ],
+   "maxLevel": 9,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 13360,
+       "lv": 1,
+       "gold": 6000,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 10121,
+       "lv": 3,
+       "gold": 11195,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 6180,
+       "lv": 1,
+       "gold": 11490,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 6460,
+       "lv": 2,
+       "gold": 9850,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 11240,
+       "lv": 4,
+       "gold": 8370,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 20153,
+       "lv": 3,
+       "gold": 1860,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 9765,
+       "lv": 2,
+       "gold": 5890,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 11,
+       "army": 6225,
+       "lv": 2,
+       "gold": 3955,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 14180,
+       "lv": 5,
+       "gold": 1720,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 32242,
+       "lv": 3,
+       "gold": 5755,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 19,
+       "army": 13240,
+       "lv": 3,
+       "gold": 6020,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 32,
+       "army": 9790,
+       "lv": 2,
+       "gold": 3025,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1720,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 18,
+       "army": 42881,
+       "lv": 3,
+       "gold": 3435,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 38,
+       "army": 30313,
+       "lv": 4,
+       "gold": 3465,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 19,
+       "army": 17665,
+       "lv": 2,
+       "gold": 3565,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1720,
+       "out": true
+      },
+      {
+       "towns": 3,
+       "built": 49,
+       "army": 56575,
+       "lv": 4,
+       "gold": 6985,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 22,
+       "army": 37800,
+       "lv": 4,
+       "gold": 2225,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 23,
+       "army": 24126,
+       "lv": 4,
+       "gold": 2010,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1720,
+       "out": true
+      },
+      {
+       "towns": 4,
+       "built": 77,
+       "army": 104061,
+       "lv": 5,
+       "gold": 12487,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 26,
+       "army": 44107,
+       "lv": 5,
+       "gold": 2165,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2010,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1720,
+       "out": true
+      },
+      {
+       "towns": 3,
+       "built": 80,
+       "army": 156977,
+       "lv": 7,
+       "gold": 10861,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 32,
+       "army": 59546,
+       "lv": 6,
+       "gold": 2680,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2010,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1720,
+       "out": true
+      },
+      {
+       "towns": 4,
+       "built": 91,
+       "army": 231744,
+       "lv": 7,
+       "gold": 13591,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 26,
+       "army": 59928,
+       "lv": 9,
+       "gold": 2815,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2010,
+       "out": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 103 (ziarno 1103, L, mountains, haven/stronghold)",
+   "cfg": {
+    "seed": 1103,
+    "mapSize": "L",
+    "land": "mountains",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "haven",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "stronghold",
       "team": 0
      },
      {
@@ -41,18 +761,18 @@
    "np": 2,
    "teams": false,
    "factions": [
-    "inferno",
-    "barrow"
+    "haven",
+    "stronghold"
    ],
-   "slowest": 215,
-   "days": 28,
+   "slowest": 336,
+   "days": 57,
    "winner": null,
    "out": [],
    "towns": [
-    1,
-    2
+    2,
+    4
    ],
-   "maxLevel": 3,
+   "maxLevel": 14,
    "dev": [
     {
      "day": 7,
@@ -60,17 +780,17 @@
       {
        "towns": 1,
        "built": 8,
-       "army": 21465,
+       "army": 8466,
        "lv": 2,
-       "gold": 6690,
+       "gold": 1420,
        "out": false
       },
       {
        "towns": 1,
        "built": 8,
-       "army": 5610,
-       "lv": 1,
-       "gold": 4610,
+       "army": 15702,
+       "lv": 3,
+       "gold": 6570,
        "out": false
       }
      ]
@@ -79,19 +799,19 @@
      "day": 14,
      "p": [
       {
-       "towns": 1,
-       "built": 15,
-       "army": 39615,
-       "lv": 3,
-       "gold": 7370,
+       "towns": 2,
+       "built": 17,
+       "army": 13280,
+       "lv": 4,
+       "gold": 20,
        "out": false
       },
       {
        "towns": 1,
        "built": 12,
-       "army": 10045,
-       "lv": 2,
-       "gold": 3120,
+       "army": 25168,
+       "lv": 3,
+       "gold": 2570,
        "out": false
       }
      ]
@@ -100,19 +820,19 @@
      "day": 21,
      "p": [
       {
-       "towns": 1,
-       "built": 21,
-       "army": 46975,
-       "lv": 3,
-       "gold": 20,
+       "towns": 2,
+       "built": 20,
+       "army": 22126,
+       "lv": 5,
+       "gold": 1005,
        "out": false
       },
       {
        "towns": 1,
-       "built": 14,
-       "army": 12715,
-       "lv": 3,
-       "gold": 1310,
+       "built": 15,
+       "army": 24328,
+       "lv": 4,
+       "gold": 3770,
        "out": false
       }
      ]
@@ -121,19 +841,103 @@
      "day": 28,
      "p": [
       {
-       "towns": 1,
+       "towns": 2,
        "built": 23,
-       "army": 86535,
-       "lv": 3,
+       "army": 35236,
+       "lv": 6,
+       "gold": 15,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 16,
+       "army": 38134,
+       "lv": 4,
+       "gold": 1470,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 2,
+       "built": 23,
+       "army": 53919,
+       "lv": 6,
        "gold": 0,
        "out": false
       },
       {
        "towns": 2,
-       "built": 20,
-       "army": 22145,
-       "lv": 3,
-       "gold": 1520,
+       "built": 24,
+       "army": 43878,
+       "lv": 6,
+       "gold": 1510,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 2,
+       "built": 24,
+       "army": 69178,
+       "lv": 6,
+       "gold": 20,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 30,
+       "army": 46485,
+       "lv": 9,
+       "gold": 6015,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 2,
+       "built": 24,
+       "army": 71201,
+       "lv": 7,
+       "gold": 5,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 34,
+       "army": 70733,
+       "lv": 10,
+       "gold": 3010,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 2,
+       "built": 24,
+       "army": 86134,
+       "lv": 7,
+       "gold": 20,
+       "out": false
+      },
+      {
+       "towns": 4,
+       "built": 41,
+       "army": 91625,
+       "lv": 13,
+       "gold": 4740,
        "out": false
       }
      ]
@@ -141,11 +945,11 @@
    ]
   },
   {
-   "tag": "gra 2 (ziarno 1002, S, mountains, inferno/sylvan)",
+   "tag": "gra 104 (ziarno 1104, M, mixed, inferno/sylvan)",
    "cfg": {
-    "seed": 1002,
-    "mapSize": "S",
-    "land": "mountains",
+    "seed": 1104,
+    "mapSize": "M",
+    "land": "mixed",
     "underground": false,
     "slots": [
      {
@@ -184,15 +988,15 @@
     "inferno",
     "sylvan"
    ],
-   "slowest": 113,
-   "days": 28,
+   "slowest": 325,
+   "days": 57,
    "winner": null,
    "out": [],
    "towns": [
-    0,
+    2,
     2
    ],
-   "maxLevel": 4,
+   "maxLevel": 13,
    "dev": [
     {
      "day": 7,
@@ -200,17 +1004,17 @@
       {
        "towns": 1,
        "built": 8,
-       "army": 9105,
+       "army": 13735,
        "lv": 2,
-       "gold": 6200,
+       "gold": 2740,
        "out": false
       },
       {
        "towns": 1,
-       "built": 8,
-       "army": 5325,
+       "built": 7,
+       "army": 11845,
        "lv": 2,
-       "gold": 10685,
+       "gold": 8650,
        "out": false
       }
      ]
@@ -219,19 +1023,303 @@
      "day": 14,
      "p": [
       {
-       "towns": 1,
-       "built": 15,
-       "army": 9740,
+       "towns": 2,
+       "built": 20,
+       "army": 25193,
+       "lv": 5,
+       "gold": 5,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 17,
+       "army": 25908,
        "lv": 3,
+       "gold": 5293,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 2,
+       "built": 25,
+       "army": 28695,
+       "lv": 9,
        "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 23,
+       "army": 37782,
+       "lv": 6,
+       "gold": 5211,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 2,
+       "built": 29,
+       "army": 34825,
+       "lv": 11,
+       "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 29,
+       "army": 44354,
+       "lv": 8,
+       "gold": 3001,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 2,
+       "built": 30,
+       "army": 54909,
+       "lv": 12,
+       "gold": 1010,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 33,
+       "army": 56774,
+       "lv": 8,
+       "gold": 3006,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 2,
+       "built": 33,
+       "army": 54926,
+       "lv": 13,
+       "gold": 8000,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 37,
+       "army": 40274,
+       "lv": 3,
+       "gold": 3016,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 1,
+       "built": 23,
+       "army": 65468,
+       "lv": 13,
+       "gold": 35,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 59,
+       "army": 62228,
+       "lv": 6,
+       "gold": 6274,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 1,
+       "built": 26,
+       "army": 96388,
+       "lv": 13,
+       "gold": 5,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 63,
+       "army": 91957,
+       "lv": 6,
+       "gold": 6618,
+       "out": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 105 (ziarno 1105, L, random, podziemia, fortress/academy/sylvan/stronghold/dungeon)",
+   "cfg": {
+    "seed": 1105,
+    "mapSize": "L",
+    "land": "random",
+    "underground": true,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "fortress",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "academy",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "sylvan",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "stronghold",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "dungeon",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 5,
+   "teams": false,
+   "factions": [
+    "fortress",
+    "academy",
+    "sylvan",
+    "stronghold",
+    "dungeon"
+   ],
+   "slowest": 640,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    0,
+    1,
+    0,
+    1,
+    5
+   ],
+   "maxLevel": 23,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 13552,
+       "lv": 5,
+       "gold": 6820,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 9819,
+       "lv": 1,
+       "gold": 24090,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 7,
+       "army": 15979,
+       "lv": 2,
+       "gold": 3565,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 10782,
+       "lv": 2,
+       "gold": 5570,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 30873,
+       "lv": 2,
+       "gold": 4690,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 210,
+       "lv": 5,
+       "gold": 3030,
        "out": false
       },
       {
        "towns": 1,
        "built": 15,
-       "army": 5355,
-       "lv": 3,
-       "gold": 6905,
+       "army": 14773,
+       "lv": 2,
+       "gold": 4120,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 9,
+       "army": 18194,
+       "lv": 4,
+       "gold": 8565,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 11,
+       "army": 17522,
+       "lv": 5,
+       "gold": 1370,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 25,
+       "army": 21666,
+       "lv": 9,
+       "gold": 17790,
        "out": false
       }
      ]
@@ -242,17 +1330,41 @@
       {
        "towns": 0,
        "built": 0,
-       "army": 18970,
-       "lv": 4,
-       "gold": 65,
+       "army": 0,
+       "lv": 0,
+       "gold": 3405,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 21,
+       "army": 23735,
+       "lv": 3,
+       "gold": 4955,
        "out": false
       },
       {
-       "towns": 2,
-       "built": 35,
-       "army": 22515,
-       "lv": 4,
-       "gold": 4490,
+       "towns": 1,
+       "built": 16,
+       "army": 28187,
+       "lv": 7,
+       "gold": 4915,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 25856,
+       "lv": 5,
+       "gold": 3070,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 39,
+       "army": 143337,
+       "lv": 14,
+       "gold": 14875,
        "out": false
       }
      ]
@@ -263,17 +1375,3841 @@
       {
        "towns": 0,
        "built": 0,
-       "army": 20125,
+       "army": 0,
+       "lv": 0,
+       "gold": 3405,
+       "out": true
+      },
+      {
+       "towns": 2,
+       "built": 43,
+       "army": 11121,
+       "lv": 2,
+       "gold": 10910,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 17994,
+       "lv": 8,
+       "gold": 960,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 33850,
+       "lv": 6,
+       "gold": 4920,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 48,
+       "army": 172471,
+       "lv": 14,
+       "gold": 9546,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3405,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 28,
+       "army": 23093,
+       "lv": 2,
+       "gold": 7325,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2110,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 28931,
+       "lv": 9,
+       "gold": 2630,
+       "out": false
+      },
+      {
+       "towns": 5,
+       "built": 81,
+       "army": 235805,
+       "lv": 18,
+       "gold": 9709,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3405,
+       "out": true
+      },
+      {
+       "towns": 2,
+       "built": 56,
+       "army": 69480,
+       "lv": 3,
+       "gold": 11632,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2110,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 32856,
+       "lv": 10,
+       "gold": 4330,
+       "out": false
+      },
+      {
+       "towns": 4,
+       "built": 68,
+       "army": 252053,
+       "lv": 21,
+       "gold": 49082,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3405,
+       "out": true
+      },
+      {
+       "towns": 2,
+       "built": 60,
+       "army": 131355,
+       "lv": 6,
+       "gold": 12150,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2110,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 35576,
+       "lv": 11,
+       "gold": 2530,
+       "out": false
+      },
+      {
+       "towns": 4,
+       "built": 77,
+       "army": 307462,
+       "lv": 22,
+       "gold": 10103,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3405,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 32,
+       "army": 174397,
+       "lv": 7,
+       "gold": 15590,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2110,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 48608,
+       "lv": 11,
+       "gold": 2125,
+       "out": false
+      },
+      {
+       "towns": 5,
+       "built": 114,
+       "army": 401430,
+       "lv": 23,
+       "gold": 15494,
+       "out": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 106 (ziarno 1106, M, mixed, barrow/academy/fortress/sylvan)",
+   "cfg": {
+    "seed": 1106,
+    "mapSize": "M",
+    "land": "mixed",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "barrow",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "academy",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "fortress",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "sylvan",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 4,
+   "teams": false,
+   "factions": [
+    "barrow",
+    "academy",
+    "fortress",
+    "sylvan"
+   ],
+   "slowest": 322,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    3,
+    1,
+    0,
+    0
+   ],
+   "maxLevel": 10,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 11775,
+       "lv": 1,
+       "gold": 9395,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 5214,
+       "lv": 2,
+       "gold": 6725,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 6376,
+       "lv": 1,
+       "gold": 10890,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 6410,
+       "lv": 1,
+       "gold": 7600,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 19850,
+       "lv": 3,
+       "gold": 5470,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 13548,
+       "lv": 2,
+       "gold": 3025,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 11,
+       "army": 12803,
+       "lv": 2,
+       "gold": 6812,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 12080,
+       "lv": 1,
+       "gold": 4400,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 2,
+       "built": 33,
+       "army": 30930,
+       "lv": 3,
+       "gold": 1017,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 19253,
+       "lv": 3,
+       "gold": 4770,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 10153,
+       "lv": 2,
+       "gold": 42,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 16,
+       "army": 12330,
+       "lv": 5,
+       "gold": 3385,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 2,
+       "built": 41,
+       "army": 40257,
        "lv": 4,
-       "gold": 2020,
+       "gold": 7574,
        "out": false
       },
       {
        "towns": 2,
-       "built": 37,
-       "army": 56730,
+       "built": 33,
+       "army": 41323,
+       "lv": 3,
+       "gold": 3130,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3042,
+       "out": true
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 15595,
+       "lv": 5,
+       "gold": 5020,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 1,
+       "built": 30,
+       "army": 57577,
        "lv": 4,
-       "gold": 4375,
+       "gold": 29,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 36,
+       "army": 43210,
+       "lv": 3,
+       "gold": 9102,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3042,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 21,
+       "army": 15554,
+       "lv": 6,
+       "gold": 11210,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 1,
+       "built": 34,
+       "army": 87740,
+       "lv": 5,
+       "gold": 1019,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 69,
+       "army": 69778,
+       "lv": 4,
+       "gold": 13939,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3042,
+       "out": true
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 24285,
+       "lv": 7,
+       "gold": 3600,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 3,
+       "built": 83,
+       "army": 132055,
+       "lv": 9,
+       "gold": 12,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 31,
+       "army": 50553,
+       "lv": 4,
+       "gold": 8131,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3042,
+       "out": true
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3600,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 3,
+       "built": 88,
+       "army": 183167,
+       "lv": 10,
+       "gold": 40,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 33,
+       "army": 48825,
+       "lv": 5,
+       "gold": 9666,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3042,
+       "out": true
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 3600,
+       "out": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 107 (ziarno 1107, L, islands, dungeon/inferno/sylvan)",
+   "cfg": {
+    "seed": 1107,
+    "mapSize": "L",
+    "land": "islands",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "dungeon",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "inferno",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "sylvan",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 3,
+   "teams": false,
+   "factions": [
+    "dungeon",
+    "inferno",
+    "sylvan"
+   ],
+   "slowest": 448,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    2,
+    2,
+    3
+   ],
+   "maxLevel": 14,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 15411,
+       "lv": 5,
+       "gold": 3945,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 10170,
+       "lv": 1,
+       "gold": 14340,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 7610,
+       "lv": 4,
+       "gold": 9195,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 15743,
+       "lv": 6,
+       "gold": 1635,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 23,
+       "army": 19271,
+       "lv": 2,
+       "gold": 5402,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 19461,
+       "lv": 5,
+       "gold": 5215,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 1,
+       "built": 20,
+       "army": 23877,
+       "lv": 6,
+       "gold": 1045,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 29,
+       "army": 41859,
+       "lv": 2,
+       "gold": 5423,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 26,
+       "army": 21901,
+       "lv": 8,
+       "gold": 3527,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 2,
+       "built": 30,
+       "army": 35250,
+       "lv": 6,
+       "gold": 320,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 36,
+       "army": 54202,
+       "lv": 4,
+       "gold": 5273,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 32,
+       "army": 27873,
+       "lv": 9,
+       "gold": 3502,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 2,
+       "built": 35,
+       "army": 49803,
+       "lv": 6,
+       "gold": 5,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 29,
+       "army": 60584,
+       "lv": 7,
+       "gold": 4255,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 46,
+       "army": 41176,
+       "lv": 10,
+       "gold": 4512,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 2,
+       "built": 43,
+       "army": 54571,
+       "lv": 9,
+       "gold": 15,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 48,
+       "army": 93249,
+       "lv": 8,
+       "gold": 10315,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 38,
+       "army": 57215,
+       "lv": 12,
+       "gold": 5462,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 2,
+       "built": 49,
+       "army": 61949,
+       "lv": 10,
+       "gold": 1010,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 50,
+       "army": 117066,
+       "lv": 11,
+       "gold": 11270,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 44,
+       "army": 68803,
+       "lv": 13,
+       "gold": 4787,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 2,
+       "built": 52,
+       "army": 79475,
+       "lv": 12,
+       "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 68,
+       "army": 143501,
+       "lv": 11,
+       "gold": 9275,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 38,
+       "army": 97831,
+       "lv": 13,
+       "gold": 7564,
+       "out": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 108 (ziarno 1108, M, mixed, haven/sylvan/academy)",
+   "cfg": {
+    "seed": 1108,
+    "mapSize": "M",
+    "land": "mixed",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "haven",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "sylvan",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "academy",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 3,
+   "teams": false,
+   "factions": [
+    "haven",
+    "sylvan",
+    "academy"
+   ],
+   "slowest": 310,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    2,
+    1,
+    3
+   ],
+   "maxLevel": 14,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 14630,
+       "lv": 2,
+       "gold": 7690,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 9950,
+       "lv": 1,
+       "gold": 7950,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 6050,
+       "lv": 1,
+       "gold": 19790,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 2,
+       "built": 23,
+       "army": 26781,
+       "lv": 3,
+       "gold": 5,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 11,
+       "army": 11860,
+       "lv": 4,
+       "gold": 1350,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 13958,
+       "lv": 1,
+       "gold": 18375,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 2,
+       "built": 31,
+       "army": 28454,
+       "lv": 5,
+       "gold": 1002,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 18,
+       "army": 19815,
+       "lv": 5,
+       "gold": 2168,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 20,
+       "army": 25865,
+       "lv": 1,
+       "gold": 8030,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 2,
+       "built": 38,
+       "army": 42747,
+       "lv": 5,
+       "gold": 27,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 43,
+       "army": 37454,
+       "lv": 5,
+       "gold": 4503,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 36792,
+       "lv": 1,
+       "gold": 6835,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 2,
+       "built": 43,
+       "army": 60180,
+       "lv": 7,
+       "gold": 2,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 33,
+       "army": 46119,
+       "lv": 6,
+       "gold": 3502,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 21,
+       "army": 48994,
+       "lv": 2,
+       "gold": 2255,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 2,
+       "built": 22,
+       "army": 67732,
+       "lv": 7,
+       "gold": 7,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 29,
+       "army": 44443,
+       "lv": 10,
+       "gold": 2112,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 55,
+       "army": 58115,
+       "lv": 3,
+       "gold": 7375,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 2,
+       "built": 22,
+       "army": 81635,
+       "lv": 7,
+       "gold": 27,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 29,
+       "army": 68413,
+       "lv": 10,
+       "gold": 4002,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 58,
+       "army": 122169,
+       "lv": 3,
+       "gold": 6380,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 2,
+       "built": 21,
+       "army": 66064,
+       "lv": 7,
+       "gold": 7,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 29,
+       "army": 68699,
+       "lv": 13,
+       "gold": 4522,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 63,
+       "army": 175647,
+       "lv": 5,
+       "gold": 12635,
+       "out": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 109 (ziarno 1109, L, mountains, inferno/barrow/dungeon/stronghold/academy)",
+   "cfg": {
+    "seed": 1109,
+    "mapSize": "L",
+    "land": "mountains",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "inferno",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "barrow",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "dungeon",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "stronghold",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "academy",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 5,
+   "teams": false,
+   "factions": [
+    "inferno",
+    "barrow",
+    "dungeon",
+    "stronghold",
+    "academy"
+   ],
+   "slowest": 358,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    3,
+    3,
+    0,
+    0,
+    2
+   ],
+   "maxLevel": 17,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 22813,
+       "lv": 2,
+       "gold": 250,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 7025,
+       "lv": 2,
+       "gold": 10600,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 4304,
+       "lv": 1,
+       "gold": 11045,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 16160,
+       "lv": 1,
+       "gold": 2980,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 6391,
+       "lv": 2,
+       "gold": 20090,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 26826,
+       "lv": 3,
+       "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 23095,
+       "lv": 6,
+       "gold": 4300,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 5044,
+       "lv": 1,
+       "gold": 6225,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 25390,
+       "lv": 3,
+       "gold": 3560,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 16716,
+       "lv": 2,
+       "gold": 9950,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 38276,
+       "lv": 4,
+       "gold": 30,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 26260,
+       "lv": 7,
+       "gold": 2520,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 34,
+       "army": 9056,
+       "lv": 2,
+       "gold": 5930,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 39131,
+       "lv": 3,
+       "gold": 4425,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 20,
+       "army": 29444,
+       "lv": 3,
+       "gold": 7310,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 2,
+       "built": 21,
+       "army": 37661,
+       "lv": 7,
+       "gold": 35,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 20,
+       "army": 40210,
+       "lv": 8,
+       "gold": 3520,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 18,
+       "army": 21304,
+       "lv": 3,
+       "gold": 5545,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 31084,
+       "lv": 3,
+       "gold": 5720,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 26,
+       "army": 41966,
+       "lv": 6,
+       "gold": 7680,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 2,
+       "built": 26,
+       "army": 43535,
+       "lv": 8,
+       "gold": 5,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 20,
+       "army": 62075,
+       "lv": 9,
+       "gold": 3020,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 21,
+       "army": 8667,
+       "lv": 1,
+       "gold": 2090,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 35792,
+       "lv": 3,
+       "gold": 5005,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 42,
+       "army": 86042,
+       "lv": 8,
+       "gold": 12665,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 2,
+       "built": 30,
+       "army": 60992,
+       "lv": 9,
+       "gold": 825,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 44,
+       "army": 82140,
+       "lv": 10,
+       "gold": 4040,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 3270,
+       "lv": 1,
+       "gold": 2020,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 10005,
+       "out": true
+      },
+      {
+       "towns": 3,
+       "built": 55,
+       "army": 104370,
+       "lv": 12,
+       "gold": 8375,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 3,
+       "built": 40,
+       "army": 87311,
+       "lv": 9,
+       "gold": 5,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 52,
+       "army": 94945,
+       "lv": 11,
+       "gold": 4045,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2020,
+       "out": true
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 10005,
+       "out": true
+      },
+      {
+       "towns": 3,
+       "built": 60,
+       "army": 164529,
+       "lv": 15,
+       "gold": 9875,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 3,
+       "built": 39,
+       "army": 67828,
+       "lv": 3,
+       "gold": 1005,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 69,
+       "army": 244673,
+       "lv": 15,
+       "gold": 5015,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2020,
+       "out": true
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 10005,
+       "out": true
+      },
+      {
+       "towns": 2,
+       "built": 57,
+       "army": 226849,
+       "lv": 17,
+       "gold": 16915,
+       "out": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 110 (ziarno 1110, M, mountains, fortress/dungeon)",
+   "cfg": {
+    "seed": 1110,
+    "mapSize": "M",
+    "land": "mountains",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "fortress",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "dungeon",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 2,
+   "teams": false,
+   "factions": [
+    "fortress",
+    "dungeon"
+   ],
+   "slowest": 250,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    1,
+    5
+   ],
+   "maxLevel": 18,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 15536,
+       "lv": 1,
+       "gold": 10630,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 16864,
+       "lv": 1,
+       "gold": 8615,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 21795,
+       "lv": 4,
+       "gold": 3920,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 25206,
+       "lv": 3,
+       "gold": 12200,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 2,
+       "built": 29,
+       "army": 21099,
+       "lv": 2,
+       "gold": 1004,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 33,
+       "army": 98851,
+       "lv": 9,
+       "gold": 7050,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 2,
+       "built": 34,
+       "army": 44690,
+       "lv": 4,
+       "gold": 1553,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 44,
+       "army": 110959,
+       "lv": 13,
+       "gold": 5146,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 2,
+       "built": 39,
+       "army": 16429,
+       "lv": 8,
+       "gold": 43,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 51,
+       "army": 133970,
+       "lv": 14,
+       "gold": 7136,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 2,
+       "built": 44,
+       "army": 18222,
+       "lv": 4,
+       "gold": 19,
+       "out": false
+      },
+      {
+       "towns": 4,
+       "built": 63,
+       "army": 175410,
+       "lv": 15,
+       "gold": 6116,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 1,
+       "built": 26,
+       "army": 3155,
+       "lv": 8,
+       "gold": 19,
+       "out": false
+      },
+      {
+       "towns": 5,
+       "built": 89,
+       "army": 205373,
+       "lv": 18,
+       "gold": 12271,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 1,
+       "built": 26,
+       "army": 9126,
+       "lv": 0,
+       "gold": 14,
+       "out": false
+      },
+      {
+       "towns": 5,
+       "built": 94,
+       "army": 268770,
+       "lv": 18,
+       "gold": 15256,
+       "out": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 111 (ziarno 1111, L, mountains, barrow/sylvan/academy)",
+   "cfg": {
+    "seed": 1111,
+    "mapSize": "L",
+    "land": "mountains",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "barrow",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "sylvan",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "academy",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 3,
+   "teams": false,
+   "factions": [
+    "barrow",
+    "sylvan",
+    "academy"
+   ],
+   "slowest": 312,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    0,
+    3,
+    3
+   ],
+   "maxLevel": 17,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 13240,
+       "lv": 1,
+       "gold": 8850,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 5545,
+       "lv": 2,
+       "gold": 11335,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 13499,
+       "lv": 2,
+       "gold": 9940,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 21926,
+       "lv": 3,
+       "gold": 50,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 20,
+       "army": 26106,
+       "lv": 7,
+       "gold": 8620,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 18332,
+       "lv": 2,
+       "gold": 7815,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 22656,
+       "lv": 3,
+       "gold": 850,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 32,
+       "army": 39587,
+       "lv": 9,
+       "gold": 13460,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 34,
+       "army": 23179,
+       "lv": 4,
+       "gold": 4752,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 850,
+       "out": true
+      },
+      {
+       "towns": 2,
+       "built": 41,
+       "army": 65054,
+       "lv": 11,
+       "gold": 7339,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 46,
+       "army": 23677,
+       "lv": 7,
+       "gold": 8362,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 850,
+       "out": true
+      },
+      {
+       "towns": 2,
+       "built": 47,
+       "army": 93484,
+       "lv": 12,
+       "gold": 5502,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 59,
+       "army": 40415,
+       "lv": 8,
+       "gold": 5552,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 850,
+       "out": true
+      },
+      {
+       "towns": 4,
+       "built": 77,
+       "army": 117092,
+       "lv": 13,
+       "gold": 8279,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 43,
+       "army": 67359,
+       "lv": 11,
+       "gold": 3542,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 850,
+       "out": true
+      },
+      {
+       "towns": 3,
+       "built": 58,
+       "army": 153235,
+       "lv": 14,
+       "gold": 6609,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 66,
+       "army": 107951,
+       "lv": 13,
+       "gold": 5512,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 850,
+       "out": true
+      },
+      {
+       "towns": 3,
+       "built": 61,
+       "army": 200646,
+       "lv": 15,
+       "gold": 6609,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 68,
+       "army": 121387,
+       "lv": 17,
+       "gold": 5612,
+       "out": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 112 (ziarno 1112, M, mixed, stronghold/fortress/sylvan)",
+   "cfg": {
+    "seed": 1112,
+    "mapSize": "M",
+    "land": "mixed",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "stronghold",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "fortress",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "sylvan",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 3,
+   "teams": false,
+   "factions": [
+    "stronghold",
+    "fortress",
+    "sylvan"
+   ],
+   "slowest": 488,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    3,
+    3,
+    0
+   ],
+   "maxLevel": 14,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 12422,
+       "lv": 2,
+       "gold": 7000,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 3772,
+       "lv": 3,
+       "gold": 26640,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 5940,
+       "lv": 1,
+       "gold": 4100,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 15226,
+       "lv": 4,
+       "gold": 1000,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 13396,
+       "lv": 3,
+       "gold": 11750,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 11,
+       "army": 10200,
+       "lv": 2,
+       "gold": 1840,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 2,
+       "built": 24,
+       "army": 18144,
+       "lv": 6,
+       "gold": 20,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 21,
+       "army": 25597,
+       "lv": 5,
+       "gold": 4390,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 11440,
+       "lv": 3,
+       "gold": 1930,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 3,
+       "built": 42,
+       "army": 40065,
+       "lv": 7,
+       "gold": 32,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 25,
+       "army": 56695,
+       "lv": 7,
+       "gold": 5210,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1030,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 3,
+       "built": 48,
+       "army": 75134,
+       "lv": 7,
+       "gold": 16,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 27,
+       "army": 72416,
+       "lv": 8,
+       "gold": 19340,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1030,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 3,
+       "built": 54,
+       "army": 102461,
+       "lv": 8,
+       "gold": 45,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 40,
+       "army": 100438,
+       "lv": 13,
+       "gold": 33290,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1030,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 2,
+       "built": 32,
+       "army": 55729,
+       "lv": 4,
+       "gold": 20,
+       "out": false
+      },
+      {
+       "towns": 4,
+       "built": 84,
+       "army": 151524,
+       "lv": 13,
+       "gold": 13092,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1030,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 3,
+       "built": 43,
+       "army": 34677,
+       "lv": 4,
+       "gold": 2515,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 81,
+       "army": 252955,
+       "lv": 14,
+       "gold": 12538,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 1030,
+       "out": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 113 (ziarno 1113, L, random, podziemia, stronghold/sylvan/academy/dungeon/haven/barrow)",
+   "cfg": {
+    "seed": 1113,
+    "mapSize": "L",
+    "land": "random",
+    "underground": true,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "stronghold",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "sylvan",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "academy",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "dungeon",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "haven",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "barrow",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 6,
+   "teams": false,
+   "factions": [
+    "stronghold",
+    "sylvan",
+    "academy",
+    "dungeon",
+    "haven",
+    "barrow"
+   ],
+   "slowest": 1624,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    2,
+    3,
+    0,
+    1,
+    2,
+    0
+   ],
+   "maxLevel": 17,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 9650,
+       "lv": 2,
+       "gold": 2060,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 24648,
+       "lv": 3,
+       "gold": 15685,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 5434,
+       "lv": 2,
+       "gold": 3850,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 5894,
+       "lv": 1,
+       "gold": 12945,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 9322,
+       "lv": 1,
+       "gold": 2740,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 7926,
+       "lv": 1,
+       "gold": 8850,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 32265,
+       "lv": 5,
+       "gold": 8060,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 24,
+       "army": 36558,
+       "lv": 4,
+       "gold": 2386,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 132,
+       "lv": 2,
+       "gold": 4500,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 25,
+       "army": 22349,
+       "lv": 1,
+       "gold": 3925,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 26226,
+       "lv": 4,
+       "gold": 1860,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 11,
+       "army": 16645,
+       "lv": 2,
+       "gold": 1485,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 2,
+       "built": 31,
+       "army": 29758,
+       "lv": 7,
+       "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 28,
+       "army": 42099,
+       "lv": 7,
+       "gold": 3681,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4750,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 18,
+       "army": 34985,
+       "lv": 2,
+       "gold": 2395,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 42021,
+       "lv": 5,
+       "gold": 7570,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2405,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 2,
+       "built": 34,
+       "army": 50570,
+       "lv": 8,
+       "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 29,
+       "army": 67179,
+       "lv": 7,
+       "gold": 5566,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4750,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 21,
+       "army": 40610,
+       "lv": 2,
+       "gold": 3390,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 22,
+       "army": 46416,
+       "lv": 7,
+       "gold": 28055,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2405,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 2,
+       "built": 35,
+       "army": 40044,
+       "lv": 10,
+       "gold": 10,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 37,
+       "army": 83655,
+       "lv": 8,
+       "gold": 4425,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4750,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 21,
+       "army": 35620,
+       "lv": 3,
+       "gold": 4715,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 26,
+       "army": 94100,
+       "lv": 8,
+       "gold": 16520,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2405,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 2,
+       "built": 36,
+       "army": 41532,
+       "lv": 13,
+       "gold": 25,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 41,
+       "army": 88454,
+       "lv": 13,
+       "gold": 4869,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4750,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 24,
+       "army": 32400,
+       "lv": 4,
+       "gold": 2110,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 31,
+       "army": 116805,
+       "lv": 10,
+       "gold": 8710,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2405,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 2,
+       "built": 51,
+       "army": 48660,
+       "lv": 14,
+       "gold": 5,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 46,
+       "army": 118615,
+       "lv": 13,
+       "gold": 5919,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4750,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 48158,
+       "lv": 4,
+       "gold": 8102,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 39,
+       "army": 155852,
+       "lv": 14,
+       "gold": 9651,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2405,
+       "out": true
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 2,
+       "built": 42,
+       "army": 81166,
+       "lv": 14,
+       "gold": 5,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 52,
+       "army": 125164,
+       "lv": 17,
+       "gold": 4819,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4750,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 29,
+       "army": 54456,
+       "lv": 5,
+       "gold": 2352,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 45,
+       "army": 216492,
+       "lv": 14,
+       "gold": 9562,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 2405,
+       "out": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 114 (ziarno 1114, M, mountains, podziemia, inferno/academy)",
+   "cfg": {
+    "seed": 1114,
+    "mapSize": "M",
+    "land": "mountains",
+    "underground": true,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "inferno",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "academy",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 2,
+   "teams": false,
+   "factions": [
+    "inferno",
+    "academy"
+   ],
+   "slowest": 449,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    2,
+    4
+   ],
+   "maxLevel": 12,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 42238,
+       "lv": 4,
+       "gold": 6430,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 8082,
+       "lv": 1,
+       "gold": 13815,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 42875,
+       "lv": 8,
+       "gold": 10,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 20,
+       "army": 28637,
+       "lv": 3,
+       "gold": 3456,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 2,
+       "built": 23,
+       "army": 54785,
+       "lv": 8,
+       "gold": 2040,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 25,
+       "army": 41627,
+       "lv": 5,
+       "gold": 5811,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 2,
+       "built": 25,
+       "army": 75445,
+       "lv": 8,
+       "gold": 1010,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 37,
+       "army": 67328,
+       "lv": 8,
+       "gold": 6634,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 2,
+       "built": 25,
+       "army": 95695,
+       "lv": 8,
+       "gold": 1030,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 40,
+       "army": 108230,
+       "lv": 9,
+       "gold": 12379,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 2,
+       "built": 25,
+       "army": 86040,
+       "lv": 10,
+       "gold": 8030,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 45,
+       "army": 162030,
+       "lv": 9,
+       "gold": 13333,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 3,
+       "built": 35,
+       "army": 91033,
+       "lv": 12,
+       "gold": 1000,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 53,
+       "army": 209657,
+       "lv": 10,
+       "gold": 11653,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 2,
+       "built": 33,
+       "army": 113615,
+       "lv": 12,
+       "gold": 10,
+       "out": false
+      },
+      {
+       "towns": 4,
+       "built": 72,
+       "army": 271320,
+       "lv": 11,
+       "gold": 11991,
+       "out": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 115 (ziarno 1115, L, mixed, drużyny, dungeon/barrow/fortress/inferno)",
+   "cfg": {
+    "seed": 1115,
+    "mapSize": "L",
+    "land": "mixed",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "dungeon",
+      "team": 1
+     },
+     {
+      "type": "ai",
+      "faction": "barrow",
+      "team": 2
+     },
+     {
+      "type": "ai",
+      "faction": "fortress",
+      "team": 1
+     },
+     {
+      "type": "ai",
+      "faction": "inferno",
+      "team": 2
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 4,
+   "teams": true,
+   "factions": [
+    "dungeon",
+    "barrow",
+    "fortress",
+    "inferno"
+   ],
+   "slowest": 401,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    2,
+    0,
+    1,
+    2
+   ],
+   "maxLevel": 9,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 20563,
+       "lv": 5,
+       "gold": 1670,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 8175,
+       "lv": 2,
+       "gold": 8760,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 6370,
+       "lv": 1,
+       "gold": 10890,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 7295,
+       "lv": 1,
+       "gold": 10840,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 26680,
+       "lv": 5,
+       "gold": 1025,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 11,
+       "army": 13650,
+       "lv": 4,
+       "gold": 2780,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 13330,
+       "lv": 2,
+       "gold": 2135,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 12140,
+       "lv": 2,
+       "gold": 3000,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 1,
+       "built": 15,
+       "army": 27282,
+       "lv": 5,
+       "gold": 15,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 10375,
+       "lv": 4,
+       "gold": 650,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 26,
+       "army": 26452,
+       "lv": 4,
+       "gold": 3595,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 17,
+       "army": 23883,
+       "lv": 2,
+       "gold": 3855,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 1,
+       "built": 18,
+       "army": 41305,
+       "lv": 5,
+       "gold": 45,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 650,
+       "out": true
+      },
+      {
+       "towns": 2,
+       "built": 29,
+       "army": 38708,
+       "lv": 7,
+       "gold": 6555,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 18,
+       "army": 23115,
+       "lv": 2,
+       "gold": 5700,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 2,
+       "built": 41,
+       "army": 58810,
+       "lv": 5,
+       "gold": 35,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 650,
+       "out": true
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 41733,
+       "lv": 8,
+       "gold": 40,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 43,
+       "army": 34465,
+       "lv": 3,
+       "gold": 3500,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 3,
+       "built": 49,
+       "army": 86509,
+       "lv": 6,
+       "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 650,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 13,
+       "army": 49648,
+       "lv": 8,
+       "gold": 4035,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 25,
+       "army": 49965,
+       "lv": 6,
+       "gold": 2020,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 2,
+       "built": 41,
+       "army": 121605,
+       "lv": 7,
+       "gold": 10,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 650,
+       "out": true
+      },
+      {
+       "towns": 2,
+       "built": 22,
+       "army": 59671,
+       "lv": 9,
+       "gold": 2055,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 25,
+       "army": 58735,
+       "lv": 7,
+       "gold": 4405,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 2,
+       "built": 41,
+       "army": 136975,
+       "lv": 8,
+       "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 650,
+       "out": true
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 71282,
+       "lv": 9,
+       "gold": 1555,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 38,
+       "army": 75940,
+       "lv": 7,
+       "gold": 6215,
+       "out": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "tag": "gra 116 (ziarno 1116, M, random, haven/barrow/inferno/dungeon)",
+   "cfg": {
+    "seed": 1116,
+    "mapSize": "M",
+    "land": "random",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "haven",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "barrow",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "inferno",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "dungeon",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 4,
+   "teams": false,
+   "factions": [
+    "haven",
+    "barrow",
+    "inferno",
+    "dungeon"
+   ],
+   "slowest": 300,
+   "days": 57,
+   "winner": null,
+   "out": [],
+   "towns": [
+    1,
+    3,
+    0,
+    2
+   ],
+   "maxLevel": 15,
+   "dev": [
+    {
+     "day": 7,
+     "p": [
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 11827,
+       "lv": 1,
+       "gold": 14330,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 5670,
+       "lv": 2,
+       "gold": 12350,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 5520,
+       "lv": 1,
+       "gold": 3740,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 8,
+       "army": 5272,
+       "lv": 1,
+       "gold": 7080,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 14,
+     "p": [
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 18113,
+       "lv": 2,
+       "gold": 20,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 12328,
+       "lv": 3,
+       "gold": 8990,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 9,
+       "army": 10195,
+       "lv": 1,
+       "gold": 3565,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 14,
+       "army": 10762,
+       "lv": 2,
+       "gold": 4755,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 21,
+     "p": [
+      {
+       "towns": 2,
+       "built": 25,
+       "army": 28073,
+       "lv": 2,
+       "gold": 15,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 14708,
+       "lv": 3,
+       "gold": 1850,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 17,
+       "army": 9810,
+       "lv": 2,
+       "gold": 4765,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 16,
+       "army": 37366,
+       "lv": 4,
+       "gold": 7745,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 28,
+     "p": [
+      {
+       "towns": 1,
+       "built": 20,
+       "army": 38504,
+       "lv": 3,
+       "gold": 50,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 20,
+       "army": 22453,
+       "lv": 3,
+       "gold": 3870,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4765,
+       "out": true
+      },
+      {
+       "towns": 2,
+       "built": 28,
+       "army": 51120,
+       "lv": 5,
+       "gold": 7042,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 35,
+     "p": [
+      {
+       "towns": 1,
+       "built": 22,
+       "army": 24569,
+       "lv": 2,
+       "gold": 40,
+       "out": false
+      },
+      {
+       "towns": 1,
+       "built": 22,
+       "army": 33253,
+       "lv": 4,
+       "gold": 2615,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4765,
+       "out": true
+      },
+      {
+       "towns": 3,
+       "built": 42,
+       "army": 48262,
+       "lv": 11,
+       "gold": 7021,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 42,
+     "p": [
+      {
+       "towns": 1,
+       "built": 24,
+       "army": 29611,
+       "lv": 3,
+       "gold": 40,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 38,
+       "army": 45713,
+       "lv": 6,
+       "gold": 3050,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4765,
+       "out": true
+      },
+      {
+       "towns": 3,
+       "built": 44,
+       "army": 61900,
+       "lv": 14,
+       "gold": 6352,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 49,
+     "p": [
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 33987,
+       "lv": 1,
+       "gold": 1285,
+       "out": false
+      },
+      {
+       "towns": 2,
+       "built": 36,
+       "army": 68078,
+       "lv": 7,
+       "gold": 3750,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4765,
+       "out": true
+      },
+      {
+       "towns": 4,
+       "built": 85,
+       "army": 104011,
+       "lv": 15,
+       "gold": 11152,
+       "out": false
+      }
+     ]
+    },
+    {
+     "day": 56,
+     "p": [
+      {
+       "towns": 1,
+       "built": 12,
+       "army": 45803,
+       "lv": 1,
+       "gold": 0,
+       "out": false
+      },
+      {
+       "towns": 3,
+       "built": 74,
+       "army": 102100,
+       "lv": 7,
+       "gold": 7030,
+       "out": false
+      },
+      {
+       "towns": 0,
+       "built": 0,
+       "army": 0,
+       "lv": 0,
+       "gold": 4765,
+       "out": true
+      },
+      {
+       "towns": 2,
+       "built": 50,
+       "army": 159389,
+       "lv": 15,
+       "gold": 8604,
        "out": false
       }
      ]
@@ -284,8 +5220,13 @@
  "errors": [],
  "wins": {},
  "plays": {
-  "inferno": 2,
-  "barrow": 1,
-  "sylvan": 1
+  "haven": 6,
+  "inferno": 7,
+  "academy": 8,
+  "stronghold": 6,
+  "sylvan": 9,
+  "fortress": 6,
+  "barrow": 7,
+  "dungeon": 7
  }
 }
