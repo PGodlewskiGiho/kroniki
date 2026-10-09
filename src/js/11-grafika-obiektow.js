@@ -902,11 +902,11 @@ function spriteBounds(s) {
 function drawUnitCard(ctx, p) {
   const c = CREATURES[p.cid], R = unitCardRows(p), W0 = 400, PW = 150, PH = 176;
   ctx.font = font(14, 500, 'body');
-  const notes = [...(c.abil || []).map(a => `${ABILITIES[a].name}: ${ABILITIES[a].desc}.`), ...(p.u ? Object.entries(p.u.buffs).map(([k, r]) => `Czar: ${BUFF_NAMES[k]} (${r} r.)`) : []), ...(p.u && p.u.defending ? ['Broni się.'] : [])];
+  const notes = [...(c.abil || []).map(a => `${ABILITIES[a].name}: ${ABILITIES[a].desc}.`), ...(p.u ? Object.entries(p.u.buffs).map(([k, r]) => `Czar: ${BUFF_NAMES[k]} (${r} r.)`) : []), ...(p.u && p.u.defending ? ['Broni się.'] : []), ...(p.extra || [])]; // extra: potwór na mapie (nastawienie, siła)
   const lines = notes.flatMap(s => wrapText(ctx, s, W0 - 40)), H0 = Math.max(56 + PH, 56 + R.length * 22) + 14 + lines.length * 18 + (lines.length ? 8 : 0);
   const x = clamp(p.x + 14, 8, VW - W0 - 8), y = clamp(p.y - H0 / 2, 8, VH - H0 - 8);
   ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(x + 4, y + 6, W0, H0); leatherFill(ctx, x, y, W0, H0, 11, -0.08); goldRim(ctx, x, y, W0, H0, 3);
-  goldText(ctx, p.n > 1 ? c.plural : c.name, x + W0 / 2, y + 30, 22);
+  goldText(ctx, p.qty ? `${p.qty} ${c.gen}` : p.n > 1 ? c.plural : c.name, x + W0 / 2, y + 30, 22); // potwór na mapie: tylko przybliżona liczebność
   const px = x + 16, py = y + 46, fac = c.faction || '', bg = ICON_BG[fac] || ICON_BG[''];
   ctx.save(); ctx.beginPath(); ctx.rect(px, py, PW, PH); ctx.clip();
   const g = ctx.createLinearGradient(0, py, 0, py + PH); g.addColorStop(0, bg[0]); g.addColorStop(0.66, LT(bg[0], 0.15)); g.addColorStop(0.67, bg[1]); g.addColorStop(1, DK(bg[1], 0.35)); ctx.fillStyle = g; ctx.fillRect(px, py, PW, PH);

@@ -14,8 +14,16 @@ function mapCardAt(st, x, y) {
   if (tx < 0 || ty < 0 || tx >= n || ty >= n || !human(st).explored[ty * n + tx]) return null;
   const hh = heroAt(st, tx, ty), ob = uiObjectAt(st, ty * n + tx) || drawnObjectAt(st, tx, ty);
   if (ob && ob.type === 'town') return { mapTown: st.towns[ob.townId] };
-  return hh ? { mapHero: hh } : null;
+  if (hh) return { mapHero: hh };
+  return ob && ob.type === 'monster' ? monsterCard(st, ob) : null;
 }
+// Potwory neutralne: karta jednostki z przybliżoną liczebnością i nastawieniem (bez zdradzania, czy dołączą albo uciekną)
+function monsterCard(st, ob) {
+  const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], me = hero(st) ? armyPower(hero(st).army) : 0;
+  const extra = [...(q && !q.dead && q.taken && q.taken[ME] ? [`Cel zadania: ${siteName(q)}.`] : []), ...(ob.ship ? ['Statek piracki.'] : []), `Nastawienie: ${MONSTER_MOODS[monsterMood(ob)]}.`, `Siła ok. ${monsterPower(ob)} · twoja armia ${me}.`];
+  return { cid: ob.cid, n: 0, qty: qtyName(ob.count), extra };
+}
+const monsterPower = ob => Math.max(100, Math.round(ob.count * CREATURES[ob.cid].value / 100) * 100); // siła potworów w przybliżeniu
 const isMine = (st, owner) => owner === ME || allied(st, owner, ME);
 function cardFrame(ctx, p, W0, H0) {
   const x = clamp(p.x + 14, 8, VW - W0 - 8), y = clamp(p.y - H0 / 2, 8, VH - H0 - 8);
@@ -388,7 +396,7 @@ G.screens.adventure = {
       if (hh && (hh.owner === ME || allied(st, hh.owner, ME))) return `${heroTitle(hh)}. Punkty ruchu: ${hh.mp} z ${heroMaxMP(hh)}. Doświadczenie: ${hh.exp}.`;
       if (hh) return foeHeroInfo(st, hh);
       const ob = uiObjectAt(st, i) || drawnObjectAt(st, tx, ty);
-      if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], qt = q && !q.dead && q.taken && q.taken[ME] ? `Cel zadania: ${siteName(q)}. ` : ''; return `${qt}${ob.ship ? 'Statek piracki: ' : ''}${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}. Usposobienie: ${MONSTER_MOODS[monsterMood(ob)]}${hero(st) ? (r => r ? (r.kind === 'join' ? ' – chcą dołączyć do twojego bohatera' : ' – uciekną przed twoim bohaterem') : '')(neutralReaction(st, hero(st), ob)) : ''}.`; }
+      if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], qt = q && !q.dead && q.taken && q.taken[ME] ? `Cel zadania: ${siteName(q)}. ` : ''; return `${qt}${ob.ship ? 'Statek piracki: ' : ''}${qtyName(ob.count)} ${c.gen} (siła ok. ${monsterPower(ob)}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}. Nastawienie: ${MONSTER_MOODS[monsterMood(ob)]}.`; } // bez zdradzania, czy dołączą albo uciekną
       if (ob && ob.type === 'town') {
         const t = st.towns[ob.townId];
         if (t.owner !== ME) return foeTownInfo(st, t);

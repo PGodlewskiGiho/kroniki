@@ -43,3 +43,13 @@ test('komputer przyjmuje potwory, które chcą dołączyć', async () => {
   const r = await page.evaluate(() => { const st = G.state, h = hero(st), g = aiBattle(st, h, __m, []); const res = g.next(); return { done: res.done, won: res.value, dead: !!__m.dead, n: h.army[0].n }; });
   assert.deepEqual(r, { done: true, won: true, dead: true, n: 110 });
 });
+
+test('karta potwora na mapie: przybliżona liczebność i nastawienie, bez zdradzania dołączenia ani ucieczki', async () => {
+  const r = await page.evaluate(() => {
+    const st = G.state, m = st.objects.find(o => o.type === 'monster' && !o.dead); m.count = 23; m.mood = 'friendly';
+    const c = monsterCard(st, m); drawPopup(G.ctx, Object.assign(c, { x: 50, y: 50 }));
+    human(st).explored.fill(1); centerCam(st, m.x, m.y); const sx = VIEW.x + m.x * T - st.cam.x + T / 2, sy = VIEW.y + m.y * T - st.cam.y + T / 2;
+    return { qty: c.qty, extra: c.extra.join(' '), tip: G.screens.adventure.rightInfo(sx, sy) || '' };
+  });
+  assert.equal(r.qty, 'Mnóstwo'); assert.match(r.extra, /Nastawienie: /); assert.doesNotMatch(r.extra + r.tip, /dołącz|uciekn/);
+});
