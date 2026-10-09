@@ -411,5 +411,7 @@
    u wszystkich z zapisem do wznowienia). Gdy tura wypada na rozłączonego gracza, gospodarz może czekać, oddać jego tury komputerowi
    (po powrocie gra znów sam) albo zakończyć grę. W bitwie z rozłączonym przeciwnikiem dowodzenie nim może przejąć komputer, a drugi
    gracz może wrócić na mapę. Tura zakończona bez połączenia dociera do gospodarza przy powrocie.
+   Spacja na budynku (portal, kapliczka, siedlisko…): bohater korzysta z niego jeszcze raz (portal: tam i z powrotem). Obcy bohater
+   w opisie: cechy (atak, obrona, moc, wiedza), umiejętności i rodzaje jednostek z przybliżoną liczebnością (bez doświadczenia i ruchu).
    ===================================================================================== */
 

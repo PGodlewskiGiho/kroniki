@@ -6,6 +6,8 @@ function paintAdvChrome(c) {
   for (const r of [LIST, INFOBOX]) if (r.h > 0) insetBox(c, r.x, r.y, r.w, r.h);
   insetBox(c, 8, VH - 31, VW - 16, 27, 7);
 }
+// Obcy bohater (jak w H3): cechy, umiejętności i rodzaje jednostek z przybliżoną liczebnością; bez doświadczenia i punktów ruchu
+const foeHeroInfo = (st, hh) => `${heroTitle(hh)} (${ownerName(st, hh.owner)}). ${PRIMARY.map(p => `${p.name} ${heroStat(hh, p.id)}`).join(', ')}.${hh.skills.length ? ` Umiejętności: ${hh.skills.map(s => `${SKILLS[s.id].name} (${SKILL_LEVELS[s.lv]})`).join(', ')}.` : ''} Armia: ${hh.army.filter(Boolean).map(s => `${qtyName(s.n).toLowerCase()} ${CREATURES[s.cid].gen}`).join(', ') || 'brak'}.`;
 function showKingdom(st) {
   const R = human(st).resources, x = 150, y = 62, w = 500, h = 480, mines = {};
   for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === ME) mines[ob.kind] = (mines[ob.kind] || 0) + 1;
@@ -273,7 +275,13 @@ G.screens.adventure = {
     if ((k === '+' || k === '=' || k === '-') && G.state) { const i = ZOOMS.indexOf(ZOOM); setZoom(G.state, ZOOMS[clamp(i + (k === '-' ? -1 : 1), 0, ZOOMS.length - 1)]); return; } // klawisze +/−: przybliż, oddal
     if (this.aiRun) { if (k === ' ' || k === 'escape' || k === 'enter') this.skipAi(); return; }
     if (this.watching) { if (k === 'escape') this.systemMenu(); return; }
-    const h = hero(G.state); if (!h) return; if (k === ' ') centerCam(G.state, h.x, h.y); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
+    const h = hero(G.state); if (!h) return; if (k === ' ') this.useHere(h); else if (k === 'h') this.heroInfo(); else if (k === 'b') setListTab(this, listTab() === 'towns' ? 'heroes' : 'towns'); },
+  // Spacja: bohater stoi na budynku (portal, kapliczka, siedlisko…) – korzysta z niego jeszcze raz; inaczej kamera na bohatera
+  useHere(h) {
+    const st = G.state, ob = objectAt(st, h.y * st.map.n + h.x); centerCam(st, h.x, h.y);
+    if (!ob || ob.type === 'monster' || h.moving || h.anim || h.pending || G.modal) return;
+    visitObject(st, h, ob); MapRender.miniDirty = true;
+  },
   selectHero(h) {
     const st = G.state; st.selHero = st.heroes.indexOf(h); centerCam(st, h.x, h.y);
     setListTab(this, 'heroes'); const i = myHeroes(st).indexOf(h), s = this.listScroll || 0; if (i >= 0) this.listScroll = i < s ? i : i >= s + LIST_ROWS ? i - LIST_ROWS + 1 : s; // wybrany widoczny na liście
@@ -298,7 +306,7 @@ G.screens.adventure = {
       if (!human(st).explored[i]) return 'Nieodkryty teren. Wyślij tam bohatera, żeby zobaczyć, co się kryje.';
       const hh = heroAt(st, tx, ty);
       if (hh && (hh.owner === ME || allied(st, hh.owner, ME))) return `${heroTitle(hh)}. Punkty ruchu: ${hh.mp} z ${heroMaxMP(hh)}. Doświadczenie: ${hh.exp}.`;
-      if (hh) return `${heroTitle(hh)} (${ownerName(st, hh.owner)}). Armia: ${qtyName(armySize(hh.army)).toLowerCase()}.`; // obcy bohater: bez doświadczenia i ruchu (jak w H3), tylko przybliżona liczebność
+      if (hh) return foeHeroInfo(st, hh);
       const ob = uiObjectAt(st, i) || drawnObjectAt(st, tx, ty);
       if (ob && ob.type === 'monster') { const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], qt = q && !q.dead && q.taken && q.taken[ME] ? `Cel zadania: ${siteName(q)}. ` : ''; return `${qt}${ob.ship ? 'Statek piracki: ' : ''}${qtyName(ob.count)} ${c.gen} (siła ${ob.count * c.value}, twoja armia ${hero(st) ? armyPower(hero(st).army) : 0}). Poziom ${c.level}, ${unitStats(c)}. Usposobienie: ${MONSTER_MOODS[monsterMood(ob)]}${hero(st) ? (r => r ? (r.kind === 'join' ? ' – chcą dołączyć do twojego bohatera' : ' – uciekną przed twoim bohaterem') : '')(neutralReaction(st, hero(st), ob)) : ''}.`; }
       if (ob && ob.type === 'town') {
