@@ -31,7 +31,7 @@ onmessage = e => { const m = e.data; if (m.map) MAP = m.map; if (m.tex) TEX = m.
   // Mapa i tekstury idą do wątków raz (kopia), przed pierwszym kawałkiem; potem tylko numery kawałków
   sync(map) {
     if (this.sentMap !== map) { const m = { n: map.n, ln: map.ln || 0, terrain: map.terrain, obst: map.obst, road: map.road }; for (const w of this.ws) w.postMessage({ map: m }); this.sentMap = map; }
-    const tk = Object.keys(TERRAIN_TEX); if (tk.length !== this.texN) { const tex = {}; for (const k of tk) { const t = TERRAIN_TEX[k]; tex[k] = { w: t.w, h: t.h, d: t.d, mean: t.mean }; } for (const w of this.ws) w.postMessage({ tex }); this.texN = tk.length; }
+    const tk = Object.keys(TERRAIN_TEX); if (tk.length !== this.texN) { const tex = {}; for (const k of tk) { const t = TERRAIN_TEX[k]; tex[k] = { w: t.w, h: t.h, d: t.d, mean: t.mean, keep: t.keep }; } for (const w of this.ws) w.postMessage({ tex }); this.texN = tk.length; }
   },
   // Zleca kawałki (od najważniejszych), najwyżej `cap` naraz w drodze; zwraca liczbę zleconych
   request(R, list, cap) {

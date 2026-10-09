@@ -1106,7 +1106,7 @@ const siteUsed = (st, ob, h) => { const [k, v] = siteStamp(st, ob, h); return (o
 // Skutek odwiedzin (człowiek i SI). Zwraca { text, float?, res?, exp? }; doświadczenie dolicza wołający (okno awansu).
 function useSite(st, h, ob, choice) {
   const S = SITES[ob.kind], R = playerOf(st, h.owner).resources;
-  if (siteUsed(st, ob, h)) return { text: { hero: `${h.name} już tu był${h.female ? 'a' : ''}.`, day: 'Dziś już stąd korzystano. Wróć jutro.', heroWeek: 'W tym tygodniu już stąd korzystano.', week: 'W tym tygodniu plon już zebrano. Wróć w następnym.', player: 'Okolica jest już odsłonięta.' }[S.use] };
+  if (siteUsed(st, ob, h)) return { text: { hero: `${h.name} już tu był${h.female ? 'a' : ''}.`, day: 'Dziś już stąd korzystano. Wróć jutro.', heroWeek: 'W tym tygodniu już stąd korzystano.', week: 'W tym tygodniu plon już zebrano. Wróć w następnym.', player: 'Okolica jest już odsłonięta.' , once: 'Z tego miejsca już skorzystano – drugi raz nic tu nie znajdziesz.'}[S.use] };
   const [k, v] = siteStamp(st, ob, h); const mark = () => { ob.seen = ob.seen || {}; ob.seen[k] = v; };
   siteDiscover(ob, h.owner);
   switch (ob.kind) {

@@ -366,7 +366,7 @@ G.screens.battle = {
     battleSound(fx, this.B.auto ? 0.55 : 1);
     const sp = this.B.auto ? 0.55 : 1, S = fx.kind === 'spell' ? SPELL_FX[fx.id] || {} : null;
     const dur = fx.kind === 'move' ? (fx.fly ? 0.45 + 0.08 * hexDistance({ x: fx.path[0][0], y: fx.path[0][1] }, { x: fx.u.x, y: fx.u.y }) : 0.17 * (fx.path.length - 1))
-      : fx.kind === 'hit' ? (fx.a && !fx.splash ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.95 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj || S.meteor ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
+      : fx.kind === 'hit' ? (fx.a && !fx.splash ? 0.62 : 0.3) : fx.kind === 'shot' || fx.kind === 'siege' ? 0.75 : fx.kind === 'heal' ? 0.55 : fx.kind === 'spell' ? (S.proj || S.meteor ? 0.85 : S.strike ? 0.55 : 0.7) : 0.4;
     this.play = { ...fx, t: 0, dur: dur * sp, landed: false, launched: false, sp };
     const now = G.time, faceTo = (v, x) => { if (v && Math.abs(x - v.px) > 2) v.face = Math.sign(x - v.px); }; // oddział obraca się w stronę ruchu i celu
     if (fx.kind === 'heal' && fx.u && (fx.jump || fx.u.px == null)) { [fx.u.px, fx.u.py] = unitPos(fx.u); if (fx.jump) BattleFX.glow(fx.u.px, fx.u.py - 10, 40, '#9ab0ff', 0.4); } // Teleportacja i Klon: nowe miejsce od razu
@@ -402,16 +402,16 @@ G.screens.battle = {
       if (!p.landed && f >= (p.a && !p.splash ? 0.5 : 0)) { p.landed = true; this.impact(p.tg, p.dmg, p.killed); }
     } else if (p.kind === 'shot') {
       const LK = CREATURES[p.a.cid].look, orb = LK.weapon === 'staff' || !!LK.orb, col = LK.orb || '#c8e0ff'; // kula: laska albo własny pocisk (kamień gremlina, piorun tytana)
-      if (!p.launched && f >= 0.42) {
+      if (!p.launched && f >= 0.38) {
         p.launched = true; const dist = Math.hypot(p.tg.px - p.a.px, p.tg.py - p.a.py);
-        p.pr = BattleFX.proj(orb ? 'orb' : 'arrow', p.a.px + (p.tg.px > p.a.px ? 14 : -14), p.a.py - 18, p.tg.px, p.tg.py - 16, (orb ? 0.12 + dist / 900 : 0.08 + dist / 1500) * p.sp, col, orb ? 8 : 6 + dist * 0.07); // strzała z łuku: szybka, płaski łuk rosnący z odległością
+        p.pr = BattleFX.proj(orb ? 'orb' : 'arrow', p.a.px + (p.tg.px > p.a.px ? 14 : -14), p.a.py - 18, p.tg.px, p.tg.py - 16, (orb ? 0.08 + dist / 1500 : 0.05 + dist / 2800) * p.sp, col, orb ? 8 : 6 + dist * 0.07); // strzała z łuku: szybka (ok. ćwierć sekundy przez pół pola), płaski łuk rosnący z odległością
         p.hitAt = p.t + p.pr.dur;
       }
       if (p.launched && !p.landed && p.t >= p.hitAt) { p.landed = true; this.impact(p.tg, p.dmg, p.killed, orb ? col : '#ffe8a0'); if (orb) BattleFX.emit(p.tg.px, p.tg.py - 16, { n: 14, col: [col, '#ffffff'], spd: 90, life: 0.4, size: 3, glow: true }); }
       if (p.hitAt) p.dur = Math.max(p.dur, p.hitAt + 0.15);
     } else if (p.kind === 'siege') { // głaz z katapulty w mur
       const [tx, ty] = hexCenter(p.x, p.y);
-      if (!p.launched && f >= 0.4) { p.launched = true; p.pr = BattleFX.proj('rock', p.a.px, p.a.py - 26, tx + (p.hit ? 0 : 20), ty - 20, 0.5 * p.sp, '#8a847a', 90); p.hitAt = p.t + p.pr.dur; }
+      if (!p.launched && f >= 0.4) { p.launched = true; p.pr = BattleFX.proj('rock', p.a.px, p.a.py - 26, tx + (p.hit ? 0 : 20), ty - 20, 0.38 * p.sp, '#8a847a', 90); p.hitAt = p.t + p.pr.dur; }
       if (p.launched && !p.landed && p.t >= p.hitAt) {
         p.landed = true; Sfx.play(p.hit ? 'crash' : 'thud', { vol: p.broken ? 1 : 0.7, pan: sfxPan(tx) }); BattleFX.emit(tx, ty - 16, { n: p.broken ? 40 : 18, col: ['#9a948a', '#6e6a62', '#c8c0b0'], spd: 120, up: -60, g: 300, life: 0.7, size: 4, jx: 20 });
         BattleFX.shake = Math.max(BattleFX.shake, p.broken ? 6 : 3); this.floats.push({ x: tx, y: ty - 50, text: p.hit ? (p.broken ? (p.tower ? 'Wieża runęła!' : 'Wyłom!') : 'Trafienie!') : 'Pudło', t: G.time, col: '#e8e0cc', small: true });
@@ -427,7 +427,7 @@ G.screens.battle = {
       if (!p.launched) {
         p.launched = true; const hp = heroSpot(p.side || 0), hand = [hp[0] + hp[2] * 16, hp[1] - 44]; this.heroCast = { side: p.side || 0, t0: G.time }; // bohater unosi rękę
         BattleFX.ring(hand[0], hand[1], S.col || '#ffffff', 26, 0.5, 2);
-        if (S.proj) { p.pr = BattleFX.proj(S.proj, hand[0], hand[1], aim[0], aim[1], 0.5 * p.sp, S.col, 40); p.hitAt = p.pr.dur; }
+        if (S.proj) { p.pr = BattleFX.proj(S.proj, hand[0], hand[1], aim[0], aim[1], 0.35 * p.sp, S.col, 40); p.hitAt = p.pr.dur; }
         else if (S.meteor) { for (let i = 0; i < 3; i++) p.pr = BattleFX.proj('fireball', tx - 140 + i * 50, -30 - i * 20, aim[0] + (i - 1) * 14, aim[1], (0.4 + i * 0.08) * p.sp, S.col); p.hitAt = p.pr.dur; }
         else if (S.strike) { BattleFX.bolt(tx + (Math.random() - 0.5) * 60, 0, aim[0], aim[1], S.col); BattleFX.bolt(tx + (Math.random() - 0.5) * 80, 0, aim[0], aim[1], S.col); p.hitAt = 0.05;
           if (S.chain && p.area) for (let i = 1; i < p.area.length; i++) { const [x0, y0] = hexCenter(...p.area[i - 1]), [x1, y1] = hexCenter(...p.area[i]); BattleFX.bolt(x0, y0 - 16, x1, y1 - 16, S.col); BattleFX.glow(x1, y1 - 16, 40, S.col, 0.4); } } // łańcuch: piorun skacze od celu do celu

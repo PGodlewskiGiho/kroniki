@@ -41,7 +41,9 @@ const GLMap = {
         // pogoda: odbicie nieba (jaśniej i bardziej błękitnie bez chmur), błyski słońca, kręgi deszczu (q: piksele grafiki, 16 na pole)
         vec4 s = texture2D(uSky, (q / 16.0 - uGrid.xy) / uGrid.zw); float sky = 1.0 - s.g;
         vec3 refl = mix(vec3(0.09, 0.11, 0.15), vec3(0.56, 0.72, 0.88), sky); float fr = 0.11;
-        float gl = step(0.993, wxH(floor(q / 1.6) + floor(uT * 3.0))) * sky * 0.7;
+        // błyski słońca: rzadkie, miękkie i okrągłe, każdy w losowym miejscu swojej komórki i we własnym rytmie (dawniej kwadraty w regularnej siatce)
+        vec2 gc = floor(q / 14.0); float gh = wxH(gc + 0.37); vec2 gp = fract(q / 14.0) - (0.25 + 0.5 * vec2(wxH(gc + 1.7), wxH(gc + 5.3)));
+        float tw = max(0.0, sin(uT * (0.8 + gh) + gh * 40.0)); float gl = step(0.92, gh) * smoothstep(0.09, 0.0, length(gp)) * tw * tw * tw * sky * 0.45;
         vec2 cell = floor(q / 10.0), lp = fract(q / 10.0) - 0.5 - (vec2(wxH(cell), wxH(cell + 3.1)) - 0.5) * 0.4; float ph = fract(uT * 0.9 + wxH(cell + 7.3));
         float ring = smoothstep(0.06, 0.0, abs(length(lp) - ph * 0.45)) * (1.0 - ph) * step(wxH(cell + 11.7), s.b) * 0.55;
         vec4 add = vec4(refl * fr + vec3(1.0, 0.97, 0.88) * gl + vec3(0.82, 0.88, 0.95) * ring, fr + gl + ring) * uRefl;
@@ -162,7 +164,7 @@ const GLMap = {
     this.flush(); const U = this.uw, fc = WaterFx.foamRgb || (WaterFx.foamRgb = gradeRgb(hexRgb('#eef8fc')).map(v => v / 255)), fa = 0.22 + 0.2 * Math.sin(t * 2.2);
     gl.useProgram(this.pWater); gl.uniform2f(U.uR, this.W, this.H); gl.uniform1f(U.uS, S); gl.uniform2f(U.uW, wx / D, wy / D);
     gl.uniform2f(U.uO1, Math.floor(t * 4), Math.floor(t * 1.5)); gl.uniform2f(U.uO2, -Math.floor(t * 3) + 21, Math.floor(t * 2) + 13);
-    gl.uniform3f(U.uA, 0.5 + 0.2 * Math.sin(t * 1.3), 0.35 + 0.2 * Math.sin(t * 1.7 + 2), ctx.globalAlpha); gl.uniform4f(U.uFoam, fc[0] * fa, fc[1] * fa, fc[2] * fa, fa);
+    gl.uniform3f(U.uA, 0, 0, ctx.globalAlpha); // bez pikselowego wzoru fal (wyglądał jak siatka kropek); woda żyje odbiciem nieba, błyskami i pianą gl.uniform4f(U.uFoam, fc[0] * fa, fc[1] * fa, fc[2] * fa, fa);
     [[pat, U.uPat], [deep, U.uDeep], [shore, U.uShore], [this.tSky, U.uSky]].forEach(([tx, u], i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tx); gl.uniform1i(u, i); });
     gl.uniform4f(U.uGrid, ...this.wxGrid); gl.uniform1f(U.uT, t % 1000); gl.uniform1f(U.uRefl, this.reflect === false ? 0 : 1); // odbicia nieba, błyski i kręgi deszczu (tylko karta graficzna)
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, pat); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); // wzór fal: ostre piksele (jak w płótnie), maski gładko
