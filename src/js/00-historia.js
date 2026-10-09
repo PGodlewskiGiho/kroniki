@@ -377,5 +377,7 @@
    ścieżkom, drugiemu czarowi Bitewnego maga za potrójną manę (DOUBLE_CAST_COST) i mocy czarów powyżej SP_SOFT liczonej za pół.
    Ekran nowej gry przebudowany: panel Świat (przełączniki ◀ ▶ mapy, krainy, trudności; bonus, podziemia, zasady) i panel Gracze
    (tylko zajęte miejsca, Dodaj/Usuń gracza); ikony 3D ic_map, ic_helm, ic_dice, ic_chest, herb frakcji = portret stwora 7. poziomu.
+   Drużyny (slots[].team → players[].team, allied/teamOf): sojusznicy nie walczą, nie przejmują kopalń i miast, wspólna mgła (reveal),
+   komputer nie celuje w sojuszników (aiPeace), zwycięstwo drużyny (gameResult); odznaka drużyny w wierszu gracza.
    ===================================================================================== */
 

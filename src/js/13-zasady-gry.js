@@ -7,13 +7,13 @@ const lighthousesOf = (st, owner) => st.objects.reduce((k, o) => k + (o.kind ===
 // Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
 function reveal(st, cx, cy, r, owner = ME) {
   const P = playerOf(st, owner); if (!P || !P.explored) return;
-  const n = st.map.n, ex = P.explored; let changed = false;
+  const n = st.map.n, team = st.players.filter(q => q.explored && allied(st, owner, q.id)); let changed = false; // sojusznicy widzą to samo
   for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
     if (dx * dx + dy * dy > r * r + r) continue; const x = cx + dx, y = cy + dy;
-    if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; if (!ex[i]) { ex[i] = 1; changed = true; }
+    if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; for (const q of team) if (!q.explored[i]) { q.explored[i] = 1; if (q.id === ME) changed = true; }
   }
-  if (changed && owner === ME) MapRender.miniDirty = true;
-  spotHidden(st, cx, cy, owner);
+  if (changed) MapRender.miniDirty = true;
+  for (const q of team) spotHidden(st, cx, cy, q.id);
 }
 // Skarby ukryte w gąszczu albo wśród skał (o.hid, rozmieszczenie: placeObjects): gracz widzi je dopiero, gdy jego bohater
 // przejdzie najwyżej 2 pola od nich (o.fd[gracz]); do tego czasu na mapie jest tylko las
@@ -125,7 +125,7 @@ function heroStep(st, h) {
   const halt = () => { h.moving = false; h.path = null; h.dest = null; };
   if (ob && ob.type === 'monster') { halt(); h.prev = null; startEncounter(st, h, ob); return false; }
   const other = heroAt(st, nx, ny); // bohater w bramie miasta broni się razem z miastem (startTownAssault)
-  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } else if (playerOf(st, h.owner).human && !G.screens.adventure.aiRun) showMeeting(st, h, other); return false; } // własny: spotkanie po dojściu
+  if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner && allied(st, h.owner, other.owner)) { G.screens.adventure.flash(`${other.name} to bohater sojusznika (${playerName(st, other.owner)})`); return; } if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } else if (playerOf(st, h.owner).human && !G.screens.adventure.aiRun) showMeeting(st, h, other); return false; } // własny: spotkanie po dojściu
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h)); Net.step(h, h.prev[0], h.prev[1]);
@@ -188,6 +188,7 @@ function visitObject(st, h, ob) {
       { iconH: 76, icon: (ctx, cx, cy) => { drawMap3dIcon(ctx, 'site_' + ob.kind, cx, cy, 90, 74) || drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5); if (ob.kind === 'witchHut') skillIcon(ctx, ob.skill, cx + 64, cy + 8, 48); } });
   } else if (ob.type === 'town') {
     const t = st.towns[ob.townId];
+    if (ob.owner !== h.owner && allied(st, h.owner, ob.owner)) { G.screens.adventure.flash(`${t.name}: miasto sojusznika (${playerName(st, ob.owner)})`); return; }
     if (ob.owner !== h.owner) startTownAssault(st, h, t);
     else if (hasGrail(h) && !hasB(t, 'grail')) { // Graal w plecaku: jak w Heroes 3 miasto pyta, czy go tu wbudować
       const name = bInfo(BUILD_BY_ID.grail, t.faction).name;
@@ -202,6 +203,7 @@ function visitObject(st, h, ob) {
   } else if (ob.type === 'mine') {
     const M = MINES[ob.kind];
     if (ob.owner === h.owner) { G.screens.adventure.flash(`${M.name} już należy do ciebie`); return; }
+    if (allied(st, h.owner, ob.owner)) { G.screens.adventure.flash(`${M.name} należy do sojusznika`); return; }
     ob.owner = h.owner; MapRender.miniDirty = true; snd('flag');
     showDialog(`${M.name} należy teraz do ciebie. Dochód dzienny: ${M.income} (${resName(ob.kind).toLowerCase()}).`, [{ label: 'OK', key: 'enter' }],
       { iconH: 66, icon: (ctx, cx, cy) => { if (drawMap3dIcon(ctx, 'mine_' + ob.kind, cx, cy, 110, 64)) return drawSprite(ctx, flagSprite(ownerColor(st, ob.owner), 12, 7), cx + 30, cy - 34, 1); drawSprite(ctx, mineSprite(ob.kind), cx - 33, cy - 31, 1); drawSprite(ctx, flagSprite(ownerColor(st, ob.owner), 12, 7), cx + 23, cy - 33, 1); } });
@@ -1213,7 +1215,7 @@ function useSite(st, h, ob, choice) {
       if (w && (w.x.n > 1 || armyStacks(h.army).length > 1)) { const d = Math.ceil(w.x.n / 2); w.x.n -= d; lost = ` Morze zabiera ${d} (${CREATURES[w.x.cid].plural.toLowerCase()}).`; if (w.x.n <= 0) h.army[w.i] = null; }
       h.x = to.x; h.y = to.y; h.path = null; h.dest = null; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); MapRender.miniDirty = true; if (h.owner === ME && G.state === st) centerCam(st, h.x, h.y);
       return { text: `Wir wciąga łódź w głębinę i wyrzuca ją daleko stąd, przy drugim wirze.${lost}`, bad: !!lost }; }
-    case 'lighthouse': { if (ob.owner === h.owner) return { text: 'Latarnia już świeci dla twoich statków.' }; ob.owner = h.owner; MapRender.miniDirty = true; sfxFor(st, h.owner, 'flag');
+    case 'lighthouse': { if (ob.owner === h.owner) return { text: 'Latarnia już świeci dla twoich statków.' }; if (ob.owner >= 0 && allied(st, h.owner, ob.owner)) return { text: 'Latarnia należy do sojusznika i świeci także dla niego.' }; ob.owner = h.owner; MapRender.miniDirty = true; sfxFor(st, h.owner, 'flag');
       return { text: `Latarnik zapala światło dla twoich statków: każdy twój bohater w łodzi ma +${LIGHTHOUSE_MP} punktów ruchu na morzu.`, float: 'latarnia' }; }
     case 'obelisk': { mark(); const k = obelisksSeen(st, h.owner), N = obelisksTotal(st);
       return { puzzle: true, text: k >= N ? 'Ostatni obelisk! Mapa zagadki jest kompletna: krzyżyk wskazuje, gdzie zakopano Graala.' : `Runy na obelisku odsłaniają kolejny fragment mapy zagadki (${k} z ${N}).` }; }

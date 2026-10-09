@@ -283,6 +283,15 @@ const heroPickTip = (fac, name) => { const e = factionOf(fac).heroes.find(([n]) 
 // Ikony ekranu nowej gry: modele 3D interfejsu (interfejs.webp), krążek terenu krainy, portret stwora 7. poziomu jako herb frakcji, portret bohatera
 const uiIco = (ctx, key, cx, cy, s) => drawUiPiece(ctx, key, cx - s / 2, cy - s / 2, s, s);
 const icoK3 = k3 => Object.assign(() => {}, { k3 }); // ikona przycisku z arkusza interfejsu
+// Odznaka drużyny: tarcza w barwie drużyny z jej numerem; bez drużyny – przekreślone kółko
+const TEAM_COL = ['', '#c8a040', '#b03a2a', '#3a6ab0', '#5a8a3a'];
+function teamBadge(ctx, t, cx, cy, col) {
+  if (col === '#120a03') return; // Button rysuje ikonę dwa razy (cień + kolor): odznaka ma własny obrys
+  ctx.save(); if (!t) { ctx.strokeStyle = 'rgba(240,220,166,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, 6, 0, TAU); ctx.moveTo(cx - 4, cy + 4); ctx.lineTo(cx + 4, cy - 4); ctx.stroke(); ctx.restore(); return; }
+  ctx.beginPath(); ctx.moveTo(cx - 8, cy - 9); ctx.lineTo(cx + 8, cy - 9); ctx.lineTo(cx + 8, cy + 1); ctx.quadraticCurveTo(cx + 8, cy + 8, cx, cy + 11); ctx.quadraticCurveTo(cx - 8, cy + 8, cx - 8, cy + 1); ctx.closePath();
+  ctx.fillStyle = TEAM_COL[t]; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#f0dca6'; ctx.stroke();
+  ctx.font = font(12, 700, 'title'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff4cc'; ctx.fillText(String(t), cx, cy); ctx.restore();
+}
 const icoX = (ctx, cx, cy, col) => { ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx - 5, cy - 5); ctx.lineTo(cx + 5, cy + 5); ctx.moveTo(cx + 5, cy - 5); ctx.lineTo(cx - 5, cy + 5); ctx.stroke(); }; // usuń
 const LAND_TEX = { mixed: 'grass', mountains: 'rough', forest: 'grass', desert: 'sand', frost: 'snow', marsh: 'swamp', islands: 'water' };
 const DIFF_ICON = ['peasant', 'swordsman', 'vampireLord', 'doomKnight', 'azureDragon']; // trudność: coraz groźniejszy stwór
@@ -335,13 +344,15 @@ G.screens.setup = {
       const col = () => S.slots[i];
       const sw = new Button(0, 0, 30, 40, '', () => this.nextColor(i), { swatch: () => colorHex(col().color), tip: 'Kolor gracza (kliknij, aby zmienić).' });
       const ty = new Button(0, 0, 38, 40, '', () => this.toggleType(i), { tip: 'Człowiek (hełm) albo komputer (tryby). Kilku ludzi gra na zmianę przy jednym ekranie (hot-seat). Kliknij, aby zmienić.' });
-      const nm = new Button(0, 0, 82, 40, '', () => askText(`Imię gracza (${PLAYER_COLORS.find(c => c.id === col().color).name.toLowerCase()}). Puste = nazwa od koloru.`, col().name, v => { col().name = v; saveSettings(); }), { size: 13, tip: 'Imię człowieka widoczne w turach i wieściach (kliknij, aby wpisać).' });
-      const fa = new Button(0, 0, 116, 40, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; o.hero = 'random'; saveSettings(); }, { size: 13, lead: (ctx, cx, cy) => factionMedal(ctx, col().faction, cx, cy, 32) });
+      const nm = new Button(0, 0, 60, 40, '', () => askText(`Imię gracza (${PLAYER_COLORS.find(c => c.id === col().color).name.toLowerCase()}). Puste = nazwa od koloru.`, col().name, v => { col().name = v; saveSettings(); }), { size: 13, tip: 'Imię człowieka widoczne w turach i wieściach (kliknij, aby wpisać).' });
+      const fa = new Button(0, 0, 112, 40, '', () => { const ids = ['random', ...FACTIONS.map(f => f.id)], o = col(); o.faction = ids[(ids.indexOf(o.faction) + 1) % ids.length]; o.hero = 'random'; saveSettings(); }, { size: 13, lead: (ctx, cx, cy) => factionMedal(ctx, col().faction, cx, cy, 32) });
       Object.defineProperty(fa, 'tip', { get: () => { const f = col().faction; return f === 'random' ? 'Frakcja gracza: losowa (kliknij, aby zmienić).' : `${factionOf(f).name}: ${factionOf(f).desc} Cecha: ${traitText(f)}. Magia: ${magicText(f)}. Kliknij, aby zmienić.`; }, set() {} });
       const he = new Button(0, 0, 98, 40, '', () => { const o = col(), ids = ['random', ...factionOf(o.faction).heroes.map(([n]) => n)]; o.hero = ids[(ids.indexOf(o.hero || 'random') + 1) % ids.length]; saveSettings(); }, { size: 12, lead: (ctx, cx, cy) => heroPickMedal(ctx, col(), cx, cy, 16) });
       Object.defineProperty(he, 'tip', { get: () => { const o = col(); return o.faction === 'random' ? 'Bohater startowy: najpierw wybierz frakcję.' : !o.hero || o.hero === 'random' ? 'Bohater startowy: losowy z frakcji (kliknij, aby wybrać konkretnego).' : `Bohater startowy: ${heroPickTip(o.faction, o.hero)}. Kliknij, aby zmienić.`; }, set() {} });
+      const tm = new Button(0, 0, 24, 40, '', () => { const o = col(); o.team = ((o.team || 0) + 1) % (TEAMS + 1); saveSettings(); }, { icon: (ctx, cx, cy, c) => teamBadge(ctx, col().team || 0, cx, cy, c) });
+      Object.defineProperty(tm, 'tip', { get: () => { const t = col().team || 0; return t ? `Drużyna ${TEAM_NAMES[t]}: sojusznicy nie walczą ze sobą, widzą wspólną mapę i wygrywają razem. Kliknij, aby zmienić.` : 'Bez drużyny: każdy walczy z każdym. Kliknij, aby dołączyć do drużyny (sojusz).'; }, set() {} });
       const rm = new Button(0, 0, 26, 40, '', () => this.removeSlot(i), { icon: icoX, tip: 'Usuń gracza' });
-      return { sw, ty, nm, fa, he, rm };
+      return { sw, ty, nm, fa, he, tm, rm };
     });
     this.bAdd = new Button(0, 0, 410, 40, 'Dodaj gracza', () => this.addSlot(), { size: 15, lead: (ctx, cx, cy) => uiIco(ctx, 'ic_plus', cx, cy, 22), tip: 'Nowy przeciwnik komputerowy (rodzaj, frakcję i bohatera zmienisz obok).' });
     this.bStart = new Button(526, 512, 214, 46, 'Rozpocznij', () => this.start(), { key: 'enter', size: 20, primary: true });
@@ -350,8 +361,8 @@ G.screens.setup = {
   },
   relayout() { // zajęte miejsca jedno pod drugim, pod nimi „Dodaj gracza” (gdy mapa mieści więcej)
     const S = G.settings, X = 326; let row = 0; const vis = [];
-    S.slots.forEach((o, i) => { const b = this.slotBtns[i]; if (o.type === 'off') return; const y = 134 + row++ * 44, xs = [0, 34, 76, 162, 282, 384];
-      ['sw', 'ty', 'nm', 'fa', 'he', 'rm'].forEach((k, j) => { b[k].x = X + xs[j]; b[k].y = y; }); vis.push(b.sw, b.ty, b.nm, b.fa, b.he, b.rm); });
+    S.slots.forEach((o, i) => { const b = this.slotBtns[i]; if (o.type === 'off') return; const y = 134 + row++ * 44, xs = [0, 34, 76, 140, 256, 358, 386];
+      ['sw', 'ty', 'nm', 'fa', 'he', 'tm', 'rm'].forEach((k, j) => { b[k].x = X + xs[j]; b[k].y = y; }); vis.push(b.sw, b.ty, b.nm, b.fa, b.he, b.tm, b.rm); });
     const add = this.active() < setupCap(S) && S.slots.some(o => o.type === 'off'); if (add) { this.bAdd.x = X; this.bAdd.y = 134 + row * 44; vis.push(this.bAdd); }
     this.buttons = [...this.fixed, ...vis];
   },
@@ -394,7 +405,7 @@ G.screens.setup = {
     for (const [i, b] of (this.slotBtns || []).entries()) {
       const o = S.slots[i]; b.ty.icon = icoK3(o.type === 'human' ? 'ic_helm' : 'ic_gear'); b.fa.label = o.faction === 'random' ? 'Losowa' : factionOf(o.faction).name;
       b.nm.disabled = o.type !== 'human'; b.nm.label = o.type !== 'human' ? 'Komputer' : o.name || 'Imię…';
-      b.he.label = !o.hero || o.hero === 'random' ? 'Losowy' : o.hero.split(' ')[0]; b.he.disabled = o.faction === 'random';
+      b.he.label = !o.hero || o.hero === 'random' ? 'Losowy' : o.hero; b.he.disabled = o.faction === 'random';
       b.rm.disabled = this.active() <= 1 || (o.type === 'human' && S.slots.filter(q => q.type === 'human').length === 1);
     }
     dimmedMenuScene(ctx, 0.5);

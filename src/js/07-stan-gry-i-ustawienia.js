@@ -32,7 +32,7 @@ function loadSettings() {
 const SLOT_TYPES = ['human', 'ai', 'off'];
 function validSlots(a) {
   if (!Array.isArray(a) || a.length !== MAX_PLAYERS) return null;
-  const used = new Set(), out = a.map(o => ({ type: SLOT_TYPES.includes(o && o.type) ? o.type : 'off', color: o && o.color, name: o && typeof o.name === 'string' ? o.name.trim().slice(0, 16) : '', faction: o && (o.faction === 'random' || FACTIONS.some(f => f.id === o.faction)) ? o.faction : 'random', hero: 'random' }));
+  const used = new Set(), out = a.map(o => ({ type: SLOT_TYPES.includes(o && o.type) ? o.type : 'off', color: o && o.color, name: o && typeof o.name === 'string' ? o.name.trim().slice(0, 16) : '', faction: o && (o.faction === 'random' || FACTIONS.some(f => f.id === o.faction)) ? o.faction : 'random', hero: 'random', team: o && o.team >= 1 && o.team <= TEAMS ? o.team : 0 }));
   a.forEach((o, i) => { if (o && out[i].faction !== 'random' && factionOf(out[i].faction).heroes.some(([n]) => n === o.hero)) out[i].hero = o.hero; }); // bohater startowy z puli frakcji (inaczej losowy)
   for (const o of out) { if (!PLAYER_COLORS.some(c => c.id === o.color) || used.has(o.color)) o.color = null; else used.add(o.color); }
   for (const o of out) if (!o.color) { o.color = PLAYER_COLORS.find(c => !used.has(c.id)).id; used.add(o.color); }
@@ -77,6 +77,11 @@ const sharedScreen = st => !st.online && st.players.filter(p => p.human && !p.ou
 // Imię gracza wpisane na ekranie nowej gry (hot-seat), inaczej „gracz <kolor>”
 const playerName = (st, id) => st.players[id].name || `gracz ${(PLAYER_COLORS.find(c => c.id === st.players[id].color) || PLAYER_COLORS[0]).name.toLowerCase()}`;
 const playerOf = (st, owner) => st.players[owner]; // gracz o danym numerze (surowce, frakcja, odkryta mapa)
+// Drużyny (slots[].team → players[].team, 0 = bez drużyny): sojusznicy nie walczą ze sobą, nie przejmują sobie kopalń ani miast,
+// widzą wspólną mapę i wygrywają razem (gra kończy się, gdy na placu zostaje jedna drużyna)
+const TEAMS = 4, TEAM_NAMES = ['', 'Lwy', 'Smoki', 'Gryfy', 'Wilki'];
+const allied = (st, a, b) => a === b || (a >= 0 && b >= 0 && !!st.players[a] && !!st.players[b] && !!st.players[a].team && st.players[a].team === st.players[b].team);
+const teamOf = (st, owner) => (owner >= 0 && st.players[owner] && st.players[owner].team) || 0;
 const ownerName = (st, owner) => (owner === ME ? 'ty' : st.players[owner] ? playerName(st, owner) : 'nikt');
 const ownerColor = (st, owner) => (st.players[owner] ? colorHex(st.players[owner].color) : NEUTRAL_COLOR);
 // Wybrany bohater gracza-człowieka; null, gdy gracz nie ma już bohaterów (może wtedy nająć nowego w tawernie)

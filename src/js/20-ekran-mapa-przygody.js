@@ -429,7 +429,8 @@ G.screens.adventure = {
     if (!r) return;
     st.over = r; if (r === 'win' && !hotseat(st)) st.scoreRow = recordScore(st);
     const days = `${st.dayTotal} ${st.dayTotal === 1 ? 'dzień' : 'dni'}`;
-    const msg = hotseat(st) ? (r === 'win' ? `Zwycięstwo! ${cap1(playerName(st, st.winner))} (${factionOf(st.players[st.winner].faction).name}) pokonuje wszystkich rywali w ${days}.` : 'Koniec gry: wszyscy ludzie przegrali, królestwa należą do komputera.')
+    const tw = teamOf(st, st.winner), mates = tw ? st.players.filter(p => p.team === tw && !p.out).map(p => playerName(st, p.id)) : [];
+    const msg = hotseat(st) ? (r === 'win' ? (mates.length > 1 ? `Zwycięstwo drużyny ${TEAM_NAMES[tw]}! ${cap1(mates.join(' i '))} pokonują wszystkich rywali w ${days}.` : `Zwycięstwo! ${cap1(playerName(st, st.winner))} (${factionOf(st.players[st.winner].faction).name}) pokonuje wszystkich rywali w ${days}.`) : 'Koniec gry: wszyscy ludzie przegrali, królestwa należą do komputera.')
       : r === 'win' ? `Zwycięstwo! Wszyscy przeciwnicy zostali pokonani w ${days}. Twoja kronika trafia do księgi najlepszych wyników.`
       : 'Porażka. Twoje królestwo upadło: nie masz już miast ani bohaterów, którzy mogliby walczyć dalej.';
     showGameEnd(st, r, msg, [{ label: 'Menu główne', key: 'enter', action: () => G.go('menu') }, ...(r === 'win' ? [{ label: 'Wyniki', action: () => G.go('scores') }] : [])]);
