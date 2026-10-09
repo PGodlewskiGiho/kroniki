@@ -5,6 +5,7 @@
 // shield, robe, hair, longHair, beard, ears, tusks, wings, halo, bony, hunch, claws, eyes, orb, glow.
 // abil: zdolności bitewne (opisy w ABILITIES, działanie w BITWA: ZASADY)
 const ARMOR_PIERCE = 40, DEATH_BLOW = 20; // Przebicie: % pomijanej obrony celu; Cios śmiertelny: % szans na podwójne obrażenia
+const REGEN_MAX = 50; // Regeneracja i Polowy cyrulik leczą najwyżej tyle życia na rundę (inaczej samotna hydra chaosu z 235 życia była prawie nieśmiertelna)
 const ABILITIES = {
   fly: { name: 'Lot', desc: 'przelatuje nad przeszkodami i oddziałami' },
   doubleStrike: { name: 'Podwójny atak', desc: 'w walce wręcz uderza dwa razy' },
@@ -16,7 +17,7 @@ const ABILITIES = {
   jousting: { name: 'Szarża', desc: '+5% obrażeń za każde pole rozpędu przed atakiem' },
   breath: { name: 'Zionięcie', desc: 'rani też oddział stojący za celem' },
   lifeDrain: { name: 'Wysysanie życia', desc: 'leczy się i wskrzesza poległych o zadane obrażenia' },
-  regen: { name: 'Regeneracja', desc: 'na początku rundy leczy rany pierwszego stwora' },
+  regen: { name: 'Regeneracja', desc: 'na początku rundy leczy rany pierwszego stwora (najwyżej 50 życia)' },
   undead: { name: 'Nieumarły', desc: 'odporny na wysysanie życia; ważne też przy czarach' },
   machine: { name: 'Machina', desc: 'stoi w miejscu, działa sama, nie kontratakuje i nie zna morale' },
   maxDamage: { name: 'Mistrzostwo', desc: 'zawsze zadaje najwyższe obrażenia' },

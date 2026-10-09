@@ -478,9 +478,9 @@ function nextActive(B) {
         if (!u.dead && u.psn && u.buffs.poison) { const k = applyDamage(u, u.psn); B.log.push(`Trucizna: ${CREATURES[u.cid].plural.toLowerCase()} tracą ${u.psn} życia${k ? ` (giną: ${k})` : ''}.`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: u, dmg: u.psn, killed: k }); }
         const fw = !u.dead && (B.fire || []).find(f => f.r > 0 && unitCells(u).some(([cx, cy]) => cx === f.x && cy === f.y));
         if (fw) { const k = applyDamage(u, fw.d); B.log.push(`Ściana ognia parzy: ${CREATURES[u.cid].plural.toLowerCase()} (${fw.d}${k ? `, giną: ${k}` : ''}).`); if (B.fx) B.fx.push({ kind: 'hit', a: null, tg: u, dmg: fw.d, killed: k }); }
-        if (!u.dead && B.round >= 2 && !isMachine(u) && u.hp < CREATURES[u.cid].hp && heroPerk(sideHero(B, u.side), 'fieldMedic')) { const amt = CREATURES[u.cid].hp - u.hp; u.hp += amt; if (B.fx) B.fx.push({ kind: 'heal', u, amount: amt }); } // Polowy cyrulik
+        if (!u.dead && B.round >= 2 && !isMachine(u) && u.hp < CREATURES[u.cid].hp && heroPerk(sideHero(B, u.side), 'fieldMedic')) { const amt = Math.min(REGEN_MAX, CREATURES[u.cid].hp - u.hp); u.hp += amt; if (B.fx) B.fx.push({ kind: 'heal', u, amount: amt }); } // Polowy cyrulik
         for (const k of Object.keys(u.buffs)) if (--u.buffs[k] <= 0) delete u.buffs[k];
-        if (!u.dead && hasAb(u, 'regen') && u.hp < CREATURES[u.cid].hp) { const amt = CREATURES[u.cid].hp - u.hp; u.hp += amt; if (B.fx) B.fx.push({ kind: 'heal', u, amount: amt }); }
+        if (!u.dead && hasAb(u, 'regen') && u.hp < CREATURES[u.cid].hp) { const amt = Math.min(REGEN_MAX, CREATURES[u.cid].hp - u.hp); u.hp += amt; if (B.fx) B.fx.push({ kind: 'heal', u, amount: amt }); }
       }
       if (B.fire) { for (const f of B.fire) f.r--; B.fire = B.fire.filter(f => f.r > 0); }
       if (!fighters(B, 0).length || !fighters(B, 1).length) continue; // trucizna albo ogień rozstrzygnęły bitwę

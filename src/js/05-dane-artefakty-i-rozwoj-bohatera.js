@@ -67,7 +67,7 @@ const TALENTS = {
   ambush: { name: 'Zasadzka', req: [['tactics', 1], ['offense', 2]], desc: 'w pierwszej rundzie bitwy twoje oddziały zadają o 50% więcej obrażeń' },
   warlord: { name: 'Wódz', req: [['leadership', 2]], desc: 'morale armii nigdy nie spada poniżej zera, do tego +1' },
   fortunate: { name: 'Ulubieniec losu', req: [['luck', 2]], desc: 'szczęśliwe ciosy zadają potrójne obrażenia zamiast podwójnych' },
-  fieldMedic: { name: 'Polowy cyrulik', req: [['firstAid', 1], ['triage', 2]], desc: 'na początku każdej rundy ranne stwory na czele twoich oddziałów wracają do pełni sił' },
+  fieldMedic: { name: 'Polowy cyrulik', req: [['firstAid', 1], ['triage', 2]], desc: 'na początku każdej rundy ranne stwory na czele twoich oddziałów odzyskują do 50 życia' },
   doubleCast: { name: 'Bitewny mag', req: [['sorcery', 2], ['wisdom', 3]], desc: 'w bitwie rzucasz dwa czary na rundę (drugi za potrójną manę)' },
   spellWard: { name: 'Bariera', req: [['resistance', 2], ['interference', 2]], desc: 'pierwszy wrogi czar w każdej bitwie rozbija się o barierę' },
   manaSiphon: { name: 'Wysysanie many', req: [['mysticism', 2], ['intelligence', 2]], desc: 'po każdej wygranej bitwie wraca trzecia część many' },

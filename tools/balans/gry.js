@@ -8,7 +8,7 @@
 const path = require('path'), fs = require('fs'), url = require('url'), { chromium } = require('playwright');
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const GAMES = +arg('--gry', 12), DAYS = +arg('--dni', 150), FROM = +arg('--od', 1), SAVE_EVERY = +arg('--zapis-co', 10);
-const SIZES = arg('--mapy', 'S,M,L').split(','), ONLY = arg('--frakcje', '');
+const SIZES = arg('--mapy', 'S,M,L').split(','), ONLY = arg('--frakcje', ''), DUMP = arg('--zrzut', ''); // --zrzut katalog: zapis stanu gier bez rozstrzygnięcia
 (async () => {
   const exe = fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined, b = await chromium.launch(exe ? { executablePath: exe } : {}), p = await b.newPage();
   const pageErr = []; p.on('pageerror', e => pageErr.push(String(e && e.stack || e))); p.on('console', m => { if (m.type() === 'error') pageErr.push(m.text()); });
@@ -79,6 +79,7 @@ G.state = createNewGame(S, cfg.seed); ME = 0; G.state.players[0].human = false; 
       rec.towns = res.towns; rec.maxLevel = res.lv;
       if (res.over) { rec.winner = res.left; break; }
     }
+    if (DUMP && !rec.winner) { fs.mkdirSync(DUMP, { recursive: true }); fs.writeFileSync(path.join(DUMP, `gra-${g}.json`), await p.evaluate(() => JSON.stringify(serializeGame(G.state)))); }
     games.push(rec);
     console.log(`${tag}: ${rec.winner ? `koniec w dniu ${rec.days}, wygrywa ${rec.winner.map(i => rec.factions[i]).join('+')}` : `po ${rec.days} dniach bez rozstrzygnięcia (miasta ${rec.towns})`}, najwolniejszy dzień ${rec.slowest} ms`);
   }
