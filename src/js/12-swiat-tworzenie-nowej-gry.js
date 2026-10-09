@@ -296,7 +296,9 @@ function placeObjects(st) {
   const monster = (x, y, boost = 0, ddFix = null) => { // ddFix: siła jak przy samym starcie (pierwsze walki)
     if (home[y * n + x]) return null; const dd = ddFix != null ? ddFix : d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), all = NEUTRALS_BY_LEVEL[lvl];
     const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff) * rule(st, 'monsters');
-    const fit = all.filter(c => CREATURES[c].value <= power * 1.3), list = fit.length ? fit : [all.reduce((a, c) => (CREATURES[c].value < CREATURES[a].value ? c : a))], cid = list[Math.floor(rng() * list.length)]; // bez smoka silniejszego niż cała okolica
+    const ter = map.terrain[y * n + x], home2 = c => !CREATURES[c].habitat || CREATURES[c].habitat.includes(ter); // siedlisko: yeti na śniegu, pająk na bagnach i bezdrożach; syrena i kraken tylko w morzu
+    const fit0 = all.filter(c => home2(c) && CREATURES[c].value <= power * 1.3), fit = fit0.flatMap(c => (CREATURES[c].habitat ? [c, c] : [c])); // stwór u siebie losuje się częściej
+    const list = fit.length ? fit : [all.filter(home2).reduce((a, c) => (CREATURES[c].value < CREATURES[a].value ? c : a))], cid = list[Math.floor(rng() * list.length)]; // bez smoka silniejszego niż cała okolica
     return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);
   };
   // Obiekt 2×2 (kopalnia, skarbiec): wejście w prawym dolnym polu, pozostałe trzy pola zablokowane, pole przed wejściem wolne

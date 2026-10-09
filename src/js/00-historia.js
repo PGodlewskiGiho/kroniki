@@ -383,5 +383,7 @@
    kk_ach); okno showStats z końca gry („Statystyki”) i z Kroniki tawerny („Wykres potęgi”).
    Czarodziej: wolniej rośnie Wiedza (CLASS_GROWTH; na 20. poziomie 3,66 → 3,28 indeksu siły). Nowa gra na telefonie: układ zwarty
    (metrics, fitsView – ekran bez przewijania). Ekran bohatera: wiersz „Ścieżka” (wybrana albo trzy do wyboru, z legendą w podpowiedzi).
+   Nowi neutralni: olbrzymi pająk (2), syrena (3, morze), yeti (4, śnieg), olbrzym górski (6), kraken (7, morze); siedliska (habitat)
+   w wyborze potworów na mapie; modele 3D spider i kraken (zwierzeta.js).
    ===================================================================================== */
 

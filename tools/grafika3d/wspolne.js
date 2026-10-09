@@ -14,7 +14,7 @@ async function openStudio(viewport = { width: 1440, height: 900 }) {
   const { chromium } = require('playwright');
   const exe = process.env.CHROMIUM_PATH || (require('fs').existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : null), browser = await chromium.launch(exe ? { executablePath: exe } : {});
   const game = await browser.newPage(); await game.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
-  await game.goto(require('url').pathToFileURL(path.join(ROOT, 'Kroniki Królestw.html')).href); await game.waitForFunction(() => typeof CREATURES !== 'undefined');
+  await game.goto(require('url').pathToFileURL(path.join(ROOT, 'Kroniki Królestw.html')).href); await game.waitForFunction(() => typeof CREATURES !== 'undefined' && typeof BATTLE_FRAMES !== 'undefined' && typeof TOWN_LAYOUTS !== 'undefined' && typeof G !== 'undefined', null, { timeout: 120000 });
   const data = await game.evaluate(() => ({ creatures: Object.fromEntries(Object.entries(CREATURES).map(([id, c]) => [id, { look: c.look, abil: c.abil || [], name: c.name, faction: c.faction || '', level: c.level }])), frames: BATTLE_FRAMES,
     heroes: Object.fromEntries(Object.entries(HERO_CLASSES).map(([id, c]) => [id, c.look])), mages: MAGE_CLASSES,
     towns: Object.fromEntries(Object.keys(TOWN_LAYOUTS).map(f => { const L = townLayout({ faction: f }); return [f, { slots: L.slots.map(S => ({ w: S.w, h: S.h, k: S.k, Z: S.Z })), art: TOWN_ART[f], sky: L.sky,

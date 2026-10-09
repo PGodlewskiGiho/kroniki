@@ -629,3 +629,55 @@ function treant(L, P = {}) {
   root.scale.setScalar(L.size || 1);
   return root;
 }
+// Olbrzymi pająk: głowotułów z ośmiorgiem świecących oczu i kłami (chelicery rozwierają się przy ataku), wielki odwłok ze wzorem,
+// osiem nóg w kolanach wysoko nad ciałem; chód naprzemienny (nogi 1 i 3 z jednej strony razem z 2 i 4 z drugiej)
+function spider(L, P = {}) {
+  const root = new THREE.Group(), col = L.fur || '#2a2420', t = P.t || 0, walking = P.walk != null, ph = walking ? P.walk * Math.PI * 2 : 0, A = P.atk;
+  const hit = A == null ? 0 : A < 0.45 ? -Math.sin(A / 0.45 * Math.PI / 2) * 0.4 : A < 0.62 ? -0.4 + (A - 0.45) / 0.17 * 1.4 : 1 - (A - 0.62) / 0.38;
+  const dark = DK(col, 0.4), light = LT(col, 0.25), bob = walking ? Math.abs(Math.sin(ph * 2)) * 0.03 : Math.sin(t * 2) * 0.01;
+  const body = joint(root, [0, 0.42 + bob, 0], -hit * 0.18);
+  body.add(sph(0.17, col, 'fur', [0.12, 0.02, 0], [1.25, 0.8, 1.05])); // głowotułów
+  const abd = joint(body, [-0.16, 0.06, 0], 0.25 + Math.sin(t * 1.5) * 0.02); abd.add(sph(0.3, col, 'fur', [-0.22, 0.04, 0], [1.15, 0.9, 1.0]));
+  abd.add(sph(0.2, dark, 'fur', [-0.25, 0.14, 0], [1.3, 0.55, 0.8]));
+  if (L.mark) { for (const s of [-1, 1]) abd.add(cone(0.07, 0.12, L.mark, 'glow', [-0.28 + s * 0.06, 0.32, 0], [0, 0, s * Math.PI / 2], 3)); } // znak klepsydry na grzbiecie
+  for (let i = 0; i < 6; i++) abd.add(sph(0.035, light, 'fur', [-0.05 - i * 0.08, 0.27 - Math.abs(i - 2.5) * 0.02, (i % 2 ? 1 : -1) * 0.12], [1, 0.4, 1]));
+  const head = headJoint(body, [0.28, 0.0, 0], hit * 0.15);
+  for (const [x, y, z, r] of [[0.02, 0.07, 0.04, 0.03], [0.02, 0.07, -0.04, 0.03], [0.0, 0.1, 0.09, 0.02], [0.0, 0.1, -0.09, 0.02], [-0.02, 0.12, 0.05, 0.016], [-0.02, 0.12, -0.05, 0.016], [0.01, 0.04, 0.1, 0.015], [0.01, 0.04, -0.1, 0.015]])
+    head.add(sph(r, L.eyes || '#ff3a2a', 'glow', [x, y, z]));
+  for (const z of [-1, 1]) { const ch = joint(head, [0.04, -0.04, 0.05 * z], -0.3 - Math.max(0, hit) * 0.5); ch.rotation.y = z * (0.15 + Math.max(0, -hit) * 0.5);
+    ch.add(sph(0.045, dark, 'fur', [0.03, -0.02, 0], [1.2, 1, 0.9])); ch.add(spike(0.022, 0.12, L.fang || '#e8e0c8', 'horn', [0.05, -0.1, 0], [0, 0, 0.3])); }
+  marker(head, 'mouth', [0.1, -0.08, 0]);
+  for (const z of [-1, 1]) for (let k = 0; k < 4; k++) { // nogi rozchodzą się wachlarzem: pierwsza para do przodu, ostatnia do tyłu; kolano wysoko nad ciałem
+    const a = [0.55, 1.15, 1.95, 2.55][k], gait = ((k % 2) ^ (z > 0 ? 1 : 0)) ? 0 : Math.PI, s = walking ? Math.sin(ph * 2 + gait) : Math.sin(t * 1.2 + k) * 0.08, lift = walking ? Math.max(0, Math.cos(ph * 2 + gait)) * 0.12 : 0;
+    const front = k === 0 && A != null ? Math.max(0, hit) * 0.3 : 0, dx = Math.cos(a), dz = Math.sin(a) * z, sx = 0.14 - k * 0.06, reach = k === 0 || k === 3 ? 0.88 : 0.74;
+    const pts = [[sx + dx * 0.08, 0, z * 0.1], [sx + dx * reach * 0.42, 0.3 + lift * 0.4 + front * 0.4, dz * reach * 0.42 + z * 0.05], [sx + dx * reach * 0.78 + s * 0.06, 0.14 + lift + front * 0.5, dz * reach * 0.78],
+      [sx + dx * reach + s * 0.09 + front * 0.3, -0.42 - bob + lift + front * 0.55, dz * reach]];
+    body.add(tube(pts, 0.04, 0.012, k % 2 ? col : dark, 'fur', 2)); body.add(sph(0.035, light, 'fur', pts[1])); body.add(sph(0.026, dark, 'fur', pts[2]));
+  }
+  root.scale.setScalar(1.15 * (L.size || 1));
+  return root;
+}
+// Kraken: płaszcz głowonoga wynurzony z wody (wir piany u podstawy), wielkie oczy, osiem macek z przyssawkami falujących
+// w wodzie; przy ataku dwie przednie macki unoszą się i smagają do przodu
+function kraken(L, P = {}) {
+  const root = new THREE.Group(), col = L.fur || '#6a2a3a', t = P.t || 0, A = P.atk, dark = DK(col, 0.35), light = LT(col, 0.3);
+  const hit = A == null ? 0 : A < 0.45 ? -Math.sin(A / 0.45 * Math.PI / 2) * 0.6 : A < 0.62 ? -0.6 + (A - 0.45) / 0.17 * 1.6 : 1 - (A - 0.62) / 0.38, sway = Math.sin(t * 1.4) * 0.05;
+  const wm = new THREE.MeshStandardMaterial({ color: L.water || '#3a7a9a', roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.75 });
+  const pool = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.05, 0.06, 28), wm); pool.position.y = 0.03; root.add(pool);
+  for (let i = 0; i < 3; i++) root.add(torus(0.55 + i * 0.22, 0.025, '#e8f4f8', 'cloth', [0, 0.07, 0], [Math.PI / 2, 0, t * 0.4 * (i % 2 ? 1 : -1)])); // piana
+  const mantle = joint(root, [0, 0.55, 0], -0.15 + sway - Math.max(0, hit) * 0.1);
+  mantle.add(sph(0.36, col, 'skin', [-0.12, 0.42, 0], [1.05, 1.45, 1.0])); mantle.add(sph(0.3, dark, 'skin', [-0.22, 0.62, 0], [0.9, 1.0, 0.85]));
+  for (let i = 0; i < 9; i++) mantle.add(sph(0.04 + (i % 3) * 0.012, light, 'skin', [0.1 - (i % 3) * 0.1, 0.25 + Math.floor(i / 3) * 0.2, ((i % 2) - 0.5) * 0.3], [1, 0.7, 1])); // brodawki
+  const head = headJoint(mantle, [0.18, 0.12, 0], 0);
+  for (const z of [-1, 1]) { head.add(sph(0.11, '#f0e0a0', 'gem', [0.02, 0.04, 0.16 * z])); head.add(sph(0.05, '#120808', 'iron', [0.08, 0.04, 0.17 * z], [0.5, 1.4, 1])); head.add(sph(0.12, col, 'skin', [-0.01, 0.1, 0.16 * z], [1, 0.45, 1.1])); }
+  marker(head, 'mouth', [0.5, -0.1, 0]);
+  for (let k = 0; k < 8; k++) {
+    const a = k / 8 * Math.PI * 2 + 0.2, front = Math.cos(a) > 0.55, w = Math.sin(t * 1.8 + k * 1.3), lash = front ? Math.max(0, hit) : 0, up = front ? Math.max(0, -hit) : 0;
+    const cx = Math.cos(a), cz = Math.sin(a), R = 0.95 + (k % 2) * 0.15;
+    const pts = [[cx * 0.12, 0.5, cz * 0.12], [cx * 0.4, 0.18 + up * 0.6, cz * 0.4], [cx * R * 0.75 + lash * 0.5, 0.12 + w * 0.05 + up * 1.0 + lash * 0.3, cz * R * 0.75], [cx * R + lash * 0.9, 0.25 + w * 0.1 + up * 1.2 - lash * 0.1, cz * R], [cx * (R + 0.2) + lash * 1.1, 0.45 + w * 0.15 + up * 0.9 - lash * 0.35, cz * (R + 0.18)]];
+    root.add(tube(pts, 0.085, 0.015, k % 2 ? col : DK(col, 0.12), 'skin', 2));
+    for (let i = 1; i < 4; i++) root.add(sph(0.022, light, 'skin', [pts[i][0], pts[i][1] - 0.04, pts[i][2]], [1, 0.5, 1])); // przyssawki
+  }
+  root.scale.setScalar(1.1 * (L.size || 1));
+  return root;
+}
