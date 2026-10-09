@@ -1,0 +1,122 @@
+{
+ "games": [
+  {
+   "tag": "gra 1 (ziarno 1001, M, random, stronghold/barrow)",
+   "cfg": {
+    "seed": 1001,
+    "mapSize": "M",
+    "land": "random",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "stronghold",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "barrow",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 2,
+   "teams": false,
+   "factions": [
+    "stronghold",
+    "barrow"
+   ],
+   "slowest": 262,
+   "days": 40,
+   "winner": null,
+   "out": [],
+   "towns": [
+    2,
+    1
+   ],
+   "maxLevel": 14
+  },
+  {
+   "tag": "gra 2 (ziarno 1002, S, random, barrow/stronghold)",
+   "cfg": {
+    "seed": 1002,
+    "mapSize": "S",
+    "land": "random",
+    "underground": false,
+    "slots": [
+     {
+      "type": "human",
+      "faction": "barrow",
+      "team": 0
+     },
+     {
+      "type": "ai",
+      "faction": "stronghold",
+      "team": 0
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     },
+     {
+      "type": "off"
+     }
+    ]
+   },
+   "np": 2,
+   "teams": false,
+   "factions": [
+    "barrow",
+    "stronghold"
+   ],
+   "slowest": 109,
+   "days": 38,
+   "winner": [
+    1
+   ],
+   "out": [],
+   "towns": [
+    0,
+    4
+   ],
+   "maxLevel": 8
+  }
+ ],
+ "errors": [],
+ "wins": {
+  "stronghold": 1
+ },
+ "plays": {
+  "stronghold": 2,
+  "barrow": 2
+ }
+}
