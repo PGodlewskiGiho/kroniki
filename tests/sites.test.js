@@ -145,3 +145,14 @@ test('okienka mapy: kopalnia, skarbiec i budynek (obrazek, właściciel, strażn
   for (const [t, v] of Object.entries(r.kinds)) assert.deepEqual(v, { name: true, key: true, desc: true }, t);
   assert.ok(Object.keys(r.kinds).length >= 2); assert.ok(r.list, 'prawy przycisk na liście: okienko bohatera albo miasta');
 });
+
+test('okienka mapy: artefakt (rodzaj, premie), surowiec (ilość) i skrzynia', async () => {
+  const r = await page.evaluate(() => {
+    const st = G.state, out = {};
+    for (const t of ['art', 'res', 'chest']) { const ob = st.objects.find(o => o.type === t && !o.dead); if (!ob) continue; const D = objCardData(st, ob); drawObjCard(G.ctx, { mapObj: ob, x: 40, y: 40 }); out[t] = { name: D.name, rows: D.rows.map(r => r.join(': ')).join(' '), desc: D.desc }; }
+    return out;
+  });
+  assert.ok(Object.keys(r).length >= 2, JSON.stringify(r));
+  if (r.art) assert.match(r.art.rows, /Rodzaj: (skarb|pomniejszy|potężny|relikwia)/);
+  if (r.res) assert.match(r.res.rows, /Ilość: \d+/);
+});

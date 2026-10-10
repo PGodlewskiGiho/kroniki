@@ -536,7 +536,9 @@ G.screens.battle = {
     else if (p.kind === 'attack') this.order({ a: 'move', t: ix(p.target), p: pathTo(this.reach, u, ...p.from) });
     else if (p.kind === 'move') this.order({ a: 'move', p: pathTo(this.reach, u, ...p.to) });
   },
-  rightCard(x, y) { [x, y] = this.toField(x, y); const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y); return u ? unitCard(u, null, this.B, u) : null; },
+  rightCard(x, y) {
+    const B = this.B, D = B.sides[1]; if (y <= 42) return x <= 46 && B.h ? { mapHero: B.h } : x >= VW - 48 && D.hero ? { mapHero: D.hero } : null; // portrety bohaterów w pasku górnym: okienko bohatera
+    [x, y] = this.toField(x, y); const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y); return u ? unitCard(u, null, this.B, u) : null; },
   rightInfo(x, y) {
     [x, y] = this.toField(x, y); const hx = hexAt(x, y), u = hx && unitAt(this.B, hx.x, hx.y), w = hx && wallAt(this.B, hx.x, hx.y);
     if (w && !u) return w.hp <= 0 ? `${w.kind === 'gate' ? 'Rozbita brama' : w.kind === 'keep' ? 'Gruzy wieży głównej' : 'Wyłom w murze'}: można tędy przejść.` : w.kind === 'keep' ? `Wieża główna (wytrzymałość ${w.hp}/${w.max}): jej łucznicy strzelają co rundę za dwie wieże. Burzy ją katapulta.` : w.kind === 'gate' ? `Brama miasta (wytrzymałość ${w.hp}/${w.max}): przepuszcza tylko obrońców. Rozbija ją katapulta.` : `Mur miasta (wytrzymałość ${w.hp}/${w.max}). Strzały zza muru tracą połowę siły; katapulta robi wyłomy.`;
