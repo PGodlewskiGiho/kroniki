@@ -96,3 +96,14 @@ test('karta oddziału pod prawym przyciskiem: bohater (atak z premią), garnizon
   assert.deepEqual(r.tc, ['pikeman', 30]); assert.equal(r.life, '7/25'); assert.equal(r.tent, null);
   await page.evaluate(() => { G.popup = null; });
 });
+
+test('bitwa: prawy przycisk na portrecie bohatera w pasku górnym otwiera okienko bohatera', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), foe = createHero(st, ME, h.x + 1, h.y); foe.army = emptyArmy(); foe.army[0] = { cid: 'skeleton', n: 20 };
+    const B = createBattle(st, h, foe), S = G.screens.battle; S.B = B;
+    const a = S.rightCard(20, 20), b = S.rightCard(VW - 20, 20); if (a) drawPopup(G.ctx, Object.assign(a, { x: 30, y: 30 })); if (b) drawPopup(G.ctx, Object.assign(b, { x: 30, y: 30 }));
+    return { a: !!a && a.mapHero === h, b: !!b && b.mapHero === foe };
+  });
+  assert.deepEqual(r, { a: true, b: true });
+});
