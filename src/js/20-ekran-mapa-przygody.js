@@ -9,13 +9,41 @@ function paintAdvChrome(c) {
 // Okienka pod prawym przyciskiem na mapie (jak w Heroes 3): bohater (portret, cechy, umiejętności, armia) i miasto (widok miasta,
 // mury, gildia, garnizon, bohaterowie w murach). Obcy: armia tylko jako rodzaje jednostek z przybliżoną liczebnością, bez doświadczenia i ruchu.
 const PRIM_ICO = { att: 'ic_sword', def: 'ic_shield', sp: 'ic_orb', kn: 'ic_scroll' };
-function mapCardAt(st, x, y) {
+function mapCardAt(st, x, y, scroll = 0) {
+  if (inRect(x, y, LIST)) { const r = panelRows(st, scroll).find(r => y >= r.y && y < r.y + 44); return r ? (r.town ? { mapTown: r.town } : { mapHero: r.hero }) : null; } // lista bohaterów i miast po prawej
   if (!inRect(x, y, VIEW)) return null; const { tx, ty } = pickTile(st, x, y), n = st.map.n;
   if (tx < 0 || ty < 0 || tx >= n || ty >= n || !human(st).explored[ty * n + tx]) return null;
   const hh = heroAt(st, tx, ty), ob = uiObjectAt(st, ty * n + tx) || drawnObjectAt(st, tx, ty);
   if (ob && ob.type === 'town') return { mapTown: st.towns[ob.townId] };
   if (hh) return { mapHero: hh };
-  return ob && ob.type === 'monster' ? monsterCard(st, ob) : null;
+  if (ob && ob.type === 'monster') return monsterCard(st, ob);
+  return ob && ['mine', 'bank', 'site'].includes(ob.type) ? { mapObj: ob } : null;
+}
+// Kopalnie, skarbce i budynki przygody: obrazek z mapy, właściciel, dochód albo działanie, strażnicy (przybliżona liczebność)
+function objCardData(st, ob) {
+  const n = st.map.n, gm = st.guard[ob.y * n + ob.x] && st.objects[st.guard[ob.y * n + ob.x] - 1], guard = gm && !gm.dead ? [[gm.cid, gm.count]] : [];
+  if (ob.type === 'mine') { const M = MINES[ob.kind]; return { key: 'mine_' + ob.kind, name: M.name, owner: ob.owner, rows: [['Dochód dzienny', `${M.income} (${resName(ob.kind).toLowerCase()})`]], desc: ob.owner === ME ? 'Twoja kopalnia: dochód trafia do skarbca każdego dnia.' : 'Zajmij ją bohaterem (wejdź na pole przed wejściem), a dochód będzie twój.', guard }; }
+  if (ob.type === 'bank') { const B = BANKS[ob.kind]; return { key: `bank_${ob.kind}_${ob.cleared ? 1 : 0}`, name: B.name, rows: [['Łup', ob.cleared ? 'splądrowane' : '']], desc: ob.cleared ? 'Splądrowane, nic tu już nie ma.' : `${cap1(B.desc)}. Łup: ${bankLootText(ob.kind)}.`, guard: ob.cleared ? [] : ob.guards }; }
+  const txt = siteInfo(st, ob, hero(st)), i = txt.indexOf(': ');
+  return { key: 'site_' + ob.kind, name: siteName(ob), owner: ob.owner != null ? ob.owner : undefined, rows: [], desc: cap1((i >= 0 ? txt.slice(i + 2) : txt).replace(/ Pilnuje (go|jej) potwór\./, '')), guard };
+}
+function drawObjCard(ctx, p) {
+  const st = G.state, D = objCardData(st, p.mapObj), W0 = 384, gArmy = D.guard.map(([cid, n]) => ({ cid, n }));
+  ctx.font = font(14, 500, 'body'); const lines = wrapText(ctx, D.desc, W0 - 40), top = 150;
+  const H0 = top + lines.length * 18 + (gArmy.length ? 100 : 0) + 18;
+  ctx.save(); const [x, y] = cardFrame(ctx, p, W0, H0);
+  goldText(ctx, D.name, x + W0 / 2, y + 30, 21);
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(x + 16, y + 44, 120, 96); drawMap3dIcon(ctx, D.key, x + 76, y + 92, 112, 88); goldRim(ctx, x + 14, y + 42, 124, 100, 2);
+  let ry = y + 66;
+  if (D.owner !== undefined) { ctx.fillStyle = D.owner == null || D.owner < 0 ? NEUTRAL_COLOR : ownerColor(st, D.owner); ctx.fillRect(x + 150, ry - 10, 10, 10); text(ctx, D.owner == null || D.owner < 0 ? 'Niczyje' : ownerName(st, D.owner), x + 166, ry, { size: 14, weight: 600, color: '#e8d8b0' }); ry += 24; }
+  for (const [k, v] of D.rows) if (v) { text(ctx, k, x + 150, ry, { size: 13, color: '#c8b890' }); text(ctx, v, x + W0 - 18, ry, { size: 13, weight: 700, align: 'right', color: '#fff0c8' }); ry += 22; }
+  let ly = y + top + 6; for (const l of lines) { text(ctx, l, x + 20, ly, { size: 14, weight: 500, color: '#e8d8b0' }); ly += 18; }
+  if (gArmy.length) {
+    text(ctx, p.mapObj.type === 'bank' ? 'Załoga' : 'Strażnicy', x + 18, ly + 10, { size: 15, fam: 'title', color: '#ffd970' });
+    const yy = cardArmy(ctx, gArmy.concat(Array(Math.max(0, 7 - gArmy.length)).fill(null)), x + 15, ly + 18, false);
+    cardPower(ctx, 'Siła ok.', Math.max(100, Math.round(gArmy.reduce((s, g) => s + g.n * CREATURES[g.cid].value, 0) / 100) * 100), x + W0 / 2, yy + 14);
+  }
+  ctx.restore();
 }
 // Potwory neutralne: karta jednostki z przybliżoną liczebnością i nastawieniem (bez zdradzania, czy dołączą albo uciekną)
 function monsterCard(st, ob) {
@@ -383,7 +411,7 @@ G.screens.adventure = {
     for (let k = 1; k <= mine.length; k++) { const h = mine[(i0 + k) % mine.length]; if ((!h.asleep && h.garrison == null) || k === mine.length) { this.selectHero(h); break; } }
   },
   toggleSleep() { const h = hero(G.state); if (!h) return; h.asleep = !h.asleep; if (h.asleep) { h.path = null; h.dest = null; } this.flash(h.asleep ? `${h.name} odpoczywa` : `${h.name} znów rusza w drogę`); },
-  rightCard(x, y) { return mapCardAt(G.state, x, y); }, // okienko bohatera albo miasta pod prawym przyciskiem
+  rightCard(x, y) { return mapCardAt(G.state, x, y, this.listScroll); }, // okienko bohatera albo miasta pod prawym przyciskiem
   rightInfo(x, y) {
     const st = G.state;
     if (inRect(x, y, { x: INFOBOX.x, y: INFOBOX.y, w: INFOBOX.w, h: 32 })) { const W = weekInfo(st), M = monthInfo(st); const S = seasonOf(st); return `${S.name}: ${S.text}. Tydzień ${W.name}: ${W.text || 'spokojny tydzień, bez szczególnych skutków'}.${M.name ? ` Miesiąc ${M.name}: ${M.text}.` : ''} Co tydzień los wybiera nowy efekt, a co miesiąc zmienia się pora roku. Pogoda dziś: ${WEATHERS[weatherOf(st)]}.`; }

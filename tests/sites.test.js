@@ -134,3 +134,14 @@ test('spacja na budynku: bohater stojący w portalu korzysta z niego jeszcze raz
   assert.match(r.info, /Atak \d+, Obrona \d+, Moc czarów \d+, Wiedza \d+/); assert.match(r.info, /Przywództwo \(zaawansowane\)/);
   assert.match(r.info, /oddział pikinierów, kilka łuczników/); assert.doesNotMatch(r.info, /Doświadczenie|ruchu|12/);
 });
+
+test('okienka mapy: kopalnia, skarbiec i budynek (obrazek, właściciel, strażnicy) oraz bohater z listy po prawej', async () => {
+  const r = await page.evaluate(() => {
+    const st = G.state, kinds = {}; setScreen('adventure', {}); G.modal = null;
+    for (const t of ['mine', 'bank', 'site']) { const ob = st.objects.find(o => o.type === t && !o.dead); if (!ob) continue; const D = objCardData(st, ob); drawObjCard(G.ctx, { mapObj: ob, x: 40, y: 40 }); kinds[t] = { name: !!D.name, key: D.key.startsWith(t === 'site' ? 'site_' : t), desc: D.desc.length > 5 }; }
+    const row = panelRows(st, 0)[0], card = G.screens.adventure.rightCard(LIST.x + 20, row.y + 10);
+    return { kinds, list: !!card && (card.mapHero === row.hero || card.mapTown === row.town) };
+  });
+  for (const [t, v] of Object.entries(r.kinds)) assert.deepEqual(v, { name: true, key: true, desc: true }, t);
+  assert.ok(Object.keys(r.kinds).length >= 2); assert.ok(r.list, 'prawy przycisk na liście: okienko bohatera albo miasta');
+});
