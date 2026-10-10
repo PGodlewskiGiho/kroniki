@@ -60,3 +60,19 @@ test('relikwie: komputer składa sam, kupiecka daje surowce, pokonany traci reli
   const ok = await page.evaluate(() => { G.modal.buttons[0].action(); G.modal = null; return Object.values(hero(G.state).equip).includes('stormWalker'); });
   assert.ok(ok, 'przycisk „Złóż relikwię” składa ją');
 });
+
+test('nowe artefakty: komplet Lodowego Króla składa się w relikwię, każdy ma obrazek 3D; karta artefaktu na ekranie bohatera', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st); h.equip = emptyEquip(); h.bag = []; h.locked = {};
+    for (const p of ARTIFACTS.frostKing.parts) giveArtifact(h, p);
+    const can = assemblable(h).includes('frostKing'); assembleRelic(h, 'frostKing');
+    const ids = ['pilgrimStaff', 'wolfPelt', 'minerCharm', 'hawkHelm', 'serpentRing', 'assassinDagger', 'fortuneCoin', 'siphonOrb', 'envoyBanner', 'kingsMantle', 'sunAmulet', 'frostBrand', 'frostCrown', 'frostMail', 'frostKing'];
+    setScreen('hero', { heroId: st.heroes.indexOf(h) }); G.screens.hero.draw(G.ctx); const torso = EQUIP_SLOTS.find(s => s.id === 'torso');
+    const card = G.screens.hero.rightCard(torso.x + 10, torso.y + 10); drawPopup(G.ctx, Object.assign(card, { x: 40, y: 40 }));
+    for (const id of ids) drawArtCard(G.ctx, { artCard: id, h, x: 40, y: 40 });
+    return { can, torso: h.equip.torso, card: card.artCard, art3d: ids.filter(id => !ARTIFACT_ART.f[id]), perks: ids.filter(id => ARTIFACTS[id].perk && !TALENTS[ARTIFACTS[id].perk]) };
+  });
+  assert.equal(r.can, true); assert.equal(r.torso, 'frostKing'); assert.equal(r.card, 'frostKing');
+  assert.deepEqual(r.art3d, [], 'nowe artefakty mają wypalone obrazki 3D'); assert.deepEqual(r.perks, []);
+});

@@ -921,6 +921,36 @@ function drawUnitCard(ctx, p) {
   for (const l of lines) { text(ctx, l, x + 20, ly, { size: 14, weight: 500, color: '#e8d8b0' }); ly += 18; }
   ctx.restore();
 }
+// Karta artefaktu pod prawym przyciskiem (ekran bohatera, plecak, spotkanie): duży obrazek z modelu 3D, rodzaj, miejsce, premie,
+// talent i komplet relikwii (części, które bohater już ma, na zielono)
+const RARITY_COL = { treasure: '#d8d0b8', minor: '#8ad0ff', major: '#d8a0ff', relic: '#ffd060' };
+const artCard = (id, h = null) => (id && ARTIFACTS[id] ? { artCard: id, h } : null);
+function drawArtCard(ctx, p) {
+  const id = p.artCard, A = ARTIFACTS[id], r = relicOf(id), W0 = 400, IS = 132, slot = EQUIP_SLOTS.find(s => s.kind === A.kind);
+  const lines = [];
+  if (A.desc) lines.push(A.desc); else { const b = artBonusText(A.bonus); if (b) lines.push(`Premia: ${b}.`); }
+  if (A.perk) lines.push(`Talent: ${TALENTS[A.perk].name} – ${TALENTS[A.perk].desc}.`);
+  const has = pid => !!p.h && (Object.values(p.h.equip || {}).includes(pid) || (p.h.bag || []).includes(pid));
+  ctx.font = font(14, 500, 'body'); const wrapped = lines.flatMap(l => wrapText(ctx, l, W0 - 40));
+  const set = A.parts || (r ? ARTIFACTS[r].parts : null), setH = set ? 26 + set.length * 18 : 0;
+  const H0 = 52 + IS + 14 + wrapped.length * 18 + setH + 14;
+  const x = clamp(p.x + 14, 8, VW - W0 - 8), y = clamp(p.y - H0 / 2, 8, VH - H0 - 8);
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(x + 4, y + 6, W0, H0); leatherFill(ctx, x, y, W0, H0, 17, -0.08); goldRim(ctx, x, y, W0, H0, 3);
+  goldText(ctx, A.name, x + W0 / 2, y + 30, A.name.length > 26 ? 18 : 21);
+  const ix = x + 16, iy = y + 46, g = ctx.createRadialGradient(ix + IS / 2, iy + IS / 2, 6, ix + IS / 2, iy + IS / 2, IS * 0.7);
+  g.addColorStop(0, A.rarity === 'relic' ? '#5a4420' : '#3a2c1c'); g.addColorStop(1, '#120c06'); ctx.fillStyle = g; ctx.fillRect(ix, iy, IS, IS);
+  drawSprite(ctx, artSprite(id, true), ix + IS / 2, iy + IS / 2, (IS - 12) / 32); goldRim(ctx, ix - 2, iy - 2, IS + 4, IS + 4, 2);
+  const tx = ix + IS + 18, L = (k, v, yy, col) => { text(ctx, k, tx, yy, { size: 14, color: '#c8b890' }); text(ctx, v, x + W0 - 18, yy, { size: 14, weight: 700, align: 'right', color: col || '#fff0c8' }); };
+  L('Rodzaj', RARITY[A.rarity], y + 70, RARITY_COL[A.rarity]); L('Miejsce', A.kind === 'grail' ? 'plecak' : slot ? slot.name.toLowerCase() : '—', y + 94);
+  if (A.parts) L('Zajmuje miejsc', String(A.parts.length), y + 118); else if (r) L('Część relikwii', '', y + 118);
+  if (r && !A.parts) text(ctx, ARTIFACTS[r].name, tx, y + 138, { size: 13, weight: 700, color: '#ffd060' });
+  let ly = y + 46 + IS + 22; for (const l of wrapped) { text(ctx, l, x + 20, ly, { size: 14, weight: 500, color: '#e8d8b0' }); ly += 18; }
+  if (set) {
+    text(ctx, A.parts ? 'Złożona z:' : `Komplet (${ARTIFACTS[r].name}):`, x + 20, ly + 6, { size: 13, weight: 700, color: '#ffd060' }); ly += 24;
+    for (const pid of set) { const ok = has(pid) || pid === id; text(ctx, `${ok ? '✓' : '·'} ${ARTIFACTS[pid].name}`, x + 30, ly, { size: 13, weight: 600, color: ok ? '#a8e070' : '#a89878' }); ly += 18; }
+  }
+  ctx.restore();
+}
 // Rząd 7 miejsc armii z tymi samymi sprite'ami co na mapie. Zwraca prostokąty miejsc (do klikania i dymków).
 function drawArmyRow(ctx, army, x, y, o = {}) {
   const w = o.w || 62, h = o.h || 50, gap = o.gap || 6, rects = [];
@@ -1055,7 +1085,7 @@ function showMeeting(st, a, b, onMsg) {
       if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
       sel = null;
     },
-    rightCard(px, py) { const s = armyAt(px, py); return s ? unitCard(armies[s.k][s.i], heroes[s.k]) : null; },
+    rightCard(px, py) { const s = armyAt(px, py), g = bagAt(px, py); return s ? unitCard(armies[s.k][s.i], heroes[s.k]) : g ? artCard(heroes[g.k].bag[g.i], heroes[g.k]) : null; },
     rightInfo(px, py) {
       const s = armyAt(px, py); if (s) return armies[s.k][s.i] ? stackInfo(armies[s.k][s.i]) : 'Wolne miejsce.';
       const g = bagAt(px, py); if (g) return `${artInfo(heroes[g.k].bag[g.i])} Kliknij, aby oddać drugiemu bohaterowi.`;
