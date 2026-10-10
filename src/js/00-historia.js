@@ -418,5 +418,7 @@
    Okienka mapy jak w Heroes 3 (prawy przycisk): bohater – portret, cechy z ikonami, umiejętności z poziomem, armia (obca z przybliżoną
    liczebnością, własna z liczbami, ruchem, maną i doświadczeniem); miasto – widok, frakcja, mury, gildia, garnizon, bohaterowie w murach.
    Potwór na mapie: karta jednostki z przybliżoną liczebnością, nastawieniem i przybliżoną siłą – już bez podpowiedzi, czy dołączy albo ucieknie.
+   Okienka także dla kopalń, skarbców i budynków przygody (obrazek z mapy, właściciel, dochód albo działanie, strażnicy z przybliżoną
+   liczebnością i porównaniem sił) oraz po prawym kliknięciu na liście bohaterów i miast w panelu.
    ===================================================================================== */
 
