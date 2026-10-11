@@ -357,7 +357,7 @@ function dragon(L, P = {}) {
   for (let i = 0; i < 9; i++) { const x = -0.72 + i * 0.17, h = (heavy ? 0.2 : ser ? 0.4 : 0.32) * (1 - Math.abs(i - 5) * 0.08);
     if (cry && i % 2) q.body.add(mesh(new THREE.OctahedronGeometry(0.17), L.gem || LT(col, 0.4), 'gem', [x, q.r * 1.1, 0], [0.3, i, 0.2], [0.7, 2.4, 0.7]));
     if (heavy) q.body.add(rbox(0.15, 0.07, q.r * 1.45, 0.02, dark, 'iron', [x, q.r * 0.9, 0], [0, 0, -0.15])); // pancerne płyty
-    fin(q.body, x, q.r * 0.92, h); }
+    fin(q.body, x, q.r * 0.92, h * (L.sail ? 1.7 : 1), L.sail ? (i % 2 ? L.sail : DK(L.sail, 0.2)) : dark); } // L.sail: wysoki grzebień na grzbiecie
   if (L.leaves) for (let i = 0; i < 7; i++) { const x = -0.6 + i * 0.19; q.body.add(sph(0.09, i % 2 ? L.leaves : LT(L.leaves, 0.12), 'fur', [x, q.r * 0.95, 0.12], [1.4, 0.6, 1])); q.body.add(tube([[x, q.r * 0.7, q.r * 0.9], [x + 0.04, -q.r * 0.2, q.r * 1.05], [x - 0.02, -q.r * 0.8 - (i % 2) * 0.1, q.r * 1.02]], 0.014, 0.008, DK(L.leaves, 0.1), 'fur')); if (L.blossom) q.body.add(sph(0.035, L.blossom, 'glow', [x - 0.02, -q.r * 0.82 - (i % 2) * 0.1, q.r * 1.02])); } // mech i pnącza z kwiatami
   if (L.soulFire) { const sf = L.soulFire; q.body.add(sph(0.13, sf, 'glow', [0.1, -0.02, 0])); for (let i = 0; i < 9; i++) q.body.add(cone(0.05, 0.22 + (i % 3) * 0.1 + Math.sin(t * 7 + i) * 0.03, i % 2 ? sf : LT(sf, 0.4), 'fire', [-0.7 + i * 0.17, q.r * 1.1, 0], [0, 0, 0.4], 6)); } // upiorny ogień w klatce żeber i wzdłuż kręgosłupa
   q.body.scale.y *= heavy ? 0.9 : 0.82; // smukły tułów, nie beczka
@@ -400,10 +400,9 @@ function dragon(L, P = {}) {
     : [[0, 0, 0], [-0.4, -0.15, 0], [-0.8, -0.35, 0.1], [-1.15, -0.45, 0], [-1.5 * (ser ? 1.2 : 1), -0.35 + Math.sin(t * 2) * 0.03, -0.1]];
   q.tail.add(tube(tl, heavy ? 0.26 : 0.2, 0.03, col, K, 2));
   for (let i = 1; i < 4; i++) fin(q.tail, tl[i][0], tl[i][1] + 0.12 - i * 0.02, 0.24 - i * 0.04, dark, 0.8);
-  if (L.sail) { // żagle: wysoka błona na kolcach wzdłuż ogona i szyi (widoczna mimo skrzydeł)
-    const sail = (par, P, hk) => { const top = P.map(([x, y], k) => [x, y + hk * Math.sin((k + 0.5) / P.length * Math.PI)]); par.add(slab([...P.map(([x, y]) => [x, y]), ...top.reverse()], 0.014, L.sail, 'skin', [0, 0, 0], null, null, 0.15));
-      for (const [k, [x, y]] of P.entries()) par.add(tube([[x, y, 0], [x - 0.02, y + hk * Math.sin((k + 0.5) / P.length * Math.PI) + 0.04, 0]], 0.014, 0.004, horn, 'horn')); };
-    sail(q.tail, tl.slice(0, 4).map(([x, y]) => [x, y + 0.12]), 0.66); sail(q.neck, nk.map(([x, y]) => [x - 0.08, y + 0.1]), 0.36); }
+  if (L.sail) { const seg = tl.slice(0, 5); // grzebień: rząd wysokich kolców wyrastających z ogona, coraz niższych ku końcowi
+    for (let k = 1; k < 12; k++) { const f = k / 12 * (seg.length - 1), n = Math.min(seg.length - 2, Math.floor(f)), u = f - n, a = seg[n], b = seg[n + 1], x = a[0] + (b[0] - a[0]) * u, y = a[1] + (b[1] - a[1]) * u, r = 0.2 * (1 - k / 12) + 0.03 * k / 12;
+      fin(q.tail, x, y + r * 0.8, 0.34 * (1 - k / 14), k % 2 ? L.sail : DK(L.sail, 0.2), 0.75, 0.07); } }
   const tip = tl[4];
   if (heavy) { q.tail.add(sph(0.13, dark, 'iron', tip)); for (let i = 0; i < 7; i++) q.tail.add(spike(0.035, 0.18, horn, 'horn', tip, [i, i * 2, i * 3])); }
   else if (wyv) { q.tail.add(sph(0.09, dark, 'horn', tip, [1.4, 1, 1])); q.tail.add(tube([tip, [tip[0] - 0.12, tip[1] + 0.14, tip[2]], [tip[0] - 0.05, tip[1] + 0.3, tip[2]]], 0.05, 0.004, horn, 'horn')); } // wywerna: zakrzywione żądło jadowe
