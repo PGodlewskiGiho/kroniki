@@ -227,6 +227,17 @@ test('szybka bitwa: dwie armie z przyrostu wybranych frakcji, bohaterowie na wyb
   assert.ok(await page.evaluate(() => G.screens.menu && G.screens.quick.buttons.some(b => b.label === 'Walcz!')));
 });
 
+test('szybka bitwa: wybór bohaterów obu stron (losowy albo konkretny z frakcji; zmiana frakcji wraca do losowego)', async () => {
+  const r = await page.evaluate(() => {
+    const ha = factionOf('academy').heroes[2][0], hb = factionOf('barrow').heroes[1][0], { h, foe } = quickBattleState({ a: 'academy', b: 'barrow', ha, hb, weeks: 1, lvl: 0, up: 0 });
+    G.settings.quick = { a: 'academy', b: 'barrow', ha: 'nieznany', hb }; setScreen('quick', {}); const S = G.screens.quick, stale = S.q.ha;
+    S.buttons[9].action(); const picked = S.q.hb; S.buttons[5].action(); /* następna frakcja przeciwnika */
+    return { names: [h.name, foe.name], want: [ha, hb], stale, picked, after: S.q.hb };
+  });
+  assert.deepEqual(r.names, r.want); assert.equal(r.stale, 'random', 'nieznany bohater z zapisu: losowy');
+  assert.notEqual(r.picked, r.want[1]); assert.equal(r.after, 'random');
+});
+
 test('szybka bitwa: bohater z księgą zna czary z gildii swojej frakcji (wyższej przy wyższym poziomie), wojownik bez księgi nie', async () => {
   const r = await page.evaluate(() => {
     const st = createNewGame(Object.assign({}, G.settings, { mapSize: 'S' }), 5), mk = cls => { const h = { owner: 0, cls, spells: [], book: MAGE_CLASSES.includes(cls), skills: [{ id: 'wisdom', lv: 3 }] }; return h; };
