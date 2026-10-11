@@ -400,6 +400,10 @@ function dragon(L, P = {}) {
     : [[0, 0, 0], [-0.4, -0.15, 0], [-0.8, -0.35, 0.1], [-1.15, -0.45, 0], [-1.5 * (ser ? 1.2 : 1), -0.35 + Math.sin(t * 2) * 0.03, -0.1]];
   q.tail.add(tube(tl, heavy ? 0.26 : 0.2, 0.03, col, K, 2));
   for (let i = 1; i < 4; i++) fin(q.tail, tl[i][0], tl[i][1] + 0.12 - i * 0.02, 0.24 - i * 0.04, dark, 0.8);
+  if (L.sail) { // żagle: wysoka błona na kolcach wzdłuż ogona i szyi (widoczna mimo skrzydeł)
+    const sail = (par, P, hk) => { const top = P.map(([x, y], k) => [x, y + hk * Math.sin((k + 0.5) / P.length * Math.PI)]); par.add(slab([...P.map(([x, y]) => [x, y]), ...top.reverse()], 0.014, L.sail, 'skin', [0, 0, 0], null, null, 0.15));
+      for (const [k, [x, y]] of P.entries()) par.add(tube([[x, y, 0], [x - 0.02, y + hk * Math.sin((k + 0.5) / P.length * Math.PI) + 0.04, 0]], 0.014, 0.004, horn, 'horn')); };
+    sail(q.tail, tl.slice(0, 4).map(([x, y]) => [x, y + 0.12]), 0.42); sail(q.neck, nk.map(([x, y]) => [x - 0.08, y + 0.1]), 0.26); }
   const tip = tl[4];
   if (heavy) { q.tail.add(sph(0.13, dark, 'iron', tip)); for (let i = 0; i < 7; i++) q.tail.add(spike(0.035, 0.18, horn, 'horn', tip, [i, i * 2, i * 3])); }
   else if (wyv) { q.tail.add(sph(0.09, dark, 'horn', tip, [1.4, 1, 1])); q.tail.add(tube([tip, [tip[0] - 0.12, tip[1] + 0.14, tip[2]], [tip[0] - 0.05, tip[1] + 0.3, tip[2]]], 0.05, 0.004, horn, 'horn')); } // wywerna: zakrzywione żądło jadowe

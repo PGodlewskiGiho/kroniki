@@ -598,6 +598,7 @@ function golem(L, P = {}) {
   if (L.crystals) for (const z of [-1, 1]) for (let i = 0; i < 3; i++) spine.add(mesh(new THREE.OctahedronGeometry(0.12), L.crystals, 'gem', [-0.06 + i * 0.07, 0.8 + (i === 1 ? 0.08 : 0), 0.3 * z], [0.35 * z, i, (0.3 - i * 0.2) * z], [0.5, 2.8 - i * 0.5, 0.5])); // wysokie kryształy na barkach
   if (G === 'diamond') for (let i = 0; i < 5; i++) spine.add(mesh(new THREE.OctahedronGeometry(0.1), LT(col, 0.3), 'gem', [-0.1 + (i % 2) * 0.1, 0.55 + (i % 3) * 0.05, -0.2 + i * 0.1], [i, i * 2, 0], [0.6, 1.8, 0.6])); // kryształy na barkach
   const head = headJoint(spine, [0.12, 0.62, 0], -0.2); head.add(part(0.2, 0.18, 0.2, [0.02, 0.06, 0]));
+  if (L.horns) for (const z of [-1, 1]) head.add(tube([[0, 0.1, 0.08 * z], [-0.02, 0.2, 0.16 * z], [-0.1, 0.3, 0.2 * z], [-0.2, 0.32, 0.18 * z]], 0.04, 0.006, L.horns, K)); // rogi na hełmie (złoty golem)
   if (L.crystals) head.add(mesh(new THREE.OctahedronGeometry(0.08), L.crystals, 'gem', [-0.02, 0.24, 0], [0, 0.5, 0.2], [0.5, 1.9, 0.5])); // kryształowy grzebień
   head.add(box(0.03, 0.022, 0.13, '#0a0a0c', 'stone', [0.12, 0.08, 0])); for (const z of [-0.04, 0.04]) head.add(sph(0.02, glow, 'glow', [0.125, 0.08, z], [0.5, 0.7, 1.4]));
   for (const side of [1, -1]) {

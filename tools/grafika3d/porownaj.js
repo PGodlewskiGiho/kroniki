@@ -18,7 +18,7 @@ const OUT = path.join(__dirname, '.cache'), LIMIT = +(process.argv[2] || 0.72), 
       g.drawImage(UNIT_IMG[id], sx, sy, w, h, (N - w * k) / 2, N - 2 - h * k, w * k, h * k);
       const d = g.getImageData(0, 0, N, N).data, mask = new Uint8Array(N * N), grid = Array.from({ length: 16 }, () => [0, 0, 0, 0]);
       for (let i = 0; i < N * N; i++) if (d[i * 4 + 3] > 60) { mask[i] = 1; const q = grid[(Math.floor(i / N / 16) * 4) + Math.floor((i % N) / 16)]; q[0] += d[i * 4]; q[1] += d[i * 4 + 1]; q[2] += d[i * 4 + 2]; q[3]++; }
-      const L = CREATURES[id].look || {}, sig = new Set([`kind:${L.kind}`, ...Object.entries(L).filter(([k, v]) => !(typeof v === 'string' && v[0] === '#') && !['size', 'kind'].includes(k)).map(([k, v]) => `${k}:${v}`)]);
+      const L = CREATURES[id].look || {}, sig = new Set([`kind:${L.kind}`, ...Object.entries(L).filter(([k]) => !['size', 'kind', 'skin', 'fur', 'cloth', 'eyes'].includes(k)).map(([k, v]) => typeof v === 'string' && v[0] === '#' ? `has:${k}` : `${k}:${v}`)]); // barwa liczy się jako obecność cechy (płomienie, rogi…)
       feat[id] = { mask, grid: grid.map(q => q[3] ? [q[0] / q[3], q[1] / q[3], q[2] / q[3]] : null), sig };
     }
     const pairs = [];
