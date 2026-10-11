@@ -328,6 +328,7 @@ function drawPopup(ctx, p) {
   if (p.mapHero) return drawHeroCard(ctx, p); // okienka mapy: bohater i miasto
   if (p.mapTown) return drawTownCard(ctx, p);
   if (p.mapObj) return drawObjCard(ctx, p); // kopalnia, skarbiec, budynek przygody
+  if (p.artCard) return drawArtCard(ctx, p); // artefakt
   ctx.font = font(16, 500, 'body');
   const lines = wrapText(ctx, p.text, 250), tw = Math.max(...lines.map(l => ctx.measureText(l).width));
   const w = clamp(tw + 36, 140, 286), h = 26 + lines.length * 20;

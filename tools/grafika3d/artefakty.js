@@ -278,6 +278,12 @@ const ART3 = {
   leagueBoots: A => arBoots(A, { tall: true, buckles: true }), stormWalker: A => arBoots(A, { tall: true, wings: '#e8f0ff', bolt: '#ffe060', cuff: '#e8f0ff', cuffKind: 'fur' }),
   merchantPurse: A => arBag(A), hornOfPlenty: A => arBag(A, { kind: 'cloth', embroid: true, emblem: true, coins: 9 }), merchantPrince: A => arBag(A, { chest: true }),
   luckyHorseshoe: A => arHorseshoe(A), emberOrb: A => arOrb(A), skyOrb: A => arOrb(A, { stand: '#c8ccd4', standKind: 'steel', ring: true }), runeBook: A => arBook(A),
+  pilgrimStaff: A => arStaff(A), wolfPelt: A => arCloak(A, { hood: true, fur: '#9a948e', lining: '#5a5048' }), minerCharm: A => arAmulet(A, { chain: '#8a8e98', chainKind: 'steel' }),
+  hawkHelm: A => arHelm(A), serpentRing: A => arRing(A, { prongs: 4, twist: true }), assassinDagger: A => arDagger(A), fortuneCoin: A => arCoin(A),
+  siphonOrb: A => arOrb(A, { ring: true }), envoyBanner: A => arBanner(A), kingsMantle: A => arCloak(A, { fur: '#f0ece0', lining: '#f0c040', clasp: '#f0c040' }), sunAmulet: A => arAmulet(A, { type: 'phoenix' }),
+  frostBrand: A => arSword(A, { len: 3.1, w: 0.3, blade: '#6ab8e4', bladeKind: 'gem', gemGuard: true, pommelGem: true, guardCol: '#e8f8ff' }), frostCrown: A => arCrown({ ...A, col: '#4aa0d8' }, { kind: 'gem' }),
+  frostMail: A => arArmor({ ...A, col: '#3a8ac4' }, { kind: 'gem', plates: true, glowLines: '#ffffff', ridge: '#bfe8fa', skirt: '#2a74b0', skirtKind: 'gem' }), // lód: półprzezroczysty, świecący
+  frostKing: A => arArmor({ ...A, col: '#4a9ad4' }, { kind: 'gem', plates: true, glowLines: '#ffffff', ridge: '#ffffff', skirt: '#2a74b0', skirtKind: 'gem', gem: true, collar: '#e8f4ff', collarKind: 'fur' }),
   owlFeather: A => arFeather(A), silverCoin: A => arCoin(A), battleBanner: A => arBanner(A), grail: A => arGrail(A),
 };
 // Render artefaktu: bryła wyśrodkowana i dopasowana do kwadratu S×S (bez pikselizacji)

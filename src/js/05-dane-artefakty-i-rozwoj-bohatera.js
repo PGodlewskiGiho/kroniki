@@ -234,6 +234,22 @@ const ARTIFACTS = {
   archmageStaff: { name: 'Laska arcymaga', kind: 'weapon', rarity: 'major', bonus: { sp: 3 }, icon: 'staff', col: '#6a4a2a', gem: '#8ad0ff' },
   titanCuirass: { name: 'Napierśnik tytana', kind: 'torso', rarity: 'major', bonus: { def: 4 }, icon: 'armor', col: '#8aa0b0', gem: '#40c0e0' },
   titanHammer: { name: 'Młot tytana', kind: 'weapon', rarity: 'major', bonus: { att: 4 }, icon: 'hammer', col: '#8aa0b0', gem: '#40c0e0' },
+  // --- nowe artefakty: pielgrzym, wilk, górnik, jastrząb, wąż, skrytobójca, fortuna, wysysanie many, poseł, król, słońce ---
+  pilgrimStaff: { name: 'Kostur pielgrzyma', kind: 'weapon', rarity: 'treasure', bonus: { kn: 1, mp: 100 }, icon: 'staff', col: '#7a5a3a', gem: '#a8d0e0' },
+  wolfPelt: { name: 'Wilcza skóra', kind: 'cloak', rarity: 'treasure', bonus: { def: 1, sight: 1 }, icon: 'cloak', col: '#7a7470', gem: '#c8c0b0' },
+  minerCharm: { name: 'Talizman górnika', kind: 'neck', rarity: 'treasure', bonus: { res: { ore: 1 } }, icon: 'amulet', col: '#8a8e98', gem: '#c87a3a' },
+  hawkHelm: { name: 'Hełm jastrzębia', kind: 'head', rarity: 'minor', bonus: { att: 1, sight: 2 }, icon: 'helm', col: '#b0a080', gem: '#e8c060' },
+  serpentRing: { name: 'Pierścień węża', kind: 'ring', rarity: 'minor', bonus: { sp: 1, luck: 1 }, icon: 'ring', col: '#3a8a5a', gem: '#e8d040' },
+  assassinDagger: { name: 'Sztylet skrytobójcy', kind: 'weapon', rarity: 'minor', bonus: { att: 1 }, perk: 'ambush', icon: 'dagger', col: '#5a5a66', gem: '#a02a3a' },
+  fortuneCoin: { name: 'Moneta fortuny', kind: 'misc', rarity: 'minor', bonus: { luck: 1 }, perk: 'fortunate', icon: 'coin', col: '#f0c040', gem: '#3aa060' },
+  siphonOrb: { name: 'Kula wysysania', kind: 'misc', rarity: 'major', bonus: { sp: 2 }, perk: 'manaSiphon', icon: 'orb', col: '#7a3ab0', gem: '#e0c8ff' },
+  envoyBanner: { name: 'Chorągiew posła', kind: 'misc', rarity: 'major', bonus: { morale: 1 }, perk: 'diplomat', icon: 'banner', col: '#e8e0c8', gem: '#3a6ab0' },
+  kingsMantle: { name: 'Królewski płaszcz', kind: 'cloak', rarity: 'major', bonus: { morale: 1, gold: 500 }, icon: 'cloak', col: '#7a1a2a', gem: '#f0c040' },
+  sunAmulet: { name: 'Amulet słońca', kind: 'neck', rarity: 'major', bonus: { att: 1, def: 1, sp: 1, kn: 1 }, icon: 'amulet', col: '#f0c040', gem: '#ffe060' },
+  // komplet Lodowego Króla (relikwia frostKing)
+  frostBrand: { name: 'Ostrze mrozu', kind: 'weapon', rarity: 'major', bonus: { att: 3, sp: 1 }, icon: 'sword', col: '#a8d8f0', gem: '#e8f8ff' },
+  frostCrown: { name: 'Lodowa korona', kind: 'head', rarity: 'major', bonus: { kn: 2, def: 1 }, icon: 'crown', col: '#a8dcf4', gem: '#ffffff' },
+  frostMail: { name: 'Zbroja z wiecznego lodu', kind: 'torso', rarity: 'major', bonus: { def: 3, sp: 1 }, icon: 'armor', col: '#8ccbec', gem: '#e8f8ff' },
   // --- relikwie: składa się je z kompletu części założonych naraz (parts); zajmują wtedy wszystkie ich miejsca ---
   dragonLordArmor: { name: 'Rynsztunek Smoczego Władcy', kind: 'torso', rarity: 'relic', parts: ['dragonScaleMail', 'dragonfangBlade', 'dragonScaleShield', 'dragonBoneHelm'], bonus: { att: 9, def: 9, morale: 1 }, icon: 'armor', col: '#2a9a5a', gem: '#ffe060' },
   archmageRegalia: { name: 'Regalia Arcymaga', kind: 'torso', rarity: 'relic', parts: ['starRobe', 'archmageStaff', 'sageDiadem', 'runeBook'], bonus: { sp: 9, kn: 9, luck: 1 }, icon: 'robe', col: '#3a4ab0', gem: '#ffe060' },
@@ -241,6 +257,7 @@ const ARTIFACTS = {
   merchantPrince: { name: 'Skarbiec Kupieckiego Księcia', kind: 'misc', rarity: 'relic', parts: ['merchantPurse', 'hornOfPlenty', 'goldenSignet'], bonus: { gold: 3000, res: { wood: 1, ore: 1, mercury: 1, sulfur: 1, crystal: 1, gems: 1 } }, icon: 'bag', col: '#f0c040', gem: '#c83a2a' },
   titanArmor: { name: 'Pancerz Tytana', kind: 'torso', rarity: 'relic', parts: ['titanCuirass', 'titanHammer', 'titanHelm', 'titanGreaves'], bonus: { att: 7, def: 12 }, icon: 'armor', col: '#6ab0d0', gem: '#ffffff' },
   deadKingRegalia: { name: 'Insygnia Króla Umarłych', kind: 'head', rarity: 'relic', parts: ['boneCrown', 'deathShroud', 'vampireFang'], bonus: { sp: 5, kn: 4, def: 3 }, icon: 'crown', col: '#d8d0b8', gem: '#60e0a0' },
+  frostKing: { name: 'Regalia Lodowego Króla', kind: 'torso', rarity: 'relic', parts: ['frostMail', 'frostBrand', 'frostCrown'], bonus: { att: 6, def: 6, sp: 4 }, icon: 'armor', col: '#8ac8f0', gem: '#ffffff' },
   // Graala nie da się założyć (nie ma pasującego miejsca): leży w plecaku, dopóki bohater nie zbuduje go w mieście
   grail: { name: 'Graal', kind: 'grail', rarity: 'relic', bonus: {}, icon: 'grail', col: '#f0c040', gem: '#fff4c0',
     desc: 'Święty kielich. Zanieś go do własnego miasta, aby wznieść tam budowlę Graala (+5000 złota dziennie, +50% przyrostu stworów).' },
