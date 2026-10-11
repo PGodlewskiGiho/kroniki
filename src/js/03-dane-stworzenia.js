@@ -374,7 +374,7 @@ Object.assign(CREATURES, {
     look: { kind: 'hum', beast: 'colossus', skin: FORGE_GEAR.brass, cloth: FORGE_GEAR.copper, leather: FORGE_GEAR.soot, build: 'colossus', eyes: FORGE_GEAR.fire, weapon: 'none', metal: FORGE_GEAR.brass, plate: FORGE_GEAR.copper, glow: FORGE_GEAR.fire, crest: true, size: 2.15 } }),
 });
 // Manufaktura: trzeci stopień
-elite('mechanic', 'machinist', ['Maszynista', 'Maszyniści', 'maszynistów'], [7, 8, 2, 4, 13, 6, 165], { gold: 95 }, ['repair', 'unlimitedRetal'],
+elite('mechanic', 'machinist', ['Maszynista', 'Maszyniści', 'maszynistów'], [7, 8, 2, 4, 14, 6, 165], { gold: 85 }, ['repair', 'unlimitedRetal'],
   { cloth: '#6a2a2a', pack: FORGE_GEAR.brass, metal: FORGE_GEAR.brass, helm: 'cap', helmCol: '#4a3a2a', size: 0.76 }, { repair: 5 });
 elite('musketeer', 'grenadier', ['Grenadier', 'Grenadierzy', 'grenadierów'], [8, 6, 3, 6, 13, 6, 300], { gold: 240 }, ['splash', 'noMeleePenalty'],
   { weapon: 'grenade', helm: 'mitreCap', helmCol: '#8a2a1a', cloth: '#7a2a1a', bandolier: '#3a2414', bombs: '#2a2a2a', cape: null, size: 1.04 }, { shots: 10 });
