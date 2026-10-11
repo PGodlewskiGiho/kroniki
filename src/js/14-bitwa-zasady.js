@@ -39,6 +39,7 @@ function battleSide(st, foe) {
     const stacks = []; for (const [cid, n] of foe.guards) (n >= 10 && foe.guards.length <= 3 ? [Math.ceil(n / 2), Math.floor(n / 2)] : [n]).forEach(k => stacks.push({ cid, n: k, src: null, slot: null }));
     return { owner: -1, hero: null, monster: null, bank: foe, town: null, key: foe.id, stacks: stacks.slice(0, 7) };
   }
+  if (foe.type === 'outpost') return { owner: foe.owner, hero: null, monster: null, town: null, fort: foe, key: 7000 + foe.id, stacks: armyEntries(foe.army, 'fort') }; // garnizon na drodze: załoga bez bohatera
   if (foe.type === 'monster') return { owner: -1, hero: null, monster: foe, town: null, key: foe.id, stacks: splitMonster(foe.count, foe.cid).map(n => ({ cid: foe.cid, n, src: null, slot: null })) };
   if (foe.garrison) { // miasto: bohater stojący w mieście broni się razem z garnizonem
     const h = townHero(st, foe); // bohater w garnizonie, a gdy go nie ma: bohater w bramie
@@ -139,7 +140,7 @@ function actCatapult(B, u, target = null) {
 // foe: potwór z mapy, skarbiec, bohater albo miasto
 function createBattle(st, h, foe) {
   const D = battleSide(st, foe);
-  const B = { st, h, sides: [{ owner: h.owner, hero: h, monster: null, town: null }, { owner: D.owner, hero: D.hero, monster: D.monster, bank: D.bank || null, town: D.town }],
+  const B = { st, h, sides: [{ owner: h.owner, hero: h, monster: null, town: null }, { owner: D.owner, hero: D.hero, monster: D.monster, bank: D.bank || null, fort: D.fort || null, town: D.town }],
     round: 0, order: [], waitQ: [], active: null, units: [], log: [], over: null, auto: false, obst: new Map(), cast: [false, false],
     rng: mulberry32(st.seed ^ (st.dayTotal * 7919) ^ (D.key * 104729)), prevPos: h.prev ? [...h.prev] : null };
   placeSide(B, 0, armyEntries(h.army, 'hero'));
@@ -669,7 +670,7 @@ function writeBackSide(B, side) {
   for (const u of units) {
     if (u.src === 'siege' || u.src === 'clone') continue; // katapulta, wieże i klony należą do bitwy, nie do armii
     if (u.src === 'machine') { if (u.dead) S.hero.machines = S.hero.machines.filter(id => id !== u.cid); continue; } // zniszczona machina przepada
-    const a = u.src === 'garrison' ? S.town.garrison : S.hero.army; a[u.slot] = u.n > 0 && !u.dead ? { cid: u.cid, n: u.n } : null; }
+    const a = u.src === 'garrison' ? S.town.garrison : u.src === 'fort' ? S.fort.army : S.hero.army; a[u.slot] = u.n > 0 && !u.dead ? { cid: u.cid, n: u.n } : null; }
 }
 const sideLosses = (B, side) => B.units.filter(u => u.side === side && u.n < u.n0 && u.src !== 'siege' && u.src !== 'clone').map(u => `${CREATURES[u.cid].plural.toLowerCase()} −${u.n0 - u.n}`);
 const killedHp = (B, side) => B.units.filter(u => u.side === side && u.src !== 'clone').reduce((s, u) => s + (u.n0 - u.n) * CREATURES[u.cid].hp, 0);
@@ -742,6 +743,7 @@ function resolveBattle(B, fled) {
     if (D.bank) res.bankText = lootBank(st, h, D.bank);
     if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) res.grail = true; res.loot = lootHero(h, D.hero); retireHero(st, D.hero, false); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
+    if (D.fort) { captureOutpost(st, D.fort, h.owner); res.fortTaken = true; }
   } else {
     if (D.hero && outcome === 'lose' && hasGrail(h)) res.grailLost = true; // Graal przechodzi na zwycięzcę razem z artefaktami
     if (D.hero && outcome === 'lose') { res.foeExp = killedHp(B, 0); res.foeRaised = raiseDead(B, 1); res.foeSpoils = victorySpoils(B, 1); if (D.hero.owner !== ME) gainExp(st, D.hero, res.foeExp); } // człowiekowi dolicza je okno po obronie

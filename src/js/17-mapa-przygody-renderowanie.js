@@ -526,6 +526,7 @@ function drawMinimap(ctx, st) {
     if (ob.dead || !ex[ob.y * n + ob.x]) continue;
     if (ob.type === 'mine') mark(ob.x, ob.y, ownerColor(st, ob.owner), 4);          // kopalnia: pola x-1..x, y-1..y
     else if (ob.type === 'town') mark(ob.x + 0.5, ob.y, ownerColor(st, ob.owner), 6); // miasto: pola x-1..x+1, y-1..y
+    else if (ob.type === 'outpost') mark(ob.x + 0.5, ob.y + 0.5, ownerColor(st, ob.owner), 3); // garnizon na drodze
   }
   for (const h of st.heroes) if (h.owner === ME && h.garrison == null) mark(h.x + 0.5, h.y + 0.5, h === hero(st) ? '#fff4c8' : '#c8bc98', 4);
   ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 1.2; ctx.strokeRect(MINI.x + (st.cam.x - o * T) * k, MINI.y + (st.cam.y - o * T) * k, viewW() * k, viewH() * k);
@@ -624,9 +625,10 @@ function drawWorldPixel(b, st) {
     else if (ob.type === 'res') { const s3 = map3dSprite('res_' + ob.res); resGlow(px, py + 7); if (s3) bl(s3.big || (s3.big = { c: s3.c, ax: s3.ax, ay: s3.ay, u: s3.u * (RES_SCALE[ob.res] || RES_K), raw: true }), px, py + 7); else { shadow(10, px, py + 9); bl(resSprite(ob.res), px, py + 2); } } // 3D: własny cień; większe niż model i z poświatą, żeby były widoczne na każdym terenie
     else if (ob.type === 'chest') { const s3 = map3dSprite('chest'); if (s3) bl(s3, px, py + 6); else { shadow(10, px, py + 9); bl(chestSprite(), px, py + 2); } }
     else if (ob.type === 'boat') { const s3 = map3dSprite('boat'); if (s3) bl(s3, px, py + 4 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.2)); else bl(boatSprite(Math.floor(G.time * 4 + ob.id) % 4), px, py); }
-    else if (ob.type === 'site') { const f3 = siteFrame(ob), s3 = (f3 && map3dSprite(`site_${ob.kind}_${f3}`)) || map3dSprite('site_' + ob.kind); /* klatki ruchu: wiatrak, młyn, ogień, portal, wir */
+    else if (ob.type === 'site') { const f3 = siteFrame(ob), s3 = ob.color ? map3dSprite(siteKey3(ob)) : (f3 && map3dSprite(`site_${ob.kind}_${f3}`)) || map3dSprite('site_' + ob.kind); /* klatki ruchu: wiatrak, młyn, ogień, portal, wir */
       if (s3) { bl(s3, px, py + 6); if (ob.kind === 'lighthouse' && ob.owner >= 0) for (const [fx, fy] of map3dFlags('site_lighthouse')) bl(flagSprite(ownerColor(st, ob.owner), 10, 6), px + fx, py + 6 + fy - 22); } // latarnia: flaga właściciela na maszcie
       else { shadow(14, px, py + 12); bl(siteSprite(ob.kind, siteFrame(ob)), px, py + 14); } }
+    else if (ob.type === 'outpost') { const s3 = map3dSprite('site_outpost@' + ownerColor(st, ob.owner)); if (s3) bl(s3, px, py + 6); else { shadow(14, px, py + 12); bl(flagSprite(ownerColor(st, ob.owner), 12, 7), px, py); } } // garnizon: sztandar w barwie właściciela
     else if (ob.type === 'art') { const s3 = map3dSprite('art_' + ob.art); if (s3) bl(s3, px, py + 6); else { shadow(9, px, py + 10); bl(artSprite(ob.art), px, py + 1 + Math.round(Math.sin(G.time * 2 + ob.id) * 1.5) * 2); } }
     else if (ob.type === 'bank') { const s3 = map3dSprite(`bank_${ob.kind}_${ob.cleared ? 1 : 0}`); if (s3) bl(s3, px - 8, py - 4); else bl(bankSprite(ob.kind, ob.cleared), ox + (ob.x - 1) * T, oy + (ob.y - 1) * T); } // 3D: środek bloku 2×2, wejście z przodu
     else if (ob.type === 'mine') { const mx = ox + (ob.x - 1) * T, my = oy + (ob.y - 1) * T, s3 = map3dSprite('mine_' + ob.kind); if (s3) bl(s3, px + 6, py); else bl(mineSprite(ob.kind), mx, my); bl(flagSprite(ownerColor(st, ob.owner), 12, 7), mx + 56, my - 2); }
@@ -728,6 +730,7 @@ function* mapSpriteJobs(st, cx = 0, cy = 0) {
     else if (ob.type === 'bank') k = `bank_${ob.kind}_${ob.cleared ? 1 : 0}`;
     else if (ob.type === 'res' || ob.type === 'mine' || ob.type === 'site' || ob.type === 'art') k = ob.type + '_' + (ob.res || ob.kind || ob.art);
     else if (ob.type === 'chest' || ob.type === 'boat') k = ob.type;
+    else if (ob.type === 'outpost') k = 'site_outpost@' + ownerColor(st, ob.owner);
     if (k) { g(map3dSprite(k)); yield; }
     for (let dy = 1; dy <= 2; dy++) for (let dx = -1; dx <= 1; dx++) { const x = ob.x + dx, y = ob.y + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; if (!map.obst[i]) continue;
       g(obstacleSprite(map.obst[i], map.terrain[i], thash(x, y, map.seed + 2) % (map.obst[i] === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y))); }
@@ -813,6 +816,7 @@ function tileInfo(st, tx, ty) {
     if (ob.type === 'res') return resName(ob.res);
     if (ob.type === 'boat') return 'Łódź';
     if (ob.type === 'bank') return `${BANKS[ob.kind].name}${ob.cleared ? ' (splądrowane)' : ''}`;
+    if (ob.type === 'outpost') return fortName(st, ob);
   }
   const t = map.terrain[i]; if (t === TER.WATER) return 'Woda (potrzebna łódź)';
   let s = TERRAINS[t].name, cost = TERRAINS[t].cost;

@@ -214,3 +214,15 @@ test('regeneracja leczy najwyżej REGEN_MAX życia na rundę: samotna hydra chao
   assert.equal(r.over, 'win', `armia Kniei pokonuje samotną hydrę (rund: ${r.rounds})`); assert.ok(r.rounds <= 8);
   assert.equal(r.max, 50); assert.equal(r.cap, 50);
 });
+
+test('szybka bitwa: dwie armie z przyrostu wybranych frakcji, bohaterowie na wybranym poziomie, bitwa i powrót z wynikiem', async () => {
+  const r = await page.evaluate(() => {
+    const Q = { a: 'fortress', b: 'inferno', weeks: 2, lvl: 2, up: 1 }, { st, h, foe } = quickBattleState(Q);
+    const B = createBattle(st, h, foe); B.auto = true; simulateBattle(B);
+    return { lv: [h.level, foe.level], armies: [h.army.filter(Boolean).length, foe.army.filter(Boolean).length], facs: [CREATURES[h.army[0].cid].faction, CREATURES[foe.army[0].cid].faction], up: !!factionOf('fortress').dw.dw1u && h.army[0].cid === factionOf('fortress').dw.dw1u[1], over: B.over };
+  });
+  assert.deepEqual(r.lv, [10, 10]); assert.deepEqual(r.armies, [7, 7]); assert.deepEqual(r.facs, ['fortress', 'inferno']); assert.ok(r.up, 'ulepszone jednostki');
+  assert.ok(['win', 'lose'].includes(r.over));
+  await page.evaluate(() => { setScreen('quick', {}); G.screens.quick.draw(G.ctx); });
+  assert.ok(await page.evaluate(() => G.screens.menu && G.screens.quick.buttons.some(b => b.label === 'Walcz!')));
+});

@@ -1061,13 +1061,13 @@ function showMarket(st, owner, onDone) {
 // Spotkanie dwóch bohaterów gracza (stoją obok siebie): wymiana oddziałów i artefaktów z plecaka.
 // Oddział: kliknij go, potem miejsce w dowolnej z dwóch armii (przeniesienie, połączenie albo zamiana).
 function showMeeting(st, a, b, onMsg) {
-  const x = 60, y = 70, w = 680, hh = 460, heroes = [a, b], rows = [y + 96, y + 290], armies = [a.army, b.army];
+  const x = 60, y = 70, w = 680, hh = 460, heroes = [a, b], rows = [y + 96, y + 290], armies = [a.army, b.army], keep = heroes.filter(h => !h.outpost).map(h => h.army); // keep: armie, które muszą mieć oddział (garnizon na drodze może być pusty)
   let sel = null, msg = ''; const say = m => { msg = m; if (onMsg) onMsg(m); };
   let armyRects = [[], []], bagRects = [[], []];
   let splitMode = false; // „Dziel”: następne wskazanie miejsca otwiera okno podziału (to samo daje Shift+klik)
   const bClose = new Button(x + w / 2 + 5, y + hh - 54, 130, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const bSplit = new Button(x + w / 2 - 135, y + hh - 54, 130, 40, 'Dziel', () => { splitMode = !splitMode; say(splitMode ? 'Wybierz oddział, a potem miejsce: przeniesiesz tylko część jednostek.' : ''); }, { key: 'd', size: 17, selected: () => splitMode, tip: 'Podział oddziału: przenieś tylko część jednostek (albo Shift+klik na miejscu docelowym).' });
-  const give = (k, K) => { const n = giveArmy(armies[k], armies[K], true); sel = null; say(n ? `${heroes[k].name} przekazuje ${n} ${n === 1 ? 'stwora' : 'stworów'} (zostaje jeden).` : 'Nie ma czego przekazać albo brak miejsca.'); };
+  const give = (k, K) => { const n = giveArmy(armies[k], armies[K], !heroes[k].outpost); sel = null; say(n ? `${heroes[k].name} przekazuje ${n} ${n === 1 ? 'stwora' : 'stworów'}${heroes[k].outpost ? '' : ' (zostaje jeden)'}.` : 'Nie ma czego przekazać albo brak miejsca.'); };
   const bGive = [0, 1].map(k => new Button(k ? x + w - 184 : x + 24, y + hh - 54, 160, 40, `Wszystko → ${heroes[1 - k].name}`, () => give(k, 1 - k),
     { size: 13, key: k ? 'arrowup' : 'arrowdown', tip: `${heroes[k].name} oddaje całą armię bohaterowi ${heroes[1 - k].name}, zostawiając sobie jednego stwora z najsłabszego oddziału (klawisz ${k ? '↑' : '↓'}).` }));
   const armyAt = (px, py) => { for (let k = 0; k < 2; k++) { const r = hitRect(armyRects[k], px, py); if (r) return { k, i: r.i }; } return null; };
@@ -1079,9 +1079,10 @@ function showMeeting(st, a, b, onMsg) {
       if (s) {
         if (!sel) { if (armies[s.k][s.i]) { sel = s; msg = ''; } return; }
         const from = sel; sel = null;
-        if (splitMode || G.keys.has('shift')) { splitMode = false; showSplit(armies[from.k], from.i, armies[s.k], s.i, armies, err => { if (err) say(err); }); return; }
-        const err = armyMove(armies[from.k], from.i, armies[s.k], s.i, armies); if (err) say(err); return;
+        if (splitMode || G.keys.has('shift')) { splitMode = false; showSplit(armies[from.k], from.i, armies[s.k], s.i, keep, err => { if (err) say(err); }); return; }
+        const err = armyMove(armies[from.k], from.i, armies[s.k], s.i, keep); if (err) say(err); return;
       }
+      if (g && heroes[1 - g.k].outpost) { say('Garnizon nie przechowuje artefaktów.'); return; }
       if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
       sel = null;
     },
@@ -1093,14 +1094,14 @@ function showMeeting(st, a, b, onMsg) {
     },
     draw(ctx) {
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, hh);
-      text(ctx, 'Spotkanie bohaterów', W / 2, y + 30, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' });
+      text(ctx, b.outpost ? 'Garnizon na drodze' : 'Spotkanie bohaterów', W / 2, y + 30, { size: 22, align: 'center', color: '#3a1e08', fam: 'title' });
       text(ctx, msg || 'Kliknij oddział, a potem miejsce, aby go przenieść (Shift albo „Dziel”: część). Kliknij artefakt, aby go oddać.', W / 2, y + 56, { size: 14, italic: true, weight: 500, align: 'center', color: msg ? '#8a3a1a' : '#6a4418' });
       heroes.forEach((h, k) => {
-        const ry = rows[k]; drawHeroPortrait(ctx, x + 24, ry - 26, h, ownerColor(st, h.owner));
-        text(ctx, heroTitle(h), x + 68, ry - 12, { size: 16, color: '#3a1e08', fam: 'title' });
-        text(ctx, `Armia: siła ${armyStrength(h)}`, x + w - 24, ry - 12, { size: 13, align: 'right', weight: 500, color: '#5a3814' });
+        const ry = rows[k]; if (h.outpost) drawMap3dIcon(ctx, `site_outpost@${ownerColor(st, h.owner)}`, x + 44, ry - 10, 46, 40); else drawHeroPortrait(ctx, x + 24, ry - 26, h, ownerColor(st, h.owner));
+        text(ctx, h.outpost ? 'Garnizon (wojsko zostaje na straży drogi)' : heroTitle(h), x + 68, ry - 12, { size: 16, color: '#3a1e08', fam: 'title' });
+        text(ctx, `Armia: siła ${h.outpost ? armyPower(h.army) : armyStrength(h)}`, x + w - 24, ry - 12, { size: 13, align: 'right', weight: 500, color: '#5a3814' });
         armyRects[k] = drawArmyRow(ctx, h.army, x + 24, ry + 16, { light: true, sel: sel && sel.k === k ? sel.i : null, w: 84, gap: 6 });
-        text(ctx, h.bag.length ? 'Plecak:' : 'Plecak pusty', x + 24, ry + 92, { size: 13, weight: 500, color: '#5a3814' });
+        if (!h.outpost) text(ctx, h.bag.length ? 'Plecak:' : 'Plecak pusty', x + 24, ry + 92, { size: 13, weight: 500, color: '#5a3814' });
         bagRects[k] = h.bag.slice(0, 12).map((id, i) => { const bx = x + 90 + i * 46; drawSprite(ctx, artSprite(id), bx + 20, ry + 92, 1); return { x: bx, y: ry + 72, w: 40, h: 40, i }; });
       });
       bSplit.draw(ctx); bClose.draw(ctx); bGive.forEach(b => b.draw(ctx));

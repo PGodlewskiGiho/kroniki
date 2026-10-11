@@ -264,7 +264,7 @@ G.screens.battle = {
   buttons: [], B: null, phase: 'play', play: null, floats: [], preview: null, reach: null,
   enter(p) {
     Sfx.play('battlestart', { vol: 0.8, jit: 0 });
-    const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null; this.net = p.net || null; this.remoteAi = false; this.netAsked = false; this.netLost = 0;
+    const B = this.B = p.battle; B.fx = []; this.play = null; this.onDone = p.onDone || null; this.net = p.net || null; this.quick = !!p.quick; this.remoteAi = false; this.netAsked = false; this.netLost = 0;
     this.me = B.sides[0].owner === ME ? 0 : 1; this.floats = []; this.preview = null; this.timer = 0; this.ending = null; // strona gracza: 0 gdy atakuje, 1 gdy się broni
     this.terr = B.st.map.terrain[B.h.y * B.st.map.n + B.h.x] || TER.GRASS;
     for (const u of B.units) { [u.px, u.py] = unitPos(u); u.anim = null; u.dieT = null; u.flashT = null; u.face = null; }
@@ -351,6 +351,7 @@ G.screens.battle = {
   },
   finish(fled) {
     const B = this.B, st = B.st, h = B.h, res = resolveBattle(B, fled), f = this.onDone; this.onDone = null; this.phase = 'done';
+    if (this.quick) { showBattleReport(st, res, attackReport(st, h, res), () => G.go('quick', { result: res.outcome === 'win' ? 'zwycięstwo' : fled ? 'ucieczka' : 'porażka' })); return; } // szybka bitwa: raport i powrót do wyboru armii
     if (this.net && !this.net.lead) { showBattleReport(st, res, defenseReport(st, { h }, B.sides[1].hero, res), () => G.go('adventure')); return; } // online, obrońca: wynik u siebie, stan gry przyśle prowadzący
     if (this.net && f) { f(res); return; } // online: komputer zaatakował człowieka przy innym ekranie – wynik od razu wraca do tury komputera
     if (f) showBattleReport(st, res, defenseReport(st, { h }, B.sides[1].hero, res), () => { res.reported = true; f(res); }); // obrona: wynik wraca do tury przeciwnika
@@ -635,7 +636,7 @@ G.screens.battle = {
     text(ctx, `Runda ${B.round}`, VW / 2, 19, { size: 17, align: 'center', color: UI.goldHi, fam: 'title' });
     const D = B.sides[1], foeCol = ownerColor(st, D.owner), right = D.hero ? VW - 50 : VW - 12;
     if (D.hero) { if (PIXEL_ART) drawHeroPortrait(ctx, VW - 44, 1, D.hero, foeCol); else drawHeroMedal(ctx, VW - 26, 21, 19, D.hero, foeCol); }
-    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: UI.txt, fam: 'title' });
+    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.fort ? 'Garnizon na drodze' : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: UI.txt, fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'remote' && u0 ? `Ruch gracza ${playerName(st, B.sides[u0.side].owner)}: ${cu.plural.toLowerCase()}…` : this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
@@ -683,7 +684,7 @@ function showBattleResult(st, h, res) { showBattleReport(st, res, attackReport(s
 function battleAftermath(st, h, res) {
   if (res.outcome !== 'win') return;
   advFloat(`+${res.exp} dośw.`, h.x, h.y);
-  gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank') visitObject(st, h, here); });
+  gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank' && here.kind !== 'pandora' && here.kind !== 'borderGate' && here.type !== 'outpost') visitObject(st, h, here); });
 }
 // Zawartość fosy wg frakcji: faktura terenu, zabarwienie, brzeg, połysk; Inferno – lawa, Cytadela – bagno, Kurhan – trująca zieleń
 const MOAT_LIQ = {

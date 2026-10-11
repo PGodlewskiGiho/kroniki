@@ -78,7 +78,8 @@ function heroDrawPos(h) {
   return [h.anim.fx + (h.x - h.anim.fx) * k, h.anim.fy + (h.y - h.anim.fy) * k];
 }
 function rebuildObjIndex(st) {
-  const n = st.map.n, N = n * n; st.objAt = new Int32Array(N); st.guard = new Int32Array(N);
+  const n = st.map.n, N = n * n; st.objAt = new Int32Array(N); st.guard = new Int32Array(N); st.evAt = new Int32Array(N);
+  (st.events || []).forEach((e, k) => { if (!e.done) st.evAt[e.y * n + e.x] = k + 1; }); // zdarzenia na drogach (ukryte)
   for (const ob of st.objects) {
     if (ob.dead) continue; const id = ob.id + 1;
     st.objAt[ob.y * n + ob.x] = id; if (ob.blocks) for (const i of ob.blocks) st.objAt[i] = id;
@@ -103,6 +104,7 @@ function objBlocks(st, j, target, tg = 0, owner = ME) {
   if (j !== target && heroAt(st, j % st.map.n, (j / st.map.n) | 0)) return true;
   const ob = objectAt(st, j);
   if (ob && !objSeen(st, ob, owner)) return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
+  if (ob && ((ob.kind === 'borderGate' && hasGateKey(st, owner, ob)) || (ob.type === 'outpost' && friendlyFort(st, ob, owner)))) return !!(st.guard[j] && j !== target && st.guard[j] !== tg); // brama z przepustką, własny garnizon: zwykła droga
   if (ob) { if ((ob.type === 'mine' || ob.type === 'town' || ob.type === 'bank') && j !== ob.y * st.map.n + ob.x) return true; if (j !== target) return true; }
   return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
 }
@@ -124,6 +126,8 @@ function heroStep(st, h) {
   const n = st.map.n, [nx, ny] = h.path[0], ni = ny * n + nx, ob = objectAt(st, ni);
   const halt = () => { h.moving = false; h.path = null; h.dest = null; };
   if (ob && ob.type === 'monster') { halt(); h.prev = null; startEncounter(st, h, ob); return false; }
+  if (ob && ob.type === 'outpost' && !friendlyFort(st, ob, h.owner)) { halt(); h.prev = null; startOutpost(st, h, ob); return false; } // obcy garnizon: szturm albo zajęcie pustego fortu
+  if (ob && ob.kind === 'borderGate' && !hasGateKey(st, h.owner, ob)) { halt(); if (playerOf(st, h.owner).human) visitObject(st, h, ob); return false; } // zamknięta brama: bohater staje przed nią
   const other = heroAt(st, nx, ny); // bohater w bramie miasta broni się razem z miastem (startTownAssault)
   if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner && allied(st, h.owner, other.owner)) { G.screens.adventure.flash(`${other.name} to bohater sojusznika (${playerName(st, other.owner)})`); return; } if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } else if (playerOf(st, h.owner).human && !G.screens.adventure.aiRun) showMeeting(st, h, other); return false; } // własny: spotkanie po dojściu
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
@@ -134,7 +138,8 @@ function heroStep(st, h) {
   if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); return true; }
   if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; } // wysiadka: łódź zostaje przy brzegu
   if (st.guard[ni]) { const m = st.objects[st.guard[ni] - 1]; halt(); h.pending = () => startEncounter(st, h, m); }
-  else if (ob) { halt(); h.pending = () => visitObject(st, h, ob); }
+  else if (ob && ob.kind !== 'borderGate' && !(ob.type === 'outpost' && h.path)) { halt(); h.pending = () => visitObject(st, h, ob); } // przez otwartą bramę graniczną i własny garnizon się przejeżdża (w garnizonie można stanąć)
+  else if (eventAt(st, ni)) { const ev = eventAt(st, ni); halt(); h.pending = () => runEvent(st, h, ev); } // zdarzenie na drodze
   return true;
 }
 // Siedlisko najemników: okno werbunku (wszyscy, na ilu stać, albo nic)
@@ -151,6 +156,7 @@ const sfxFor = (st, owner, n, o) => { const P = playerOf(st, owner); if (P && P.
 const QUIET_SITES = ['windmill', 'waterMill', 'campfire', 'stables', 'well', 'temple', 'fountain', 'lookout', 'magicSpring', 'oasis', 'buoy', 'flotsam'];
 function visitObject(st, h, ob) {
   const R = playerOf(st, h.owner).resources, snd = (n, o) => { if (playerOf(st, h.owner).human) Sfx.play(n, o); };
+  if (ob.type === 'outpost') { if (friendlyFort(st, ob, h.owner) && playerOf(st, h.owner).human) showMeeting(st, h, fortParty(st, ob)); return; }
   if (ob.type === 'res') { snd(ob.res === 'gold' ? 'coins' : 'pickup'); R[ob.res] += ob.amount; advFloat(`+${ob.amount}`, h.x, h.y, ob.res); removeObject(st, ob); }
   else if (ob.type === 'chest') {
     removeObject(st, ob); snd('chest');
@@ -184,8 +190,8 @@ function visitObject(st, h, ob) {
   else if (ob.type === 'site') {
     const r = useSite(st, h, ob), S = SITES[ob.kind]; snd(r.res === 'gold' ? 'coins' : 'shrine');
     if (r.float) advFloat(r.float, h.x, h.y, r.res);
-    showDialog(`${siteName(ob)}. ${r.text}`, [{ label: r.puzzle ? 'Mapa zagadki' : 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); if (r.puzzle) showPuzzle(st); } }],
-      { iconH: 76, icon: (ctx, cx, cy) => { drawMap3dIcon(ctx, 'site_' + ob.kind, cx, cy, 90, 74) || drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5); if (ob.kind === 'witchHut') skillIcon(ctx, ob.skill, cx + 64, cy + 8, 48); } });
+    showDialog(`${siteName(ob)}. ${r.text}`, [{ label: r.puzzle ? 'Mapa zagadki' : r.trap ? 'Do walki!' : 'OK', key: 'enter', action: () => { if (r.exp) gainExp(st, h, r.exp); if (r.puzzle) showPuzzle(st); if (r.trap) { h.prev = null; startEncounterFight(st, h, trapMonster(h, r.trap)); } } }],
+      { iconH: 76, icon: (ctx, cx, cy) => { drawMap3dIcon(ctx, siteKey3(ob), cx, cy, 90, 74) || drawSprite(ctx, siteSprite(ob.kind), cx, cy + 30, 1.5); if (ob.kind === 'witchHut') skillIcon(ctx, ob.skill, cx + 64, cy + 8, 48); } });
   } else if (ob.type === 'town') {
     const t = st.towns[ob.townId];
     if (ob.owner !== h.owner && allied(st, h.owner, ob.owner)) { G.screens.adventure.flash(`${t.name}: miasto sojusznika (${playerName(st, ob.owner)})`); return; }
@@ -301,6 +307,21 @@ function adventureSite(st, h, ob) {
   showDialog(`${S.name}: stara studnia lśni na dnie od monet. Wrzucić ${S.cost} złota i wypowiedzieć życzenie? (masz ${R.gold})`, [...(R.gold >= S.cost ? [{ label: 'Wrzuć', key: 'enter', action: go() }] : []), { label: 'Odejdź', key: 'escape' }], icon);
 }
 const siteName = ob => ob.title || SITES[ob.kind].name;
+const siteKey3 = ob => `site_${ob.kind}${ob.color ? '@' + keyColor(ob.color).hex : ''}`; // model 3D miejsca (namiot i brama w kolorze klucza)
+// Puszka Pandory: powtarzalnie losowa zawartość (ziarno gry i puszki); im dalej od początku gry, tym hojniej. Pułapka: złoto na dnie
+// i potwory, z którymi trzeba walczyć (trap: tymczasowy oddział, poza listą obiektów mapy)
+function pandoraOpen(st, h, ob) {
+  const r = mulberry32((st.seed ^ (ob.id * 7243 + 991)) >>> 0), roll = r(), k = 1 + Math.min(3, (st.month - 1) * 0.6 + (st.week - 1) * 0.15), R = playerOf(st, h.owner).resources;
+  if (roll < 0.22) { const g = Math.round(2500 * k / 100) * 100; R.gold += g; return { text: `Z puszki sypią się monety: ${g} złota.`, float: `+${g}`, res: 'gold' }; }
+  if (roll < 0.42) { const e = Math.round(2500 * k / 100) * 100; return { text: `Z puszki wydobywa się świetlista mgła pełna wspomnień dawnych bohaterów: ${e} doświadczenia.`, exp: e, float: `+${e} dośw.` }; }
+  if (roll < 0.58) { const pool = ARTS_BY_RARITY(r() < 0.35 ? 'major' : 'minor'), art = pool[Math.floor(r() * pool.length)]; giveArtifact(h, art); return { text: `Na aksamitnej poduszce leży artefakt: ${ARTIFACTS[art].name}.`, float: ARTIFACTS[art].name }; }
+  if (roll < 0.7) { const res = RARE[Math.floor(r() * RARE.length)], n = Math.round(6 * k); R[res] += n; R.wood += n; R.ore += n; return { text: `Puszka jest pełna surowców: po ${n} drewna, rudy i ${resName(res).toLowerCase()}.`, float: `+${n}` }; }
+  if (roll < 0.78 && hasBook(h)) { const L = Math.min(spellCap(h), 2 + Math.floor(r() * 2)), pool = Object.keys(SPELLS).filter(id => SPELLS[id].level <= L && !h.spells.includes(id)); if (pool.length) { const id = pool[Math.floor(r() * pool.length)]; h.spells.push(id); return { text: `Z puszki wylatuje zwój z zaklęciem. ${h.name} poznaje czar „${SPELLS[id].name}”.`, float: SPELLS[id].name }; } }
+  const lvl = clamp(2 + Math.floor((st.month - 1) * 1.2 + st.week * 0.4 + r() * 2), 2, 7), all = NEUTRALS_BY_LEVEL[lvl], cid = all[Math.floor(r() * all.length)], gold = Math.round(1500 * k / 100) * 100;
+  const count = Math.max(2, Math.round(armyPower(h.army) * (0.45 + r() * 0.3) / CREATURES[cid].value)); R.gold += gold;
+  return { text: `Na dnie puszki leży ${gold} złota – ale z wnętrza wypełza ${qtyName(count).toLowerCase()} ${CREATURES[cid].gen}! Trzeba walczyć.`, float: `+${gold}`, res: 'gold', bad: true, trap: { cid, count } };
+}
+const trapMonster = (h, t) => ({ type: 'monster', cid: t.cid, count: t.count, x: h.x, y: h.y, id: -1, dir: -1, mood: 'savage', trap: true });
 const DIR8_NAMES = ['na wschodzie', 'na południowym wschodzie', 'na południu', 'na południowym zachodzie', 'na zachodzie', 'na północnym zachodzie', 'na północy', 'na północnym wschodzie'];
 const dirFrom = (x0, y0, x1, y1) => DIR8_NAMES[(Math.round(Math.atan2(y1 - y0, x1 - x0) / (Math.PI / 4)) + 8) % 8];
 // Zagadka dla bohatera (stała dla pary sfinks–bohater) i kolejność odpowiedzi; right = numer dobrej
@@ -368,9 +389,21 @@ function startTownAssault(st, h, t) {
   const who = `${t.name} (${t.owner < 0 ? 'miasto niezależne' : `miasto: ${ownerName(st, t.owner)}`}) ${hh ? `ma w murach bohatera: ${heroTitle(hh)}` : 'broni się garnizonem'}.${walls}`;
   offerBattle(st, h, t, who, townPower(st, t), (ctx, cx, cy) => drawMap3dIcon(ctx, `town_${t.faction}_${townLevel(t)}`, cx, cy, 110, 84) || drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), cx - 40, cy - 40, 2));
 }
+// Garnizon na drodze: obcy fort z załogą to bitwa (bez murów, załoga walczy bez bohatera), pusty fort zajmuje się od razu
+const fortName = (st, ob) => (ob.owner < 0 ? 'Garnizon na drodze (niezależny)' : `Garnizon na drodze (${ownerName(st, ob.owner)})`);
+const fortParty = (st, ob) => ({ outpost: true, name: 'Garnizon', owner: ob.owner, army: ob.army, bag: [] }); // garnizon w oknie spotkania (zamiast drugiego bohatera)
+function captureOutpost(st, ob, owner) {
+  if (ob.owner >= 0 && ob.owner !== owner) tell(st, ob.owner, `${cap1(ownerName(st, owner))} zdobywa twój garnizon na drodze.`);
+  ob.owner = owner; ob.army = ob.army.map(s => (s && s.n > 0 ? s : null)); if (owner >= 0) reveal(st, ob.x, ob.y, 4, owner); MapRender.miniDirty = true;
+}
+function startOutpost(st, h, ob) {
+  if (!armySize(ob.army)) { captureOutpost(st, ob, h.owner); sfxFor(st, h.owner, 'flag'); if (playerOf(st, h.owner).human) showDialog(`${fortName(st, ob).replace(/ \(.*\)/, '')}: fort stoi pusty. Twoje sztandary zawisają nad częstokołem – odtąd garnizon przepuszcza twoje wojska, a obcych zatrzymuje. Wejdź do niego bohaterem, aby zostawić załogę.`, [{ label: 'OK', key: 'enter' }], { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, `site_outpost@${ownerColor(st, h.owner)}`, cx, cy, 90, 74) }); return; }
+  offerBattle(st, h, ob, `${fortName(st, ob)} zagradza drogę. Załoga: ${ob.army.filter(Boolean).map(s => `${qtyName(s.n).toLowerCase()} ${CREATURES[s.cid].gen}`).join(', ')}.`, armyPower(ob.army),
+    (ctx, cx, cy) => drawMap3dIcon(ctx, `site_outpost@${ownerColor(st, ob.owner)}`, cx, cy, 100, 80));
+}
 // Okno przed bitwą: porównanie sił i wybór (walka, walka automatyczna, odwrót)
 function offerBattle(st, h, foe, who, foePower, icon) {
-  const rival = netHumanOwner(st, battleSide(st, foe).owner);
+  const rival = foe.type === 'outpost' ? -1 : netHumanOwner(st, battleSide(st, foe).owner); // garnizon bez bohatera: załogą zawsze dowodzi komputer
   if (rival >= 0) { // przeciwnik to człowiek online: wspólna bitwa na żywo, każdy dowodzi swoją stroną
     showDialog(`${who} Dowodzi nim ${playerName(st, rival)} – bitwa rozegra się na żywo u was obu.`, [
       { label: 'Walcz', key: 'enter', action: () => netBattle(st, h, foe) },
@@ -1202,6 +1235,10 @@ function useSite(st, h, ob, choice) {
       const r = mulberry32(st.seed ^ (ob.id * 1931)), pool = ARTS_BY_RARITY(r() < 0.5 ? 'major' : 'minor'), art = pool[Math.floor(r() * pool.length)];
       ob.looted = h.owner; giveArtifact(h, art); h.boost = { ...(h.boost || {}), morale: BARROW_CURSE }; MapRender.miniDirty = true;
       return { text: `W komorze grobowej spoczywa ${ARTIFACTS[art].name}. Gdy ${h.name} sięga po skarb, z ciemności podnosi się zawodzenie duchów: armia jest przeklęta (morale ${BARROW_CURSE} do następnej bitwy).`, float: ARTIFACTS[art].name, bad: true }; }
+    case 'pandora': { if (ob.opened != null) return { text: 'Puszka jest pusta: ktoś już ją otworzył.' }; ob.opened = h.owner; MapRender.miniDirty = true; return pandoraOpen(st, h, ob); }
+    case 'keyTent': { const c = keyColor(ob.color), P = playerOf(st, h.owner); if ((P.keys || {})[ob.color]) return { text: `Klucznik kiwa głową: twoi bohaterowie mają już przepustkę przez ${c.f.replace(/a$/, 'e')} bramy.` };
+      P.keys = { ...(P.keys || {}), [ob.color]: true }; return { text: `Klucznik wręcza ${h.name} ${c.f.replace(/a$/, 'ą')} przepustkę: ${c.f.replace(/a$/, 'e')} bramy graniczne stoją teraz otworem dla wszystkich twoich bohaterów.`, float: 'Przepustka' }; }
+    case 'borderGate': { const c = keyColor(ob.color); return hasGateKey(st, h.owner, ob) ? { text: `Strażnicy rozpoznają przepustkę i podnoszą kratę ${c.f.replace(/a$/, 'ej')} bramy.` } : { text: `Brama jest zamknięta. Przepuszczą tylko tego, kto ma przepustkę od klucznika z ${c.name.replace(/y$/, 'ego')} namiotu.` }; }
     case 'caravanserai': { const o = bazaarOffer(st, ob); if (!o) return { text: 'Kupcy sprzedali już towar. Nowa karawana przybędzie w przyszłym miesiącu.' };
       if (R.gold < o.price) return { text: `Kupcy oferują ${ARTIFACTS[o.art].name} za ${o.price} złota, a masz ${R.gold}.` };
       R.gold -= o.price; ob.sold = bazaarMonth(st); giveArtifact(h, o.art); return { text: `${h.name} kupuje ${ARTIFACTS[o.art].name} za ${o.price} złota.`, float: ARTIFACTS[o.art].name }; }

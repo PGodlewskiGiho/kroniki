@@ -426,5 +426,14 @@
    jastrzębia, pierścień węża, sztylet skrytobójcy (Zasadzka), moneta fortuny (Ulubieniec losu), kula wysysania (Wysysanie many),
    chorągiew posła (Poseł), królewski płaszcz, amulet słońca oraz komplet Lodowego Króla (ostrze mrozu, lodowa korona, zbroja
    z wiecznego lodu) składany w relikwię Regalia Lodowego Króla (+6 ataku, +6 obrony, +4 mocy). Figurki mapowe nowych artefaktów.
+   Szybka bitwa w menu głównym: dwie frakcje, siła armii (tygodnie przyrostu), poziom bohaterów i stopień jednostek; po walce raport
+   i powrót do wyboru (19c-szybka-bitwa.js).
+   Zdarzenia na drogach (13b-zdarzenia-na-drogach.js): ukryte pola, na których bohater trafia na scenkę z wyborem – ranny wędrowiec,
+   porzucony wóz, wróżbitka, dezerterzy, stary mędrzec, ruiny strażnicy, wędrowni kupcy, zapomniany ołtarz. Każde raz; komputer wybiera sam.
+   Puszka Pandory (otwiera się raz: złoto, doświadczenie, artefakt, surowce, czar albo pułapka – złoto na dnie i potwory do pokonania).
+   Bramy graniczne na wąskich drogach i namioty klucznika (jak w H3): brama przepuszcza tylko gracza z przepustką swojego koloru; namiot
+   każdego koloru stoi w każdej części mapy ze startem. Modele 3D z chorągwiami w kolorze klucza (magenta w modelu, kolor w grze).
+   Garnizony na drogach (type 'outpost'): drewniane forty z załogą na wąskich drogach. Bitwa z załogą (bez bohatera), zwycięzca przejmuje
+   fort: przepuszcza jego i sojuszników, obcych zatrzymuje; właściciel zostawia w nim wojsko (okno spotkania). Komputer też je zdobywa.
    ===================================================================================== */
 

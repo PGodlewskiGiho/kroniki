@@ -21,7 +21,7 @@ function serializeGame(st) {
   const m = st.map;
   return {
     v: SAVE_VERSION,
-    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null, caravans: st.caravans || [], retired: st.retired || [], hist: st.hist || [], tally: st.tally || {}, ...(st.online ? { online: st.online } : {}) },
+    core: { seed: st.seed, day: st.day, week: st.week, month: st.month, dayTotal: st.dayTotal, settings: st.settings, bonusText: st.bonusText, selHero: st.selHero, cam: st.cam, cur: st.cur || 0, grail: st.grail, holes: st.holes || [], weekNews: st.weekNews || null, caravans: st.caravans || [], retired: st.retired || [], events: st.events || [], hist: st.hist || [], tally: st.tally || {}, ...(st.online ? { online: st.online } : {}) },
     map: { n: m.n, seed: m.seed, sites: m.sites, startIdx: Math.max(0, m.sites.indexOf(m.start)), ...(m.ln ? { ln: m.ln } : {}), terrain: packBytes(m.terrain), obst: packBytes(m.obst), road: packBytes(m.road) },
     players: st.players.map(p => ({ ...p, explored: packBytes(p.explored) })),
     heroes: st.heroes.map(h => ({ ...h, anim: null, pending: null, moving: false, stop: false, prev: null })),
@@ -40,6 +40,7 @@ function deserializeGame(d) {
 // (usunięte stwory, budowle, artefakty, miejsca), znika zamiast psuć rozgrywkę. Kolejne kroki w kolejności powstawania gry.
 function migrateSave(st) {
   const r = mulberry32(st.seed), cr = s => (s && CREATURES[s.cid] && s.n > 0 ? s : null), armyFix = a => Array.from({ length: ARMY_SLOTS }, (_, i) => cr(a && a[i]));
+  st.events = (st.events || []).filter(e => e && ROAD_EVENTS[e.kind]); // zdarzenia na drogach (starsze zapisy: brak)
   st.retired = (st.retired || []).filter(r => r && r.hero && r.hero.name && HERO_CLASSES[r.hero.cls]); // bohaterowie czekający w tawernach
   st.caravans = (st.caravans || []).filter(c => st.towns[c.from] && st.towns[c.to]).map(c => ({ ...c, army: c.army.filter(s => s && CREATURES[s.cid] && s.n > 0) })).filter(c => c.army.length); // karawany
   if (!(st.settings.difficulty >= 0 && st.settings.difficulty < DIFFICULTIES.length)) st.settings.difficulty = 1;
@@ -73,6 +74,7 @@ function migrateSave(st) {
     if ((o.type === 'monster' && !CREATURES[o.cid]) || (o.type === 'art' && !ARTIFACTS[o.art]) || (o.type === 'site' && !SITES[o.kind]) || (o.type === 'bank' && !BANKS[o.kind])) o.dead = true;
     if (o.type === 'bank' && !Array.isArray(o.guards)) o.guards = o.cleared ? [] : bankGuards(o.kind, st.settings.difficulty);
     if (o.type === 'bank') o.guards = o.guards.filter(([cid, n]) => CREATURES[cid] && n > 0);
+    if (o.type === 'outpost') o.army = Array.from({ length: ARMY_SLOTS }, (_, k) => { const x = (o.army || [])[k]; return x && CREATURES[x.cid] && x.n > 0 ? x : null; });
   }
   // Graal i obeliski (zapisy sprzed Graala dostają je teraz)
   placeGrail(st);

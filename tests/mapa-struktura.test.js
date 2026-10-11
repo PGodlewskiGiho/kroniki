@@ -102,7 +102,7 @@ test('budynki (miasta, kopalnie, skarbce) nie stoją na drodze ani tuż przy nie
   const r = await page.evaluate(() => { const out = [];
     for (const [size, seed, land] of [['S', 1, 'mixed'], ['M', 4242, 'forest'], ['L', 21, 'islands'], ['M', 7, 'mountains']]) { const S = Object.assign({}, G.settings, { mapSize: size, land, difficulty: 1, faction: 'haven', bonus: 'gold', opponents: 1, slots: null, underground: false });
       const st = createNewGame(S, seed), m = st.map, n = m.n; let bad = 0, tot = 0;
-      for (const o of st.objects) { if (o.dead || !['site', 'mine', 'bank'].includes(o.type)) continue; tot++; let near = false;
+      for (const o of st.objects) { if (o.dead || !['site', 'mine', 'bank'].includes(o.type) || o.kind === 'borderGate') continue; /* brama graniczna stoi na drodze z założenia */ tot++; let near = false;
         for (const i of [o.y * n + o.x, ...(o.blocks || [])]) { const x = i % n, y = (i / n) | 0; for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < n && Y < n && m.road[Y * n + X]) near = true; } }
         if (near) bad++; }
       out.push([`${size}/${land}`, tot, bad]); }
@@ -132,7 +132,7 @@ test('bez przestojów: z każdego startu da się wyjść, walcząc z oddziałami
         for (let i = 0; i < n * n; i++) if (m.terrain[i] !== TER.WATER && !m.obst[i]) land++;
         for (let i = 0; i < q.length; i++) { const c = q[i], x = c % n, y = (c / n) | 0;
           for (let dd = 0; dd < 8; dd++) { const X = x + DX8[dd], Y = y + DY8[dd], j = Y * n + X; if (X < 0 || Y < 0 || X >= n || Y >= n || d[j] || m.terrain[j] === TER.WATER || m.obst[j]) continue;
-            const ob = objectAt(st, j); if (ob && ob.type !== 'monster' && ob.type !== 'town') continue; const g = st.guard[j] && st.objects[st.guard[j] - 1]; if (g && !g.dead && pw(g) > army) continue; d[j] = 1; q.push(j); } }
+            const ob = objectAt(st, j); if (ob && ob.type === 'outpost' && armyPower(ob.army) > army) continue; if (ob && !['monster', 'town', 'outpost'].includes(ob.type) && ob.kind !== 'borderGate') continue; const g = st.guard[j] && st.objects[st.guard[j] - 1]; if (g && !g.dead && pw(g) > army) continue; d[j] = 1; q.push(j); } }
         out.push([`${size}/${land} gracz ${h.owner}`, q.length / land]); } }
     return out; });
   for (const [k, part] of r) assert.ok(part >= 0.1, `${k}: bez walki z silniejszymi dostępne ${(part * 100).toFixed(0)}% lądu`);

@@ -127,7 +127,8 @@ function aiReach(st, h) {
     hk[i] = d; hv[i] = v;
   };
   const heroCell = new Uint8Array(N); for (const o of st.heroes) if (o.garrison == null) heroCell[o.y * n + o.x] = 1;
-  const stop = i => !!((st.objAt[i] && objSeen(st, st.objects[st.objAt[i] - 1], h.owner)) || st.guard[i] || heroCell[i]); // nieznany ukryty skarb: przechodzi (i go znajduje)
+  const openGate = o => (o.kind === 'borderGate' && hasGateKey(st, h.owner, o)) || (o.type === 'outpost' && friendlyFort(st, o, h.owner)); // brama z przepustką, własny garnizon: zwykła droga
+  const stop = i => !!((st.objAt[i] && objSeen(st, st.objects[st.objAt[i] - 1], h.owner) && !openGate(st.objects[st.objAt[i] - 1])) || st.guard[i] || heroCell[i]); // nieznany ukryty skarb: przechodzi (i go znajduje)
   dist[start] = 0; push(0, start);
   while (hn) {
     const d = hk[0], i = hv[0]; pop(); if (d > dist[i]) continue; if (i !== start && stop(i)) continue;
@@ -201,6 +202,8 @@ function aiPickTarget(st, h, R) {
       else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob); if (v > 0) add(i, v, 'site'); }
       else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner, h.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
       else if (ob.type === 'bank' && !ob.cleared && !helper && power > bankPower(ob) * 1.3) add(i, 2000 + bankPower(ob) * 0.4, 'bank', ob);
+      else if (ob.type === 'outpost' && !friendlyFort(st, ob, h.owner) && !aiPeace(st, ob.owner, h.owner)) { const fp = armyPower(ob.army); // garnizon: otwiera drogę dalej
+        if (!fp) add(i, 2500, 'outpost'); else if (!helper && power > fp * 1.2) add(i, 3000 + fp * 0.4, 'outpost', ob); }
     }
     for (const o of st.heroes) if (o.owner !== h.owner && !aiPeace(st, o.owner, h.owner) && !st.towns.some(t => t.x === o.x && t.y === o.y) && power > armyStrength(o) * 0.8 * fightK) add(o.y * n + o.x, Math.max(playerOf(st, o.owner).human ? 15000 : 8000, armyStrength(o) * 0.5), 'hero', o);
     // zwiad: wolne pole na skraju odkrytego terenu, tym cenniejsze, im więcej mgły wokół
@@ -231,6 +234,11 @@ function aiPickTarget(st, h, R) {
 // odtworzyć), atak na człowieka ({ kind: 'defend' }: wynik bitwy wraca przez gen.next(res)) i początek tury gracza.
 // Bez ekranu (testy, symulacje, szybka tura) generator rozgrywa runAiSync: obrona jest wtedy automatyczna.
 function* aiBattle(st, h, foe, news) {
+  if (foe.type === 'outpost') { // garnizon bez bohatera: walka liczona od razu, właściciel dostaje wiadomość
+    const res = resolveBattle(simulateBattle(createBattle(st, h, foe)), false), o = foe.owner;
+    if (o >= 0) tell(st, o, `${h.name} (${ownerName(st, h.owner)}) atakuje twój garnizon na drodze. ${res.outcome === 'win' ? 'Fort przepadł.' : 'Załoga odparła atak!'}`);
+    if (res.outcome === 'win') gainExp(st, h, res.exp); return res.outcome === 'win';
+  }
   const defOwner = foe.type === 'monster' || foe.type === 'bank' ? -1 : foe.owner, defName = foe.type === 'monster' || foe.type === 'bank' ? null : foe.garrison ? `miasto ${foe.name}` : heroTitle(foe);
   if (foe.type === 'monster') { // potwory chcą dołączyć: komputer bierze je za darmo albo gdy złota starczy z zapasem
     const re = neutralReaction(st, h, foe);
@@ -261,6 +269,9 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'inn' && h.boost && h.boost.morale > 0) return 300; // plotka i tak się przyda
   if (ob.kind === 'questHut') { const m = st.objects[ob.target]; return ob.done == null && (!m || m.dead) ? 4000 : 0; } // nagroda za pokonane stwory
   if (ob.kind === 'barrow') return ob.looted == null ? 3500 : 0; // artefakt wart klątwy
+  if (ob.kind === 'pandora') return ob.opened == null ? S.ai : 0;
+  if (ob.kind === 'keyTent') return (playerOf(st, h.owner).keys || {})[ob.color] ? 0 : S.ai; // przepustka raz na gracza
+  if (ob.kind === 'borderGate') return 0;
   if (ob.kind === 'lighthouse') return ob.owner === h.owner ? 0 : S.ai;
   if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o && playerOf(st, h.owner).resources.gold >= o.price + 4000 ? 2000 : 0; }
   if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
@@ -287,8 +298,9 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
   else if (ob.type === 'site' && ob.kind === 'witchHut' && skillWeight(h.cls, ob.skill) < 1) siteDiscover(ob, h.owner); // odmawia wiedźmie
-  else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); }
+  else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); if (r.trap) yield* aiBattle(st, h, trapMonster(h, r.trap), news); } // puszka Pandory z potworami
   else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
+  else if (ob.type === 'outpost') { if (!friendlyFort(st, ob, h.owner)) { if (armySize(ob.army)) yield* aiBattle(st, h, ob, news); else captureOutpost(st, ob, h.owner); } }
   else if (ob.type === 'mine' && ob.owner >= 0 && ob.owner !== h.owner && allied(st, h.owner, ob.owner)) return;
   else if (ob.type === 'mine') { if (ob.owner >= 0 && ob.owner !== h.owner) tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
@@ -318,7 +330,7 @@ function* aiMoveHero(st, h, news) {
       const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
       const blocker = heroAt(st, nx, ny); if (blocker && blocker !== h && allied(st, blocker.owner, h.owner) && blocker.garrison == null) return; // pole zajmuje własny bohater (np. stoi w kapliczce): nie wchodzimy na niego
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
-      reveal(st, nx, ny, heroSight(h), h.owner);
+      reveal(st, nx, ny, heroSight(h), h.owner); const ev = eventAt(st, ny * st.map.n + nx); if (ev) runEvent(st, h, ev); // zdarzenie na drodze: komputer wybiera sam
       yield { kind: 'step', h, fx, fy };
     }
     if (target.what === 'feed') { // obok głównego bohatera: oddaje armię i artefakty

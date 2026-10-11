@@ -83,3 +83,80 @@ test('okna: sfinks pyta z trzema odpowiedziami, kurhan i studnia pytają o zgod�
   assert.equal(r.aiBad, undefined); assert.ok(r.tip, 'nazwa karczmy w dymku');
   assert.equal(r.sphinx, 4, 'trzy odpowiedzi i „Odejdź”'); assert.equal(r.barrow, 2); assert.equal(r.wishingWell, 2); assert.equal(r.caravanserai, 2);
 });
+
+test('zdarzenia na drogach: ukryte pola na drogach, wejście bohatera otwiera scenkę z wyborem, raz; zapis je zachowuje', async () => {
+  await newGame(page, { mapSize: 'M' }, 5);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), n = st.map.n, ev = st.events.find(e => e.kind === 'cart') || st.events[0]; ev.kind = 'cart';
+    const onRoad = st.events.every(e => st.map.road[e.y * n + e.x]), hidden = !objectAt(st, ev.y * n + ev.x) && !drawnObjectAt(st, ev.x, ev.y);
+    const nb = DX8.map((dx, d) => [ev.x + dx, ev.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !st.guard[y * n + x]);
+    h.x = nb[0]; h.y = nb[1]; h.mp = 5000; h.path = [[ev.x, ev.y]]; h.moving = true; G.modal = null; setScreen('adventure', {});
+    heroStep(st, h); const f = h.pending; h.pending = null; h.anim = null; if (f) f();
+    const title = G.modal && G.modal.msg, R = st.players[ME].resources, before = R.wood + R.ore; G.modal.buttons[0].action();
+    const after = R.wood + R.ore, saved = deserializeGame(JSON.parse(JSON.stringify(serializeGame(st)))).events.find(e => e.x === ev.x && e.y === ev.y);
+    return { count: st.events.length, onRoad, hidden, title, gained: after - before, done: ev.done, again: !!eventAt(st, ev.y * n + ev.x), saved: saved && saved.done };
+  });
+  assert.ok(r.count >= 3, `zdarzeń: ${r.count}`); assert.ok(r.onRoad); assert.ok(r.hidden, 'niewidoczne na mapie');
+  assert.match(r.title, /Porzucony wóz/); assert.equal(r.gained, 5); assert.equal(r.done, true); assert.equal(r.again, false); assert.equal(r.saved, true);
+});
+
+test('bramy graniczne i klucznik: bez przepustki brama zatrzymuje, namiot daje przepustkę kolorowi, potem przez bramę się przejeżdża', async () => {
+  await newGame(page, { mapSize: 'L' }, 7);
+  const r = await page.evaluate(() => {
+    const st = G.state, n = st.map.n, h = hero(st); human(st).explored.fill(1); const live = st.objects.filter(o => !o.dead), gates = live.filter(o => o.kind === 'borderGate'), tents = live.filter(o => o.kind === 'keyTent');
+    const free = g0 => DX8.map((dx, d) => [g0.x + dx, g0.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && stepCost(st.map, x, y, g0.x, g0.y, h) < 9999);
+    const g = gates.find(free), nb = free(g), tent = tents.find(t => t.color === g.color), gi = g.y * n + g.x; for (const o of st.objects) if (o.type === 'monster') o.dead = true; rebuildObjIndex(st); // bez strażników obok bramy
+    const blockedBefore = objBlocks(st, gi, -1, 0, ME);
+    h.x = nb[0]; h.y = nb[1]; h.mp = 9000; h.path = [[g.x, g.y]]; h.moving = true; G.modal = null; setScreen('adventure', {});
+    heroStep(st, h); const stayed = h.x === nb[0] && h.y === nb[1], closedMsg = G.modal && G.modal.msg; G.modal = null;
+    const res = useSite(st, h, tent); const key = !!(st.players[ME].keys || {})[g.color];
+    const blockedAfter = objBlocks(st, gi, -1, 0, ME); h.path = [[g.x, g.y]]; h.moving = true; h.anim = null; heroStep(st, h);
+    return { gates: gates.length, colorsOk: gates.every(x => tents.some(t => t.color === x.color)), blockedBefore, stayed, closedMsg, tentText: res.text, key, blockedAfter, passed: h.x === g.x && h.y === g.y, pending: !!h.pending };
+  });
+  assert.ok(r.gates >= 1); assert.ok(r.colorsOk, 'każda brama ma namiot swojego koloru');
+  assert.equal(r.blockedBefore, true); assert.ok(r.stayed, 'zamknięta brama zatrzymuje'); assert.match(r.closedMsg, /zamknięta/);
+  assert.match(r.tentText, /przepustkę/); assert.equal(r.key, true); assert.equal(r.blockedAfter, false); assert.ok(r.passed, 'z przepustką przez bramę'); assert.equal(r.pending, false);
+});
+
+test('puszka Pandory: otwiera się raz (nagroda albo potwory z walką), potem jest pusta', async () => {
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), out = { kinds: {} };
+    for (let id = 0; id < 120; id++) { const ob = { id, kind: 'pandora', type: 'site', x: 0, y: 0 }, h2 = JSON.parse(JSON.stringify(h)); h2.army = h.army.map(s => s && { ...s }); const res = pandoraOpen(st, h2, ob);
+      const k = res.trap ? 'trap' : res.exp ? 'exp' : /artefakt/.test(res.text) ? 'art' : /złota/.test(res.text) ? 'gold' : /surowc/.test(res.text) ? 'res' : 'spell'; out.kinds[k] = (out.kinds[k] || 0) + 1;
+      if (res.trap && !out.trap) { const m = trapMonster(h, res.trap), B = createBattle(st, h, m); B.auto = true; simulateBattle(B); out.trap = { cid: !!CREATURES[res.trap.cid], count: res.trap.count > 0, over: B.over }; } }
+    const real = st.objects.find(o => o.kind === 'pandora' && !o.dead) || { id: 999, kind: 'pandora', type: 'site', x: h.x, y: h.y, seen: {} };
+    const first = useSite(st, h, real), again = useSite(st, h, real);
+    return { ...out, first: first.text, again: again.text, opened: real.opened };
+  });
+  assert.ok(r.kinds.trap > 0 && r.kinds.gold > 0 && r.kinds.exp > 0 && r.kinds.art > 0, JSON.stringify(r.kinds));
+  assert.deepEqual({ cid: r.trap.cid, count: r.trap.count }, { cid: true, count: true }); assert.ok(['win', 'lose'].includes(r.trap.over));
+  assert.ok(r.first.length > 10); assert.match(r.again, /pusta/); assert.equal(r.opened, 0);
+});
+
+test('garnizony na drogach: fort z załogą zatrzymuje, po zwycięstwie należy do gracza, przepuszcza go i przyjmuje wojsko; komputer też je zdobywa', async () => {
+  await newGame(page, { mapSize: 'L' }, 7);
+  const r = await page.evaluate(() => {
+    const st = G.state, n = st.map.n, h = hero(st); human(st).explored.fill(1); const forts = st.objects.filter(o => o.type === 'outpost' && !o.dead);
+    const free = f => DX8.map((dx, d) => [f.x + dx, f.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y));
+    const f = forts.find(free), nb = free(f), fi = f.y * n + f.x; for (const o of st.objects) if (o.type === 'monster') o.dead = true; rebuildObjIndex(st);
+    const neutral = f.owner === -1 && armySize(f.army) > 0, blockedBefore = objBlocks(st, fi, -1, 0, ME);
+    h.x = nb[0]; h.y = nb[1]; h.mp = 9000; h.path = [[f.x, f.y]]; h.moving = true; G.modal = null; setScreen('adventure', {});
+    heroStep(st, h); const stayed = h.x === nb[0] && h.y === nb[1], offer = G.modal && G.modal.msg; G.modal = null;
+    h.army = [{ cid: 'lightGuard', n: 80 }, ...Array(6).fill(null)]; const B = createBattle(st, h, f); B.auto = true; simulateBattle(B); const res = resolveBattle(B, false);
+    const report = attackReport(st, h, res).body, mine = f.owner === ME, blockedAfter = objBlocks(st, fi, -1, 0, ME);
+    const beyond = DX8.map((dx, d) => [f.x + dx, f.y + DY8[d]]).find(([x, y]) => (x !== h.x || y !== h.y) && passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && Math.max(Math.abs(x - h.x), Math.abs(y - h.y)) === 2);
+    h.path = [[f.x, f.y], beyond]; h.moving = true; h.anim = null; heroStep(st, h); const through = h.x === f.x && h.y === f.y && !h.pending; h.anim = null; heroStep(st, h); const out = h.x === beyond[0] && h.y === beyond[1];
+    h.path = [[f.x, f.y]]; h.moving = true; h.anim = null; h.pending = null; heroStep(st, h); const pend = !!h.pending; if (h.pending) { const p = h.pending; h.pending = null; p(); }
+    const meeting = G.modal && /Garnizon/.test(String(G.modal.draw)); G.modal = null;
+    const left = giveArmy(h.army, f.army, true); const kept = armySize(f.army) > 0, saved = deserializeGame(JSON.parse(JSON.stringify(serializeGame(st)))).objects.find(o => o.id === f.id);
+    // komputer: pusty obcy fort zajmuje, z załogą walczy
+    const f2 = forts.find(o => o !== f) || f; f2.owner = -1; f2.army = Array(7).fill(null); const ai = st.heroes.find(o => o.owner !== ME) || h;
+    ai.x = f2.x; ai.y = f2.y; const g = aiVisit(st, ai, f2.y * n + f2.x, []); let s; do s = g.next(); while (!s.done);
+    return { count: forts.length, neutral, blockedBefore, stayed, offer, outcome: res.outcome, report, mine, blockedAfter, through, out, pend, meeting, left, kept, saved: saved && saved.owner === ME && armySize(saved.army) > 0, aiTook: f2.owner === ai.owner };
+  });
+  assert.ok(r.count >= 1); assert.ok(r.neutral, 'fort niezależny z załogą'); assert.equal(r.blockedBefore, true);
+  assert.ok(r.stayed, 'obcy fort zatrzymuje'); assert.match(r.offer, /Garnizon na drodze/);
+  assert.equal(r.outcome, 'win'); assert.match(r.report, /Garnizon na drodze należy teraz do ciebie/); assert.ok(r.mine); assert.equal(r.blockedAfter, false);
+  assert.ok(r.through, 'przez własny fort się przejeżdża'); assert.ok(r.out); assert.ok(r.pend, 'w forcie można stanąć'); assert.ok(r.meeting, 'okno garnizonu');
+  assert.ok(r.left > 0 && r.kept, 'wojsko zostaje w forcie'); assert.ok(r.saved, 'zapis zachowuje fort'); assert.ok(r.aiTook, 'komputer zajmuje pusty fort');
+});

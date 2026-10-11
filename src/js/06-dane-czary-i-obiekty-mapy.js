@@ -137,6 +137,9 @@ const SITES = {
   inn: { name: 'Karczma', use: 'heroWeek', per: 3000, ai: 900, desc: 'kufel dla wojska (+1 do morale do następnej bitwy) i plotka: gdzie w okolicy czeka coś cennego (raz w tygodniu)' },
   barrow: { name: 'Kurhan', use: 'free', per: 3800, ai: 0, desc: 'grób dawnego wodza z artefaktem; kto go rozkopie, ten ściąga na armię klątwę (morale −3 do następnej bitwy)' },
   caravanserai: { name: 'Karawanseraj', use: 'free', per: 3800, ai: 0, desc: 'kupcy z dalekich krain sprzedają raz w miesiącu jeden artefakt' },
+  pandora: { name: 'Puszka Pandory', use: 'free', per: 2600, ai: 1600, desc: 'zamknięta szkatuła: w środku skarb, wiedza albo artefakt… a czasem potwory (otwiera się raz)' },
+  keyTent: { name: 'Namiot klucznika', use: 'free', per: 0, ai: 5000, desc: 'klucznik daje przepustkę przez bramy graniczne swojego koloru (raz na gracza)' },
+  borderGate: { name: 'Brama graniczna', use: 'free', per: 0, ai: 0, desc: 'zamyka drogę; przejdzie tylko ten, kto odwiedził namiot klucznika w tym samym kolorze' },
   wishingWell: { name: 'Studnia życzeń', use: 'heroWeek', per: 3000, ai: 0, cost: 500, desc: 'za 500 złota życzenie: szczęście, złoto, rzadko artefakt (tylko jeden na studnię)… albo nic (raz w tygodniu)' },
 };
 // Morze: potwory na wodzie wg poziomu (piraci płyną statkiem, reszta to morskie stwory), wiry w parach wg rozmiaru mapy,
@@ -144,7 +147,16 @@ const SITES = {
 const SEA_MONSTERS = { 1: ['rusalka', 'rogue'], 2: ['rogue', 'lizardWarrior'], 3: ['siren', 'nomad', 'lizardSlayer'], 4: ['siren', 'sharpshooter'], 5: ['naga', 'sharpshooter'], 6: ['nagaQueen', 'nagaEmpress'], 7: ['kraken', 'hydra', 'chaosHydra', 'primeHydra'] };
 const PIRATES = ['rogue', 'nomad', 'sharpshooter'], WHIRL_PAIRS = { S: 1, M: 1, L: 2, XL: 3, XXL: 4, G: 5 }, LIGHTHOUSE_PER = 1300, LIGHTHOUSE_MP = 400, SEA_MONSTER_PER = 380;
 // Miejsca bez strażnika (drobne, przydrożne albo same są wyzwaniem); resztę pilnuje potwór obok (placeObjects)
-const UNGUARDED_SITES = ['well', 'stables', 'temple', 'fountain', 'market', 'inn', 'caravanserai', 'questHut', 'sphinx', 'oasis', 'mushroomRing', 'campfire'];
+const UNGUARDED_SITES = ['well', 'stables', 'temple', 'fountain', 'market', 'inn', 'caravanserai', 'questHut', 'sphinx', 'oasis', 'mushroomRing', 'campfire', 'pandora', 'keyTent', 'borderGate'];
+// Klucznicy i bramy graniczne (jak w H3): kolor bramy = kolor namiotu, którego odwiedziny otwierają ją graczowi na zawsze; liczba bram wg mapy
+const KEY_COLORS = [{ id: 'azure', name: 'błękitny', f: 'błękitna', hex: '#3aa8f0' }, { id: 'green', name: 'zielony', f: 'zielona', hex: '#3ab040' }, { id: 'red', name: 'czerwony', f: 'czerwona', hex: '#e03a2a' }, { id: 'violet', name: 'fioletowy', f: 'fioletowa', hex: '#a04ae0' }];
+const BORDER_GATES = { S: 1, M: 2, L: 2, XL: 3, XXL: 4, G: 4, B: 4 };
+const keyColor = id => KEY_COLORS.find(c => c.id === id) || KEY_COLORS[0];
+const hasGateKey = (st, owner, ob) => !!(st.players[owner] && (st.players[owner].keys || {})[ob.color]);
+// Garnizony na drogach: drewniane forty z załogą na wąskich drogach między krainami (liczba wg mapy). Zdobyty fort należy do zwycięzcy:
+// jego i sojuszników przepuszcza, obcych zatrzymuje; właściciel zostawia w nim wojsko (okno jak spotkanie bohaterów)
+const OUTPOSTS = { S: 1, M: 2, L: 3, XL: 4, XXL: 5, G: 6, B: 6 };
+const friendlyFort = (st, ob, owner) => ob.owner >= 0 && (ob.owner === owner || allied(st, ob.owner, owner));
 // Zagadki sfinksa: [pytanie, dobra odpowiedź, zła, zła] (kolejność odpowiedzi w oknie losowa)
 const RIDDLES = [
   ['Rano chodzi na czterech nogach, w południe na dwóch, a wieczorem na trzech. Co to?', 'Człowiek', 'Pies', 'Smok'],

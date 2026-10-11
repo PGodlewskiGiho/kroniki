@@ -21,7 +21,7 @@ const heroExpText = (h, exp) => (h && exp ? ` Za odwagę ${h.name} otrzymuje ${e
 // Opis wyniku z punktu widzenia atakującego (strona 0); tekst zgodny z dawnymi oknami
 function attackReport(st, h, res) {
   if (res.outcome === 'win') {
-    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.${res.loot ? ` Zdobyte artefakty: ${res.loot}.` : ''}` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.bankText || '');
+    const extra = (res.heroDefeated ? ` ${res.heroDefeated.name} zostaje ${res.heroDefeated.female ? 'pokonana' : 'pokonany'} i znika z mapy.${res.loot ? ` Zdobyte artefakty: ${res.loot}.` : ''}` : '') + (res.captured ? ` Miasto ${res.captured} należy teraz do ciebie.` : '') + (res.fortTaken ? ' Garnizon na drodze należy teraz do ciebie: przepuszcza twoje wojska, a obcych zatrzymuje.' : '') + (res.bankText || '');
     return { me: 0, kind: 'win', title: 'Zwycięstwo!', body: `${flavorOf(st, 'win')}${extra}${raisedText(res.raised)}${spoilsText(res.spoils)}${heroExpText(h, res.exp)}` };
   }
   if (res.outcome === 'fled') return { me: 0, kind: 'fled', title: 'Odwrót', body: `${h.name} ucieka z pola bitwy, a armia się rozprasza. ${flavorOf(st, 'fled')} ${h.female ? 'Czeka' : 'Czeka'} w twojej tawernie: możesz ${h.female ? 'ją' : 'go'} znów nająć (z poziomem, umiejętnościami i artefaktami).` };
