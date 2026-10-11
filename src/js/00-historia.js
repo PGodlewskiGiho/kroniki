@@ -426,5 +426,7 @@
    jastrzębia, pierścień węża, sztylet skrytobójcy (Zasadzka), moneta fortuny (Ulubieniec losu), kula wysysania (Wysysanie many),
    chorągiew posła (Poseł), królewski płaszcz, amulet słońca oraz komplet Lodowego Króla (ostrze mrozu, lodowa korona, zbroja
    z wiecznego lodu) składany w relikwię Regalia Lodowego Króla (+6 ataku, +6 obrony, +4 mocy). Figurki mapowe nowych artefaktów.
+   Szybka bitwa w menu głównym: dwie frakcje, siła armii (tygodnie przyrostu), poziom bohaterów i stopień jednostek; po walce raport
+   i powrót do wyboru (19c-szybka-bitwa.js).
    ===================================================================================== */
 

@@ -217,7 +217,7 @@ function paintMenuScene(pb) {
   }
 }
 // Ekrany menu (nowa gra, zasady, wczytywanie, wyniki, twórcy, gra online) mają własne malowane obrazy; bez nich scena menu
-const SCREEN_PAINT = { setup: 'nowagra', rules: 'nowagra', load: 'wczytaj', scores: 'wyniki', credits: 'tworcy', online: 'online' };
+const SCREEN_PAINT = { setup: 'nowagra', rules: 'nowagra', quick: 'nowagra', load: 'wczytaj', scores: 'wyniki', credits: 'tworcy', online: 'online' };
 function dimmedMenuScene(ctx, a) {
   const A = screenArt(SCREEN_PAINT[G.screenName]);
   if (A) { viewportDraw(ctx, c => drawPaintedArt(c, A[0], A[1], VW, VH)); dimScreen(ctx, a * 0.75); } else { drawMenuScene(ctx); dimScreen(ctx, a); }
@@ -241,6 +241,7 @@ G.screens.menu = {
     this.buttons = [
       B('Nowa gra', () => G.go('setup'), { key: 'n' }),
       B('Gra online', () => G.go('online'), { key: 'o', tip: 'Gra przez internet ze znajomymi: jeden zakłada pokój, reszta dołącza kodem.' }),
+      B('Szybka bitwa', () => G.go('quick'), { key: 'b', tip: 'Bitwa bez mapy: dwie armie wybranych frakcji, siła i poziom bohaterów do ustawienia.' }),
       B('Wczytaj grę', () => G.go('load', { mode: 'load' }), { key: 'l' }),
       B('Najlepsze wyniki', () => G.go('scores'), { key: 'h' }),
       B('Grafika', () => showGfxSettings(), { key: 'g' }),
