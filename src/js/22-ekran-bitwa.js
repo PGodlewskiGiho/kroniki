@@ -64,9 +64,9 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
     img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
   }
   g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = !PIXEL_ART; c.drawImage(off, 0, 0, W, H);
-  const pim = !bare && BATTLE_BG_IMG[BATTLE_BG_NAMES[terr]]; // tło malowane przez AI (pole bitwy bez siatki); przy oblężeniu dziedziniec zamku maluje paintCourtyard
+  const pim = !bare && BATTLE_BG_IMG[BATTLE_BG_NAMES[terr]]; // pole bitwy malowane przez AI (tools/tla-ai/szkic-pola.py + generuj.py): płaskie podłoże w skali jednostek, ozdoby przy krawędziach, wąski horyzont; przy oblężeniu dziedziniec zamku maluje paintCourtyard
   if (pim && pim._ok) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(pim, 0, 0, W, 490); }
-  const TX = !PIXEL_ART && !bare && TERRAIN_TEX[TEX_NAME[terr || 1]]; // faktura z tekstur terenu mapy (widok z góry) i miękkie plamy światła: pole bitwy nie jest płaskie
+  const TX = !PIXEL_ART && !bare && !(pim && pim._ok) && TERRAIN_TEX[TEX_NAME[terr || 1]]; // malowane pole bitwy ma własną fakturę; bez niego faktura z tekstur terenu mapy (widok z góry) i miękkie plamy światła: pole bitwy nie jest płaskie
   if (TX) { c.save(); c.beginPath(); c.rect(0, 44, W, 446); c.clip();
     const pat = c.createPattern(TX.cv, 'repeat'); pat.setTransform(new DOMMatrix().scale(1.15 / c.getTransform().a)); // ostra tekstura 512 px w rozdzielczości ekranu (piksel tekstury ≈ piksel ekranu)
     const fade = c.createLinearGradient(0, 44, 0, 110); fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,1)'); // u góry przejście w malowany horyzont
