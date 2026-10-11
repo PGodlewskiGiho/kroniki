@@ -132,3 +132,31 @@ test('puszka Pandory: otwiera się raz (nagroda albo potwory z walką), potem je
   assert.deepEqual({ cid: r.trap.cid, count: r.trap.count }, { cid: true, count: true }); assert.ok(['win', 'lose'].includes(r.trap.over));
   assert.ok(r.first.length > 10); assert.match(r.again, /pusta/); assert.equal(r.opened, 0);
 });
+
+test('garnizony na drogach: fort z załogą zatrzymuje, po zwycięstwie należy do gracza, przepuszcza go i przyjmuje wojsko; komputer też je zdobywa', async () => {
+  await newGame(page, { mapSize: 'L' }, 7);
+  const r = await page.evaluate(() => {
+    const st = G.state, n = st.map.n, h = hero(st); human(st).explored.fill(1); const forts = st.objects.filter(o => o.type === 'outpost' && !o.dead);
+    const free = f => DX8.map((dx, d) => [f.x + dx, f.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y));
+    const f = forts.find(free), nb = free(f), fi = f.y * n + f.x; for (const o of st.objects) if (o.type === 'monster') o.dead = true; rebuildObjIndex(st);
+    const neutral = f.owner === -1 && armySize(f.army) > 0, blockedBefore = objBlocks(st, fi, -1, 0, ME);
+    h.x = nb[0]; h.y = nb[1]; h.mp = 9000; h.path = [[f.x, f.y]]; h.moving = true; G.modal = null; setScreen('adventure', {});
+    heroStep(st, h); const stayed = h.x === nb[0] && h.y === nb[1], offer = G.modal && G.modal.msg; G.modal = null;
+    h.army = [{ cid: 'lightGuard', n: 80 }, ...Array(6).fill(null)]; const B = createBattle(st, h, f); B.auto = true; simulateBattle(B); const res = resolveBattle(B, false);
+    const report = attackReport(st, h, res).body, mine = f.owner === ME, blockedAfter = objBlocks(st, fi, -1, 0, ME);
+    const beyond = DX8.map((dx, d) => [f.x + dx, f.y + DY8[d]]).find(([x, y]) => (x !== h.x || y !== h.y) && passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && Math.max(Math.abs(x - h.x), Math.abs(y - h.y)) === 2);
+    h.path = [[f.x, f.y], beyond]; h.moving = true; h.anim = null; heroStep(st, h); const through = h.x === f.x && h.y === f.y && !h.pending; h.anim = null; heroStep(st, h); const out = h.x === beyond[0] && h.y === beyond[1];
+    h.path = [[f.x, f.y]]; h.moving = true; h.anim = null; h.pending = null; heroStep(st, h); const pend = !!h.pending; if (h.pending) { const p = h.pending; h.pending = null; p(); }
+    const meeting = G.modal && /Garnizon/.test(String(G.modal.draw)); G.modal = null;
+    const left = giveArmy(h.army, f.army, true); const kept = armySize(f.army) > 0, saved = deserializeGame(JSON.parse(JSON.stringify(serializeGame(st)))).objects.find(o => o.id === f.id);
+    // komputer: pusty obcy fort zajmuje, z załogą walczy
+    const f2 = forts.find(o => o !== f) || f; f2.owner = -1; f2.army = Array(7).fill(null); const ai = st.heroes.find(o => o.owner !== ME) || h;
+    ai.x = f2.x; ai.y = f2.y; const g = aiVisit(st, ai, f2.y * n + f2.x, []); let s; do s = g.next(); while (!s.done);
+    return { count: forts.length, neutral, blockedBefore, stayed, offer, outcome: res.outcome, report, mine, blockedAfter, through, out, pend, meeting, left, kept, saved: saved && saved.owner === ME && armySize(saved.army) > 0, aiTook: f2.owner === ai.owner };
+  });
+  assert.ok(r.count >= 1); assert.ok(r.neutral, 'fort niezależny z załogą'); assert.equal(r.blockedBefore, true);
+  assert.ok(r.stayed, 'obcy fort zatrzymuje'); assert.match(r.offer, /Garnizon na drodze/);
+  assert.equal(r.outcome, 'win'); assert.match(r.report, /Garnizon na drodze należy teraz do ciebie/); assert.ok(r.mine); assert.equal(r.blockedAfter, false);
+  assert.ok(r.through, 'przez własny fort się przejeżdża'); assert.ok(r.out); assert.ok(r.pend, 'w forcie można stanąć'); assert.ok(r.meeting, 'okno garnizonu');
+  assert.ok(r.left > 0 && r.kept, 'wojsko zostaje w forcie'); assert.ok(r.saved, 'zapis zachowuje fort'); assert.ok(r.aiTook, 'komputer zajmuje pusty fort');
+});

@@ -433,5 +433,7 @@
    Puszka Pandory (otwiera się raz: złoto, doświadczenie, artefakt, surowce, czar albo pułapka – złoto na dnie i potwory do pokonania).
    Bramy graniczne na wąskich drogach i namioty klucznika (jak w H3): brama przepuszcza tylko gracza z przepustką swojego koloru; namiot
    każdego koloru stoi w każdej części mapy ze startem. Modele 3D z chorągwiami w kolorze klucza (magenta w modelu, kolor w grze).
+   Garnizony na drogach (type 'outpost'): drewniane forty z załogą na wąskich drogach. Bitwa z załogą (bez bohatera), zwycięzca przejmuje
+   fort: przepuszcza jego i sojuszników, obcych zatrzymuje; właściciel zostawia w nim wojsko (okno spotkania). Komputer też je zdobywa.
    ===================================================================================== */
 

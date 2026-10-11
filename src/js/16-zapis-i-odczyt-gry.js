@@ -74,6 +74,7 @@ function migrateSave(st) {
     if ((o.type === 'monster' && !CREATURES[o.cid]) || (o.type === 'art' && !ARTIFACTS[o.art]) || (o.type === 'site' && !SITES[o.kind]) || (o.type === 'bank' && !BANKS[o.kind])) o.dead = true;
     if (o.type === 'bank' && !Array.isArray(o.guards)) o.guards = o.cleared ? [] : bankGuards(o.kind, st.settings.difficulty);
     if (o.type === 'bank') o.guards = o.guards.filter(([cid, n]) => CREATURES[cid] && n > 0);
+    if (o.type === 'outpost') o.army = Array.from({ length: ARMY_SLOTS }, (_, k) => { const x = (o.army || [])[k]; return x && CREATURES[x.cid] && x.n > 0 ? x : null; });
   }
   // Graal i obeliski (zapisy sprzed Graala dostają je teraz)
   placeGrail(st);

@@ -104,7 +104,7 @@ function objBlocks(st, j, target, tg = 0, owner = ME) {
   if (j !== target && heroAt(st, j % st.map.n, (j / st.map.n) | 0)) return true;
   const ob = objectAt(st, j);
   if (ob && !objSeen(st, ob, owner)) return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
-  if (ob && ob.kind === 'borderGate' && hasGateKey(st, owner, ob)) return !!(st.guard[j] && j !== target && st.guard[j] !== tg); // brama z przepustką: zwykła droga
+  if (ob && ((ob.kind === 'borderGate' && hasGateKey(st, owner, ob)) || (ob.type === 'outpost' && friendlyFort(st, ob, owner)))) return !!(st.guard[j] && j !== target && st.guard[j] !== tg); // brama z przepustką, własny garnizon: zwykła droga
   if (ob) { if ((ob.type === 'mine' || ob.type === 'town' || ob.type === 'bank') && j !== ob.y * st.map.n + ob.x) return true; if (j !== target) return true; }
   return !!(st.guard[j] && j !== target && st.guard[j] !== tg);
 }
@@ -126,6 +126,7 @@ function heroStep(st, h) {
   const n = st.map.n, [nx, ny] = h.path[0], ni = ny * n + nx, ob = objectAt(st, ni);
   const halt = () => { h.moving = false; h.path = null; h.dest = null; };
   if (ob && ob.type === 'monster') { halt(); h.prev = null; startEncounter(st, h, ob); return false; }
+  if (ob && ob.type === 'outpost' && !friendlyFort(st, ob, h.owner)) { halt(); h.prev = null; startOutpost(st, h, ob); return false; } // obcy garnizon: szturm albo zajęcie pustego fortu
   if (ob && ob.kind === 'borderGate' && !hasGateKey(st, h.owner, ob)) { halt(); if (playerOf(st, h.owner).human) visitObject(st, h, ob); return false; } // zamknięta brama: bohater staje przed nią
   const other = heroAt(st, nx, ny); // bohater w bramie miasta broni się razem z miastem (startTownAssault)
   if (other && !(ob && ob.type === 'town')) { halt(); if (other.owner !== h.owner && allied(st, h.owner, other.owner)) { G.screens.adventure.flash(`${other.name} to bohater sojusznika (${playerName(st, other.owner)})`); return; } if (other.owner !== h.owner) { h.prev = null; startHeroEncounter(st, h, other); } else if (playerOf(st, h.owner).human && !G.screens.adventure.aiRun) showMeeting(st, h, other); return false; } // własny: spotkanie po dojściu
@@ -137,7 +138,7 @@ function heroStep(st, h) {
   if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); return true; }
   if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; } // wysiadka: łódź zostaje przy brzegu
   if (st.guard[ni]) { const m = st.objects[st.guard[ni] - 1]; halt(); h.pending = () => startEncounter(st, h, m); }
-  else if (ob && ob.kind !== 'borderGate') { halt(); h.pending = () => visitObject(st, h, ob); } // przez otwartą bramę graniczną się przejeżdża
+  else if (ob && ob.kind !== 'borderGate' && !(ob.type === 'outpost' && h.path)) { halt(); h.pending = () => visitObject(st, h, ob); } // przez otwartą bramę graniczną i własny garnizon się przejeżdża (w garnizonie można stanąć)
   else if (eventAt(st, ni)) { const ev = eventAt(st, ni); halt(); h.pending = () => runEvent(st, h, ev); } // zdarzenie na drodze
   return true;
 }
@@ -155,6 +156,7 @@ const sfxFor = (st, owner, n, o) => { const P = playerOf(st, owner); if (P && P.
 const QUIET_SITES = ['windmill', 'waterMill', 'campfire', 'stables', 'well', 'temple', 'fountain', 'lookout', 'magicSpring', 'oasis', 'buoy', 'flotsam'];
 function visitObject(st, h, ob) {
   const R = playerOf(st, h.owner).resources, snd = (n, o) => { if (playerOf(st, h.owner).human) Sfx.play(n, o); };
+  if (ob.type === 'outpost') { if (friendlyFort(st, ob, h.owner) && playerOf(st, h.owner).human) showMeeting(st, h, fortParty(st, ob)); return; }
   if (ob.type === 'res') { snd(ob.res === 'gold' ? 'coins' : 'pickup'); R[ob.res] += ob.amount; advFloat(`+${ob.amount}`, h.x, h.y, ob.res); removeObject(st, ob); }
   else if (ob.type === 'chest') {
     removeObject(st, ob); snd('chest');
@@ -387,9 +389,21 @@ function startTownAssault(st, h, t) {
   const who = `${t.name} (${t.owner < 0 ? 'miasto niezależne' : `miasto: ${ownerName(st, t.owner)}`}) ${hh ? `ma w murach bohatera: ${heroTitle(hh)}` : 'broni się garnizonem'}.${walls}`;
   offerBattle(st, h, t, who, townPower(st, t), (ctx, cx, cy) => drawMap3dIcon(ctx, `town_${t.faction}_${townLevel(t)}`, cx, cy, 110, 84) || drawSpriteBox(ctx, townIconSprite(t.faction, townLevel(t), ownerColor(st, t.owner)), cx - 40, cy - 40, 2));
 }
+// Garnizon na drodze: obcy fort z załogą to bitwa (bez murów, załoga walczy bez bohatera), pusty fort zajmuje się od razu
+const fortName = (st, ob) => (ob.owner < 0 ? 'Garnizon na drodze (niezależny)' : `Garnizon na drodze (${ownerName(st, ob.owner)})`);
+const fortParty = (st, ob) => ({ outpost: true, name: 'Garnizon', owner: ob.owner, army: ob.army, bag: [] }); // garnizon w oknie spotkania (zamiast drugiego bohatera)
+function captureOutpost(st, ob, owner) {
+  if (ob.owner >= 0 && ob.owner !== owner) tell(st, ob.owner, `${cap1(ownerName(st, owner))} zdobywa twój garnizon na drodze.`);
+  ob.owner = owner; ob.army = ob.army.map(s => (s && s.n > 0 ? s : null)); if (owner >= 0) reveal(st, ob.x, ob.y, 4, owner); MapRender.miniDirty = true;
+}
+function startOutpost(st, h, ob) {
+  if (!armySize(ob.army)) { captureOutpost(st, ob, h.owner); sfxFor(st, h.owner, 'flag'); if (playerOf(st, h.owner).human) showDialog(`${fortName(st, ob).replace(/ \(.*\)/, '')}: fort stoi pusty. Twoje sztandary zawisają nad częstokołem – odtąd garnizon przepuszcza twoje wojska, a obcych zatrzymuje. Wejdź do niego bohaterem, aby zostawić załogę.`, [{ label: 'OK', key: 'enter' }], { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, `site_outpost@${ownerColor(st, h.owner)}`, cx, cy, 90, 74) }); return; }
+  offerBattle(st, h, ob, `${fortName(st, ob)} zagradza drogę. Załoga: ${ob.army.filter(Boolean).map(s => `${qtyName(s.n).toLowerCase()} ${CREATURES[s.cid].gen}`).join(', ')}.`, armyPower(ob.army),
+    (ctx, cx, cy) => drawMap3dIcon(ctx, `site_outpost@${ownerColor(st, ob.owner)}`, cx, cy, 100, 80));
+}
 // Okno przed bitwą: porównanie sił i wybór (walka, walka automatyczna, odwrót)
 function offerBattle(st, h, foe, who, foePower, icon) {
-  const rival = netHumanOwner(st, battleSide(st, foe).owner);
+  const rival = foe.type === 'outpost' ? -1 : netHumanOwner(st, battleSide(st, foe).owner); // garnizon bez bohatera: załogą zawsze dowodzi komputer
   if (rival >= 0) { // przeciwnik to człowiek online: wspólna bitwa na żywo, każdy dowodzi swoją stroną
     showDialog(`${who} Dowodzi nim ${playerName(st, rival)} – bitwa rozegra się na żywo u was obu.`, [
       { label: 'Walcz', key: 'enter', action: () => netBattle(st, h, foe) },

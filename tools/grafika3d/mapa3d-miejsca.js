@@ -345,6 +345,16 @@ Object.assign(SITE3, {
     g.add(blk(28, 10, 14, ST.stone, 'ashlar', 0, 26, 0)); g.add(crenTop(28, 14, 36, ST.stone, 'ashlar', 0, 0));
     g.add(blk(28, 26, 2, '#120c08', 'stone', 0, 0, -1)); for (let i = -3; i <= 3; i++) g.add(blk(1.2, 25, 1.2, '#3a3a40', 'iron', i * 4, 0, 4)); for (const y of [6, 13, 20]) g.add(blk(28, 1.2, 1.2, '#3a3a40', 'iron', 0, y, 4));
     for (const x of [-38, 38]) g.add(mqRock('def', x, 0, 9, 12, 9, Math.abs(x) + 3)); g.add(cyl3(1, 1, 48, '#5a3a22', 'wood', 0, 36, 0, 8)); g.add(hangBanner(0, 82, 0, 10, 16, '#ff00ff', '#f0d040')); return g; },
+  outpost() { // garnizon na drodze: częstokół z zaostrzonych pali, drewniana wieża bramna z daszkiem, wrota, namiot załogi, sztandar właściciela (magenta)
+    const g = new THREE.Group(), pal = (x, z, h) => { g.add(cyl3(1.7, 1.9, h, '#7a5432', 'wood', x, 0, z, 6)); g.add(cone(1.9 / PXU, 3 / PXU, '#9a7048', 'wood', P(x, h + 1.5, z), null, 6)); };
+    for (let i = 0; i <= 12; i++) { const x = -30 + i * 5; if (Math.abs(x) > 8) pal(x, 14, 15 + (i % 2)); pal(x, -20, 15 + (i % 2)); }
+    for (let i = 1; i < 7; i++) for (const x of [-30, 30]) pal(x, 14 - i * 5, 15 + (i % 2));
+    for (const x of [-10, 10]) { g.add(blk(5, 30, 5, '#6a4628', 'wood', x, 0, 14)); g.add(blk(5.6, 1.4, 5.6, '#4a3020', 'wood', x, 12, 14)); }
+    g.add(blk(26, 3, 9, '#7a5432', 'wood', 0, 26, 14)); for (let i = -2; i <= 2; i++) g.add(blk(2, 5, 2, '#7a5432', 'wood', i * 5.6, 29, 18));
+    g.add(cone(12 / PXU, 8 / PXU, '#8a3a28', 'tiles', P(0, 35, 14), [0, Math.PI / 4, 0], 4)); g.add(blk(15, 22, 1.4, '#5a3a20', 'wood', 0, 0, 14)); for (const y of [5, 12, 19]) g.add(blk(15, 1.2, 1.6, '#3a3a40', 'iron', 0, y, 15));
+    g.add(cyl3(9, 9, 9, '#c8b488', 'cloth', -14, 0, -8, 10)); g.add(cone(10.5 / PXU, 10 / PXU, '#a8443a', 'cloth', P(-14, 14, -8), null, 10));
+    g.add(blk(9, 6, 7, '#6a4a2a', 'wood', 14, 0, -6)); for (let i = 0; i < 3; i++) g.add(cyl3(2, 2, 3.4, '#8a6238', 'wood', 11 + i * 3, 6, -6, 8)); // skrzynie i beczki zapasów
+    g.add(cyl3(1, 1, 54, '#5a3a22', 'wood', 0, 26, 6, 8)); g.add(hangBanner(0, 76, 6, 12, 18, '#ff00ff', '#f0d040')); return g; },
   wishingWell() { // studnia życzeń: marmurowa cembrowina ze świecącą wodą, cztery kolumienki, niebieska kopułka ze złotą gwiazdą, monety, kwiaty
     const g = new THREE.Group(); g.add(blk(44, 2, 44, '#b8b0a0', 'ashlar', 0, 0, 0)); g.add(cyl3(16, 17, 13, '#d8d0c0', 'marble', 0, 0, 0, 20)); g.add(cyl3(17.5, 17.5, 2, '#c8a040', 'gold', 0, 13, 0, 20));
     const w = cyl(13 / PXU, 13 / PXU, 1 / PXU, '#7ad0ff', 'glow', P(0, 13.8, 0), null, null, 20); w.material = lightMat('#8adcff'); g.add(w); g.add(mqGlow(5, '#a8e4ff', 0, 17, 0));

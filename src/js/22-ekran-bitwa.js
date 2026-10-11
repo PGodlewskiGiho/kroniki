@@ -636,7 +636,7 @@ G.screens.battle = {
     text(ctx, `Runda ${B.round}`, VW / 2, 19, { size: 17, align: 'center', color: UI.goldHi, fam: 'title' });
     const D = B.sides[1], foeCol = ownerColor(st, D.owner), right = D.hero ? VW - 50 : VW - 12;
     if (D.hero) { if (PIXEL_ART) drawHeroPortrait(ctx, VW - 44, 1, D.hero, foeCol); else drawHeroMedal(ctx, VW - 26, 21, 19, D.hero, foeCol); }
-    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: UI.txt, fam: 'title' });
+    text(ctx, D.monster ? `${CREATURES[D.monster.cid].plural} (neutralni)` : D.bank ? `${BANKS[D.bank.kind].name} (załoga)` : D.fort ? 'Garnizon na drodze' : D.hero ? heroTitle(D.hero) : `Garnizon: ${D.town.name}`, right, 19, { size: 15, align: 'right', color: UI.txt, fam: 'title' });
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'remote' && u0 ? `Ruch gracza ${playerName(st, B.sides[u0.side].owner)}: ${cu.plural.toLowerCase()}…` : this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
@@ -684,7 +684,7 @@ function showBattleResult(st, h, res) { showBattleReport(st, res, attackReport(s
 function battleAftermath(st, h, res) {
   if (res.outcome !== 'win') return;
   advFloat(`+${res.exp} dośw.`, h.x, h.y);
-  gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank' && here.kind !== 'pandora' && here.kind !== 'borderGate') visitObject(st, h, here); });
+  gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank' && here.kind !== 'pandora' && here.kind !== 'borderGate' && here.type !== 'outpost') visitObject(st, h, here); });
 }
 // Zawartość fosy wg frakcji: faktura terenu, zabarwienie, brzeg, połysk; Inferno – lawa, Cytadela – bagno, Kurhan – trująca zieleń
 const MOAT_LIQ = {

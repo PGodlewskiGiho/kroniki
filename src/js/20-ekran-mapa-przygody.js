@@ -17,7 +17,7 @@ function mapCardAt(st, x, y, scroll = 0) {
   if (ob && ob.type === 'town') return { mapTown: st.towns[ob.townId] };
   if (hh) return { mapHero: hh };
   if (ob && ob.type === 'monster') return monsterCard(st, ob);
-  return ob && ['mine', 'bank', 'site', 'art', 'res', 'chest'].includes(ob.type) ? { mapObj: ob } : null;
+  return ob && ['mine', 'bank', 'site', 'art', 'res', 'chest', 'outpost'].includes(ob.type) ? { mapObj: ob } : null;
 }
 // Kopalnie, skarbce i budynki przygody: obrazek z mapy, właściciel, dochód albo działanie, strażnicy (przybliżona liczebność)
 function objCardData(st, ob) {
@@ -27,6 +27,8 @@ function objCardData(st, ob) {
   if (ob.type === 'res') return { key: 'res_' + ob.res, name: resName(ob.res), rows: [['Ilość', String(ob.amount)]], desc: 'Surowiec leży na ziemi: wejdź na to pole, aby go zabrać.', guard };
   if (ob.type === 'chest') return { key: 'chest', name: 'Skrzynia ze skarbem', rows: [], desc: 'Wybierzesz złoto albo doświadczenie dla bohatera.', guard };
   if (ob.type === 'bank') { const B = BANKS[ob.kind]; return { key: `bank_${ob.kind}_${ob.cleared ? 1 : 0}`, name: B.name, rows: [['Łup', ob.cleared ? 'splądrowane' : '']], desc: ob.cleared ? 'Splądrowane, nic tu już nie ma.' : `${cap1(B.desc)}. Łup: ${bankLootText(ob.kind)}.`, guard: ob.cleared ? [] : ob.guards }; }
+  if (ob.type === 'outpost') { const mine = isMine(st, ob.owner); return { key: 'site_outpost@' + ownerColor(st, ob.owner), name: 'Garnizon na drodze', owner: ob.owner, rows: [], exact: mine,
+    desc: mine ? 'Twój fort: przepuszcza twoje wojska i sojuszników, a obcych zatrzymuje. Stań w nim bohaterem, aby zostawić albo zabrać załogę.' : armySize(ob.army) ? 'Fort z załogą zagradza drogę. Pokonaj ją, a garnizon przejdzie w twoje ręce.' : 'Fort stoi pusty: wejdź do niego, aby go zająć.', guard: ob.army.filter(Boolean).map(s => [s.cid, s.n]) }; }
   const txt = siteInfo(st, ob, hero(st)), i = txt.indexOf(': ');
   return { key: siteKey3(ob), name: siteName(ob), owner: ob.owner != null ? ob.owner : undefined, rows: [], desc: cap1((i >= 0 ? txt.slice(i + 2) : txt).replace(/ Pilnuje (go|jej) potwór\./, '')), guard };
 }
@@ -42,9 +44,9 @@ function drawObjCard(ctx, p) {
   for (const [k, v] of D.rows) if (v) { text(ctx, k, x + 150, ry, { size: 13, color: '#c8b890' }); text(ctx, v, x + W0 - 18, ry, { size: 13, weight: 700, align: 'right', color: '#fff0c8' }); ry += 22; }
   let ly = y + top + 6; for (const l of lines) { text(ctx, l, x + 20, ly, { size: 14, weight: 500, color: '#e8d8b0' }); ly += 18; }
   if (gArmy.length) {
-    text(ctx, p.mapObj.type === 'bank' ? 'Załoga' : 'Strażnicy', x + 18, ly + 10, { size: 15, fam: 'title', color: '#ffd970' });
-    const yy = cardArmy(ctx, gArmy.concat(Array(Math.max(0, 7 - gArmy.length)).fill(null)), x + 15, ly + 18, false);
-    cardPower(ctx, 'Siła ok.', Math.max(100, Math.round(gArmy.reduce((s, g) => s + g.n * CREATURES[g.cid].value, 0) / 100) * 100), x + W0 / 2, yy + 14);
+    text(ctx, p.mapObj.type === 'bank' || p.mapObj.type === 'outpost' ? 'Załoga' : 'Strażnicy', x + 18, ly + 10, { size: 15, fam: 'title', color: '#ffd970' });
+    const yy = cardArmy(ctx, gArmy.concat(Array(Math.max(0, 7 - gArmy.length)).fill(null)), x + 15, ly + 18, !!D.exact);
+    if (!D.exact) cardPower(ctx, 'Siła ok.', Math.max(100, Math.round(gArmy.reduce((s, g) => s + g.n * CREATURES[g.cid].value, 0) / 100) * 100), x + W0 / 2, yy + 14);
   }
   ctx.restore();
 }

@@ -138,7 +138,7 @@ const SITES = {
   barrow: { name: 'Kurhan', use: 'free', per: 3800, ai: 0, desc: 'grób dawnego wodza z artefaktem; kto go rozkopie, ten ściąga na armię klątwę (morale −3 do następnej bitwy)' },
   caravanserai: { name: 'Karawanseraj', use: 'free', per: 3800, ai: 0, desc: 'kupcy z dalekich krain sprzedają raz w miesiącu jeden artefakt' },
   pandora: { name: 'Puszka Pandory', use: 'free', per: 2600, ai: 1600, desc: 'zamknięta szkatuła: w środku skarb, wiedza albo artefakt… a czasem potwory (otwiera się raz)' },
-  keyTent: { name: 'Namiot klucznika', use: 'free', per: 0, ai: 2500, desc: 'klucznik daje przepustkę przez bramy graniczne swojego koloru (raz na gracza)' },
+  keyTent: { name: 'Namiot klucznika', use: 'free', per: 0, ai: 5000, desc: 'klucznik daje przepustkę przez bramy graniczne swojego koloru (raz na gracza)' },
   borderGate: { name: 'Brama graniczna', use: 'free', per: 0, ai: 0, desc: 'zamyka drogę; przejdzie tylko ten, kto odwiedził namiot klucznika w tym samym kolorze' },
   wishingWell: { name: 'Studnia życzeń', use: 'heroWeek', per: 3000, ai: 0, cost: 500, desc: 'za 500 złota życzenie: szczęście, złoto, rzadko artefakt (tylko jeden na studnię)… albo nic (raz w tygodniu)' },
 };
@@ -153,6 +153,10 @@ const KEY_COLORS = [{ id: 'azure', name: 'błękitny', f: 'błękitna', hex: '#3
 const BORDER_GATES = { S: 1, M: 2, L: 2, XL: 3, XXL: 4, G: 4, B: 4 };
 const keyColor = id => KEY_COLORS.find(c => c.id === id) || KEY_COLORS[0];
 const hasGateKey = (st, owner, ob) => !!(st.players[owner] && (st.players[owner].keys || {})[ob.color]);
+// Garnizony na drogach: drewniane forty z załogą na wąskich drogach między krainami (liczba wg mapy). Zdobyty fort należy do zwycięzcy:
+// jego i sojuszników przepuszcza, obcych zatrzymuje; właściciel zostawia w nim wojsko (okno jak spotkanie bohaterów)
+const OUTPOSTS = { S: 1, M: 2, L: 3, XL: 4, XXL: 5, G: 6, B: 6 };
+const friendlyFort = (st, ob, owner) => ob.owner >= 0 && (ob.owner === owner || allied(st, ob.owner, owner));
 // Zagadki sfinksa: [pytanie, dobra odpowiedź, zła, zła] (kolejność odpowiedzi w oknie losowa)
 const RIDDLES = [
   ['Rano chodzi na czterech nogach, w południe na dwóch, a wieczorem na trzech. Co to?', 'Człowiek', 'Pies', 'Smok'],
