@@ -1231,5 +1231,75 @@
   "opis": "underground fungal cavern floor, damp dark soil with glowing mushrooms and mycelium, giant mushroom stems at the edges, teal bioluminescent light",
   "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
   "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "pole_trawa": {
+  "opis": "green meadow battlefield, short grass with light and dark patches, a worn dirt path, scattered pebbles, grass tufts and tiny wildflowers, bushes along the top and bottom edges",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_ziemia": {
+  "opis": "brown dirt battlefield, trampled earth with wheel ruts, dry grass tufts, small stones and roots, rocks along the edges",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_piasek": {
+  "opis": "desert sand battlefield, golden sand with wind ripples, small sandstone rocks, a trodden track, sandstone boulders along the edges",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_snieg": {
+  "opis": "snowy battlefield, packed snow with footprint trails, small snow covered stones, frozen patches, small snowy pines along the edges",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_bagno": {
+  "opis": "swamp battlefield, wet mud and moss, shallow murky puddles with lily pads, muddy path, reeds along the edges",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_nierowny": {
+  "opis": "rough rocky highland battlefield, cracked flat stone slabs, gravel, dry grass tufts, boulders along the edges",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_lawa": {
+  "opis": "volcanic battlefield, black basalt ground with thin glowing lava cracks, ash and cinders, small scorched rocks, basalt boulders along the edges, ember glow",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_pola": {
+  "opis": "farmland battlefield, golden harvested wheat field with stubble rows, farm track, red poppies, hay bales along the edges",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_dzungla": {
+  "opis": "jungle clearing battlefield, damp mossy ground with leaves and small ferns, muddy path, colourful tiny flowers, big ferns along the edges",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_sawanna": {
+  "opis": "savanna battlefield, dry golden grass and patches of red earth, dusty track, small stones, acacia shrubs along the edges",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_lod": {
+  "opis": "frozen battlefield, flat cracked blue ice with frost and snow dust, small ice chunks, ice spikes along the edges, cold pale light",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_krysztaly": {
+  "opis": "underground crystal cave floor battlefield, flat dark stone floor with small pebbles, faint dusty path, glowing violet and cyan crystal clusters along the edges, rock wall at the top, magical light",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_grzyby": {
+  "opis": "underground fungal cavern floor battlefield, flat dark soil with moss and tiny glowing mushrooms, faint path, giant glowing mushrooms along the edges, cave wall at the top, teal light",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
+ },
+ "pole_woda": {
+  "opis": "island battlefield, grassy flat island ground with sandy shore and shallow water at the top and bottom edges, pebbles, reeds",
+  "styl": "Heroes of Might and Magic 3 combat screen background, hand painted game battlefield, flat open ground seen from above at a steep angle, {opis}, the ground fills the whole picture, small readable details at the scale of soldiers, thin strip of horizon at the very top edge, painterly, crisp, rich texture, bright even daylight, high detail",
+  "negatyw_pelny": "landscape, scenery, panorama, vista, mountains in the middle, valley, river across, lake, big trees in the middle, forest, fog, mist, haze, dark, night, depth of field, vanishing point, sky, clouds, buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, 3d render"
  }
 }
