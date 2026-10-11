@@ -425,6 +425,6 @@
    relikwii (posiadane części na zielono). Nowe artefakty (15, z modelami 3D): kostur pielgrzyma, wilcza skóra, talizman górnika, hełm
    jastrzębia, pierścień węża, sztylet skrytobójcy (Zasadzka), moneta fortuny (Ulubieniec losu), kula wysysania (Wysysanie many),
    chorągiew posła (Poseł), królewski płaszcz, amulet słońca oraz komplet Lodowego Króla (ostrze mrozu, lodowa korona, zbroja
-   z wiecznego lodu) składany w relikwię Regalia Lodowego Króla (+6 ataku, +6 obrony, +4 mocy).
+   z wiecznego lodu) składany w relikwię Regalia Lodowego Króla (+6 ataku, +6 obrony, +4 mocy). Figurki mapowe nowych artefaktów.
    ===================================================================================== */
 
