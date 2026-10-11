@@ -11,7 +11,7 @@ const SIEGE_HALF = 23.5, TOWER_H = 56;
 const SIEGE_SLOPE = () => HEX.w / 2 / HEX.row, wallWX = y => hexCenter(wallX(y), y)[0] - 17;
 const wallLineX = py => wallWX(0) + (py - hexCenter(0, 0)[1]) * SIEGE_SLOPE(); // lico muru na dowolnej wysokości py
 const WALL = { face: 13, walk: 50, depth: 16 }; // lico 0..face, chodnik face..walk; depth: wysokość czoła muru widocznego od południa
-const SIEGE_STONE = { haven: '#b8ae98', sylvan: '#9aa086', barrow: '#6c6676', fortress: '#8e8a6a', inferno: '#5e403c', academy: '#c4c8d2', dungeon: '#5a5260', stronghold: '#b08a5a' };
+const SIEGE_STONE = { haven: '#b8ae98', sylvan: '#9aa086', barrow: '#6c6676', fortress: '#8e8a6a', inferno: '#5e403c', academy: '#c4c8d2', dungeon: '#5a5260', stronghold: '#b08a5a', forge: '#6e6058' };
 function stonePal(fac) {
   const c = SIEGE_STONE[fac] || SIEGE_STONE.haven;
   return { top: LT(c, 0.22), lit: LT(c, 0.08), base: c, sh: DK(c, 0.25), dk: DK(c, 0.45), mortar: DK(c, 0.34), crack: '#201a1a', moss: fac === 'sylvan' ? '#5a7a34' : fac === 'barrow' ? '#3e4e3a' : '#6a7a44' };
@@ -184,7 +184,7 @@ function castleSprite(fac, col, walls) {
   }, OUTLINE, 0.5);
 }
 // Bruk dziedzińca za murem (tło bitwy): kolor płyt [jasny, ciemny] wg frakcji
-const SIEGE_PAVE = { haven: [[176, 164, 140], [142, 130, 108]], sylvan: [[140, 146, 118], [108, 116, 90]], barrow: [[104, 98, 114], [78, 74, 88]], fortress: [[132, 126, 98], [102, 98, 74]], inferno: [[96, 64, 58], [70, 44, 40]], academy: [[188, 194, 206], [150, 156, 170]], dungeon: [[92, 86, 100], [66, 60, 74]], stronghold: [[186, 150, 104], [148, 114, 76]] };
+const SIEGE_PAVE = { haven: [[176, 164, 140], [142, 130, 108]], sylvan: [[140, 146, 118], [108, 116, 90]], barrow: [[104, 98, 114], [78, 74, 88]], fortress: [[132, 126, 98], [102, 98, 74]], inferno: [[96, 64, 58], [70, 44, 40]], academy: [[188, 194, 206], [150, 156, 170]], dungeon: [[92, 86, 100], [66, 60, 74]], stronghold: [[186, 150, 104], [148, 114, 76]], forge: [[118, 104, 92], [84, 74, 66]] };
 
 // Palisada: pomost z desek od strony miasta, pale z zaostrzonymi czubkami na zewnątrz, wiązania z lin
 function drawWoodPiece(ctx, fac, kind, state, open, col) {

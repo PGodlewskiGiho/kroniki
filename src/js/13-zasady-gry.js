@@ -978,6 +978,8 @@ function specialVisit(st, t, h) {
   const wk = weekIndex(st), S = FACTION_SPECIAL[t.faction]; h.specVisits = h.specVisits || [];
   if (t.faction === 'haven' && h.stableWeek !== wk) { h.stableWeek = wk; h.mp += STABLE_MP; return `${S.name}: ${h.name} dostaje świeże konie (+${STABLE_MP} ruchu do końca tygodnia).`; }
   if (t.faction === 'dungeon' && t.vortexWeek !== wk) { t.vortexWeek = wk; h.mana = Math.max(h.mana, heroMaxMana(h) * 2); return `${S.name}: mana bohatera ${h.name} podwojona (${h.mana}).`; }
+  if (t.faction === 'forge' && h.workshopWeek !== wk) { const miss = MACHINES.filter(id => !(h.machines || []).includes(id)); if (miss.length) { h.workshopWeek = wk; h.machines = [...(h.machines || []), ...miss];
+    return `${S.name}: ${h.name} dostaje machiny wojenne (${miss.map(id => CREATURES[id].name.toLowerCase()).join(', ')}).`; } }
   const stat = { fortress: ['def', 'obrony'], stronghold: ['att', 'ataku'] }[t.faction];
   if (stat && !h.specVisits.includes(t.id)) { h.specVisits.push(t.id); h.stats[stat[0]]++; return `${S.name}: ${h.name} zyskuje +1 do ${stat[1]} (teraz ${h.stats[stat[0]]}).`; }
   return null;

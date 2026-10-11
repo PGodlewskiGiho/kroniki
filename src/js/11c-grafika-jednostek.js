@@ -73,7 +73,7 @@ function creatureSprite(cid, dir, i = 0) { const A = unitArt(cid); return A ? (P
 // Portret jednostki w okienku armii (jak w Heroes 3): głowa i tułów modelu 3D (tools/grafika3d/wypal-ikony.js) na tle w barwach
 // frakcji: niebo u góry, ziemia u dołu, winieta. false, gdy portretu nie ma (pixel art, arkusz się wczytuje): wtedy cała postać.
 const ICON_BG = { haven: ['#a8c8ec', '#6a9a48'], sylvan: ['#b8d8a0', '#3e6a2a'], barrow: ['#8a8098', '#3a3440'], fortress: ['#a8b890', '#4a5a30'],
-  inferno: ['#e07a3a', '#4a1810'], academy: ['#d8e8f4', '#8aa0b8'], dungeon: ['#6a5a8a', '#241a30'], stronghold: ['#e8c080', '#8a5a2a'], '': ['#b8a888', '#5a4a34'] };
+  inferno: ['#e07a3a', '#4a1810'], academy: ['#d8e8f4', '#8aa0b8'], dungeon: ['#6a5a8a', '#241a30'], stronghold: ['#e8c080', '#8a5a2a'], forge: ['#e0b070', '#4a3a30'], '': ['#b8a888', '#5a4a34'] };
 function drawUnitPortrait(ctx, cid, x, y, w, h) {
   if (PIXEL_ART || typeof UNIT_ICON_ART === 'undefined' || !UNIT_ICON_ART || !UNIT_ICON_ART.f[cid] || !ICON_IMG.sheet || !ICON_IMG.sheet._ok) return false;
   const fac = (CREATURES[cid] && CREATURES[cid].faction) || '', bg = ICON_BG[fac] || ICON_BG[''], W0 = Math.round(w), H0 = Math.round(h);

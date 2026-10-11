@@ -106,7 +106,7 @@ function menuRider(b, t) {
 // Scenę przeliczamy raz na klatkę (kilka ułamków milisekundy), a przy ponownym rysowaniu tej samej klatki wklejamy gotową
 // Gładko: tłem menu jest w pełni rozbudowane miasto (malowane tło i budowle 3D), co uruchomienie innej frakcji;
 // kamera powoli płynie (przybliżenie i przesunięcie), u góry przyciemnienie pod tytuł, na brzegach winieta
-const MENU_FAC = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'dungeon', 'stronghold'][Math.floor(Math.random() * 8)];
+const MENU_FAC = FACTIONS[Math.floor(Math.random() * FACTIONS.length)].id;
 function menuTownScene() {
   return Layers.get(`menuTown_${MENU_FAC}`, 592, 438, c => {
     const t = { id: -1, name: '', faction: MENU_FAC, owner: 0, x: 0, y: 0, built: Object.keys(BUILD_BY_ID).filter(id => id !== 'grail'), garrison: [], avail: {}, guild: {} };

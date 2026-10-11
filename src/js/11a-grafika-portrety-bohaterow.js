@@ -9,9 +9,9 @@ const PORTRAIT_N = 36, PORTRAIT_K = () => (PXD > 1 ? 2 : 1); // siatka rysunku 3
 const PORTRAITS = new Map(); PIX_CLEAR.push(() => PORTRAITS.clear());
 const PORTRAIT_BG = { knight: '#4c5c80', cleric: '#8c6c36', ranger: '#3e5c34', druid: '#5c5a2e', deathKnight: '#294232', necro: '#3e3058',
   beastmaster: '#4e5a34', witch: '#34503e', demoniac: '#6a2a1e', heretic: '#4a1e2e', alchemist: '#5a5e70', wizard: '#2e3a6a',
-  overlord: '#3a2a3e', warlock: '#2a1e3a', barbarian: '#6a4a2a', battleMage: '#6a3a24' };
+  overlord: '#3a2a3e', warlock: '#2a1e3a', barbarian: '#6a4a2a', battleMage: '#6a3a24', engineer: '#6a4a2e', inventor: '#34405a' };
 // Nowe klasy korzystają z ubioru klasy o podobnym stroju (zbroja, skóry, szaty)
-const PORTRAIT_DRESS = { beastmaster: 'ranger', witch: 'druid', demoniac: 'knight', heretic: 'necro', alchemist: 'ranger', wizard: 'cleric', overlord: 'knight', warlock: 'necro', barbarian: 'ranger', battleMage: 'druid' };
+const PORTRAIT_DRESS = { beastmaster: 'ranger', witch: 'druid', demoniac: 'knight', heretic: 'necro', alchemist: 'ranger', wizard: 'cleric', overlord: 'knight', warlock: 'necro', barbarian: 'ranger', battleMage: 'druid', engineer: 'knight', inventor: 'cleric' };
 const INFERNAL = ['demoniac', 'heretic'];
 const PORTRAIT_HAIR = ['#241a14', '#3e2a1a', '#5e3e22', '#7c4c26', '#a0602c', '#c89450', '#e2c47e', '#8e8a86', '#d8d4cc'];
 const PORTRAIT_SKIN = ['#f0c8a0', '#e2b28a', '#d09c74', '#b07c56', '#8e603e'];
@@ -85,7 +85,7 @@ function heroFace(h) {
     druid: ['wreath', 'antlers', 'flowers'], necro: ['cowl', 'skullcrown', 'none'], deathKnight: ['horned', 'skullhelm', 'spikecrown'],
     beastmaster: ['horned', 'feather', 'headband', 'none'], witch: ['hood', 'flowers', 'antlers'], demoniac: ['horned', 'spikecrown', 'helm'], heretic: ['cowl', 'horned', 'circlet'],
     alchemist: ['headband', 'hood', 'circlet', 'none'], wizard: ['cowl', 'circlet', 'hood'],
-    overlord: ['horned', 'helm', 'spikecrown', 'none'], warlock: ['cowl', 'circlet', 'hood'], barbarian: ['horned', 'headband', 'feather', 'none'], battleMage: ['headband', 'hood', 'feather', 'none'] }[cls][Math.floor(r() * 4) % (['druid', 'necro', 'deathKnight', 'witch', 'demoniac', 'heretic', 'wizard', 'warlock'].includes(cls) ? 3 : 4)];
+    overlord: ['horned', 'helm', 'spikecrown', 'none'], warlock: ['cowl', 'circlet', 'hood'], barbarian: ['horned', 'headband', 'feather', 'none'], battleMage: ['headband', 'hood', 'feather', 'none'], engineer: ['helm', 'headband', 'none', 'circlet'], inventor: ['hood', 'circlet', 'headband', 'none'] }[cls][Math.floor(r() * 4) % (['druid', 'necro', 'deathKnight', 'witch', 'demoniac', 'heretic', 'wizard', 'warlock'].includes(cls) ? 3 : 4)];
   F.brow = pick(['straight', 'arched', 'angry', 'bushy', 'thin']); F.eyes = undead ? 'glow' : pick(['normal', 'normal', 'narrow', 'wide']);
   F.nose = pick(['small', 'long', 'hooked', 'broad']); F.mouth = pick(['neutral', 'smile', 'frown', 'smirk']); F.face = pick(['oval', 'oval', 'round', 'long']);
   F.armor = pick(['#a8b2c4', '#c8b070', '#8a9ab8', '#b8c0cc']); F.robe = pick({ cleric: ['#e6dcc2', '#f0ead8', '#d8e0f0'], ranger: ['#7a5a34', '#5e4a2a'], druid: ['#6e5a34', '#6e7a34'], necro: ['#3a2c52', '#2a2236', '#3e2438'] }[cls] || ['#6e5a34']);
@@ -94,6 +94,7 @@ function heroFace(h) {
   if (cls === 'wizard') F.robe = pick(['#2a3a7a', '#4a3a8a', '#3a5a8a']); if (cls === 'alchemist') F.robe = pick(['#6a6a74', '#5a4a6a', '#7a6a5a']);
   if (cls === 'warlock') F.robe = pick(['#2a1a3a', '#3a1a2a', '#1e1a30']); if (cls === 'overlord') F.armor = pick(['#4a3a5a', '#5a4a6a', '#3a3044']);
   if (cls === 'barbarian') F.robe = pick(['#7a5030', '#8a5a34', '#6a4a2a']); if (cls === 'battleMage') F.robe = pick(['#8a3a1a', '#7a4a2a', '#6a2a1a']);
+  if (cls === 'engineer') { F.armor = pick(['#b8703a', '#c8a050', '#8a6a4a']); F.robe = pick(['#5a4030', '#6a4a2a']); } if (cls === 'inventor') F.robe = pick(['#3a4a6a', '#4a3a5a', '#2a4a5a']);
   F.bg = pick(['plain', 'sky', 'window', 'night', 'fire', 'forest']); F.flip = r() < 0.5;
   Object.assign(F, HERO_LOOKS[h.name] || {});
   if (F.undead && !HERO_LOOKS[h.name]) F.skin = pick(['#cac6b6', '#b8beb0', '#d2c8c0']);

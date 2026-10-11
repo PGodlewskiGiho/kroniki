@@ -19,6 +19,8 @@ const HERO_CLASSES = {
   warlock: { name: 'Czarnoksiężnik', nameF: 'Czarnoksiężniczka', look: { horse: '#1e1a26', mane: '#6a4a9a', armor: '#3a2a4a', hood: '#2a1a3a', skin: '#d8c0b0' } },
   barbarian: { name: 'Barbarzyńca', nameF: 'Barbarzynka', look: { horse: '#8a5a2a', mane: '#3a2010', armor: '#8a5a34', helm: '#7a6a5a', skin: '#c8905a' } },
   battleMage: { name: 'Mag bojowy', nameF: 'Magini bojowa', look: { horse: '#a07a4a', mane: '#4a2a14', armor: '#7a3a2a', hood: '#8a3a1a', skin: '#c8905a' } },
+  engineer: { name: 'Inżynier', nameF: 'Inżynierka', look: { horse: '#5a4a3a', mane: '#2a2018', armor: '#b8703a', helm: '#c8a050', skin: '#e0b890' } },
+  inventor: { name: 'Wynalazca', nameF: 'Wynalazczyni', look: { horse: '#8a8a92', mane: '#3a3a40', armor: '#4a5a7a', hood: '#3a4a6a', skin: '#e8c8a0' } },
 };
 // Wszystko, co wyróżnia frakcję. dw: siedliska [nazwa, jednostka], emb: symbole siedlisk poziomów 1–7.
 const FACTIONS = [
@@ -142,12 +144,30 @@ const FACTIONS = [
       dw5x: ['Turnia nawałnicy', 'tempestBird'], dw6x: ['Pradawna pieczara', 'elderCyclops'], dw7x: ['Pierwotne legowisko', 'primalBehemoth'],
     },
   },
+  {
+    // Manufaktura: zamek „z przyszłości” (w duchu porzuconej Kuźni z Heroes 3), ale bez laserów i cyborgów – miasto wynalazców z Mosiężnych Gór,
+    // gdzie para, proch, zębatki i zaklęta w miedzi iskra zastępują magię krwi i kości. Konstrukty nie znają strachu, ale nie leczą się same.
+    id: 'forge', name: 'Manufaktura', terrain: TER.ROUGH,
+    desc: 'Miasto wynalazców: gnomi mechanicy, puszkarze, mechaniczne ogary, ornitoptery, iskrownicy, parowe pancerze i mosiężne kolosy.',
+    heroes: [['Ignacy', 'engineer'], ['Maria', 'inventor', 1], ['Mikołaj', 'inventor'], ['Halina', 'engineer', 1], ['Stefan', 'engineer'], ['Ada', 'inventor', 1]],
+    towns: ['Mosiężny Gród', 'Zębate Wzgórze', 'Parowa Dolina', 'Iskrzysko', 'Miedziana Huta', 'Siedem Kominów', 'Nowa Odlewnia'],
+    guild: 'Laboratorium', emb: ['gear', 'gun', 'paw', 'wing', 'bolt', 'anvil', 'flame'],
+    dw: {
+      dw1: ['Warsztat czeladników', 'apprentice'], dw1u: ['Pracownia mechaników', 'mechanic'], dw2: ['Prochownia', 'handgunner'], dw2u: ['Strzelnica muszkieterów', 'musketeer'],
+      dw3: ['Psiarnia zębatek', 'clockHound'], dw3u: ['Stalowa psiarnia', 'steelHound'], dw4: ['Hangar', 'ornithopter'], dw4u: ['Wieża wiropłatów', 'gyrocopter'],
+      dw5: ['Iskrownia', 'sparkwright'], dw5u: ['Wieża cewek', 'sparkMaster'], dw6: ['Kotłownia', 'steamSuit'], dw6u: ['Walcownia', 'ironSuit'],
+      dw7: ['Wielka Odlewnia', 'colossus'], dw7u: ['Mosiężna Odlewnia', 'brassColossus'],
+      dw1x: ['Parowozownia', 'machinist'], dw2x: ['Arsenał granatów', 'grenadier'], dw3x: ['Burzowa psiarnia', 'stormHound'], dw4x: ['Dok bombowców', 'bomber'],
+      dw5x: ['Iglica burz', 'stormLord'], dw6x: ['Kuźnia gromów', 'stormSuit'], dw7x: ['Serce Kuźni', 'forgeTitan'],
+    },
+  },
 ];
 const factionOf = id => FACTIONS.find(f => f.id === id) || FACTIONS[0];
 // Cechy frakcji: jedna premia na frakcję. Bohater ma cechę frakcji swojej klasy, miasto: frakcji miasta.
 // Działanie: morale i szczęście (BITWA: ZASADY armyMorale/heroLuck), nekromancja (raiseDead), koszt terenu (baseCost),
 // zima (seasonMpMul), widzenie (heroSight), dochód (dailyIncomeAll), przyrost (weeklyGrowth).
 const HORDE_K = 1.3, HORDE_LEVELS = 4; // Horda Twierdzy: tylko słabsze siedliska (z premią dla wszystkich poziomów Twierdza wygrywała każdy pomiar bitew tygodniowych armii)
+const SALVAGE = 30; // Polowy warsztat Manufaktury: % zniszczonych konstruktów odbudowanych po wygranej
 const FACTION_TRAITS = {
   haven: { name: 'Rycerski duch', desc: 'armia bohatera Przystani ma +1 do morale' },
   sylvan: { name: 'Łaska lasu', desc: 'armia bohatera Kniei ma +1 do szczęścia' },
@@ -157,6 +177,7 @@ const FACTION_TRAITS = {
   academy: { name: 'Dzieci zimy', desc: 'bohaterowie Akademii nie tracą ruchu zimą ani na śniegu' },
   dungeon: { name: 'Oczy ciemności', desc: 'bohaterowie Lochu widzą o 2 pola dalej' },
   stronghold: { name: 'Horda', desc: 'siedliska poziomów 1–4 w miastach Twierdzy dają o 30% więcej jednostek' },
+  forge: { name: 'Polowy warsztat', desc: `po wygranej bitwie bohater Manufaktury odbudowuje z części ${SALVAGE}% zniszczonych konstruktów` },
 };
 const CLASS_FACTION = {}; for (const F of FACTIONS) for (const [, cls] of F.heroes) CLASS_FACTION[cls] = F.id;
 const heroFaction = h => (h && CLASS_FACTION[h.cls]) || null;
@@ -226,11 +247,12 @@ const FACTION_SPECIAL = {
   academy: { name: 'Biblioteka', emblem: 'book', desc: 'Gildia magów oferuje o jeden czar więcej na każdym poziomie.' },
   dungeon: { name: 'Wir many', emblem: 'eye', desc: 'Raz w tygodniu podwaja manę bohatera, który odwiedzi miasto.' },
   stronghold: { name: 'Sala Walhalli', emblem: 'axe', desc: 'Każdy bohater, który odwiedzi miasto, raz na zawsze zyskuje +1 do ataku.' },
+  forge: { name: 'Warsztat machin', emblem: 'gear', desc: 'Raz w tygodniu wyposaża bohatera, który odwiedzi miasto, w brakujące machiny wojenne (balistę, namiot medyka, wóz z amunicją).' },
 };
 // Nazwa, jednostka, symbol i opis budowli dla danej frakcji
 // Budowla Graala ma w każdej frakcji własną nazwę
 const GRAIL_NAMES = { haven: 'Kolos Światłości', sylvan: 'Strażnik Kniei', barrow: 'Więzienie Dusz', fortress: 'Pradawne Źródło',
-  inferno: 'Ołtarz Ognia', academy: 'Podniebny Kielich', dungeon: 'Strażnik Głębin', stronghold: 'Pomnik Wodzów' };
+  inferno: 'Ołtarz Ognia', academy: 'Podniebny Kielich', dungeon: 'Strażnik Głębin', stronghold: 'Pomnik Wodzów', forge: 'Wieczny Silnik' };
 function bInfo(B, fac) {
   const F = factionOf(fac), m = /^dw(\d)([ux]?)$/.exec(B.id);
   if (B.id === 'special') { const S = FACTION_SPECIAL[F.id]; return { name: S.name, emblem: S.emblem, desc: S.desc }; }

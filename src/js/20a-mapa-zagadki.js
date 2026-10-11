@@ -40,6 +40,7 @@ const PUZZLE_ART = {
   barrow: { sky: ['#14121e', '#4a3e5a'], sun: '#d8e0f0', ground: '#4a4234', far: '#3a3448', moon: true }, fortress: { sky: ['#1e3a3a', '#8aa878'], sun: '#e8f0c0', ground: '#3a5a44', far: '#4a6a5a' },
   inferno: { sky: ['#200808', '#c83a1a'], sun: '#ffc060', ground: '#3a2020', far: '#5a2a1e' }, academy: { sky: ['#4a78b0', '#d8e8f8'], sun: '#ffffff', ground: '#d8e0e8', far: '#8aa0c0' },
   dungeon: { sky: ['#0e0a1a', '#4a2a6a'], sun: '#c8a0ff', ground: '#4a4040', far: '#2e2440', moon: true }, stronghold: { sky: ['#b85a2a', '#f0c070'], sun: '#fff0c0', ground: '#c8a060', far: '#a86a3a' },
+  forge: { sky: ['#3a2a28', '#d88a4a'], sun: '#ffd08a', ground: '#6a5a4a', far: '#4a3a34' },
 };
 let PUZZLE_COVER = null; PIX_CLEAR.push(() => { PUZZLE_COVER = null; });
 function puzzleCover(st, w, h) {

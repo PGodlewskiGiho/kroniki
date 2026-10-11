@@ -23,6 +23,10 @@ const ABILITIES = {
   maxDamage: { name: 'Mistrzostwo', desc: 'zawsze zadaje najwyższe obrażenia' },
   armorPierce: { name: 'Przebicie', desc: `pomija ${ARMOR_PIERCE}% obrony celu` },
   deathBlow: { name: 'Cios śmiertelny', desc: `${DEATH_BLOW}% szans na podwójne obrażenia` },
+  construct: { name: 'Konstrukt', desc: 'maszyna: nie zna morale, odporna na oślepienie, truciznę i falę śmierci; czary nie leczą jej ran – naprawiają ją mechanicy' },
+  repair: { name: 'Naprawa', desc: 'na początku rundy naprawia najbardziej uszkodzony sojuszniczy konstrukt (i odbudowuje zniszczone)' },
+  chain: { name: 'Łańcuch iskier', desc: 'piorun przeskakuje na najbliższy następny oddział wroga za połowę obrażeń' },
+  splash: { name: 'Wybuch', desc: 'rani też za połowę wszystkie wrogie oddziały stojące tuż przy celu' },
 };
 // Stworzenia neutralne (statystyki własne, w duchu oryginału).
 const CREATURES = {
@@ -335,6 +339,55 @@ elite('cyclopsKing', 'elderCyclops', ['Pradawny cyklop', 'Pradawni cyklopi', 'pr
   { boulder: '#8a8478', helm: null, crownSpikes: '#8a7a5a', beard: '#8a7a6a', armor: 'plate', skulls: '#e8e0cc', size: 2.0 });
 elite('ancientBehemoth', 'primalBehemoth', ['Pierwotny behemot', 'Pierwotne behemoty', 'pierwotnych behemotów', 'pierwotne behemoty'], [23, 22, 35, 55, 400, 11, 8900], { gold: 4500, crystal: 3 }, ['unlimitedRetal', 'armorPierce'],
   { plates: '#d8ccb0', hornPairs: 2, tusks: '#f0e8d8', size: 2.0 });
+// Manufaktura: miasto wynalazców (zamek „z przyszłości”, ale z mosiądzu, pary, prochu i zaklętej iskry, nie z laserów).
+// Gnomi mechanicy naprawiają konstrukty (ogary, ornitoptery, kolosy), puszkarze przebijają zbroje, iskrownicy ciskają łańcuchy piorunów.
+// repair: życia naprawianego na każdego mechanika na rundę; chainJumps: ile razy piorun przeskakuje dalej
+const FORGE_GEAR = { brass: '#c8a050', copper: '#b8703a', steel: '#9aa0a8', iron: '#5a5a62', soot: '#2a2622', glow: '#8ae0ff', spark: '#e0f4ff', fire: '#ff9a3a' };
+Object.assign(CREATURES, {
+  apprentice: mkU('Czeladnik', 'Czeladnicy', 'czeladników', 1, 4, 4, 1, 3, 8, 4, 14, 85, { gold: 55 }, { faction: 'forge', up: 'mechanic',
+    look: { kind: 'hum', gnome: true, skin: '#e0b088', cloth: '#7a5a3a', leather: '#4a3020', size: 0.72, weapon: 'wrench', metal: FORGE_GEAR.steel, apron: '#5a4030', goggles: FORGE_GEAR.brass, beard: '#c8b090', build: 'stocky' } }),
+  mechanic: mkU('Mechanik', 'Mechanicy', 'mechaników', 1, 5, 5, 2, 3, 9, 5, 14, 120, { gold: 70 }, { faction: 'forge', abil: ['repair'], repair: 3,
+    look: { kind: 'hum', gnome: true, skin: '#e0b088', cloth: '#3a5a7a', leather: '#4a3020', size: 0.74, weapon: 'wrench', metal: FORGE_GEAR.brass, apron: '#4a3a2a', goggles: FORGE_GEAR.brass, pack: FORGE_GEAR.copper, beard: '#d8c8a8', build: 'stocky' } }),
+  handgunner: mkU('Puszkarz', 'Puszkarze', 'puszkarzy', 2, 6, 3, 2, 4, 9, 4, 9, 140, { gold: 110 }, { faction: 'forge', up: 'musketeer', shots: 8, abil: ['armorPierce'],
+    look: { kind: 'hum', skin: '#d8a878', cloth: '#6a4a2a', leather: '#3a2414', size: 0.98, weapon: 'musket', metal: FORGE_GEAR.iron, helm: 'cap', helmCol: '#4a3a2a', bandolier: '#3a2414', mustache: '#5a3a1e' } }),
+  musketeer: mkU('Muszkieter', 'Muszkieterowie', 'muszkieterów', 2, 7, 4, 3, 5, 11, 5, 9, 200, { gold: 150 }, { faction: 'forge', shots: 12, abil: ['armorPierce'],
+    look: { kind: 'hum', skin: '#d8a878', cloth: '#2a4a6a', leather: '#3a2414', size: 1.0, weapon: 'musket', metal: FORGE_GEAR.steel, helm: 'tricorn', helmCol: '#2a2a30', feather: '#e8e0c0', bandolier: '#e8dcc0', armor: 'breast', cape: '#2a3a5a', mustache: '#3a2a1a' } }),
+  clockHound: mkU('Mechaniczny ogar', 'Mechaniczne ogary', 'mechanicznych ogarów', 3, 8, 7, 3, 5, 22, 8, 7, 330, { gold: 210 }, { faction: 'forge', up: 'steelHound', abil: ['construct'],
+    look: { kind: 'wolf', beast: 'clockHound', fur: FORGE_GEAR.brass, plates: FORGE_GEAR.copper, eyes: FORGE_GEAR.fire, size: 1.05 } }),
+  steelHound: mkU('Stalowy ogar', 'Stalowe ogary', 'stalowych ogarów', 3, 9, 9, 2, 4, 26, 10, 7, 430, { gold: 250 }, { faction: 'forge', abil: ['construct', 'doubleStrike'],
+    look: { kind: 'wolf', beast: 'clockHound', fur: FORGE_GEAR.steel, plates: FORGE_GEAR.iron, eyes: FORGE_GEAR.glow, jaws: true, size: 1.12 } }),
+  ornithopter: mkU('Ornitopter', 'Ornitoptery', 'ornitopterów', 4, 10, 8, 4, 8, 30, 9, 4, 480, { gold: 320 }, { faction: 'forge', up: 'gyrocopter', fly: true, abil: ['construct', 'fly'],
+    look: { kind: 'bird', beast: 'ornithopter', fur: FORGE_GEAR.copper, wing: '#d8ccb0', metal: FORGE_GEAR.brass, pilot: { skin: '#e0b088', cloth: '#7a5a3a', goggles: FORGE_GEAR.brass }, size: 1.05 } }),
+  gyrocopter: mkU('Wiropłat', 'Wiropłaty', 'wiropłatów', 4, 11, 9, 5, 9, 34, 12, 4, 620, { gold: 400 }, { faction: 'forge', fly: true, abil: ['construct', 'fly', 'noRetal'],
+    look: { kind: 'bird', beast: 'ornithopter', rotor: true, fur: FORGE_GEAR.brass, wing: '#c8b890', metal: FORGE_GEAR.steel, pilot: { skin: '#e0b088', cloth: '#3a5a7a', goggles: FORGE_GEAR.brass }, size: 1.1 } }),
+  sparkwright: mkU('Iskrownik', 'Iskrownicy', 'iskrowników', 5, 12, 9, 9, 12, 32, 6, 3, 700, { gold: 450 }, { faction: 'forge', up: 'sparkMaster', shots: 10, abil: ['chain'], chainJumps: 1,
+    look: { kind: 'hum', skin: '#d8b090', cloth: '#5a4a6a', leather: '#3a2a20', size: 1.0, weapon: 'sparkStaff', robe: true, metal: FORGE_GEAR.copper, coil: FORGE_GEAR.glow, goggles: FORGE_GEAR.copper, hair: '#6a4a2a', pack: FORGE_GEAR.copper, glow: FORGE_GEAR.spark } }),
+  sparkMaster: mkU('Mistrz iskier', 'Mistrzowie iskier', 'mistrzów iskier', 5, 13, 10, 10, 13, 38, 7, 3, 880, { gold: 520 }, { faction: 'forge', shots: 16, abil: ['chain', 'noMeleePenalty'], chainJumps: 1,
+    look: { kind: 'hum', skin: '#d8b090', cloth: '#3a3a6a', leather: '#2a2030', size: 1.03, weapon: 'sparkStaff', robe: true, metal: FORGE_GEAR.brass, coil: FORGE_GEAR.glow, goggles: FORGE_GEAR.brass, hair: '#c8c0b0', beard: '#d8d0c0', pack: FORGE_GEAR.brass, cape: '#2a2a5a', glow: FORGE_GEAR.spark } }),
+  steamSuit: mkU('Parowy pancerz', 'Parowe pancerze', 'parowych pancerzy', 6, 15, 17, 15, 22, 110, 5, 2, 1800, { gold: 1000 }, { faction: 'forge', up: 'ironSuit', abil: ['armorPierce'],
+    look: { kind: 'hum', beast: 'steamSuit', metal: FORGE_GEAR.copper, plate: FORGE_GEAR.brass, pilot: { skin: '#d8a878', beard: '#8a5a2a' }, glow: FORGE_GEAR.fire, size: 1.55 } }),
+  ironSuit: mkU('Żelazny pancerz', 'Żelazne pancerze', 'żelaznych pancerzy', 6, 17, 19, 16, 24, 120, 6, 2, 2200, { gold: 1200, crystal: 1 }, { faction: 'forge', abil: ['armorPierce', 'unlimitedRetal'],
+    look: { kind: 'hum', beast: 'steamSuit', metal: FORGE_GEAR.iron, plate: FORGE_GEAR.steel, pilot: { skin: '#d8a878', beard: '#5a3a1e' }, glow: FORGE_GEAR.fire, shieldArm: true, size: 1.6 } }),
+  colossus: mkU('Kolos', 'Kolosy', 'kolosów', 7, 18, 20, 30, 45, 220, 5, 1, 3800, { gold: 1700, crystal: 1 }, { faction: 'forge', up: 'brassColossus', abil: ['construct', 'breath'],
+    look: { kind: 'hum', beast: 'colossus', metal: FORGE_GEAR.iron, plate: FORGE_GEAR.copper, glow: FORGE_GEAR.fire, size: 2.0 } }),
+  brassColossus: mkU('Mosiężny kolos', 'Mosiężne kolosy', 'mosiężnych kolosów', 7, 21, 23, 35, 50, 300, 7, 1, 5700, { gold: 2900, crystal: 2 }, { faction: 'forge', abil: ['construct', 'breath', 'unlimitedRetal'],
+    look: { kind: 'hum', beast: 'colossus', metal: FORGE_GEAR.brass, plate: FORGE_GEAR.copper, glow: FORGE_GEAR.fire, crest: true, size: 2.15 } }),
+});
+// Manufaktura: trzeci stopień
+elite('mechanic', 'machinist', ['Maszynista', 'Maszyniści', 'maszynistów'], [6, 6, 2, 4, 10, 6, 165], { gold: 95 }, ['repair', 'unlimitedRetal'],
+  { cloth: '#6a2a2a', pack: FORGE_GEAR.brass, metal: FORGE_GEAR.brass, helm: 'cap', helmCol: '#4a3a2a', size: 0.76 }, { repair: 5 });
+elite('musketeer', 'grenadier', ['Grenadier', 'Grenadierzy', 'grenadierów'], [8, 6, 3, 6, 13, 6, 300], { gold: 240 }, ['splash', 'noMeleePenalty'],
+  { weapon: 'grenade', helm: 'mitreCap', helmCol: '#8a2a1a', cloth: '#7a2a1a', bandolier: '#3a2414', bombs: '#2a2a2a', cape: null, size: 1.04 }, { shots: 10 });
+elite('steelHound', 'stormHound', ['Ogar burzy', 'Ogary burzy', 'ogarów burzy', 'ogary burzy'], [11, 10, 3, 6, 30, 12, 600], { gold: 330 }, ['construct', 'doubleStrike', 'deathBlow'],
+  { fur: '#5a6a80', plates: FORGE_GEAR.brass, eyes: FORGE_GEAR.spark, coils: FORGE_GEAR.glow, size: 1.18 });
+elite('gyrocopter', 'bomber', ['Bombowiec', 'Bombowce', 'bombowców'], [13, 10, 6, 10, 40, 12, 880], { gold: 520 }, ['construct', 'fly', 'noRetal', 'splash'],
+  { fur: FORGE_GEAR.iron, metal: FORGE_GEAR.brass, bombs: '#2a2a2a', rotor: true, twin: true, size: 1.18 });
+elite('sparkMaster', 'stormLord', ['Władca burzy', 'Władcy burzy', 'władców burzy'], [15, 12, 11, 15, 45, 8, 1300], { gold: 750, mercury: 1 }, ['chain', 'noMeleePenalty', 'sharpshooter'],
+  { cloth: '#1a2a5a', cape: '#3a1a5a', coil: '#c8a0ff', glow: '#e8d8ff', crownSpikes: FORGE_GEAR.brass, size: 1.06 }, { shots: 20, chainJumps: 2 });
+elite('ironSuit', 'stormSuit', ['Pancerz burzowy', 'Pancerze burzowe', 'pancerzy burzowych', 'pancerze burzowe'], [20, 21, 18, 28, 140, 7, 2900], { gold: 1600, crystal: 1 }, ['armorPierce', 'unlimitedRetal', 'jousting'],
+  { metal: '#3a4a60', plate: FORGE_GEAR.brass, glow: FORGE_GEAR.glow, thrusters: true, size: 1.65 });
+elite('brassColossus', 'forgeTitan', ['Tytan Kuźni', 'Tytani Kuźni', 'tytanów Kuźni'], [25, 26, 40, 60, 380, 8, 8700], { gold: 4400, crystal: 3 }, ['construct', 'breath', 'unlimitedRetal', 'armorPierce'],
+  { metal: '#4a4a52', plate: FORGE_GEAR.brass, glow: '#ffc060', crest: true, chimneys: true, size: 2.3 });
 // Nowe stwory neutralne z siedliskiem (habitat: tereny, na których pojawiają się na lądzie; puste = tylko na morzu, SEA_MONSTERS)
 Object.assign(CREATURES, {
   giantSpider: mkU('Olbrzymi pająk', 'Olbrzymie pająki', 'olbrzymich pająków', 2, 7, 5, 2, 5, 16, 7, 8, 185, null, { abil: ['deathBlow'], habitat: [TER.SWAMP, TER.ROUGH, TER.DIRT],

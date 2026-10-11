@@ -72,7 +72,7 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
 // Dziedziniec oblężonego zamku w charakterze frakcji (w pełnej rozdzielczości warstwy): bruk (Przystań), ośnieżony marmur (Akademia),
 // bruk z kośćmi i zieloną mgłą (Kurhan), obsydian z lawą w szczelinach (Inferno), dno pieczary z kryształami (Loch),
 // mech i trawa ze ścieżką (Knieja), błoto z kładką (Cytadela), ubita ziemia ze słomą (Twierdza). Do tego cień muru i plamy światła.
-const COURTYARD = { haven: 'cobble', academy: 'snow', barrow: 'grave', inferno: 'obsidian', dungeon: 'cave', sylvan: 'grass', fortress: 'mud', stronghold: 'dirt' };
+const COURTYARD = { haven: 'cobble', academy: 'snow', barrow: 'grave', inferno: 'obsidian', dungeon: 'cave', sylvan: 'grass', fortress: 'mud', stronghold: 'dirt', forge: 'cobble' };
 function paintCourtyard(c, fac) {
   const kind = COURTYARD[fac] || 'cobble', pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, y0 = 41, x0 = paveX(y0) - 4, w = W - x0, h = 449, r = mulberry32(fac.length * 131 + 7);
   const rgb = (a, k = 1, al = 1) => `rgba(${a.map(v => Math.round(clamp(v * k, 0, 255))).join(',')},${al})`, blob = (x, y, rx, ry, col) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU); c.fill(); };
@@ -696,6 +696,7 @@ const MOAT_LIQ = {
   academy: { tex: 'water', col: '#5a8aa8', tint: 'rgba(210,235,255,.4)', bank: ['#8a909a', '#c8d0da'], flow: 'rgba(230,245,255,.35)', spark: 'rgba(255,255,255,.75)' },
   dungeon: { tex: 'water', col: '#2a2440', tint: 'rgba(60,30,90,.4)', bank: ['#1e1a24', '#34303e'], flow: 'rgba(150,100,220,.22)', spark: 'rgba(200,170,255,.5)' },
   stronghold: { tex: 'water', col: '#4a3e28', tint: 'rgba(110,80,40,.35)', bank: ['#4a3820', '#6a5232'], flow: 'rgba(160,130,80,.25)', spark: 'rgba(230,210,170,.45)' },
+  forge: { tex: 'lava', col: '#c8601a', tint: 'rgba(255,140,40,.25)', bank: ['#2a2420', '#4a3e34'], flow: 'rgba(255,190,90,.3)', spark: 'rgba(255,230,160,.7)', glow: true }, // fosa płynnego metalu z odlewni
 };
 // Fosa oblężonego miasta: prosty kanał wzdłuż lica muru (równoległy do ukosu, brzeg przy murze), przez całą wysokość pola;
 // w rzędzie bramy przerzucony drewniany most. Ziemny brzeg, woda z faktury terenu (płynie powoli), ciemniejsza przy brzegach, fale
