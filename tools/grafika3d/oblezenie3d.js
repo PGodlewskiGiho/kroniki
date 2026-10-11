@@ -17,6 +17,7 @@ const SIEGE3 = {
   academy: { mat: 'stone', col: '#d4d8e2', kind: 'ashlar', roof: '#4a6ab8', shape: 'onion', deco: 'snow' },
   dungeon: { mat: 'stone', col: '#5a5260', kind: 'rock', roof: '#3a2a4a', shape: 'spire', deco: 'crystals' },
   stronghold: { mat: 'wood', col: '#8c5c32', kind: 'planks', roof: '#8a5a3a', roofKind: 'thatch', shape: 'cone', deco: 'skullsWood' },
+  forge: { mat: 'stone', col: '#9a4a32', kind: 'brick', roof: '#b8703a', shape: 'cone', deco: 'lava' }, // Manufaktura: cegła, miedziane hełmy, żar palenisk w szczelinach
 };
 const rnd = seed => { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
 const emis = (w, h, d, col, x, y, z, rot) => { const m = blk(w, h, d, col, 'win', x, y, z, rot); return m; };

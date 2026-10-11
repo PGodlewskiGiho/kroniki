@@ -155,6 +155,7 @@ const HERO_SPECS = {
   Ulryk: { dw: 2 }, Bogna: { skill: 'intelligence' }, Aelwen: { skill: 'archery' }, 'Dębosz': { dw: 5 }, 'Wrocisław': { res: 'mercury', n: 1 }, 'Grzymisława': { skill: 'offense' },
   Skrzek: { dw: 3 }, 'Rusałka': { spell: 'cure' }, Belzar: { dw: 5 }, 'Żmija': { spell: 'fireball' }, 'Mieszko Kruszec': { res: 'ore', n: 2 }, Srebrna: { spell: 'lightningBolt' },
   Grzmot: { dw: 6 }, Nocna: { skill: 'mysticism' }, Warg: { dw: 2 }, Iskra: { spell: 'fireball' },
+  Ignacy: { dw: 3 }, Maria: { spell: 'chainLightning' }, 'Mikołaj': { skill: 'learning' }, Halina: { dw: 6 }, Stefan: { skill: 'artillery' }, Ada: { dw: 5 },
 };
 const heroSpec = h => (h && HERO_SPECS[h.name]) || null;
 // Doświadczenie potrzebne do poziomu 2, 3, ... (dalej każdy poziom +20%)

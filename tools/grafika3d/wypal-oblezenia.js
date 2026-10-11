@@ -8,7 +8,7 @@ const path = require('path'), fs = require('fs');
 const { ROOT, openStudio } = require('./wspolne');
 const OUT = path.join(ROOT, 'src', 'grafika', 'oblezenia'), META = path.join(ROOT, 'src', 'grafika', 'oblezenia.json'), D = +(process.env.D || 2);
 const PIECES = [['wall', 'ok'], ['wall', 'hit'], ['wall', 'down'], ['gate', 'ok'], ['gate', 'hit'], ['gate', 'down'], ['tower', 'ok'], ['tower', 'down'], ['keep', 'ok'], ['keep', 'down'], ['tower', 'front'], ['keep', 'front']];
-const FACS = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'dungeon', 'stronghold'];
+const FACS = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'dungeon', 'stronghold', 'forge'];
 (async () => {
   const t0 = Date.now(), only = process.argv[2] ? process.argv[2].split(',') : null; fs.mkdirSync(OUT, { recursive: true });
   const meta = fs.existsSync(META) ? JSON.parse(fs.readFileSync(META, 'utf8')) : {};

@@ -1040,5 +1040,161 @@
   "opis": "two large wooden sailing ships moored side by side, their wide plank decks fill the left and right of the picture, narrow strip of dark blue sea water with white foam between the hulls, two wooden boarding planks bridging the ships, cannons on carriages along the bulwarks, barrels, coiled ropes, cargo hatch grating, mast bases, sail shadows",
   "styl": "detailed fantasy matte painting, ship decks seen from above at an angle, Heroes of Might and Magic 3 naval battle background, {opis}, weathered oak planks, painterly, rich detail, crisp, warm daylight",
   "negatyw_pelny": "people, figures, sailors, soldiers, creatures, animals, text, grid, hexagons, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, modern ship, metal hull"
+ },
+ "forge": {
+  "opis": "painted rocky highland town site at dusk, flat stony plain and rust brown basalt terraces with cliffs, glowing molten metal stream, distant smoking mountains, copper sky",
+  "teren": {
+   "hor": 140,
+   "ziarno": 11,
+   "niebo": [
+    [
+     60,
+     70,
+     110
+    ],
+    [
+     240,
+     160,
+     110
+    ]
+   ],
+   "ziemia": [
+    [
+     150,
+     132,
+     112
+    ],
+    [
+     118,
+     100,
+     84
+    ]
+   ],
+   "skala": [
+    110,
+    80,
+    62
+   ],
+   "ciecz": [
+    [
+     255,
+     170,
+     70
+    ],
+    [
+     230,
+     100,
+     30
+    ]
+   ],
+   "mgla": [
+    200,
+    150,
+    120
+   ],
+   "lune": [
+    255,
+    140,
+    60
+   ],
+   "urwisko": "warstwy",
+   "gory": [
+    [
+     40,
+     90,
+     [
+      120,
+      100,
+      96
+     ]
+    ],
+    [
+     14,
+     40,
+     [
+      96,
+      80,
+      76
+     ]
+    ]
+   ],
+   "kamienie": 50,
+   "cienie": [
+    120,
+    100,
+    84
+   ],
+   "cienie_n": 40,
+   "plyty": [
+    {
+     "x": [
+      200,
+      560
+     ],
+     "tyl": 150,
+     "przod": 206,
+     "dol": 244,
+     "wodospady": [],
+     "kolor": [
+      140,
+      120,
+      100
+     ]
+    },
+    {
+     "x": [
+      20,
+      190
+     ],
+     "tyl": 250,
+     "przod": 288,
+     "dol": 312,
+     "wodospady": [],
+     "kolor": [
+      146,
+      126,
+      104
+     ]
+    }
+   ],
+   "rzeki": [
+    {
+     "pkt": [
+      [
+       60,
+       330
+      ],
+      [
+       130,
+       346
+      ],
+      [
+       200,
+       372
+      ],
+      [
+       240,
+       410
+      ]
+     ],
+     "w": [
+      26,
+      36
+     ]
+    }
+   ],
+   "turnie": [
+    [
+     14,
+     150,
+     50
+    ],
+    [
+     580,
+     160,
+     44
+    ]
+   ]
+  }
  }
 }

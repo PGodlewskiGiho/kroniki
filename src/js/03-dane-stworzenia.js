@@ -365,13 +365,13 @@ Object.assign(CREATURES, {
   sparkMaster: mkU('Mistrz iskier', 'Mistrzowie iskier', 'mistrzów iskier', 5, 13, 10, 10, 13, 38, 7, 3, 880, { gold: 520 }, { faction: 'forge', shots: 16, abil: ['chain', 'noMeleePenalty'], chainJumps: 1,
     look: { kind: 'hum', skin: '#d8b090', cloth: '#3a3a6a', leather: '#2a2030', size: 1.03, weapon: 'sparkStaff', robe: true, metal: FORGE_GEAR.brass, coil: FORGE_GEAR.glow, goggles: FORGE_GEAR.brass, hair: '#c8c0b0', beard: '#d8d0c0', pack: FORGE_GEAR.brass, cape: '#2a2a5a', glow: FORGE_GEAR.spark } }),
   steamSuit: mkU('Parowy pancerz', 'Parowe pancerze', 'parowych pancerzy', 6, 15, 17, 15, 22, 110, 5, 2, 1800, { gold: 1000 }, { faction: 'forge', up: 'ironSuit', abil: ['armorPierce'],
-    look: { kind: 'hum', beast: 'steamSuit', metal: FORGE_GEAR.copper, plate: FORGE_GEAR.brass, pilot: { skin: '#d8a878', beard: '#8a5a2a' }, glow: FORGE_GEAR.fire, size: 1.55 } }),
+    look: { kind: 'hum', beast: 'steamSuit', skin: '#d8a878', cloth: FORGE_GEAR.copper, leather: FORGE_GEAR.iron, build: 'brute', helm: 'greathelm', armor: 'plate', weapon: 'mace', metal: FORGE_GEAR.copper, plate: FORGE_GEAR.brass, pilot: { skin: '#d8a878', beard: '#8a5a2a' }, glow: FORGE_GEAR.fire, size: 1.55 } }),
   ironSuit: mkU('Żelazny pancerz', 'Żelazne pancerze', 'żelaznych pancerzy', 6, 17, 19, 16, 24, 120, 6, 2, 2200, { gold: 1200, crystal: 1 }, { faction: 'forge', abil: ['armorPierce', 'unlimitedRetal'],
-    look: { kind: 'hum', beast: 'steamSuit', metal: FORGE_GEAR.iron, plate: FORGE_GEAR.steel, pilot: { skin: '#d8a878', beard: '#5a3a1e' }, glow: FORGE_GEAR.fire, shieldArm: true, size: 1.6 } }),
+    look: { kind: 'hum', beast: 'steamSuit', skin: '#d8a878', cloth: FORGE_GEAR.iron, leather: FORGE_GEAR.soot, build: 'brute', helm: 'greathelm', armor: 'plate', weapon: 'mace', metal: FORGE_GEAR.iron, plate: FORGE_GEAR.steel, pilot: { skin: '#d8a878', beard: '#5a3a1e' }, glow: FORGE_GEAR.fire, shieldArm: true, size: 1.6 } }),
   colossus: mkU('Kolos', 'Kolosy', 'kolosów', 7, 18, 20, 30, 45, 220, 5, 1, 3800, { gold: 1700, crystal: 1 }, { faction: 'forge', up: 'brassColossus', abil: ['construct', 'breath'],
-    look: { kind: 'hum', beast: 'colossus', metal: FORGE_GEAR.iron, plate: FORGE_GEAR.copper, glow: FORGE_GEAR.fire, size: 2.0 } }),
+    look: { kind: 'hum', beast: 'colossus', skin: FORGE_GEAR.iron, cloth: FORGE_GEAR.copper, leather: FORGE_GEAR.soot, build: 'colossus', eyes: FORGE_GEAR.fire, weapon: 'none', metal: FORGE_GEAR.iron, plate: FORGE_GEAR.copper, glow: FORGE_GEAR.fire, size: 2.0 } }),
   brassColossus: mkU('Mosiężny kolos', 'Mosiężne kolosy', 'mosiężnych kolosów', 7, 21, 23, 35, 50, 300, 7, 1, 5700, { gold: 2900, crystal: 2 }, { faction: 'forge', abil: ['construct', 'breath', 'unlimitedRetal'],
-    look: { kind: 'hum', beast: 'colossus', metal: FORGE_GEAR.brass, plate: FORGE_GEAR.copper, glow: FORGE_GEAR.fire, crest: true, size: 2.15 } }),
+    look: { kind: 'hum', beast: 'colossus', skin: FORGE_GEAR.brass, cloth: FORGE_GEAR.copper, leather: FORGE_GEAR.soot, build: 'colossus', eyes: FORGE_GEAR.fire, weapon: 'none', metal: FORGE_GEAR.brass, plate: FORGE_GEAR.copper, glow: FORGE_GEAR.fire, crest: true, size: 2.15 } }),
 });
 // Manufaktura: trzeci stopień
 elite('mechanic', 'machinist', ['Maszynista', 'Maszyniści', 'maszynistów'], [6, 6, 2, 4, 10, 6, 165], { gold: 95 }, ['repair', 'unlimitedRetal'],
