@@ -52,7 +52,7 @@ test('mapa zagadki: malowany obraz frakcji na kawałkach, nowe kawałki zdejmuj�
     const ob = st.objects.find(o => o.kind === 'obelisk'); ob.seen = { ['p' + ME]: 1 }; showPuzzle(st); await wait(5); const first = st.puzzleSeen[ME], k1 = played.filter(n => n === 'puzzle').length;
     G.modal = null; showPuzzle(st); await wait(5); const k2 = played.filter(n => n === 'puzzle').length; G.modal = null; Sfx.play = play;
     const sounds = ['puzzle', 'grail'].map(n => typeof SOUND_ART !== 'undefined' && !!SOUND_ART[n + '_1']);
-    return { first, k1, k2, painted: !!SCREEN_ART.zagadka_sylvan, all: ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'dungeon', 'stronghold'].filter(f => !SCREEN_ART['zagadka_' + f]), sounds };
+    return { first, k1, k2, painted: !!SCREEN_ART.zagadka_sylvan, all: FACTIONS.map(f => f.id).filter(f => !SCREEN_ART['zagadka_' + f]), sounds };
   });
   assert.ok(r.first > 0, 'kawałki odsłonięte'); assert.equal(r.k1, 1, 'melodia przy odkryciu'); assert.equal(r.k2, 1, 'drugi raz bez melodii');
   assert.deepEqual(r.all, [], 'obrazy wszystkich frakcji'); assert.deepEqual(r.sounds, [true, true]);
