@@ -1196,5 +1196,10 @@
     ]
    ]
   }
+ },
+ "zagadka_forge": {
+  "opis": "epic fantasy oil painting, valley of a steam foundry city at dusk, giant brass clockwork colossus and a storm mage hurling lightning at a black dragon, steam gyrocopters in a copper sky, musketeers and mechanical hounds marching, river of glowing molten metal, smoking chimneys",
+  "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
  }
 }

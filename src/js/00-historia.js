@@ -436,5 +436,11 @@
    Garnizony na drogach (type 'outpost'): drewniane forty z załogą na wąskich drogach. Bitwa z załogą (bez bohatera), zwycięzca przejmuje
    fort: przepuszcza jego i sojuszników, obcych zatrzymuje; właściciel zostawia w nim wojsko (okno spotkania). Komputer też je zdobywa.
    Komputer obsadza swoje forty z głową (aiGarrisonFort): mała załoga z najsłabszych stworów (ok. 400 siły, +200 na tydzień, do 10% armii).
+   Manufaktura (frakcja 'forge', kraina skał): miasto wynalazców – zamek z przyszłości z niedoszłego dodatku do H3, ale zrobiony porządnie:
+   para, mosiądz, proch i iskry zamiast laserów. 21 jednostek (gnomi mechanicy, puszkarze, mechaniczne ogary, ornitoptery i wiropłaty,
+   iskrownicy, parowe pancerze, mosiężne kolosy), klasy Inżynier i Wynalazca, 6 bohaterów. Konstrukty: bez morale, odporne na oślepienie,
+   truciznę, uzdrowienie, wskrzeszenie i wampiryzm, nie leczy ich namiot medyka – zamiast tego naprawiają je mechanicy na początku rundy.
+   Łańcuch iskier (strzał przeskakuje na sąsiedni oddział), wybuch granatu (połowa obrażeń sąsiadom celu). Cecha Polowy warsztat:
+   po zwycięstwie wraca 30% zniszczonych konstruktów. Warsztat machin raz w tygodniu daje brakujące machiny; Graal: Wieczny Silnik.
    ===================================================================================== */
 

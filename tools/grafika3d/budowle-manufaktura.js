@@ -59,7 +59,7 @@ const FORGE3 = {
     if (t === 1) { for (const s of [-1, 1]) g.add(blk(18, 52, 18, MZ.brickD, 'brick', s * 88, 0, 34)); return g; }
     for (const s of [-1, 1]) { g.add(cyl3(17, 15, 66, MZ.brickL, 'brick', s * 94, 0, 34, 18)); g.add(dome(17, 14, MZ.copper, 'metal', s * 94, 66, 34)); g.add(finial(s * 94, 80, 34, MZ.brass));
       const cn = cyl3(2.6, 2.2, 22, MZ.iron, 'iron', 0, 0, 0, 10); cn.rotation.x = Math.PI / 2; cn.position.set(...P(s * 94, 40, 56)); g.add(cn); g.add(mast(s * 24, 54, 40, 26)); }
-    if (t >= 3) { g.add(mzHall(130, 70, 70, 0, -34, { col: MZ.brick, wins: 4 })); g.add(blk(110, 46, 56, MZ.ironL, 'iron', 0, 70, -38)); for (let i = 0; i < 5; i++) g.add(blk(2, 46, 58, MZ.iron, 'iron', -44 + i * 22, 70, -38));
+    if (t >= 3) { g.add(mzHall(130, 70, 70, 0, -34, { col: MZ.brick, wins: 4 })); g.add(blk(110, 46, 56, '#8a8a94', 'iron', 0, 70, -38)); for (let i = 0; i < 5; i++) g.add(blk(2, 46, 58, MZ.copper, 'iron', -44 + i * 22, 70, -38));
       g.add(blk(40, 60, 36, MZ.brickL, 'brick', 0, 116, -42)); g.add(cyl3(10, 10, 1.6, '#f0e8d0', 'plaster', 0, 156, -24, 24)); g.children[g.children.length - 1].rotation.x = Math.PI / 2; g.add(dome(22, 22, MZ.patina, 'metal', 0, 176, -42)); g.add(finial(0, 198, -42, MZ.brass));
       for (const s of [-1, 0, 1]) g.add(mzStack(s * 44, -60, 110 + Math.abs(s) * -14, 6, 70)); for (const s of [-1, 1]) g.add(mzTank(12, 30, s * 74, -10, 0, MZ.copper)); }
     return g; },

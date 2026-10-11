@@ -47,8 +47,8 @@ test('naprawa: mechanicy na początku rundy naprawiają i odbudowują uszkodzone
   await newGame(page);
   await setup([['mechanic', 20], ['clockHound', 10]], ['goblin', 5]);
   const r = await page.evaluate(() => {
-    const B = BT, hound = B.units.find(u => u.cid === 'clockHound'); applyDamage(hound, 50); const n0 = hound.n, hp0 = (hound.n - 1) * 22 + hound.hp;
-    repairRound(B); const hp1 = (hound.n - 1) * 22 + hound.hp;
+    const B = BT, hound = B.units.find(u => u.cid === 'clockHound'); applyDamage(hound, 50); const n0 = hound.n, hp0 = (hound.n - 1) * 24 + hound.hp;
+    repairRound(B); const hp1 = (hound.n - 1) * 24 + hound.hp;
     return { n0, n1: hound.n, healed: hp1 - hp0, log: B.log.some(l => /naprawiają/.test(l)) };
   });
   assert.equal(r.healed, 50, '20 mechaników × 3 życia, najwyżej tyle, ile brakuje'); assert.ok(r.n1 > r.n0, 'zniszczone ogary wracają'); assert.ok(r.log);
@@ -74,7 +74,7 @@ test('polowy warsztat: inżynier po zwycięstwie odbudowuje część zniszczonyc
   await newGame(page, { faction: 'forge' });
   await setup([['clockHound', 20], ['lightGuard', 30]], ['goblin', 4], 'engineer');
   const r = await page.evaluate(() => {
-    const B = BT, st = G.state, h = hero(st), hound = B.units.find(u => u.cid === 'clockHound'); applyDamage(hound, 22 * 10); // 10 ogarów zniszczonych przed końcem bitwy
+    const B = BT, st = G.state, h = hero(st), hound = B.units.find(u => u.cid === 'clockHound'); applyDamage(hound, 24 * 10); // 10 ogarów zniszczonych przed końcem bitwy
     simulateBattle(B); const res = resolveBattle(B, false), hs = h.army.find(s => s && s.cid === 'clockHound');
     const t = st.towns.find(o => o.owner === ME); t.faction = 'forge'; t.built = [...new Set([...t.built, 'fort', 'special'])]; h.machines = [];
     const m1 = specialVisit(st, t, h), got = [...h.machines], m2 = specialVisit(st, t, h);

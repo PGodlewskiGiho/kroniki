@@ -11,7 +11,7 @@ test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'bł�
 test('każdy utwór jest wbudowany i ma długość pętli', async () => {
   const r = await page.evaluate(() => Object.entries(MUSIC_ART).map(([k, v]) => [k, v.loop, v.d.length]));
   const names = r.map(x => x[0]).sort();
-  assert.deepEqual(names, ['bitwa', 'bitwa_bohater', 'bitwa_boss', 'bitwa_dzicz', 'bitwa_oblezenie', 'bitwa_trudna', 'menu', 'miasto_akademia', 'miasto_cytadela', 'miasto_inferno', 'miasto_knieja', 'miasto_kurhan', 'miasto_loch', 'miasto_przystan', 'miasto_twierdza']);
+  assert.deepEqual(names, ['bitwa', 'bitwa_bohater', 'bitwa_boss', 'bitwa_dzicz', 'bitwa_oblezenie', 'bitwa_trudna', 'menu', 'miasto_akademia', 'miasto_cytadela', 'miasto_inferno', 'miasto_knieja', 'miasto_kurhan', 'miasto_loch', 'miasto_manufaktura', 'miasto_przystan', 'miasto_twierdza']);
   for (const [k, loop, len] of r) { assert.ok(loop > 30 && loop < 300, `${k}: pętla ${loop}`); assert.ok(len > 100000, `${k}: dane`); }
 });
 

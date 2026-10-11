@@ -5,7 +5,7 @@
 //   malowanie: cd tools/tla-ai && W=768 H=576 sh uruchom.sh zagadka_<frakcja> zagadka/szkic-<frakcja>.png 1,2 0.5
 //   wybrany obraz -> src/grafika/ekrany/zagadka_<frakcja>.webp
 const { openGame } = require('../../../tests/harness'); const fs = require('fs'), path = require('path');
-const FACS = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'dungeon', 'stronghold'];
+const FACS = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'dungeon', 'stronghold', 'forge'];
 (async () => { const { browser, page } = await openGame(); const only = process.argv[2];
   for (const fac of FACS) { if (only && fac !== only) continue;
     const b64 = await page.evaluate(fac => {
@@ -95,6 +95,16 @@ const FACS = ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'du
           crowd(['orcAxe', 'wargRider', 'hobgoblinRaider', 'orcChief'], 20, 240, 540, hor + 10, hor + 110, 0.55, 0.95, 1, 'walk');
           put('thunderbird', 320, 150, 1.0, 1, 'walk', 3); put('roc', 470, 200, 0.8, -1, 'walk', 6);
           put('ancientBehemoth', 220, 520, 2.5, 1, 'attack', 4); put('cyclopsKing', 570, 510, 2.3, -1, 'attack', 5); for (let i = 0; i < 8; i++) blob(300 + r() * 220, 520 + r() * 40, 40, 14, '#d8a870', 0.4); },
+        forge() { // dolina kuźni o zmierzchu: mosiężny kolos i władca burzy przeciw czarnemu smokowi, wiropłaty w miedzianym niebie, rzeka stopionego metalu
+          const hor = 320; sky(['#2a2a4a', '#9a5a3a', '#f0a060'], hor); clouds(5, 60, 220, '#5a4a4a', 0.35);
+          ridge(hor - 10, 90, '#5a4a4e', 40, 3); ridge(hor + 10, 50, '#4a3a38', 30, 4); ground(hor, ['#7a6250', '#4a3a2e']);
+          for (const x of [120, 260, 520, 650]) { blob(x, hor - 60, 30, 50, '#8a7a78', 0.35); blob(x + 20, hor - 120, 40, 40, '#8a7a78', 0.25); }
+          town('forge', 420, hor + 40, 3.6); fog(hor + 20, 30, '#e8a070', 0.4);
+          poly([[0, 470], [140, 450], [300, 480], [420, 540], [440, H], [360, H], [280, 520], [130, 500], [0, 510]], '#ffb040'); glow(220, 490, 200, '#ff8020', 0.6);
+          crowd(['musketeer', 'steelHound', 'mechanic', 'grenadier'], 16, 470, 740, hor + 50, hor + 150, 0.9, 1.4, -1, 'walk');
+          put('gyrocopter', 520, 120, 1.3, -1, 'walk', 2); put('bomber', 650, 180, 1.2, -1, 'walk', 5); put('ornithopter', 420, 80, 1.0, -1, 'walk', 3);
+          put('blackDragon', 230, 270, 1.5, 1, 'attack', 3); bolt(450, 400, 300, 230);
+          put('forgeTitan', 600, 560, 1.25, -1, 'attack', 4); put('stormLord', 440, 520, 1.3, -1, 'attack', 5); },
       };
       S[fac](); g.fillStyle = 'rgba(30,16,4,.10)'; g.fillRect(0, 0, W, H);
       return o.toDataURL('image/png').split(',')[1]; }, fac);

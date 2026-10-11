@@ -23,7 +23,7 @@ test('dźwięki otoczenia: tartak piłuje, kuźnia dzwoni… tylko blisko bohate
   });
   assert.ok(r.saw > r.forge && r.forge > 0, `głośność: piła ${r.saw}, kuźnia ${r.forge}`); assert.equal(r.inn, false, 'karczma 12 pól dalej milczy');
   assert.ok(r.n <= 3); assert.deepEqual(r.pan, [true, true], 'piła z prawej, kuźnia z lewej'); assert.ok(r.mapped >= 25, `miejsc z dźwiękiem: ${r.mapped}`); assert.ok(r.mines);
-  assert.equal(r.portal, 'amb_portal', 'portal: niski szum wiru'); assert.equal(r.towns, 8, 'każda frakcja ma własny dźwięk miasta');
+  assert.equal(r.portal, 'amb_portal', 'portal: niski szum wiru'); assert.equal(r.towns, 9, 'każda frakcja ma własny dźwięk miasta');
 });
 
 test('czary: każdy czar bitewny ma własny znak (słup światła, kopuła, dym, lód…) i dźwięk rzucenia i trafienia; efekty rysują się bez błędów', async () => {
