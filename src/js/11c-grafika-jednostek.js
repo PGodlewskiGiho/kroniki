@@ -108,16 +108,16 @@ function heroFacing(h) { // 0 = wschód, dalej zgodnie z ruchem wskazówek zegar
   const f = HERO_FACING.get(h); return f != null ? f : h.dir < 0 ? 4 : 0;
 }
 function heroMap3d(h, col) {
-  const M = typeof HERO_MAP_ART !== 'undefined' && HERO_MAP_ART[h.cls], mim = HERO_MAP_IMG[h.cls];
+  const hk = heroArtKey(h), M = typeof HERO_MAP_ART !== 'undefined' && HERO_MAP_ART[hk], mim = HERO_MAP_IMG[hk]; // każdy bohater ma własny arkusz
   if (!h.boat && M && mim && mim._ok) {
     const fd = HERO_FACE[heroFacing(h)], src = HERO_FACE_SRC[fd] || fd, flip = !!HERO_FACE_SRC[fd], walk = !!h.anim, pose = (walk ? 'walk_' : 'idle_') + src, F = M.f[pose];
-    const i = walk ? Math.floor(G.time * 36) % F.length : Math.floor(G.time * 4) % F.length, key = `hm_${h.cls}_${col}_${pose}_${i}_${flip ? 1 : 0}`; let s = SPR.get(key);
+    const i = walk ? Math.floor(G.time * 36) % F.length : Math.floor(G.time * 4) % F.length, key = `hm_${hk}_${col}_${pose}_${i}_${flip ? 1 : 0}`; let s = SPR.get(key);
     if (!s) { const [x, y, w, hh, ax, ay] = F[i], c = document.createElement('canvas'); c.width = w; c.height = hh; const g = c.getContext('2d', { willReadFrequently: true });
       if (flip) { g.translate(w, 0); g.scale(-1, 1); } g.drawImage(mim, x, y, w, hh, 0, 0, w, hh); g.setTransform(1, 0, 0, 1, 0, 0); keyTint(g, w, hh, col);
       s = { c, ax: flip ? w - ax : ax, ay, u: HERO_MAP_H / M.f.idle_E[0][3], raw: true }; SPR.set(key, s); }
     if (walk) G.dirty = true; return s;
   }
-  const A = typeof HERO_ART !== 'undefined' && HERO_ART[h.cls], im = HERO_IMG[h.cls]; if (h.boat || !A || !im || !im._ok) return null;
+  const A = typeof HERO_ART !== 'undefined' && HERO_ART[hk], im = HERO_IMG[hk]; if (h.boat || !A || !im || !im._ok) return null;
   const walk = !!(h.anim && A.f.walk), n = (walk ? A.f.walk : A.f.idle).length, s = heroBattleSprite(h, col, h.dir < 0 ? -1 : 1, Math.floor(G.time * (walk ? 12 : 3)) % n, walk ? 'walk' : false);
   return s._map || (s._map = { c: s.c, ax: s.ax, ay: s.ay, u: HERO_MAP_H / A.f.idle[0][3], raw: true });
 }
@@ -138,8 +138,8 @@ function map3dTinted(key, col, flip = false) {
   s = { c, ax: flip ? c.width - b.ax : b.ax, ay: b.ay, u: b.u, raw: true }; SPR.set(sk, s); return s;
 }
 function heroBattleSprite(h, col, dir, i, cast) {
-  const A = typeof HERO_ART !== 'undefined' && HERO_ART[h.cls], im = HERO_IMG[h.cls]; if (!A || !im || !im._ok) return heroBattleSprite2D(h, col, dir, i, cast);
-  const pose = cast === 'walk' && A.f.walk ? 'walk' : cast && cast !== 'walk' ? 'cast' : 'idle', key = `h3_${h.cls}_${col}_${pose}_${i}_${dir}`; /* cast = walk: chód (mapa) */ let s = SPR.get(key); if (s) return s;
+  const hk = heroArtKey(h), A = typeof HERO_ART !== 'undefined' && HERO_ART[hk], im = HERO_IMG[hk]; if (!A || !im || !im._ok) return heroBattleSprite2D(h, col, dir, i, cast);
+  const pose = cast === 'walk' && A.f.walk ? 'walk' : cast && cast !== 'walk' ? 'cast' : 'idle', key = `h3_${hk}_${col}_${pose}_${i}_${dir}`; /* cast = walk: chód (mapa) */ let s = SPR.get(key); if (s) return s;
   const fr = A.f[pose][i % A.f[pose].length], [x, y, w, hh, ax, ay] = fr, c = document.createElement('canvas'); c.width = w; c.height = hh; const g = c.getContext('2d', { willReadFrequently: true }); c._ctx = g;
   if (dir < 0) { g.translate(w, 0); g.scale(-1, 1); } g.drawImage(im, x, y, w, hh, 0, 0, w, hh); g.setTransform(1, 0, 0, 1, 0, 0);
   keyTint(g, w, hh, col); s = { c, ax: dir < 0 ? w - ax : ax, ay, u: A.u, raw: !!A.raw }; SPR.set(key, s); return s;

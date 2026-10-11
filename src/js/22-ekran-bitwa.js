@@ -24,7 +24,7 @@ function shotFrom(u, d) {
 const SHOT_KIND = { titan: 'lightning', stormTitan: 'lightning', siren: 'wave', masterGremlin: 'pebble', ballista: 'bolt', arrowTower: 'arrow' };
 function shotKind(cid) {
   const L = CREATURES[cid].look; if (SHOT_KIND[cid]) return SHOT_KIND[cid]; if (L.kind === 'eye') return 'ray';
-  return { bow: 'arrow', crossbow: 'bolt', musket: 'bullet', staff: 'orb', fireball: 'fireball', sparkStaff: 'lightning', grenade: 'bomb', axe: 'axe', labrys: 'axe', club: 'rock', mace: 'pebble', spear: 'lightning' }[L.weapon] || (L.boulder ? 'rock' : L.orb ? 'orb' : 'arrow');
+  return { bow: 'arrow', crossbow: 'bolt', musket: 'bullet', staff: 'orb', fireball: 'fireball', sparkStaff: 'lightning', grenade: 'bomb', sling: 'pebble', axe: 'axe', labrys: 'axe', club: 'rock', mace: 'pebble', spear: 'lightning' }[L.weapon] || (L.boulder ? 'rock' : L.orb ? 'orb' : 'arrow');
 }
 // Lot pocisku: czas (s) i wysokość łuku zależne od odległości; piorun i promień są natychmiastowe
 const SHOT_FLIGHT = { arrow: d => [0.05 + d / 2800, 6 + d * 0.07], bolt: d => [0.04 + d / 3400, 3 + d * 0.03], bullet: d => [0.03 + d / 6000, 0], orb: d => [0.08 + d / 1500, 8],

@@ -7,7 +7,7 @@
 // kły, pysk (snout: dog/bull/lizard), jedno oko, broń (także w obu rękach: dual; kilka par rąk: arms).
 // P: poza { t, walk (0..1), fly (0..1), atk (0..1), hurt }. Postać patrzy w +x, bliższy bok (prawy, z bronią) to +z.
 /* global THREE, G3, mat, mesh, joint, sph, cap, cyl, cone, box, torus, lathe, bone, tube, sheet, decal, slab, rbox, spike, chunk, marker, DK, LT, bright */
-const STYLE = w => ({ spear: 'thrust', halberd: 'thrust', lance: 'thrust', trident: 'thrust', pitchfork: 'thrust', glaive: 'thrust', bow: 'bow', crossbow: 'xbow', musket: 'xbow', staff: 'cast', sparkStaff: 'cast', grenade: 'cast', fireball: 'cast', none: 'claw' }[w] || 'swing');
+const STYLE = w => ({ spear: 'thrust', halberd: 'thrust', lance: 'thrust', trident: 'thrust', pitchfork: 'thrust', glaive: 'thrust', bow: 'bow', crossbow: 'xbow', musket: 'xbow', staff: 'cast', sparkStaff: 'cast', grenade: 'cast', sling: 'cast', fireball: 'cast', none: 'claw' }[w] || 'swing');
 // sh: barki, arm/leg: grubość, armL/legL: długość, torso: wysokość tułowia, chest: głębia klatki, head: głowa
 const BUILDS = {
   normal: { sh: 1, arm: 1, armL: 1, leg: 1, legL: 1, torso: 1, chest: 1, head: 1 },
@@ -488,6 +488,10 @@ function weapon(hold, L, W, A, wind, hit, metal, near = true) {
     if (top === 'skull') { h.add(sph(0.07, '#e8e2cc', 'bone', [0, 1.2, 0], [1, 1.1, 0.9])); for (const z of [-0.025, 0.025]) h.add(sph(0.016, L.orb || '#a0f0a0', 'glow', [0.06, 1.21, z])); }
     else if (top === 'cross') { h.add(box(0.035, 0.28, 0.035, '#e0c050', 'gold', [0, 1.25, 0])); h.add(box(0.035, 0.035, 0.18, '#e0c050', 'gold', [0, 1.3, 0])); h.add(sph(0.03, L.orb || '#fff0a0', 'glow', [0, 1.3, 0])); }
     else if (top === 'crook') { h.add(torus(0.08, 0.02, '#e0c050', 'gold', [0.08, 1.18, 0], null, null, Math.PI * 1.3)); }
+    else if (top === 'scythe') { const bl = L.metal || '#b8bcc4'; h.add(box(0.05, 0.05, 0.05, '#3a2a1e', 'iron', [0, 1.12, 0])); // kosa śmierci: długie zakrzywione ostrze w przód nad głową
+      h.add(slab([[0, 0], [0.12, 0.05], [0.34, 0.02], [0.56, -0.1], [0.66, -0.26], [0.5, -0.1], [0.3, -0.04], [0.06, -0.05]], 0.016, bl, 'steel', [0, 1.13, 0])); if (L.orb) h.add(sph(0.022, L.orb, 'glow', [0.02, 1.14, 0])); }
+    else if (top === 'crystal') { h.add(mesh(new THREE.OctahedronGeometry(0.08), L.orb || '#80f0e0', A != null ? 'glow' : 'gem', [0, 1.3, 0], [0, 0.4, 0], [0.55, 2.6, 0.55])); for (const z of [-1, 1]) h.add(mesh(new THREE.OctahedronGeometry(0.05), L.orb || '#80f0e0', 'gem', [0.02, 1.18, 0.05 * z], [0.4 * z, 0, 0.3 * z], [0.5, 1.8, 0.5])); } // wysoki kryształ w oprawie
+    else if (top === 'crescent') { h.add(torus(0.11, 0.018, L.trim || '#e0c050', 'gold', [0, 1.24, 0], [0, Math.PI / 2, 0], null, Math.PI * 1.25)); h.add(sph(0.05, L.orb || '#e0a0ff', A != null ? 'glow' : 'gem', [0, 1.2, 0])); } // półksiężyc z kulą
     else { for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2; h.add(tube([[0, 1.08, 0], [Math.cos(a) * 0.07, 1.18, Math.sin(a) * 0.07], [Math.cos(a) * 0.03, 1.3, Math.sin(a) * 0.03]], 0.012, 0.006, '#5a3a1e', 'wood')); } // korona z korzeni
       h.add(sph(0.075, L.orb || '#80c0ff', A != null ? 'glow' : 'gem', [0, 1.2, 0])); }
   } else if (W === 'musket') { // muszkiet: długa lufa, drewniane łoże, zamek z kurkiem; przy strzale błysk i dym z wylotu (0,55–0,7)
@@ -507,6 +511,10 @@ function weapon(hold, L, W, A, wind, hit, metal, near = true) {
     for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2; h.add(tube([[0, 1.0, 0], [Math.cos(a) * 0.08, 1.12, Math.sin(a) * 0.08], [Math.cos(a) * 0.05, 1.26, Math.sin(a) * 0.05], [0, 1.3, 0]], 0.008, 0.006, '#c8a050', 'gold')); }
     h.add(sph(0.06 + k * 0.03, c, 'glow', [0, 1.15, 0])); marker(h, 'fx:orb', [0, 1.15, 0]); marker(h, 'tip', [0, 1.15, 0]);
     if (k > 0.2) for (let i = 0; i < 4; i++) { const a = i * 1.7 + A * 20; h.add(tube([[0, 1.15, 0], [Math.cos(a) * 0.12, 1.22, Math.sin(a) * 0.12], [Math.cos(a + 1) * 0.2, 1.18, Math.sin(a + 1) * 0.2]], 0.01, 0.003, L.glow || c, 'glow')); }
+  } else if (W === 'sling') { // proca: dwa rzemienie i kamień w kieszeni, w rzucie zatacza koło nad głową
+    const h = hold(0), sp = A != null ? A * Math.PI * 4 : 0.3, e = [Math.sin(sp) * 0.16, 0.08 - Math.cos(sp) * 0.16, 0.02];
+    for (const z of [-0.012, 0.012]) h.add(tube([[0, 0.02, z], [e[0] * 0.5, (0.02 + e[1]) * 0.5, z], [e[0], e[1], z]], 0.006, 0.005, '#6a4424', 'leather'));
+    h.add(sph(0.032, '#8a8478', 'stone', e)); marker(h, 'tip', e);
   } else if (W === 'grenade') { // granat: żeliwna kula z tlącym się lontem; przy rzucie lont płonie jasno
     const h = hold(0), k = A != null ? Math.sin(Math.min(1, A) * Math.PI) : 0; h.add(sph(0.06, L.bombs || '#2a2a2a', 'iron', [0.02, 0.1, 0])); h.add(cyl(0.012, 0.012, 0.03, '#8a8478', 'iron', [0.02, 0.17, 0]));
     h.add(cone(0.02 + k * 0.02, 0.05 + k * 0.06, '#ffb040', 'fire', [0.02, 0.21, 0], null, 6)); marker(h, 'fx:muzzle', [0.02, 0.1, 0]); marker(h, 'tip', [0.02, 0.1, 0]);
