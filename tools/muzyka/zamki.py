@@ -251,4 +251,40 @@ def twierdza():  # Twierdza: stepowa, d-dorycka, skrzypki ludowe, rogi, bębny w
     return S
 
 
-ZAMKI = [przystan, knieja, kurhan, cytadela, inferno, akademia, loch, twierdza]
+def manufaktura():  # Manufaktura: mechaniczny marsz, g-moll i B-dur, tykanie zegara (drewienka), ksylofon jak trybiki, fagot, trąbki, puzony, kowadło
+    S = Song('miasto_manufaktura', 116, 4, 24, seed=37); P = lambda s, b: prog(s, 4, S.bar(b))
+    XYLO, TUBA = 13, 58
+    A, B, A2 = P('Gm Eb Cm D Gm Cm D:2 D7:2 Gm', 1), P('Bb F Gm D Eb Bb Cm:2 D7:2 D', 9), P('Gm Eb Cm D Gm Cm D:2 Gm:2 D7', 17)
+    allp = A + B + A2
+    mA = 'G4:1 Bb4:.5 A4:.5 G4:1 D5:1 | Eb5:1.5 D5:.5 C5:1 Bb4:1 | C5:1 Eb5:.5 D5:.5 C5:1 G4:1 | A4:1.5 Bb4:.5 C5:1 D5:1 | G5:1 F5:.5 Eb5:.5 D5:1 Bb4:1 | C5:1 Eb5:1 G5:2 | F#5:1 A5:.5 G5:.5 F#5:1 D5:1 | G5:4'
+    mA2 = mA.rsplit('|', 2)[0] + '| F#5:1 A5:1 G5:2 | D5:1 C5:1 A4:1 F#4:1'
+    mB = 'D5:1.5 F5:.5 F5:1 D5:1 | C5:1.5 A4:.5 F4:2 | G4:1 Bb4:1 D5:1 G5:1 | F#5:2 D5:2 | Eb5:1.5 G5:.5 G5:1 Eb5:1 | D5:1.5 F5:.5 Bb4:2 | C5:1 Eb5:1 D5:1 C5:1 | A4:2 F#4:1 A4:1'
+    bsn = S.track('fagot', BSN, 0, vol=96, pan=54, rev=70)
+    tpt = S.track('trąbki', TPT, 1, vol=98, pan=72, rev=85)
+    horn = S.track('rogi', HORN, 2, vol=92, pan=58, rev=90)
+    tbn = S.track('puzony', TBN, 3, vol=88, pan=80, rev=85)
+    xy = S.track('ksylofon', XYLO, 4, vol=78, pan=40, rev=60)
+    gl = S.track('dzwonki', GLOCK, 5, vol=62, pan=90, rev=90)
+    pz = S.track('pizzicato', PIZZ, 6, vol=86, pan=64, rev=70)
+    tb = S.track('tuba', TUBA, 7, vol=90, pan=66, rev=60)
+    timp = S.track('kotły', TIMP, 8, vol=94, pan=64, rev=85)
+    dr = S.track('perkusja', 0, 9, vol=86, pan=64, rev=60)
+    melody(bsn, S.bar(1), mA, vel=86, legato=0.82, oct=-1)
+    melody(tpt, S.bar(9), mB, vel=94, legato=0.86)
+    pad(horn, B, 53, 67, 3, vel=58, restrike=True)
+    m3 = melody(tpt, S.bar(17), mA2, vel=96, legato=0.86); copy_notes(m3, horn, oct=-1, vel=80, legato=0.9); copy_notes(m3, gl, oct=1, vel=56, legato=0.5)
+    pad(tbn, B + A2, 46, 60, 3, vel=62, restrike=True)
+    arp(xy, A + A2, 67, 91, step=0.5, shape=(0, 2, 1, 3, 2, 4, 3, 1), vel=58, ring=0.9)  # trybiki: równe ósemki
+    arp(xy, B, 67, 91, step=1, shape=(0, 2, 4, 2), vel=54, ring=0.9)
+    bass(pz, allp, lo=43, pattern=[(0, .5, 'R'), (1, .5, '5'), (2, .5, 'R'), (3, .5, '5')], vel=80)
+    bass(tb, B + A2, lo=31, pattern=[(0, 1.5, 'R'), (2, 1.5, '5')], vel=86)
+    hits(dr, 1, 24, 4, [(0, 76, 74), (1, 77, 60), (2, 76, 70), (3, 77, 60)])  # tik-tak
+    hits(dr, 9, 24, 4, [(0, 36, 76), (1, 38, 56), (1.75, 38, 44), (2, 36, 70), (3, 38, 60), (3.5, 38, 46)])  # marsz
+    for b in (9, 13, 17, 21): dr.note(S.bar(b), 2, 53, 96); dr.note(S.bar(b), 2, 49, 84)  # kowadło i talerz
+    for b in range(17, 25): dr.note(S.bar(b) + 3.5, .3, 81, 52)
+    roll(timp, S.bar(8), 4, 38, 50, 112); roll(timp, S.bar(24), 4, 38, 50, 110)
+    for c, s, d in B + A2: timp.note(s, .6, 36 + (chord(c)[2] - 36) % 12, 88)
+    return S
+
+
+ZAMKI = [przystan, knieja, kurhan, cytadela, inferno, akademia, loch, twierdza, manufaktura]

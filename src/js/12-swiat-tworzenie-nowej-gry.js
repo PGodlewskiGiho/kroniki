@@ -26,7 +26,8 @@ function cleanupBiomes(ter, n, minSize) {
 function generateMap(n, seed, land = 'random') {
   const rng = mulberry32(seed ^ 0x5bd1e995), lr = mulberry32(seed ^ 0x1a2b3c);
   const pickL = land === 'random' ? (() => { const w = { mixed: 3, mountains: 2, forest: 2, desert: 1, frost: 1, marsh: 1, islands: 1 }, tot = Object.values(w).reduce((a, b) => a + b, 0); let r = lr() * tot; for (const [k, v] of Object.entries(w)) if ((r -= v) < 0) return k; return 'mixed'; })() : land;
-  const LT = LAND_TYPES.find(l => l.id === pickL) || LAND_TYPES[1], shapes = LT.shapes || ['continent', 'continent', 'coast', 'coast', 'inland', 'isthmus', 'lakes'], shape = shapes[Math.floor(lr() * shapes.length)];
+  const pickB = land === 'random' ? (r => (r < 0.1 ? 'tropical' : r < 0.2 ? 'farmland' : pickL))(mulberry32(seed ^ 0x7a11d)()) : pickL; // nowe krainy z osobnego ziarna: dawne ziarna dają te same mapy
+  const LT = LAND_TYPES.find(l => l.id === pickB) || LAND_TYPES[1], shapes = LT.shapes || ['continent', 'continent', 'coast', 'coast', 'inland', 'isthmus', 'lakes'], shape = shapes[Math.floor(lr() * shapes.length)];
   const ca = lr() * Math.PI * 2, cs = Math.cos(ca), sn = Math.sin(ca), side = Math.floor(lr() * 4), side2 = lr() < 0.5 ? (side + 1) % 4 : -1, ia = lr() * Math.PI, ic = [lr() < 0.5 ? -0.22 : 0.22, (lr() - 0.5) * 0.3];
   const shapeElev = (x, y) => { // dodatek do wysokości: gdzie ma być morze
     const u = x / (n - 1), v = y / (n - 1), eA = Math.min(x, y, n - 1 - x, n - 1 - y) / Math.max(4, n * 0.1), fall = k => -(1 - clamp(k, 0, 1)) * 0.3;
@@ -55,19 +56,23 @@ function generateMap(n, seed, land = 'random') {
   const qWater = quantile(elev, shape === 'lakes' ? Math.min(LT.water, 0.1) : LT.water), qRough = quantile(elev, 0.8);
   const qCold = quantile(temp, LT.cold), qHot = quantile(temp, 1 - LT.hot), qSwamp = quantile(moist, LT.swamp), qDry = quantile(moist, 0.35), qMid = quantile(moist, LT.sandM || 0.6); // qMid: w upale piasek poniżej tej wilgotności
   const qVolc = quantile(volc, 0.85), qForest = quantile(forest, LT.forest), qClear = quantile(clear, 0.86);
+  // biomy: w upale dżungla (wilgotno) i sawanna (sucho, ale nie piasek), w największym mrozie skute lodem pustkowie, na nizinach
+  // umiarkowanych łaty pól uprawnych. Osobny szum z własnego ziarna – nie zmienia losowań reszty świata.
+  const nB = makeNoise(mulberry32(seed ^ 0x5b10e5)), field = new Float32Array(N); for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) field[y * n + x] = nB(x / 9, y / 9);
+  const qJungle = quantile(moist, LT.jungle ?? 0.8), qIce = quantile(temp, LT.cold * (LT.ice ?? 0.4)), qField = quantile(field, 1 - (LT.fields ?? 0.22));
   for (let i = 0; i < N; i++) {
     const e = elev[i], m = moist[i], t = temp[i];
     if (e < qWater) terrain[i] = TER.WATER;
-    else if (t < qCold) terrain[i] = TER.SNOW;
-    else if (t > qHot) terrain[i] = volc[i] > qVolc ? TER.LAVA : (m < qMid ? TER.SAND : TER.DIRT);
+    else if (t < qCold) terrain[i] = t < qIce ? TER.ICE : TER.SNOW;
+    else if (t > qHot) terrain[i] = volc[i] > qVolc ? TER.LAVA : m < qMid ? TER.SAND : m > qJungle ? TER.JUNGLE : TER.SAVANNA;
     else if (m > qSwamp && e < qRough) terrain[i] = TER.SWAMP; // bagna w nizinach
     else if (e > qRough) terrain[i] = TER.ROUGH;
-    else terrain[i] = m > qDry ? TER.GRASS : TER.DIRT;
+    else terrain[i] = field[i] > qField && e < qRough * 0.92 ? TER.FIELD : m > qDry ? TER.GRASS : TER.DIRT;
   }
   smoothTerrain(terrain, n); cleanupBiomes(terrain, n, Math.max(14, Math.round(N / 300)));
   // plaże wzdłuż wybrzeża
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-    const i = y * n + x; if (terrain[i] === TER.WATER || terrain[i] === TER.SNOW) continue;
+    const i = y * n + x; if (terrain[i] === TER.WATER || terrain[i] === TER.SNOW || terrain[i] === TER.ICE) continue;
     let coast = false; for (let d = 0; d < 4; d++) { const nx = x + DX8[d], ny = y + DY8[d]; if (nx >= 0 && ny >= 0 && nx < n && ny < n && terrain[ny * n + nx] === TER.WATER) coast = true; }
     if (coast && thash(x, y, seed) % 10 < 8) terrain[i] = TER.SAND;
   }
@@ -124,7 +129,9 @@ function generateMap(n, seed, land = 'random') {
   // lasy: zwarte puszcze (gęste wewnątrz, rzadsze na skraju) z polanami; poza lasem pojedyncze drzewa i głazy
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
     const i = y * n + x; if (terrain[i] === TER.WATER || obst[i] || wet[i]) continue; const r = rng(), f = forest[i] - qForest, t = terrain[i];
-    if (f > 0 && t !== TER.SAND && t !== TER.LAVA) { const dens = t === TER.SWAMP ? 0.45 : f > 0.04 ? 0.94 : 0.55 + f * 9; if (clear[i] < qClear && r < dens) obst[i] = OBST.TREE; } // polana: clear > qClear
+    if (t === TER.JUNGLE) { if (f > -0.03 && clear[i] < qClear && r < 0.85) obst[i] = OBST.TREE; } // dżungla: gęstwina szersza niż las, z polanami
+    else if (t === TER.SAVANNA || t === TER.ICE || t === TER.FIELD) { if (t !== TER.FIELD && r < (f > 0 ? 0.16 : 0.05)) obst[i] = OBST.TREE; } // sawanna: pojedyncze akacje; lód: iglice; pola bez drzew
+    else if (f > 0 && t !== TER.SAND && t !== TER.LAVA) { const dens = t === TER.SWAMP ? 0.45 : f > 0.04 ? 0.94 : 0.55 + f * 9; if (clear[i] < qClear && r < dens) obst[i] = OBST.TREE; } // polana: clear > qClear
     else if (t === TER.SAND && f > 0.02 && r < 0.2) obst[i] = OBST.TREE;
     else if (nearMt[i] && r < 0.06) obst[i] = OBST.ROCK;
     else if (r < 0.006) obst[i] = OBST.ROCK;
@@ -206,9 +213,11 @@ function generateCave(n, seed) {
   const terrain = new Uint8Array(N).fill(TER.DIRT), obst = new Uint8Array(N), road = new Uint8Array(N), wall = new Float32Array(N), kind = new Float32Array(N);
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const i = y * n + x; wall[i] = nW(x / 7, y / 7) * 0.7 + nW2(x / 3, y / 3) * 0.3; kind[i] = nT(x / 10, y / 10); }
   const qW = quantile(wall, 0.33), qL = quantile(kind, 0.86), qS = quantile(kind, 0.12), qR = quantile(kind, 0.55);
+  const nB = makeNoise(mulberry32(seed ^ 0x6c7a5e)), biome = new Float32Array(N); for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) biome[y * n + x] = nB(x / 14, y / 14);
+  const qCr = quantile(biome, 0.78), qFu = quantile(biome, 0.22); // groty kryształowe i pieczary grzybowe: wielkie łaty podziemi
   for (let i = 0; i < N; i++) { const x = i % n, y = (i / n) | 0, edge = Math.min(x, y, n - 1 - x, n - 1 - y);
     if (edge < 1 || wall[i] > qW) obst[i] = OBST.MOUNT;
-    terrain[i] = kind[i] > qL ? TER.LAVA : kind[i] < qS ? TER.SWAMP : kind[i] > qR ? TER.ROUGH : TER.DIRT;
+    terrain[i] = kind[i] > qL ? TER.LAVA : kind[i] < qS ? TER.SWAMP : biome[i] > qCr ? TER.CRYSTAL : biome[i] < qFu ? TER.FUNGUS : kind[i] > qR ? TER.ROUGH : TER.DIRT;
     if (!obst[i] && rng() < 0.035) obst[i] = OBST.ROCK; } // stalagmity i kryształy
   const comp = new Int32Array(N).fill(-1); let best = -1, bestSize = 0, cid = 0; // największa sieć pieczar
   for (let s = 0; s < N; s++) { if (obst[s] === OBST.MOUNT || comp[s] >= 0) continue; let size = 0; const stack = [s]; comp[s] = cid;
@@ -296,7 +305,7 @@ function placeObjects(st) {
   const monster = (x, y, boost = 0, ddFix = null) => { // ddFix: siła jak przy samym starcie (pierwsze walki)
     if (home[y * n + x]) return null; const dd = ddFix != null ? ddFix : d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), all = NEUTRALS_BY_LEVEL[lvl];
     const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff) * rule(st, 'monsters');
-    const ter = map.terrain[y * n + x], home2 = c => !CREATURES[c].habitat || CREATURES[c].habitat.includes(ter); // siedlisko: yeti na śniegu, pająk na bagnach i bezdrożach; syrena i kraken tylko w morzu
+    const ter = map.terrain[y * n + x], home2 = c => !CREATURES[c].habitat || CREATURES[c].habitat.includes(ter) || CREATURES[c].habitat.includes(terBase(ter)); // siedlisko: yeti na śniegu, pająk na bagnach i bezdrożach; syrena i kraken tylko w morzu
     const fit0 = all.filter(c => home2(c) && CREATURES[c].value <= power * 1.3), fit = fit0.flatMap(c => (CREATURES[c].habitat ? [c, c] : [c])); // stwór u siebie losuje się częściej
     const list = fit.length ? fit : [all.filter(home2).reduce((a, c) => (CREATURES[c].value < CREATURES[a].value ? c : a))], cid = list[Math.floor(rng() * list.length)]; // bez smoka silniejszego niż cała okolica
     return add({ type: 'monster', cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)), x, y, dir: rng() < 0.5 ? -1 : 1 }, [y * n + x]);

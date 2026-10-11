@@ -14,6 +14,7 @@ const CLASS_GROWTH = {
   alchemist: { base: [1, 1, 2, 2], grow: [30, 30, 20, 20] }, wizard: { base: [0, 1, 2, 2], grow: [10, 20, 40, 30] },
   overlord: { base: [2, 2, 1, 1], grow: [35, 35, 15, 15] }, warlock: { base: [0, 0, 3, 2], grow: [10, 10, 50, 30] },
   barbarian: { base: [4, 0, 1, 1], grow: [55, 35, 5, 5] }, battleMage: { base: [2, 1, 1, 1], grow: [30, 20, 25, 25] },
+  engineer: { base: [2, 2, 1, 1], grow: [35, 40, 12, 13] }, inventor: { base: [1, 1, 2, 2], grow: [15, 15, 35, 35] },
 };
 // Umiejętności drugorzędne (jak w oryginale): bohater ma ich najwyżej MAX_SKILLS, każdą na poziomie 1–3.
 // v: wartość na poziomach 1–3 (działanie w ZASADY GRY i BITWA: ZASADY), desc: opis dla wartości.
@@ -97,6 +98,7 @@ const CLASS_PATHS = {
   knight: ['marshal', 'champion', 'governor'], ranger: ['hunter', 'marshal', 'wanderer'], deathKnight: ['champion', 'marshal', 'governor'], beastmaster: ['champion', 'hunter', 'wanderer'],
   demoniac: ['champion', 'marshal', 'wanderer'], alchemist: ['hunter', 'champion', 'governor'], overlord: ['marshal', 'champion', 'governor'], barbarian: ['champion', 'marshal', 'wanderer'],
   battleMage: ['champion', 'archmage', 'wanderer'], cleric: ['sage', 'archmage', 'governor'], druid: ['sage', 'archmage', 'wanderer'], necro: ['archmage', 'sage', 'governor'],
+  engineer: ['marshal', 'hunter', 'governor'], inventor: ['archmage', 'sage', 'governor'],
   witch: ['sage', 'archmage', 'wanderer'], heretic: ['archmage', 'sage', 'governor'], wizard: ['archmage', 'sage', 'wanderer'], warlock: ['archmage', 'sage', 'governor'],
 };
 const PATH_RARE = ['mercury', 'sulfur', 'crystal', 'gems'];
@@ -114,9 +116,10 @@ const CLASS_SKILLS = {
   alchemist: [['armorer', 1], ['estates', 1]], wizard: [['wisdom', 1], ['mysticism', 1], ['intelligence', 1]],
   overlord: [['leadership', 1], ['logistics', 1]], warlock: [['wisdom', 1], ['sorcery', 1], ['intelligence', 1]],
   barbarian: [['offense', 1], ['pathfinding', 1]], battleMage: [['offense', 1], ['sorcery', 1]],
+  engineer: [['artillery', 1], ['armorer', 1]], inventor: [['wisdom', 1], ['airMagic', 1], ['intelligence', 1]],
 };
 const NECRO_CLASSES = ['deathKnight', 'necro'];
-const MAGE_CLASSES = ['cleric', 'druid', 'necro', 'witch', 'heretic', 'wizard', 'warlock'];
+const MAGE_CLASSES = ['cleric', 'druid', 'necro', 'witch', 'heretic', 'wizard', 'warlock', 'inventor'];
 // Umiejętności, które klasa dostaje przy awansie częściej (jak w oryginale: rycerz rzadko uczy się magii, mag walki)
 const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance', 'tactics', 'triage', 'plunder'];
 const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting', 'fireMagic', 'airMagic', 'waterMagic', 'earthMagic', 'interference'];
@@ -129,6 +132,7 @@ const CLASS_SKILL_PREF = {
   alchemist: ['artillery', 'ballistics', 'wisdom', 'earthMagic', 'plunder'], wizard: ['wisdom', 'airMagic', 'intelligence', 'sorcery', 'interference'],
   overlord: ['leadership', 'offense', 'resistance', 'scouting', 'tactics'], warlock: ['wisdom', 'fireMagic', 'sorcery', 'intelligence', 'interference'],
   barbarian: ['offense', 'resistance', 'armorer', 'ballistics', 'plunder'], battleMage: ['offense', 'wisdom', 'fireMagic', 'artillery', 'tactics'],
+  engineer: ['artillery', 'ballistics', 'armorer', 'tactics', 'firstAid'], inventor: ['wisdom', 'airMagic', 'fireMagic', 'intelligence', 'sorcery'],
 };
 // Waga umiejętności w losowaniu przy awansie: ulubione klasy ×4, magiczne u wojowników i bojowe u magów ×0,5
 const skillWeight = (cls, id) => (CLASS_SKILL_PREF[cls] || []).includes(id) ? 4 : (MAGE_CLASSES.includes(cls) ? MIGHT_SKILLS : MAGIC_SKILLS).includes(id) ? 0.5 : 1;
@@ -151,6 +155,7 @@ const HERO_SPECS = {
   Ulryk: { dw: 2 }, Bogna: { skill: 'intelligence' }, Aelwen: { skill: 'archery' }, 'Dębosz': { dw: 5 }, 'Wrocisław': { res: 'mercury', n: 1 }, 'Grzymisława': { skill: 'offense' },
   Skrzek: { dw: 3 }, 'Rusałka': { spell: 'cure' }, Belzar: { dw: 5 }, 'Żmija': { spell: 'fireball' }, 'Mieszko Kruszec': { res: 'ore', n: 2 }, Srebrna: { spell: 'lightningBolt' },
   Grzmot: { dw: 6 }, Nocna: { skill: 'mysticism' }, Warg: { dw: 2 }, Iskra: { spell: 'fireball' },
+  Ignacy: { dw: 3 }, Maria: { spell: 'chainLightning' }, 'Mikołaj': { skill: 'learning' }, Halina: { dw: 6 }, Stefan: { skill: 'artillery' }, Ada: { dw: 5 },
 };
 const heroSpec = h => (h && HERO_SPECS[h.name]) || null;
 // Doświadczenie potrzebne do poziomu 2, 3, ... (dalej każdy poziom +20%)

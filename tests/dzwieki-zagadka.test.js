@@ -23,7 +23,7 @@ test('dźwięki otoczenia: tartak piłuje, kuźnia dzwoni… tylko blisko bohate
   });
   assert.ok(r.saw > r.forge && r.forge > 0, `głośność: piła ${r.saw}, kuźnia ${r.forge}`); assert.equal(r.inn, false, 'karczma 12 pól dalej milczy');
   assert.ok(r.n <= 3); assert.deepEqual(r.pan, [true, true], 'piła z prawej, kuźnia z lewej'); assert.ok(r.mapped >= 25, `miejsc z dźwiękiem: ${r.mapped}`); assert.ok(r.mines);
-  assert.equal(r.portal, 'amb_portal', 'portal: niski szum wiru'); assert.equal(r.towns, 8, 'każda frakcja ma własny dźwięk miasta');
+  assert.equal(r.portal, 'amb_portal', 'portal: niski szum wiru'); assert.equal(r.towns, 9, 'każda frakcja ma własny dźwięk miasta');
 });
 
 test('czary: każdy czar bitewny ma własny znak (słup światła, kopuła, dym, lód…) i dźwięk rzucenia i trafienia; efekty rysują się bez błędów', async () => {
@@ -52,7 +52,7 @@ test('mapa zagadki: malowany obraz frakcji na kawałkach, nowe kawałki zdejmuj�
     const ob = st.objects.find(o => o.kind === 'obelisk'); ob.seen = { ['p' + ME]: 1 }; showPuzzle(st); await wait(5); const first = st.puzzleSeen[ME], k1 = played.filter(n => n === 'puzzle').length;
     G.modal = null; showPuzzle(st); await wait(5); const k2 = played.filter(n => n === 'puzzle').length; G.modal = null; Sfx.play = play;
     const sounds = ['puzzle', 'grail'].map(n => typeof SOUND_ART !== 'undefined' && !!SOUND_ART[n + '_1']);
-    return { first, k1, k2, painted: !!SCREEN_ART.zagadka_sylvan, all: ['haven', 'sylvan', 'barrow', 'fortress', 'inferno', 'academy', 'dungeon', 'stronghold'].filter(f => !SCREEN_ART['zagadka_' + f]), sounds };
+    return { first, k1, k2, painted: !!SCREEN_ART.zagadka_sylvan, all: FACTIONS.map(f => f.id).filter(f => !SCREEN_ART['zagadka_' + f]), sounds };
   });
   assert.ok(r.first > 0, 'kawałki odsłonięte'); assert.equal(r.k1, 1, 'melodia przy odkryciu'); assert.equal(r.k2, 1, 'drugi raz bez melodii');
   assert.deepEqual(r.all, [], 'obrazy wszystkich frakcji'); assert.deepEqual(r.sounds, [true, true]);

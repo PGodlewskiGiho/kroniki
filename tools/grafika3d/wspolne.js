@@ -8,14 +8,14 @@ function threeBundle() {
   require('esbuild').buildSync({ entryPoints: [path.join(__dirname, 'three-entry.js')], bundle: true, minify: true, format: 'iife', globalName: 'THREE', outfile: out, logLevel: 'warning' });
   return out;
 }
-const MODEL_FILES = ['modele.js', 'artefakty.js', 'umiejetnosci.js', 'interfejs.js', 'mapa3d.js', 'postacie.js', 'zwierzeta.js', 'maszyny.js', 'budowle.js', 'budowle-knieja.js', 'budowle-kurhan.js', 'budowle-twierdza.js', 'budowle-inferno.js', 'budowle-akademia.js', 'budowle-loch.js', 'budowle-cytadela.js', 'scena.js', 'mapa3d-miejsca.js', 'czary.js', 'oblezenie3d.js'].map(f => path.join(__dirname, f)).filter(f => fs.existsSync(f));
+const MODEL_FILES = ['modele.js', 'artefakty.js', 'umiejetnosci.js', 'interfejs.js', 'mapa3d.js', 'postacie.js', 'zwierzeta.js', 'maszyny.js', 'manufaktura.js', 'budowle.js', 'budowle-knieja.js', 'budowle-kurhan.js', 'budowle-twierdza.js', 'budowle-inferno.js', 'budowle-akademia.js', 'budowle-loch.js', 'budowle-cytadela.js', 'budowle-manufaktura.js', 'scena.js', 'mapa3d-miejsca.js', 'czary.js', 'oblezenie3d.js'].map(f => path.join(__dirname, f)).filter(f => fs.existsSync(f));
 // Dane jednostek (look, klatki animacji) z gry, a modele na osobnej, pustej stronie (nazwy funkcji gry i narzędzia nie kolidują)
 async function openStudio(viewport = { width: 1440, height: 900 }) {
   const { chromium } = require('playwright');
   const exe = process.env.CHROMIUM_PATH || (require('fs').existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : null), browser = await chromium.launch(exe ? { executablePath: exe } : {});
   const game = await browser.newPage(); await game.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
-  await game.goto(require('url').pathToFileURL(path.join(ROOT, 'Kroniki Królestw.html')).href); await game.waitForFunction(() => typeof CREATURES !== 'undefined' && typeof BATTLE_FRAMES !== 'undefined' && typeof TOWN_LAYOUTS !== 'undefined' && typeof G !== 'undefined', null, { timeout: 120000 });
-  const data = await game.evaluate(() => ({ creatures: Object.fromEntries(Object.entries(CREATURES).map(([id, c]) => [id, { look: c.look, abil: c.abil || [], name: c.name, faction: c.faction || '', level: c.level }])), frames: BATTLE_FRAMES,
+  await game.goto(require('url').pathToFileURL(path.join(ROOT, 'Kroniki Królestw.html')).href); await game.waitForFunction(() => typeof CREATURES !== 'undefined' && typeof BATTLE_FRAMES !== 'undefined' && typeof TOWN_LAYOUTS !== 'undefined' && typeof G !== 'undefined', null, { timeout: 400000 });
+  const data = await game.evaluate(() => ({ creatures: Object.fromEntries(Object.entries(CREATURES).map(([id, c]) => [id, { look: c.look, abil: c.abil || [], name: c.name, faction: c.faction || '', level: c.level, shots: c.shots || 0 }])), frames: BATTLE_FRAMES,
     heroes: Object.fromEntries(Object.entries(HERO_CLASSES).map(([id, c]) => [id, c.look])), mages: MAGE_CLASSES,
     towns: Object.fromEntries(Object.keys(TOWN_LAYOUTS).map(f => { const L = townLayout({ faction: f }); return [f, { slots: L.slots.map(S => ({ w: S.w, h: S.h, k: S.k, Z: S.Z })), art: TOWN_ART[f], sky: L.sky,
       scene: JSON.parse(JSON.stringify({ pj: L.pj, hills: L.hills, rivers: L.rivers, roads: L.roads, plaza: L.plaza, bridges: L.bridges, props: L.props, walls: L.walls, slots: L.slots, ground: L.ground, haze: L.haze, mountains: L.mountains, forest: L.forest, lakes: L.lakes, slabs: L.slabs, islands: L.islands, seas: L.seas })) }]; })) })); await game.close();

@@ -1040,5 +1040,196 @@
   "opis": "two large wooden sailing ships moored side by side, their wide plank decks fill the left and right of the picture, narrow strip of dark blue sea water with white foam between the hulls, two wooden boarding planks bridging the ships, cannons on carriages along the bulwarks, barrels, coiled ropes, cargo hatch grating, mast bases, sail shadows",
   "styl": "detailed fantasy matte painting, ship decks seen from above at an angle, Heroes of Might and Magic 3 naval battle background, {opis}, weathered oak planks, painterly, rich detail, crisp, warm daylight",
   "negatyw_pelny": "people, figures, sailors, soldiers, creatures, animals, text, grid, hexagons, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo, modern ship, metal hull"
+ },
+ "forge": {
+  "opis": "painted rocky highland town site at dusk, flat stony plain and rust brown basalt terraces with cliffs, glowing molten metal stream, distant smoking mountains, copper sky",
+  "teren": {
+   "hor": 140,
+   "ziarno": 11,
+   "niebo": [
+    [
+     60,
+     70,
+     110
+    ],
+    [
+     240,
+     160,
+     110
+    ]
+   ],
+   "ziemia": [
+    [
+     150,
+     132,
+     112
+    ],
+    [
+     118,
+     100,
+     84
+    ]
+   ],
+   "skala": [
+    110,
+    80,
+    62
+   ],
+   "ciecz": [
+    [
+     255,
+     170,
+     70
+    ],
+    [
+     230,
+     100,
+     30
+    ]
+   ],
+   "mgla": [
+    200,
+    150,
+    120
+   ],
+   "lune": [
+    255,
+    140,
+    60
+   ],
+   "urwisko": "warstwy",
+   "gory": [
+    [
+     40,
+     90,
+     [
+      120,
+      100,
+      96
+     ]
+    ],
+    [
+     14,
+     40,
+     [
+      96,
+      80,
+      76
+     ]
+    ]
+   ],
+   "kamienie": 50,
+   "cienie": [
+    120,
+    100,
+    84
+   ],
+   "cienie_n": 40,
+   "plyty": [
+    {
+     "x": [
+      200,
+      560
+     ],
+     "tyl": 150,
+     "przod": 206,
+     "dol": 244,
+     "wodospady": [],
+     "kolor": [
+      140,
+      120,
+      100
+     ]
+    },
+    {
+     "x": [
+      20,
+      190
+     ],
+     "tyl": 250,
+     "przod": 288,
+     "dol": 312,
+     "wodospady": [],
+     "kolor": [
+      146,
+      126,
+      104
+     ]
+    }
+   ],
+   "rzeki": [
+    {
+     "pkt": [
+      [
+       60,
+       330
+      ],
+      [
+       130,
+       346
+      ],
+      [
+       200,
+       372
+      ],
+      [
+       240,
+       410
+      ]
+     ],
+     "w": [
+      26,
+      36
+     ]
+    }
+   ],
+   "turnie": [
+    [
+     14,
+     150,
+     50
+    ],
+    [
+     580,
+     160,
+     44
+    ]
+   ]
+  }
+ },
+ "zagadka_forge": {
+  "opis": "epic fantasy oil painting, valley of a steam foundry city at dusk, giant brass clockwork colossus and a storm mage hurling lightning at a black dragon, steam gyrocopters in a copper sky, musketeers and mechanical hounds marching, river of glowing molten metal, smoking chimneys",
+  "styl": "{opis}, heroes of might and magic 3 art style, painterly, highly detailed, rich colors",
+  "negatyw_pelny": "text, letters, watermark, signature, logo, frame, border, blurry, lowres, jpeg artifacts, deformed, disfigured, extra limbs, bad anatomy, ugly, cartoon, anime, 3d render, photo, modern, duplicate, puzzle, statue, pedestal, blobs, floating shapes, deformed horse, extra legs, merged bodies, flat colors, vector art, clipart"
+ },
+ "bitwa_pola": {
+  "opis": "golden wheat fields with neat crop rows, a hay stack and a wooden fence near the edges, red poppies, farm path, warm summer light",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_dzungla": {
+  "opis": "dense tropical jungle clearing, damp mossy ground with ferns and fallen leaves, giant roots and vines at the edges, shafts of green light",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_sawanna": {
+  "opis": "dry savanna plain, tall pale golden grass and red earth patches, termite mounds and an acacia tree near the edges, hot hazy light",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_lod": {
+  "opis": "frozen ice wasteland, cracked blue glacier ice with frost, snow drifts and jagged ice spikes near the edges, cold pale light",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_krysztaly": {
+  "opis": "underground crystal cave floor, dark stone slabs with glowing violet and cyan crystal clusters at the edges, sparkling dust, dim magical light",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
+ },
+ "bitwa_grzyby": {
+  "opis": "underground fungal cavern floor, damp dark soil with glowing mushrooms and mycelium, giant mushroom stems at the edges, teal bioluminescent light",
+  "styl": "detailed fantasy matte painting, empty battlefield ground seen from above at an angle, Heroes of Might and Magic 3 battle background, {opis}, open flat ground, distant horizon at the very top, painterly, rich detail, crisp, soft daylight",
+  "negatyw_pelny": "buildings, houses, castle, walls, people, figures, soldiers, creatures, animals, armies, text, grid, hexagons, lines, watermark, signature, frame, blurry, lowres, jpeg artifacts, oversaturated, photo"
  }
 }

@@ -1,7 +1,10 @@
 // ==================== DANE: TEREN I RUCH ================================================
 // Rodzaje terenu, przeszkody, drogi, koszty ruchu.
 const T = 32, CHUNK = 8;
-const TER = { WATER: 0, GRASS: 1, DIRT: 2, SAND: 3, SNOW: 4, SWAMP: 5, ROUGH: 6, LAVA: 7 };
+const TER = { WATER: 0, GRASS: 1, DIRT: 2, SAND: 3, SNOW: 4, SWAMP: 5, ROUGH: 6, LAVA: 7, FIELD: 8, JUNGLE: 9, SAVANNA: 10, ICE: 11, CRYSTAL: 12, FUNGUS: 13 };
+// Biomy (8–13) dziedziczą reguły po terenie bazowym (siedliska stworów, teren rodzimy frakcji, pory roku, pogoda):
+// pola i dżungla jak trawa, sawanna i grzybowe pieczary jak ziemia, lodowe pustkowie jak śnieg, kryształowe groty jak bezdroża
+const TER_BASE = [0, 1, 2, 3, 4, 5, 6, 7, 1, 1, 2, 4, 6, 2], terBase = t => TER_BASE[t] ?? t;
 // cost: koszt ruchu jak w oryginale (100 = normalny krok)
 // pal: paleta pikselowa [ciemny, bazowy, jasny, akcent]; bazowy kolor trafia też na minimapę
 const TERRAINS = [
@@ -13,6 +16,12 @@ const TERRAINS = [
   { name: 'Bagno', cost: 175, pal: ['#3e5638', '#4c6444', '#5c7650', '#2c4636'] },
   { name: 'Nierówny teren', cost: 125, pal: ['#7e6e4a', '#94825a', '#a8966c', '#65573a'] },
   { name: 'Lawa', cost: 100, pal: ['#2a201d', '#3a2c28', '#4a3a34', '#ff6a1a'] },
+  { name: 'Pola', cost: 100, pal: ['#8a7a2e', '#b8a040', '#d4bc5a', '#6a8a30'] },
+  { name: 'Dżungla', cost: 150, pal: ['#1e4a1e', '#2a6a2a', '#3a8a32', '#5ab040'] },
+  { name: 'Sawanna', cost: 100, pal: ['#8a7a3a', '#b0984a', '#c8b060', '#7a6a34'] },
+  { name: 'Lodowe pustkowie', cost: 175, pal: ['#7aa0c0', '#a8c8e0', '#d0e6f4', '#5a80a8'] },
+  { name: 'Kryształowe groty', cost: 125, pal: ['#3a3450', '#4a4466', '#5e5880', '#a080ff'] },
+  { name: 'Grzybowe pieczary', cost: 125, pal: ['#3a2e3a', '#4c3c48', '#5e4c58', '#60d0b0'] },
 ];
 const OBST = { NONE: 0, TREE: 1, MOUNT: 2, ROCK: 3 };
 const OBST_NAMES = ['', 'las', 'góry', 'skały'];
@@ -33,8 +42,10 @@ const LAND_TYPES = [
   { id: 'mountains', name: 'Górzysta', desc: 'gęste pasma, wąskie doliny i przełęcze', water: 0.16, ranges: 2.3, rangeW: 1.35, forest: 0.68, rivers: 1.4, cold: 0.2, hot: 0.12, swamp: 0.94 },
   { id: 'forest', name: 'Leśna', desc: 'wielkie puszcze z polanami, drogi przez gąszcz', water: 0.18, ranges: 0.7, forest: 0.42, rivers: 1.2, cold: 0.1, hot: 0.08, swamp: 0.86 },
   { id: 'desert', name: 'Pustynna', desc: 'piaski, oazy i wulkaniczne pustkowia', sandM: 0.9, water: 0.12, ranges: 0.8, forest: 0.86, rivers: 0.4, cold: 0.02, hot: 0.6, swamp: 0.97 },
-  { id: 'frost', name: 'Mroźna', desc: 'śniegi i lodowe pustkowia, tajga na skraju', water: 0.2, ranges: 1.2, forest: 0.6, rivers: 0.7, cold: 0.55, hot: 0.03, swamp: 0.95 },
+  { id: 'frost', name: 'Mroźna', desc: 'śniegi i skute lodem pustkowia, tajga na skraju', water: 0.2, ranges: 1.2, forest: 0.6, rivers: 0.7, cold: 0.55, hot: 0.03, ice: 0.5, swamp: 0.95 },
   { id: 'marsh', name: 'Rzeczna', desc: 'wiele rzek, rozlewiska i bagna', water: 0.22, ranges: 0.8, forest: 0.6, rivers: 2.6, cold: 0.08, hot: 0.1, swamp: 0.7 },
+  { id: 'tropical', name: 'Tropikalna', desc: 'gęste dżungle, sawanny z akacjami, rzeki i wulkany', water: 0.2, ranges: 0.8, forest: 0.62, rivers: 1.6, cold: 0.0, hot: 0.62, sandM: 0.2, jungle: 0.6, swamp: 0.88 },
+  { id: 'farmland', name: 'Rolnicza', desc: 'pola uprawne, łąki i zagajniki, łagodne wzgórza', water: 0.16, ranges: 0.6, forest: 0.74, rivers: 1.1, cold: 0.08, hot: 0.08, fields: 0.45, swamp: 0.94 },
   { id: 'islands', name: 'Wyspiarska', desc: 'poszarpane wybrzeże, zatoki i wysepki ze skarbami (łodzie)', water: 0.42, ranges: 0.8, forest: 0.62, rivers: 0.6, cold: 0.1, hot: 0.14, swamp: 0.9, shapes: ['islands'] },
 ];
 // Kształt świata (losowany): kontynent w morzu, wybrzeże (morze z 1–2 stron), morze śródlądowe, dwie krainy z przesmykiem, ląd z jeziorami

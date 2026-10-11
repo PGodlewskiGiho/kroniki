@@ -55,12 +55,39 @@ function mpCharred(R, s = 1) {
   for (let i = 0; i < 4; i++) { const a = R() * 6.28, y0 = h * (0.45 + R() * 0.4), L = 0.18 + R() * 0.15, e = [Math.cos(a) * L, y0 + L * 0.6, Math.sin(a) * L]; g.add(tube([[0, y0, 0], e], 0.025, 0.01, '#3a302c', 'bark')); g.add(sph(0.018, '#ffb040', 'glow', e, null, 8)); }
   return mpAt(g, 0, 0, 0, s);
 }
+// Dżungla: wysoki pień z korzeniami szczudłowymi, szeroka korona z warstw liści, liany i kwiaty, paproć u stóp
+function mpJungleTree(R, s = 1) {
+  const g = new THREE.Group(), h = 0.85 + R() * 0.2, lean = (R() - 0.5) * 0.12; g.add(tube([[0, 0, 0], [lean * 0.5, h * 0.5, 0.01], [lean, h, 0]], 0.06, 0.04, '#6a5a3e', 'bark'));
+  for (let i = 0; i < 4; i++) { const a = i / 4 * 6.28 + R() * 0.5; g.add(tube([[0, 0.2, 0], [Math.cos(a) * 0.1, 0.08, Math.sin(a) * 0.08], [Math.cos(a) * 0.17, 0, Math.sin(a) * 0.13]], 0.022, 0.012, '#5a4a32', 'bark')); } // korzenie szczudłowe
+  const cols = ['#1e5a24', '#2a6e2a', '#367a2c'];
+  for (const [x, y, z, r] of [[lean, h + 0.12, 0, 0.36], [lean - 0.24, h + 0.02, 0.06, 0.26], [lean + 0.25, h + 0.04, -0.04, 0.27], [lean + 0.02, h - 0.02, 0.22, 0.24]]) g.add(leafClump(r * (0.9 + R() * 0.2), cols[(R() * 3) | 0], [x, y, z], (R() * 6) | 0));
+  for (let i = 0; i < 3; i++) { const a = R() * 6.28, r = 0.22 + R() * 0.1, x = lean + Math.cos(a) * r, z = Math.sin(a) * r * 0.8; g.add(tube([[x, h + 0.02, z], [x + 0.02, h * 0.62, z + 0.01], [x - 0.01, h * 0.3 + R() * 0.15, z]], 0.006, 0.004, '#3a6a24', 'bark')); } // liany
+  if (R() < 0.6) g.add(sph(0.03, ['#e04a8a', '#f0a030', '#e03a2a'][(R() * 3) | 0], 'gem', [lean + 0.18, h - 0.06, 0.2], [1, 0.6, 1], 8)); // kwiat w koronie
+  for (let i = 0; i < 5; i++) { const a = i / 5 * 6.28; const lf = slab([[0, 0], [0.04, 0.02], [0.16, 0.025], [0.24, 0], [0.16, -0.02], [0.04, -0.02]], 0.006, '#3a8a30', 'feather'); lf.position.set(0.12, 0.02, 0.12); lf.rotation.set(0, a, 0.5); g.add(lf); } // paproć
+  return mpAt(g, 0, 0, 0, s);
+}
+// Sawanna: akacja – cienki, rozwidlony pień i płaska, parasolowata korona
+function mpAcacia(R, s = 1) {
+  const g = new THREE.Group(), h = 0.62 + R() * 0.12, top = [[-0.16, h + 0.06, 0.02], [0.18, h + 0.1, -0.02], [0.02, h + 0.14, 0.12]];
+  g.add(tube([[0, 0, 0], [0.02, h * 0.45, 0]], 0.045, 0.035, '#5a4632', 'bark'));
+  for (const t of top) g.add(tube([[0.02, h * 0.45, 0], [t[0] * 0.5, h * 0.75, t[2] * 0.5], t], 0.03, 0.014, '#5a4632', 'bark'));
+  for (const [x, y, z] of [...top, [0.02, h + 0.16, 0.02]]) { const c = leafClump(0.16 + R() * 0.04, R() < 0.5 ? '#4e5e22' : '#5a6a26', [x * 1.05, y + 0.03, z * 1.05], (R() * 6) | 0); c.scale.set(1.35, 0.42, 1.15); g.add(c); } // płaska, parasolowata korona z kęp liści
+  return mpAt(g, 0, 0, 0, s);
+}
+// Lodowe pustkowie: iglica lodu – przezroczyste, niebieskawe kolumny z szronem
+function mpIceSpire(R, s = 1) {
+  const g = new THREE.Group();
+  for (let i = 0; i < 3 + ((R() * 2) | 0); i++) { const h = (i ? 0.35 + R() * 0.3 : 0.85 + R() * 0.25), x = i ? (R() - 0.5) * 0.4 : 0, z = i ? (R() - 0.5) * 0.25 : 0;
+    const c = cone(0.06 + h * 0.08, h, i % 2 ? '#6a9ac8' : '#8ab8e0', 'gem', [x, h / 2, z], [(R() - 0.5) * 0.25, R() * 3, (R() - 0.5) * 0.25], 5); c.material = c.material.clone(); Object.assign(c.material, { transparent: true, opacity: 0.82 }); g.add(c);
+    g.add(sph(0.05 + h * 0.04, '#f4f8fc', 'cloth', [x, 0.02, z], [1.6, 0.4, 1.4], 10)); }
+  return mpAt(g, 0, 0, 0, s);
+}
 // Pole z drzewami: 2–3 drzewa w tych samych miejscach co dawny rysunek (lekko losowo)
 function mpTreeTile(kind, season, v) {
   const R = rng(v * 7919 + kind.length * 31 + season * 7), g = new THREE.Group(), spots = [[(R() - 0.5) * 0.25, -0.1], [-0.27 + (R() - 0.5) * 0.12, 0.26], [0.27 + (R() - 0.5) * 0.12, 0.3]], cnt = R() < 0.3 ? 2 : 3;
   for (let k = 0; k < cnt; k++) { const s = 0.8 + R() * 0.3; let t;
     if (kind === 'pine') t = mpPine(R, season === 3, s); else if (kind === 'snow') t = mpPine(R, true, s); else if (kind === 'palm') t = mpPalm(R, s); else if (kind === 'lava') t = mpCharred(R, s);
-    else if (kind === 'swamp') t = R() < 0.5 ? mpDead(R, '#2e2618', s) : mpWillow(R, s); else if (kind === 'dirt') t = R() < 0.5 ? mpPine(R, season === 3, s) : mpOak(R, season, s); else t = mpOak(R, season, s);
+    else if (kind === 'swamp') t = R() < 0.5 ? mpDead(R, '#2e2618', s) : mpWillow(R, s); else if (kind === 'jungle') t = mpJungleTree(R, s * 1.1); else if (kind === 'acacia') t = mpAcacia(R, s); else if (kind === 'ice') t = mpIceSpire(R, s); else if (kind === 'dirt') t = R() < 0.5 ? mpPine(R, season === 3, s) : mpOak(R, season, s); else t = mpOak(R, season, s);
     t.position.x = spots[k][0]; t.position.z = spots[k][1]; t.rotation.y = R() * 6.28; g.add(t); }
   return g;
 }
@@ -122,7 +149,7 @@ function mpArt(id, A) {
 }
 // --- katalog ---
 const MAP3 = {};
-const MP_TREES = ['oak', 'dirt', 'pine', 'snow', 'palm', 'lava', 'swamp'], MP_SEASONAL = { oak: 1, dirt: 1, pine: 1, swamp: 0 };
+const MP_TREES = ['oak', 'dirt', 'pine', 'snow', 'palm', 'lava', 'swamp', 'jungle', 'acacia', 'ice'], MP_SEASONAL = { oak: 1, dirt: 1, pine: 1, swamp: 0 };
 for (const k of MP_TREES) for (let s = 0; s < 4; s++) { if (!MP_SEASONAL[k] && s) continue; for (let v = 0; v < 4; v++) MAP3[`tree_${k}_${s}_${v}`] = () => mpTreeTile(k, s, v); }
 for (const p of Object.keys(MP_ROCK)) for (let v = 0; v < 8; v++) { MAP3[`mount_${p}_${v}`] = () => mpMountain(p, v); MAP3[`rock_${p}_${v}`] = () => mpRock(p, v); }
 for (const r of ['wood', 'ore', 'mercury', 'sulfur', 'crystal', 'gems', 'gold']) MAP3[`res_${r}`] = () => mpRes(r);
@@ -141,10 +168,21 @@ function mpDecor(t, v) {
   else if (t === 'snow') { if (v === 0 || v === 3) g.add(mpPebbles('snow', 11 + v)); else if (v === 1) g.add(mpTuft(['#8a8a6a', '#aaa888'], 6, 0.12, 12)); else g.add(sph(0.14, '#f4f8fc', 'cloth', [0, 0, 0], [1.2, 0.35, 0.8], 14)); }
   else if (t === 'swamp') { if (v === 0) for (const dx of [-0.06, 0, 0.06]) { g.add(cyl(0.004, 0.004, 0.26, '#4a6a34', 'cloth', [dx, 0.13, 0], [0, 0, dx * 0.6])); g.add(cap(0.012, 0.05, '#6a4424', 'leather', [dx + dx * 0.08, 0.22, 0])); }
     else if (v === 1) for (const [x, c] of [[-0.05, '#c83a2a'], [0.05, '#b8a060']]) { g.add(cyl(0.01, 0.012, 0.06, '#e8e0cc', 'skin', [x, 0.03, 0])); g.add(sph(0.035, c, 'skin', [x, 0.06, 0], [1, 0.55, 1], 12)); } else if (v === 2) g.add(mpTuft(['#3a5a2c', '#5a7a40'], 8, 0.16, 14)); else g.add(mpPebbles('def', 15)); }
+  else if (t === 'field') { if (v === 0) { for (let i = 0; i < 9; i++) g.add(tube([[(i % 3 - 1) * 0.04, 0, ((i / 3) | 0) * 0.03 - 0.03], [(i % 3 - 1) * 0.045, 0.2, ((i / 3) | 0) * 0.03 - 0.03]], 0.008, 0.005, '#c8a040', 'feather')); g.add(cyl(0.05, 0.05, 0.02, '#a8802a', 'cloth', [0, 0.08, 0])); } // snopek zboża
+    else if (v === 1) { g.add(cone(0.16, 0.2, '#c8a848', 'feather', [0, 0.1, 0], null, 10)); g.add(sph(0.16, '#d4b454', 'feather', [0, 0.02, 0], [1, 0.3, 1], 12)); } // stóg siana
+    else if (v === 2) g.add(mpTuft(['#c8a840', '#e0c060'], 9, 0.18, 31)); else { g.add(mpTuft(['#7aa040', '#c8a840'], 6, 0.15, 33)); for (const x of [-0.05, 0.05]) g.add(sph(0.018, '#d83a2a', 'cloth', [x, 0.13, 0.02], null, 8)); } } // kłosy i maki
+  else if (t === 'jungle') { if (v === 0 || v === 2) for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + v; const lf = slab([[0, 0], [0.03, 0.015], [0.12, 0.02], [0.18, 0], [0.12, -0.015], [0.03, -0.015]], 0.005, i % 2 ? '#2e7a2a' : '#3a8a30', 'feather'); lf.rotation.set(0, a, 0.6); g.add(lf); } // paproć
+    else if (v === 1) { g.add(mpTuft(['#2e6a24', '#4a9a34'], 6, 0.14, 35)); g.add(sph(0.03, '#e04a8a', 'gem', [0.03, 0.12, 0.02], [1, 0.6, 1], 8)); g.add(sph(0.025, '#f0c030', 'gem', [-0.04, 0.1, 0.03], [1, 0.6, 1], 8)); } // kwiaty
+    else { g.add(cyl(0.035, 0.04, 0.3, '#5a4a32', 'bark', [0, 0.03, 0], [0, 0, Math.PI / 2])); g.add(sph(0.04, '#3a7a2a', 'feather', [0.08, 0.06, 0], [1, 0.6, 1], 8)); } } // zwalona kłoda w mchu
+  else if (t === 'savanna') { if (v === 0) g.add(mpTuft(['#b8984a', '#d4b860'], 9, 0.2, 37)); else if (v === 1) { g.add(cone(0.07, 0.24, '#a8603a', 'stone', [0, 0.12, 0], null, 7)); g.add(cone(0.04, 0.14, '#b8704a', 'stone', [0.07, 0.07, 0.03], null, 6)); } // kopiec termitów
+    else if (v === 2) g.add(mpPebbles('sand', 39)); else { g.add(mpTuft(['#9a8a40', '#c8b058'], 5, 0.14, 41)); g.add(sph(0.03, '#e8e0cc', 'bone', [0.06, 0.02, 0.03], [1.4, 0.6, 1], 8)); } } // trawa i bielejąca kość
+  else if (t === 'ice') { if (v === 0 || v === 3) for (let i = 0; i < 3; i++) { const c = cone(0.03 + i * 0.01, 0.1 + i * 0.05, '#8ab8e0', 'gem', [(i - 1) * 0.06, 0.05 + i * 0.02, 0], [(i - 1) * 0.3, 0, 0], 5); g.add(c); } // odłamki lodu
+    else if (v === 1) { const p = cyl(0.14, 0.14, 0.006, '#a8d0ec', 'gem', [0, 0.003, 0], null, [1, 1, 0.6], 7); g.add(p); } // tafla zamarzniętej kałuży
+    else g.add(sph(0.15, '#f4f8fc', 'cloth', [0, 0, 0], [1.3, 0.3, 0.9], 12)); } // zaspa
   else if (t === 'lava') { g.add(mpPebbles('lava', 16 + v)); if (v === 1) for (const x of [-0.06, 0.08]) g.add(sph(0.012, '#ffb040', 'glow', [x, 0.01, 0.04], null, 8)); if (v === 2) g.add(cone(0.02, 0.1, '#ff7a2a', 'glow', [0, 0.05, 0.06], null, 6)); }
   return g;
 }
-for (const t of ['grass', 'dirt', 'sand', 'snow', 'swamp', 'lava']) for (let v = 0; v < 4; v++) MAP3[`decor_${t}_${v}`] = () => mpDecor(t, v);
+for (const t of ['grass', 'dirt', 'sand', 'snow', 'swamp', 'lava', 'field', 'jungle', 'savanna', 'ice']) for (let v = 0; v < 4; v++) MAP3[`decor_${t}_${v}`] = () => mpDecor(t, v);
 MAP3.decor_leaves_0 = () => mpDecor('leaves', 0); MAP3.decor_leaves_1 = () => mpDecor('leaves', 1);
 // --- podziemia: niskie, poszarpane ściany jaskini (zlewają się z sąsiednimi), stalagmity, kryształy, świecące grzyby ---
 const MP_GLOW = ['#8a6aff', '#40d8c0', '#ff6ab0', '#60b0ff'];

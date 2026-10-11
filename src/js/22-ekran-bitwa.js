@@ -12,6 +12,24 @@ function mouthPos(u, d) {
   if (A && A.m) return [u.px + d * A.m[0] * A.u, gy + A.m[1] * A.u];
   const k = 32 * (L.size || 1); return [u.px + d * 0.9 * k, gy - 1.3 * k];
 }
+// Skąd leci pocisk: czubek broni z arkusza (wylot lufy, głowica laski, łuk, dłoń – zapisany przy wypalaniu w klatce strzału),
+// bez niego paszcza, a w ostateczności wysokość dłoni z wielkości stwora (nie środek ciała)
+function shotFrom(u, d) {
+  const A = unitArt(u.cid), gy = u.py + 14 - (u.lift || 0);
+  if (A && A.t) return [u.px + d * A.t[0] * A.u, gy + A.t[1] * A.u];
+  if (A && A.m) return mouthPos(u, d);
+  const k = 32 * (CREATURES[u.cid].look.size || 1); return [u.px + d * 0.55 * k, gy - 1.05 * k];
+}
+// Rodzaj pocisku z broni stwora: strzała, bełt, kula z muszkietu, kula magii, ogień, piorun, promień oka, topór, głaz, granat, fala pieśni
+const SHOT_KIND = { titan: 'lightning', stormTitan: 'lightning', siren: 'wave', masterGremlin: 'pebble', ballista: 'bolt', arrowTower: 'arrow' };
+function shotKind(cid) {
+  const L = CREATURES[cid].look; if (SHOT_KIND[cid]) return SHOT_KIND[cid]; if (L.kind === 'eye') return 'ray';
+  return { bow: 'arrow', crossbow: 'bolt', musket: 'bullet', staff: 'orb', fireball: 'fireball', sparkStaff: 'lightning', grenade: 'bomb', axe: 'axe', labrys: 'axe', club: 'rock', mace: 'pebble', spear: 'lightning' }[L.weapon] || (L.boulder ? 'rock' : L.orb ? 'orb' : 'arrow');
+}
+// Lot pocisku: czas (s) i wysokość łuku zależne od odległości; piorun i promień są natychmiastowe
+const SHOT_FLIGHT = { arrow: d => [0.05 + d / 2800, 6 + d * 0.07], bolt: d => [0.04 + d / 3400, 3 + d * 0.03], bullet: d => [0.03 + d / 6000, 0], orb: d => [0.08 + d / 1500, 8],
+  fireball: d => [0.1 + d / 1400, 12], axe: d => [0.1 + d / 1700, 10 + d * 0.06], rock: d => [0.14 + d / 1200, 26 + d * 0.12], pebble: d => [0.08 + d / 1900, 10 + d * 0.08],
+  bomb: d => [0.18 + d / 1200, 46 + d * 0.14], wave: d => [0.1 + d / 1600, 0], lightning: () => [0.08, 0], ray: () => [0.1, 0] };
 // Barwa zionięcia: z wyglądu stwora (kwas, lód, blask), domyślnie ogień
 const breathColor = cid => { const L = CREATURES[cid].look; return L.breathCol || L.breath || (L.bony ? '#9af0c8' : '#ff7a1a'); };
 function hexPath(ctx, x, y, inset = 0) {
@@ -27,7 +45,7 @@ function hexAt(px, py) {
 const PAVE_DX = 40; // bruk dziedzińca zaczyna się tyle px logicznych za licem muru (paveX: granica na wysokości py, ukośna jak mur)
 const paveX = py => wallLineX(py) + PAVE_DX;
 // Tło bitwy w stylu mapy: teren z palety TERRAINS, piksele 2×2, ta sama korekcja barw
-const BATTLE_BG_NAMES = ['woda', 'trawa', 'ziemia', 'piasek', 'snieg', 'bagno', 'nierowny', 'lawa'];
+const BATTLE_BG_NAMES = ['woda', 'trawa', 'ziemia', 'piasek', 'snieg', 'bagno', 'nierowny', 'lawa', 'pola', 'dzungla', 'sawanna', 'lod', 'krysztaly', 'grzyby'];
 function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siatki i panelu (szkic dla tła malowanego, tools/tla-ai/szkic-bitwy.js)
   // D = gęstość pikseli: teren liczony w drobnych pikselach (fx, fy), wzory w dawnych pikselach (x, y = połowa px logicznych)
   const w = W / 2, h = H / 2, fw = Math.round(w * PXD), fh = Math.round(h * PXD), D = fw / w, off = document.createElement('canvas'); off.width = fw; off.height = fh;
@@ -72,7 +90,7 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
 // Dziedziniec oblężonego zamku w charakterze frakcji (w pełnej rozdzielczości warstwy): bruk (Przystań), ośnieżony marmur (Akademia),
 // bruk z kośćmi i zieloną mgłą (Kurhan), obsydian z lawą w szczelinach (Inferno), dno pieczary z kryształami (Loch),
 // mech i trawa ze ścieżką (Knieja), błoto z kładką (Cytadela), ubita ziemia ze słomą (Twierdza). Do tego cień muru i plamy światła.
-const COURTYARD = { haven: 'cobble', academy: 'snow', barrow: 'grave', inferno: 'obsidian', dungeon: 'cave', sylvan: 'grass', fortress: 'mud', stronghold: 'dirt' };
+const COURTYARD = { haven: 'cobble', academy: 'snow', barrow: 'grave', inferno: 'obsidian', dungeon: 'cave', sylvan: 'grass', fortress: 'mud', stronghold: 'dirt', forge: 'cobble' };
 function paintCourtyard(c, fac) {
   const kind = COURTYARD[fac] || 'cobble', pv = SIEGE_PAVE[fac] || SIEGE_PAVE.haven, y0 = 41, x0 = paveX(y0) - 4, w = W - x0, h = 449, r = mulberry32(fac.length * 131 + 7);
   const rgb = (a, k = 1, al = 1) => `rgba(${a.map(v => Math.round(clamp(v * k, 0, 255))).join(',')},${al})`, blob = (x, y, rx, ry, col) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU); c.fill(); };
@@ -131,17 +149,18 @@ function paintCourtyard(c, fac) {
 // Tło bitwy zależne od terenu (w połowie rozdzielczości, przed powiększeniem): horyzont pod paskiem u góry
 // i drobne malowane szczegóły na polu (kępki, kamyki, kałuże, pęknięcia z żarem). Nie wpływają na walkę.
 function battleDecor(g, terr, w, h, fac) {
+  const tb = terBase(terr); // biomy: kształt horyzontu i drobiazgi jak teren bazowy, barwy własne
   const r = mulberry32(9001 + terr * 131), P = TPAL[terr].map(c => `rgb(${gradeRgb(c).map(Math.round).join(',')})`), px = (x, y, c, k = 1) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), k, k); };
   const maxX = fac ? paveX(44) / 2 - 8 : w;
   // horyzont: odległe wzgórza, las, wydmy, szczyty albo wulkany w kolorach terenu, zlewające się z polem
-  const far = { [TER.GRASS]: '#2e4a2a', [TER.DIRT]: '#4a3a28', [TER.SAND]: '#8a7050', [TER.SNOW]: '#8a98b0', [TER.SWAMP]: '#2a3a2a', [TER.ROUGH]: '#4a4436', [TER.LAVA]: '#2a1614', [TER.WATER]: '#2a4a6a' }[terr] || '#3a3a3a';
+  const far = { [TER.GRASS]: '#2e4a2a', [TER.DIRT]: '#4a3a28', [TER.SAND]: '#8a7050', [TER.SNOW]: '#8a98b0', [TER.SWAMP]: '#2a3a2a', [TER.ROUGH]: '#4a4436', [TER.LAVA]: '#2a1614', [TER.FIELD]: '#5a6a2a', [TER.JUNGLE]: '#14361a', [TER.SAVANNA]: '#6a5a34', [TER.ICE]: '#6a88a8', [TER.CRYSTAL]: '#241e34', [TER.FUNGUS]: '#2a2030', [TER.WATER]: '#2a4a6a' }[terr] || '#3a3a3a';
   g.fillStyle = far; g.beginPath(); g.moveTo(0, 26);
-  for (let x = 0; x <= w; x += 4) { const peak = terr === TER.SNOW || terr === TER.ROUGH || terr === TER.LAVA ? Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 + Math.abs(Math.sin(x * 0.11)) * 4 : (terr === TER.GRASS || terr === TER.SWAMP) ? 4 + (thash(x >> 2, 3, terr) % 4) : Math.sin(x * 0.03) * 3 + 3; g.lineTo(x, 22 - peak); }
+  for (let x = 0; x <= w; x += 4) { const peak = tb === TER.SNOW || tb === TER.ROUGH || tb === TER.LAVA ? Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 + Math.abs(Math.sin(x * 0.11)) * 4 : (tb === TER.GRASS || terr === TER.SWAMP) ? 4 + (thash(x >> 2, 3, terr) % 4) : Math.sin(x * 0.03) * 3 + 3; g.lineTo(x, 22 - peak); }
   g.lineTo(w, 26); g.closePath(); g.fill();
-  if (terr === TER.LAVA) for (let x = 60; x < w; x += 150) { px(x, 10, '#ff7a2a', 2); px(x + 1, 8, '#ffd060'); }
-  if (terr === TER.SNOW) for (let x = 0; x < w; x += 3) if (Math.abs(Math.sin(x * 0.045 + 1.3)) > 0.8) px(x, 22 - Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 - Math.abs(Math.sin(x * 0.11)) * 4 + 1, '#f4f8fc', 2);
+  if (tb === TER.LAVA) for (let x = 60; x < w; x += 150) { px(x, 10, '#ff7a2a', 2); px(x + 1, 8, '#ffd060'); }
+  if (tb === TER.SNOW) for (let x = 0; x < w; x += 3) if (Math.abs(Math.sin(x * 0.045 + 1.3)) > 0.8) px(x, 22 - Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 - Math.abs(Math.sin(x * 0.11)) * 4 + 1, '#f4f8fc', 2);
   // większe plamy (jaśniejsza trawa, piach, zaspy, muł, zastygła lawa), potem drobne szczegóły
-  const patch = { [TER.GRASS]: '#4a7a34', [TER.DIRT]: P[0], [TER.SAND]: P[0], [TER.SNOW]: '#c8d2e0', [TER.SWAMP]: '#1e3a30', [TER.ROUGH]: P[0], [TER.LAVA]: '#3a1a14', [TER.WATER]: P[0] }[terr];
+  const patch = { [TER.GRASS]: '#4a7a34', [TER.DIRT]: P[0], [TER.SAND]: P[0], [TER.SNOW]: '#c8d2e0', [TER.SWAMP]: '#1e3a30', [TER.ROUGH]: P[0], [TER.LAVA]: '#3a1a14', [TER.WATER]: P[0], [TER.FIELD]: P[3], [TER.JUNGLE]: P[3], [TER.SAVANNA]: P[3], [TER.ICE]: P[3], [TER.CRYSTAL]: P[0], [TER.FUNGUS]: P[0] }[terr];
   g.fillStyle = patch;
   for (let k = 0; k < 14; k++) { // rozproszone w szachownicę, żeby wtapiały się w teren; środek gęstszy
     const x0 = Math.round(20 + r() * (maxX - 40)), y0 = Math.round(40 + r() * (h - 110)), rx = 8 + r() * 12, ry = 3 + r() * 4;
@@ -151,7 +170,9 @@ function battleDecor(g, terr, w, h, fac) {
   const stone = (x, y, pal) => { g.fillStyle = pal[1]; g.fillRect(Math.round(x), Math.round(y) - 2, 4, 3); px(x, y - 2, pal[0], 2); px(x + 3, y, pal[2]); };
   for (let k = 0; k < 120; k++) {
     const x = 8 + r() * (maxX - 16), y = 34 + r() * (h - 96), v = r();
-    switch (terr) {
+    if (terr === TER.FIELD && v < 0.5) { for (let i = 0; i < 6; i++) px(x + i * 2, y - (i % 2), P[2]); continue; } // kłosy w rzędzie
+    if (terr >= TER.CRYSTAL && v < 0.3) { px(x, y - 3, P[3], 2); px(x, y - 5, '#ffffff'); continue; } // kryształek albo świecący grzybek
+    switch (tb) {
       case TER.GRASS: if (v < 0.5) tuft(x, y, '#2e5a24', '#6aa844'); else if (v < 0.8) { const c = ['#e8d040', '#f4f0e8', '#d8503a', '#9a70d0'][k % 4]; px(x, y, c, 2); px(x + 3, y + 1, c); } else stone(x, y, ['#b0aca0', '#86847a', '#5a5850']); break;
       case TER.DIRT: case TER.ROUGH: if (v < 0.45) stone(x, y, ['#a89880', '#7a6a58', '#4a3e32']); else if (v < 0.75) { for (let i = 0; i < 7; i++) px(x + i, y + (i % 3 === 1 ? 1 : 0), P[3]); } else tuft(x, y, '#6a6030', '#a89a50'); break;
       case TER.SAND: if (v < 0.6) { for (let i = 0; i < 10; i++) px(x + i, y + Math.round(Math.sin(i * 0.7) * 1.2), P[2]); } else if (v < 0.72) { px(x, y, '#eee6d0', 4); px(x + 4, y + 1, '#eee6d0', 2); } else if (v < 0.8) { g.fillStyle = '#4a8a3a'; g.fillRect(Math.round(x), Math.round(y) - 6, 2, 7); g.fillRect(Math.round(x) - 2, Math.round(y) - 4, 2, 1); g.fillRect(Math.round(x) - 2, Math.round(y) - 5, 1, 2); } else stone(x, y, ['#e0c898', '#b09060', '#7a5a38']); break;
@@ -170,23 +191,49 @@ function estimateStrike(B, a, t, ranged, moved = 0) {
   const kills = d => (d >= pool ? t.n : t.n - Math.ceil((pool - d) / hp));
   return { min: out[0], max: out[1], kmin: kills(out[0]), kmax: kills(out[1]) };
 }
-// --- dźwięki bitwy: rodzaj stwora decyduje o krokach, ciosie i odgłosie ---
-const unitSound = cid => { const C = CREATURES[cid], k = C.look.kind, fly = (C.abil || []).includes('fly');
-  return { fly, step: fly ? 'wings' : ['rider', 'centaur', 'unicorn'].includes(k) ? 'gallop' : ['dragon', 'hydra', 'treant', 'bull', 'tower'].includes(k) ? 'stomp' : ['wolf', 'lizard', 'insect', 'griffin', 'bird'].includes(k) ? 'paws' : 'march',
-    voice: k === 'dragon' || k === 'hydra' ? 'roar' : ['wolf', 'bull', 'lizard', 'insect', 'griffin', 'eye', 'ghost'].includes(k) ? 'growl' : null, weapon: k === 'hum' || k === 'rider' || k === 'centaur' }; };
+// --- dźwięki bitwy: rodzaj stwora, broń i wielkość decydują o krokach, ciosie, trafieniu, odgłosie i śmierci ---
+// Broń białą dzielimy na klingi (dzwonią), obuchy (głuche łupnięcie), topory (ciężki szczęk) i drzewcowe (pchnięcie); bez broni:
+// pazury i kły. Większe stwory brzmią niżej (wysokość z wielkości), nieumarli grzechoczą kośćmi, konstrukty zgrzytają metalem.
+const WEAPON_SND = { sword: 'blade', greatsword: 'blade', scimitar: 'blade', dagger: 'blade', glaive: 'pole', halberd: 'pole', spear: 'pole', lance: 'pole', trident: 'pole', pitchfork: 'pole',
+  axe: 'axe', labrys: 'axe', club: 'blunt', mace: 'blunt', wrench: 'blunt', none: 'claw' };
+const unitSound = cid => { const C = CREATURES[cid], L = C.look, k = L.kind, ab = C.abil || [], fly = ab.includes('fly'), size = L.size || 1, armed = k === 'hum' || k === 'rider' || k === 'centaur';
+  const undead = ab.includes('undead') || !!L.bony, metal = ab.includes('construct') || !!L.beast, demon = C.faction === 'inferno' && !undead;
+  return { fly, size, undead, metal, rate: clamp(1.22 - (size - 1) * 0.28, 0.55, 1.35), // wysokość: małe gremliny piszczą, olbrzymy dudnią
+    step: fly ? 'wings' : metal && size > 1.3 ? 'stomp' : ['rider', 'centaur', 'unicorn'].includes(k) ? 'gallop' : ['dragon', 'hydra', 'treant', 'bull', 'tower', 'kraken'].includes(k) || size >= 1.8 ? 'stomp' : ['wolf', 'lizard', 'insect', 'griffin', 'bird', 'spider'].includes(k) ? 'paws' : 'march',
+    voice: k === 'dragon' || k === 'hydra' || k === 'kraken' ? 'roar' : ['wolf', 'bull', 'lizard', 'griffin', 'spider'].includes(k) ? 'growl' : k === 'insect' ? 'wings' : k === 'ghost' || k === 'eye' ? 'dark'
+      : k === 'bird' || k === 'phoenix' ? 'wind' : demon && size >= 1.2 ? 'growl' : metal && size > 1.3 ? 'build' : null,
+    melee: armed ? WEAPON_SND[L.weapon] || (L.claws ? 'claw' : 'blade') : 'claw', weapon: armed };
+};
+// Odgłos ciosu w chwili zamachu: świst broni (niżej dla ciężkiej), ryk albo warknięcie bestii, zgrzyt maszyny
+function meleeSound(a, sp) {
+  const S = unitSound(a.cid), pan = sfxPan(a.px), r = S.rate;
+  if (hasAb(a, 'breath')) Sfx.play('firebreath', { pan, rate: r });
+  else if (S.voice) Sfx.play(sndOr(S.voice), { vol: 0.7, pan, rate: S.voice === 'wings' ? 1.8 : r });
+  if (S.weapon || S.metal) Sfx.play('swing', { vol: 0.8, pan, delay: 0.12 * sp, rate: S.melee === 'blunt' || S.melee === 'axe' ? r * 0.8 : S.melee === 'pole' ? r * 1.15 : r });
+}
+// Trafienie: klinga dzwoni, obuch i pięść łupią, topór szczęka nisko, pazury i kły tępo uderzają; pocisk po swojemu (strzała wbija się,
+// kula z muszkietu trzaska, głaz kruszy, granat wybucha, magia syczy, piorun grzmi); zabity oddział pada – kości grzechoczą, metal zgrzyta
+const SHOT_HIT_SND = { arrow: 'arrowhit', bolt: 'arrowhit', bullet: 'hit', orb: 'zaphit', fireball: 'explode', lightning: 'thunder', ray: 'zaphit', wave: 'shrine', rock: 'crash', pebble: 'thud', bomb: 'explode', axe: 'clash' };
+function impactSound(p, tg) {
+  const pan = sfxPan(tg.px), a = p && p.a, shot = p && p.kind === 'shot', S = a ? unitSound(a.cid) : null, T = unitSound(tg.cid), side = p && p.tg && p.tg !== tg; // odłamki i przeskoki: bez drugiego huku
+  if (side) Sfx.play('hit', { vol: 0.5, pan, rate: 1.2 });
+  else if (shot) { const sk = p.shotKind || shotKind(a.cid); Sfx.play(sndOr(SHOT_HIT_SND[sk] || 'arrowhit'), { vol: sk === 'bomb' || sk === 'lightning' ? 0.75 : 0.85, pan, rate: sk === 'bolt' ? 0.8 : sk === 'pebble' ? 1.4 : sk === 'lightning' ? 1.3 : 1 }); }
+  else if (S) { const m = S.melee; Sfx.play(m === 'blade' ? 'clash' : m === 'axe' ? 'clash' : m === 'blunt' ? 'thud' : 'hit', { vol: 0.85, pan, rate: m === 'axe' ? 0.75 * S.rate : S.rate });
+    if (m === 'blunt' && S.size >= 1.4) Sfx.play('hit', { vol: 0.6, pan, rate: 0.7 }); }
+  else Sfx.play('hit', { vol: 0.85, pan });
+  if (T.metal && !shot) Sfx.play('clash', { vol: 0.45, pan, rate: 0.6, delay: 0.03 }); // cios w pancerz maszyny
+  if (tg.dead) { if (T.undead) Sfx.play('crash', { vol: 0.55, pan, delay: 0.15, rate: 1.5 }); else if (T.metal) Sfx.play('crash', { vol: 0.75, pan, delay: 0.15, rate: 0.8 });
+    else Sfx.play('death', { vol: 0.8, pan, delay: 0.15, rate: T.rate }); if (T.size >= 1.8) Sfx.play('stomp', { vol: 0.8, pan, delay: 0.3, rate: 0.7 }); }
+}
+// Wystrzał: cięciwa, szczęk kuszy, huk muszkietu, trzask iskry, świst rzutu, pieśń syreny – w chwili, gdy pocisk opuszcza broń
+const SHOT_SND = { arrow: ['bow', 1], bolt: ['bow', 0.75], bullet: ['explode', 1.9], orb: ['zap', 1], fireball: ['fireball', 1], lightning: ['thunder', 1.6], ray: ['zap', 0.6], wave: ['shrine', 1.3], rock: ['swing', 0.6], pebble: ['swing', 1.3], bomb: ['swing', 0.9], axe: ['swing', 1] };
+function shotSound(kind, x, size) { const [n, r] = SHOT_SND[kind] || SHOT_SND.arrow; Sfx.play(sndOr(n), { vol: kind === 'bullet' ? 0.55 : kind === 'lightning' ? 0.6 : 0.85, pan: sfxPan(x), rate: r * (['rock', 'pebble', 'axe', 'bomb'].includes(kind) ? clamp(1.2 - (size - 1) * 0.3, 0.6, 1.3) : 1) }); }
 function battleSound(fx, sp) {
-  if (fx.kind === 'move') { const S = unitSound(fx.u.cid), x = fx.u.px; if (S.fly) Sfx.play('wings', { vol: 0.7, pan: sfxPan(x) });
-    else { const n = Math.min(6, fx.path.length - 1); for (let i = 0; i < n; i++) Sfx.play(S.step, { vol: 0.55, pan: sfxPan(x), delay: i * 0.17 * sp, gap: 0 }); } }
-  else if (fx.kind === 'hit' && fx.a && !fx.splash) { const S = unitSound(fx.a.cid); if (hasAb(fx.a, 'breath')) Sfx.play('firebreath', { pan: sfxPan(fx.a.px) }); else if (S.voice) Sfx.play(S.voice, { vol: 0.7, pan: sfxPan(fx.a.px) }); if (S.weapon) Sfx.play('swing', { vol: 0.8, pan: sfxPan(fx.a.px), delay: 0.12 * sp }); }
-  else if (fx.kind === 'shot') { const LK = CREATURES[fx.a.cid].look; Sfx.play(LK.weapon === 'staff' || LK.orb ? 'zap' : 'bow', { pan: sfxPan(fx.a.px), delay: 0.3 * sp }); }
+  if (fx.kind === 'move') { const S = unitSound(fx.u.cid), x = fx.u.px; if (S.fly) Sfx.play('wings', { vol: 0.7, pan: sfxPan(x), rate: S.rate });
+    else { const n = Math.min(6, fx.path.length - 1); for (let i = 0; i < n; i++) Sfx.play(S.step, { vol: 0.55, pan: sfxPan(x), delay: i * 0.17 * sp, gap: 0, rate: S.rate }); } }
+  else if (fx.kind === 'hit' && fx.a && !fx.splash) meleeSound(fx.a, sp);
   else if (fx.kind === 'siege') Sfx.play('catapult', { pan: sfxPan(fx.a.px), delay: 0.25 * sp });
   else if (fx.kind === 'spell') Sfx.play(sndOr(SPELL_SND[fx.id] ? SPELL_SND[fx.id][0] : 'cast'), { vol: 0.8 });
-}
-// Trafienie: cios bronią dzwoni, pazury i kły tępo uderzają, strzała wbija się; zabity oddział pada
-function impactSound(p, tg) {
-  const pan = sfxPan(tg.px), a = p && p.a, shot = p && p.kind === 'shot', S = a ? unitSound(a.cid) : null;
-  Sfx.play(shot ? 'arrowhit' : S && S.weapon ? 'clash' : 'hit', { vol: 0.85, pan });
-  if (tg.dead) Sfx.play('death', { vol: 0.8, pan, delay: 0.15 });
 }
 // Czar: [dźwięk rzucenia, dźwięk trafienia]; brzmienia żywiołów i szkół (wiatr, ziemia, chór, trucizna…), a gdy którejś próbki brak – zastępcza
 const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thunder'], chainLightning: ['cast', 'thunder'], fireball: ['fireball', 'explode'], meteorShower: ['earth', 'explode'], armageddon: ['dark', 'explode'],
@@ -398,6 +445,11 @@ G.screens.battle = {
     if (killed) { this.floats.push({ x: tx, y: ty - 26, text: `†${killed}`, t: now + 0.05, col: '#e8e0cc', small: true }); BattleFX.shake = Math.max(BattleFX.shake, 2 + Math.min(4, killed)); }
     if (tg.dead && tg.dieT == null) { tg.dieT = now + 0.15; BattleFX.emit(tx, ty + 10, { n: 16, col: ['#8a7a6a', '#5a4e44'], spd: 50, up: -20, life: 0.8, size: 4, drag: 2, jx: 20 }); }
   },
+  // Trafienia, które dzieją się w tej samej chwili co główne (odłamki granatu, przeskok iskry, zionięcie na drugie pole, obrażenia
+  // czaru obszarowego): od razu, razem z głównym, a nie po kolei po 0,3 s każde
+  landSplash(spell) {
+    const Q = this.B.fx; while (Q.length && Q[0].kind === 'hit' && (Q[0].splash || (spell && !Q[0].a))) { const fx = Q.shift(); if (fx.bolt) BattleFX.bolt(fx.bolt.px, fx.bolt.py - 20, fx.tg.px, fx.tg.py - 20, '#8ae0ff'); this.impact(fx.tg, fx.dmg, fx.killed, fx.bolt ? '#8ae0ff' : fx.blast ? '#ffb040' : undefined); }
+  },
   stepPlay() {
     const p = this.play, f = clamp(p.t / p.dur, 0, 1);
     if (p.kind === 'move') {
@@ -412,16 +464,24 @@ G.screens.battle = {
         const d = p.a.face || (p.a.side === 0 ? 1 : -1), [mx, my] = mouthPos(p.a, d), bh = hexBehind(p.a, p.tg), [ex, ey] = bh ? hexCenter(...bh) : [p.tg.px + d * 40, p.tg.py];
         BattleFX.flame(mx, my, ex, ey - 22, breathColor(p.a.cid));
       }
-      if (!p.landed && f >= (p.a && !p.splash ? 0.5 : 0)) { p.landed = true; this.impact(p.tg, p.dmg, p.killed); }
+      if (!p.landed && f >= (p.a && !p.splash ? 0.5 : 0)) { p.landed = true; this.impact(p.tg, p.dmg, p.killed); if (p.a && !p.splash) this.landSplash(); }
     } else if (p.kind === 'shot') {
-      const LK = CREATURES[p.a.cid].look, orb = LK.weapon === 'staff' || !!LK.orb, col = LK.orb || '#c8e0ff'; // kula: laska albo własny pocisk (kamień gremlina, piorun tytana)
-      if (!p.launched && f >= 0.38) {
-        p.launched = true; const dist = Math.hypot(p.tg.px - p.a.px, p.tg.py - p.a.py);
-        p.pr = BattleFX.proj(orb ? 'orb' : 'arrow', p.a.px + (p.tg.px > p.a.px ? 14 : -14), p.a.py - 18, p.tg.px, p.tg.py - 16, (orb ? 0.08 + dist / 1500 : 0.05 + dist / 2800) * p.sp, col, orb ? 8 : 6 + dist * 0.07); // strzała z łuku: szybka (ok. ćwierć sekundy przez pół pola), płaski łuk rosnący z odległością
-        p.hitAt = p.t + p.pr.dur;
+      const LK = CREATURES[p.a.cid].look, kind = p.shotKind || (p.shotKind = shotKind(p.a.cid)), col = LK.orb || LK.coil || LK.glow || '#c8e0ff', magic = ['orb', 'lightning', 'ray', 'wave', 'fireball'].includes(kind);
+      if (!p.launched && f >= 0.38) { // pocisk wylatuje w klatce strzału (zwolnienie cięciwy, wystrzał, zamach)
+        p.launched = true; const d = p.tg.px > p.a.px ? 1 : -1, [x0, y0] = shotFrom(p.a, d), [x1, y1] = [p.tg.px, p.tg.py - 16 - (p.tg.lift || 0)], dist = Math.hypot(x1 - x0, y1 - y0), [t, arc] = SHOT_FLIGHT[kind](dist);
+        if (kind === 'lightning') { BattleFX.bolt(x0, y0, x1, y1, col); BattleFX.glow(x0, y0, 22, col, 0.3); p.hitAt = p.t + t * p.sp; }
+        else if (kind === 'ray') { BattleFX.ray(x0, y0, x1, y1, col, 0.3); p.hitAt = p.t + t * p.sp; }
+        else { p.pr = BattleFX.proj(kind, x0, y0, x1, y1, t * p.sp, col, arc); p.pr.sz = Math.min(2.2, Math.max(1, (LK.size || 1) * 0.8)); p.hitAt = p.t + p.pr.dur; } // głaz cyklopa większy niż kamyk gremlina
+        shotSound(kind, x0, LK.size || 1);
+        if (kind === 'bullet') { BattleFX.glow(x0, y0, 16, '#ffd070', 0.18); BattleFX.smoke(x0 + d * 6, y0, '#d8d4cc', 5); } // błysk i dym z lufy
       }
-      if (p.launched && !p.landed && p.t >= p.hitAt) { p.landed = true; this.impact(p.tg, p.dmg, p.killed, orb ? col : '#ffe8a0'); if (orb) BattleFX.emit(p.tg.px, p.tg.py - 16, { n: 14, col: [col, '#ffffff'], spd: 90, life: 0.4, size: 3, glow: true }); }
-      if (p.hitAt) p.dur = Math.max(p.dur, p.hitAt + 0.15);
+      if (p.launched && !p.landed && p.t >= p.hitAt) {
+        p.landed = true; this.impact(p.tg, p.dmg, p.killed, magic ? col : kind === 'bomb' ? '#ffb040' : '#ffe8a0'); this.landSplash(); const tx = p.tg.px, ty = p.tg.py - 16;
+        if (magic) BattleFX.emit(tx, ty, { n: 14, col: [col, '#ffffff'], spd: 90, life: 0.4, size: 3, glow: true });
+        if (kind === 'bomb') { BattleFX.glow(tx, ty, 60, '#ffa040', 0.45); BattleFX.emit(tx, ty, { n: 30, col: ['#ff8a2a', '#ffd060', '#ff5a1a'], spd: 150, life: 0.6, size: 4, glow: true }); BattleFX.smoke(tx, ty + 6, '#5a4e44', 10); BattleFX.shake = Math.max(BattleFX.shake, 3); }
+        if (kind === 'rock' || kind === 'pebble') BattleFX.shards(tx, ty, ['#8a847a', '#6e6a62', '#b0a898'], kind === 'rock' ? 16 : 7, 120);
+      }
+      if (p.hitAt) p.dur = p.landed ? Math.min(p.dur, p.hitAt + 0.18) : Math.max(p.dur, p.hitAt + 0.18); // po trafieniu bez martwej przerwy
     } else if (p.kind === 'siege') { // głaz z katapulty w mur
       const [tx, ty] = hexCenter(p.x, p.y);
       if (!p.launched && f >= 0.4) { p.launched = true; p.pr = BattleFX.proj('rock', p.a.px, p.a.py - 26, tx + (p.hit ? 0 : 20), ty - 20, 0.38 * p.sp, '#8a847a', 90); p.hitAt = p.t + p.pr.dur; }
@@ -448,6 +508,7 @@ G.screens.battle = {
       }
       if (!p.landed && p.t >= p.hitAt) {
         p.landed = true; spellLandSound(p.id, tx); if (S.sig && (S.proj || S.strike || S.meteor)) spellSignature(aim[0], ty, S); // pocisk i piorun: znak czaru w miejscu trafienia
+        this.landSplash(true); p.dur = Math.min(p.dur, p.t + 0.35); // obrażenia czaru od razu na wszystkich celach, krótko po trafieniu
         if (S.burst) BattleFX.emit(aim[0], aim[1], { n: S.boom ? 60 : 24, col: [S.col, S.burst, '#ffffff'], spd: S.boom ? 170 : 110, life: S.boom ? 0.8 : 0.5, size: S.boom ? 4 : 3, glow: true, drag: 1.5 });
         BattleFX.glow(aim[0], aim[1], S.boom ? 110 : 55, S.col, S.boom ? 0.7 : 0.45);
         if (S.boom) { BattleFX.ring(tx, ty + 10, S.col, 90, 0.6, 6); BattleFX.emit(tx, ty, { n: 40, col: ['#ff8a2a', '#ffd060', '#ff5a1a'], dir: -Math.PI / 2, spread: 2.4, spd: 150, g: 120, life: 0.9, size: 4, glow: true, jx: 50, jy: 20 }); BattleFX.emit(tx, ty, { n: 24, col: ['#5a4e44', '#8a7a6a'], dir: -Math.PI / 2, spread: 1.2, spd: 60, life: 1.1, size: 5, drag: 1 }); }
@@ -696,6 +757,7 @@ const MOAT_LIQ = {
   academy: { tex: 'water', col: '#5a8aa8', tint: 'rgba(210,235,255,.4)', bank: ['#8a909a', '#c8d0da'], flow: 'rgba(230,245,255,.35)', spark: 'rgba(255,255,255,.75)' },
   dungeon: { tex: 'water', col: '#2a2440', tint: 'rgba(60,30,90,.4)', bank: ['#1e1a24', '#34303e'], flow: 'rgba(150,100,220,.22)', spark: 'rgba(200,170,255,.5)' },
   stronghold: { tex: 'water', col: '#4a3e28', tint: 'rgba(110,80,40,.35)', bank: ['#4a3820', '#6a5232'], flow: 'rgba(160,130,80,.25)', spark: 'rgba(230,210,170,.45)' },
+  forge: { tex: 'lava', col: '#c8601a', tint: 'rgba(255,140,40,.25)', bank: ['#2a2420', '#4a3e34'], flow: 'rgba(255,190,90,.3)', spark: 'rgba(255,230,160,.7)', glow: true }, // fosa płynnego metalu z odlewni
 };
 // Fosa oblężonego miasta: prosty kanał wzdłuż lica muru (równoległy do ukosu, brzeg przy murze), przez całą wysokość pola;
 // w rzędzie bramy przerzucony drewniany most. Ziemny brzeg, woda z faktury terenu (płynie powoli), ciemniejsza przy brzegach, fale

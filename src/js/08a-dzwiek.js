@@ -89,7 +89,7 @@ function battleDanger(B) {
   return { me, foe, ratio: pow(foe) / Math.max(1, pow(me)) };
 }
 // Muzyka miasta: osobny utwór każdej frakcji, w jej klimacie (tools/muzyka/zamki.py)
-const MUSIC_TOWN = { haven: 'miasto_przystan', sylvan: 'miasto_knieja', barrow: 'miasto_kurhan', fortress: 'miasto_cytadela', inferno: 'miasto_inferno', academy: 'miasto_akademia', dungeon: 'miasto_loch', stronghold: 'miasto_twierdza' };
+const MUSIC_TOWN = { haven: 'miasto_przystan', sylvan: 'miasto_knieja', barrow: 'miasto_kurhan', fortress: 'miasto_cytadela', inferno: 'miasto_inferno', academy: 'miasto_akademia', dungeon: 'miasto_loch', stronghold: 'miasto_twierdza', forge: 'miasto_manufaktura' };
 const Music = {
   cur: null, node: null, buf: {}, order: [], bus: null,
   vol() { const v = G.settings.musVol; return v == null ? 0.5 : v; },

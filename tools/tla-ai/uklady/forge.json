@@ -1,0 +1,308 @@
+{
+ "_opis": "Miejsca budowli na namalowanym tle: s = podstawa na ekranie, z = głębokość, k = skala.",
+ "tlo": "forge.png",
+ "pj": {
+  "hor": 198,
+  "d": 330,
+  "f": 500
+ },
+ "slots": [
+  {
+   "s": [
+    446,
+    414
+   ],
+   "k": 0.95
+  },
+  {
+   "s": [
+    300,
+    298
+   ],
+   "k": 1.1
+  },
+  {
+   "s": [
+    546,
+    296
+   ]
+  },
+  {
+   "s": [
+    462,
+    266
+   ],
+   "k": 1.3
+  },
+  {
+   "s": [
+    222,
+    324
+   ],
+   "k": 1.7
+  },
+  {
+   "s": [
+    552,
+    342
+   ]
+  },
+  {
+   "s": [
+    470,
+    342
+   ]
+  },
+  {
+   "s": [
+    548,
+    392
+   ]
+  },
+  {
+   "s": [
+    556,
+    424
+   ]
+  },
+  {
+   "s": [
+    110,
+    420
+   ]
+  },
+  {
+   "s": [
+    62,
+    318
+   ]
+  },
+  {
+   "s": [
+    252,
+    352
+   ]
+  },
+  {
+   "s": [
+    190,
+    426
+   ]
+  },
+  {
+   "s": [
+    336,
+    410
+   ]
+  },
+  {
+   "s": [
+    382,
+    356
+   ]
+  },
+  {
+   "s": [
+    140,
+    292
+   ],
+   "k": 1.3
+  }
+ ],
+ "_analiza": "Horyzont 198 (styk dalekiej równiny z górami, y ~252 obrazu). Dolina bez płaskowyżu: wszystkie budowle na ziemi, d 330 (mniejsza wysokość kamery = większe budowle przy wysokim horyzoncie). Fort pośrodku przed stożkowym wzgórzem, rzeka stopionego metalu z lewej u dołu (x 30–300, sy 315–432) i urwisko przy lewej krawędzi wyłączone. Bez przemalowania ziemi (polana.py dorysowywał widmowe zabudowania): czysta równina z tła, place pod budowlami daje scena.",
+ "polana": {
+  "zrodlo": "forge.png",
+  "obszar": [
+   [
+    40,
+    262
+   ],
+   [
+    584,
+    262
+   ],
+   [
+    584,
+    432
+   ],
+   [
+    40,
+    432
+   ]
+  ],
+  "bez": [
+   [
+    [
+     30,
+     312
+    ],
+    [
+     110,
+     322
+    ],
+    [
+     170,
+     350
+    ],
+    [
+     232,
+     382
+    ],
+    [
+     292,
+     408
+    ],
+    [
+     304,
+     432
+    ],
+    [
+     252,
+     432
+    ],
+    [
+     198,
+     402
+    ],
+    [
+     138,
+     374
+    ],
+    [
+     78,
+     352
+    ],
+    [
+     30,
+     344
+    ]
+   ],
+   [
+    [
+     8,
+     262
+    ],
+    [
+     46,
+     262
+    ],
+    [
+     46,
+     432
+    ],
+    [
+     8,
+     432
+    ]
+   ]
+  ],
+  "obszar_tyl": 262,
+  "woda": [
+   0,
+   0
+  ],
+  "pnie": false,
+  "trawa": [
+   [
+    150,
+    128,
+    108
+   ],
+   [
+    112,
+    94,
+    78
+   ]
+  ],
+  "ziemia": [
+   98,
+   82,
+   68
+  ],
+  "trakt": [
+   [
+    300,
+    434
+   ],
+   [
+    300,
+    400
+   ],
+   [
+    300,
+    350
+   ],
+   [
+    300,
+    310
+   ],
+   [
+    300,
+    300
+   ]
+  ],
+  "trakt_w": 14,
+  "zachowaj": true,
+  "opis": "detailed fantasy matte painting, industrial town ground at dusk, packed dark earth and cobbled stone plots, scattered coal and scrap iron, soot, warm copper light, painterly, rich detail, crisp"
+ },
+ "ozdoby": [
+  {
+   "o": 1,
+   "s": [
+    258,
+    300
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 3,
+   "s": [
+    350,
+    330
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 2,
+   "s": [
+    420,
+    318
+   ],
+   "k": 1.6
+  },
+  {
+   "o": 5,
+   "s": [
+    330,
+    372
+   ],
+   "k": 1.5
+  },
+  {
+   "o": 2,
+   "s": [
+    100,
+    402
+   ],
+   "k": 1.6
+  }
+ ],
+ "swiatlo": {
+  "niebo": 6969978,
+  "ziemia": 13144176,
+  "hemi": 0.55,
+  "slonce": 16756848,
+  "moc": 3.2,
+  "wypelnienie": 8417440,
+  "wypelnienie_moc": 0.3,
+  "kontra": 16752720,
+  "kontra_moc": 3.5,
+  "dol": 16744496,
+  "dol_moc": 0.8
+ },
+ "haze": "#8a6a5a",
+ "grade": "saturate(1.06) brightness(1.0) contrast(1.1)",
+ "blendOpts": {
+  "color": 0.2
+ }
+}

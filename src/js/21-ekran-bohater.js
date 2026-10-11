@@ -233,7 +233,7 @@ const SPELL_FX = {
   massCure: { aura: 'rise', col: '#7ae8c8', column: true, sig: 'spiral' }, deathRipple: { aura: 'drip', col: '#8a9a6a', burst: '#c8d0a0', shake: 6, sig: 'smoke' },
 };
 const BattleFX = {
-  reset() { this.parts = []; this.rings = []; this.bolts = []; this.projs = []; this.glows = []; this.beams = []; this.domes = []; this.flash = null; this.shake = 0; },
+  reset() { this.parts = []; this.rings = []; this.bolts = []; this.rays = []; this.projs = []; this.glows = []; this.beams = []; this.domes = []; this.flash = null; this.shake = 0; },
   // Słup światła z nieba (błogosławieństwo, modlitwa, święte światło) i półprzezroczysta kopuła tarczy wokół oddziału
   beam(x, y, col, dur = 0.9, w = 26) { (this.beams = this.beams || []).push({ x, y, col, dur, w, t: 0 }); },
   dome(x, y, col, dur = 1, r = 34) { (this.domes = this.domes || []).push({ x, y, col, dur, r, t: 0 }); },
@@ -275,6 +275,8 @@ const BattleFX = {
     for (let i = 1; i < n; i++) { const f = i / n; pts.push([x0 + (x1 - x0) * f + (Math.random() - 0.5) * 26, y0 + (y1 - y0) * f + (Math.random() - 0.5) * 8]); }
     pts.push([x1, y1]); this.bolts.push({ pts, col, t: 0, dur: 0.35 });
   },
+  // Promień oka (obserwatorzy): prosta wiązka od oka do celu, rozbłyska i gaśnie
+  ray(x0, y0, x1, y1, col, dur = 0.3) { (this.rays = this.rays || []).push({ x0, y0, x1, y1, col, dur, t: 0 }); },
   proj(kind, x0, y0, x1, y1, dur, col, arc = 0) { const p = { kind, x0, y0, x1, y1, dur, col, arc, t: 0 }; this.projs.push(p); return p; },
   update(dt) {
     for (const p of this.parts) { p.life -= dt;
@@ -286,10 +288,13 @@ const BattleFX = {
     for (const r of this.rings) r.t += dt; this.rings = this.rings.filter(r => r.t < r.dur);
     for (const g of this.glows) g.t += dt; this.glows = this.glows.filter(g => g.t < g.dur);
     for (const b of this.bolts) b.t += dt; this.bolts = this.bolts.filter(b => b.t < b.dur);
+    for (const r of this.rays || []) r.t += dt; this.rays = (this.rays || []).filter(r => r.t < r.dur);
     for (const p of this.projs) {
       p.t += dt; const [x, y] = projPos(p);
       if (p.kind === 'orb') this.emit(x, y, { n: 2, col: [p.col, '#ffffff'], spd: 12, life: 0.35, size: 3, glow: true });
       if (p.kind === 'fireball') this.emit(x, y, { n: 4, col: ['#ff8a2a', '#ffd060', '#6a5a50'], spd: 20, up: -20, life: 0.5, size: 4, glow: true });
+      if (p.kind === 'bomb') this.emit(x, y - 6, { n: 1, col: ['#ffd060', '#ff8a2a'], spd: 30, life: 0.25, size: 2, glow: true }); // tlący się lont
+      if (p.kind === 'wave' && Math.random() < 0.5) this.emit(x, y, { n: 1, col: [p.col, '#ffffff'], spd: 10, life: 0.4, size: 2, glow: true });
     }
     this.projs = this.projs.filter(p => p.t < p.dur);
     if (this.flash) { this.flash.a -= dt * 2.2; if (this.flash.a <= 0) this.flash = null; }
@@ -297,7 +302,7 @@ const BattleFX = {
   },
   // Efekty jako pixel art: zwykłe (kręgi, kamienie, strzały, iskry) i świetlne (poświaty, pioruny, pociski magii) nakładane addytywnie
   draw(ctx) {
-    if (!(this.glows.length + this.rings.length + this.projs.length + this.bolts.length + this.parts.length + (this.beams || []).length + (this.domes || []).length)) return;
+    if (!(this.glows.length + this.rings.length + this.projs.length + this.bolts.length + (this.rays || []).length + this.parts.length + (this.beams || []).length + (this.domes || []).length)) return;
     pixLayer('fxN', ctx, 0, 0, W, H, g => this.drawLayer(g, false));
     pixLayer('fxA', ctx, 0, 0, W, H, g => this.drawLayer(g, true), { add: true });
   },
@@ -320,10 +325,16 @@ const BattleFX = {
       for (const k of [-0.5, 0, 0.5]) { ctx.beginPath(); ctx.ellipse(d.x, d.y, r * Math.abs(Math.cos(k + f * 3)), r * 1.05, 0, Math.PI, TAU); ctx.stroke(); } ctx.restore(); }
     if (!add) for (const r of this.rings) { const f = r.t / r.dur; ctx.save(); ctx.globalAlpha = 1 - f; ctx.strokeStyle = r.col; ctx.lineWidth = r.w * (1 - f) + 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r1 * ease(f), r.r1 * ease(f) * 0.45, 0, 0, TAU); ctx.stroke(); ctx.restore(); }
     for (const p of this.projs) {
-      if ((p.kind === 'rock' || p.kind === 'arrow') === add) continue;
+      if (['rock', 'arrow', 'bolt', 'axe', 'pebble', 'bomb'].includes(p.kind) === add) continue; // przedmioty bez dodawania światła, magia i ogień z poświatą
       const [x, y] = projPos(p), [nx, ny] = projPos({ ...p, t: Math.min(p.dur, p.t + 0.02) }), ang = Math.atan2(ny - y, nx - x);
-      ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
-      if (p.kind === 'rock') { circ(ctx, 0, 0, 6, '#6e6a62'); circ(ctx, -1.5, -1.5, 3.5, '#9a948a'); }
+      ctx.save(); ctx.translate(x, y); ctx.rotate(ang); if (p.sz && p.sz !== 1) ctx.scale(p.sz, p.sz);
+      if (p.kind === 'rock') { ctx.rotate(p.t * 9); fillPoly(ctx, [[-7, -3], [-3, -7], [4, -6], [8, -1], [5, 6], [-4, 7], [-8, 2]], '#6e6a62'); circ(ctx, -1.5, -2, 3.5, '#9a948a'); } // głaz koziołkuje
+      else if (p.kind === 'pebble') { circ(ctx, 0, 0, 3.2, p.col && p.col !== '#c8e0ff' ? DK(p.col, 0.3) : '#6e6a62'); circ(ctx, -1, -1, 1.6, '#c8c0b0'); }
+      else if (p.kind === 'bomb') { ctx.rotate(-ang + p.t * 6); circ(ctx, 0, 0, 5, '#2a2a2a'); circ(ctx, -1.6, -1.6, 1.8, '#6a6a6a'); ctx.fillStyle = '#8a8478'; ctx.fillRect(-1, -7, 2, 3); } // żeliwna kula z lontem
+      else if (p.kind === 'axe') { ctx.rotate(p.t * 22); limb(ctx, -7, 0, 7, 0, 1.6, '#6a4424'); fillPoly(ctx, [[3, -1], [8, -7], [11, -3], [11, 3], [8, 7], [3, 1]], '#c8ccd4'); } // topór wiruje w locie
+      else if (p.kind === 'bolt') { limb(ctx, -10, 0, 7, 0, 2, '#5a3a20'); fillPoly(ctx, [[6, -2.6], [12, 0], [6, 2.6]], '#8a9098'); fillPoly(ctx, [[-6, 0], [-10, -2.6], [-9, 0], [-10, 2.6]], '#c8c0b0'); } // krótki, gruby bełt kuszy
+      else if (p.kind === 'bullet') { ctx.globalCompositeOperation = 'lighter'; const g = ctx.createLinearGradient(-60, 0, 0, 0); g.addColorStop(0, 'rgba(255,200,80,0)'); g.addColorStop(1, 'rgba(255,230,160,.9)'); ctx.fillStyle = g; ctx.fillRect(-60, -1, 60, 2); circ(ctx, 0, 0, 2.4, '#ffffff'); } // kula z muszkietu: świetlna smuga
+      else if (p.kind === 'wave') { ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = p.col; for (let i = 0; i < 3; i++) { ctx.globalAlpha = 0.9 - i * 0.25; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(-i * 8, 0, 6 + i * 3, -1, 1); ctx.stroke(); } } // pieśń syreny: fale
       else if (p.kind === 'arrow') { // smuga za strzałą, cienkie drzewce, grot i lotki
         const g = ctx.createLinearGradient(-46, 0, -12, 0); g.addColorStop(0, 'rgba(255,250,230,0)'); g.addColorStop(1, 'rgba(255,250,230,.45)'); ctx.fillStyle = g; ctx.fillRect(-46, -1, 34, 2);
         limb(ctx, -13, 0, 9, 0, 1.6, '#7a5230'); fillPoly(ctx, [[8, -2.6], [14, 0], [8, 2.6]], '#dfe3ea'); fillPoly(ctx, [[-8, 0], [-14, -3.4], [-11, 0], [-14, 3.4]], '#c83a2a'); }
@@ -331,6 +342,9 @@ const BattleFX = {
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, r * 2.2, 0, TAU); ctx.fill(); fillPoly(ctx, [[0, -r * 0.6], [-r * 2.2, 0], [0, r * 0.6]], p.col); }
       ctx.restore();
     }
+    if (add) for (const r of this.rays || []) { const f = r.t / r.dur, a = f < 0.25 ? f / 0.25 : 1 - (f - 0.25) / 0.75; ctx.save(); ctx.globalCompositeOperation = 'lighter'; // promień: szeroka poświata i jasny rdzeń
+      for (const [w, col, al] of [[10, r.col, 0.35], [4, r.col, 0.8], [1.5, '#ffffff', 1]]) { ctx.globalAlpha = a * al; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(r.x0, r.y0); ctx.lineTo(r.x1, r.y1); ctx.stroke(); }
+      ctx.restore(); }
     if (add) for (const b of this.bolts) {
       const f = b.t / b.dur, flick = Math.random() < 0.8 ? 1 : 0.3; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - f) * flick;
       for (const [w, col] of [[9, b.col], [3, '#ffffff']]) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.globalAlpha *= w > 5 ? 0.45 : 1; ctx.beginPath(); b.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); ctx.globalAlpha = (1 - f) * flick; }
@@ -361,7 +375,7 @@ function drawFlamePuff(ctx, p, add) {
   } else if (age > 0.55) { ctx.globalAlpha = (age - 0.55) * 0.9; circ(ctx, x, y - (age - 0.55) * 20, r * 0.8, '#2e2622'); } // dym nad końcem strumienia
   ctx.restore();
 }
-function projPos(p) { const f = clamp(p.t / p.dur, 0, 1); return [lerp(p.x0, p.x1, f), lerp(p.y0, p.y1, f) - (p.kind === 'arrow' ? 4 * f * (1 - f) : Math.sin(f * Math.PI)) * p.arc]; } // strzała: parabola balistyczna
+function projPos(p) { const f = clamp(p.t / p.dur, 0, 1); return [lerp(p.x0, p.x1, f), lerp(p.y0, p.y1, f) - (['arrow', 'bolt', 'rock', 'pebble', 'bomb', 'axe'].includes(p.kind) ? 4 * f * (1 - f) : Math.sin(f * Math.PI)) * p.arc]; } // rzucone i wystrzelone: parabola balistyczna
 // Aura czaru wokół oddziału (cząsteczki zależne od rodzaju)
 function spellAura(x, y, fx) {
   const c = fx.col, top = y - 70;

@@ -311,6 +311,7 @@ const GUILD_LOOK = { // kształt okna, materiał półek i kolor krawędzi, drob
   barrow: { win: 'pointed', shelf: '#3a3444', edge: '#8af0a0', deco: 'skulls' }, fortress: { win: 'round', shelf: '#6a5030', edge: '#c8b060', deco: 'herbs' },
   inferno: { win: 'arch', shelf: '#2a1a1a', edge: '#ff7a1a', deco: 'braziers' }, academy: { win: 'arch', shelf: '#d8dce6', edge: '#d8a830', deco: 'orbs' },
   dungeon: { win: 'rough', shelf: '#4a4454', edge: '#c080ff', deco: 'crystals' }, stronghold: { win: 'rough', shelf: '#7a5030', edge: '#e8dcc0', deco: 'totems' },
+  forge: { win: 'arch', shelf: '#5a4a3e', edge: '#e0a050', deco: 'orbs' },
 };
 const GV = { x: 20, y: 14, w: 760, h: 552, win: { x: 44, y: 70, w: 272, h: 232 }, info: { x: 40, y: 318, w: 280, h: 200 }, sh: { x: 340, y: 70, w: 420, row: 90 } };
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];

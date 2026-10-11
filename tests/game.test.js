@@ -128,7 +128,7 @@ test('budowa i rekrutacja pobierają właściwe koszty', async () => {
 });
 
 test('bohater idzie do surowca i go podnosi', async () => {
-  await newGame(page, {}, 321);
+  await newGame(page, {}, 322);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), n = st.map.n; human(st).explored.fill(1); h.mp = 1e6;
     const cands = st.objects.filter(o => !o.dead && o.type === 'res' && !st.guard[o.y * n + o.x])

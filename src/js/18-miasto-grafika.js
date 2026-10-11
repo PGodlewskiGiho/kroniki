@@ -42,6 +42,9 @@ function drawEmblem(ctx, kind, cx, cy, s, col) {
     case 'anchor': ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(0, 8); ctx.moveTo(-5, -3); ctx.lineTo(5, -3); ctx.moveTo(-8, 2); ctx.quadraticCurveTo(-7, 9, 0, 8); ctx.quadraticCurveTo(7, 9, 8, 2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, -9, 2.2, 0, TAU); ctx.stroke(); break;
     case 'eye': ctx.beginPath(); ctx.ellipse(0, 0, 10, 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(0, 0, 2, 5, 0, 0, TAU); ctx.fill(); break;
     case 'axe': ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-6, 9); ctx.lineTo(4, -7); ctx.stroke(); ctx.beginPath(); ctx.moveTo(1, -9); ctx.quadraticCurveTo(10, -9, 9, 1); ctx.lineTo(3, -3); ctx.closePath(); ctx.fill(); break;
+    case 'gear': ctx.beginPath(); for (let i = 0; i < 16; i++) { const r = i % 2 ? 6.4 : 9, a = i / 16 * TAU; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.closePath(); ctx.fill(); ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(0, 0, 3, 0, TAU); ctx.fill(); break;
+    case 'gun': ctx.fillRect(-9, -3, 15, 3); ctx.fillRect(4, -4, 3, 1.5); ctx.beginPath(); ctx.moveTo(-9, -3); ctx.lineTo(-3, -3); ctx.lineTo(-5, 7); ctx.lineTo(-9, 6); ctx.closePath(); ctx.fill(); ctx.fillStyle = dark; ctx.fillRect(-4, 0, 3, 3); break;
+    case 'bolt': ctx.beginPath(); [[2, -10], [-6, 1], [-1, 1], [-3, 10], [6, -2], [1, -2], [4, -10]].forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); ctx.fill(); break;
     case 'paw': ctx.beginPath(); ctx.ellipse(0, 3, 6, 5, 0, 0, TAU); ctx.fill(); for (const [a, b] of [[-7, -3], [-2.5, -7], [2.5, -7], [7, -3]]) { ctx.beginPath(); ctx.arc(a, b, 2.4, 0, TAU); ctx.fill(); } break;
     case 'fork': ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(0, -4); ctx.moveTo(-6, -9); ctx.lineTo(-6, -3); ctx.quadraticCurveTo(0, 2, 6, -3); ctx.lineTo(6, -9); ctx.moveTo(0, -4); ctx.lineTo(0, -10); ctx.stroke(); break;
   }

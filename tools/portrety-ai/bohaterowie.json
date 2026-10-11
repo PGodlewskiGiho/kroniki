@@ -146,6 +146,24 @@
    63,
    98,
    131
+  ],
+  "engineer": [
+   24,
+   41,
+   104,
+   106,
+   128,
+   144,
+   56
+  ],
+  "inventor": [
+   3,
+   14,
+   44,
+   102,
+   135,
+   143,
+   5
   ]
  },
  "Sir Rolan": {
@@ -399,5 +417,35 @@
   "klasa": "battleMage",
   "opis": "young woman fire mage, freckles, curly red hair, leather headband, wild grin, orange robes with sparks",
   "tlo": "fiery sky"
+ },
+ "Ignacy": {
+  "klasa": "engineer",
+  "opis": "50 year old stocky engineer, soot-smudged face, bushy grey mustache, brass goggles pushed up on forehead, leather cap, stern focused eyes",
+  "tlo": "smoky foundry with glowing furnace"
+ },
+ "Maria": {
+  "klasa": "inventor",
+  "opis": "young woman inventor, sharp intelligent eyes, dark hair in a bun with copper pins, small round spectacles, high collar coat with brass buttons, faint smile",
+  "tlo": "workshop with copper coils and blue sparks"
+ },
+ "Mikołaj": {
+  "klasa": "inventor",
+  "opis": "elderly gaunt inventor, wild white hair, long thin beard, brass monocle, burn mark on cheek, intense stare",
+  "tlo": "cluttered laboratory with lightning coil"
+ },
+ "Halina": {
+  "klasa": "engineer",
+  "opis": "middle-aged woman engineer, strong jaw, short brown hair, freckles, soot on cheek, welding goggles around neck, leather apron, determined look",
+  "tlo": "steam factory with huge gears"
+ },
+ "Stefan": {
+  "klasa": "engineer",
+  "opis": "bald burly artillery engineer, thick black beard, scar over eyebrow, brass gorget, black tricorn hat, grim expression",
+  "tlo": "cannon smoke at dusk"
+ },
+ "Ada": {
+  "klasa": "inventor",
+  "opis": "young woman inventor, pale face, auburn hair in braids, thoughtful gaze, brass goggles on head, dark velvet coat",
+  "tlo": "night workshop with clockwork and candles"
  }
 }

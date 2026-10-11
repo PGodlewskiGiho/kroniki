@@ -24,7 +24,7 @@ function mapClimate(map) {
   if (map._clim) return map._clim; const n = map.n, C = CLIM_C, gw = Math.ceil(n / C) + 1, G = new Float32Array(gw * gw * 6);
   for (let gy = 0; gy < gw; gy++) for (let gx = 0; gx < gw; gx++) { const cx = gx * C, cy = gy * C, acc = [0, 0, 0, 0, 0, 0]; let tot = 0;
     for (let dy = -CLIM_R; dy <= CLIM_R; dy++) for (let dx = -CLIM_R; dx <= CLIM_R; dx++) { const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x, t = map.terrain[i]; tot++;
-      if (t === TER.SNOW) acc[0]++; else if (t === TER.SAND) acc[1]++; else if (t === TER.LAVA) acc[2]++; else if (t === TER.SWAMP) acc[3]++; else if (t === TER.WATER) acc[5]++; if (map.obst[i] === OBST.TREE) acc[4]++; }
+      if (t === TER.SNOW || t === TER.ICE) acc[0]++; else if (t === TER.SAND) acc[1]++; else if (t === TER.LAVA) acc[2]++; else if (t === TER.SWAMP) acc[3]++; else if (t === TER.WATER) acc[5]++; if (map.obst[i] === OBST.TREE) acc[4]++; }
     for (let k = 0; k < 6; k++) G[(gy * gw + gx) * 6 + k] = tot ? acc[k] / tot : 0; }
   return (map._clim = { G, gw });
 }
