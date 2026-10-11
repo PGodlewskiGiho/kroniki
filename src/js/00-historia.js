@@ -442,7 +442,8 @@
    truciznę, uzdrowienie, wskrzeszenie i wampiryzm, nie leczy ich namiot medyka – zamiast tego naprawiają je mechanicy na początku rundy.
    Łańcuch iskier (strzał przeskakuje na sąsiedni oddział), wybuch granatu (połowa obrażeń sąsiadom celu). Cecha Polowy warsztat:
    po zwycięstwie wraca 30% zniszczonych konstruktów. Warsztat machin raz w tygodniu daje brakujące machiny; Graal: Wieczny Silnik.
-   Szybka bitwa: bohaterowie z księgą znają czary z gildii swojej frakcji (poziom gildii rośnie z poziomem bohaterów, limit Mądrości) –
+   Szybka bitwa: bohaterowie z księgą znają czary z gildii swojej frakcji (poziom gildii rośnie z poziomem bohaterów, limit Mądrości;
+   na wyższych poziomach kilka zwiedzonych miast – na 20. cztery gildie, prawie cała księga szkoły z najmocniejszymi czarami) –
    wcześniej mieli tylko czar startowy i magowie przegrywali z wojownikami prawie zawsze (4% wygranych na 10. poziomie, teraz ok. 45%).
    Pociski w bitwie wg broni (shotKind): strzała, bełt kuszy, kula z muszkietu (smuga, błysk i dym z lufy), kula magii, ognista kula, piorun,
    promień oka, wirujący topór, koziołkujący głaz (wielkość z rzucającego), kamyk, granat z lontem (wybuch), pieśń syreny. Wylot z czubka
