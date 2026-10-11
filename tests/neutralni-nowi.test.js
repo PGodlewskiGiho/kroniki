@@ -20,7 +20,7 @@ test('nowi neutralni: dane, poziomy, grafika z modelu 3D; syrena i kraken wśró
 test('siedliska: yeti tylko na śniegu, olbrzym górski i pająk tylko na swoich terenach; na lądzie nie ma syren ani krakenów', async () => {
   const r = await page.evaluate(() => { const bad = [], seen = {};
     for (const land of ['frost', 'mountains', 'marsh', 'mixed']) for (const seed of [3, 9]) { const st = createNewGame(Object.assign({}, G.settings, { mapSize: 'L', land, slots: null, opponents: 0 }), seed), n = st.map.n;
-      for (const o of st.objects) if (o.type === 'monster' && !o.sea) { const c = CREATURES[o.cid], t = st.map.terrain[o.y * n + o.x]; if (c.habitat) { seen[o.cid] = (seen[o.cid] || 0) + 1; if (!c.habitat.includes(t)) bad.push(`${o.cid} na ${t}`); } } }
+      for (const o of st.objects) if (o.type === 'monster' && !o.sea) { const c = CREATURES[o.cid], t = st.map.terrain[o.y * n + o.x]; if (c.habitat) { seen[o.cid] = (seen[o.cid] || 0) + 1; if (!c.habitat.includes(t) && !c.habitat.includes(terBase(t))) bad.push(`${o.cid} na ${t}`); } } }
     return { bad, seen }; });
   assert.deepEqual(r.bad, []); assert.ok((r.seen.yeti || 0) > 0 && (r.seen.giantSpider || 0) > 0, JSON.stringify(r.seen));
 });

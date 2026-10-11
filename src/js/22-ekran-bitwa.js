@@ -45,7 +45,7 @@ function hexAt(px, py) {
 const PAVE_DX = 40; // bruk dziedzińca zaczyna się tyle px logicznych za licem muru (paveX: granica na wysokości py, ukośna jak mur)
 const paveX = py => wallLineX(py) + PAVE_DX;
 // Tło bitwy w stylu mapy: teren z palety TERRAINS, piksele 2×2, ta sama korekcja barw
-const BATTLE_BG_NAMES = ['woda', 'trawa', 'ziemia', 'piasek', 'snieg', 'bagno', 'nierowny', 'lawa'];
+const BATTLE_BG_NAMES = ['woda', 'trawa', 'ziemia', 'piasek', 'snieg', 'bagno', 'nierowny', 'lawa', 'pola', 'dzungla', 'sawanna', 'lod', 'krysztaly', 'grzyby'];
 function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siatki i panelu (szkic dla tła malowanego, tools/tla-ai/szkic-bitwy.js)
   // D = gęstość pikseli: teren liczony w drobnych pikselach (fx, fy), wzory w dawnych pikselach (x, y = połowa px logicznych)
   const w = W / 2, h = H / 2, fw = Math.round(w * PXD), fh = Math.round(h * PXD), D = fw / w, off = document.createElement('canvas'); off.width = fw; off.height = fh;
@@ -149,17 +149,18 @@ function paintCourtyard(c, fac) {
 // Tło bitwy zależne od terenu (w połowie rozdzielczości, przed powiększeniem): horyzont pod paskiem u góry
 // i drobne malowane szczegóły na polu (kępki, kamyki, kałuże, pęknięcia z żarem). Nie wpływają na walkę.
 function battleDecor(g, terr, w, h, fac) {
+  const tb = terBase(terr); // biomy: kształt horyzontu i drobiazgi jak teren bazowy, barwy własne
   const r = mulberry32(9001 + terr * 131), P = TPAL[terr].map(c => `rgb(${gradeRgb(c).map(Math.round).join(',')})`), px = (x, y, c, k = 1) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), k, k); };
   const maxX = fac ? paveX(44) / 2 - 8 : w;
   // horyzont: odległe wzgórza, las, wydmy, szczyty albo wulkany w kolorach terenu, zlewające się z polem
-  const far = { [TER.GRASS]: '#2e4a2a', [TER.DIRT]: '#4a3a28', [TER.SAND]: '#8a7050', [TER.SNOW]: '#8a98b0', [TER.SWAMP]: '#2a3a2a', [TER.ROUGH]: '#4a4436', [TER.LAVA]: '#2a1614', [TER.WATER]: '#2a4a6a' }[terr] || '#3a3a3a';
+  const far = { [TER.GRASS]: '#2e4a2a', [TER.DIRT]: '#4a3a28', [TER.SAND]: '#8a7050', [TER.SNOW]: '#8a98b0', [TER.SWAMP]: '#2a3a2a', [TER.ROUGH]: '#4a4436', [TER.LAVA]: '#2a1614', [TER.FIELD]: '#5a6a2a', [TER.JUNGLE]: '#14361a', [TER.SAVANNA]: '#6a5a34', [TER.ICE]: '#6a88a8', [TER.CRYSTAL]: '#241e34', [TER.FUNGUS]: '#2a2030', [TER.WATER]: '#2a4a6a' }[terr] || '#3a3a3a';
   g.fillStyle = far; g.beginPath(); g.moveTo(0, 26);
-  for (let x = 0; x <= w; x += 4) { const peak = terr === TER.SNOW || terr === TER.ROUGH || terr === TER.LAVA ? Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 + Math.abs(Math.sin(x * 0.11)) * 4 : (terr === TER.GRASS || terr === TER.SWAMP) ? 4 + (thash(x >> 2, 3, terr) % 4) : Math.sin(x * 0.03) * 3 + 3; g.lineTo(x, 22 - peak); }
+  for (let x = 0; x <= w; x += 4) { const peak = tb === TER.SNOW || tb === TER.ROUGH || tb === TER.LAVA ? Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 + Math.abs(Math.sin(x * 0.11)) * 4 : (tb === TER.GRASS || terr === TER.SWAMP) ? 4 + (thash(x >> 2, 3, terr) % 4) : Math.sin(x * 0.03) * 3 + 3; g.lineTo(x, 22 - peak); }
   g.lineTo(w, 26); g.closePath(); g.fill();
-  if (terr === TER.LAVA) for (let x = 60; x < w; x += 150) { px(x, 10, '#ff7a2a', 2); px(x + 1, 8, '#ffd060'); }
-  if (terr === TER.SNOW) for (let x = 0; x < w; x += 3) if (Math.abs(Math.sin(x * 0.045 + 1.3)) > 0.8) px(x, 22 - Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 - Math.abs(Math.sin(x * 0.11)) * 4 + 1, '#f4f8fc', 2);
+  if (tb === TER.LAVA) for (let x = 60; x < w; x += 150) { px(x, 10, '#ff7a2a', 2); px(x + 1, 8, '#ffd060'); }
+  if (tb === TER.SNOW) for (let x = 0; x < w; x += 3) if (Math.abs(Math.sin(x * 0.045 + 1.3)) > 0.8) px(x, 22 - Math.abs(Math.sin(x * 0.045 + 1.3)) * 10 - Math.abs(Math.sin(x * 0.11)) * 4 + 1, '#f4f8fc', 2);
   // większe plamy (jaśniejsza trawa, piach, zaspy, muł, zastygła lawa), potem drobne szczegóły
-  const patch = { [TER.GRASS]: '#4a7a34', [TER.DIRT]: P[0], [TER.SAND]: P[0], [TER.SNOW]: '#c8d2e0', [TER.SWAMP]: '#1e3a30', [TER.ROUGH]: P[0], [TER.LAVA]: '#3a1a14', [TER.WATER]: P[0] }[terr];
+  const patch = { [TER.GRASS]: '#4a7a34', [TER.DIRT]: P[0], [TER.SAND]: P[0], [TER.SNOW]: '#c8d2e0', [TER.SWAMP]: '#1e3a30', [TER.ROUGH]: P[0], [TER.LAVA]: '#3a1a14', [TER.WATER]: P[0], [TER.FIELD]: P[3], [TER.JUNGLE]: P[3], [TER.SAVANNA]: P[3], [TER.ICE]: P[3], [TER.CRYSTAL]: P[0], [TER.FUNGUS]: P[0] }[terr];
   g.fillStyle = patch;
   for (let k = 0; k < 14; k++) { // rozproszone w szachownicę, żeby wtapiały się w teren; środek gęstszy
     const x0 = Math.round(20 + r() * (maxX - 40)), y0 = Math.round(40 + r() * (h - 110)), rx = 8 + r() * 12, ry = 3 + r() * 4;
@@ -169,7 +170,9 @@ function battleDecor(g, terr, w, h, fac) {
   const stone = (x, y, pal) => { g.fillStyle = pal[1]; g.fillRect(Math.round(x), Math.round(y) - 2, 4, 3); px(x, y - 2, pal[0], 2); px(x + 3, y, pal[2]); };
   for (let k = 0; k < 120; k++) {
     const x = 8 + r() * (maxX - 16), y = 34 + r() * (h - 96), v = r();
-    switch (terr) {
+    if (terr === TER.FIELD && v < 0.5) { for (let i = 0; i < 6; i++) px(x + i * 2, y - (i % 2), P[2]); continue; } // kłosy w rzędzie
+    if (terr >= TER.CRYSTAL && v < 0.3) { px(x, y - 3, P[3], 2); px(x, y - 5, '#ffffff'); continue; } // kryształek albo świecący grzybek
+    switch (tb) {
       case TER.GRASS: if (v < 0.5) tuft(x, y, '#2e5a24', '#6aa844'); else if (v < 0.8) { const c = ['#e8d040', '#f4f0e8', '#d8503a', '#9a70d0'][k % 4]; px(x, y, c, 2); px(x + 3, y + 1, c); } else stone(x, y, ['#b0aca0', '#86847a', '#5a5850']); break;
       case TER.DIRT: case TER.ROUGH: if (v < 0.45) stone(x, y, ['#a89880', '#7a6a58', '#4a3e32']); else if (v < 0.75) { for (let i = 0; i < 7; i++) px(x + i, y + (i % 3 === 1 ? 1 : 0), P[3]); } else tuft(x, y, '#6a6030', '#a89a50'); break;
       case TER.SAND: if (v < 0.6) { for (let i = 0; i < 10; i++) px(x + i, y + Math.round(Math.sin(i * 0.7) * 1.2), P[2]); } else if (v < 0.72) { px(x, y, '#eee6d0', 4); px(x + 4, y + 1, '#eee6d0', 2); } else if (v < 0.8) { g.fillStyle = '#4a8a3a'; g.fillRect(Math.round(x), Math.round(y) - 6, 2, 7); g.fillRect(Math.round(x) - 2, Math.round(y) - 4, 2, 1); g.fillRect(Math.round(x) - 2, Math.round(y) - 5, 1, 2); } else stone(x, y, ['#e0c898', '#b09060', '#7a5a38']); break;

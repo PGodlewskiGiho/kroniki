@@ -105,6 +105,7 @@ function boulder(g, x, y, k, pal) {
   mpoly(g, [P(1, -5), P(7, -8), P(9, -1), P(4, 2), P(2, -1)], pal[2]);
 }
 function drawMountain(g, px, py, t, r) {
+  t = terBase(t);
   const pal = t === TER.SNOW ? MOUNT_PAL.snow : t === TER.LAVA ? MOUNT_PAL.lava : t === TER.SAND ? MOUNT_PAL.sand : MOUNT_PAL.def;
   const big = r() < 0.3, bw = (big ? 26 : 18) + r() * 8, h = (big ? 44 : 26) + r() * 12, bx = px + (r() - 0.5) * 10, by = py + 12 + r() * 4, tx = bx + (r() - 0.5) * bw * 0.6;
   g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(bx + 5, by, bw + 2, 6, 0, 0, TAU); g.fill();
@@ -121,6 +122,7 @@ function drawRock(g, x, y, r, t = TER.GRASS) {
   if (r() < 0.6) boulder(g, x + 9 * k, y + 2, 0.4, pal);
 }
 function drawObstacle(g, o, t, px, py, r) {
+  t = terBase(t); // biomy bez własnego rysunku 2D: jak teren bazowy (modele 3D mają własne)
   if (SEASON_DRAW === 3 && (t === TER.GRASS || t === TER.DIRT || t === TER.ROUGH || t === TER.SWAMP) && o !== OBST.TREE) t = TER.SNOW; // zimą góry i skały w śniegu
   if (o === OBST.MOUNT) return drawMountain(g, px, py, t, r);
   if (o === OBST.ROCK) return drawRock(g, px + (r() - 0.5) * 8, py + 6, r, t);
@@ -137,6 +139,7 @@ function drawObstacle(g, o, t, px, py, r) {
 }
 // Drobne ozdoby na pustych polach (kępki trawy, kwiaty, kamyki, trzcina, grzyby, żar): tylko wygląd, nie blokują ruchu
 function drawDecor(g, t, v) {
+  t = terBase(t);
   if (SEASON_DRAW === 3 && t !== TER.LAVA && t !== TER.SAND) t = TER.SNOW; // zimą ozdoby w śniegu
   if (SEASON_DRAW === 2 && t === TER.GRASS && v % 2) { for (const [x, y, c] of [[-4, 1, '#c8501e'], [2, -1, '#e0a030'], [5, 3, '#8a3a14'], [-1, 4, '#d87a2a']]) { g.fillStyle = c; g.fillRect(x, y, 3, 2); } return; } // jesienne liście
   const tuft = (x, y, a, b) => { mline(g, [[x - 3, y], [x - 5, y - 6]], a); mline(g, [[x, y], [x, y - 8]], b); mline(g, [[x + 3, y], [x + 5, y - 5]], a); };
@@ -187,6 +190,13 @@ function landColorSmooth(t, ax, ay) {
     case TER.SWAMP: { const pv = vnoise2(ax / 4, ay / 4, 41); if (pv > 0.62) col = mixRgb(col, P[3], Math.min(1, (pv - 0.62) * 8)); break; }
     case TER.LAVA: { const cr = Math.abs(vnoise2(ax / 6, ay / 6, 51) - 0.5); if (cr < 0.06) col = mixRgb(col, cr < 0.03 ? PC.hot : PC.warm, 1 - cr / 0.06 * 0.5); break; }
     case TER.ROUGH: case TER.DIRT: { const m = vnoise2(ax / 6, ay / 6, 81); if (m < 0.3) col = mixRgb(col, P[3], (0.3 - m) * 1.5); break; }
+    case TER.FIELD: { const pl = Math.floor(vnoise2(ax / 40, ay / 40, 7) * 5), rw = Math.sin((pl % 2 ? ax : ay) * Math.PI / (4 + pl)); // zagony: pasy upraw w poletkach o różnym kierunku i barwie
+      col = mixRgb(col, pl % 3 === 0 ? P[3] : pl % 3 === 1 ? P[2] : P[0], 0.35); if (rw > 0.55) col = shadeRgb(col, 0.86); break; }
+    case TER.JUNGLE: { const m = vnoise2(ax / 5, ay / 5, 73); if (m > 0.6) col = mixRgb(col, P[3], (m - 0.6) * 1.6); else if (m < 0.25) col = mixRgb(col, P[0], 0.5); break; } // paprocie i cień liści
+    case TER.SAVANNA: { const m = vnoise2(ax / 12, ay / 12, 77); if (m > 0.64) col = mixRgb(col, [176, 150, 70], (m - 0.64) * 2.4); else if (m < 0.3) col = mixRgb(col, [138, 110, 60], (0.3 - m) * 1.8); break; } // płowa trawa i czerwona ziemia
+    case TER.ICE: { const cr = Math.abs(vnoise2(ax / 7, ay / 7, 57) - 0.5); if (cr < 0.04) col = mixRgb(col, [60, 100, 150], 1 - cr / 0.04 * 0.6); else if (vnoise2(ax / 2, ay / 2, 59) > 0.8) col = mixRgb(col, [240, 250, 255], 0.6); break; } // szczeliny w lodzie i połysk
+    case TER.CRYSTAL: { const g = vnoise2(ax / 3, ay / 3, 61); if (g > 0.8) col = mixRgb(col, P[3], (g - 0.8) * 4); break; } // iskry kryształów w dnie groty
+    case TER.FUNGUS: { const g = vnoise2(ax / 5, ay / 5, 63); if (g > 0.72) col = mixRgb(col, P[3], (g - 0.72) * 2.2); break; } // świecący mech i grzybnia
   }
   return col;
 }
@@ -201,12 +211,16 @@ function landColor(t, ax, ay, hh) {
     case TER.SWAMP: { const pv = vnoise2(ax / 4, ay / 4, 41); if (pv > 0.7) col = P[3]; else if (pv > 0.66) col = PC.rim; else if (hh < 0.02) col = PC.reed; break; }
     case TER.ROUGH: if (hh < 0.035) col = P[3]; else if (hh > 0.985) col = P[2]; break;
     case TER.LAVA: { const cr = Math.abs(vnoise2(ax / 6, ay / 6, 51) - 0.5); if (cr < 0.03) col = PC.hot; else if (cr < 0.05) col = PC.warm; break; }
+    case TER.FIELD: if (Math.sin(ay * Math.PI / 4) > 0.6) col = P[0]; break;
+    case TER.JUNGLE: case TER.SAVANNA: case TER.FUNGUS: if (hh < 0.03) col = P[3]; else if (hh > 0.985) col = P[2]; break;
+    case TER.ICE: if (hh < 0.02) col = P[3]; else if (hh > 0.99) col = PC.white; break;
+    case TER.CRYSTAL: if (hh > 0.985) col = P[3]; else if (hh < 0.03) col = P[0]; break;
   }
   return col;
 }
 // Tekstury terenu (TERRAIN_ART, malowane przez AI, bezszwowe): piksele w tablicy + średnia barwa. Teren bierze z tekstury strukturę
 // (kępy trawy, szczeliny, kamienie), a barwę z palety i pory roku: kolor = tekstura × (barwa terenu / średnia tekstury).
-const TERRAIN_TEX = {}, TEX_NAME = ['water', 'grass', 'dirt', 'sand', 'snow', 'swamp', 'rough', 'lava'], TEX_TILES = 8; // tekstura 512 px (tools/tekstury-proc.py) na 8×8 pól: piksel tekstury ≈ piksel ekranu przy zoomie 1 (ostro)
+const TERRAIN_TEX = {}, TEX_NAME = ['water', 'grass', 'dirt', 'sand', 'snow', 'swamp', 'rough', 'lava', 'field', 'jungle', 'savanna', 'ice', 'crystal', 'fungus'], TEX_TILES = 8; // tekstura 512 px (tools/tekstury-proc.py) na 8×8 pól: piksel tekstury ≈ piksel ekranu przy zoomie 1 (ostro)
 // faktura z tekstury AI w barwie terenu (pora roku, paleta): kolor × (tekstura / jej średnia). Żeby nie było widać powtórzeń,
 // tekstura jest próbkowana dwa razy (co TEX_TILES pól i co ~1,6× tyle, z zamienionymi osiami) i obie próbki mieszane wolnym szumem
 const TEXS = new Float32Array(6); // wynik dwóch próbek (RGB × 2), bez tworzenia tablic na każdy piksel
@@ -229,7 +243,9 @@ function texData(im) {
 const SNOWC = [[236, 242, 248], [214, 226, 238], [248, 250, 252]], AUTC = [[176, 104, 38], [150, 86, 36], [196, 146, 56], [128, 110, 44]];
 const mixRgb = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
 function seasonLand(col, t, ax, ay, hh, S) {
-  if (!S || t === TER.LAVA || t === TER.SNOW) return col;
+  if (!S || t === TER.LAVA || t === TER.SNOW || t === TER.ICE || t === TER.JUNGLE || t >= TER.CRYSTAL) return col; // lód, dżungla i podziemia bez pór roku
+  if (t === TER.FIELD && S < 3) return mixRgb(col, S === 1 ? [222, 186, 74] : [150, 116, 60], S === 1 ? 0.35 : 0.5); // lato: dojrzałe zboże, jesień: ściernisko
+  if (t === TER.SAVANNA && S < 3) return S === 1 ? mixRgb(col, [196, 160, 80], 0.3) : col; // pora sucha
   if (S === 1) return t === TER.GRASS ? mixRgb(col, [168, 158, 72], 0.2) : col;
   if (S === 2) { if (t === TER.SAND) return col; const v = vnoise2(ax / 11, ay / 11, 91); return mixRgb(col, AUTC[clamp((v * 4) | 0, 0, 3)], t === TER.GRASS ? 0.55 : 0.28); }
   const v = vnoise2(ax / 9, ay / 9, 97);

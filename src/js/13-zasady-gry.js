@@ -69,7 +69,7 @@ function baseCost(map, i, j, h) {
   if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
   const t = map.terrain[i]; let c = TERRAINS[t].cost || 100; const pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
   if (t === TER.WATER && h && skillVal(h, 'navigation')) return Math.round(c / (1 + skillVal(h, 'navigation') / 100)); // Nawigacja
-  if (h && ((heroTrait(h, 'fortress') && (t === TER.SWAMP || t === TER.ROUGH)) || (heroTrait(h, 'academy') && t === TER.SNOW))) c = 100; // cechy frakcji
+  const tb = terBase(t); if (h && ((heroTrait(h, 'fortress') && (tb === TER.SWAMP || tb === TER.ROUGH)) || (heroTrait(h, 'academy') && tb === TER.SNOW))) c = 100; // cechy frakcji (biomy jak teren bazowy: lód jak śnieg)
   return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
 }
 function stepCost(map, fx, fy, tx, ty, h) { const n = map.n, c = baseCost(map, fy * n + fx, ty * n + tx, h); return (fx !== tx && fy !== ty) ? Math.floor(c * 1.414) : c; }
@@ -133,7 +133,7 @@ function heroStep(st, h) {
   const cost = stepCost(st.map, h.x, h.y, nx, ny, h); if (h.mp < cost) { h.moving = false; return false; }
   h.mp -= cost; h.path.shift(); if (nx !== h.x) h.dir = nx > h.x ? 1 : -1;
   h.prev = [h.x, h.y]; h.anim = { fx: h.x, fy: h.y, t: 0 }; h.x = nx; h.y = ny; reveal(st, h.x, h.y, heroSight(h)); Net.step(h, h.prev[0], h.prev[1]);
-  if (h.owner === ME || human(st).explored[ni]) Sfx.play(h.boat ? 'oar' : st.map.terrain[ni] === TER.SNOW ? 'hoofsnow' : 'hoof', { vol: h.owner === ME ? 0.5 : 0.25, gap: 0.08 }); // kroki konia (łódź: wiosła)
+  if (h.owner === ME || human(st).explored[ni]) Sfx.play(h.boat ? 'oar' : terBase(st.map.terrain[ni]) === TER.SNOW ? 'hoofsnow' : 'hoof', { vol: h.owner === ME ? 0.5 : 0.25, gap: 0.08 }); // kroki konia (łódź: wiosła)
   if (!h.path.length) { h.path = null; h.dest = null; }
   if (!h.boat && ob && ob.type === 'boat') { h.boat = true; removeObject(st, ob); halt(); return true; }
   if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; } // wysiadka: łódź zostaje przy brzegu

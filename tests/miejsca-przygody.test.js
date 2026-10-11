@@ -85,11 +85,11 @@ test('okna: sfinks pyta z trzema odpowiedziami, kurhan i studnia pytają o zgod�
 });
 
 test('zdarzenia na drogach: ukryte pola na drogach, wejście bohatera otwiera scenkę z wyborem, raz; zapis je zachowuje', async () => {
-  await newGame(page, { mapSize: 'M' }, 5);
+  await newGame(page, { mapSize: 'M' }, 7);
   const r = await page.evaluate(() => {
-    const st = G.state, h = hero(st), n = st.map.n, ev = st.events.find(e => e.kind === 'cart') || st.events[0]; ev.kind = 'cart';
-    const onRoad = st.events.every(e => st.map.road[e.y * n + e.x]), hidden = !objectAt(st, ev.y * n + ev.x) && !drawnObjectAt(st, ev.x, ev.y);
-    const nb = DX8.map((dx, d) => [ev.x + dx, ev.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !st.guard[y * n + x]);
+    const st = G.state, h = hero(st), n = st.map.n, free = e => DX8.map((dx, d) => [e.x + dx, e.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !st.guard[y * n + x]);
+    const ev = st.events.find(e => e.kind === 'cart' && free(e)) || st.events.find(free); ev.kind = 'cart';
+    const onRoad = st.events.every(e => st.map.road[e.y * n + e.x]), hidden = !objectAt(st, ev.y * n + ev.x) && !drawnObjectAt(st, ev.x, ev.y), nb = free(ev);
     h.x = nb[0]; h.y = nb[1]; h.mp = 5000; h.path = [[ev.x, ev.y]]; h.moving = true; G.modal = null; setScreen('adventure', {});
     heroStep(st, h); const f = h.pending; h.pending = null; h.anim = null; if (f) f();
     const title = G.modal && G.modal.msg, R = st.players[ME].resources, before = R.wood + R.ore; G.modal.buttons[0].action();

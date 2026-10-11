@@ -119,13 +119,70 @@ def water(rng):
     img *= (1 + 0.08 * w)[..., None]; hl = w > 0.82; img[hl] = img[hl] * 0.7 + np.array([200, 225, 245]) * 0.3
     return img
 
-GEN = { 'grass': grass, 'dirt': dirt, 'sand': sand, 'snow': snow, 'swamp': swamp, 'rough': rough, 'lava': lava, 'cave': cave, 'water': water }
+def field(rng):  # pola uprawne: równe rzędy zboża (kłosy w pasach), bruzdy ziemi między nimi, miedze w poprzek
+    img = base(rng, ['#9a8434', '#b49c42', '#c8b050', '#d8c068'], big=60, mid=14)
+    yy, xx = np.mgrid[0:N, 0:N]; warp = pnoise(rng, 40) * 6; row = np.sin((yy + warp) * 2 * np.pi / 8); img *= (1 + 0.1 * row)[..., None]
+    furrow = row < -0.8; img[furrow] = img[furrow] * 0.55 + np.array([110, 80, 46]) * 0.45
+    S = Strokes(img)
+    for _ in range(16000):  # kłosy: krótkie, pionowe kreski wzdłuż rzędów
+        x, y = rng.random() * N, rng.random() * N; L = 2 + rng.random() * 3; g = 0.85 + rng.random() * 0.35
+        S.line(x, y, x + rng.normal(0, 0.4), y - L, c8(np.array([214, 184, 86]) * g, 210))
+    for _ in range(60): x, y = rng.random() * N, rng.random() * N; S.ellipse(x, y, 1.2, 1.2, (210, 50, 40, 255))  # maki
+    return S.done()
+
+def jungle(rng):  # dżungla: ciemna, wilgotna ściółka, gęste liście paproci i plamy światła
+    img = base(rng, ['#163a16', '#1e4e1e', '#2a6626', '#387a2e'], big=35, mid=8)
+    sun = pnoise(rng, 12); img *= (0.8 + sun * 0.4)[..., None]
+    S = Strokes(img)
+    for _ in range(2200):  # liście: małe elipsy w odcieniach zieleni, z jaśniejszym nerwem
+        x, y = rng.random() * N, rng.random() * N; r = 2 + rng.random() * 3.5; g = 0.7 + rng.random() * 0.6
+        S.ellipse(x, y, r, r * 0.45, c8(np.array([50, 120, 44]) * g, 235)); S.line(x - r * 0.8, y, x + r * 0.8, y, c8(np.array([110, 170, 70]) * g, 150))
+    for _ in range(80): x, y = rng.random() * N, rng.random() * N; col = [(230, 70, 140), (240, 170, 40), (220, 60, 40)][rng.integers(3)]; S.ellipse(x, y, 1.4, 1.4, col + (255,))  # egzotyczne kwiaty
+    return S.done()
+
+def savanna(rng):  # sawanna: płowa, wysoka trawa na czerwonawej ziemi, kępy i przetarcia
+    img = base(rng, ['#8a6a3a', '#a8864a', '#c0a058', '#d0b468'], big=50, mid=12)
+    bare = pnoise(rng, 9) > 0.66; img[bare] = img[bare] * 0.6 + np.array([150, 96, 60]) * 0.4
+    S = Strokes(img)
+    for _ in range(20000):  # suche źdźbła: dłuższe, jasne, pochylone w jedną stronę (wiatr)
+        x, y = rng.random() * N, rng.random() * N
+        if bare[int(y) % N, int(x) % N] and rng.random() < 0.8: continue
+        a = rng.normal(-1.3, 0.35); L = 4 + rng.random() * 6; g = 0.8 + rng.random() * 0.4; S.line(x, y, x + math.cos(a) * L, y + math.sin(a) * L, c8(np.array([206, 176, 104]) * g, 215))
+    return S.done()
+
+def ice(rng):  # lodowe pustkowie: niebieskawy lód z głębokimi spękaniami (Woronoj), szron i połysk
+    img = base(rng, ['#7ea4c4', '#9cbcd8', '#b8d2e8', '#d4e6f4'], big=50, mid=12)
+    d1, d2, idx = voronoi(rng, 60); edge = d2 - d1; img *= (0.92 + np.clip(edge / 12, 0, 1) * 0.12)[..., None]
+    crack = edge < 1.3; img[crack] = np.array([60, 98, 140]); near = (edge >= 1.3) & (edge < 3); img[near] = img[near] * 0.85 + np.array([230, 244, 252]) * 0.15
+    sp = rng.random((N, N)); img[sp > 0.997] = [255, 255, 255]
+    S = Strokes(img)
+    for _ in range(220): x, y = rng.random() * N, rng.random() * N; a = rng.random() * 6.28; L = 6 + rng.random() * 12; S.line(x, y, x + math.cos(a) * L, y + math.sin(a) * L, (235, 245, 255, 110), 1)  # rysy szronu
+    return S.done()
+
+def crystal(rng):  # grota kryształowa: ciemna skała z fioletowymi i błękitnymi kryształkami
+    img = stony(rng, ['#2e2a40', '#3a3450', '#46405e', '#524a6c'], 90, 1.4, (18, 16, 26))
+    S = Strokes(img)
+    for _ in range(500):
+        x, y = rng.random() * N, rng.random() * N; col = [(160, 120, 255), (90, 200, 240), (220, 130, 240)][rng.integers(3)]; r = 0.8 + rng.random() * 2
+        S.line(x, y + r, x, y - r * 1.8, col + (255,), 2); S.ellipse(x, y - r * 1.8, 0.7, 0.7, (255, 255, 255, 220))
+    return S.done()
+
+def fungus(rng):  # pieczara grzybowa: wilgotna ziemia z grzybnią, świecące kapelusiki i mech
+    img = base(rng, ['#2e2430', '#3c2e3a', '#4a3a46', '#584654'], big=40, mid=9)
+    S = Strokes(img)
+    for _ in range(5000): x, y = rng.random() * N, rng.random() * N; a = rng.random() * 6.28; S.line(x, y, x + math.cos(a) * 4, y + math.sin(a) * 4, (180, 170, 190, 60))  # grzybnia
+    for _ in range(400):
+        x, y = rng.random() * N, rng.random() * N; col = [(96, 210, 176), (120, 180, 255), (230, 120, 200)][rng.integers(3)]; r = 0.9 + rng.random() * 1.6
+        S.ellipse(x, y, r, r * 0.8, col + (255,)); S.ellipse(x - r * 0.3, y - r * 0.3, r * 0.3, r * 0.3, (255, 255, 255, 200))
+    return S.done()
+
+GEN = { 'grass': grass, 'dirt': dirt, 'sand': sand, 'snow': snow, 'swamp': swamp, 'rough': rough, 'lava': lava, 'cave': cave, 'water': water, 'field': field, 'jungle': jungle, 'savanna': savanna, 'ice': ice, 'crystal': crystal, 'fungus': fungus }
 
 if __name__ == '__main__':
     names = sys.argv[1].split(',') if len(sys.argv) > 1 else list(GEN)
     os.makedirs(OUT, exist_ok=True); prev = []
     for i, name in enumerate(names):
-        im = Image.fromarray(np.clip(GEN[name](np.random.default_rng(1000 + i * 17)), 0, 255).astype(np.uint8))
+        im = Image.fromarray(np.clip(GEN[name](np.random.default_rng(1000 + list(GEN).index(name) * 17)), 0, 255).astype(np.uint8))  # ziarno z miejsca w GEN: ta sama tekstura przy wypalaniu pojedynczo
         p = os.path.join(OUT, f'{name}.webp'); im.save(p, 'WEBP', quality=88, method=6); prev.append(im.crop((0, 0, 256, 256))); print(name, os.path.getsize(p), 'B')
     c = os.path.join(HERE, '.cache'); os.makedirs(c, exist_ok=True); o = Image.new('RGB', (256 * len(prev), 256))
     for i, im in enumerate(prev): o.paste(im, (i * 256, 0))

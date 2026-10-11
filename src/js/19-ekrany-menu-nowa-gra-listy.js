@@ -294,7 +294,7 @@ function teamBadge(ctx, t, cx, cy, col) {
   ctx.font = font(12, 700, 'title'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff4cc'; ctx.fillText(String(t), cx, cy); ctx.restore();
 }
 const icoX = (ctx, cx, cy, col) => { ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx - 5, cy - 5); ctx.lineTo(cx + 5, cy + 5); ctx.moveTo(cx + 5, cy - 5); ctx.lineTo(cx - 5, cy + 5); ctx.stroke(); }; // usuń
-const LAND_TEX = { mixed: 'grass', mountains: 'rough', forest: 'grass', desert: 'sand', frost: 'snow', marsh: 'swamp', islands: 'water' };
+const LAND_TEX = { mixed: 'grass', mountains: 'rough', forest: 'grass', desert: 'sand', frost: 'ice', marsh: 'swamp', islands: 'water', tropical: 'jungle', farmland: 'field' };
 const DIFF_ICON = ['peasant', 'swordsman', 'vampireLord', 'doomKnight', 'azureDragon']; // trudność: coraz groźniejszy stwór
 function landMedal(ctx, id, cx, cy, r) {
   if (id === 'random') return uiIco(ctx, 'ic_dice', cx, cy, r * 2.1);

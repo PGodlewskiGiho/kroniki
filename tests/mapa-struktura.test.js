@@ -12,7 +12,7 @@ test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'bł�
 test('góry tworzą pasma, rzeki mają brody, a do każdego miasta da się dojść lądem', async () => {
   const r = await page.evaluate(() => {
     const out = [];
-    for (const [n, seed] of [[36, 1], [72, 4242], [72, 7], [108, 99], [144, 5]]) {
+    for (const [n, seed] of [[36, 4], [72, 4242], [72, 7], [108, 99], [144, 5]]) {
       const m = generateMap(n, seed), N = n * n, comp = new Int32Array(N).fill(-1); let longest = 0, k = 0;
       // najdłuższe pasmo: największa spójna grupa gór (8 sąsiadów), mierzona rozpiętością
       for (let s = 0; s < N; s++) { if (m.obst[s] !== OBST.MOUNT || comp[s] >= 0) continue; const st = [s]; comp[s] = k; let x0 = n, x1 = 0, y0 = n, y1 = 0;

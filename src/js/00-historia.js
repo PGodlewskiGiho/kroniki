@@ -450,5 +450,11 @@
    i obrażenia czaru obszarowego lądują razem z głównym trafieniem (landSplash), bez kolejki po 0,3 s i bez martwej przerwy po trafieniu.
    Dźwięki bitwy: broń biała w czterech rodzajach (klinga, obuch, topór, drzewcowa), wysokość tonu z wielkości stwora, osobny wystrzał
    i trafienie dla każdego pocisku, nieumarli grzechoczą kośćmi, konstrukty zgrzytają metalem, olbrzymy padają z łoskotem.
+   Biomy (TER 8–13): pola uprawne, dżungla, sawanna, skute lodem pustkowie, a w podziemiach groty kryształowe i pieczary grzybowe.
+   Dziedziczą reguły po terenie bazowym (TER_BASE: lód jak śnieg, dżungla i pola jak trawa…), mają własne palety, tekstury
+   (tools/tekstury-proc.py), pory roku (dojrzałe zboże latem, ściernisko jesienią; dżungla i lód bez zmian), modele 3D na mapie
+   (drzewa dżungli z lianami, akacje, lodowe iglice, snopki i stogi, paprocie, kopce termitów, kry; w grotach kryształy i olbrzymie
+   grzyby) i tła bitew. Nowe krainy: Tropikalna i Rolnicza; Mroźna ma lodowe pustkowia. Losowa kraina wybiera nowe typy osobnym
+   ziarnem, więc dawne ziarna dają te same rodzaje krain.
    ===================================================================================== */
 
