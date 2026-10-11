@@ -9,14 +9,14 @@ const unitPos = (u, x = u.x, y = u.y) => { const [cx, cy] = hexCenter(x, y); ret
 // Paszcza zionącego stwora (px logiczne) przy zwrocie d: z arkusza (m: punkt paszczy w klatce ataku, wypalony z modelu) albo szacunkowo
 function mouthPos(u, d) {
   const A = unitArt(u.cid), L = CREATURES[u.cid].look, gy = u.py + 14 - (u.lift || 0);
-  if (A && A.m) return [u.px + d * A.m[0] * A.u, gy + A.m[1] * A.u];
+  const q = A ? A.u * UNIT_SCALE * sizeTame(L.size || 1) : 0; if (A && A.m) return [u.px + d * A.m[0] * q, gy + A.m[1] * q];
   const k = 32 * (L.size || 1); return [u.px + d * 0.9 * k, gy - 1.3 * k];
 }
 // Skąd leci pocisk: czubek broni z arkusza (wylot lufy, głowica laski, łuk, dłoń – zapisany przy wypalaniu w klatce strzału),
 // bez niego paszcza, a w ostateczności wysokość dłoni z wielkości stwora (nie środek ciała)
 function shotFrom(u, d) {
   const A = unitArt(u.cid), gy = u.py + 14 - (u.lift || 0);
-  if (A && A.t) return [u.px + d * A.t[0] * A.u, gy + A.t[1] * A.u];
+  if (A && A.t) { const q = A.u * UNIT_SCALE * sizeTame(CREATURES[u.cid].look.size || 1); return [u.px + d * A.t[0] * q, gy + A.t[1] * q]; }
   if (A && A.m) return mouthPos(u, d);
   const k = 32 * (CREATURES[u.cid].look.size || 1); return [u.px + d * 0.55 * k, gy - 1.05 * k];
 }
@@ -30,6 +30,9 @@ function shotKind(cid) {
 const SHOT_FLIGHT = { arrow: d => [0.05 + d / 2800, 6 + d * 0.07], bolt: d => [0.04 + d / 3400, 3 + d * 0.03], bullet: d => [0.03 + d / 6000, 0], orb: d => [0.08 + d / 1500, 8],
   fireball: d => [0.1 + d / 1400, 12], axe: d => [0.1 + d / 1700, 10 + d * 0.06], rock: d => [0.14 + d / 1200, 26 + d * 0.12], pebble: d => [0.08 + d / 1900, 10 + d * 0.08],
   bomb: d => [0.18 + d / 1200, 46 + d * 0.14], wave: d => [0.1 + d / 1600, 0], lightning: () => [0.08, 0], ray: () => [0.1, 0] };
+// Wielkość na polu bitwy: arkusze są wypalone w pełnej wielkości z wyglądu (size), a duże stwory przerastały pole – rysujemy je mniejsze
+// (wielkość rośnie jak size^0,65 zamiast liniowo: smok 2,2 → 1,67, tytan 2,6 → 1,86, centaur 1,3 → 1,19), małe bez zmian
+const sizeTame = sz => (sz > 1 ? Math.pow(sz, -0.35) : 1);
 // Barwa zionięcia: z wyglądu stwora (kwas, lód, blask), domyślnie ogień
 const breathColor = cid => { const L = CREATURES[cid].look; return L.breathCol || L.breath || (L.bony ? '#9af0c8' : '#ff7a1a'); };
 function hexPath(ctx, x, y, inset = 0) {
@@ -654,7 +657,7 @@ G.screens.battle = {
     const keep = B.walls && [...B.walls.values()].find(w => w.kind === 'keep'), A3 = keep && siegeArt(B.sides[1].town.faction), keepO = A3 ? [{ keepW: keep, py: hexCenter(keep.x, keep.y)[1] - 0.5 }] : []; // wieża główna zasłania i jest zasłaniana jak oddziały
     const drawUnit = (u, ghost) => { // ghost: oddział za wieżą główną, prześwituje przez nią
       const L = this.unitLook(u), tp = u.cid === 'arrowTower' ? (u.keep ? keepPost() : towerPost()) : null, gx = tp ? (u.keep ? u.px : wallWX(u.y)) + tp[0] : u.px + L.ox, gy = tp ? u.py + tp[1] : u.py + 14, lift = u.lift || 0, sz = CREATURES[u.cid].look.size || 1;
-      const us = u.cid === 'arrowTower' ? UNIT_SCALE * 0.9 : UNIT_SCALE; // jednostki nieco większe niż heks (lepiej widać szczegóły); łucznik na wieży trochę mniejszy
+      const us = u.cid === 'arrowTower' ? UNIT_SCALE * 0.9 : UNIT_SCALE * sizeTame(sz); // jednostki nieco większe niż heks; duże stwory przytemperowane (arkusz ma pełną wielkość, gra rysuje mniej)
       if (u.cid !== 'arrowTower' && !ghost) { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(gx, gy, 15 * sz * us, 5 * sz * us, 0, 0, TAU); ctx.fill(); }
       ctx.save(); if (ghost) ctx.globalAlpha = 0.45;
       if (u.dead && u.dieT != null) { const f = clamp((G.time - u.dieT) / 0.45, 0, 1); ctx.translate(gx, gy); ctx.rotate(-(u.side === 0 ? 1 : -1) * ease(f) * Math.PI / 2 * 0.9); ctx.globalAlpha = 1 - f * 0.4; ctx.translate(-gx, -gy); }
