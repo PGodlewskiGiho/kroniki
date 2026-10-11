@@ -226,3 +226,13 @@ test('szybka bitwa: dwie armie z przyrostu wybranych frakcji, bohaterowie na wyb
   await page.evaluate(() => { setScreen('quick', {}); G.screens.quick.draw(G.ctx); });
   assert.ok(await page.evaluate(() => G.screens.menu && G.screens.quick.buttons.some(b => b.label === 'Walcz!')));
 });
+
+test('szybka bitwa: bohater z księgą zna czary z gildii swojej frakcji (wyższej przy wyższym poziomie), wojownik bez księgi nie', async () => {
+  const r = await page.evaluate(() => {
+    const st = createNewGame(Object.assign({}, G.settings, { mapSize: 'S' }), 5), mk = cls => { const h = { owner: 0, cls, spells: [], book: MAGE_CLASSES.includes(cls), skills: [{ id: 'wisdom', lv: 3 }] }; return h; };
+    const mage = mk('wizard'), low = mk('wizard'), war = mk('barbarian'); quickSpells(st, mage, 'academy', 20); quickSpells(st, low, 'academy', 1); quickSpells(st, war, 'stronghold', 20);
+    const lv = h => Math.max(0, ...h.spells.map(id => SPELLS[id].level));
+    return { n: mage.spells.length, top: lv(mage), lowTop: lv(low), war: war.spells.length };
+  });
+  assert.ok(r.n >= 6, `czarów: ${r.n}`); assert.ok(r.top >= 4, `najwyższy poziom ${r.top}`); assert.equal(r.lowTop, 2); assert.equal(r.war, 0);
+});

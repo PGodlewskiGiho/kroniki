@@ -12,8 +12,16 @@ function quickBattleState(Q) {
   const st = createNewGame(Object.assign({}, G.settings, { mapSize: 'S', land: 'mixed', underground: false, difficulty: 1, slots }), (Math.random() * 1e9) | 0);
   ME = 0; st.quick = true; const h = st.heroes.find(x => x.owner === 0), foe = st.heroes.find(x => x.owner === 1);
   st.heroes = [h, foe]; foe.x = h.x + 1; foe.y = h.y; rebuildObjIndex(st);
-  for (const [x, fac] of [[h, Q.a], [foe, Q.b]]) { x.army = quickArmy(fac, Q.weeks, Q.up); x.machines = []; const L = QUICK_LEVELS[Q.lvl] || 1; if (L > 1) gainExp(st, x, expForLevel(L) - x.exp, null, true); x.mana = heroMaxMana(x); }
+  for (const [x, fac] of [[h, Q.a], [foe, Q.b]]) { x.army = quickArmy(fac, Q.weeks, Q.up); x.machines = []; const L = QUICK_LEVELS[Q.lvl] || 1; if (L > 1) gainExp(st, x, expForLevel(L) - x.exp, null, true); quickSpells(st, x, fac, L); x.mana = heroMaxMana(x); }
   return { st, h, foe };
+}
+// Czary jak po wizycie we własnym mieście: gildia frakcji tym wyższa, im wyższy poziom bohaterów (1: II, 5: III, 10: IV, 15+: V,
+// nie wyżej niż pozwala frakcja); bohater z księgą poznaje z niej tyle poziomów, ile pozwala Mądrość (jak w gildii w grze)
+const QUICK_GUILD = L => L >= 15 ? 5 : L >= 10 ? 4 : L >= 5 ? 3 : 2;
+function quickSpells(st, h, fac, L) {
+  if (!hasBook(h)) return; const G = Math.min(QUICK_GUILD(L), guildMax(fac)), t = { id: 900 + h.owner, faction: fac, built: [] };
+  for (let k = 1; k <= G; k++) { t.built.push('guild' + k); rollGuildLevel(st, t, k); }
+  for (let k = 1; k <= Math.min(G, spellCap(h)); k++) for (const id of t.guild[k]) if (!knows(h, id)) h.spells.push(id);
 }
 G.screens.quick = {
   fps: smoothFps, backdrop() {}, buttons: [],
