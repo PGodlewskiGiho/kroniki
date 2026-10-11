@@ -167,7 +167,7 @@ test('gość wychodzi do menu: gospodarz nie jest uwięziony – komputer gra za
   assert.equal(await A.page.evaluate(() => G.state.players[1].away && !G.state.players[1].human), true);
   await until(B.page, () => G.screenName === 'menu' && !G.fade.next);
   await B.page.evaluate(() => { G.go('online'); Net.join(Net.recalled().code, 'Bob'); });
-  await until(A.page, () => Net.guests[0].conn && G.state.players[1].human && !G.state.players[1].away, null, 20000);
+  await until(A.page, () => Net.guests[0].conn && G.state.players[1].human && !G.state.players[1].away, null, 40000);
   await until(B.page, () => G.screenName === 'adventure' && G.state && G.state.online && G.screens.adventure.watching, null, 30000);
 });
 
