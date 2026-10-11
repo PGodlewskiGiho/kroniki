@@ -210,6 +210,7 @@ function humanoid(L, P = {}) {
     el.add(sph(handR, armor === 'plate' && !bony ? metal : skin, armor === 'plate' && !bony ? 'steel' : bony ? 'bone' : skinK, [0.01, -fL - 0.03, 0], [1, 1.1, 0.8]));
     const hand = joint(el, [0, -fL - 0.03, 0]), world = aSh + aEl - lean - pitch;
     const hold = wa => { hand.rotation.z = wa - world; return hand; };
+    if (main && !hand.getObjectByName('hand')) marker(hand, 'hand', [0, -0.02, 0]); // dłoń: stąd rzut (topór, głaz) i czar bez broni
     const W2 = main && !near && L.offWeapon ? L.offWeapon : main ? W : L.extraWeapon || W; // broń tej ręki (druga ręka: offWeapon, dodatkowe ręce: extraWeapon)
     if (armed && W2 !== 'none' && !(style === 'bow' && !near) && !(style === 'xbow' && !near)) weapon(hold, W2 === W ? L : { ...L, weapon: W2, glow: L.offGlow || L.glow }, W2, A, wind, hit, metal, near);
     if (!near && main && L.book) { const bk = hold(-0.9), gl = L.orb || '#fff0a0'; bk.add(rbox(0.05, 0.3, 0.22, 0.01, L.book, 'leather', [0.02, 0.06, 0.08])); bk.add(rbox(0.04, 0.28, 0.2, 0.008, '#f0e8d0', 'cloth', [0.05, 0.06, 0.08])); bk.add(box(0.012, 0.06, 0.06, gl, 'glow', [0.075, 0.06, 0.08])); for (const y of [-0.06, 0.18]) bk.add(box(0.056, 0.02, 0.23, '#e0b24a', 'gold', [0.02, y, 0.08])); } // księga
@@ -476,13 +477,13 @@ function weapon(hold, L, W, A, wind, hit, metal, near = true) {
     h.add(tube([[-0.64, -0.1, 0], [-0.52, -0.2, 0], [-0.26, -0.06, 0], [0, 0, 0], [0.26, -0.06, 0], [0.52, -0.2, 0], [0.64, -0.1, 0]], 0.022, 0.022, L.bowCol || '#5a3218', 'wood'));
     const top = [-0.64, -0.1], bot = [0.64, -0.1], mid = [0, -0.16 - pull * 0.42];
     for (const e of [top, bot]) { const dx = mid[0] - e[0], dy = mid[1] - e[1], l = Math.hypot(dx, dy); h.add(cyl(0.004, 0.004, l, '#e8e0cc', 'cloth', [(e[0] + mid[0]) / 2, (e[1] + mid[1]) / 2, 0], [0, 0, Math.atan2(-dx, dy)], null, 4)); }
-    h.add(cyl(0.03, 0.03, 0.12, '#3a2010', 'leather', [0, 0, 0], [0, 0, Math.PI / 2]));
+    h.add(cyl(0.03, 0.03, 0.12, '#3a2010', 'leather', [0, 0, 0], [0, 0, Math.PI / 2])); marker(h, 'tip', [0, -0.1, 0]);
   } else if (W === 'crossbow') { // kusza trzymana poziomo przed sobą
-    const h = hold(-Math.PI / 2 + 0.05); h.add(rbox(0.07, 0.85, 0.08, 0.02, '#6a4424', 'wood', [0, 0.12, 0])); h.add(rbox(0.12, 0.2, 0.07, 0.02, '#5a3a1e', 'wood', [0.06, -0.25, 0])); // łoże i kolba
+    const h = hold(-Math.PI / 2 + 0.05); marker(h, 'tip', [0.05, 0.55, 0]); h.add(rbox(0.07, 0.85, 0.08, 0.02, '#6a4424', 'wood', [0, 0.12, 0])); h.add(rbox(0.12, 0.2, 0.07, 0.02, '#5a3a1e', 'wood', [0.06, -0.25, 0])); // łoże i kolba
     h.add(tube([[0.1, 0.5, -0.36], [-0.02, 0.56, -0.1], [-0.02, 0.56, 0.1], [0.1, 0.5, 0.36]], 0.024, 0.014, metal, 'steel')); h.add(slab([[-0.04, 0], [0.04, 0], [0.03, 0.1], [-0.03, 0.1]], 0.02, metal, 'steel', [0, 0.5, 0])); // łuk kuszy
     h.add(cyl(0.004, 0.004, 0.7, '#e8e0cc', 'cloth', [0.08, 0.46, 0], [Math.PI / 2, 0, 0], null, 4)); h.add(box(0.02, 0.1, 0.02, metal, 'steel', [0.05, -0.08, 0])); if (A == null || A < 0.5) { h.add(cyl(0.01, 0.01, 0.4, '#8a6a4a', 'wood', [0.05, 0.3, 0], null, null, 4)); h.add(spike(0.02, 0.06, metal, 'steel', [0.05, 0.52, 0])); }
   } else if (W === 'staff') {
-    const h = hold(-0.12 - (A != null ? Math.sin(A * Math.PI) * 0.3 : 0)), top = L.staffTop || 'orb';
+    const h = hold(-0.12 - (A != null ? Math.sin(A * Math.PI) * 0.3 : 0)), top = L.staffTop || 'orb'; marker(h, 'tip', [0, 1.22, 0]);
     h.add(tube([[0, -0.55, 0], [0.02, 0.2, 0], [-0.02, 0.8, 0], [0, 1.1, 0]], 0.024, 0.02, '#5a3a1e', 'wood'));
     if (top === 'skull') { h.add(sph(0.07, '#e8e2cc', 'bone', [0, 1.2, 0], [1, 1.1, 0.9])); for (const z of [-0.025, 0.025]) h.add(sph(0.016, L.orb || '#a0f0a0', 'glow', [0.06, 1.21, z])); }
     else if (top === 'cross') { h.add(box(0.035, 0.28, 0.035, '#e0c050', 'gold', [0, 1.25, 0])); h.add(box(0.035, 0.035, 0.18, '#e0c050', 'gold', [0, 1.3, 0])); h.add(sph(0.03, L.orb || '#fff0a0', 'glow', [0, 1.3, 0])); }
@@ -494,7 +495,7 @@ function weapon(hold, L, W, A, wind, hit, metal, near = true) {
     h.add(lathe([[0.024, -0.35], [0.03, -0.1], [0.022, 0.25], [0.018, 0.5]], L.shaft || '#6a4424', 'wood', [0, 0, 0])); h.add(rbox(0.06, 0.24, 0.05, 0.02, L.shaft || '#5a3a1e', 'wood', [0.025, -0.34, 0], [0, 0, 0.18])); // łoże i kolba
     h.add(cyl(0.013, 0.013, 0.95, metal, 'iron', [-0.012, 0.42, 0], null, null, 10)); h.add(torus(0.016, 0.005, '#c8a050', 'gold', [-0.012, 0.86, 0], [Math.PI / 2, 0, 0])); for (const y of [0.25, 0.55]) h.add(torus(0.026, 0.006, '#c8a050', 'gold', [0, y, 0], [Math.PI / 2, 0, 0]));
     h.add(rbox(0.03, 0.08, 0.04, 0.01, metal, 'steel', [0.0, -0.06, 0.03])); h.add(tube([[0.005, -0.04, 0.05], [0.04, -0.02, 0.06], [0.05, 0.02, 0.05]], 0.008, 0.005, metal, 'steel')); // zamek i kurek
-    marker(h, 'fx:muzzle', [-0.012, 0.92, 0]);
+    marker(h, 'fx:muzzle', [-0.012, 0.92, 0]); marker(h, 'tip', [-0.012, 0.95, 0]);
     if (f > 0) { h.add(cone(0.05 * f, 0.22 * f, '#ffd070', 'fire', [-0.012, 1.0, 0], null, 8)); h.add(cone(0.03 * f, 0.14 * f, '#ffffff', 'glow', [-0.012, 0.97, 0], null, 6)); for (let i = 0; i < 3; i++) h.add(sph(0.05 + i * 0.02, '#d8d4cc', 'cloth', [-0.03 - i * 0.02, 1.05 + i * 0.08, (i - 1) * 0.03])); }
   } else if (W === 'wrench') { // wielki klucz francuski z mosiężną nakrętką: gnomy walczą nim jak buzdyganem
     const h = hold(-0.4 + (A != null ? wind * 1.4 - hit * 1.8 : 0)); h.add(rbox(0.035, 0.55, 0.02, 0.008, metal, 'steel', [0, 0.22, 0]));
@@ -504,12 +505,12 @@ function weapon(hold, L, W, A, wind, hit, metal, near = true) {
     const h = hold(-0.12 - (A != null ? Math.sin(A * Math.PI) * 0.3 : 0)), c = L.coil || '#8ae0ff', k = A != null ? Math.sin(Math.min(1, A) * Math.PI) : 0;
     h.add(cyl(0.02, 0.024, 1.5, L.metal || '#b8703a', 'metal', [0, 0.4, 0])); for (let i = 0; i < 6; i++) h.add(torus(0.032, 0.008, L.metal || '#b8703a', 'metal', [0, 0.82 + i * 0.03, 0], [Math.PI / 2, 0, 0]));
     for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2; h.add(tube([[0, 1.0, 0], [Math.cos(a) * 0.08, 1.12, Math.sin(a) * 0.08], [Math.cos(a) * 0.05, 1.26, Math.sin(a) * 0.05], [0, 1.3, 0]], 0.008, 0.006, '#c8a050', 'gold')); }
-    h.add(sph(0.06 + k * 0.03, c, 'glow', [0, 1.15, 0])); marker(h, 'fx:orb', [0, 1.15, 0]);
+    h.add(sph(0.06 + k * 0.03, c, 'glow', [0, 1.15, 0])); marker(h, 'fx:orb', [0, 1.15, 0]); marker(h, 'tip', [0, 1.15, 0]);
     if (k > 0.2) for (let i = 0; i < 4; i++) { const a = i * 1.7 + A * 20; h.add(tube([[0, 1.15, 0], [Math.cos(a) * 0.12, 1.22, Math.sin(a) * 0.12], [Math.cos(a + 1) * 0.2, 1.18, Math.sin(a + 1) * 0.2]], 0.01, 0.003, L.glow || c, 'glow')); }
   } else if (W === 'grenade') { // granat: żeliwna kula z tlącym się lontem; przy rzucie lont płonie jasno
     const h = hold(0), k = A != null ? Math.sin(Math.min(1, A) * Math.PI) : 0; h.add(sph(0.06, L.bombs || '#2a2a2a', 'iron', [0.02, 0.1, 0])); h.add(cyl(0.012, 0.012, 0.03, '#8a8478', 'iron', [0.02, 0.17, 0]));
-    h.add(cone(0.02 + k * 0.02, 0.05 + k * 0.06, '#ffb040', 'fire', [0.02, 0.21, 0], null, 6)); marker(h, 'fx:muzzle', [0.02, 0.1, 0]);
-  } else if (W === 'fireball') { const h = hold(0), c = L.orb || '#ff8a2a', s = 0.8 + (A != null ? Math.sin(A * Math.PI) * 0.6 : 0); // kula ognia w dłoni
+    h.add(cone(0.02 + k * 0.02, 0.05 + k * 0.06, '#ffb040', 'fire', [0.02, 0.21, 0], null, 6)); marker(h, 'fx:muzzle', [0.02, 0.1, 0]); marker(h, 'tip', [0.02, 0.1, 0]);
+  } else if (W === 'fireball') { const h = hold(0), c = L.orb || '#ff8a2a', s = 0.8 + (A != null ? Math.sin(A * Math.PI) * 0.6 : 0); marker(h, 'tip', [0.02, 0.1, 0]); // kula ognia w dłoni
     h.add(sph(0.07 * s, LT(c, 0.6), 'glow', [0.02, 0.1, 0])); for (let i = 0; i < 6; i++) h.add(cone(0.04 * s, 0.14 * s, i % 2 ? c : LT(c, 0.3), 'fire', [0.02 + Math.cos(i) * 0.03, 0.14, Math.sin(i) * 0.03], [Math.sin(i * 2) * 0.4, 0, Math.cos(i * 2) * 0.4], 5));
   }
 }

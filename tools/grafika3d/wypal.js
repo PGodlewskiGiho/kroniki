@@ -26,12 +26,14 @@ async function bakeGroup(ids, done) {
       const L = CREATURES[id].look, s = Math.max(1, L.size || 1), F = BATTLE_FRAMES, frames = [], flyer = CREATURES[id].abil.includes('fly'), wide = L.kind === 'dragon' || L.wings || flyer ? 1.25 : 1; window.__blank = 0;
       if (!buildUnit(L, {})) return null;
       const W = Math.round(150 * s * DS * wide), H = Math.round(150 * s * DS * wide), AX = Math.round(W * 0.45), AY = H - Math.round(18 * s * DS);
-      let mouth = null;
+      let mouth = null, tip = null;
       const add = (pose, i, P, map) => {
         const g0 = buildUnit(L, P), g = pose === 'dead' ? layDead(g0, L) : g0;
-        const c = map ? G3.render(g, Math.round(W * KM / KB) + 4, Math.round(H * KM / KB) + 4, KM, Math.round(AX * KM / KB) + 2, Math.round(AY * KM / KB) + 2) : G3.render(g, W, H, KB, AX, AY, pose === 'attack' && i === Math.round(0.55 * (F.attack - 1)) ? { probe: 'mouth' } : {});
+        const c = map ? G3.render(g, Math.round(W * KM / KB) + 4, Math.round(H * KM / KB) + 4, KM, Math.round(AX * KM / KB) + 2, Math.round(AY * KM / KB) + 2) : G3.render(g, W, H, KB, AX, AY, pose === 'attack' && i === Math.round(0.55 * (F.attack - 1)) ? { probe: ['mouth', 'tip', 'hand'] } : {});
         const ax = map ? Math.round(AX * KM / KB) + 2 : AX, ay = map ? Math.round(AY * KM / KB) + 2 : AY;
-        if (c._probe) mouth = [Math.round(c._probe[0] - ax), Math.round(c._probe[1] - ay)]; // paszcza w klatce ataku (zionięcie)
+        const pr = c._probes || {}, rel = q => [Math.round(q[0] - ax), Math.round(q[1] - ay)];
+        if (pr.mouth) mouth = rel(pr.mouth); // paszcza w klatce ataku (zionięcie)
+        if (pr.tip || pr.hand) tip = rel(pr.tip || pr.hand); // czubek broni (wylot lufy, głowica laski, łuk) albo dłoń w chwili strzału: stąd wylatuje pocisk
         // przycięcie do zajętych pikseli (z marginesem 1 px)
         const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
         for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
@@ -49,7 +51,7 @@ async function bakeGroup(ids, done) {
       let sw = 0, sh = 0; for (const r of Object.values(rows)) { sw = Math.max(sw, r.reduce((a, f) => a + f.w + 1, 0)); sh += Math.max(...r.map(f => f.h)) + 1; }
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = sh; const g = sheet.getContext('2d'), meta = {};
       let y = 0; for (const [pose, r] of Object.entries(rows)) { let x = 0; meta[pose] = r.map(f => { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, x, y, f.w, f.h); const m = [x, y, f.w, f.h, f.ax, f.ay]; x += f.w + 1; return m; }); y += Math.max(...r.map(f => f.h)) + 1; }
-      return window.__blank ? { blank: window.__blank } : { png: (RAW ? sheet.toDataURL('image/webp', 0.9) : sheet.toDataURL('image/png')).split(',')[1], f: meta, u: UB, mu: UM, m: mouth };
+      return window.__blank ? { blank: window.__blank } : { png: (RAW ? sheet.toDataURL('image/webp', 0.9) : sheet.toDataURL('image/png')).split(',')[1], f: meta, u: UB, mu: UM, m: mouth, t: CREATURES[id].shots ? tip : null }; // czubek broni tylko u strzelców
     }, [id, KB, KM, UB, UM, DS, RAW]);
     if (r && r.blank) { // pusta klatka: kontekst grafiki padł (np. brak pamięci) - świeża przeglądarka i jeszcze raz
       process.stdout.write('!'); await st.browser.close(); st = null; n = 0; ids.push(id); if ((retry[id] = (retry[id] || 0) + 1) > 2) throw new Error(`Puste klatki: ${id}`); continue; }
@@ -97,7 +99,7 @@ async function bakeHeroes(fresh) {
   if (!only && !fresh) for (const id of Object.keys(meta)) if (!ids.includes(id)) { delete meta[id]; const f = path.join(OUT_DIR, id + '.png'); if (fs.existsSync(f)) fs.unlinkSync(f); } // jednostki bez modelu
   if (fresh) ids = ids.filter(id => !meta[id] || !fs.existsSync(path.join(OUT_DIR, id + '.png')));
   console.log(`Wypalanie ${ids.length} jednostek w ${WORKERS} przeglądarkach…`);
-  const done = (id, r) => { if (!r) return; const ext = RAW ? '.webp' : '.png', other = path.join(OUT_DIR, id + (ext === '.png' ? '.webp' : '.png')); if (fs.existsSync(other)) fs.unlinkSync(other); fs.writeFileSync(path.join(OUT_DIR, id + ext), Buffer.from(r.png, 'base64')); meta[id] = { u: r.u, mu: r.mu, f: r.f, ...(r.m ? { m: r.m } : {}), ...(RAW ? { raw: 1 } : {}) }; fs.writeFileSync(META, JSON.stringify(meta)); };
+  const done = (id, r) => { if (!r) return; const ext = RAW ? '.webp' : '.png', other = path.join(OUT_DIR, id + (ext === '.png' ? '.webp' : '.png')); if (fs.existsSync(other)) fs.unlinkSync(other); fs.writeFileSync(path.join(OUT_DIR, id + ext), Buffer.from(r.png, 'base64')); meta[id] = { u: r.u, mu: r.mu, f: r.f, ...(r.m ? { m: r.m } : {}), ...(r.t ? { t: r.t } : {}), ...(RAW ? { raw: 1 } : {}) }; fs.writeFileSync(META, JSON.stringify(meta)); };
   await Promise.all(Array.from({ length: WORKERS }, (_, k) => bakeGroup(ids.filter((_, i) => i % WORKERS === k), done)));
   if (!only || args.includes('--bohaterowie')) await bakeHeroes(fresh);
   const bytes = fs.readdirSync(OUT_DIR).reduce((s, f) => s + fs.statSync(path.join(OUT_DIR, f)).size, 0);

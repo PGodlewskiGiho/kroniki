@@ -444,5 +444,11 @@
    po zwycięstwie wraca 30% zniszczonych konstruktów. Warsztat machin raz w tygodniu daje brakujące machiny; Graal: Wieczny Silnik.
    Szybka bitwa: bohaterowie z księgą znają czary z gildii swojej frakcji (poziom gildii rośnie z poziomem bohaterów, limit Mądrości) –
    wcześniej mieli tylko czar startowy i magowie przegrywali z wojownikami prawie zawsze (4% wygranych na 10. poziomie, teraz ok. 45%).
+   Pociski w bitwie wg broni (shotKind): strzała, bełt kuszy, kula z muszkietu (smuga, błysk i dym z lufy), kula magii, ognista kula, piorun,
+   promień oka, wirujący topór, koziołkujący głaz (wielkość z rzucającego), kamyk, granat z lontem (wybuch), pieśń syreny. Wylot z czubka
+   broni zapisanego przy wypalaniu (znaczniki tip/hand w modelach), nie ze środka ciała. Odłamki, przeskoki iskry, zionięcie na drugie pole
+   i obrażenia czaru obszarowego lądują razem z głównym trafieniem (landSplash), bez kolejki po 0,3 s i bez martwej przerwy po trafieniu.
+   Dźwięki bitwy: broń biała w czterech rodzajach (klinga, obuch, topór, drzewcowa), wysokość tonu z wielkości stwora, osobny wystrzał
+   i trafienie dla każdego pocisku, nieumarli grzechoczą kośćmi, konstrukty zgrzytają metalem, olbrzymy padają z łoskotem.
    ===================================================================================== */
 

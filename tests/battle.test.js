@@ -236,3 +236,24 @@ test('szybka bitwa: bohater z księgą zna czary z gildii swojej frakcji (wyższ
   });
   assert.ok(r.n >= 6, `czarów: ${r.n}`); assert.ok(r.top >= 4, `najwyższy poziom ${r.top}`); assert.equal(r.lowTop, 2); assert.equal(r.war, 0);
 });
+
+test('pociski z broni: różne rodzaje (strzała, bełt, kula, magia, piorun, promień, głaz, granat, topór), dźwięki wg broni i wielkości; odłamki trafiają razem z pociskiem', async () => {
+  await twoPlayers();
+  const r = await page.evaluate(() => {
+    const shooters = Object.keys(CREATURES).filter(id => CREATURES[id].shots), kinds = new Set(shooters.map(shotKind));
+    const k = { archer: shotKind('archer'), marksman: shotKind('marksman'), musketeer: shotKind('musketeer'), mage: shotKind('mage'), titan: shotKind('titan'), evilEye: shotKind('evilEye'), cyclops: shotKind('cyclops'), grenadier: shotKind('grenadier'), orcAxe: shotKind('orcAxe') };
+    const snd = ['swordsman', 'ogre', 'pikeman', 'wolfRider', 'boneWarrior', 'colossus'].filter(id => CREATURES[id]).map(id => { const S = unitSound(id); return S.melee + '/' + S.rate.toFixed(2) + (S.undead ? '/u' : '') + (S.metal ? '/m' : ''); });
+    // granat w grupę: odłamki lądują w tej samej klatce co pocisk, nie czekają w kolejce
+    const st = G.state, me = TX.me(), foe = TX.foe(); me.army = TX.army([['grenadier', 10]]); foe.army = TX.army([['ogre', 10], ['ogre', 10], ['ogre', 10]]);
+    setScreen('battle', { battle: createBattle(st, me, foe) }); const S = G.screens.battle, B = S.B, g = B.units.find(u => u.side === 0), foes = B.units.filter(u => u.side === 1);
+    foes.forEach((u, i) => { u.x = 8; u.y = 2 + i; [u.px, u.py] = unitPos(u); }); B.fx = []; actShoot(B, g, foes[1]);
+    const queued = B.fx.filter(f => f.kind === 'hit' && f.splash).length; S.startPlay(B.fx.shift());
+    for (let i = 0; i < 200 && !S.play.landed; i++) { S.play.t += 0.01; S.stepPlay(); }
+    return { kinds: kinds.size, k, snd, queued, left: B.fx.filter(f => f.kind === 'hit' && f.splash).length, landedAt: S.play.hitAt, dur: S.play.dur };
+  });
+  assert.ok(r.kinds >= 9, `rodzajów pocisków: ${r.kinds}`);
+  assert.deepEqual(r.k, { archer: 'arrow', marksman: 'bolt', musketeer: 'bullet', mage: 'orb', titan: 'lightning', evilEye: 'ray', cyclops: 'rock', grenadier: 'bomb', orcAxe: 'axe' });
+  assert.equal(new Set(r.snd).size, r.snd.length, `dźwięki ciosów: ${r.snd}`);
+  assert.ok(r.queued >= 2, 'odłamki granatu'); assert.equal(r.left, 0, 'odłamki trafiły razem z pociskiem'); assert.ok(r.dur - r.landedAt < 0.25, 'bez martwej przerwy po trafieniu');
+});
+
