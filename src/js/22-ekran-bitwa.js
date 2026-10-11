@@ -672,7 +672,7 @@ G.screens.battle = {
     const kx = keepO.length ? hexCenter(keep.x, keep.y)[0] + KEEP_DX : 0, hidden = keepO.length && keep.hp > 0 ? shown.filter(v => !v.dead && !v.keep && v.py < keepO[0].py && v.py > keepO[0].py - 200 && Math.abs(v.px - kx) < 62) : [];
     for (const u of [...shown, ...obst, ...keepO].sort((a, b) => a.py - b.py)) {
       if (u.keepW) { drawKeep3D(ctx, A3, u.keepW); continue; }
-      if (u.obst) { if (u.obst.o !== 'sea') drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
+      if (u.obst) { if (u.obst.o !== 'sea') drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v, 0, this.terr === TER.CRYSTAL || this.terr === TER.FUNGUS ? 1 : 0), u.px, u.py + 6, 1.5); /* w grotach przeszkody z podziemi (grzyby, kryształy) */ continue; }
       drawUnit(u);
     }
     for (const u of hidden) drawUnit(u, true);
