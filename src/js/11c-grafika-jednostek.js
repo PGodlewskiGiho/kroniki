@@ -49,6 +49,7 @@ function drawMap3dIcon(ctx, key, cx, cy, maxW, maxH) {
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(s.c, cx - w * k / 2, cy - h * k / 2, w * k, h * k); ctx.restore(); return true;
 }
 function map3dSprite(key) {
+  if (key.includes('@')) { const [b, c] = key.split('@'); return map3dTinted(b, c); } // „klucz@#kolor”: model z barwnymi chorągwiami (magenta → kolor)
   const A = typeof MAP3D_ART !== 'undefined' && MAP3D_ART, im = MAP3D_IMG.sheet, f = A && A.f[key]; if (!f || !im || !im._ok) return null;
   const sk = `m3_${key}`; let s = SPR.get(sk); if (s) return s; const [x, y, w, h, ax, ay] = f, k = PIXEL_ART ? PXD / A.d : Math.min(1, 2 * mapBufScale() / A.d), /* gładko: gęstość ekranu */ cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
   const c = document.createElement('canvas'); c.width = cw; c.height = ch; const g = c.getContext('2d'); c._ctx = g; g.imageSmoothingQuality = 'high'; g.drawImage(im, x, y, w, h, 0, 0, cw, ch);

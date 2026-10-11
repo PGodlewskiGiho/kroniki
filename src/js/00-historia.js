@@ -430,5 +430,8 @@
    i powrót do wyboru (19c-szybka-bitwa.js).
    Zdarzenia na drogach (13b-zdarzenia-na-drogach.js): ukryte pola, na których bohater trafia na scenkę z wyborem – ranny wędrowiec,
    porzucony wóz, wróżbitka, dezerterzy, stary mędrzec, ruiny strażnicy, wędrowni kupcy, zapomniany ołtarz. Każde raz; komputer wybiera sam.
+   Puszka Pandory (otwiera się raz: złoto, doświadczenie, artefakt, surowce, czar albo pułapka – złoto na dnie i potwory do pokonania).
+   Bramy graniczne na wąskich drogach i namioty klucznika (jak w H3): brama przepuszcza tylko gracza z przepustką swojego koloru; namiot
+   każdego koloru stoi w każdej części mapy ze startem. Modele 3D z chorągwiami w kolorze klucza (magenta w modelu, kolor w grze).
    ===================================================================================== */
 

@@ -684,7 +684,7 @@ function showBattleResult(st, h, res) { showBattleReport(st, res, attackReport(s
 function battleAftermath(st, h, res) {
   if (res.outcome !== 'win') return;
   advFloat(`+${res.exp} dośw.`, h.x, h.y);
-  gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank') visitObject(st, h, here); });
+  gainExp(st, h, res.exp, () => { const here = objectAt(st, h.y * st.map.n + h.x); if (here && here.type !== 'monster' && here.type !== 'bank' && here.kind !== 'pandora' && here.kind !== 'borderGate') visitObject(st, h, here); });
 }
 // Zawartość fosy wg frakcji: faktura terenu, zabarwienie, brzeg, połysk; Inferno – lawa, Cytadela – bagno, Kurhan – trująca zieleń
 const MOAT_LIQ = {

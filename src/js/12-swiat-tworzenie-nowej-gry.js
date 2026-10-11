@@ -269,7 +269,7 @@ function placeObjects(st) {
   const SITE_FIT = { well: 'road', stables: 'road', temple: 'road', market: 'road', school: 'road', hillFort: 'road', camp: 'road', post: 'road', dwelling: 'road', fountain: 'road',
     waterMill: 'water', magicSpring: 'water', windmill: 'open', arena: 'open', oasis: 'open', lookout: 'mountain', altar: 'mountain', stone: 'mountain', crystalCave: 'mountain', dwarfForge: 'mountain',
     witchHut: 'swamp', graveyard: 'swamp', shrine: 'forest', garden: 'forest', tree: 'forest', mushroomRing: 'forest', campfire: 'forest', library: 'hidden', sacrifice: 'hidden', prison: 'hidden',
-    sphinx: 'desert', questHut: 'forest', inn: 'road', barrow: 'open', caravanserai: 'road', wishingWell: 'forest' };
+    sphinx: 'desert', questHut: 'forest', inn: 'road', barrow: 'open', caravanserai: 'road', wishingWell: 'forest', pandora: 'hidden' };
   // Budynek nie dotyka drogi: w prostokącie x0..x1, y0..y1 (budynek z marginesem pola; pod wejściem droga może biec) nie ma drogi
   const roadFree = (x0, y0, x1, y1) => { for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (map.road[y * n + x]) return false; return true; };
   // Najlepsze z kilkudziesięciu losowych miejsc: dopasowanie do okolicy i odstęp od innych obiektów (bez zbitych gromad)
@@ -337,6 +337,26 @@ function placeObjects(st) {
     const cand = []; for (let y = 1; y < n - 1; y++) for (let x = 1; x < n - 1; x++) if (okRoad(x, y) && dStart(x, y) >= 8 && narrow(x, y)) cand.push([x, y]);
     for (let k = Math.round(NL / 650); k > 0 && cand.length; k--) { const [x, y] = cand.splice(Math.floor(rng() * cand.length), 1)[0]; monster(x, y); } }
   for (let k = Math.round(NL / 340); k > 0; k--) { const p = best((x, y) => dStart(x, y) >= 6, (x, y) => (dRoad[y * n + x] <= 2 ? 1.5 : 0), 25); if (p) monster(p[0], p[1]); }
+  // Bramy graniczne na wąskich drogach (z dala od startów) i namioty klucznika: w każdej części mapy odciętej bramami, w której jest start,
+  // stoi namiot każdego koloru – każdy gracz zdobędzie przepustkę, nie przechodząc przez bramę tego koloru
+  { const want = BORDER_GATES[(MAP_SIZES.find(m => m.n === levelSize(map)) || MAP_SIZES[1]).id] || 1, cand = [];
+    for (let y = 2; y < n - 2; y++) for (let x = 2; x < n - 2; x++) { const i = y * n + x; if (map.road[i] && okRoad(x, y) && dStart(x, y) >= 10 && !home[i] && around(x, y, 1, j => map.obst[j] === OBST.MOUNT || map.obst[j] === OBST.TREE || map.terrain[j] === TER.WATER) >= 4) cand.push([x, y]); }
+    const gates = [];
+    for (let k = 0; k < want && cand.length; k++) { const c = KEY_COLORS[k % KEY_COLORS.length], spot = cand.splice(Math.floor(rng() * cand.length), 1)[0];
+      if (gates.some(g => Math.hypot(g.x - spot[0], g.y - spot[1]) < levelSize(map) * 0.25)) { k--; continue; }
+      gates.push(add({ type: 'site', kind: 'borderGate', color: c.id, title: `Brama graniczna (${c.f})`, x: spot[0], y: spot[1], seen: {} }, [spot[1] * n + spot[0]])); }
+    if (gates.length) {
+      const comp = new Int32Array(N).fill(-1), gateT = new Set(gates.map(g => g.y * n + g.x)); let cid = 0; const roots = [];
+      for (const s0 of starts) { const i0 = Math.min(n - 1, s0.y + 1) * n + s0.x; if (comp[i0] < 0) { const q = [i0]; comp[i0] = cid;
+          for (let h2 = 0; h2 < q.length; h2++) { const i = q[h2], x = i % n, y = (i / n) | 0, g = gateTo.get(i); if (g != null && comp[g] < 0) { comp[g] = cid; q.push(g); }
+            for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X < 0 || Y < 0 || X >= n || Y >= n || comp[j] >= 0 || gateT.has(j) || map.terrain[j] === TER.WATER || map.obst[j]) continue; comp[j] = cid; q.push(j); } }
+          roots.push([cid++, s0]); } }
+      for (const g of gates) for (const [c0, s0] of roots) {
+        const cond = (x, y) => comp[y * n + x] === c0 && Math.hypot(x - s0.x, y - s0.y) >= 5 && Math.hypot(x - s0.x, y - s0.y) <= levelSize(map) * 0.3 && roadFree(x - 1, y - 1, x + 1, y);
+        const p = best(cond, FIT.open, 60) || pick(cond, 2000); const c = keyColor(g.color);
+        if (p) add({ type: 'site', kind: 'keyTent', color: g.color, title: `Namiot klucznika (${c.name})`, x: p[0], y: p[1], seen: {} }, [p[1] * n + p[0]]);
+      }
+    } }
   // pierwsze walki: tuż za okolicą każdego startu 2–3 słabe oddziały (przy drodze), do pokonania armią startową
   const homeEdge = (x, y) => { if (home[y * n + x]) return false; for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (X >= 0 && Y >= 0 && X < n && Y < n && home[Y * n + X]) return true; } return false; };
   for (const s0 of starts) for (let k = 0; k < 2 + (rng() < 0.5 ? 1 : 0); k++) {
@@ -441,7 +461,7 @@ function placeObjects(st) {
   for (let k = Math.round(water / SEA_MONSTER_PER), tries = 0; k > 0 && tries < 3000; tries++) { const p = seaSpot(7); if (p && dStart(p[0], p[1]) >= 8 && seaMonster(p[0], p[1])) k--; }
   // Przejścia: stały obiekt (kopalnia, skarbiec, miejsce) nie może zamknąć jedynej drogi do któregoś miasta (wąska dolina,
   // przesmyk) – taki obiekt znika. Potwory (do pokonania) i skarby (do podniesienia) drogi nie zamykają.
-  { const solid = o => !o.dead && !['monster', 'res', 'chest', 'art', 'boat'].includes(o.type), tilesOf = o => [o.y * n + o.x, ...(o.blocks || [])];
+  { const solid = o => !o.dead && !['monster', 'res', 'chest', 'art', 'boat'].includes(o.type) && o.kind !== 'borderGate', tilesOf = o => [o.y * n + o.x, ...(o.blocks || [])];
     const blocked = new Uint8Array(N); for (const o of objs) if (solid(o)) for (const i of tilesOf(o)) blocked[i] = 1;
     for (const s of map.sites) for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) { const x = s.x + dx, y = s.y + dy; if (x >= 0 && y >= 0 && x < n && y < n) blocked[y * n + x] = 1; } // zabudowa miast (wejście bramą od południa)
     const reached = () => { const seen = new Uint8Array(N), q = [Math.min(n - 1, map.start.y + 1) * n + map.start.x]; seen[q[0]] = 1;

@@ -326,6 +326,25 @@ Object.assign(SITE3, {
     for (const [x, z, c] of [[-12, 12, '#c8a040'], [-6, 16, '#4a8ab0'], [2, 12, '#a04a2a']]) g.add(sph(2.6 / PXU, c, c === '#c8a040' ? 'gold' : 'stone', P(x, 3, z), [1, 1.3, 1]));
     for (const [x, z, h] of [[-26, 6, 8], [-24, 16, 6], [8, 20, 7]]) g.add(blk(8, h, 7, '#8a5a30', 'wood', x, 0, z)); g.add(mqRes('gems', -1, 14, 0.4)); g.add(mqRes('gold', 7, 15, 0.35));
     g.add(cyl3(1, 1, 36, '#5a3a22', 'wood', 0, 0, -26, 8)); g.add(hangBanner(4, 34, -26, 8, 16, '#7a2a8a')); for (let i = 0; i < 4; i++) g.add(mqGlow(1.4, '#ffc860', -22 + i * 9, 22 - (i % 2) * 2, 2)); return g; },
+  pandora() { // puszka Pandory: rzeźbiona szkatuła na kamiennym cokole, złote okucia, uchylone wieko, spod którego bije fioletowe światło, iskry
+    const g = new THREE.Group(); g.add(cyl3(20, 22, 6, ST.stoneD, 'ashlar', 0, 0, 0, 8)); g.add(cyl3(16, 18, 4, ST.stone, 'ashlar', 0, 6, 0, 8));
+    g.add(blk(24, 14, 16, '#5a2a3a', 'wood', 0, 10, 0)); for (const y of [10, 23]) g.add(blk(25, 1.6, 17, '#d8b040', 'gold', 0, y, 0)); for (const x of [-12, 12]) g.add(blk(1.6, 14, 17, '#d8b040', 'gold', x, 10, 0));
+    g.add(blk(10, 6, 1, '#d8b040', 'gold', 0, 14, 8.3)); g.add(sph(1.6 / PXU, '#e8d8ff', 'gem', P(0, 17, 9)));
+    const lid = blk(25, 4, 17, '#6a3448', 'wood', 0, 0, 0); lid.position.set(...P(0, 25, -4)); lid.rotation.x = -0.45; g.add(lid);
+    const glow = blk(22, 0.6, 14, '#c890ff', 'glow', 0, 24.2, 0); glow.material = lightMat('#d0a0ff'); g.add(glow);
+    for (const [x, y, z, r] of [[0, 32, 2, 3.2], [-8, 38, -2, 1.6], [9, 41, 3, 1.4], [3, 47, -1, 1.2], [-4, 52, 2, 1]]) g.add(mqGlow(r, '#d8b0ff', x, y, z)); g.scale.setScalar(1.5); return g; }, // większa: ma się wyróżniać na mapie
+  keyTent() { // namiot klucznika: okrągły namiot w pasy koloru klucza (magenta: barwa nadawana w grze), proporzec, stolik z wielkim złotym kluczem
+    const g = new THREE.Group(); g.add(cyl3(22, 22, 14, '#e8dcc0', 'cloth', 0, 0, -4, 12)); g.add(cone(24 / PXU, 22 / PXU, '#ff00ff', 'cloth', P(0, 25, -4), null, 12)); g.add(cone(25 / PXU, 6 / PXU, '#f0e8d8', 'cloth', P(0, 16, -4), null, 12));
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; g.add(blk(3, 14, 1, '#ff00ff', 'cloth', Math.cos(a) * 22, 0, -4 + Math.sin(a) * 22, [0, -a + Math.PI / 2, 0])); }
+    g.add(opening(10, 12, 0, 0, 17, { frame: '#8a6a40', frameKind: 'cloth', arch: false, sill: false })); g.add(finial(0, 36, -4));
+    g.add(cyl3(1, 1, 38, '#5a3a22', 'wood', 18, 0, 14, 8)); g.add(hangBanner(18, 36, 14, 7, 14, '#ff00ff', '#f0d040'));
+    g.add(blk(12, 6, 8, '#7a5230', 'wood', -16, 0, 16)); g.add(cyl3(1.6, 1.6, 8, '#e0b040', 'gold', -16, 6.5, 16, 10)); g.add(torus(2.4 / PXU, 0.8 / PXU, '#e0b040', 'gold', P(-21, 7.2, 16), [Math.PI / 2, 0, 0]));
+    for (const dx of [-10, -12]) g.add(blk(1.4, 0.8, 1.6, '#e0b040', 'gold', dx, 6.6, 17)); return g; },
+  borderGate() { // brama graniczna: dwie kamienne wieżyczki z blankami, łuk nad drogą, krata i drewniane wrota, chorągwie w kolorze klucza (magenta)
+    const g = new THREE.Group(); for (const x of [-21, 21]) { g.add(blk(14, 40, 16, ST.stone, 'ashlar', x, 0, 0)); g.add(crenTop(14, 16, 40, ST.stone, 'ashlar', x, 0)); g.add(hangBanner(x, 34, 8.6, 8, 18, '#ff00ff', '#f0d040')); }
+    g.add(blk(28, 10, 14, ST.stone, 'ashlar', 0, 26, 0)); g.add(crenTop(28, 14, 36, ST.stone, 'ashlar', 0, 0));
+    g.add(blk(28, 26, 2, '#120c08', 'stone', 0, 0, -1)); for (let i = -3; i <= 3; i++) g.add(blk(1.2, 25, 1.2, '#3a3a40', 'iron', i * 4, 0, 4)); for (const y of [6, 13, 20]) g.add(blk(28, 1.2, 1.2, '#3a3a40', 'iron', 0, y, 4));
+    for (const x of [-38, 38]) g.add(mqRock('def', x, 0, 9, 12, 9, Math.abs(x) + 3)); g.add(cyl3(1, 1, 48, '#5a3a22', 'wood', 0, 36, 0, 8)); g.add(hangBanner(0, 82, 0, 10, 16, '#ff00ff', '#f0d040')); return g; },
   wishingWell() { // studnia życzeń: marmurowa cembrowina ze świecącą wodą, cztery kolumienki, niebieska kopułka ze złotą gwiazdą, monety, kwiaty
     const g = new THREE.Group(); g.add(blk(44, 2, 44, '#b8b0a0', 'ashlar', 0, 0, 0)); g.add(cyl3(16, 17, 13, '#d8d0c0', 'marble', 0, 0, 0, 20)); g.add(cyl3(17.5, 17.5, 2, '#c8a040', 'gold', 0, 13, 0, 20));
     const w = cyl(13 / PXU, 13 / PXU, 1 / PXU, '#7ad0ff', 'glow', P(0, 13.8, 0), null, null, 20); w.material = lightMat('#8adcff'); g.add(w); g.add(mqGlow(5, '#a8e4ff', 0, 17, 0));

@@ -127,7 +127,8 @@ function aiReach(st, h) {
     hk[i] = d; hv[i] = v;
   };
   const heroCell = new Uint8Array(N); for (const o of st.heroes) if (o.garrison == null) heroCell[o.y * n + o.x] = 1;
-  const stop = i => !!((st.objAt[i] && objSeen(st, st.objects[st.objAt[i] - 1], h.owner)) || st.guard[i] || heroCell[i]); // nieznany ukryty skarb: przechodzi (i go znajduje)
+  const openGate = o => o.kind === 'borderGate' && hasGateKey(st, h.owner, o); // brama z przepustką: zwykła droga
+  const stop = i => !!((st.objAt[i] && objSeen(st, st.objects[st.objAt[i] - 1], h.owner) && !openGate(st.objects[st.objAt[i] - 1])) || st.guard[i] || heroCell[i]); // nieznany ukryty skarb: przechodzi (i go znajduje)
   dist[start] = 0; push(0, start);
   while (hn) {
     const d = hk[0], i = hv[0]; pop(); if (d > dist[i]) continue; if (i !== start && stop(i)) continue;
@@ -261,6 +262,9 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'inn' && h.boost && h.boost.morale > 0) return 300; // plotka i tak się przyda
   if (ob.kind === 'questHut') { const m = st.objects[ob.target]; return ob.done == null && (!m || m.dead) ? 4000 : 0; } // nagroda za pokonane stwory
   if (ob.kind === 'barrow') return ob.looted == null ? 3500 : 0; // artefakt wart klątwy
+  if (ob.kind === 'pandora') return ob.opened == null ? S.ai : 0;
+  if (ob.kind === 'keyTent') return (playerOf(st, h.owner).keys || {})[ob.color] ? 0 : S.ai; // przepustka raz na gracza
+  if (ob.kind === 'borderGate') return 0;
   if (ob.kind === 'lighthouse') return ob.owner === h.owner ? 0 : S.ai;
   if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o && playerOf(st, h.owner).resources.gold >= o.price + 4000 ? 2000 : 0; }
   if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
@@ -287,7 +291,7 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
   else if (ob.type === 'site' && ob.kind === 'witchHut' && skillWeight(h.cls, ob.skill) < 1) siteDiscover(ob, h.owner); // odmawia wiedźmie
-  else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); }
+  else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); if (r.trap) yield* aiBattle(st, h, trapMonster(h, r.trap), news); } // puszka Pandory z potworami
   else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
   else if (ob.type === 'mine' && ob.owner >= 0 && ob.owner !== h.owner && allied(st, h.owner, ob.owner)) return;
   else if (ob.type === 'mine') { if (ob.owner >= 0 && ob.owner !== h.owner) tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }

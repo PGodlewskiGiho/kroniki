@@ -99,3 +99,36 @@ test('zdarzenia na drogach: ukryte pola na drogach, wejście bohatera otwiera sc
   assert.ok(r.count >= 3, `zdarzeń: ${r.count}`); assert.ok(r.onRoad); assert.ok(r.hidden, 'niewidoczne na mapie');
   assert.match(r.title, /Porzucony wóz/); assert.equal(r.gained, 5); assert.equal(r.done, true); assert.equal(r.again, false); assert.equal(r.saved, true);
 });
+
+test('bramy graniczne i klucznik: bez przepustki brama zatrzymuje, namiot daje przepustkę kolorowi, potem przez bramę się przejeżdża', async () => {
+  await newGame(page, { mapSize: 'L' }, 7);
+  const r = await page.evaluate(() => {
+    const st = G.state, n = st.map.n, h = hero(st); human(st).explored.fill(1); const live = st.objects.filter(o => !o.dead), gates = live.filter(o => o.kind === 'borderGate'), tents = live.filter(o => o.kind === 'keyTent');
+    const free = g0 => DX8.map((dx, d) => [g0.x + dx, g0.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !heroAt(st, x, y) && stepCost(st.map, x, y, g0.x, g0.y, h) < 9999);
+    const g = gates.find(free), nb = free(g), tent = tents.find(t => t.color === g.color), gi = g.y * n + g.x; for (const o of st.objects) if (o.type === 'monster') o.dead = true; rebuildObjIndex(st); // bez strażników obok bramy
+    const blockedBefore = objBlocks(st, gi, -1, 0, ME);
+    h.x = nb[0]; h.y = nb[1]; h.mp = 9000; h.path = [[g.x, g.y]]; h.moving = true; G.modal = null; setScreen('adventure', {});
+    heroStep(st, h); const stayed = h.x === nb[0] && h.y === nb[1], closedMsg = G.modal && G.modal.msg; G.modal = null;
+    const res = useSite(st, h, tent); const key = !!(st.players[ME].keys || {})[g.color];
+    const blockedAfter = objBlocks(st, gi, -1, 0, ME); h.path = [[g.x, g.y]]; h.moving = true; h.anim = null; heroStep(st, h);
+    return { gates: gates.length, colorsOk: gates.every(x => tents.some(t => t.color === x.color)), blockedBefore, stayed, closedMsg, tentText: res.text, key, blockedAfter, passed: h.x === g.x && h.y === g.y, pending: !!h.pending };
+  });
+  assert.ok(r.gates >= 1); assert.ok(r.colorsOk, 'każda brama ma namiot swojego koloru');
+  assert.equal(r.blockedBefore, true); assert.ok(r.stayed, 'zamknięta brama zatrzymuje'); assert.match(r.closedMsg, /zamknięta/);
+  assert.match(r.tentText, /przepustkę/); assert.equal(r.key, true); assert.equal(r.blockedAfter, false); assert.ok(r.passed, 'z przepustką przez bramę'); assert.equal(r.pending, false);
+});
+
+test('puszka Pandory: otwiera się raz (nagroda albo potwory z walką), potem jest pusta', async () => {
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), out = { kinds: {} };
+    for (let id = 0; id < 120; id++) { const ob = { id, kind: 'pandora', type: 'site', x: 0, y: 0 }, h2 = JSON.parse(JSON.stringify(h)); h2.army = h.army.map(s => s && { ...s }); const res = pandoraOpen(st, h2, ob);
+      const k = res.trap ? 'trap' : res.exp ? 'exp' : /artefakt/.test(res.text) ? 'art' : /złota/.test(res.text) ? 'gold' : /surowc/.test(res.text) ? 'res' : 'spell'; out.kinds[k] = (out.kinds[k] || 0) + 1;
+      if (res.trap && !out.trap) { const m = trapMonster(h, res.trap), B = createBattle(st, h, m); B.auto = true; simulateBattle(B); out.trap = { cid: !!CREATURES[res.trap.cid], count: res.trap.count > 0, over: B.over }; } }
+    const real = st.objects.find(o => o.kind === 'pandora' && !o.dead) || { id: 999, kind: 'pandora', type: 'site', x: h.x, y: h.y, seen: {} };
+    const first = useSite(st, h, real), again = useSite(st, h, real);
+    return { ...out, first: first.text, again: again.text, opened: real.opened };
+  });
+  assert.ok(r.kinds.trap > 0 && r.kinds.gold > 0 && r.kinds.exp > 0 && r.kinds.art > 0, JSON.stringify(r.kinds));
+  assert.deepEqual({ cid: r.trap.cid, count: r.trap.count }, { cid: true, count: true }); assert.ok(['win', 'lose'].includes(r.trap.over));
+  assert.ok(r.first.length > 10); assert.match(r.again, /pusta/); assert.equal(r.opened, 0);
+});

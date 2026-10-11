@@ -28,7 +28,7 @@ function objCardData(st, ob) {
   if (ob.type === 'chest') return { key: 'chest', name: 'Skrzynia ze skarbem', rows: [], desc: 'Wybierzesz złoto albo doświadczenie dla bohatera.', guard };
   if (ob.type === 'bank') { const B = BANKS[ob.kind]; return { key: `bank_${ob.kind}_${ob.cleared ? 1 : 0}`, name: B.name, rows: [['Łup', ob.cleared ? 'splądrowane' : '']], desc: ob.cleared ? 'Splądrowane, nic tu już nie ma.' : `${cap1(B.desc)}. Łup: ${bankLootText(ob.kind)}.`, guard: ob.cleared ? [] : ob.guards }; }
   const txt = siteInfo(st, ob, hero(st)), i = txt.indexOf(': ');
-  return { key: 'site_' + ob.kind, name: siteName(ob), owner: ob.owner != null ? ob.owner : undefined, rows: [], desc: cap1((i >= 0 ? txt.slice(i + 2) : txt).replace(/ Pilnuje (go|jej) potwór\./, '')), guard };
+  return { key: siteKey3(ob), name: siteName(ob), owner: ob.owner != null ? ob.owner : undefined, rows: [], desc: cap1((i >= 0 ? txt.slice(i + 2) : txt).replace(/ Pilnuje (go|jej) potwór\./, '')), guard };
 }
 function drawObjCard(ctx, p) {
   const st = G.state, D = objCardData(st, p.mapObj), W0 = 384, gArmy = D.guard.map(([cid, n]) => ({ cid, n }));
