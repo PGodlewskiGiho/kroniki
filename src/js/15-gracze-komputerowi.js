@@ -318,7 +318,7 @@ function* aiMoveHero(st, h, news) {
       const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
       const blocker = heroAt(st, nx, ny); if (blocker && blocker !== h && allied(st, blocker.owner, h.owner) && blocker.garrison == null) return; // pole zajmuje własny bohater (np. stoi w kapliczce): nie wchodzimy na niego
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
-      reveal(st, nx, ny, heroSight(h), h.owner);
+      reveal(st, nx, ny, heroSight(h), h.owner); const ev = eventAt(st, ny * st.map.n + nx); if (ev) runEvent(st, h, ev); // zdarzenie na drodze: komputer wybiera sam
       yield { kind: 'step', h, fx, fy };
     }
     if (target.what === 'feed') { // obok głównego bohatera: oddaje armię i artefakty

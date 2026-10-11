@@ -531,7 +531,7 @@ function createNewGame(S, seed = (Math.random() * 1e9) | 0) {
     createTown(st, sites[id].x, sites[id].y, id, fac);
   });
   for (const s of sites.slice(slots.length)) createNeutralTown(st, s, trng);
-  rebuildObjIndex(st);
+  rebuildObjIndex(st); st.events = placeEvents(st); rebuildObjIndex(st); // zdarzenia na drogach: po obiektach i miastach
   for (const p of st.players) { // bohater startowy: wybrany przy nowej grze (slots[].hero) albo losowy z puli frakcji
     const t = st.towns.find(t => t.owner === p.id), want = slots[p.id].hero, pk = want && want !== 'random' && factionOf(p.faction).heroes.find(([n]) => n === want);
     const h = createHero(st, p.id, t.x, t.y, pk ? { name: pk[0], cls: pk[1], female: !!pk[2], fac: p.faction } : null);

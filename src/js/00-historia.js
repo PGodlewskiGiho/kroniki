@@ -428,5 +428,7 @@
    z wiecznego lodu) składany w relikwię Regalia Lodowego Króla (+6 ataku, +6 obrony, +4 mocy). Figurki mapowe nowych artefaktów.
    Szybka bitwa w menu głównym: dwie frakcje, siła armii (tygodnie przyrostu), poziom bohaterów i stopień jednostek; po walce raport
    i powrót do wyboru (19c-szybka-bitwa.js).
+   Zdarzenia na drogach (13b-zdarzenia-na-drogach.js): ukryte pola, na których bohater trafia na scenkę z wyborem – ranny wędrowiec,
+   porzucony wóz, wróżbitka, dezerterzy, stary mędrzec, ruiny strażnicy, wędrowni kupcy, zapomniany ołtarz. Każde raz; komputer wybiera sam.
    ===================================================================================== */
 

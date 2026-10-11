@@ -83,3 +83,19 @@ test('okna: sfinks pyta z trzema odpowiedziami, kurhan i studnia pytają o zgod�
   assert.equal(r.aiBad, undefined); assert.ok(r.tip, 'nazwa karczmy w dymku');
   assert.equal(r.sphinx, 4, 'trzy odpowiedzi i „Odejdź”'); assert.equal(r.barrow, 2); assert.equal(r.wishingWell, 2); assert.equal(r.caravanserai, 2);
 });
+
+test('zdarzenia na drogach: ukryte pola na drogach, wejście bohatera otwiera scenkę z wyborem, raz; zapis je zachowuje', async () => {
+  await newGame(page, { mapSize: 'M' }, 5);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), n = st.map.n, ev = st.events.find(e => e.kind === 'cart') || st.events[0]; ev.kind = 'cart';
+    const onRoad = st.events.every(e => st.map.road[e.y * n + e.x]), hidden = !objectAt(st, ev.y * n + ev.x) && !drawnObjectAt(st, ev.x, ev.y);
+    const nb = DX8.map((dx, d) => [ev.x + dx, ev.y + DY8[d]]).find(([x, y]) => passableTile(st, x, y, h) && !objectAt(st, y * n + x) && !st.guard[y * n + x]);
+    h.x = nb[0]; h.y = nb[1]; h.mp = 5000; h.path = [[ev.x, ev.y]]; h.moving = true; G.modal = null; setScreen('adventure', {});
+    heroStep(st, h); const f = h.pending; h.pending = null; h.anim = null; if (f) f();
+    const title = G.modal && G.modal.msg, R = st.players[ME].resources, before = R.wood + R.ore; G.modal.buttons[0].action();
+    const after = R.wood + R.ore, saved = deserializeGame(JSON.parse(JSON.stringify(serializeGame(st)))).events.find(e => e.x === ev.x && e.y === ev.y);
+    return { count: st.events.length, onRoad, hidden, title, gained: after - before, done: ev.done, again: !!eventAt(st, ev.y * n + ev.x), saved: saved && saved.done };
+  });
+  assert.ok(r.count >= 3, `zdarzeń: ${r.count}`); assert.ok(r.onRoad); assert.ok(r.hidden, 'niewidoczne na mapie');
+  assert.match(r.title, /Porzucony wóz/); assert.equal(r.gained, 5); assert.equal(r.done, true); assert.equal(r.again, false); assert.equal(r.saved, true);
+});

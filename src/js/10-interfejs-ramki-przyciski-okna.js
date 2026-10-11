@@ -289,7 +289,7 @@ function showDialog(msg, opts, extra = {}) {
   let fs = 20, lh, lines; for (;;) { lh = Math.round(fs * 1.3); G.ctx.font = font(fs, 500, 'body'); lines = wrapText(G.ctx, msg, w - 70); if (fs <= 13 || 100 + rows * (bh + 10) + lines.length * lh + iconH <= VH - 16) break; fs--; }
   const h = Math.min(VH - 8, 100 + rows * (bh + 10) - 10 + lines.length * lh + iconH), x = (VW - w) / 2, y = (VH - h) / 2;
   const buttons = opts.map((o, i) => { const r = Math.floor(i / cols), c = i % cols, inRow = Math.min(cols, n - r * cols), total = inRow * bw + (inRow - 1) * gap;
-    return new Button((VW - total) / 2 + c * (bw + gap), y + h - 24 - bh - (rows - 1 - r) * (bh + 10), bw, bh, o.label, () => { G.modal = null; restUnits(); if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip, lead: o.lead, selected: o.selected, primary: o.primary ?? (o.key === 'enter' && n > 1) }); });
+    return new Button((VW - total) / 2 + c * (bw + gap), y + h - 24 - bh - (rows - 1 - r) * (bh + 10), bw, bh, o.label, () => { G.modal = null; restUnits(); if (o.action) o.action(); }, { key: o.key, sub: o.sub, tip: o.tip, lead: o.lead, selected: o.selected, disabled: !!o.disabled, primary: o.primary ?? (o.key === 'enter' && n > 1) }); });
   G.modal = {
     ui: true, msg, buttons, locked: !!extra.locked, hasIcon: !!extra.icon, // msg, hasIcon: treść okna i czy ma rysunek (podgląd w testach)
     draw(ctx) {

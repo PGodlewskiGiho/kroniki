@@ -78,7 +78,8 @@ function heroDrawPos(h) {
   return [h.anim.fx + (h.x - h.anim.fx) * k, h.anim.fy + (h.y - h.anim.fy) * k];
 }
 function rebuildObjIndex(st) {
-  const n = st.map.n, N = n * n; st.objAt = new Int32Array(N); st.guard = new Int32Array(N);
+  const n = st.map.n, N = n * n; st.objAt = new Int32Array(N); st.guard = new Int32Array(N); st.evAt = new Int32Array(N);
+  (st.events || []).forEach((e, k) => { if (!e.done) st.evAt[e.y * n + e.x] = k + 1; }); // zdarzenia na drogach (ukryte)
   for (const ob of st.objects) {
     if (ob.dead) continue; const id = ob.id + 1;
     st.objAt[ob.y * n + ob.x] = id; if (ob.blocks) for (const i of ob.blocks) st.objAt[i] = id;
@@ -135,6 +136,7 @@ function heroStep(st, h) {
   if (h.boat && st.map.terrain[ni] !== TER.WATER) { h.boat = false; addBoat(st, h.prev[0], h.prev[1]); h.mp = 0; } // wysiadka: łódź zostaje przy brzegu
   if (st.guard[ni]) { const m = st.objects[st.guard[ni] - 1]; halt(); h.pending = () => startEncounter(st, h, m); }
   else if (ob) { halt(); h.pending = () => visitObject(st, h, ob); }
+  else if (eventAt(st, ni)) { const ev = eventAt(st, ni); halt(); h.pending = () => runEvent(st, h, ev); } // zdarzenie na drodze
   return true;
 }
 // Siedlisko najemników: okno werbunku (wszyscy, na ilu stać, albo nic)
