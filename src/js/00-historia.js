@@ -457,5 +457,10 @@
    (drzewa dżungli z lianami, akacje, lodowe iglice, snopki i stogi, paprocie, kopce termitów, kry; w grotach kryształy i olbrzymie
    grzyby) i tła bitew. Nowe krainy: Tropikalna i Rolnicza; Mroźna ma lodowe pustkowia. Losowa kraina wybiera nowe typy osobnym
    ziarnem, więc dawne ziarna dają te same rodzaje krain.
+   Dźwięki walki 2: 19 nowych zdarzeń z próbek CC0 (Freesound przez indeks freesound-laion, tools/dzwieki/indeks.py – tylko opisy,
+   audio pobierane pojedynczo): okrzyki wojowników, ryk smoka, syk jaszczurów i pająków, krzyk orła (gryfy, ptaki), jęk nieumarłych,
+   zawodzenie duchów, para i pneumatyka maszyn, ryk demonów, brzęczenie owadów, rżenie koni, ryk niedźwiedzia/byka, ryk olbrzymów,
+   wycie wilków; trafienie w pancerz płytowy brzęczy metalem, ciężki cios łupie, nieumarli padają z trzaskiem kości, ludzie z krzykiem,
+   bestie z ostatnim rykiem; muszkiet strzela wystrzałem, iskra trzaska. Ludzie krzyczą co któryś cios, bestie przy każdym.
    ===================================================================================== */
 
