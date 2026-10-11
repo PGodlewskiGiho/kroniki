@@ -435,5 +435,6 @@
    każdego koloru stoi w każdej części mapy ze startem. Modele 3D z chorągwiami w kolorze klucza (magenta w modelu, kolor w grze).
    Garnizony na drogach (type 'outpost'): drewniane forty z załogą na wąskich drogach. Bitwa z załogą (bez bohatera), zwycięzca przejmuje
    fort: przepuszcza jego i sojuszników, obcych zatrzymuje; właściciel zostawia w nim wojsko (okno spotkania). Komputer też je zdobywa.
+   Komputer obsadza swoje forty z głową (aiGarrisonFort): mała załoga z najsłabszych stworów (ok. 400 siły, +200 na tydzień, do 10% armii).
    ===================================================================================== */
 

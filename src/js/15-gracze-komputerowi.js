@@ -277,6 +277,16 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
   return S.ai;
 }
+// Załoga własnego garnizonu (komputer): bez bohatera fort jest słaby, więc tylko tyle, żeby nie zajął go zwiadowca z jednym stworem
+// – ok. 400 siły w 1. tygodniu, potem +200 na tydzień (najwyżej 2500), nie więcej niż 10% armii bohatera; oddaje najsłabsze stwory (poziom 1–3)
+function aiGarrisonFort(st, h, ob) {
+  const want = Math.min(400 + 200 * Math.floor(st.dayTotal / 7), 2500, armyPower(h.army) * 0.1); let need = want - armyPower(ob.army); if (need < want * 0.3) return 0;
+  let moved = 0; const order = h.army.map((x, i) => i).filter(i => h.army[i] && CREATURES[h.army[i].cid].level <= 3).sort((a, b) => CREATURES[h.army[a].cid].level - CREATURES[h.army[b].cid].level);
+  for (const i of order) { const x = h.army[i], v = CREATURES[x.cid].value, k = ob.army.findIndex(y => y && y.cid === x.cid), j = k >= 0 ? k : ob.army.indexOf(null); if (need <= 0 || j < 0) continue;
+    const n = Math.min(x.n - (armyStacks(h.army).length === 1 ? 1 : 0), Math.ceil(need / v)); if (n <= 0) continue;
+    if (ob.army[j]) ob.army[j].n += n; else ob.army[j] = { cid: x.cid, n }; x.n -= n; if (!x.n) h.army[i] = null; need -= n * v; moved += n; }
+  return moved;
+}
 // Wejście na pole celu (tak jak visitObject u człowieka, ale bez okien)
 function* aiVisit(st, h, i, news) {
   const n = st.map.n, R = playerOf(st, h.owner).resources, x = i % n, y = (i / n) | 0;
@@ -300,7 +310,7 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'site' && ob.kind === 'witchHut' && skillWeight(h.cls, ob.skill) < 1) siteDiscover(ob, h.owner); // odmawia wiedźmie
   else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); if (r.trap) yield* aiBattle(st, h, trapMonster(h, r.trap), news); } // puszka Pandory z potworami
   else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
-  else if (ob.type === 'outpost') { if (!friendlyFort(st, ob, h.owner)) { if (armySize(ob.army)) yield* aiBattle(st, h, ob, news); else captureOutpost(st, ob, h.owner); } }
+  else if (ob.type === 'outpost') { if (!friendlyFort(st, ob, h.owner)) { if (armySize(ob.army)) { if (!(yield* aiBattle(st, h, ob, news))) return; } else captureOutpost(st, ob, h.owner); } if (ob.owner === h.owner) aiGarrisonFort(st, h, ob); }
   else if (ob.type === 'mine' && ob.owner >= 0 && ob.owner !== h.owner && allied(st, h.owner, ob.owner)) return;
   else if (ob.type === 'mine') { if (ob.owner >= 0 && ob.owner !== h.owner) tell(st, ob.owner, `Gracz ${ownerName(st, h.owner).replace('gracz ', '')} przejmuje twoją kopalnię (${MINES[ob.kind].name.toLowerCase()}).`); ob.owner = h.owner; MapRender.miniDirty = true; }
 }
@@ -331,6 +341,7 @@ function* aiMoveHero(st, h, news) {
       const blocker = heroAt(st, nx, ny); if (blocker && blocker !== h && allied(st, blocker.owner, h.owner) && blocker.garrison == null) return; // pole zajmuje własny bohater (np. stoi w kapliczce): nie wchodzimy na niego
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
       reveal(st, nx, ny, heroSight(h), h.owner); const ev = eventAt(st, ny * st.map.n + nx); if (ev) runEvent(st, h, ev); // zdarzenie na drodze: komputer wybiera sam
+      { const fo = objectAt(st, ny * st.map.n + nx); if (fo && fo.type === 'outpost' && fo.owner === h.owner) aiGarrisonFort(st, h, fo); } // przejazd przez własny fort: uzupełnia załogę
       yield { kind: 'step', h, fx, fy };
     }
     if (target.what === 'feed') { // obok głównego bohatera: oddaje armię i artefakty
