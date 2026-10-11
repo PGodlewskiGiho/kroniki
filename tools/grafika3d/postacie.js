@@ -7,7 +7,7 @@
 // kły, pysk (snout: dog/bull/lizard), jedno oko, broń (także w obu rękach: dual; kilka par rąk: arms).
 // P: poza { t, walk (0..1), fly (0..1), atk (0..1), hurt }. Postać patrzy w +x, bliższy bok (prawy, z bronią) to +z.
 /* global THREE, G3, mat, mesh, joint, sph, cap, cyl, cone, box, torus, lathe, bone, tube, sheet, decal, slab, rbox, spike, chunk, marker, DK, LT, bright */
-const STYLE = w => ({ spear: 'thrust', halberd: 'thrust', lance: 'thrust', trident: 'thrust', pitchfork: 'thrust', glaive: 'thrust', bow: 'bow', crossbow: 'xbow', staff: 'cast', fireball: 'cast', none: 'claw' }[w] || 'swing');
+const STYLE = w => ({ spear: 'thrust', halberd: 'thrust', lance: 'thrust', trident: 'thrust', pitchfork: 'thrust', glaive: 'thrust', bow: 'bow', crossbow: 'xbow', musket: 'xbow', staff: 'cast', sparkStaff: 'cast', grenade: 'cast', fireball: 'cast', none: 'claw' }[w] || 'swing');
 // sh: barki, arm/leg: grubość, armL/legL: długość, torso: wysokość tułowia, chest: głębia klatki, head: głowa
 const BUILDS = {
   normal: { sh: 1, arm: 1, armL: 1, leg: 1, legL: 1, torso: 1, chest: 1, head: 1 },
@@ -154,6 +154,13 @@ function humanoid(L, P = {}) {
     if (L.backBanner) { const bb = joint(spine, [-0.2 * S, 0.2, 0], 0.06); bb.add(cyl(0.02, 0.02, 1.5, '#4a3018', 'wood', [0, 0.65, 0])); bb.add(sph(0.05, '#e8e0cc', 'bone', [0, 1.43, 0], [1, 1.1, 0.9])); for (const z of [-1, 1]) bb.add(tube([[0, 1.46, 0.03 * z], [0.02, 1.54, 0.1 * z], [0.08, 1.58, 0.12 * z]], 0.018, 0.004, '#e8e0cc', 'horn'));
       const wv = Math.sin(t * 2) * 0.03; bb.add(sheet([[0, 0], [-0.4, -0.02 + wv], [-0.36, -0.28 + wv], [-0.4, -0.54 + wv], [0, -0.52]], L.backBanner, 'cloth', [-0.01, 1.32, 0])); bb.add(box(0.01, 0.05, 0.05, '#e8e0cc', 'bone', [-0.2, 1.08, 0])); } // sztandar wodza na plecach
     if (L.beads) spine.add(torus(0.13, 0.012, L.beads, 'wood', [0.14, 0.44 * tl, 0], [Math.PI / 2 + 0.9, 0, -0.3], [1, 1.3, 1])); // różaniec
+    // Manufaktura: fartuch warsztatowy, pas z ładunkami na skos, granaty u pasa, cewka iskrownika na plecach (miedziana spirala z kulą)
+    if (L.apron) { spine.add(rbox(0.03, 0.5, 0.34 * S, 0.01, L.apron, 'leather', [0.205 * S, 0.0, 0])); spine.add(rbox(0.02, 0.1, 0.12, 0.01, DK(L.apron, 0.2), 'leather', [0.225 * S, 0.0, 0.08])); for (const z of [-0.07, 0.03]) spine.add(cyl(0.008, 0.008, 0.12, '#9aa0a8', 'steel', [0.235 * S, 0.02, z])); }
+    if (L.bandolier) { spine.add(torus(0.24 * S, 0.018, L.bandolier, 'leather', [0, 0.32 * tl, 0], [Math.PI / 2, 0.75, 0], [1, cz, 1.05])); for (let i = 0; i < 6; i++) { const a = -0.9 + i * 0.36; spine.add(cyl(0.014, 0.014, 0.05, '#c8a050', 'gold', [Math.cos(a) * 0.245 * S, 0.32 * tl + Math.sin(a) * 0.17, Math.sin(a) * 0.17], [0, 0, a])); } }
+    if (L.bombs) for (const z of [-1, 1]) { spine.add(sph(0.045, L.bombs, 'iron', [0.14 * S, 0.06, 0.2 * S * z])); spine.add(cyl(0.006, 0.006, 0.05, '#c8b890', 'cloth', [0.14 * S, 0.12, 0.2 * S * z])); }
+    if (L.coil) { const ck = joint(spine, [-0.22 * S, 0.3 * tl, 0]); ck.add(rbox(0.14, 0.3, 0.24, 0.03, DK(L.metal || '#b8703a', 0.35), 'iron')); ck.add(cyl(0.035, 0.035, 0.42, L.metal || '#b8703a', 'metal', [-0.03, 0.32, 0]));
+      for (let i = 0; i < 9; i++) ck.add(torus(0.07 - i * 0.004, 0.012, L.metal || '#b8703a', 'metal', [-0.03, 0.16 + i * 0.04, 0], [Math.PI / 2, 0, 0])); ck.add(sph(0.065, L.coil, 'glow', [-0.03, 0.58, 0])); ck.add(torus(0.09, 0.008, L.coil, 'glow', [-0.03, 0.58, 0], [Math.PI / 2 + Math.sin(t * 6) * 0.3, 0, 0]));
+      for (let k = 0; k < 3; k++) { const a = k * 2.1 + t * 5; ck.add(tube([[-0.03, 0.58, 0], [-0.03 + Math.cos(a) * 0.09, 0.66, Math.sin(a) * 0.09], [-0.03 + Math.cos(a) * 0.12, 0.62, Math.sin(a + 0.6) * 0.14]], 0.008, 0.003, L.glow || L.coil, 'glow')); } marker(ck, 'fx:coil', [-0.03, 0.58, 0]); }
   }
   if (L.cape) {
     if (flying && !L.wings) wings(spine, L.cape, 'cape', t, ph, A, 1, true); // w locie peleryna rozpina się jak skrzydła nietoperza
@@ -345,6 +352,9 @@ function headOf(head, L, hr, skin, t, A) {
     if (L.beard) { const fork = L.beard === 'goatee'; head.add(sph(fork ? 0.05 : 0.095, L.beardCol || L.beard, 'hair', [0.08, fork ? -0.14 : -0.1, 0], fork ? [0.7, 1.9, 0.6] : [0.9, 1.25, 1.15])); if (fork) head.add(spike(0.03, 0.1, L.beardCol || '#1a1010', 'hair', [0.09, -0.24, 0], [Math.PI, 0, -0.3])); }
     if (L.mustache) for (const z of [-1, 1]) head.add(tube([[hr * 0.9, -0.06, 0], [hr * 0.95, -0.07, 0.04 * z], [hr * 0.85, -0.12, 0.07 * z]], 0.014, 0.004, L.mustache, 'hair'));
   }
+  if (L.gnome && !bony) { head.add(sph(hr * 0.26, DK(skin, 0.05), skinK, [hr * 0.98, -hr * 0.12, 0], [1.2, 1, 1])); for (const z of [-1, 1]) head.add(slab([[0, -0.03], [0, 0.04], [-0.14, 0.11], [-0.09, 0]], 0.012, skin, skinK, [-0.02, 0.04, hr * 0.85 * z], [0.7 * z, 0.3 * z, 0])); } // gnom: kartoflany nos, odstające uszy
+  if (L.goggles && !bony) { const gy = L.helm ? hr * 0.62 : hr * 0.42, gx = L.helm ? hr * 0.55 : hr * 0.62; head.add(torus(hr * 1.03, 0.012, '#3a2a1a', 'leather', [0, gy - 0.01, 0], [Math.PI / 2, 0, 0.25])); // gogle na czole: pasek i dwie mosiężne oprawki ze szkłami
+    for (const z of [-1, 1]) { head.add(cyl(0.034, 0.03, 0.035, L.goggles, 'gold', [gx, gy, 0.045 * z], [0, 0, -Math.PI / 2 + 0.6])); head.add(sph(0.026, '#9ad8e8', 'gem', [gx + 0.02, gy + 0.012, 0.045 * z], [0.5, 1, 1])); } }
   const hm = L.helm, hc = L.helmCol || L.metal || '#b8c0cc';
   const hairTop = !hm || hm === 'crown' || hm === 'cap' || hm === 'circlet';
   if ((L.hair || L.longHair) && hairTop && !bony && L.snout !== 'bull') { head.add(mesh(new THREE.SphereGeometry(hr * 1.08, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), L.hair || L.longHair, 'hair', [-hr * 0.12, hr * 0.12, 0], [0, 0, 0.42], [1.02, 1, 0.92])); head.add(sph(hr * 0.98, L.hair || L.longHair, 'hair', [-hr * 0.3, -hr * 0.02, 0], [0.8, 1, 0.92])); } // włosy: czapa odsłania czoło, z tyłu potylica
@@ -386,6 +396,14 @@ function headOf(head, L, hr, skin, t, A) {
     head.add(mesh(new THREE.SphereGeometry(hr * 1.1, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.45), hc, 'leather', [-0.01, 0.02, 0]));
     head.add(cyl(hr * 1.18, hr * 1.18, 0.02, DK(hc, 0.15), 'leather', [0.02, 0.02, 0], [0, 0, 0.1]));
     if (L.feather) head.add(tube([[-0.06, hr * 0.9, 0.08], [-0.16, hr + 0.12, 0.1], [-0.26, hr + 0.2, 0.08]], 0.03, 0.006, L.feather, 'feather'));
+  } else if (hm === 'tricorn') { // trójgraniasty kapelusz muszkietera z kokardą i piórem
+    head.add(mesh(new THREE.SphereGeometry(hr * 1.06, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), hc, 'cloth', [0, hr * 0.12, 0]));
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + Math.PI / 3; head.add(rbox(0.05, 0.11, hr * 1.5, 0.02, hc, 'cloth', [Math.cos(a) * hr * 0.8, hr * 0.62, Math.sin(a) * hr * 0.8], [0, -a + Math.PI / 2, 0.25])); }
+    head.add(torus(hr * 1.02, 0.01, '#c8a050', 'gold', [0, hr * 0.55, 0], [Math.PI / 2, 0, 0])); head.add(sph(0.03, '#e8e0d0', 'cloth', [hr * 0.6, hr * 0.7, hr * 0.6]));
+    if (L.feather) head.add(tube([[0.02, hr * 0.72, hr * 0.7], [-0.12, hr * 0.82, hr * 0.85], [-0.28, hr * 0.78, hr * 0.7]], 0.026, 0.006, L.feather, 'feather')); // pióro wzdłuż ronda
+  } else if (hm === 'mitreCap') { // wysoka czapka grenadiera z mosiężną blachą z płonącym granatem
+    head.add(mesh(new THREE.SphereGeometry(hr * 1.06, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.45), hc, 'cloth', [0, hr * 0.05, 0])); head.add(cone(hr * 0.92, 0.32, hc, 'cloth', [-0.01, hr * 0.9, 0], [0, 0, 0.12], 16));
+    head.add(slab([[-0.08, 0], [0.08, 0], [0.05, 0.16], [0, 0.22], [-0.05, 0.16]], 0.012, '#d8b050', 'gold', [hr * 0.86, hr * 0.5, 0], [0, Math.PI / 2, -0.12]));
   } else if (hm === 'straw') { // słomkowy kapelusz chłopa
     head.add(cone(hr * 1.2, 0.12, hc, 'wood', [0, hr * 0.85, 0], null, 18)); head.add(cyl(hr * 1.9, hr * 1.9, 0.015, hc, 'wood', [0, hr * 0.62, 0], [0, 0, 0.05], null, 22));
   } else if (hm === 'crown' || hm === 'circlet') {
@@ -471,6 +489,26 @@ function weapon(hold, L, W, A, wind, hit, metal, near = true) {
     else if (top === 'crook') { h.add(torus(0.08, 0.02, '#e0c050', 'gold', [0.08, 1.18, 0], null, null, Math.PI * 1.3)); }
     else { for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2; h.add(tube([[0, 1.08, 0], [Math.cos(a) * 0.07, 1.18, Math.sin(a) * 0.07], [Math.cos(a) * 0.03, 1.3, Math.sin(a) * 0.03]], 0.012, 0.006, '#5a3a1e', 'wood')); } // korona z korzeni
       h.add(sph(0.075, L.orb || '#80c0ff', A != null ? 'glow' : 'gem', [0, 1.2, 0])); }
+  } else if (W === 'musket') { // muszkiet: długa lufa, drewniane łoże, zamek z kurkiem; przy strzale błysk i dym z wylotu (0,55–0,7)
+    const h = hold(-Math.PI / 2 + 0.05), fire = A != null && A > 0.52 && A < 0.72, f = fire ? 1 - Math.abs(A - 0.6) / 0.1 : 0;
+    h.add(lathe([[0.024, -0.35], [0.03, -0.1], [0.022, 0.25], [0.018, 0.5]], L.shaft || '#6a4424', 'wood', [0, 0, 0])); h.add(rbox(0.06, 0.24, 0.05, 0.02, L.shaft || '#5a3a1e', 'wood', [0.025, -0.34, 0], [0, 0, 0.18])); // łoże i kolba
+    h.add(cyl(0.013, 0.013, 0.95, metal, 'iron', [-0.012, 0.42, 0], null, null, 10)); h.add(torus(0.016, 0.005, '#c8a050', 'gold', [-0.012, 0.86, 0], [Math.PI / 2, 0, 0])); for (const y of [0.25, 0.55]) h.add(torus(0.026, 0.006, '#c8a050', 'gold', [0, y, 0], [Math.PI / 2, 0, 0]));
+    h.add(rbox(0.03, 0.08, 0.04, 0.01, metal, 'steel', [0.0, -0.06, 0.03])); h.add(tube([[0.005, -0.04, 0.05], [0.04, -0.02, 0.06], [0.05, 0.02, 0.05]], 0.008, 0.005, metal, 'steel')); // zamek i kurek
+    marker(h, 'fx:muzzle', [-0.012, 0.92, 0]);
+    if (f > 0) { h.add(cone(0.05 * f, 0.22 * f, '#ffd070', 'fire', [-0.012, 1.0, 0], null, 8)); h.add(cone(0.03 * f, 0.14 * f, '#ffffff', 'glow', [-0.012, 0.97, 0], null, 6)); for (let i = 0; i < 3; i++) h.add(sph(0.05 + i * 0.02, '#d8d4cc', 'cloth', [-0.03 - i * 0.02, 1.05 + i * 0.08, (i - 1) * 0.03])); }
+  } else if (W === 'wrench') { // wielki klucz francuski z mosiężną nakrętką: gnomy walczą nim jak buzdyganem
+    const h = hold(-0.4 + (A != null ? wind * 1.4 - hit * 1.8 : 0)); h.add(rbox(0.035, 0.55, 0.02, 0.008, metal, 'steel', [0, 0.22, 0]));
+    h.add(slab([[-0.07, 0], [0.07, 0], [0.07, 0.12], [0.025, 0.12], [0.025, 0.05], [-0.025, 0.05], [-0.025, 0.12], [-0.07, 0.12]], 0.035, metal, 'steel', [0, 0.48, 0])); h.add(cyl(0.022, 0.022, 0.04, L.goggles || '#c8a050', 'gold', [0, 0.47, 0], [Math.PI / 2, 0, 0], null, 6));
+    h.add(cyl(0.022, 0.022, 0.16, '#3a2a1a', 'leather', [0, -0.02, 0]));
+  } else if (W === 'sparkStaff') { // laska iskier: miedziany drąg z cewkami i świecącą kulą w klatce; w ataku łuki wyładowań
+    const h = hold(-0.12 - (A != null ? Math.sin(A * Math.PI) * 0.3 : 0)), c = L.coil || '#8ae0ff', k = A != null ? Math.sin(Math.min(1, A) * Math.PI) : 0;
+    h.add(cyl(0.02, 0.024, 1.5, L.metal || '#b8703a', 'metal', [0, 0.4, 0])); for (let i = 0; i < 6; i++) h.add(torus(0.032, 0.008, L.metal || '#b8703a', 'metal', [0, 0.82 + i * 0.03, 0], [Math.PI / 2, 0, 0]));
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2; h.add(tube([[0, 1.0, 0], [Math.cos(a) * 0.08, 1.12, Math.sin(a) * 0.08], [Math.cos(a) * 0.05, 1.26, Math.sin(a) * 0.05], [0, 1.3, 0]], 0.008, 0.006, '#c8a050', 'gold')); }
+    h.add(sph(0.06 + k * 0.03, c, 'glow', [0, 1.15, 0])); marker(h, 'fx:orb', [0, 1.15, 0]);
+    if (k > 0.2) for (let i = 0; i < 4; i++) { const a = i * 1.7 + A * 20; h.add(tube([[0, 1.15, 0], [Math.cos(a) * 0.12, 1.22, Math.sin(a) * 0.12], [Math.cos(a + 1) * 0.2, 1.18, Math.sin(a + 1) * 0.2]], 0.01, 0.003, L.glow || c, 'glow')); }
+  } else if (W === 'grenade') { // granat: żeliwna kula z tlącym się lontem; przy rzucie lont płonie jasno
+    const h = hold(0), k = A != null ? Math.sin(Math.min(1, A) * Math.PI) : 0; h.add(sph(0.06, L.bombs || '#2a2a2a', 'iron', [0.02, 0.1, 0])); h.add(cyl(0.012, 0.012, 0.03, '#8a8478', 'iron', [0.02, 0.17, 0]));
+    h.add(cone(0.02 + k * 0.02, 0.05 + k * 0.06, '#ffb040', 'fire', [0.02, 0.21, 0], null, 6)); marker(h, 'fx:muzzle', [0.02, 0.1, 0]);
   } else if (W === 'fireball') { const h = hold(0), c = L.orb || '#ff8a2a', s = 0.8 + (A != null ? Math.sin(A * Math.PI) * 0.6 : 0); // kula ognia w dłoni
     h.add(sph(0.07 * s, LT(c, 0.6), 'glow', [0.02, 0.1, 0])); for (let i = 0; i < 6; i++) h.add(cone(0.04 * s, 0.14 * s, i % 2 ? c : LT(c, 0.3), 'fire', [0.02 + Math.cos(i) * 0.03, 0.14, Math.sin(i) * 0.03], [Math.sin(i * 2) * 0.4, 0, Math.cos(i * 2) * 0.4], 5));
   }
