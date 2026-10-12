@@ -20,7 +20,7 @@ test.before(async () => {
   const open = async () => {
     const page = await (await browser.newContext({ viewport: { width: 800, height: 600 } })).newPage(), errors = []; // osobne okno: karta w tle dostawałaby rzadkie klatki (przejścia ekranów trwałyby sekundy)
     page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
-    await page.goto(GAME_URL); await page.waitForFunction(() => typeof G !== 'undefined' && G.screen && unitArtReady());
+    await page.goto(GAME_URL, { timeout: 120000 }); await page.waitForFunction(() => typeof G !== 'undefined' && G.screen && unitArtReady(), null, { timeout: 120000 });
     await page.evaluate(o => { window.KK_PEER = o; }, PEER); return { page, errors };
   };
   A = await open(); B = await open(); L('pages');

@@ -21,7 +21,7 @@ function shotFrom(u, d) {
   const k = 32 * (CREATURES[u.cid].look.size || 1); return [u.px + d * 0.55 * k, gy - 1.05 * k];
 }
 // Rodzaj pocisku z broni stwora: strzała, bełt, kula z muszkietu, kula magii, ogień, piorun, promień oka, topór, głaz, granat, fala pieśni
-const SHOT_KIND = { titan: 'lightning', stormTitan: 'lightning', siren: 'wave', masterGremlin: 'pebble', ballista: 'bolt', arrowTower: 'arrow' };
+const SHOT_KIND = { inquisitor: 'orb', titan: 'lightning', stormTitan: 'lightning', siren: 'wave', masterGremlin: 'pebble', ballista: 'bolt', arrowTower: 'arrow' };
 function shotKind(cid) {
   const L = CREATURES[cid].look; if (SHOT_KIND[cid]) return SHOT_KIND[cid]; if (L.kind === 'eye') return 'ray';
   return { bow: 'arrow', crossbow: 'bolt', musket: 'bullet', staff: 'orb', fireball: 'fireball', sparkStaff: 'lightning', grenade: 'bomb', sling: 'pebble', axe: 'axe', labrys: 'axe', club: 'rock', mace: 'pebble', spear: 'lightning' }[L.weapon] || (L.boulder ? 'rock' : L.orb ? 'orb' : 'arrow');
