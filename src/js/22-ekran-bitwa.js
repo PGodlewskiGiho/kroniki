@@ -24,7 +24,7 @@ function shotFrom(u, d) {
 const SHOT_KIND = { titan: 'lightning', stormTitan: 'lightning', siren: 'wave', masterGremlin: 'pebble', ballista: 'bolt', arrowTower: 'arrow' };
 function shotKind(cid) {
   const L = CREATURES[cid].look; if (SHOT_KIND[cid]) return SHOT_KIND[cid]; if (L.kind === 'eye') return 'ray';
-  return { bow: 'arrow', crossbow: 'bolt', musket: 'bullet', staff: 'orb', fireball: 'fireball', sparkStaff: 'lightning', grenade: 'bomb', axe: 'axe', labrys: 'axe', club: 'rock', mace: 'pebble', spear: 'lightning' }[L.weapon] || (L.boulder ? 'rock' : L.orb ? 'orb' : 'arrow');
+  return { bow: 'arrow', crossbow: 'bolt', musket: 'bullet', staff: 'orb', fireball: 'fireball', sparkStaff: 'lightning', grenade: 'bomb', sling: 'pebble', axe: 'axe', labrys: 'axe', club: 'rock', mace: 'pebble', spear: 'lightning' }[L.weapon] || (L.boulder ? 'rock' : L.orb ? 'orb' : 'arrow');
 }
 // Lot pocisku: czas (s) i wysokość łuku zależne od odległości; piorun i promień są natychmiastowe
 const SHOT_FLIGHT = { arrow: d => [0.05 + d / 2800, 6 + d * 0.07], bolt: d => [0.04 + d / 3400, 3 + d * 0.03], bullet: d => [0.03 + d / 6000, 0], orb: d => [0.08 + d / 1500, 8],
@@ -64,9 +64,9 @@ function paintBattleBg(c, terr, fac, bare = false) { // bare: samo pole bez siat
     img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
   }
   g.putImageData(img, 0, 0); g.setTransform(D, 0, 0, D, 0, 0); battleDecor(g, terr, w, h, fac); c.imageSmoothingEnabled = !PIXEL_ART; c.drawImage(off, 0, 0, W, H);
-  const pim = !bare && BATTLE_BG_IMG[BATTLE_BG_NAMES[terr]]; // tło malowane przez AI (pole bitwy bez siatki); przy oblężeniu dziedziniec zamku maluje paintCourtyard
+  const pim = !bare && BATTLE_BG_IMG[BATTLE_BG_NAMES[terr]]; // pole bitwy malowane przez AI (tools/tla-ai/szkic-pola.py + generuj.py): płaskie podłoże w skali jednostek, ozdoby przy krawędziach, wąski horyzont; przy oblężeniu dziedziniec zamku maluje paintCourtyard
   if (pim && pim._ok) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(pim, 0, 0, W, 490); }
-  const TX = !PIXEL_ART && !bare && TERRAIN_TEX[TEX_NAME[terr || 1]]; // faktura z tekstur terenu mapy (widok z góry) i miękkie plamy światła: pole bitwy nie jest płaskie
+  const TX = !PIXEL_ART && !bare && !(pim && pim._ok) && TERRAIN_TEX[TEX_NAME[terr || 1]]; // malowane pole bitwy ma własną fakturę; bez niego faktura z tekstur terenu mapy (widok z góry) i miękkie plamy światła: pole bitwy nie jest płaskie
   if (TX) { c.save(); c.beginPath(); c.rect(0, 44, W, 446); c.clip();
     const pat = c.createPattern(TX.cv, 'repeat'); pat.setTransform(new DOMMatrix().scale(1.15 / c.getTransform().a)); // ostra tekstura 512 px w rozdzielczości ekranu (piksel tekstury ≈ piksel ekranu)
     const fade = c.createLinearGradient(0, 44, 0, 110); fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,1)'); // u góry przejście w malowany horyzont
@@ -203,15 +203,17 @@ const unitSound = cid => { const C = CREATURES[cid], L = C.look, k = L.kind, ab 
   const undead = ab.includes('undead') || !!L.bony, metal = ab.includes('construct') || !!L.beast, demon = C.faction === 'inferno' && !undead;
   return { fly, size, undead, metal, rate: clamp(1.22 - (size - 1) * 0.28, 0.55, 1.35), // wysokość: małe gremliny piszczą, olbrzymy dudnią
     step: fly ? 'wings' : metal && size > 1.3 ? 'stomp' : ['rider', 'centaur', 'unicorn'].includes(k) ? 'gallop' : ['dragon', 'hydra', 'treant', 'bull', 'tower', 'kraken'].includes(k) || size >= 1.8 ? 'stomp' : ['wolf', 'lizard', 'insect', 'griffin', 'bird', 'spider'].includes(k) ? 'paws' : 'march',
-    voice: k === 'dragon' || k === 'hydra' || k === 'kraken' ? 'roar' : ['wolf', 'bull', 'lizard', 'griffin', 'spider'].includes(k) ? 'growl' : k === 'insect' ? 'wings' : k === 'ghost' || k === 'eye' ? 'dark'
-      : k === 'bird' || k === 'phoenix' ? 'wind' : demon && size >= 1.2 ? 'growl' : metal && size > 1.3 ? 'build' : null,
+    voice: k === 'dragon' || k === 'hydra' || k === 'kraken' ? 'v_dragon' : k === 'wolf' ? 'v_dog' : k === 'lizard' || k === 'spider' ? 'v_hiss' : k === 'insect' ? 'v_insect'
+      : k === 'bird' || k === 'phoenix' || k === 'griffin' ? 'v_bird' : k === 'bull' ? 'v_beast' : k === 'ghost' || k === 'eye' ? 'v_ghost' : k === 'treant' ? 'v_giant' : k === 'unicorn' ? 'v_horse'
+      : undead ? 'v_undead' : metal ? 'v_machine' : demon ? 'v_demon' : armed && size >= 1.6 ? 'v_giant' : armed ? 'v_human' : null,
+    death: undead ? 'bones' : metal ? 'crash' : armed && !demon ? 'scream' : null, plate: metal || L.armor === 'plate',
     melee: armed ? WEAPON_SND[L.weapon] || (L.claws ? 'claw' : 'blade') : 'claw', weapon: armed };
 };
 // Odgłos ciosu w chwili zamachu: świst broni (niżej dla ciężkiej), ryk albo warknięcie bestii, zgrzyt maszyny
 function meleeSound(a, sp) {
   const S = unitSound(a.cid), pan = sfxPan(a.px), r = S.rate;
   if (hasAb(a, 'breath')) Sfx.play('firebreath', { pan, rate: r });
-  else if (S.voice) Sfx.play(sndOr(S.voice), { vol: 0.7, pan, rate: S.voice === 'wings' ? 1.8 : r });
+  else if (S.voice && (!S.weapon || S.metal || Math.random() < 0.55)) Sfx.play(sndOr(S.voice), { vol: S.weapon ? 0.5 : 0.7, pan, rate: r, jit: 0.08, gap: 0.25 }); // ludzie krzyczą co któryś cios, bestie zawsze
   if (S.weapon || S.metal) Sfx.play('swing', { vol: 0.8, pan, delay: 0.12 * sp, rate: S.melee === 'blunt' || S.melee === 'axe' ? r * 0.8 : S.melee === 'pole' ? r * 1.15 : r });
 }
 // Trafienie: klinga dzwoni, obuch i pięść łupią, topór szczęka nisko, pazury i kły tępo uderzają; pocisk po swojemu (strzała wbija się,
@@ -221,15 +223,16 @@ function impactSound(p, tg) {
   const pan = sfxPan(tg.px), a = p && p.a, shot = p && p.kind === 'shot', S = a ? unitSound(a.cid) : null, T = unitSound(tg.cid), side = p && p.tg && p.tg !== tg; // odłamki i przeskoki: bez drugiego huku
   if (side) Sfx.play('hit', { vol: 0.5, pan, rate: 1.2 });
   else if (shot) { const sk = p.shotKind || shotKind(a.cid); Sfx.play(sndOr(SHOT_HIT_SND[sk] || 'arrowhit'), { vol: sk === 'bomb' || sk === 'lightning' ? 0.75 : 0.85, pan, rate: sk === 'bolt' ? 0.8 : sk === 'pebble' ? 1.4 : sk === 'lightning' ? 1.3 : 1 }); }
-  else if (S) { const m = S.melee; Sfx.play(m === 'blade' ? 'clash' : m === 'axe' ? 'clash' : m === 'blunt' ? 'thud' : 'hit', { vol: 0.85, pan, rate: m === 'axe' ? 0.75 * S.rate : S.rate });
-    if (m === 'blunt' && S.size >= 1.4) Sfx.play('hit', { vol: 0.6, pan, rate: 0.7 }); }
+  else if (S) { const m = S.melee; Sfx.play(T.plate && m !== 'claw' ? sndOr('hit_metal') : m === 'blade' || m === 'axe' ? 'clash' : m === 'blunt' ? 'thud' : 'hit', { vol: 0.85, pan, rate: m === 'axe' ? 0.75 * S.rate : S.rate }); // w pancerz płytowy i maszynę: metaliczny brzęk
+    if ((m === 'blunt' || m === 'claw') && S.size >= 1.4) Sfx.play(sndOr('hit_heavy'), { vol: 0.7, pan, rate: 0.8 }); }
   else Sfx.play('hit', { vol: 0.85, pan });
   if (T.metal && !shot) Sfx.play('clash', { vol: 0.45, pan, rate: 0.6, delay: 0.03 }); // cios w pancerz maszyny
-  if (tg.dead) { if (T.undead) Sfx.play('crash', { vol: 0.55, pan, delay: 0.15, rate: 1.5 }); else if (T.metal) Sfx.play('crash', { vol: 0.75, pan, delay: 0.15, rate: 0.8 });
-    else Sfx.play('death', { vol: 0.8, pan, delay: 0.15, rate: T.rate }); if (T.size >= 1.8) Sfx.play('stomp', { vol: 0.8, pan, delay: 0.3, rate: 0.7 }); }
+  if (tg.dead) { if (T.death === 'bones') Sfx.play(sndOr('bones'), { vol: 0.7, pan, delay: 0.15 }); else if (T.metal) Sfx.play('crash', { vol: 0.75, pan, delay: 0.15, rate: 0.8 });
+    else if (T.death === 'scream') Sfx.play(sndOr('scream'), { vol: 0.5, pan, delay: 0.1, rate: T.rate, jit: 0.1 }); else if (T.voice) Sfx.play(sndOr(T.voice), { vol: 0.65, pan, delay: 0.1, rate: T.rate * 0.85 }); // bestia pada z ostatnim rykiem
+    Sfx.play('death', { vol: 0.6, pan, delay: 0.2, rate: T.rate }); if (T.size >= 1.8) Sfx.play('stomp', { vol: 0.8, pan, delay: 0.3, rate: 0.7 }); }
 }
 // Wystrzał: cięciwa, szczęk kuszy, huk muszkietu, trzask iskry, świst rzutu, pieśń syreny – w chwili, gdy pocisk opuszcza broń
-const SHOT_SND = { arrow: ['bow', 1], bolt: ['bow', 0.75], bullet: ['explode', 1.9], orb: ['zap', 1], fireball: ['fireball', 1], lightning: ['thunder', 1.6], ray: ['zap', 0.6], wave: ['shrine', 1.3], rock: ['swing', 0.6], pebble: ['swing', 1.3], bomb: ['swing', 0.9], axe: ['swing', 1] };
+const SHOT_SND = { arrow: ['bow', 1], bolt: ['bow', 0.75], bullet: ['gunshot', 1], orb: ['zap', 1], fireball: ['fireball', 1], lightning: ['spark', 1], ray: ['zap', 0.6], wave: ['shrine', 1.3], rock: ['swing', 0.6], pebble: ['swing', 1.3], bomb: ['swing', 0.9], axe: ['swing', 1] };
 function shotSound(kind, x, size) { const [n, r] = SHOT_SND[kind] || SHOT_SND.arrow; Sfx.play(sndOr(n), { vol: kind === 'bullet' ? 0.55 : kind === 'lightning' ? 0.6 : 0.85, pan: sfxPan(x), rate: r * (['rock', 'pebble', 'axe', 'bomb'].includes(kind) ? clamp(1.2 - (size - 1) * 0.3, 0.6, 1.3) : 1) }); }
 function battleSound(fx, sp) {
   if (fx.kind === 'move') { const S = unitSound(fx.u.cid), x = fx.u.px; if (S.fly) Sfx.play('wings', { vol: 0.7, pan: sfxPan(x), rate: S.rate });
@@ -244,7 +247,7 @@ const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thun
   curse: ['dark', 'curse'], weakness: ['dark', 'curse'], slow: ['cast', 'slowdn'], deathRipple: ['dark', 'curse'], haste: ['cast', 'haste'], massHaste: ['wind', 'haste'], bless: ['cast', 'holy'], prayer: ['holy', 'buff'],
   blind: ['cast', 'curse'], poison: ['cast', 'poison'], fireWall: ['fireball', 'firebreath'], lifeSteal: ['drain', 'heal'], holyLight: ['holy', 'thunder'], vampirism: ['dark', 'drain'], stoneSkin: ['cast', 'earth'],
   shield: ['cast', 'shield'], airShield: ['wind', 'shield'], fireShield: ['fireball', 'shield'], teleport: ['teleport', 'teleport'], clone: ['teleport', 'shield'], dispel: ['cast', 'drain'], bloodlust: ['cast', 'growl'], fortune: ['cast', 'artifact'], tailwind: ['wind', 'haste'], fear: ['dark', 'growl'] };
-const SND_FALLBACK = { wind: 'cast', earth: 'thud', holy: 'heal', poison: 'curse', teleport: 'cast', shield: 'buff', drain: 'curse', frost: 'ice', slowdn: 'curse', haste: 'buff', dark: 'curse' };
+const SND_FALLBACK = { v_human: 'swing', v_dragon: 'roar', v_hiss: 'growl', v_bird: 'wings', v_undead: 'dark', v_ghost: 'dark', bones: 'crash', v_machine: 'build', v_demon: 'growl', v_insect: 'wings', v_horse: 'gallop', v_beast: 'growl', v_giant: 'roar', v_dog: 'growl', hit_metal: 'clash', hit_heavy: 'thud', scream: 'death', gunshot: 'explode', spark: 'zap', wind: 'cast', earth: 'thud', holy: 'heal', poison: 'curse', teleport: 'cast', shield: 'buff', drain: 'curse', frost: 'ice', slowdn: 'curse', haste: 'buff', dark: 'curse' };
 const sndOr = n => (Sfx.has(n) ? n : SND_FALLBACK[n] || n);
 const spellLandSound = (id, x) => Sfx.play(sndOr(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff'), { vol: 0.9, pan: sfxPan(x) });
 // Pole bitwy morskiej (współrzędne pola): rysowany obraz (tools/tla-ai/szkic-morska.js) dwóch żaglowców burta w burtę (pokłady pod kolumnami 0–4 i 8–12, kładki w rzędach NAVAL_PLANKS),
@@ -669,7 +672,7 @@ G.screens.battle = {
     const kx = keepO.length ? hexCenter(keep.x, keep.y)[0] + KEEP_DX : 0, hidden = keepO.length && keep.hp > 0 ? shown.filter(v => !v.dead && !v.keep && v.py < keepO[0].py && v.py > keepO[0].py - 200 && Math.abs(v.px - kx) < 62) : [];
     for (const u of [...shown, ...obst, ...keepO].sort((a, b) => a.py - b.py)) {
       if (u.keepW) { drawKeep3D(ctx, A3, u.keepW); continue; }
-      if (u.obst) { if (u.obst.o !== 'sea') drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v), u.px, u.py + 6, 1.5); continue; }
+      if (u.obst) { if (u.obst.o !== 'sea') drawSprite(ctx, obstacleSprite(u.obst.o, this.terr, u.obst.v, 0, this.terr === TER.CRYSTAL || this.terr === TER.FUNGUS ? 1 : 0), u.px, u.py + 6, 1.5); /* w grotach przeszkody z podziemi (grzyby, kryształy) */ continue; }
       drawUnit(u);
     }
     for (const u of hidden) drawUnit(u, true);

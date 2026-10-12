@@ -60,18 +60,19 @@ async function bakeGroup(ids, done) {
   if (st) await st.browser.close();
 }
 
-// Bohaterowie w bitwie: jeździec z chorągwią dla każdej klasy; części w barwie gracza w kolorze-kluczu (magenta), który gra
+// Bohaterowie w bitwie: jeździec z chorągwią dla każdego bohatera (HERO_RIDERS, --tylko=klucz,klucz); części w barwie gracza w kolorze-kluczu (magenta), który gra
 // podmienia na kolor właściciela. Klatki: spoczynek, rzucanie czaru (jak atak) i chód (ruch na mapie).
 const HERO_DIR = path.join(ROOT, 'src', 'grafika', 'bohaterowie'), HERO_META = path.join(ROOT, 'src', 'grafika', 'bohaterowie.json');
 async function bakeHeroes(fresh) {
   const meta = fs.existsSync(HERO_META) ? JSON.parse(fs.readFileSync(HERO_META, 'utf8')) : {}; fs.mkdirSync(HERO_DIR, { recursive: true });
   const { browser, page } = await openStudio({ width: 400, height: 300 });
-  const classes = (await page.evaluate(() => Object.keys(HERO_LOOKS3))).filter(c => !fresh || !meta[c]);
-  for (const cls of classes) {
+  const only = (process.argv.find(a => a.startsWith('--tylko=')) || '').slice(8).split(',').filter(Boolean);
+  const keys = (await page.evaluate(() => Object.keys(HERO_RIDERS))).filter(c => (!fresh || !meta[c]) && (!only.length || only.includes(c)));
+  for (const old of Object.keys(meta)) if (!keys.includes(old) && !only.length && !fresh) { delete meta[old]; for (const e of ['.webp', '.png']) { const f = path.join(HERO_DIR, old + e); if (fs.existsSync(f)) fs.unlinkSync(f); } } // dawne arkusze klas
+  for (const cls of keys) {
     const r = await page.evaluate(([cls, KB, UB, DS, RAW]) => {
       G3.raw = RAW;
-      const H = HERO_LOOKS3[cls], mage = MAGES.includes(cls), KEY = '#ff00ff', F = BATTLE_FRAMES;
-      const L = { kind: 'rider', horse: H.horse, mane: H.mane, skin: H.skin, cloth: KEY, weapon: mage ? 'staff' : 'sword', helm: H.hood ? 'hood' : 'helm', hoodCol: H.hood, helmCol: H.helm, metal: H.armor, armor: !H.hood, cape: KEY, barding: KEY, trim: '#e0b24a', banner: KEY, orb: '#a0d0ff' };
+      const L = HERO_RIDERS[cls].L, F = BATTLE_FRAMES; // bohater: własny jeździec (dane gry: heroRiderLook)
       const W = Math.round(170 * DS), Hh = Math.round(190 * DS), AX = Math.round(80 * DS), AY = Math.round(170 * DS), frames = [];
       const add = (pose, i, P) => { const c = G3.render(rider(L, P), W, Hh, KB, AX, AY), d = c.getContext('2d').getImageData(0, 0, W, Hh).data; let x0 = W, y0 = Hh, x1 = -1, y1 = -1;
         for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
@@ -83,7 +84,7 @@ async function bakeHeroes(fresh) {
       let sw = 0, sh = 0; for (const rr of Object.values(rows)) { sw = Math.max(sw, rr.reduce((a, f) => a + f.w + 1, 0)); sh += Math.max(...rr.map(f => f.h)) + 1; }
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = sh; const g = sheet.getContext('2d'), m = {};
       let y = 0; for (const [pose, rr] of Object.entries(rows)) { let x = 0; m[pose] = rr.map(f => { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, x, y, f.w, f.h); const q = [x, y, f.w, f.h, f.ax, f.ay]; x += f.w + 1; return q; }); y += Math.max(...rr.map(f => f.h)) + 1; }
-      return { png: (RAW ? sheet.toDataURL('image/webp', 0.9) : sheet.toDataURL('image/png')).split(',')[1], f: m, u: UB };
+      return { png: (RAW ? sheet.toDataURL('image/webp', 0.86) : sheet.toDataURL('image/png')).split(',')[1], f: m, u: UB };
     }, [cls, KB, UB, DS, RAW]);
     const ext = RAW ? '.webp' : '.png', other = path.join(HERO_DIR, cls + (RAW ? '.png' : '.webp')); if (fs.existsSync(other)) fs.unlinkSync(other); fs.writeFileSync(path.join(HERO_DIR, cls + ext), Buffer.from(r.png, 'base64')); meta[cls] = { u: r.u, f: r.f, ...(RAW ? { raw: 1 } : {}) }; fs.writeFileSync(HERO_META, JSON.stringify(meta)); process.stdout.write('h');
   }

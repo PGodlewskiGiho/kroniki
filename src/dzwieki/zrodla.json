@@ -728,5 +728,271 @@
    "user": "TiagoThanos",
    "license": "CC0-1.0"
   }
+ ],
+ "v_human": [
+  {
+   "freesound": 521831,
+   "title": "Middle Ages War Cry 3.",
+   "user": "joelcarrsound",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 521832,
+   "title": "Middle Ages War Cry 2.",
+   "user": "joelcarrsound",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 621348,
+   "title": "Male Yelling out a War Cry 5 - WITH reverb.",
+   "user": "WelvynZPorterSamples",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_dragon": [
+  {
+   "freesound": 504579,
+   "title": "Loud Dragon Roar.",
+   "user": "TheBlueRat",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 315772,
+   "title": "dragon roar big angry.",
+   "user": "bevibeldesign",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_hiss": [
+  {
+   "freesound": 553374,
+   "title": "Snake Hiss.",
+   "user": "xoiziox",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 540162,
+   "title": "Snake hissing.",
+   "user": "schreibsel",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_bird": [
+  {
+   "freesound": 381200,
+   "title": "Eagle Cry.",
+   "user": "kaydinhamby",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 319619,
+   "title": "Hawk,Cry,Bird,Ext.",
+   "user": "Framing_Noise",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_undead": [
+  {
+   "freesound": 559558,
+   "title": "Zombie Groan.",
+   "user": "ChuckChuckGoof",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 463721,
+   "title": "Burp Monster Zombie groan moan.",
+   "user": "EricsSoundschmiede",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_ghost": [
+  {
+   "freesound": 329519,
+   "title": "Ghost Moan 1.",
+   "user": "SirBedlam",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 319186,
+   "title": "ghost moan.",
+   "user": "SuperGirl71",
+   "license": "CC0-1.0"
+  }
+ ],
+ "bones": [
+  {
+   "freesound": 512049,
+   "title": "Bone crack.",
+   "user": "shtran",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 414505,
+   "title": "Bone cracking(sound effect).",
+   "user": "renspiep",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_machine": [
+  {
+   "freesound": 479296,
+   "title": "R19-39-Steam Hiss.",
+   "user": "craigsmith",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 90143,
+   "title": "steam burst.",
+   "user": "pengo_au",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_demon": [
+  {
+   "freesound": 444445,
+   "title": "Demon Growl for Halloween Spooky Creepy Scary Monster Ghoul Ghost Sounds.",
+   "user": "Voices_Of_Marz",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 221688,
+   "title": "growling zombie.",
+   "user": "nigelnix",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_insect": [
+  {
+   "freesound": 582683,
+   "title": "Bee Buzz.",
+   "user": "RoyalReaper_yt",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 435589,
+   "title": "Wasp Buzzing Building Nest (Sceliphron).",
+   "user": "alexanderweidner",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_horse": [
+  {
+   "freesound": 510903,
+   "title": "Horse neighing.",
+   "user": "Lydmakeren",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 269571,
+   "title": "horse neigh shortened.",
+   "user": "shadoWisp",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_beast": [
+  {
+   "freesound": 479825,
+   "title": "R19-13-Bear Roaring.",
+   "user": "craigsmith",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 547525,
+   "title": "Lion roaring like Burping.",
+   "user": "Alexadiaz12",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_giant": [
+  {
+   "freesound": 398630,
+   "title": "Giant Roar.",
+   "user": "AnusProductions",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_dog": [
+  {
+   "freesound": 398430,
+   "title": "Wolf howl.",
+   "user": "NaturesTemper",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 514578,
+   "title": "Scary: Werewolf - Voice Sound Effect.",
+   "user": "NicknameLarry",
+   "license": "CC0-1.0"
+  }
+ ],
+ "hit_metal": [
+  {
+   "freesound": 359141,
+   "title": "Low Metal Hit 1.",
+   "user": "sunnyflower",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 556708,
+   "title": "Metal Hit.",
+   "user": "NachtmahrTV",
+   "license": "CC0-1.0"
+  }
+ ],
+ "hit_heavy": [
+  {
+   "freesound": 562198,
+   "title": "snd metal smash.",
+   "user": "gristi",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 434146,
+   "title": "Table Smash.",
+   "user": "NeoSpica",
+   "license": "CC0-1.0"
+  }
+ ],
+ "scream": [
+  {
+   "freesound": 492764,
+   "title": "Wilhelm scream alternative Death scream human shout agony KT CsG .",
+   "user": "csaszi",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 536719,
+   "title": "Death scream in mask.",
+   "user": "Hoggington",
+   "license": "CC0-1.0"
+  }
+ ],
+ "gunshot": [
+  {
+   "freesound": 341258,
+   "title": "Gunshot01.",
+   "user": "jeremysykes",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 518181,
+   "title": "FX - Gunshot.",
+   "user": "bolkmar",
+   "license": "CC0-1.0"
+  }
+ ],
+ "spark": [
+  {
+   "freesound": 396240,
+   "title": "Welding Electric Sparks.",
+   "user": "weaveofkev",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 624074,
+   "title": "martian electric spark reverbant.",
+   "user": "martian",
+   "license": "CC0-1.0"
+  }
  ]
 }

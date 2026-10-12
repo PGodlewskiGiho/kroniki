@@ -14,11 +14,11 @@ const DIRS = { E: 0, SE: 1, S: 2, NE: 7, N: 6 }, FR = { idle: 4, walk: 12 }, PIT
   const t0 = Date.now(), arg = process.argv.slice(2).find(a => !a.startsWith('--')), only = arg ? arg.split(',') : null;
   const meta = fs.existsSync(META) ? JSON.parse(fs.readFileSync(META, 'utf8')) : {}; fs.mkdirSync(OUT, { recursive: true });
   const { browser, page } = await openStudio({ width: 400, height: 300 });
-  const classes = (await page.evaluate(() => Object.keys(HERO_LOOKS3))).filter(c => !only || only.includes(c));
+  const classes = (await page.evaluate(() => Object.keys(HERO_RIDERS))).filter(c => !only || only.includes(c)); // klucze bohaterów
+  if (!only) for (const old of Object.keys(meta)) if (!classes.includes(old)) { delete meta[old]; const f = path.join(OUT, old + '.webp'); if (fs.existsSync(f)) fs.unlinkSync(f); } // dawne arkusze klas
   for (const cls of classes) {
     const r = await page.evaluate(async ([cls, DIRS, FR, PITCH, HPX]) => {
-      G3.raw = true; const H = HERO_LOOKS3[cls], mage = MAGES.includes(cls), KEY = '#ff00ff';
-      const L = { kind: 'rider', horse: H.horse, mane: H.mane, skin: H.skin, cloth: KEY, weapon: mage ? 'staff' : 'sword', helm: H.hood ? 'hood' : 'helm', hoodCol: H.hood, helmCol: H.helm, metal: H.armor, armor: !H.hood, cape: KEY, barding: KEY, trim: '#e0b24a', banner: KEY, orb: '#a0d0ff' };
+      G3.raw = true; const L = HERO_RIDERS[cls].L;
       const W = 260, Hh = 260, AX = 130, AY = 200;
       const shot = (P, ang, K) => { const g = rider(L, P); g.rotation.y = ang; return G3.render(g, W, Hh, K, AX, AY, { raw: true, yaw: 0, pitch: PITCH }); };
       const bbox = c => { const d = c.getContext('2d').getImageData(0, 0, W, Hh).data; let x0 = W, y0 = Hh, x1 = -1, y1 = -1;
@@ -36,9 +36,9 @@ const DIRS = { E: 0, SE: 1, S: 2, NE: 7, N: 6 }, FR = { idle: 4, walk: 12 }, PIT
       let sw = 0, sh = 0; for (const rr of Object.values(rows)) { sw = Math.max(sw, rr.reduce((a, f) => a + f.w + 1, 0)); sh += Math.max(...rr.map(f => f.h)) + 1; }
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = sh; const g = sheet.getContext('2d'), m = {};
       let y = 0; for (const [pose, rr] of Object.entries(rows)) { let x = 0; m[pose] = rr.map(f => { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, x, y, f.w, f.h); const q = [x, y, f.w, f.h, f.ax, f.ay]; x += f.w + 1; return q; }); y += Math.max(...rr.map(f => f.h)) + 1; }
-      return { webp: sheet.toDataURL('image/webp', 0.88).split(',')[1], png: sheet.toDataURL('image/png').split(',')[1], f: m, h: HPX };
+      return { webp: sheet.toDataURL('image/webp', 0.72).split(',')[1], png: sheet.toDataURL('image/png').split(',')[1], f: m, h: HPX };
     }, [cls, DIRS, FR, PITCH, HPX]);
-    fs.writeFileSync(path.join(OUT, cls + '.webp'), Buffer.from(r.webp, 'base64')); meta[cls] = { f: r.f, h: r.h }; fs.writeFileSync(META, JSON.stringify(meta));
+    fs.writeFileSync(path.join(OUT, cls + '.webp'), Buffer.from(r.webp, 'base64')); const cur = fs.existsSync(META) ? JSON.parse(fs.readFileSync(META, 'utf8')) : meta; cur[cls] = meta[cls] = { f: r.f, h: r.h }; fs.writeFileSync(META, JSON.stringify(cur)); // świeży odczyt: kilka procesów naraz
     fs.mkdirSync(CACHE, { recursive: true }); fs.writeFileSync(path.join(CACHE, 'bohater-mapa.png'), Buffer.from(r.png, 'base64'));
     process.stdout.write(`${cls} (${(Buffer.from(r.webp, 'base64').length / 1024).toFixed(0)} KB) `);
   }

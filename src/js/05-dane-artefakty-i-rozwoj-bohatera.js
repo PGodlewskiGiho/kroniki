@@ -282,3 +282,47 @@ function artBonusText(b) {
 const artInfo = id => { const A = ARTIFACTS[id], r = relicOf(id);
   return `${A.name} (${RARITY[A.rarity]}): ${A.desc || [artBonusText(A.bonus), A.perk ? `talent ${TALENTS[A.perk].name} (${TALENTS[A.perk].desc})` : ''].filter(Boolean).join('; ') + '.'}` + (A.parts ? ` Złożona z: ${A.parts.map(p => ARTIFACTS[p].name).join(', ')}.` : '') + (r ? ` Część relikwii: ${ARTIFACTS[r].name}.` : ''); };
 
+// ==================== WYGLĄD BOHATERÓW (jeździec 3D, każdy inny) ==========================================
+// Każdy bohater z puli frakcji ma własny model jeźdźca: klasa daje barwy (HERO_CLASSES.look), a kolejny bohater tej klasy
+// we frakcji bierze następny wariant z puli klasy (nakrycie głowy, broń, tarcza, zarost lub włosy, koń), więc żadnych dwóch
+// takich samych. Kolor-klucz (magenta) to barwa gracza (płaszcz, czaprak, chorągiew, tarcza). Wypalanie: tools/grafika3d
+// (wypal.js --bohaterowie, wypal-bohaterowie-mapa.js) dla każdego klucza HERO_RIDERS; gra szuka arkusza po heroArtKey.
+const HERO_KEY_COL = '#ff00ff';
+const heroSlug = name => name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+// warianty klasy: h – nakrycie głowy (none: same włosy), w – broń, s – tarcza, top – zwieńczenie laski, x – dodatki
+const HERO_VARIANTS = {
+  knight: [{ h: 'greathelm', w: 'lance', s: 1, x: { plume: '#c83a2a' } }, { h: 'helm', w: 'sword', s: 1 }, { h: 'sallet', w: 'mace', s: 1, x: { horseArmor: true } }, { h: 'none', w: 'greatsword', x: { pauldrons: true } }],
+  cleric: [{ h: 'mitre', top: 'cross' }, { h: 'hood', top: 'crook' }, { h: 'circlet', top: 'crescent', x: { halo: '#fff0a0' } }, { h: 'none', w: 'mace', s: 1 }],
+  ranger: [{ h: 'hood', w: 'bow', x: { quiver: '#5a3a1a' } }, { h: 'cap', w: 'sword', x: { feather: '#e8e0c0' } }, { h: 'none', w: 'spear' }, { h: 'circlet', w: 'crossbow' }],
+  druid: [{ h: 'hood', top: 'orb' }, { h: 'none', top: 'crook', x: { flowerCrown: '#f0a0c0' } }, { h: 'none', top: 'crystal', x: { antlers: '#c8b090' } }, { h: 'circlet', top: 'orb', x: { cape: '#4a6a2a' } }],
+  deathKnight: [{ h: 'horn', w: 'greatsword', x: { horseSkulls: true } }, { h: 'greathelm', w: 'glaive', x: { nightmare: true } }, { h: 'skull', w: 'mace', s: 1 }, { h: 'sallet', w: 'labrys', x: { horseArmor: true } }],
+  necro: [{ h: 'hood', top: 'skull' }, { h: 'skull', top: 'scythe', x: { horseSkulls: true } }, { h: 'crown', top: 'crescent' }, { h: 'none', top: 'scythe', x: { collar: true, nightmare: true } }],
+  beastmaster: [{ h: 'horn', w: 'axe', s: 1 }, { h: 'none', w: 'spear', x: { mohawk: '#2a1a10' } }, { h: 'kettle', w: 'club' }, { h: 'cap', w: 'labrys', x: { feather: '#8a6a3a' } }],
+  witch: [{ h: 'hood', top: 'skull' }, { h: 'straw', top: 'crook' }, { h: 'none', top: 'crystal' }, { h: 'turban', top: 'orb', x: { beads: '#c8a050' } }],
+  demoniac: [{ h: 'horn', w: 'scimitar', s: 1, x: { nightmare: true } }, { h: 'greathelm', w: 'glaive', x: { horseHorns: '#2a1010' } }, { h: 'skull', w: 'labrys' }, { h: 'helm', w: 'greatsword', x: { horns: '#3a1010', hornType: 'long' } }],
+  heretic: [{ h: 'hood', top: 'scythe' }, { h: 'none', w: 'fireball', x: { horns: '#2a1010', hornType: 'ram' } }, { h: 'crown', top: 'skull' }, { h: 'skull', top: 'crescent', x: { nightmare: true } }],
+  alchemist: [{ h: 'turban', top: 'crystal' }, { h: 'hood', top: 'orb' }, { h: 'cap', top: 'crystal', x: { goggles: '#c8a050' } }, { h: 'wizard', top: 'crescent' }],
+  wizard: [{ h: 'wizard', top: 'orb' }, { h: 'hood', top: 'crescent' }, { h: 'circlet', top: 'crystal', x: { cape: '#2a2a6a' } }, { h: 'turban', top: 'crook' }],
+  overlord: [{ h: 'greathelm', w: 'mace', s: 1 }, { h: 'crown', w: 'halberd' }, { h: 'horn', w: 'greatsword', x: { horseArmor: true } }, { h: 'sallet', w: 'spear', s: 1 }],
+  warlock: [{ h: 'hood', top: 'crescent' }, { h: 'none', w: 'fireball', x: { horns: '#1a1020', hornType: 'swept' } }, { h: 'crown', top: 'skull' }, { h: 'wizard', top: 'crystal', x: { nightmare: true } }],
+  barbarian: [{ h: 'horn', w: 'labrys' }, { h: 'none', w: 'axe', s: 1, x: { mohawk: '#2a1a10' } }, { h: 'none', w: 'club', x: { topknot: '#1a1410' } }, { h: 'kettle', w: 'greatsword' }],
+  battleMage: [{ h: 'hood', top: 'orb' }, { h: 'helm', w: 'sword', s: 1 }, { h: 'horn', w: 'fireball' }, { h: 'turban', w: 'scimitar' }],
+  engineer: [{ h: 'kettle', w: 'wrench' }, { h: 'cap', w: 'mace', s: 1, x: { goggles: '#c8a050' } }, { h: 'helm', w: 'crossbow' }, { h: 'tricorn', w: 'musket', x: { feather: '#e8e0c0' } }],
+  inventor: [{ h: 'cap', w: 'sparkStaff', x: { goggles: '#c8a050' } }, { h: 'tricorn', top: 'crystal' }, { h: 'hood', w: 'sparkStaff' }, { h: 'kettle', w: 'wrench', x: { goggles: '#b8703a' } }],
+};
+const HERO_HORSES = [['#7a4a26', '#2a1a0e'], ['#2a2420', '#0e0a08'], ['#e8e0d0', '#a89880'], ['#8a6a4a', '#3a2a1a'], ['#5a5a62', '#e8e8ec'], ['#c8a070', '#f0e0c0']];
+const HERO_HAIR = ['#3a2410', '#c89a50', '#1a1410', '#8a3a1a', '#d8d0c0', '#5a3a20'];
+function heroRiderLook(cls, female, i, seed) {
+  const H = HERO_CLASSES[cls].look, mage = MAGE_CLASSES.includes(cls), V = (HERO_VARIANTS[cls] || [{}])[i % 4], hood = !!H.hood, [horse, mane] = i ? HERO_HORSES[(seed + i) % HERO_HORSES.length] : [H.horse, H.mane];
+  const hair = HERO_HAIR[(seed * 3 + i) % HERO_HAIR.length], helm = V.h || (hood ? 'hood' : 'helm');
+  const L = { kind: 'rider', horse, mane, skin: H.skin, cloth: HERO_KEY_COL, weapon: V.w || (mage || V.top ? 'staff' : 'sword'), helm: helm === 'none' ? undefined : helm, hoodCol: H.hood || H.armor, helmCol: H.helm || H.armor,
+    metal: H.armor, armor: !hood || !!V.s, cape: HERO_KEY_COL, barding: HERO_KEY_COL, trim: '#e0b24a', banner: HERO_KEY_COL, orb: mage ? '#a0d0ff' : '#ffd080', staffTop: V.top, ...(V.s ? { shield: HERO_KEY_COL } : {}), ...(V.x || {}) };
+  if (female) Object.assign(L, { longHair: hair, hair }); else if (i % 3 !== 1) Object.assign(L, i % 2 ? { beard: 'goatee', beardCol: hair } : { beard: hair }); else L.mustache = hair;
+  if (!female && helm === 'none' && !L.mohawk && !L.topknot) L.hair = hair;
+  return L;
+}
+// wszyscy bohaterowie z pul frakcji: klucz → { cls, L }; heroArtKey(h): arkusz tego bohatera (inaczej pierwszy tej klasy)
+const HERO_RIDERS = (() => { const out = {};
+  for (const F of FACTIONS) { const seen = {}; (F.heroes || []).forEach(([name, cls, fem], k) => { const i = seen[cls] = (seen[cls] ?? -1) + 1; out[heroSlug(name)] = { cls, L: heroRiderLook(cls, !!fem, i, k + F.id.length) }; }); }
+  return out; })();
+const heroArtKey = h => { const k = h && h.name ? heroSlug(h.name) : ''; if (HERO_RIDERS[k]) return k; const e = Object.entries(HERO_RIDERS).find(([, v]) => v.cls === (h && h.cls)); return e ? e[0] : k; };

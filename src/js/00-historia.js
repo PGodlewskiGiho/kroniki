@@ -457,5 +457,21 @@
    (drzewa dżungli z lianami, akacje, lodowe iglice, snopki i stogi, paprocie, kopce termitów, kry; w grotach kryształy i olbrzymie
    grzyby) i tła bitew. Nowe krainy: Tropikalna i Rolnicza; Mroźna ma lodowe pustkowia. Losowa kraina wybiera nowe typy osobnym
    ziarnem, więc dawne ziarna dają te same rodzaje krain.
+   Dźwięki walki 2: 19 nowych zdarzeń z próbek CC0 (Freesound przez indeks freesound-laion, tools/dzwieki/indeks.py – tylko opisy,
+   audio pobierane pojedynczo): okrzyki wojowników, ryk smoka, syk jaszczurów i pająków, krzyk orła (gryfy, ptaki), jęk nieumarłych,
+   zawodzenie duchów, para i pneumatyka maszyn, ryk demonów, brzęczenie owadów, rżenie koni, ryk niedźwiedzia/byka, ryk olbrzymów,
+   wycie wilków; trafienie w pancerz płytowy brzęczy metalem, ciężki cios łupie, nieumarli padają z trzaskiem kości, ludzie z krzykiem,
+   bestie z ostatnim rykiem; muszkiet strzela wystrzałem, iskra trzaska. Ludzie krzyczą co któryś cios, bestie przy każdym.
+   Szybka bitwa: wybór bohatera każdej strony (losowy albo konkretny z frakcji, portret i klasa).
+   Pola bitew: 14 malowanych pól walki (tools/tla-ai/szkic-pola.py: płaskie podłoże w skali jednostek, ścieżka, kamyki, ozdoby
+   tylko przy krawędziach, wąski horyzont; potem Stable Diffusion img2img), zamiast krajobrazów – dla każdego biomu.
+   Różnorodność jednostek: porównywarka (tools/grafika3d/porownaj.js: sylwetka, barwy, cechy modelu, bez ulepszeń jednego siedliska)
+   i nowe wyglądy bliźniaków – Szkielet z włócznią, Kościotrup w hełmie z toporem, Mag w spiczastym kapeluszu z księgą, Zaklinacz
+   w turbanie z kryształową laską, nekromanci z kosą, łysy Mnich w szafranie, Warg w pancerzu, rogaty Piekielny ogar, Strzelec
+   wyborowy z kuszą w kapturze, Niziołek z procą, Cyklop z głazem, golemy z rdzeniem, rogami i kryształami. Smoki: każdy z własną
+   budową (nogi 4/2/0; skrzydła błoniaste, postrzępione, pierzaste, podwójne, kryształowe, kikuty, motyle, kościane albo brak;
+   łeb klinowy, krokodyli, byczy, z dziobem; rogi, ogon, grzbiet, kryza; Lazurowy z dwiema głowami).
+   Bohaterowie: każdy z 56 ma własny model jeźdźca (HERO_RIDERS: nakrycie głowy, broń, tarcza, zarost lub włosy, koń; warianty
+   klasy po kolei, więc dwóch takich samych nie ma) – osobne arkusze bitwy i mapy.
    ===================================================================================== */
 

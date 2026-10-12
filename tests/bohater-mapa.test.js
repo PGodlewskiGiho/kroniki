@@ -9,9 +9,17 @@ test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
 
-test('każda klasa bohatera ma arkusz mapy: 5 kierunków, 12 klatek chodu i 4 spoczynku', async () => {
-  const r = await page.evaluate(() => Object.keys(HERO_CLASSES).map(c => { const M = HERO_MAP_ART[c]; return M ? [c, ...['E', 'SE', 'S', 'NE', 'N'].map(d => `${M.f['walk_' + d].length}/${M.f['idle_' + d].length}`)] : [c, 'brak']; }));
-  for (const [c, ...d] of r) assert.deepEqual(d, Array(5).fill('12/4'), `klasa ${c}`);
+test('każdy bohater ma własny arkusz mapy i bitwy: 5 kierunków, 12 klatek chodu i 4 spoczynku; każda klasa ma bohaterów', async () => {
+  const r = await page.evaluate(() => ({ rows: Object.keys(HERO_RIDERS).map(k => { const M = HERO_MAP_ART[k]; return M && HERO_ART[k] ? [k, ...['E', 'SE', 'S', 'NE', 'N'].map(d => `${M.f['walk_' + d].length}/${M.f['idle_' + d].length}`)] : [k, 'brak']; }),
+    classes: Object.keys(HERO_CLASSES).filter(c => !Object.values(HERO_RIDERS).some(v => v.cls === c)) }));
+  for (const [c, ...d] of r.rows) assert.deepEqual(d, Array(5).fill('12/4'), `bohater ${c}`);
+  assert.deepEqual(r.classes, [], 'klasy bez bohaterów');
+});
+
+test('bohaterowie wyglądają różnie: każdy inny model jeźdźca, także dwaj tej samej klasy; nieznany bohater bierze arkusz swojej klasy', async () => {
+  const r = await page.evaluate(() => { const L = Object.values(HERO_RIDERS).map(v => JSON.stringify(v.L)), knights = Object.entries(HERO_RIDERS).filter(([, v]) => v.cls === 'knight').map(([, v]) => [v.L.helm, v.L.weapon].join('/'));
+    return { n: L.length, uniq: new Set(L).size, knights, unknown: HERO_RIDERS[heroArtKey({ name: 'Ktoś Nowy', cls: 'warlock' })].cls, rolan: heroArtKey({ name: 'Sir Rolan', cls: 'knight' }) }; });
+  assert.equal(r.uniq, r.n); assert.equal(new Set(r.knights).size, r.knights.length, `rycerze: ${r.knights}`); assert.equal(r.unknown, 'warlock'); assert.equal(r.rolan, 'sir_rolan');
 });
 
 test('kierunek z kroku: 8 stron, zachodnie odbite, w górę i w dół osobne widoki; po zatrzymaniu zostaje', async () => {
