@@ -51,7 +51,7 @@ async function bakeGroup(ids, done) {
       let sw = 0, sh = 0; for (const r of Object.values(rows)) { sw = Math.max(sw, r.reduce((a, f) => a + f.w + 1, 0)); sh += Math.max(...r.map(f => f.h)) + 1; }
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = sh; const g = sheet.getContext('2d'), meta = {};
       let y = 0; for (const [pose, r] of Object.entries(rows)) { let x = 0; meta[pose] = r.map(f => { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, x, y, f.w, f.h); const m = [x, y, f.w, f.h, f.ax, f.ay]; x += f.w + 1; return m; }); y += Math.max(...r.map(f => f.h)) + 1; }
-      return window.__blank ? { blank: window.__blank } : { png: (RAW ? sheet.toDataURL('image/webp', 0.9) : sheet.toDataURL('image/png')).split(',')[1], f: meta, u: UB, mu: UM, m: mouth, t: CREATURES[id].shots ? tip : null }; // czubek broni tylko u strzelców
+      return window.__blank ? { blank: window.__blank } : { png: (RAW ? sheet.toDataURL('image/webp', 0.8) : sheet.toDataURL('image/png')).split(',')[1], f: meta, u: UB, mu: UM, m: mouth, t: CREATURES[id].shots ? tip : null }; // czubek broni tylko u strzelców
     }, [id, KB, KM, UB, UM, DS, RAW]);
     if (r && r.blank) { // pusta klatka: kontekst grafiki padł (np. brak pamięci) - świeża przeglądarka i jeszcze raz
       process.stdout.write('!'); await st.browser.close(); st = null; n = 0; ids.push(id); if ((retry[id] = (retry[id] || 0) + 1) > 2) throw new Error(`Puste klatki: ${id}`); continue; }
@@ -84,7 +84,7 @@ async function bakeHeroes(fresh) {
       let sw = 0, sh = 0; for (const rr of Object.values(rows)) { sw = Math.max(sw, rr.reduce((a, f) => a + f.w + 1, 0)); sh += Math.max(...rr.map(f => f.h)) + 1; }
       const sheet = document.createElement('canvas'); sheet.width = sw; sheet.height = sh; const g = sheet.getContext('2d'), m = {};
       let y = 0; for (const [pose, rr] of Object.entries(rows)) { let x = 0; m[pose] = rr.map(f => { g.drawImage(f.c, f.sx, f.sy, f.w, f.h, x, y, f.w, f.h); const q = [x, y, f.w, f.h, f.ax, f.ay]; x += f.w + 1; return q; }); y += Math.max(...rr.map(f => f.h)) + 1; }
-      return { png: (RAW ? sheet.toDataURL('image/webp', 0.86) : sheet.toDataURL('image/png')).split(',')[1], f: m, u: UB };
+      return { png: (RAW ? sheet.toDataURL('image/webp', 0.72) : sheet.toDataURL('image/png')).split(',')[1], f: m, u: UB };
     }, [cls, KB, UB, DS, RAW]);
     const ext = RAW ? '.webp' : '.png', other = path.join(HERO_DIR, cls + (RAW ? '.png' : '.webp')); if (fs.existsSync(other)) fs.unlinkSync(other); fs.writeFileSync(path.join(HERO_DIR, cls + ext), Buffer.from(r.png, 'base64')); meta[cls] = { u: r.u, f: r.f, ...(RAW ? { raw: 1 } : {}) }; fs.writeFileSync(HERO_META, JSON.stringify(meta)); process.stdout.write('h');
   }

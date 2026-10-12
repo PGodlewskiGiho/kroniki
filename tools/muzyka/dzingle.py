@@ -39,7 +39,7 @@ def render(S, fade=1.6, tail=3.0):
     x, sr = sf.read(wav, always_2d=True); n = min(len(x), int((S.seconds + tail) * sr)); y = x[:n].copy(); f = int(fade * sr); y[-f:] *= np.linspace(1, 0, f)[:, None] ** 2
     rms = np.sqrt(np.mean(y[: int(S.seconds * sr)] ** 2)); y *= min(10 ** (-16 / 20) / (rms + 1e-9), 10 ** (-1 / 20) / (np.abs(y).max() + 1e-9))
     buf = io.BytesIO(); sf.write(buf, y.astype(np.float32), sr, format='WAV', subtype='PCM_16'); ff = __import__('imageio_ffmpeg').get_ffmpeg_exe(); mp3 = os.path.join(OUT, S.name + '_1.mp3')
-    subprocess.run([ff, '-y', '-loglevel', 'error', '-f', 'wav', '-i', 'pipe:0', '-ac', '2', '-ar', '44100', '-b:a', '112k', mp3], input=buf.getvalue(), check=True)
+    subprocess.run([ff, '-y', '-loglevel', 'error', '-f', 'wav', '-i', 'pipe:0', '-ac', '2', '-ar', '44100', '-b:a', '160k', mp3], input=buf.getvalue(), check=True)
     print(f'{S.name}: {n / sr:.1f} s, {os.path.getsize(mp3) // 1024} KB')
 
 if __name__ == '__main__':
