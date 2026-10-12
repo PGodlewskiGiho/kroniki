@@ -28,6 +28,7 @@ test('mapa na karcie graficznej wygląda tak samo jak rysowana procesorem (teren
   await page.evaluate(() => { G.settings.weather = 'off'; window.__upd = update; window.update = () => { G.time = 12.3; G.dirty = true; }; G.mouse.x = G.mouse.y = -100; }); // stały czas: fale i dym w tej samej fazie
   const ok = await page.evaluate(() => { G.settings.renderer = 'gl'; GLMap.reflect = false; return GLMap.use(); }); // odbicia nieba na wodzie są tylko na karcie: do porównania wyłączone
   if (!ok) return; // przeglądarka bez WebGL: nie ma czego porównać
+  await page.evaluate(() => { MapLayers.on = false; }); // najpierw pełne rysowanie każdej klatki (jak w ruchu)
   const cpu = await viewShot('cpu'), gpu = await viewShot('gl'), r = await diff(cpu, gpu);
   const st = await page.evaluate(() => ({ ...GLMap.stats, shown: GLMap.canvas.style.display !== 'none' }));
   assert.ok(r.same, 'ten sam rozmiar zrzutów');
@@ -38,6 +39,13 @@ test('mapa na karcie graficznej wygląda tak samo jak rysowana procesorem (teren
   await frames(page, 3); const s2 = await page.evaluate(() => ({ ...GLMap.stats, pages: GLMap.pages.length }));
   assert.ok(s2.pages >= 1 && s2.draws * 2 < s2.quads, `poleceń rysowania ${s2.draws} przy ${s2.quads} prostokątach`);
   assert.equal(s2.uploads, 0, 'wgrań na kartę w nieruchomej klatce');
+  // spoczynek: warstwy (teren i obiekty zapamiętane, co klatkę tylko fale i pogoda) dają ten sam obraz, a klatka karty to kilka prostokątów bez wgrań
+  await page.evaluate(() => { MapLayers.on = true; MapLayers.drop(); });
+  const cpuL = await viewShot('cpu'), gpuL = await viewShot('gl'), rc = await diff(cpu, cpuL), rg = await diff(cpu, gpuL);
+  assert.ok(rc.mean < 1 && rc.big < 0.3, `warstwy procesorem: średnia ${rc.mean.toFixed(2)}, różnych ${rc.big.toFixed(2)}%`);
+  assert.ok(rg.mean < 2 && rg.big < 0.5, `warstwy kartą: średnia ${rg.mean.toFixed(2)}, różnych ${rg.big.toFixed(2)}%`);
+  await frames(page, 3); const s3 = await page.evaluate(() => ({ ...GLMap.stats, idle: G.screens.adventure._busy === false && !!MapLayers.key }));
+  assert.ok(s3.idle && s3.quads < 30 && s3.uploads === 0, `spoczynek: ${JSON.stringify(s3)}`);
   await page.evaluate(() => { window.update = window.__upd; GLMap.reflect = true; });
 });
 
