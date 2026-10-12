@@ -98,6 +98,7 @@ const GLMap = {
   // bohaterów, flagi, koła) trafiają do wspólnych tekstur atlasu, więc kolejne prostokąty idą jednym poleceniem rysowania.
   // Płótna robocze (pixBuf, np. sylwetki zasłoniętych obiektów) wgrywane przy każdym użyciu; own: osobna tekstura (wzór fal, maski wody)
   texOf(img, own) {
+    if (img.fb) return img.r; // warstwa mapy na karcie (target)
     const gl = this.gl; let r = this.tex.get(img); const dyn = !!img._ctx || (img._ver != null && (!r || r.ver !== img._ver)); // _ver: płótno warstwy mapy (MapLayers) – wgrywane ponownie tylko po zmianie
     if (r && !dyn) { r.used = this.frame; return r; }
     if (!r && !dyn && !own && !img._noAtlas && img.width <= this.AMAX && img.height <= this.AMAX) { r = this.atlasPut(img); this.tex.set(img, r); return r; }
@@ -141,8 +142,19 @@ const GLMap = {
     this.n++; this.stats.quads++;
   },
   // Początek klatki: płótno WebGL w rozmiarze bufora świata (w × h pikseli), kontekst rysowania z jednostkową macierzą
+  // Warstwa mapy na karcie (MapLayers): tekstura z buforem ramki – rysujemy do niej (into … out) jak do płótna, a potem składamy
+  // ją jak obrazek, bez kopiowania przez procesor. Rzędy tekstury idą od dołu, stąd odwrócone v.
+  canTarget() { return !!(this.ok && this.gl); },
+  target(w, h, old) {
+    const gl = this.gl; if (old && old.gl === gl && old.width === w && old.height === h) return old;
+    if (old && old.gl === gl) { gl.deleteFramebuffer(old.fb); gl.deleteTexture(old.r.t); this.bytes -= old.width * old.height * 4; }
+    const t = this.newTex(w, h), fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    this.bytes += w * h * 4; return { gl, fb, width: w, height: h, r: { t, u0: 0, v0: 1, su: 1, sv: -1, b: 0 } };
+  },
+  into(tg) { this.flush(); const gl = this.gl; gl.bindFramebuffer(gl.FRAMEBUFFER, tg.fb); this.W = tg.width; this.H = tg.height; gl.viewport(0, 0, tg.width, tg.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); this.cur = null; this.n = 0; GLCtx.reset(this.canvas); return GLCtx; },
+  out() { this.flush(); this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null); this.cur = null; },
   begin(w, h) {
-    const c = this.canvas, gl = this.gl; if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    const c = this.canvas, gl = this.gl; gl.bindFramebuffer(gl.FRAMEBUFFER, null); if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     this.W = w; this.H = h; this.frame++; this.stats = { quads: 0, draws: 0, uploads: 0 };
     gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); this.cur = null; this.n = 0;
     GLCtx.reset(c); return GLCtx;

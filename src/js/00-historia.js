@@ -477,5 +477,10 @@
    oddaleniu setki obiektów; skrypt klatki 6,7 → 2,8 ms), piana przy brzegu to gotowa warstwa na kawałek (w klatce tylko pulsuje
    przezroczystość), w spoczynku 30 klatek (niska jakość 20), w ruchu 60. Plik gry odchudzony (arkusze jednostek webp 78%),
    muzyka i dżingle w 160 kbps.
+   Warstwy mapy (MapLayers): teren i obiekty z mgłą rysują się do zapamiętanych warstw, klatka je tylko składa (co klatkę fale
+   i pogoda). W ruchu warstwy mają zapas wokół widoku i przesuwają się z kamerą (teren od nowa dopiero po wyjściu poza zapas,
+   obiekty ~7 razy na sekundę), a idący bohaterowie rysują się co klatkę osobno (drawMovers: bez tego, co stoi przed nimi,
+   z ciemną sylwetką za drzewem). Karta graficzna trzyma warstwy u siebie (GLMap.target: tekstura z buforem ramki).
+   Chód bohatera procesorem: klatka 35 → 22 ms, w podziemiach 27 → 16 ms; przewijanie 28 → 14 ms.
    ===================================================================================== */
 
