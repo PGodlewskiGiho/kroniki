@@ -98,12 +98,12 @@ const GLMap = {
   // bohaterów, flagi, koła) trafiają do wspólnych tekstur atlasu, więc kolejne prostokąty idą jednym poleceniem rysowania.
   // Płótna robocze (pixBuf, np. sylwetki zasłoniętych obiektów) wgrywane przy każdym użyciu; own: osobna tekstura (wzór fal, maski wody)
   texOf(img, own) {
-    const gl = this.gl; let r = this.tex.get(img); const dyn = !!img._ctx;
+    const gl = this.gl; let r = this.tex.get(img); const dyn = !!img._ctx || (img._ver != null && (!r || r.ver !== img._ver)); // _ver: płótno warstwy mapy (MapLayers) – wgrywane ponownie tylko po zmianie
     if (r && !dyn) { r.used = this.frame; return r; }
     if (!r && !dyn && !own && !img._noAtlas && img.width <= this.AMAX && img.height <= this.AMAX) { r = this.atlasPut(img); this.tex.set(img, r); return r; }
     if (!r) { r = { t: this.newTex(), u0: 0, v0: 0, su: 1, sv: 1, b: 0, used: this.frame }; this.tex.set(img, r); }
     else { this.flush(); gl.bindTexture(gl.TEXTURE_2D, r.t); }
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); this.stats.uploads++;
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); this.stats.uploads++; r.ver = img._ver;
     const b = (img.width || 1) * (img.height || 1) * 4; this.bytes += b - r.b; r.b = b; r.used = this.frame; return r;
   },
   // Atlas: strony AT×AT pikseli dzielone na półki (rzędy obrazków podobnej wysokości), 1 px pustego odstępu wokół obrazka

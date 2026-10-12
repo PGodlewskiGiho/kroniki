@@ -587,14 +587,18 @@ function drawFogPixel(b, st, ox, oy, c0, c1, r0, r1) {
 }
 const XRAY = new Map(), XRAY_ID = new WeakMap(); let xraySeq = 0;
 const xrayId = g => { let i = XRAY_ID.get(g); if (!i) XRAY_ID.set(g, (i = ++xraySeq)); return i; };
-function drawWorldPixel(b, st) {
+// part (warstwy w spoczynku, MapLayers): 'ground' – sam teren, 'water' – tylko fale na kawałkach, 'top' – reszta (doły, ścieżka,
+// obiekty, sylwetki, życie mapy, mgła, podświetlenie) na przezroczystym tle; bez part – wszystko naraz (w ruchu)
+function drawWorldPixel(b, st, part) {
   const map = st.map, n = map.n, CP = CHUNK * T, camX = Math.round(st.cam.x / PIX) * PIX, camY = Math.round(st.cam.y / PIX) * PIX, nC = Math.ceil(n / CHUNK);
-  b.fillStyle = '#000'; b.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
+  if (part !== 'water' && part !== 'top') { b.fillStyle = '#000'; b.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h); }
   const c0 = Math.max(0, Math.floor(camX / CP)), c1 = Math.min(nC - 1, Math.floor((camX + VIEW.w - 1) / CP));
   const r0 = Math.max(0, Math.floor(camY / CP)), r1 = Math.min(nC - 1, Math.floor((camY + VIEW.h - 1) / CP));
   const ox = VIEW.x - camX, oy = VIEW.y - camY;
   // kawałki terenu malują się w tle (MapRender.warm), nie w klatce: brakujący widoczny kawałek na chwilę zastępuje rysunek
   // w kolorach minimapy, a tło dorysowuje go w najbliższej wolnej chwili (najwyżej po ~0,1 s). Pierwsza klatka widoku maluje wszystko.
+  if (part === 'water') { for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) { const ch = MapRender.get(cx, cy, false); if (ch) WaterFx.draw(b, ch, ox + cx * CP, oy + cy * CP, CP, cx * ch.width, cy * ch.width); } return; }
+  if (part !== 'top') {
   MapRender.warm(st); const first = !MapRender.cache.size && !MapRender.alt; // po zmianie przybliżenia nie malujemy wszystkiego w jednej klatce: są stare kawałki
   // Brakujące kawałki w widoku (skok kamery do innego bohatera, przewinięcie daleko): od środka widoku malujemy od razu, w tej klatce,
   // ile zmieści się w ~20 ms (co najmniej jeden), zamiast czekać na wolne chwile tła – przy animowanej mapie bywa ich mało i teren
@@ -606,9 +610,10 @@ function drawWorldPixel(b, st) {
     else for (const [cx, cy] of miss) { if (performance.now() - t0 > 20 && !first) break; MapRender.get(cx, cy, true); } }
   for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
     const ch = MapRender.get(cx, cy, false), x = ox + cx * CP, y = oy + cy * CP;
-    if (!ch) { const old = MapRender.stale(cx, cy); if (old) b.drawImage(old, x, y, CP, CP); else MapRender.placeholder(b, cx, cy, x, y); G.dirty = true; continue; }
-    b.drawImage(ch, x, y, CP, CP); WaterFx.draw(b, ch, x, y, CP, cx * ch.width, cy * ch.width);
+    if (!ch) { const old = MapRender.stale(cx, cy); if (old) b.drawImage(old, x, y, CP, CP); else MapRender.placeholder(b, cx, cy, x, y); G.dirty = true; MapLayers.partial = true; continue; }
+    b.drawImage(ch, x, y, CP, CP); if (!part) WaterFx.draw(b, ch, x, y, CP, cx * ch.width, cy * ch.width);
   }
+  if (part === 'ground') return; }
   const tx0 = Math.floor(camX / T) - 2, ty0 = Math.floor(camY / T) - 1, tx1 = Math.floor((camX + VIEW.w) / T) + 2, ty1 = Math.floor((camY + VIEW.h) / T) + 2, list = [];
   drawHoles(b, st, ox, oy, tx0, ty0, tx1, ty1);
   if (hero(st)) drawPathPixel(b, st, hero(st), ox, oy);
@@ -773,6 +778,14 @@ function mapLight(w, h) {
 }
 // Gładko: bufor świata w rozdzielczości ekranu (najwyżej 3 piksele na piksel logiczny), żeby świat był ostry
 const mapBufScale = () => Math.min(G.rs, 3);
+// Warstwy mapy w spoczynku (kamera i bohaterowie stoją): teren zapamiętany raz, obiekty z mgłą ~7 razy na sekundę (stwory i flagi
+// mają animację kilku klatek na sekundę) albo gdy kursor przejdzie na inne pole; co klatkę tylko fale i pogoda na wierzchu.
+// W ruchu wszystko rysuje się od nowa (drawWorldPixel bez part), a warstwy idą do kosza.
+const MapLayers = {
+  key: '', ground: null, top: null, topT: -1, hover: '', partial: false, on: true,
+  snap(name, w, h) { let c = this[name]; if (!c || c.width !== w || c.height !== h) { c = this[name] = document.createElement('canvas'); c.width = w; c.height = h; c._ver = 0; c._noAtlas = 1; } c._ver++; return c; },
+  drop() { this.key = ''; this.topT = -1; },
+};
 function drawMapView(ctx, st, scr) {
   MapRender.setSeason(seasonIdx(st));
   // Przybliżenie: świat rysujemy w widoku „wirtualnym” (VIEW o rozmiarze viewW × viewH), potem skalujemy do prawdziwego
@@ -782,8 +795,23 @@ function drawMapView(ctx, st, scr) {
     // bufor świata: przy oddaleniu ma rozmiar ekranu (świat rysowany pomniejszony, z wygładzaniem), inaczej piksele grafiki
     const sc = Math.min(1, ZOOM) * (PIXEL_ART ? 1 / PIX : mapBufScale()), bw = Math.round(VIEW.w * sc), bh = Math.round(VIEW.h * sc); // gładko: bufor w rozdzielczości ekranu (ostry świat)
     // karta graficzna (GLMap): ten sam kod rysuje do kontekstu WebGL, wynik to płótno WebGL zamiast bufora w pamięci procesora
-    const gpu = GLMap.use(), b = gpu ? GLMap.begin(bw, bh) : pixBuf('world', bw, bh)._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
-    b.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); b.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; drawWorldPixel(b, st); Weather.draw(b, st, VIEW.x - Math.round(st.cam.x / PIX) * PIX, VIEW.y - Math.round(st.cam.y / PIX) * PIX); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore();
+    const gpu = GLMap.use(), wox = VIEW.x - Math.round(st.cam.x / PIX) * PIX, woy = VIEW.y - Math.round(st.cam.y / PIX) * PIX, world = c => { c.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); c.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; };
+    const begin = () => gpu ? GLMap.begin(bw, bh) : pixBuf('world', bw, bh)._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej
+    const idle = MapLayers.on && !PIXEL_ART && scr._busy === false;
+    let b;
+    if (!idle) { MapLayers.drop(); b = begin(); world(b); drawWorldPixel(b, st); Weather.draw(b, st, wox, woy); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore(); }
+    else {
+      const L = MapLayers, key = [Math.round(st.cam.x / PIX), Math.round(st.cam.y / PIX), ZOOM, bw, bh, sc, gpu ? 1 : 0, MapRender.season, MapRender.D, G.settings.quality].join('|');
+      const mt = G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, { x: VIEW.x, y: VIEW.y, w: RW, h: RH }) ? pickTile(st, G.mouse.x, G.mouse.y) : null, hv = mt ? mt.tx + ',' + mt.ty : '';
+      // pass: rysuje warstwę (kartą graficzną albo procesorem) i zapamiętuje ją na zwykłym płótnie; przy karcie wgrywa się ponownie tylko po zmianie (_ver)
+      const pass = (name, part, light) => { const c = L.snap(name, bw, bh), g = gpu ? GLMap.begin(bw, bh) : c.getContext('2d'); if (!gpu) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, bw, bh); }
+        world(g); drawWorldPixel(g, st, part); if (light) { g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(mapLight(bw, bh), 0, 0); g.restore(); }
+        if (gpu) { const cg = c.getContext('2d'); cg.setTransform(1, 0, 0, 1, 0, 0); cg.clearRect(0, 0, bw, bh); cg.drawImage(GLMap.end(), 0, 0); } };
+      MapRender.warm(st); // tło dalej maluje kawałki terenu i obrazki obiektów (w ruchu robi to drawWorldPixel)
+      if (L.key !== key || !L.ground) { L.partial = false; pass('ground', 'ground'); L.key = L.partial ? '' : key; L.topT = -1; }
+      if (L.topT < 0 || G.time - L.topT >= 1 / 7 || L.hover !== hv) { pass('top', 'top', true); L.topT = G.time; L.hover = hv; }
+      b = begin(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(L.ground, 0, 0); world(b); drawWorldPixel(b, st, 'water'); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(L.top, 0, 0); world(b); Weather.draw(b, st, wox, woy);
+    }
     const wb = gpu ? GLMap.end() : b.canvas;
     if (gpu) { ctx.clearRect(VIEW.x, VIEW.y, RW, RH); GLMap.place(ctx, VIEW.x, VIEW.y, RW, RH); } else { ctx.save(); ctx.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; ctx.drawImage(wb, VIEW.x, VIEW.y, RW, RH); ctx.restore(); } // karta graficzna: okno mapy w płótnie gry przezroczyste, pod nim płótno WebGL (bez kopiowania obrazu) // oddalenie: pomniejszenie z wygładzaniem
   ox = VIEW.x - Math.round(st.cam.x / PIX) * PIX; oy = VIEW.y - Math.round(st.cam.y / PIX) * PIX; // to samo zaokrąglenie co w drawWorldPixel

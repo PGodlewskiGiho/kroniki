@@ -290,6 +290,7 @@ G.screens.adventure = {
     const cam = st.cam.x + ',' + st.cam.y, moved = cam !== this._cam; this._cam = cam;
     const busy = moved || this.aiRun || this.drag || G.keys.size || (this.floats && this.floats.length) || (this.mapFx && this.mapFx.length)
       || (this.banner && G.time - this.banner.t < 3) || (this.flashMsg && G.time - this.flashMsg.t < 3) || st.heroes.some(h => h.anim || h.moving);
+    this._busy = !!busy; // drawMapView: w spoczynku warstwy (teren i obiekty zapamiętane, co klatkę tylko fale i pogoda)
     return busy ? 60 : G.settings.quality === 'low' ? 20 : 30; // w ruchu 60; w spoczynku fale, stwory i pogoda zmieniają się wolno: 30 klatek (niska jakość 20) wystarcza, a słaby komputer ma o połowę mniej pracy
   },
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
