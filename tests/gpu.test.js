@@ -44,8 +44,18 @@ test('mapa na karcie graficznej wygląda tak samo jak rysowana procesorem (teren
   const cpuL = await viewShot('cpu'), gpuL = await viewShot('gl'), rc = await diff(cpu, cpuL), rg = await diff(cpu, gpuL);
   assert.ok(rc.mean < 1 && rc.big < 0.3, `warstwy procesorem: średnia ${rc.mean.toFixed(2)}, różnych ${rc.big.toFixed(2)}%`);
   assert.ok(rg.mean < 2 && rg.big < 0.5, `warstwy kartą: średnia ${rg.mean.toFixed(2)}, różnych ${rg.big.toFixed(2)}%`);
-  await frames(page, 3); const s3 = await page.evaluate(() => ({ ...GLMap.stats, idle: G.screens.adventure._busy === false && !!MapLayers.key }));
+  await frames(page, 3); const s3 = await page.evaluate(() => ({ ...GLMap.stats, idle: G.screens.adventure._busy === false && !!(MapLayers.topG && MapLayers.topG._key) }));
   assert.ok(s3.idle && s3.quads < 30 && s3.uploads === 0, `spoczynek: ${JSON.stringify(s3)}`);
+  // ruch (idący bohater w pół kroku): warstwy z zapasem, bohater rysowany co klatkę osobno – ten sam obraz co pełne rysowanie
+  await page.evaluate(() => { const h = hero(G.state); h.anim = { fx: h.x - 1, fy: h.y, t: STEP_TIME / 2, d: STEP_TIME }; MapLayers.on = false; });
+  const cpuM = await viewShot('cpu');
+  await page.evaluate(() => { MapLayers.on = true; MapLayers.drop(); });
+  const cpuML = await viewShot('cpu'), gpuML = await viewShot('gl'), mc = await diff(cpuM, cpuML), mg = await diff(cpuM, gpuML);
+  const s4 = await page.evaluate(() => ({ busy: G.screens.adventure._busy, wide: MapLayers.topG.width > GLMap.canvas.width && MapLayers.top.width > GLMap.canvas.width }));
+  await page.evaluate(() => { hero(G.state).anim = null; });
+  assert.ok(s4.busy && s4.wide, `ruch: ${JSON.stringify(s4)}`);
+  assert.ok(mc.mean < 1.5 && mc.big < 0.5, `ruch procesorem: średnia ${mc.mean.toFixed(2)}, różnych ${mc.big.toFixed(2)}%`);
+  assert.ok(mg.mean < 2 && mg.big < 0.6, `ruch kartą: średnia ${mg.mean.toFixed(2)}, różnych ${mg.big.toFixed(2)}%`);
   await page.evaluate(() => { window.update = window.__upd; GLMap.reflect = true; });
 });
 
