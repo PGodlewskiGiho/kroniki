@@ -584,25 +584,26 @@ function golem(L, P = {}) {
   const wind = A == null ? 0 : A < 0.45 ? A / 0.45 : A < 0.7 ? 1 - (A - 0.45) / 0.25 : 0, hit = A == null ? 0 : A < 0.45 ? 0 : A < 0.7 ? (A - 0.45) / 0.25 : 1 - (A - 0.7) / 0.3;
   let n = 1; const part = (w, h, d, pos, rot, c = col) => G === 'iron' || G === 'gold' ? rbox(w, h, d, 0.03, c, K, pos, rot) : chunk(w / 2, h / 2, d / 2, c, K, pos, rot, n++ + (G === 'diamond' ? 50 : 0), G === 'diamond' ? 9 : 16);
   const rivets = (g, x, y, z, k) => { if (G === 'iron' || G === 'gold') for (let i = 0; i < k; i++) g.add(sph(0.018, LT(col, 0.2), K, [x, y - i * 0.07, z], null, 8)); };
-  const hips = joint(root, [0, 0.72 + (walking ? Math.abs(sw) * 0.03 : Math.sin(t * 2) * 0.008), 0], -hurt * 0.2);
+  const lk = L.gLeg || 1, ak = L.gArm || 1, tk = L.gTorso || 1, hk = L.gHead || 1; // proporcje: krępy (złoty), wysoki o długich rękach (diamentowy)
+  const hips = joint(root, [0, 0.72 * lk + (walking ? Math.abs(sw) * 0.03 : Math.sin(t * 2) * 0.008), 0], -hurt * 0.2);
   hips.add(part(0.36, 0.2, 0.44, [0, 0.02, 0]));
   for (const side of [-1, 1]) {
-    const th = joint(hips, [0, -0.06, 0.15 * side], walking ? sw * side * 0.4 : 0); th.add(part(0.22, 0.34, 0.2, [0, -0.17, 0]));
+    const th = joint(hips, [0, -0.06, 0.15 * side * tk], walking ? sw * side * 0.4 : 0); th.scale.set(1, lk, 1); th.add(part(0.22, 0.34, 0.2, [0, -0.17, 0]));
     const kn = joint(th, [0, -0.34, 0], walking ? -Math.max(0, Math.cos(ph) * side) * 0.6 : 0); kn.add(part(0.2, 0.3, 0.19, [0.01, -0.14, 0])); kn.add(part(0.32, 0.1, 0.24, [0.06, -0.3, 0], null, dk)); rivets(kn, 0.1, -0.05, 0.1 * side, 2);
   }
-  const spine = joint(hips, [0, 0.08, 0], 0.15 + hit * 0.35 - wind * 0.15);
+  const spine = joint(hips, [0, 0.08, 0], 0.15 + hit * 0.35 - wind * 0.15); spine.scale.set(tk, 1, tk);
   spine.add(part(0.46, 0.5, 0.62, [0.02, 0.28, 0])); spine.add(part(0.3, 0.2, 0.7, [0, 0.55, 0])); // pierś i barki
   for (let i = 0; i < 3; i++) spine.add(box(0.01, 0.2 - i * 0.05, 0.015, glow, 'glow', [0.25, 0.3 + i * 0.03, -0.08 + i * 0.08], [0.4 * (i - 1), 0, 0.3 * (i - 1)])); // runy
   rivets(spine, 0.24, 0.48, 0.22, 4); rivets(spine, 0.24, 0.48, -0.22, 4);
   if (L.core) { spine.add(mesh(new THREE.OctahedronGeometry(0.09), L.core, 'glow', [0.25, 0.32, 0], [0, 0, 0], [0.6, 1.1, 1])); spine.add(torus(0.11, 0.022, LT(col, 0.25), K, [0.24, 0.32, 0], [0, Math.PI / 2, 0])); } // świecący rdzeń w piersi
   if (L.crystals) for (const z of [-1, 1]) for (let i = 0; i < 3; i++) spine.add(mesh(new THREE.OctahedronGeometry(0.12), L.crystals, 'gem', [-0.06 + i * 0.07, 0.8 + (i === 1 ? 0.08 : 0), 0.3 * z], [0.35 * z, i, (0.3 - i * 0.2) * z], [0.5, 2.8 - i * 0.5, 0.5])); // wysokie kryształy na barkach
   if (G === 'diamond') for (let i = 0; i < 5; i++) spine.add(mesh(new THREE.OctahedronGeometry(0.1), LT(col, 0.3), 'gem', [-0.1 + (i % 2) * 0.1, 0.55 + (i % 3) * 0.05, -0.2 + i * 0.1], [i, i * 2, 0], [0.6, 1.8, 0.6])); // kryształy na barkach
-  const head = headJoint(spine, [0.12, 0.62, 0], -0.2); head.add(part(0.2, 0.18, 0.2, [0.02, 0.06, 0]));
+  const head = headJoint(spine, [0.12, 0.62, 0], -0.2); head.scale.set(hk / tk, hk, hk / tk); head.add(part(0.2, 0.18, 0.2, [0.02, 0.06, 0]));
   if (L.horns) for (const z of [-1, 1]) head.add(tube([[0, 0.1, 0.08 * z], [-0.02, 0.2, 0.16 * z], [-0.1, 0.3, 0.2 * z], [-0.2, 0.32, 0.18 * z]], 0.04, 0.006, L.horns, K)); // rogi na hełmie (złoty golem)
   if (L.crystals) head.add(mesh(new THREE.OctahedronGeometry(0.08), L.crystals, 'gem', [-0.02, 0.24, 0], [0, 0.5, 0.2], [0.5, 1.9, 0.5])); // kryształowy grzebień
   head.add(box(0.03, 0.022, 0.13, '#0a0a0c', 'stone', [0.12, 0.08, 0])); for (const z of [-0.04, 0.04]) head.add(sph(0.02, glow, 'glow', [0.125, 0.08, z], [0.5, 0.7, 1.4]));
   for (const side of [1, -1]) {
-    const sh = joint(spine, [0.02, 0.5, 0.36 * side], 0.25 + wind * 2.6 - hit * 1.7 + (walking ? -sw * 0.3 * side : 0) + hurt * 0.5);
+    const sh = joint(spine, [0.02, 0.5, 0.36 * side], 0.25 + wind * 2.6 - hit * 1.7 + (walking ? -sw * 0.3 * side : 0) + hurt * 0.5); sh.scale.set(1 / tk, ak, 1 / tk);
     sh.add(part(0.3, 0.26, 0.3, [0, 0, 0.03 * side])); sh.add(part(0.2, 0.36, 0.2, [0, -0.24, 0]));
     const el = joint(sh, [0, -0.42, 0], 0.35 - hit * 0.3); el.add(part(0.26, 0.38, 0.26, [0.01, -0.18, 0])); el.add(part(0.28, 0.24, 0.26, [0.02, -0.44, 0], null, dk)); // ciężka pięść
     rivets(el, 0.13, -0.08, 0.1 * side, 3);
