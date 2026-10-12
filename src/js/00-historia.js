@@ -473,5 +473,9 @@
    łeb klinowy, krokodyli, byczy, z dziobem; rogi, ogon, grzbiet, kryza; Lazurowy z dwiema głowami).
    Bohaterowie: każdy z 56 ma własny model jeźdźca (HERO_RIDERS: nakrycie głowy, broń, tarcza, zarost lub włosy, koń; warianty
    klasy po kolei, więc dwóch takich samych nie ma) – osobne arkusze bitwy i mapy.
+   Wydajność mapy: sylwetki zasłoniętych obiektów sprawdzają tylko sąsiadów do 5 rzędów niżej (było: każdy z każdym – przy
+   oddaleniu setki obiektów; skrypt klatki 6,7 → 2,8 ms), piana przy brzegu to gotowa warstwa na kawałek (w klatce tylko pulsuje
+   przezroczystość), w spoczynku 30 klatek (niska jakość 20), w ruchu 60. Plik gry odchudzony (arkusze jednostek webp 78%),
+   muzyka i dżingle w 160 kbps.
    ===================================================================================== */
 

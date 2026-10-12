@@ -380,11 +380,10 @@ const WaterFx = {
   },
   draw(b, ch, dx, dy, size, wx, wy) {
     if (!ch._deep || G.settings.quality === 'low' || ZOOM < 1) return; if (b.isGL) return GLMap.water(b, ch, dx, dy, size, wx, wy); const S = Math.round(ch.width / MapRender.D), t = G.time; // karta graficzna: shader wody (GLMap.water). Fale liczone w dawnych (grubych) pikselach: 4 razy mniej pracy. Fale na wodzie: nie przy niskiej jakości ani po oddaleniu (za drobne, a kosztowne)
-    const tmp = this.tmp || (this.tmp = document.createElement('canvas')); if (tmp.width !== S) { tmp.width = tmp.height = S; }
-    const g = tmp.getContext('2d'); // bez pikselowego wzoru fal (na teksturze wody wyglądał jak siatka kropek); zostaje piana przy brzegu
-    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, S, S); g.fillStyle = this.foam || (this.foam = `rgb(${gradeRgb(hexRgb('#eef8fc')).map(Math.round).join(',')})`); g.globalAlpha = 0.22 + 0.2 * Math.sin(t * 2.2); g.fillRect(0, 0, S, S); g.globalAlpha = 1;
-    g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0, S, S); g.globalCompositeOperation = 'source-over';
-    b.drawImage(tmp, dx, dy, size, size);
+    let fm = ch._foam; // piana przy brzegu: gotowa warstwa na kawałek (raz), w klatce tylko pulsuje jej przezroczystość
+    if (!fm || fm.width !== S) { fm = ch._foam = document.createElement('canvas'); fm.width = fm.height = S; const g = fm.getContext('2d');
+      g.fillStyle = this.foam || (this.foam = `rgb(${gradeRgb(hexRgb('#eef8fc')).map(Math.round).join(',')})`); g.fillRect(0, 0, S, S); g.globalCompositeOperation = 'destination-in'; g.drawImage(ch._shore, 0, 0, S, S); }
+    const a0 = b.globalAlpha; b.globalAlpha = a0 * (0.22 + 0.2 * Math.sin(t * 2.2)); b.drawImage(fm, dx, dy, size, size); b.globalAlpha = a0;
   },
 };
 // Minimapa: 1 piksel na pole, kolory bazowe z palety terenu po korekcji barw mapy
@@ -663,7 +662,7 @@ function drawWorldPixel(b, st) {
     const mt = G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, { x: VIEW.x, y: VIEW.y, w: VIEW.w * ZOOM, h: VIEW.h * ZOOM }) ? screenToTile(st, G.mouse.x, G.mouse.y) : null; let top = null;
     recs.forEach((r, i) => {
       const it = r.it, key = it.hero || it.caravan || (it.ob && ['monster', 'art', 'res', 'chest', 'boat'].includes(it.ob.type)); if (!key || !r.sp.length) return;
-      const main = r.sp[r.sp.length - 1], R0 = rect(main), occ = []; for (let j = i + 1; j < recs.length; j++) for (const q of recs[j].sp) if (hit(R0, rect(q))) occ.push(q); if (!occ.length) return;
+      const main = r.sp[r.sp.length - 1], R0 = rect(main), occ = []; for (let j = i + 1; j < recs.length && recs[j].it.y - it.y <= 5; j++) for (const q of recs[j].sp) if (hit(R0, rect(q))) occ.push(q); if (!occ.length) return; // lista posortowana wg y: zasłonić mogą tylko obiekty do ~5 rzędów niżej (najwyższe budowle), dalszych nie sprawdzamy (przy oddaleniu setki obiektów)
       const tx = it.hero ? Math.round(it.hx) : it.caravan ? Math.round(it.cx) : it.ob.x, ty = it.hero ? Math.round(it.hy) : it.caravan ? Math.round(it.cy) : it.ob.y;
       if (mt && mt.tx === tx && mt.ty === ty) { top = r; return; }
       const T0 = b.getTransform(), k = T0.a, W0 = Math.ceil(R0[2] * k) + 2, H0 = Math.ceil(R0[3] * k) + 2;

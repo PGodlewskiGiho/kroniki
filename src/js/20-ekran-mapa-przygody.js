@@ -284,13 +284,13 @@ function drawCompactInfo(ctx, st, scr) {
   lines.forEach((l, i) => text(ctx, l, VIEW.x + VIEW.w / 2, y + 17 + i * 20, { size: 16, weight: 600, align: 'center', color: info.col }));
 }
 G.screens.adventure = {
-  // Płynnie (60 klatek): gdy coś się rusza, zawsze; w spoczynku (woda, stwory) przy niskiej jakości grafiki 30
+  // Płynnie (60 klatek), gdy coś się rusza (kamera, bohater, napisy); w spoczynku 30 (przy niskiej jakości grafiki 20)
   fps() {
     const st = G.state; if (!st || !st.map || !st.cam) return 4;
     const cam = st.cam.x + ',' + st.cam.y, moved = cam !== this._cam; this._cam = cam;
     const busy = moved || this.aiRun || this.drag || G.keys.size || (this.floats && this.floats.length) || (this.mapFx && this.mapFx.length)
       || (this.banner && G.time - this.banner.t < 3) || (this.flashMsg && G.time - this.flashMsg.t < 3) || st.heroes.some(h => h.anim || h.moving);
-    return busy ? 60 : smoothFps(); // w spoczynku fale i stwory też płynnie (przy niskiej jakości 30)
+    return busy ? 60 : G.settings.quality === 'low' ? 20 : 30; // w ruchu 60; w spoczynku fale, stwory i pogoda zmieniają się wolno: 30 klatek (niska jakość 20) wystarcza, a słaby komputer ma o połowę mniej pracy
   },
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
