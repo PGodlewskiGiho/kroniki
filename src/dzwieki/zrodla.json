@@ -185,20 +185,6 @@
    "license": "CC0-1.0"
   }
  ],
- "growl": [
-  {
-   "freesound": 449820,
-   "title": "Monster Growl.",
-   "user": "DylanTheFish",
-   "license": "CC0-1.0"
-  },
-  {
-   "freesound": 442815,
-   "title": "Goblin Snarl.",
-   "user": "qubodup",
-   "license": "CC0-1.0"
-  }
- ],
  "swing": [
   {
    "freesound": 327963,
@@ -797,12 +783,6 @@
    "title": "Zombie Groan.",
    "user": "ChuckChuckGoof",
    "license": "CC0-1.0"
-  },
-  {
-   "freesound": 463721,
-   "title": "Burp Monster Zombie groan moan.",
-   "user": "EricsSoundschmiede",
-   "license": "CC0-1.0"
   }
  ],
  "v_ghost": [
@@ -844,20 +824,6 @@
    "freesound": 90143,
    "title": "steam burst.",
    "user": "pengo_au",
-   "license": "CC0-1.0"
-  }
- ],
- "v_demon": [
-  {
-   "freesound": 444445,
-   "title": "Demon Growl for Halloween Spooky Creepy Scary Monster Ghoul Ghost Sounds.",
-   "user": "Voices_Of_Marz",
-   "license": "CC0-1.0"
-  },
-  {
-   "freesound": 221688,
-   "title": "growling zombie.",
-   "user": "nigelnix",
    "license": "CC0-1.0"
   }
  ],
@@ -916,12 +882,6 @@
    "freesound": 398430,
    "title": "Wolf howl.",
    "user": "NaturesTemper",
-   "license": "CC0-1.0"
-  },
-  {
-   "freesound": 514578,
-   "title": "Scary: Werewolf - Voice Sound Effect.",
-   "user": "NicknameLarry",
    "license": "CC0-1.0"
   }
  ],
