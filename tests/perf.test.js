@@ -16,12 +16,12 @@ const renders = (ms) => page.evaluate(ms => new Promise(res => {
 // Kursor poza oknem gry: nowszy Chromium bez okna zgłasza mysz w rogu (0,0), a to na mapie przewija ją krawędzią (i słusznie rysuje 60 klatek)
 const noMouse = () => page.evaluate(() => { const m = G.mouse; m.x = m.y = m.vx = m.vy = -1; });
 
-test('nieruchomy ekran bohatera rysuje się rzadko, ruch myszy wymusza klatkę', async () => {
+test('ekran bohatera 60 klatek także bez ruchu; zmiana wymusza klatkę od razu', async () => {
   await newGame(page);
   await page.evaluate(() => setScreen('hero', {}));
   await noMouse(); await frames(page, 5);
   const idle = await renders(1000);
-  assert.ok(idle <= 8, `bez ruchu: ${idle} klatek na sekundę`);
+  assert.ok(idle >= 40, `bez ruchu: ${idle} klatek na sekundę`);
   const moved = await page.evaluate(() => new Promise(res => {
     let n = 0; const orig = window.render; window.render = () => { n++; orig(); };
     let k = 0; const iv = setInterval(() => { G.dirty = true; if (++k >= 20) { clearInterval(iv); setTimeout(() => { window.render = orig; res(n); }, 50); } }, 16);
@@ -67,13 +67,13 @@ test('mgła w kawałkach: odkrycie pola odświeża tylko potrzebny kawałek', as
   assert.deepEqual(r, { again: true, changed: true, clear: true });
 });
 
-test('miasto i menu płynnie (60 klatek), przy niskiej jakości połowa; efekty miasta w pełnej rozdzielczości', async () => {
+test('miasto i menu płynnie (60 klatek), także przy niskiej jakości; efekty miasta w pełnej rozdzielczości', async () => {
   await newGame(page);
   await page.evaluate(() => { setScreen('town', { townId: G.state.towns.find(t => t.owner === ME).id }); G.modal = null; });
   await noMouse(); await frames(page, 5);
   const town = await renders(1000);
   const r = await page.evaluate(() => { const q = G.settings.quality; G.settings.quality = 'low'; const low = screenFps(); G.settings.quality = q; return { low, fb: !!G.screens.town.fb }; });
-  assert.ok(town >= 40, `miasto: ${town}`); assert.equal(r.low, 30); assert.equal(r.fb, false, 'bez okna efekty idą prosto na ekran');
+  assert.ok(town >= 40, `miasto: ${town}`); assert.equal(r.low, 60); assert.equal(r.fb, false, 'bez okna efekty idą prosto na ekran');
 });
 
 test('teren mapy maluje się w tle aż po całą mapę; przewijanie nie maluje go w klatce; obniżona jakość wraca', async () => {

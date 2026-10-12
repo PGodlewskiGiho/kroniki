@@ -482,5 +482,8 @@
    obiekty ~7 razy na sekundę), a idący bohaterowie rysują się co klatkę osobno (drawMovers: bez tego, co stoi przed nimi,
    z ciemną sylwetką za drzewem). Karta graficzna trzyma warstwy u siebie (GLMap.target: tekstura z buforem ramki).
    Chód bohatera procesorem: klatka 35 → 22 ms, w podziemiach 27 → 16 ms; przewijanie 28 → 14 ms.
+   Wszędzie 60 klatek: bez ograniczenia mapy w spoczynku do 30 (20) i bez połowy klatek przy niskiej jakości (niska jakość
+   obniża tylko rozdzielczość); ekrany bez animacji też 60. Tło interfejsu pod oknem mapy już się nie rysuje (zakrywa je mapa),
+   a zmiana jakości grafiki od razu rysuje nową klatkę (bez pustej klatki po zmianie rozmiaru płótna).
    ===================================================================================== */
 

@@ -77,6 +77,16 @@ function drawLayer(ctx, c, x, y) {
   if (m.b || m.c || Math.abs(m.a - c._s) > 1e-6 || Math.abs(m.d - c._s) > 1e-6) { ctx.drawImage(c, x, y, c.width / c._s, c.height / c._s); return; }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(c, Math.round(m.a * x + m.e), Math.round(m.d * y + m.f)); ctx.restore(); // w całych pikselach
 }
+// Warstwa bez prostokątnej dziury (hole: x, y, w, h w jednostkach ctx): cztery pasy wokół niej. Pod oknem mapy tło i tak zakryje
+// mapa, a każde przejście przez wszystkie piksele ekranu kosztuje (na słabym komputerze bez karty graficznej najwięcej w klatce)
+function drawLayerAround(ctx, c, hole) {
+  const m = ctx.getTransform(); if (m.b || m.c || Math.abs(m.a - c._s) > 1e-6 || Math.abs(m.d - c._s) > 1e-6) { drawLayer(ctx, c, 0, 0); return; }
+  const X = v => Math.round(m.a * v + m.e), Y = v => Math.round(m.d * v + m.f), x0 = X(0), y0 = Y(0), hx0 = X(hole.x) + 2 - x0, hy0 = Y(hole.y) + 2 - y0, hx1 = X(hole.x + hole.w) - 2 - x0, hy1 = Y(hole.y + hole.h) - 2 - y0, W = c.width, H = c.height;
+  if (hx1 <= hx0 || hy1 <= hy0) { drawLayer(ctx, c, 0, 0); return; }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  for (const [sx, sy, sw, sh] of [[0, 0, W, hy0], [0, hy1, W, H - hy1], [0, hy0, hx0, hy1 - hy0], [hx1, hy0, W - hx1, hy1 - hy0]]) if (sw > 0 && sh > 0) ctx.drawImage(c, sx, sy, sw, sh, x0 + sx, y0 + sy, sw, sh);
+  ctx.restore();
+}
 let _noiseCanvas = null;
  
 const _patterns = new WeakMap();

@@ -869,11 +869,12 @@ function drawMapView(ctx, st, scr) {
       const tl = L[tN];
       if (!fits(tl) || tl._mk !== mk || !(G.time - tl._t < 1 / 7) || tl._hv !== hv) { const o = { mt, pt, skip: new Set(movers), recs: [], light: !M }, c = pass(tN, 'top', o); c._mk = mk; c._t = G.time; c._hv = hv; c._recs = o.recs; c._lit = !M; }
       const gl0 = L[gN], tl0 = L[tN];
-      b = begin(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(gl0, Math.round((gl0._cx - cx) * sc), Math.round((gl0._cy - cy) * sc)); world(b); drawWorldPixel(b, st, 'water');
-      b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(tl0, Math.round((tl0._cx - cx) * sc), Math.round((tl0._cy - cy) * sc)); world(b); // całe piksele: bez rozmycia przy przesunięciu
+      b = begin(); const id = () => b.setTransform(1, 0, 0, 1, 0, 0), wd = () => world(b);
+      id(); b.drawImage(gl0, Math.round((gl0._cx - cx) * sc), Math.round((gl0._cy - cy) * sc)); wd(); drawWorldPixel(b, st, 'water');
+      id(); b.drawImage(tl0, Math.round((tl0._cx - cx) * sc), Math.round((tl0._cy - cy) * sc)); wd(); // całe piksele: bez rozmycia przy przesunięciu
       if (movers.length) drawMovers(b, st, movers, tl0, mt);
       Weather.draw(b, st, wox, woy);
-      if (!tl0._lit) { b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore(); } // w ruchu nakładka światła osobno (stała na ekranie, warstwy się przesuwają)
+      if (!tl0._lit) { id(); b.drawImage(mapLight(bw, bh), 0, 0); } // w ruchu nakładka światła osobno (stała na ekranie, warstwy się przesuwają)
     }
     const wb = gpu ? GLMap.end() : b.canvas;
     if (gpu) { ctx.clearRect(VIEW.x, VIEW.y, RW, RH); GLMap.place(ctx, VIEW.x, VIEW.y, RW, RH); } else { ctx.save(); ctx.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; ctx.drawImage(wb, VIEW.x, VIEW.y, RW, RH); ctx.restore(); } // karta graficzna: okno mapy w płótnie gry przezroczyste, pod nim płótno WebGL (bez kopiowania obrazu) // oddalenie: pomniejszenie z wygładzaniem
