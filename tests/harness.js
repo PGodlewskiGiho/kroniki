@@ -17,9 +17,9 @@ async function openGame() {
   page.on('console', m => { if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push(`console: ${m.text()}`); });
   await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   page.on('requestfailed', r => { if (!/fonts\.(googleapis|gstatic)\.com/.test(r.url())) errors.push(`requestfailed: ${r.url()}`); });
-  await page.goto(GAME_URL);
-  await page.waitForFunction(() => typeof G !== 'undefined' && G.screen);
-  await page.waitForFunction(() => unitArtReady()); // wbudowane arkusze jednostek (obrazki dekodują się asynchronicznie)
+  await page.goto(GAME_URL, { timeout: 120000 }); // plik gry ok. 96 MB: lokalnie ~10 s, na CI bywa ponad domyślne 30 s
+  await page.waitForFunction(() => typeof G !== 'undefined' && G.screen, null, { timeout: 120000 });
+  await page.waitForFunction(() => unitArtReady(), null, { timeout: 120000 }); // wbudowane arkusze jednostek i 56 bohaterów (dekodują się asynchronicznie; na wolnym CI dłużej niż 30 s)
   return { browser, page, errors };
 }
 

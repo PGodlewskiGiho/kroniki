@@ -24,7 +24,7 @@ test('bohaterowie wyglądają różnie: każdy inny model jeźdźca, także dwaj
 
 test('kierunek z kroku: 8 stron, zachodnie odbite, w górę i w dół osobne widoki; po zatrzymaniu zostaje', async () => {
   await newGame(page, { mapSize: 'S' }, 5);
-  await page.waitForFunction(() => Object.values(HERO_MAP_IMG).every(im => im._ok), null, { timeout: 30000 });
+  await page.waitForFunction(() => Object.values(HERO_MAP_IMG).every(im => im._ok), null, { timeout: 120000 }); // 56 arkuszy bohaterów
   const r = await page.evaluate(() => {
     const h = hero(G.state), col = '#c03030', out = {}, sig = s => { const g = s.c.getContext('2d'), d = g.getImageData(0, 0, s.c.width, s.c.height).data; let a = 0, b = 0; for (let i = 0; i < d.length; i += 4) { a += d[i + 3]; b += (i / 4 % s.c.width) * d[i + 3]; } return [s.c.width, s.c.height, Math.round(b / a)].join('x'); };
     for (const [dx, dy] of [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]) { h.anim = { fx: h.x - dx, fy: h.y - dy, t: 0 }; const f = heroFacing(h), s = heroMap3d(h, col); out[HERO_FACE[f]] = { s: sig(s), ax: s.ax, w: s.c.width }; }
