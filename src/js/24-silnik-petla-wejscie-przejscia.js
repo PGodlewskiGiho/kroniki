@@ -183,12 +183,10 @@ function drawBackdrop(ctx) {
     goldFrame(c, OX, OY, W, H);
   }), 0, 0);
 }
-// Klatkę rysujemy tylko wtedy, gdy trzeba: ekran podaje, ilu klatek na sekundę potrzebuje (screen.fps: liczba albo funkcja,
-// domyślnie 4 dla ekranów bez animacji), a wejście (mysz, klawisze) i każda zmiana okna, dymka czy podświetlenia wymusza klatkę od razu.
-// Na słabym komputerze to połowa sukcesu: nieruchomy ekran prawie nie zużywa procesora.
-// Ekrany z ciągłą animacją: pełna płynność, przy niskiej jakości grafiki połowa klatek (słaby komputer)
-function smoothFps(n = 60) { return G.settings.quality === 'low' ? n / 2 : n; }
-function screenFps() { const f = G.screen && G.screen.fps; return typeof f === 'function' ? f.call(G.screen) : (f || 4); }
+// Ekran podaje, ilu klatek na sekundę potrzebuje (screen.fps: liczba albo funkcja, domyślnie 60), a wejście (mysz, klawisze)
+// i każda zmiana okna, dymka czy podświetlenia wymusza klatkę od razu. Wszędzie 60 klatek: niska jakość obniża rozdzielczość, nie płynność.
+function smoothFps(n = 60) { return n; } // zawsze płynnie (niska jakość obniża tylko rozdzielczość)
+function screenFps() { const f = G.screen && G.screen.fps; return typeof f === 'function' ? f.call(G.screen) : (f || 60); } // każdy ekran 60 klatek
 function frame(ts) {
   const t = ts / 1000, raw = G.last ? t - G.last : 0, dt = Math.min(0.05, Math.max(0, raw)); G.last = t;
   try {
@@ -221,9 +219,9 @@ const Perf = {
     this.late.push(gap - 1 / fps); this.work.push(work); if (this.late.length < 60) return;
     const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1], late = med(this.late) > 0.012, busy = med(this.work) > 0.012, easy = med(this.late) < 0.003 && med(this.work) < 0.006; this.late = []; this.work = [];
     this.strikes = late ? this.strikes + 1 : 0; this.good = easy ? this.good + 1 : 0;
-    if (late && (busy || this.strikes >= 2) && G.dpr > 0.5) { G.settings.autoDpr = G.dpr > 1 ? 1 : G.dpr > 0.75 ? 0.75 : 0.5; this.strikes = 0; this.good = 0; saveSettings(); resize(); }
+    if (late && (busy || this.strikes >= 2) && G.dpr > 0.5) { G.settings.autoDpr = G.dpr > 1 ? 1 : G.dpr > 0.75 ? 0.75 : 0.5; this.strikes = 0; this.good = 0; saveSettings(); resize(); render(); } // od razu nowa klatka: zmiana rozmiaru płótna je czyści
     // i z powrotem: po ~10 s płynnej gry z zapasem jakość rośnie o stopień (obniżka nie zostaje na zawsze)
-    else if (this.good >= 10 && G.settings.autoDpr) { const up = { 0.5: 0.75, 0.75: 1, 1: 2 }[G.settings.autoDpr]; if (up && up <= 1) G.settings.autoDpr = up; else delete G.settings.autoDpr; this.good = 0; saveSettings(); resize(); }
+    else if (this.good >= 10 && G.settings.autoDpr) { const up = { 0.5: 0.75, 0.75: 1, 1: 2 }[G.settings.autoDpr]; if (up && up <= 1) G.settings.autoDpr = up; else delete G.settings.autoDpr; this.good = 0; saveSettings(); resize(); render(); }
   },
 };
 // Licznik wydajności (klawisz F): klatki na sekundę, czas rysowania w skrypcie, rozmiar płótna i karta graficzna według przeglądarki

@@ -284,14 +284,14 @@ function drawCompactInfo(ctx, st, scr) {
   lines.forEach((l, i) => text(ctx, l, VIEW.x + VIEW.w / 2, y + 17 + i * 20, { size: 16, weight: 600, align: 'center', color: info.col }));
 }
 G.screens.adventure = {
-  // Płynnie (60 klatek), gdy coś się rusza (kamera, bohater, napisy); w spoczynku 30 (przy niskiej jakości grafiki 20)
+  // Zawsze 60 klatek; _busy: coś się rusza (kamera, bohater, napisy) – drawMapView wybiera warstwy z zapasem albo w widoku
   fps() {
     const st = G.state; if (!st || !st.map || !st.cam) return 4;
     const cam = st.cam.x + ',' + st.cam.y, moved = cam !== this._cam; this._cam = cam;
     const busy = moved || this.aiRun || this.drag || G.keys.size || (this.floats && this.floats.length) || (this.mapFx && this.mapFx.length)
       || (this.banner && G.time - this.banner.t < 3) || (this.flashMsg && G.time - this.flashMsg.t < 3) || st.heroes.some(h => h.anim || h.moving);
     this._busy = !!busy; // drawMapView: w spoczynku warstwy (teren i obiekty zapamiętane, co klatkę tylko fale i pogoda)
-    return busy ? 60 : G.settings.quality === 'low' ? 20 : 30; // w ruchu 60; w spoczynku fale, stwory i pogoda zmieniają się wolno: 30 klatek (niska jakość 20) wystarcza, a słaby komputer ma o połowę mniej pracy
+    return 60; // zawsze płynnie; w spoczynku klatka i tak tania (warstwy)
   },
   buttons: [], drag: null, banner: null, flashMsg: null, floats: [],
   // Ekran tylko pokazuje stan: świat tworzy createNewGame(), tutaj przygotowujemy widok.
@@ -649,7 +649,7 @@ G.screens.adventure = {
   draw(ctx) {
     const st = G.state; if (!st || !st.map) return;
     this.layout();
-    drawLayer(ctx, Layers.get(`advChrome_${VW}x${VH}_${uiArtReady() ? 1 : 0}`, VW, VH, paintAdvChrome), 0, 0);
+    drawLayerAround(ctx, Layers.get(`advChrome_${VW}x${VH}_${uiArtReady() ? 1 : 0}`, VW, VH, paintAdvChrome), VIEW); // pod oknem mapy tła nie rysujemy (zakryje je mapa)
     drawMapView(ctx, st, this); drawPanel(ctx, st, this); drawTapInfo(ctx, st, this);
     if (this.watching && st.players[st.cur]) { // online: czyja tura (oglądamy)
       const lost = Net.role === 'guest' && !Net.host, away = Net.role === 'host' && st.players[st.cur].human && !Net.guestOn(st.cur);
