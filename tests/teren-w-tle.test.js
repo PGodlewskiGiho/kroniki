@@ -39,6 +39,27 @@ test('przeskoki kamery po mapie: wątek gry nie liczy pikseli terenu, widok uzup
   assert.equal(main, 0, 'pikseli terenu nie liczy wątek gry');
 });
 
+test('duża mapa przy przybliżeniu nie generuje terenu bez końca', async () => {
+  await newGame(page, { mapSize: 'L' });
+  try {
+    await page.evaluate(() => { G.mouse.x = G.mouse.y = G.mouse.vx = G.mouse.vy = -1; G.modal = null; setZoom(G.state, 1.5); });
+    const settled = () => page.waitForFunction(() => MapRender.warmed && TerrainPool.jobs.size === 0, null, { timeout: 60000 });
+    await settled(); await viewReady();
+    const first = await page.evaluate(() => ({ done: TerrainPool.stats.done, cached: MapRender.cache.size, capacity: MapRender.capacity(), total: Math.ceil(G.state.map.n / CHUNK) ** 2 }));
+    assert.ok(first.total > first.capacity, 'mapa większa od gęstego cache');
+    assert.ok(first.cached <= first.capacity, 'limit pamięci zachowany');
+    await page.waitForTimeout(600);
+    assert.equal(await page.evaluate(() => TerrainPool.stats.done), first.done, 'nieruchomy widok nie generuje kolejnych fragmentów');
+    await page.evaluate(() => { const st = G.state; centerCam(st, st.map.n * 0.85, st.map.n * 0.85); G.dirty = true; });
+    await frames(page, 3); await settled(); await viewReady();
+    const done = await page.evaluate(() => TerrainPool.stats.done);
+    await page.waitForTimeout(600);
+    assert.equal(await page.evaluate(() => TerrainPool.stats.done), done, 'nowy widok także kończy pracę tła');
+  } finally {
+    await page.evaluate(() => setZoom(G.state, 1));
+  }
+});
+
 test('wątki w tle zawiodły: teren dalej maluje się w wątku gry, bez błędów', async () => {
   await page.evaluate(() => { TerrainPool.fail(); MapRender.reset(G.state.map, human(G.state).explored); }); await frames(page, 3); await viewReady();
   const r = await page.evaluate(() => ({ ok: TerrainPool.ok, on: TerrainPool.on(), chunks: MapRender.cache.size }));
