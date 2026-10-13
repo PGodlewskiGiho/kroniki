@@ -16,6 +16,51 @@ const renders = (ms) => page.evaluate(ms => new Promise(res => {
 // Kursor poza oknem gry: nowszy Chromium bez okna zgłasza mysz w rogu (0,0), a to na mapie przewija ją krawędzią (i słusznie rysuje 60 klatek)
 const noMouse = () => page.evaluate(() => { const m = G.mouse; m.x = m.y = m.vx = m.vy = -1; });
 
+test('teren bez workerów oddaje sterowanie po wyczerpaniu budżetu', async () => {
+  const r = await page.evaluate(() => {
+    const state = G.state, idle = window.requestIdleCallback, now = performance.now, steps = window.renderChunkSteps, on = TerrainPool.on;
+    const callbacks = []; let clock = 0, completed = 0;
+    try {
+      window.requestIdleCallback = callback => { callbacks.push(callback); return callbacks.length; };
+      performance.now = () => clock;
+      TerrainPool.on = () => false;
+      window.renderChunkSteps = function* () { clock += 7; return {}; };
+      const map = { n: CHUNK * 3 }, st = { map, cam: { x: 0, y: 0 }, players: [], heroes: [], towns: [] };
+      G.state = st;
+      const renderer = Object.assign({}, MapRender, { map, cache: new Map(), warming: false, warmed: false, sprIt: false, job: null,
+        store(key, canvas) { completed++; this.cache.set(key, canvas); return canvas; } });
+      renderer.warm(st);
+      callbacks.shift()({ timeRemaining: () => 50 });
+      return { completed, queued: callbacks.length, clock };
+    } finally {
+      G.state = state; window.requestIdleCallback = idle; performance.now = now; window.renderChunkSteps = steps; TerrainPool.on = on;
+    }
+  });
+  assert.equal(r.completed, 1, `jedna porcja pracy, nie ${r.completed} fragmentów (${r.clock} ms)`);
+  assert.equal(r.queued, 1, 'pozostała praca zaplanowana na następną wolną chwilę');
+});
+
+test('grafiki mapy oddają sterowanie między pojedynczymi obrazkami', async () => {
+  const r = await page.evaluate(() => {
+    const creature = window.creatureSprite, obstacle = window.obstacleSprite, object = window.map3dSprite, grade = window.gradedSprite;
+    let count = 0;
+    try {
+      const sprite = () => ({ c: {} });
+      window.creatureSprite = window.obstacleSprite = window.map3dSprite = sprite;
+      window.gradedSprite = () => { count++; };
+      const n = 4, map = { n, seed: 1, obst: new Uint8Array(n * n).fill(1), terrain: new Uint8Array(n * n) };
+      const st = { map, towns: [], objects: [{ type: 'monster', cid: 'test', dir: 0, x: 0, y: 0 }, { type: 'chest', x: 1, y: 1 }] };
+      const jobs = mapSpriteJobs(st), batches = []; let result;
+      do { const before = count; result = jobs.next(); batches.push(count - before); } while (!result.done);
+      return { batches, count };
+    } finally {
+      window.creatureSprite = creature; window.obstacleSprite = obstacle; window.map3dSprite = object; window.gradedSprite = grade;
+    }
+  });
+  assert.equal(r.count, 11, 'wszystkie klatki potwora, obiekt i sześć przeszkód');
+  assert.ok(r.batches.every(count => count <= 1), `obrazki na porcję: ${r.batches.join(', ')}`);
+});
+
 test('ekran bohatera 60 klatek także bez ruchu; zmiana wymusza klatkę od razu', async () => {
   await newGame(page);
   await page.evaluate(() => setScreen('hero', {}));

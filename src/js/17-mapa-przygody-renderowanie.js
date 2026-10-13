@@ -439,7 +439,7 @@ const MapRender = {
       // kolejność: od widoku, ale też od twoich bohaterów i miast (przeskok do innego bohatera trafia na gotowy teren)
       const pts = [[mx, my, 0]]; try { const me = G.state.players[ME]; for (const h of G.state.heroes) if (h && h.owner === ME && h.x != null) pts.push([(h.x + 0.5) / CHUNK, (h.y + 0.5) / CHUNK, 0.6]); for (const t of G.state.towns) if (t.owner === ME) pts.push([(t.x + 0.5) / CHUNK, (t.y + 0.5) / CHUNK, 1.2]); void me; } catch (e) { /* stan bez graczy (podgląd) */ }
       for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!this.has(cx, cy) && !voidChunk(this.map, cx, cy)) todo.push([cx, cy, Math.min(...pts.map(([px, py, w]) => Math.hypot(cx + 0.5 - px, cy + 0.5 - py) + w))]);
-      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(6, dl.timeRemaining() - 2) : 6);
+      const end = performance.now() + (dl && dl.timeRemaining ? Math.min(6, Math.max(0, dl.timeRemaining() - 2)) : 6);
       // obrazki obiektów mapy (od najbliższych): pierwsze narysowanie każdego kosztuje, np. przy oddaleniu – część każdej wolnej chwili
       if (this.sprIt !== false) { if (!this.sprIt) this.sprIt = mapSpriteJobs(G.state, mx * CHUNK, my * CHUNK); const e2 = todo.length ? performance.now() + Math.max(3, (end - performance.now()) * 0.4) : end; let r; do r = this.sprIt.next(); while (!r.done && performance.now() < e2); if (r.done) this.sprIt = false; }
       if (!todo.length) { if (this.sprIt === false) { this.warmed = true; return; } this.warm(G.state); return; }
@@ -452,7 +452,8 @@ const MapRender = {
       for (const [cx, cy, d] of todo) {
         const key = cx + ',' + cy; if (!this.job || this.job.key !== key || this.job.map !== this.map) this.job = { key, map: this.map, it: renderChunkSteps(this.map, cx, cy) };
         let r; do r = this.job.it.next(); while (!r.done && performance.now() < end);
-        if (!r.done) break; this.job = null; this.store(key, r.value); if (d < vis && G.screenName === 'adventure') G.dirty = true; // inny ekran: nie wymuszamy klatek if (performance.now() >= end) break;
+        if (!r.done) break; this.job = null; this.store(key, r.value); if (d < vis && G.screenName === 'adventure') G.dirty = true;
+        if (performance.now() >= end) break;
       }
       this.warm(G.state);
     });
@@ -763,7 +764,7 @@ function gradeCanvas(c, ox = 0, oy = 0, step = 18) {
 function* mapSpriteJobs(st, cx = 0, cy = 0) {
   const map = st.map, n = map.n, SN = MapRender.season || 0, g = s => { if (s && s.c) gradedSprite(s); };
   for (const ob of st.objects.slice().sort((a, c) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(c.x - cx, c.y - cy))) { if (ob.dead) continue; let k = null;
-    if (ob.type === 'monster') { for (let i = 0; i < 4; i++) g(creatureSprite(ob.cid, ob.dir, i)); yield; continue; }
+    if (ob.type === 'monster') { for (let i = 0; i < 4; i++) { g(creatureSprite(ob.cid, ob.dir, i)); yield; } continue; }
     if (ob.type === 'town') { const t = st.towns[ob.townId]; k = `town_${t.faction}_${townLevel(t)}`; }
     else if (ob.type === 'bank') k = `bank_${ob.kind}_${ob.cleared ? 1 : 0}`;
     else if (ob.type === 'res' || ob.type === 'mine' || ob.type === 'site' || ob.type === 'art') k = ob.type + '_' + (ob.res || ob.kind || ob.art);
@@ -771,7 +772,7 @@ function* mapSpriteJobs(st, cx = 0, cy = 0) {
     else if (ob.type === 'outpost') k = 'site_outpost@' + ownerColor(st, ob.owner);
     if (k) { g(map3dSprite(k)); yield; }
     for (let dy = 1; dy <= 2; dy++) for (let dx = -1; dx <= 1; dx++) { const x = ob.x + dx, y = ob.y + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; if (!map.obst[i]) continue;
-      g(obstacleSprite(map.obst[i], map.terrain[i], thash(x, y, map.seed + 2) % (map.obst[i] === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y))); }
+      g(obstacleSprite(map.obst[i], map.terrain[i], thash(x, y, map.seed + 2) % (map.obst[i] === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y))); yield; }
     yield;
   }
 }
