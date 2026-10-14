@@ -605,8 +605,16 @@ function golem(L, P = {}) {
   for (const side of [1, -1]) {
     const sh = joint(spine, [0.02, 0.5, 0.36 * side], 0.25 + wind * 2.6 - hit * 1.7 + (walking ? -sw * 0.3 * side : 0) + hurt * 0.5); sh.scale.set(1 / tk, ak, 1 / tk);
     sh.add(part(0.3, 0.26, 0.3, [0, 0, 0.03 * side])); sh.add(part(0.2, 0.36, 0.2, [0, -0.24, 0]));
+    if (L.stoneArmor) sh.add(rbox(0.4, 0.2, 0.4, 0.04, L.stoneArmor, 'stone', [0, 0.08, 0.04 * side]));
     const el = joint(sh, [0, -0.42, 0], 0.35 - hit * 0.3); el.add(part(0.26, 0.38, 0.26, [0.01, -0.18, 0])); el.add(part(0.28, 0.24, 0.26, [0.02, -0.44, 0], null, dk)); // ciężka pięść
     rivets(el, 0.13, -0.08, 0.1 * side, 3);
+    if (L.weapon === 'hammer' && side === 1) {
+      const hammer = joint(el, [0.08, -0.44, 0.04], -0.15);
+      hammer.add(cyl(0.035, 0.035, 0.9, dk, K, [0, 0.15, 0]));
+      hammer.add(rbox(0.5, 0.22, 0.26, 0.035, L.stoneArmor || col, 'stone', [0, 0.61, 0]));
+      hammer.add(box(0.075, 0.25, 0.29, col, K, [0, 0.61, 0]));
+      hammer.add(box(0.012, 0.1, 0.12, glow, 'glow', [0.257, 0.61, 0]));
+    }
     if (L.crystals) for (let i = 0; i < 2; i++) el.add(mesh(new THREE.OctahedronGeometry(0.07), L.crystals, 'gem', [-0.12, -0.12 - i * 0.14, 0.04 * side], [0, 0, 1.2], [0.5, 1.8, 0.5])); // kryształy na przedramionach
   }
   if (L.size) root.scale.setScalar(L.size);

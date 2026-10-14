@@ -39,7 +39,7 @@ const CREATURES = {
 };
 // Potwory na mapie: własne stwory neutralne i podstawowe (nieulepszone) jednostki wszystkich frakcji; uzupełnia je
 // fillNeutrals() po wczytaniu wszystkich frakcji (poziomy 6 i 7 to wyłącznie jednostki frakcji).
-const NEUTRALS_BY_LEVEL = { 1: ['goblin', 'skeleton', 'peasant', 'halfling'], 2: ['wolf', 'rogue', 'giantSpider'], 3: ['orc', 'mummy', 'nomad'], 4: ['troll', 'sharpshooter', 'yeti'], 5: ['ogre', 'goldGolem', 'faerieDragon'], 6: ['enchanter', 'diamondGolem', 'stoneGiant'], 7: ['rustDragon', 'crystalDragon', 'azureDragon'] };
+const NEUTRALS_BY_LEVEL = { 1: ['goblin', 'skeleton', 'peasant', 'halfling'], 2: ['wolf', 'rogue', 'giantSpider'], 3: ['orc', 'mummy', 'nomad'], 4: ['troll', 'sharpshooter', 'yeti', 'sandScorpion'], 5: ['ogre', 'goldGolem', 'faerieDragon', 'ironGuardian'], 6: ['enchanter', 'diamondGolem', 'stoneGiant'], 7: ['rustDragon', 'crystalDragon', 'azureDragon'] };
 function fillNeutrals() { for (const [id, c] of Object.entries(CREATURES)) if (c.faction && c.up && !NEUTRALS_BY_LEVEL[c.level].includes(id)) NEUTRALS_BY_LEVEL[c.level].push(id); }
 const QTY = [[1, 'Kilka'], [5, 'Grupa'], [10, 'Oddział'], [20, 'Mnóstwo'], [50, 'Horda'], [100, 'Tłum'], [250, 'Rój'], [500, 'Zatrzęsienie'], [1000, 'Legion']];
 function qtyName(c) { let s = QTY[0][1]; for (const [m, nm] of QTY) if (c >= m) s = nm; return s; }
@@ -396,8 +396,12 @@ Object.assign(CREATURES, {
     desc: 'zaklinający śpiew: rażony oddział nie oddaje ciosu', look: { kind: 'hum', skin: '#e8c4a8', cloth: '#2a6a7a', size: 1.1, weapon: 'none', serpent: '#2a8a9a', longHair: '#3a7a6a', hair: '#3a7a6a', build: 'slim', bareArms: true, trim: '#e0d0a0', orb: '#8ae0ff', glow: '#8ae0ff', bracers: '#e0d0a0' } }),
   yeti: mkU('Yeti', 'Yeti', 'yeti', 4, 11, 9, 5, 9, 45, 6, 4, 640, null, { abil: ['doubleStrike'], habitat: [TER.SNOW],
     look: { kind: 'hum', hide: 'fur', skin: '#dce6f0', cloth: '#c8d4e0', size: 1.5, weapon: 'none', build: 'brute', bare: true, bareArms: true, claws: true, fangs: true, hunch: 0.3, eyes: '#6ac8ff', legs: 'beast', longHair: '#f0f4f8' } }),
+  sandScorpion: mkU('Skorpion pustynny', 'Skorpiony pustynne', 'skorpionów pustynnych', 4, 12, 11, 6, 10, 42, 7, 4, 620, null, { abil: ['armorPierce', 'deathBlow'], habitat: [TER.SAND, TER.ROUGH, TER.DIRT],
+    desc: 'pancerne kleszcze kruszą zbroje, a jadowite żądło zadaje śmiertelne ciosy', look: { kind: 'spider', scorpion: true, fur: '#b86828', plates: '#6a3414', stinger: '#2a120a', eyes: '#78ff48', fang: '#e8dcc0', size: 1.12 } }),
   stoneGiant: mkU('Olbrzym górski', 'Olbrzymy górskie', 'olbrzymów górskich', 6, 18, 16, 20, 28, 120, 5, 2, 2150, null, { shots: 8, abil: ['noMeleePenalty'], habitat: [TER.ROUGH, TER.SNOW, TER.DIRT],
     desc: 'ciska głazami, wręcz bez kary', look: { kind: 'hum', skin: '#9a948a', cloth: '#5a4a3a', leather: '#3a2a1a', size: 2.0, weapon: 'none', build: 'colossus', bare: true, boulder: '#8a8478', beard: '#6a6a66', hair: '#5a5a56', eyes: '#c8e0ff', hunch: 0.15, helm: 'horn', helmCol: '#6a665e', backSpikes: '#6a665e', pauldrons: true } }),
+  ironGuardian: mkU('Żelazny strażnik', 'Żelazni strażnicy', 'żelaznych strażników', 5, 13, 16, 10, 14, 85, 4, 3, 1250, null, { abil: ['construct'], habitat: [TER.ROUGH, TER.DIRT, TER.SNOW],
+    desc: 'dawny strażnik ruin: kamienny pancerz, żelazny młot i rdzeń z zaklętego kryształu', look: { kind: 'hum', golem: 'iron', metal: '#68777c', stoneArmor: '#a7aba5', eyes: '#64ead0', core: '#64ead0', weapon: 'hammer', gTorso: 1.2, gArm: 1.1, gLeg: 1.05, gHead: 0.9, size: 1.65 } }),
   kraken: mkU('Kraken', 'Krakeny', 'krakenów', 7, 26, 24, 40, 60, 380, 7, 1, 9800, null, { abil: ['noRetal', 'doubleStrike'], habitat: [],
     desc: 'władca głębin: macki smagają dwa razy i nikt nie zdąży oddać', look: { kind: 'kraken', fur: '#7a2a3a', water: '#3a7a9a', size: 1.25 } }),
 });

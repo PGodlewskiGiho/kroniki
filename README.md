@@ -21,6 +21,21 @@ npm test        # sprawdź, czy plik gry jest aktualny, i uruchom testy (Playwri
 
 Poza CI testom trzeba wskazać Chromium, np. `CHROMIUM_PATH=/ścieżka/do/chromium npm test`.
 
+## Grafika Jednostek
+
+Modele 3D i narzędzia wypalania klatek znajdują się w `tools/grafika3d/`.
+Po zmianie definicji lub modelu jednostki przebuduj grę, wypal jej klatki i ponownie zbuduj HTML:
+
+```bash
+npm run build
+CHROMIUM_PATH=/ścieżka/do/chromium npm run grafika -- ironGuardian
+npm run build
+node tools/grafika3d/podglad.js --animacja ironGuardian tools/grafika3d/.cache/ironGuardian.html "Żelazny strażnik"
+```
+
+Podgląd HTML działa bez serwera; zawiera spoczynek, chód, atak, zranienie, śmierć
+i figurkę mapy, z pauzą, regulacją tempa i odbiciem. Używa wypalonych klatek gry.
+
 ## Publikacja
 
 Po każdej zmianie w `main` workflow „Publikacja (GitHub Pages)” uruchamia testy i publikuje grę
