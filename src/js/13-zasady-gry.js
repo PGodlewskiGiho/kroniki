@@ -452,7 +452,7 @@ const activeSynergies = h => Object.keys(SYNERGIES).filter(id => synergy(h, id))
 const synHint = (h, sk) => { const L = Object.keys(SYNERGIES).filter(id => SYNERGIES[id].req.includes(sk)); return L.length ? ` Sploty: ${L.map(id => `${SYNERGIES[id].name}${synergy(h, id) ? ' (działa)' : ` (z: ${SKILLS[SYNERGIES[id].req.find(r => r !== sk)].name})`}`).join(', ')}.` : ''; };
 const synText = id => `${SYNERGIES[id].name} (${SYNERGIES[id].req.map(s => SKILLS[s].name).join(' + ')}): ${SYNERGIES[id].desc}`;
 // Wolne punkty cech: wydanie punktu i wybór komputera (cecha, która w klasie rośnie najczęściej)
-function spendPoint(h, id) { if (!(h.freePts > 0) || !PRIMARY.some(p => p.id === id)) return false; h.stats[id]++; h.freePts--; h.mana = Math.min(h.mana, heroMaxMana(h)); return true; }
+function spendPoint(h, id) { if (!(h.freePts > 0) || !PRIMARY.some(p => p.id === id)) return false; h.stats[id]++; h.freePts--; h.ptLog = h.ptLog || {}; h.ptLog[id] = (h.ptLog[id] || 0) + 1; /* ołtarz może je zwrócić */ h.mana = Math.min(h.mana, heroMaxMana(h)); return true; }
 const aiPickStat = h => { const g = (CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight).grow; return PRIMARY[g.indexOf(Math.max(...g))].id; };
 const pendingFork = h => ((h && h.skills) || []).find(s => s.lv >= 3 && SKILL_FORKS[s.id] && !s.fork) || null;
 const AI_FORK = new Set(['standard', 'lucky', 'breach', 'sniper', 'spikes', 'initiative', 'twinBolt', 'assault', 'surgeon', 'veterans', 'grit', 'tribute', 'envoy', 'couriers', 'wanderer', 'farsight', 'boarding',
@@ -514,7 +514,37 @@ function skillOffer(st, h, L) {
   const r = mulberry32(thash(h.id, L, st.seed) ^ 0x5a1d);
   const pick = a => { if (!a.length) return null; const w = a.map(id => skillWeight(h.cls, id)); let x = r() * w.reduce((s, v) => s + v, 0), i = 0; while (i < a.length - 1 && (x -= w[i]) >= 0) i++; return a.splice(i, 1)[0]; };
   const a = pick(up) || pick(fresh), b = pick(fresh) || pick(up), c = r() < 0.5 ? pick(fresh) || pick(up) : pick(up) || pick(fresh), d = heroFork(h, 'erudite') ? pick(fresh) || pick(up) : null; // Erudyta: czwarta
-  return [a, b, c, d].filter(Boolean);
+  const out = [a, b, c, d].filter(Boolean), g = goalSkills(h).find(id => !out.includes(id) && (up.includes(id) || fresh.includes(id))); // cel z planera: jedna z jego umiejętności zawsze w ofercie
+  if (g && out.length && !out.some(id => goalSkills(h).includes(id))) out[out.length - 1] = g;
+  return out;
+}
+// --- planer rozwoju: cel (splot albo klasa prestiżowa), do którego bohater zmierza ---
+const goalReq = h => { const [k, id] = (h && h.goal || '').split(':'); return k === 'syn' && SYNERGIES[id] ? SYNERGIES[id].req : k === 'pre' && PRESTIGE[id] ? PRESTIGE[id].req : null; };
+const goalName = h => { const [k, id] = (h && h.goal || '').split(':'); return k === 'syn' && SYNERGIES[id] ? `splot ${SYNERGIES[id].name}` : k === 'pre' && PRESTIGE[id] ? `klasa ${HERO_PATHS[id].name}` : ''; };
+const goalSkills = h => (goalReq(h) || []).filter(id => heroSkill(h, id) < (h.goal.startsWith('pre') ? PRESTIGE_LV : SYN_LV)); // umiejętności jeszcze potrzebne do celu
+const goalDone = h => !!goalReq(h) && !goalSkills(h).length;
+function setGoal(h, goal) { h.goal = h.goal === goal ? null : goal; return h.goal; } // drugi klik zdejmuje cel
+// --- ołtarz przemiany (miasto z gildią magów): za złoto nowe specjalizacje, rozdanie punktów od nowa, zapomnienie umiejętności ---
+const ALTAR_COST = { fork: 750, point: 250, skill: 500 }; // za specjalizację, za punkt, za poziom umiejętności
+const altarCost = (h, what, id) => what === 'forks' ? ALTAR_COST.fork * h.skills.filter(s => s.fork).length : what === 'points' ? ALTAR_COST.point * Object.values(h.ptLog || {}).reduce((a, b) => a + b, 0) : ALTAR_COST.skill * heroSkill(h, id);
+function altar(st, h, what, id) {
+  if (!curseFree(st, h)) return 'Ołtarz przemiany stoi w gildii magów: wejdź bohaterem do takiego miasta';
+  const cost = altarCost(h, what, id), R = playerOf(st, h.owner).resources; if (!cost) return what === 'forks' ? 'Bohater nie ma jeszcze specjalizacji' : what === 'points' ? 'Brak punktów do zwrotu (liczą się punkty wydane w tej wersji gry)' : 'Bohater nie zna tej umiejętności';
+  if (R.gold < cost) return `Przemiana kosztuje ${cost} złota`; R.gold -= cost;
+  if (what === 'forks') for (const s of h.skills) delete s.fork; // do wyboru od nowa: świecące umiejętności na ekranie bohatera
+  else if (what === 'points') { for (const [k, n] of Object.entries(h.ptLog)) { h.stats[k] -= n; h.freePts = (h.freePts || 0) + n; } h.ptLog = {}; }
+  else { const s = h.skills.find(s => s.id === id); h.skills.splice(h.skills.indexOf(s), 1); h.relearn = (h.relearn || 0) + s.lv; } // zapomniane poziomy wraca się wyborem nowych
+  h.mana = Math.min(h.mana, heroMaxMana(h)); h.mp = Math.min(h.mp, heroMaxMP(h)); return null;
+}
+// Wybór w miejsce zapomnianej umiejętności (h.relearn: ile poziomów do rozdania); oferta jak przy awansie, inna przy każdym wyborze
+const relearnOffer = (st, h) => skillOffer(st, h, 1000 + h.level * 7 + (h.relearn || 0) * 13 + h.skills.reduce((t, s) => t + s.lv, 0));
+function relearn(h, id) { if (!(h.relearn > 0)) return false; learnSkill(h, id); h.relearn--; return true; }
+// Karta umiejętności w oknie wyboru (awans, ołtarz): poziom, specjalizacja, gwiazdka przy umiejętności prowadzącej do celu z planera
+function skillChoiceOpt(h, id, k, action) {
+  const L = heroSkill(h, id) + 1, goal = goalSkills(h).includes(id);
+  return { label: SKILLS[id].name, sub: `${goal ? '★ ' : ''}${SKILL_LEVELS[L]}${L === 3 && SKILL_FORKS[id] ? ' · wybór specjalizacji' : L === 1 ? ' · nowa' : ''}`,
+    tip: cap1(SKILLS[id].desc(SKILLS[id].v[L - 1])) + (L === 3 && SKILL_FORKS[id] ? `. Potem do wyboru: ${SKILL_FORKS[id].map(f => f.name).join(' albo ')}.` : '.') + (goal ? ` Prowadzi do celu: ${goalName(h)}.` : ''),
+    key: String(k + 1), lead: (ctx, cx, cy) => skillIcon(ctx, id, cx, cy), action };
 }
 function learnSkill(h, id) {
   const s = h.skills.find(s => s.id === id);
@@ -619,10 +649,7 @@ function gainExp(st, h, amount, then, silent = false) { // silent: awans bez oki
     const offer = skillOffer(st, h, u.level), icon = portrait(offer.length > 0);
     const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`;
     if (!offer.length) { showDialog(msg, [{ label: 'Wspaniale', key: 'enter', action: () => fork(i, u) }], icon); return; }
-    showChoice(`${msg} Wybierz umiejętność:`, offer.map((id, k) => {
-      const L = heroSkill(h, id) + 1;
-      return { label: SKILLS[id].name, sub: `${SKILL_LEVELS[L]}${L === 3 && SKILL_FORKS[id] ? ' · wybór specjalizacji' : L === 1 ? ' · nowa' : ''}`, tip: cap1(SKILLS[id].desc(SKILLS[id].v[L - 1])) + (L === 3 && SKILL_FORKS[id] ? `. Potem do wyboru: ${SKILL_FORKS[id].map(f => f.name).join(' albo ')}.` : '.'), key: String(k + 1), lead: (ctx, cx, cy) => skillIcon(ctx, id, cx, cy), action: () => { learnSkill(h, id); fork(i, u); } };
-    }), icon);
+    showChoice(`${msg} Wybierz umiejętność:`, offer.map((id, k) => skillChoiceOpt(h, id, k, () => { learnSkill(h, id); fork(i, u); })), icon);
   };
   next(0); return ups.length;
 }

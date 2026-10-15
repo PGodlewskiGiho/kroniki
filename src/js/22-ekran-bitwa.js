@@ -402,9 +402,12 @@ G.screens.battle = {
     if (this.phase !== 'input') return; const B = this.B, s = this.me, mh = sideHero(B, s); if (!mh) return;
     if (B.cast[s]) { B.log.push('W tej rundzie bohater już działał.'); return; }
     const a = heroStat(mh, 'att'), list = knownOrders(mh);
-    showDialog(`Rozkazy bohatera ${mh.name}. Zapał: ${B.valor[s]} z ${heroValorMax(mh)} (wraca ${VALOR_REGEN} na rundę). Siła rozkazów rośnie z atakiem (${a}).`,
-      [...list.map(id => { const O = ORDERS[id], c = battleCost(B, s, mh, id); return { label: O.name, sub: onceOrder(id) ? (onceUsed(B, s, id) ? 'już użyta' : 'raz na bitwę') : `${c} zapału`, disabled: !orderAvail(B, s, mh, id), tip: `${O.name}: ${O.desc(a)}.`,
-        action: () => { this.casting = id; this.tele = null; this.onPointerMove(G.mouse.x, G.mouse.y); } }; }), { label: 'Anuluj', key: 'escape' }], { bw: 150 });
+    showChoice(`Rozkazy: ${mh.name}. Zapał ${B.valor[s]} z ${heroValorMax(mh)} (wraca ${VALOR_REGEN} na rundę), siła rozkazów rośnie z atakiem (${a}).`,
+      [...list.map((id, k) => { const O = ORDERS[id], c = battleCost(B, s, mh, id), ok = orderAvail(B, s, mh, id);
+        return { label: O.name, sub: onceOrder(id) ? (onceUsed(B, s, id) ? 'już użyta' : O.art ? `raz na bitwę · ${ARTIFACTS[O.art].name}` : 'raz na bitwę · klasa') : `${c} zapału${ok ? '' : ' · brak zapału'}`, disabled: !ok,
+          tip: cap1(O.desc(a)) + '.', key: k < 9 ? String(k + 1) : null, lead: (ctx, cx, cy) => orderIcon(ctx, id, cx, cy),
+          action: () => { this.casting = id; this.tele = null; this.onPointerMove(G.mouse.x, G.mouse.y); } }; }),
+      { label: 'Anuluj', sub: 'bez rozkazu', tip: 'Zamknij księgę rozkazów.', key: 'escape' }]);
   },
   // Koniec bitwy: zwycięzcy wiwatują przez chwilę, potem okno wyniku nad polem bitwy (jak w Heroes 3). Klik albo klawisz przyspiesza.
   startEnding() {
@@ -803,3 +806,12 @@ function drawMoat(ctx, B) {
   ctx.restore();
 }
 
+// Ikona rozkazu w księdze rozkazów: artefakt (zdolność artefaktu), umiejętność klasy prestiżowej, umiejętność, z której rozkaz pochodzi,
+// a Szarża i Mur tarcz – ikona ataku i obrony
+function orderIcon(ctx, id, cx, cy) {
+  const O = ORDERS[id];
+  if (O.art) return drawSprite(ctx, artSprite(O.art), cx, cy, 0.9);
+  if (O.prestige) return skillIcon(ctx, HERO_PATHS[O.prestige].icon, cx, cy);
+  if (O.need) return skillIcon(ctx, O.need[0], cx, cy);
+  iconStat(ctx, id === 'shieldWall' ? 'def' : 'att', cx, cy, '#6a4418');
+}

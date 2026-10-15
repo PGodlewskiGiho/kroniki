@@ -50,9 +50,10 @@ G.screens.hero = {
     this.sel = null; this.bagPage = 0; this.armyRects = []; this.msg = null;
     this.bPrev = new Button(432, 446, 44, 28, 'Poprzednie', () => { this.bagPage--; }, { icon: iconArrowSide(-1), tip: 'Poprzednie artefakty w plecaku.' });
     this.bNext = new Button(728, 446, 44, 28, 'Następne', () => { this.bagPage++; }, { icon: iconArrowSide(1), tip: 'Następne artefakty w plecaku.' });
-    this.buttons = [new Button(32, 500, 170, 44, 'Wróć', () => this.onBack(), { key: 'escape', size: 18, tip: 'Powrót (klawisz Esc).' }), this.bPrev, this.bNext,
-      new Button(216, 500, 172, 44, 'Księga czarów', () => hasBook(this.hero()) ? showSpellbook(this.hero(), 'view', () => {}) : this.say(`Brak księgi czarów: kupisz ją w gildii magów (${SPELLBOOK_COST} złota).`), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C). Wojownicy muszą najpierw kupić księgę w gildii magów.' })];
-    if (this.preview) this.buttons.splice(3, 1, this.bHire = new Button(216, 500, 172, 44, 'Najmij', () => {
+    this.buttons = [new Button(32, 500, 108, 44, 'Wróć', () => this.onBack(), { key: 'escape', size: 18, tip: 'Powrót (klawisz Esc).' }), this.bPrev, this.bNext,
+      new Button(148, 500, 124, 44, 'Księga czarów', () => hasBook(this.hero()) ? showSpellbook(this.hero(), 'view', () => {}) : this.say(`Brak księgi czarów: kupisz ją w gildii magów (${SPELLBOOK_COST} złota).`), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C). Wojownicy muszą najpierw kupić księgę w gildii magów.' })];
+    this.buttons.push(new Button(280, 500, 108, 44, 'Rozwój', () => showDevPlanner(this.hero()), { key: 'r', size: 17, tip: 'Planer rozwoju: kolejne awanse, sploty, klasy prestiżowe, cel rozwoju i ołtarz przemiany (klawisz R).' }));
+    if (this.preview) this.buttons.splice(3, 1, this.bHire = new Button(148, 500, 124, 44, 'Najmij', () => {
       const st = G.state, t = st.towns[this.hire.townId], r = hireHero(st, t, this.hire.k); if (r.error) return this.say(r.error);
       G.go('town', { townId: t.id, msg: `${r.hero.name} dołącza do twojej sprawy` });
     }, { key: 'enter', size: 17, sub: `${HERO_COST} złota`, tip: `Najmij bohatera za ${HERO_COST} złota; stanie w bramie miasta (klawisz Enter).` }));
@@ -70,6 +71,7 @@ G.screens.hero = {
     if (this.preview) return; // podgląd kandydata: tylko oglądanie
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y);
     { const p = this.statAt(x, y); if (p && h.freePts > 0 && h.owner === ME) { spendPoint(h, p.id); Sfx.play('click'); return; } } // wolny punkt cechy
+    { const si = this.skillAt(x, y); if (si >= h.skills.length && h.relearn > 0 && h.owner === ME) return offerRelearn(h); } // po ołtarzu: nowy poziom w miejsce zapomnianego
     { const si = this.skillAt(x, y), sk = si >= 0 && h.skills[si]; if (sk && sk.lv >= 3 && SKILL_FORKS[sk.id] && !sk.fork && h.owner === ME) { // zaległa specjalizacja (np. ze starego zapisu)
       showChoice(`${SKILLS[sk.id].name}: ${h.name} wybiera specjalizację – na zawsze:`, SKILL_FORKS[sk.id].map((f, k) => ({ label: f.name, sub: `specjalizacja: ${SKILLS[sk.id].name}`, tip: cap1(f.desc) + '.', key: String(k + 1), lead: (ctx, cx, cy) => skillIcon(ctx, sk.id, cx, cy), action: () => chooseFork(h, sk.id, f.id) }))); return; } }
     if (ar) {
@@ -130,7 +132,7 @@ G.screens.hero = {
     const pr = hitRect(this.pathRects || [], x, y); if (pr) return pathTip(h, pr.id);
     const si = this.skillAt(x, y);
     if (this.synRect && inRect(x, y, this.synRect)) return activeSynergies(h).map(synText).join('. ') + '.'; // sploty
-    if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv, s.fork)}.${synHint(h, s.id)}${s.lv >= 3 && SKILL_FORKS[s.id] && !s.fork ? ' Kliknij, aby wybrać specjalizację.' : ''}` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
+    if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv, s.fork)}.${synHint(h, s.id)}${s.lv >= 3 && SKILL_FORKS[s.id] && !s.fork ? ' Kliknij, aby wybrać specjalizację.' : ''}` : (si === h.skills.length && h.relearn > 0 ? `Po ołtarzu przemiany: ${h.relearn} do wybrania. Kliknij, aby wybrać umiejętność.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'); }
     if (p) return {
       att: 'Atak: dodaje się do ataku każdego twojego oddziału w bitwie (+5% obrażeń za punkt przewagi).',
       def: 'Obrona: dodaje się do obrony każdego twojego oddziału w bitwie (mniej otrzymywanych obrażeń).',
@@ -209,12 +211,14 @@ G.screens.hero = {
     }
     this.bPrev.disabled = this.bagPage === 0; this.bNext.disabled = this.bagPage >= pages - 1;
     if (pages > 1) text(ctx, `${this.bagPage + 1} / ${pages}`, 602, 461, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
-    const all = {}; for (const id of Object.values(h.equip)) if (id) for (const [k, v] of Object.entries(ARTIFACTS[id].bonus)) all[k] = (all[k] || 0) + v;
+    const all = {}; for (const k of Object.keys(KEY_NAMES)) { const v = heroBonus(h, k); if (v) all[k] = v; } // z wzrostem, runami i relikwiami rodów
+    for (const id of Object.values(h.equip)) if (id && ARTIFACTS[id].bonus.res) for (const [r, n] of Object.entries(ARTIFACTS[id].bonus.res)) (all.res = all.res || {})[r] = (all.res[r] || 0) + n;
     const af = wrapFit(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 236, 2, { size: 13, weight: 600 });
     af.lines.forEach((l, i) => text(ctx, l, 602, 453 + i * 14 * af.k, { size: af.size, weight: 600, align: 'center', color: UI.txt2 })); // między strzałkami plecaka
     for (let i = 0; i < MAX_SKILLS; i++) {
       const r = this.skillRect(i), sk = h.skills[i], hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
       slotBox(ctx, r.x, r.y, r.w, r.h, hot ? 'hover' : sk ? '' : 'off');
+      if (!sk && i === h.skills.length && h.relearn > 0 && !this.preview && h.owner === ME) { const pulse = 0.6 + 0.4 * Math.sin(G.time * 5); ctx.fillStyle = `rgba(60,140,40,${pulse})`; ctx.beginPath(); ctx.arc(r.x + r.w / 2, r.y + 20, 12, 0, TAU); ctx.fill(); text(ctx, '+', r.x + r.w / 2, r.y + 21, { size: 20, align: 'center', color: '#fff', fam: 'title' }); text(ctx, `wybierz (${h.relearn})`, r.x + r.w / 2, r.y + 44, { size: 12, weight: 700, align: 'center', color: UI.goldHi }); G.dirty = true; } // po ołtarzu: wybór w miejsce zapomnianej
       if (!sk) continue;
       skillIcon(ctx, sk.id, r.x + r.w / 2, r.y + 19); // ikona 32 px, obok niej poziom (kreski od dołu)
       for (let k = 0; k < 3; k++) { ctx.fillStyle = k < sk.lv ? '#ffd970' : 'rgba(240,228,192,.2)'; ctx.fillRect(r.x + r.w / 2 + 20, r.y + 27 - k * 8, 5, 6); }

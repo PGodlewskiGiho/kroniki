@@ -540,5 +540,11 @@
    Spętanie, Przyspieszony czas, Przypływ many, Ognista kula ze zwoju), relikwie rodów (fac/own: po jednej na frakcję, bohater tej
    frakcji dostaje dużo więcej). Zaklinanie (ENCHANTS, h.ench): w mieście z gildią magów runa na założony artefakt za złoto, kryształ
    i klejnoty (siła i koszt rosną z rzadkością); komputer zaklina sam. Modele 3D nowych artefaktów w arkuszu artefakty.webp.
+   Rozwój bohatera, etap 6: PLANER ROZWOJU (przycisk Rozwój na ekranie bohatera, 21a-planer-rozwoju.js) – zakładki Postęp (kolejny
+   punkt cechy, talent, ścieżka, legenda, umiejętności i specjalizacje), Sploty i Klasy prestiżowe (co działa, czego brakuje). Klik
+   wyznacza cel (h.goal): umiejętność, która do niego prowadzi, jest zawsze w ofercie awansu i ma gwiazdkę. OŁTARZ PRZEMIANY (miasto
+   z gildią magów, za złoto): nowe specjalizacje, punkty cech od nowa (h.ptLog), zapomnienie umiejętności (h.relearn: poziomy do
+   ponownego wyboru kliknięciem wolnego pola). Księga rozkazów w bitwie jako karty z ikonami (niedostępne przygaszone). Karta
+   bohatera na mapie – także wroga – pokazuje budowę: ścieżkę albo klasę prestiżową, specjalizacje, sploty i ważne artefakty.
    ===================================================================================== */
 

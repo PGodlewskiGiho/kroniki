@@ -324,15 +324,16 @@ function showChoice(msg, opts, extra = {}) {
   const { cols, w, cw, iconH, msgL, fs, lh, descs, ch, h } = L, x = (VW - w) / 2, y = (VH - h) / 2, top = y + 30 + msgL.length * 22 + iconH + 10;
   const buttons = opts.map((o, i) => {
     const r = Math.floor(i / cols), k = i % cols, inRow = Math.min(cols, n - r * cols), bx = x + (w - inRow * cw - (inRow - 1) * 10) / 2 + k * (cw + 10), by = top + r * (ch + 10);
-    const b = new Button(bx, by, cw, ch, o.label, () => { G.modal = null; restUnits(); if (o.action) o.action(); }, { key: o.key, tip: o.tip, lead: o.lead });
+    const b = new Button(bx, by, cw, ch, o.label, () => { G.modal = null; restUnits(); if (o.action) o.action(); }, { key: o.key, tip: o.tip, lead: o.lead, disabled: o.disabled });
     b.draw = function (ctx) { // karta: jasne pole w złotej ramce, ikona, nazwa, dopisek, opis
-      const hov = G.hover === this; ctx.save(); ctx.fillStyle = hov ? 'rgba(200,150,60,.28)' : 'rgba(90,55,20,.1)'; rr(ctx, this.x, this.y, this.w, this.h, 6); ctx.fill();
-      ctx.lineWidth = hov ? 2.2 : 1.2; ctx.strokeStyle = hov ? '#b8862a' : 'rgba(120,80,30,.55)'; ctx.stroke(); ctx.restore(); textBox(ctx, this.x, this.y, this.w, this.h);
+      const hov = G.hover === this && !this.disabled; ctx.save(); if (this.disabled) ctx.globalAlpha = 0.45; ctx.fillStyle = hov ? 'rgba(200,150,60,.28)' : 'rgba(90,55,20,.1)'; rr(ctx, this.x, this.y, this.w, this.h, 6); ctx.fill();
+      ctx.lineWidth = hov ? 2.2 : 1.2; ctx.strokeStyle = hov ? '#b8862a' : 'rgba(120,80,30,.55)'; ctx.stroke(); textBox(ctx, this.x, this.y, this.w, this.h);
       if (o.lead) o.lead(ctx, this.x + 24, this.y + 26);
       text(ctx, o.label, this.x + 46, this.y + 18, { size: 16, color: '#2a1606', fam: 'title', max: this.w - 46 - (o.key ? 22 : 8) }); // numer klawisza z prawej
       if (o.sub) text(ctx, o.sub, this.x + 46, this.y + 36, { size: 13, weight: 600, italic: true, color: '#6a3a10', max: this.w - 52 });
-      if (o.key) text(ctx, o.key, this.x + this.w - 10, this.y + 14, { size: 12, weight: 700, align: 'right', color: 'rgba(90,55,20,.6)' });
+      if (o.key) text(ctx, o.key === 'escape' ? 'Esc' : o.key, this.x + this.w - 10, this.y + 14, { size: 12, weight: 700, align: 'right', color: 'rgba(90,55,20,.6)' });
       descs[i].forEach((l, j) => text(ctx, l, this.x + 10, this.y + 58 + j * lh, { size: fs, weight: 500, color: '#3a2410' }));
+      ctx.restore(); // przygaszenie niedostępnej karty
     };
     return b;
   });
