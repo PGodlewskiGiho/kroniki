@@ -51,7 +51,7 @@ function drawMap3dIcon(ctx, key, cx, cy, maxW, maxH) {
 function map3dSprite(key) {
   if (key.includes('@')) { const [b, c] = key.split('@'); return map3dTinted(b, c); } // „klucz@#kolor”: model z barwnymi chorągwiami (magenta → kolor)
   const A = typeof MAP3D_ART !== 'undefined' && MAP3D_ART, im = MAP3D_IMG.sheet, f = A && A.f[key]; if (!f || !im || !im._ok) return null;
-  const sk = `m3_${key}`; let s = SPR.get(sk); if (s) return s; const [x, y, w, h, ax, ay] = f, k = PIXEL_ART ? PXD / A.d : Math.min(1, 2 * mapBufScale() / A.d), /* gładko: gęstość ekranu */ cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+  const sk = `m3_${key}`; let s = SPR.get(sk); if (s) return s; const [x, y, w, h, ax, ay] = f, k = PIXEL_ART ? PXD / A.d : 1, cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
   const c = document.createElement('canvas'); c.width = cw; c.height = ch; const g = c.getContext('2d'); c._ctx = g; g.imageSmoothingQuality = 'high'; g.drawImage(im, x, y, w, h, 0, 0, cw, ch);
   s = { c, ax: ax * cw / w, ay: ay * ch / h, u: 2 * w / A.d / cw, raw: true }; SPR.set(sk, s); return s;
 }
@@ -107,18 +107,18 @@ function heroFacing(h) { // 0 = wschód, dalej zgodnie z ruchem wskazówek zegar
   if (h.anim) { const dx = Math.sign(h.x - h.anim.fx), dy = Math.sign(h.y - h.anim.fy); if (dx || dy) HERO_FACING.set(h, Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) & 7); }
   const f = HERO_FACING.get(h); return f != null ? f : h.dir < 0 ? 4 : 0;
 }
-function heroMap3d(h, col) {
+function heroMap3d(h, col, time = G.time) {
   const hk = heroArtKey(h), M = typeof HERO_MAP_ART !== 'undefined' && HERO_MAP_ART[hk], mim = HERO_MAP_IMG[hk]; // każdy bohater ma własny arkusz
   if (!h.boat && M && mim && mim._ok) {
     const fd = HERO_FACE[heroFacing(h)], src = HERO_FACE_SRC[fd] || fd, flip = !!HERO_FACE_SRC[fd], walk = !!h.anim, pose = (walk ? 'walk_' : 'idle_') + src, F = M.f[pose];
-    const i = walk ? Math.floor(G.time * 36) % F.length : Math.floor(G.time * 4) % F.length, key = `hm_${hk}_${col}_${pose}_${i}_${flip ? 1 : 0}`; let s = SPR.get(key);
+    const i = walk ? Math.floor(time * 36) % F.length : Math.floor(time * 4) % F.length, key = `hm_${hk}_${col}_${pose}_${i}_${flip ? 1 : 0}`; let s = SPR.get(key);
     if (!s) { const [x, y, w, hh, ax, ay] = F[i], c = document.createElement('canvas'); c.width = w; c.height = hh; const g = c.getContext('2d', { willReadFrequently: true });
       if (flip) { g.translate(w, 0); g.scale(-1, 1); } g.drawImage(mim, x, y, w, hh, 0, 0, w, hh); g.setTransform(1, 0, 0, 1, 0, 0); keyTint(g, w, hh, col);
       s = { c, ax: flip ? w - ax : ax, ay, u: HERO_MAP_H / M.f.idle_E[0][3], raw: true }; SPR.set(key, s); }
     if (walk) G.dirty = true; return s;
   }
   const A = typeof HERO_ART !== 'undefined' && HERO_ART[hk], im = HERO_IMG[hk]; if (h.boat || !A || !im || !im._ok) return null;
-  const walk = !!(h.anim && A.f.walk), n = (walk ? A.f.walk : A.f.idle).length, s = heroBattleSprite(h, col, h.dir < 0 ? -1 : 1, Math.floor(G.time * (walk ? 12 : 3)) % n, walk ? 'walk' : false);
+  const walk = !!(h.anim && A.f.walk), n = (walk ? A.f.walk : A.f.idle).length, s = heroBattleSprite(h, col, h.dir < 0 ? -1 : 1, Math.floor(time * (walk ? 12 : 3)) % n, walk ? 'walk' : false);
   return s._map || (s._map = { c: s.c, ax: s.ax, ay: s.ay, u: HERO_MAP_H / A.f.idle[0][3], raw: true });
 }
 // Bohater w bitwie (jeździec z chorągwią): arkusz klasy, a części w kolorze-kluczu (magenta) dostają barwę gracza

@@ -16,6 +16,135 @@ const renders = (ms) => page.evaluate(ms => new Promise(res => {
 // Kursor poza oknem gry: nowszy Chromium bez okna zgłasza mysz w rogu (0,0), a to na mapie przewija ją krawędzią (i słusznie rysuje 60 klatek)
 const noMouse = () => page.evaluate(() => { const m = G.mouse; m.x = m.y = m.vx = m.vy = -1; });
 
+test('teren bez workerów oddaje sterowanie po wyczerpaniu budżetu', async () => {
+  const r = await page.evaluate(() => {
+    const state = G.state, idle = window.requestIdleCallback, now = performance.now, steps = window.renderChunkSteps, on = TerrainPool.on;
+    const callbacks = []; let clock = 0, completed = 0;
+    try {
+      window.requestIdleCallback = callback => { callbacks.push(callback); return callbacks.length; };
+      performance.now = () => clock;
+      TerrainPool.on = () => false;
+      window.renderChunkSteps = function* () { clock += 7; return {}; };
+      const map = { n: CHUNK * 3 }, st = { map, cam: { x: 0, y: 0 }, players: [], heroes: [], towns: [] };
+      G.state = st;
+      const renderer = Object.assign({}, MapRender, { map, cache: new Map(), warming: false, warmed: false, sprIt: false, job: null,
+        store(key, canvas) { completed++; this.cache.set(key, canvas); return canvas; } });
+      renderer.warm(st);
+      callbacks.shift()({ timeRemaining: () => 50 });
+      return { completed, queued: callbacks.length, clock };
+    } finally {
+      G.state = state; window.requestIdleCallback = idle; performance.now = now; window.renderChunkSteps = steps; TerrainPool.on = on;
+    }
+  });
+  assert.equal(r.completed, 1, `jedna porcja pracy, nie ${r.completed} fragmentów (${r.clock} ms)`);
+  assert.equal(r.queued, 1, 'pozostała praca zaplanowana na następną wolną chwilę');
+});
+
+test('grafiki mapy oddają sterowanie między pojedynczymi obrazkami', async () => {
+  const r = await page.evaluate(() => {
+    const creature = window.creatureSprite, obstacle = window.obstacleSprite, object = window.map3dSprite, grade = window.gradedSprite;
+    let count = 0;
+    try {
+      const sprite = () => ({ c: {} });
+      window.creatureSprite = window.obstacleSprite = window.map3dSprite = sprite;
+      window.gradedSprite = () => { count++; };
+      const n = 4, map = { n, seed: 1, obst: new Uint8Array(n * n).fill(1), terrain: new Uint8Array(n * n) };
+      const st = { map, towns: [], objects: [{ type: 'monster', cid: 'test', dir: 0, x: 0, y: 0 }, { type: 'chest', x: 1, y: 1 }] };
+      const jobs = mapSpriteJobs(st), batches = []; let result;
+      do { const before = count; result = jobs.next(); batches.push(count - before); } while (!result.done);
+      return { batches, count };
+    } finally {
+      window.creatureSprite = creature; window.obstacleSprite = obstacle; window.map3dSprite = object; window.gradedSprite = grade;
+    }
+  });
+  assert.equal(r.count, 11, 'wszystkie klatki potwora, obiekt i sześć przeszkód');
+  assert.ok(r.batches.every(count => count <= 1), `obrazki na porcję: ${r.batches.join(', ')}`);
+});
+
+test('gęsty teren kończy przygotowanie, także gdy cała mapa nie mieści się w cache', async () => {
+  const r = await page.evaluate(() => {
+    const state = G.state, idle = window.requestIdleCallback, now = performance.now, steps = window.renderChunkSteps, on = TerrainPool.on;
+    const callbacks = []; let clock = 0, generated = 0;
+    try {
+      window.requestIdleCallback = callback => { callbacks.push(callback); return callbacks.length; };
+      performance.now = () => clock; TerrainPool.on = () => false;
+      window.renderChunkSteps = function* () { clock += 7; generated++; return {}; };
+      const map = { n: CHUNK * 12 }, st = { map, cam: { x: 0, y: 0 }, players: [], heroes: [], towns: [] };
+      G.state = st;
+      const renderer = Object.assign({}, MapRender, { map, D: mapBufScale() * 3, cache: new Map(), warming: false, warmed: false, sprIt: false, job: null });
+      const drain = () => { for (let count = 0; callbacks.length && count < 400; count++) callbacks.shift()({ timeRemaining: () => 50 }); };
+      renderer.warm(st); drain();
+      const first = { warmed: renderer.warmed, queued: callbacks.length, generated, cached: renderer.cache.size };
+      st.cam.x = CHUNK * T * 8; st.cam.y = CHUNK * T * 8;
+      renderer.warm(st); drain();
+      return { first, moved: { warmed: renderer.warmed, queued: callbacks.length, visible: renderer.has(9, 9) } };
+    } finally {
+      G.state = state; window.requestIdleCallback = idle; performance.now = now; window.renderChunkSteps = steps; TerrainPool.on = on;
+    }
+  });
+  assert.equal(r.first.warmed, true, `praca tła musi się zakończyć: ${JSON.stringify(r.first)}`);
+  assert.equal(r.first.queued, 0);
+  assert.ok(r.first.generated <= 110, `nie generuj całej mapy do cache 110: ${r.first.generated}`);
+  assert.ok(r.first.cached <= 110, 'zachowany limit pamięci');
+  assert.deepEqual(r.moved, { warmed: true, queued: 0, visible: true }, 'nowy obszar przygotowany po ruchu kamery');
+});
+
+test('zoom zachowuje ostry bufor widoku i gotowy teren', async () => {
+  await newGame(page);
+  const r = await page.evaluate(() => {
+    const quality = G.settings.quality, renderer = G.settings.renderer, zoom = ZOOM;
+    try {
+      G.settings.quality = 'high'; G.settings.renderer = 'cpu'; resize(); setZoom(G.state, 1);
+      MapRender.reset(G.state.map, human(G.state).explored);
+      const cache = MapRender.cache, generation = MapRender.gen, density = MapRender.D;
+      const rows = ZOOMS.map(value => {
+        setZoom(G.state, value); render();
+        return { zoom: value, width: PixBufs.world.width, height: PixBufs.world.height,
+          expectedWidth: Math.round(VIEW.w * mapBufScale()), expectedHeight: Math.round(VIEW.h * mapBufScale()),
+          sameCache: MapRender.cache === cache, sameGeneration: MapRender.gen === generation, density: MapRender.D };
+      });
+      return { minimum: ZOOMS[0], density, rows };
+    } finally {
+      G.settings.quality = quality; G.settings.renderer = renderer; resize(); setZoom(G.state, zoom);
+    }
+  });
+  assert.equal(r.minimum, 0.75, 'maksymalne oddalenie 0,75x');
+  for (const row of r.rows) {
+    assert.ok(Math.abs(row.width - row.expectedWidth) <= 1 && Math.abs(row.height - row.expectedHeight) <= 1, `pełny bufor przy ${row.zoom}x: ${JSON.stringify(row)}`);
+    assert.ok(row.sameCache && row.sameGeneration && row.density === r.density, `zoom nie generuje terenu od nowa: ${row.zoom}x`);
+  }
+});
+
+test('wysoka jakość zachowuje źródłową rozdzielczość obiektów mapy', async () => {
+  const r = await page.evaluate(() => {
+    const key = Object.keys(MAP3D_ART.f).find(key => key.startsWith('town_')), frame = MAP3D_ART.f[key];
+    SPR.delete('m3_' + key);
+    const sprite = map3dSprite(key);
+    return { pixelArt: PIXEL_ART, source: frame.slice(2, 4), cached: [sprite.c.width, sprite.c.height] };
+  });
+  if (!r.pixelArt) assert.deepEqual(r.cached, r.source, 'bez pomniejszania grafiki przed przybliżeniem');
+});
+
+test('rozgrzana mapa ma gotowe klatki marszu bohatera we wszystkich kierunkach', async () => {
+  await newGame(page);
+  await noMouse();
+  await page.waitForFunction(() => MapRender.warmed, null, { timeout: 60000 });
+  const r = await page.evaluate(() => {
+    const h = hero(G.state), key = heroArtKey(h), art = HERO_MAP_ART[key], col = ownerColor(G.state, h.owner), before = SPR.size;
+    let graded = true;
+    for (let facing = 0; facing < HERO_FACE.length; facing++) {
+      const preview = { ...h, anim: { fx: h.x, fy: h.y } }, direction = HERO_FACE[facing], source = HERO_FACE_SRC[direction] || direction;
+      HERO_FACING.set(preview, facing);
+      for (let index = 0; index < art.f['walk_' + source].length; index++) {
+        const sprite = heroMap3d(preview, col, (index + 0.1) / 36);
+        graded = graded && !!sprite._g;
+      }
+    }
+    return { added: SPR.size - before, graded };
+  });
+  assert.deepEqual(r, { added: 0, graded: true }, 'pierwszy marsz nie wycina, nie koloruje i nie koryguje nowych klatek');
+});
+
 test('ekran bohatera 60 klatek także bez ruchu; zmiana wymusza klatkę od razu', async () => {
   await newGame(page);
   await page.evaluate(() => setScreen('hero', {}));

@@ -422,28 +422,39 @@ const MapRender = {
     if (this.job && this.job.key === key) this.job = null; // kawałek malowany w tle jest potrzebny teraz: od razu w całości
     return this.store(key, renderChunkPixel(this.map, cx, cy));
   },
+  capacity() { const nC = Math.ceil(this.map.n / CHUNK); return this.D > mapBufScale() * 2.5 ? 110 : Math.max(160, nC * nC); },
   store(key, c) {
     this.cache.set(key, c); this.lastGen = performance.now();
-    const nC = Math.ceil(this.map.n / CHUNK), cap = this.D > mapBufScale() * 2.5 ? 110 : Math.max(160, nC * nC); if (this.cache.size > cap) this.cache.delete(this.cache.keys().next().value); // gęsty komplet (duże przybliżenie): najwyżej ~110 kawałków, najdawniej oglądane wypadają // mieści całą mapę (olbrzymia: 324 kawałki, ~21 MB)
+    if (this.cache.size > this.capacity()) this.cache.delete(this.cache.keys().next().value);
     return c;
   },
   has(cx, cy) { return this.cache.has(cx + ',' + cy); },
   // Kawałki terenu malują się w tle, w wolnych chwilach między klatkami (requestIdleCallback), od najbliższych widoku aż po całą mapę:
   // przewijanie nie musi ich malować w trakcie klatki (jeden kawałek to 15–45 ms na słabszym komputerze, czyli szarpnięcie obrazu).
   warm(st) {
-    if (this.warming || this.warmed || !st || st.map !== this.map) return; this.warming = true;
+    if (this.warming || !st || st.map !== this.map) return;
+    const nC = Math.ceil(this.map.n / CHUNK), bounded = this.capacity() < nC * nC, CP = CHUNK * T, cam = st.cam || { x: 0, y: 0 };
+    const area = bounded ? Math.floor((cam.x + viewW() / 2) / CP) + ',' + Math.floor((cam.y + viewH() / 2) / CP) : 'all';
+    if (this.warmed && this.warmArea === area) return;
+    this.warmed = false; this.warmArea = area; this.warming = true;
     const idle = window.requestIdleCallback ? f => window.requestIdleCallback(f, { timeout: 120 }) : f => setTimeout(() => f(null), 16);
     idle(dl => {
       this.warming = false; if (!G.state || G.state.map !== this.map) return;
       const n = this.map.n, nC = Math.ceil(n / CHUNK), CP = CHUNK * T, cam = G.state.cam || { x: 0, y: 0 }, mx = (cam.x + viewW() / 2) / CP, my = (cam.y + viewH() / 2) / CP, todo = [];
       // kolejność: od widoku, ale też od twoich bohaterów i miast (przeskok do innego bohatera trafia na gotowy teren)
       const pts = [[mx, my, 0]]; try { const me = G.state.players[ME]; for (const h of G.state.heroes) if (h && h.owner === ME && h.x != null) pts.push([(h.x + 0.5) / CHUNK, (h.y + 0.5) / CHUNK, 0.6]); for (const t of G.state.towns) if (t.owner === ME) pts.push([(t.x + 0.5) / CHUNK, (t.y + 0.5) / CHUNK, 1.2]); void me; } catch (e) { /* stan bez graczy (podgląd) */ }
-      for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!this.has(cx, cy) && !voidChunk(this.map, cx, cy)) todo.push([cx, cy, Math.min(...pts.map(([px, py, w]) => Math.hypot(cx + 0.5 - px, cy + 0.5 - py) + w))]);
-      const end = performance.now() + (dl && dl.timeRemaining ? Math.max(6, dl.timeRemaining() - 2) : 6);
+      for (let cy = 0; cy < nC; cy++) for (let cx = 0; cx < nC; cx++) if (!voidChunk(this.map, cx, cy)) todo.push([cx, cy, Math.min(...pts.map(([px, py, w]) => Math.hypot(cx + 0.5 - px, cy + 0.5 - py) + w))]);
+      todo.sort((a, b) => a[2] - b[2]);
+      if (this.capacity() < nC * nC) {
+        todo.length = Math.min(todo.length, this.capacity());
+        const wanted = new Set(todo.map(([cx, cy]) => cx + ',' + cy));
+        for (const key of this.cache.keys()) if (!wanted.has(key)) this.cache.delete(key);
+      }
+      for (let index = todo.length - 1; index >= 0; index--) if (this.has(todo[index][0], todo[index][1])) todo.splice(index, 1);
+      const end = performance.now() + (dl && dl.timeRemaining ? Math.min(6, Math.max(0, dl.timeRemaining() - 2)) : 6);
       // obrazki obiektów mapy (od najbliższych): pierwsze narysowanie każdego kosztuje, np. przy oddaleniu – część każdej wolnej chwili
       if (this.sprIt !== false) { if (!this.sprIt) this.sprIt = mapSpriteJobs(G.state, mx * CHUNK, my * CHUNK); const e2 = todo.length ? performance.now() + Math.max(3, (end - performance.now()) * 0.4) : end; let r; do r = this.sprIt.next(); while (!r.done && performance.now() < e2); if (r.done) this.sprIt = false; }
       if (!todo.length) { if (this.sprIt === false) { this.warmed = true; return; } this.warm(G.state); return; }
-      todo.sort((a, b) => a[2] - b[2]);
       // wątki w tle: zlecamy najbliższe kawałki; następne zleca odpowiedź wątku (TerrainPool.done), a tu zostają tylko obrazki obiektów
       const vis = Math.hypot(viewW(), viewH()) / CP / 2 + 1;
       // (kawałki blisko widoku: wszystkie wątki naraz; dalsze, na zapas: po jednym, żeby nie zabierać rdzeni wątkowi gry)
@@ -452,7 +463,8 @@ const MapRender = {
       for (const [cx, cy, d] of todo) {
         const key = cx + ',' + cy; if (!this.job || this.job.key !== key || this.job.map !== this.map) this.job = { key, map: this.map, it: renderChunkSteps(this.map, cx, cy) };
         let r; do r = this.job.it.next(); while (!r.done && performance.now() < end);
-        if (!r.done) break; this.job = null; this.store(key, r.value); if (d < vis && G.screenName === 'adventure') G.dirty = true; // inny ekran: nie wymuszamy klatek if (performance.now() >= end) break;
+        if (!r.done) break; this.job = null; this.store(key, r.value); if (d < vis && G.screenName === 'adventure') G.dirty = true;
+        if (performance.now() >= end) break;
       }
       this.warm(G.state);
     });
@@ -483,11 +495,8 @@ function layoutAdventure() {
   LIST_ROWS = Math.floor((LIST.h - 28) / LIST_ROW_H); // nad wierszami pasek zakładek (bohaterowie / miasta)
 }
 // Przybliżenie mapy (kółko myszy): ZOOM > 1 powiększa. viewW/viewH = ile pikseli świata mieści widok.
-const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2]; let ZOOM = 1; // największe przybliżenie 2× (na laptopie 1,5× było za daleko; obiekty 3D przy 2× minimalnie miękkie)
-// Gęstość malowania terenu: jedna dla wszystkich przybliżeń (jak przy 1×). Przybliżanie i oddalanie tylko skaluje gotowe kawałki
-// (robi to karta graficzna, natychmiast), zamiast malować całą mapę od nowa przy każdym kroku; przy 1,25–1,5× teren jest
-// minimalnie miękki, ale nic się nie doczytuje, a pamięć zostaje jak przy 1×
-const mapDensity = () => (PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 2 * (ZOOM >= 1.5 ? 2 : 1) * 4) / 4, PXD, 8)); // duże przybliżenia (1,5–2×): drugi, gęstszy komplet kawałków (raz namalowany, potem w zapasie)
+const ZOOMS = [0.75, 1, 1.25, 1.5, 2]; let ZOOM = 1;
+const mapDensity = () => (PIXEL_ART ? PXD : clamp(Math.round(mapBufScale() * 16) / 4, PXD, 8));
 const viewW = () => VIEW.w / ZOOM, viewH = () => VIEW.h / ZOOM;
 // Kamera w granicach oglądanego poziomu (st.view: 0 powierzchnia, 1 podziemia); bez podziemi cała mapa
 function camClamp(st) { const L = st.map.ln ? st.view || 0 : 0, o = levelOrigin(st.map, L) * T, m = levelSize(st.map) * T, w = viewW(), h = viewH();
@@ -509,7 +518,7 @@ function pickTile(st, x, y) {
 function setZoom(st, z, sx = VIEW.x + VIEW.w / 2, sy = VIEW.y + VIEW.h / 2) {
   z = clamp(z, ZOOMS[0], ZOOMS[ZOOMS.length - 1]); if (z === ZOOM) return false;
   const wx = st.cam.x + (sx - VIEW.x) / ZOOM, wy = st.cam.y + (sy - VIEW.y) / ZOOM; ZOOM = z;
-  st.cam.x = wx - (sx - VIEW.x) / ZOOM; st.cam.y = wy - (sy - VIEW.y) / ZOOM; camClamp(st); MapRender.warmed = false; G.settings.zoom = z; saveSettings();
+  st.cam.x = wx - (sx - VIEW.x) / ZOOM; st.cam.y = wy - (sy - VIEW.y) / ZOOM; camClamp(st); G.settings.zoom = z; saveSettings();
   if (MapRender.map && mapDensity() !== MapRender.D) MapRender.setDensity(mapDensity()); // inna gęstość terenu: nowe kawałki malują się w tle, do tego czasu stare
   return true;
 }
@@ -762,8 +771,20 @@ function gradeCanvas(c, ox = 0, oy = 0, step = 18) {
 // Obrazki obiektów mapy przygotowywane w tle (MapRender.warm): potwory, budowle, kopalnie, skarby oraz drzewa i góry tuż przed obiektami
 function* mapSpriteJobs(st, cx = 0, cy = 0) {
   const map = st.map, n = map.n, SN = MapRender.season || 0, g = s => { if (s && s.c) gradedSprite(s); };
+  for (const h of st.heroes || []) {
+    if (h.owner !== ME || h.boat) continue;
+    const key = heroArtKey(h), art = typeof HERO_MAP_ART !== 'undefined' && HERO_MAP_ART[key], image = HERO_MAP_IMG[key];
+    if (!art || !image || !image._ok) continue;
+    const col = ownerColor(st, h.owner);
+    for (let facing = 0; facing < HERO_FACE.length; facing++) for (const walking of [false, true]) {
+      const preview = { ...h, anim: walking ? { fx: h.x, fy: h.y } : null }, direction = HERO_FACE[facing], source = HERO_FACE_SRC[direction] || direction;
+      HERO_FACING.set(preview, facing);
+      const frames = art.f[(walking ? 'walk_' : 'idle_') + source];
+      for (let index = 0; index < frames.length; index++) { g(heroMap3d(preview, col, (index + 0.1) / (walking ? 36 : 4))); yield; }
+    }
+  }
   for (const ob of st.objects.slice().sort((a, c) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(c.x - cx, c.y - cy))) { if (ob.dead) continue; let k = null;
-    if (ob.type === 'monster') { for (let i = 0; i < 4; i++) g(creatureSprite(ob.cid, ob.dir, i)); yield; continue; }
+    if (ob.type === 'monster') { for (let i = 0; i < 4; i++) { g(creatureSprite(ob.cid, ob.dir, i)); yield; } continue; }
     if (ob.type === 'town') { const t = st.towns[ob.townId]; k = `town_${t.faction}_${townLevel(t)}`; }
     else if (ob.type === 'bank') k = `bank_${ob.kind}_${ob.cleared ? 1 : 0}`;
     else if (ob.type === 'res' || ob.type === 'mine' || ob.type === 'site' || ob.type === 'art') k = ob.type + '_' + (ob.res || ob.kind || ob.art);
@@ -771,7 +792,7 @@ function* mapSpriteJobs(st, cx = 0, cy = 0) {
     else if (ob.type === 'outpost') k = 'site_outpost@' + ownerColor(st, ob.owner);
     if (k) { g(map3dSprite(k)); yield; }
     for (let dy = 1; dy <= 2; dy++) for (let dx = -1; dx <= 1; dx++) { const x = ob.x + dx, y = ob.y + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x; if (!map.obst[i]) continue;
-      g(obstacleSprite(map.obst[i], map.terrain[i], thash(x, y, map.seed + 2) % (map.obst[i] === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y))); }
+      g(obstacleSprite(map.obst[i], map.terrain[i], thash(x, y, map.seed + 2) % (map.obst[i] === OBST.TREE ? 4 : 8), SN, levelOf(map, x, y))); yield; }
     yield;
   }
 }
@@ -838,7 +859,7 @@ function drawMapView(ctx, st, scr) {
   let ox, oy;
   try {
     // bufor świata: przy oddaleniu ma rozmiar ekranu (świat rysowany pomniejszony, z wygładzaniem), inaczej piksele grafiki
-    const sc = Math.min(1, ZOOM) * (PIXEL_ART ? 1 / PIX : mapBufScale()), bw = Math.round(VIEW.w * sc), bh = Math.round(VIEW.h * sc); // gładko: bufor w rozdzielczości ekranu (ostry świat)
+    const sc = PIXEL_ART ? Math.min(1, ZOOM) / PIX : ZOOM * mapBufScale(), bw = Math.round(VIEW.w * sc), bh = Math.round(VIEW.h * sc);
     // karta graficzna (GLMap): ten sam kod rysuje do kontekstu WebGL, wynik to płótno WebGL zamiast bufora w pamięci procesora
     const gpu = GLMap.use(), wox = VIEW.x - Math.round(st.cam.x / PIX) * PIX, woy = VIEW.y - Math.round(st.cam.y / PIX) * PIX, world = c => { c.setTransform(sc, 0, 0, sc, -VIEW.x * sc, -VIEW.y * sc); c.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; };
     const begin = () => gpu ? GLMap.begin(bw, bh) : pixBuf('world', bw, bh)._ctx; // bez willReadFrequently: przy karcie graficznej bufor zostaje na niej

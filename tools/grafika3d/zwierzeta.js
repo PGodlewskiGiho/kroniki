@@ -653,9 +653,76 @@ function treant(L, P = {}) {
   root.scale.setScalar(L.size || 1);
   return root;
 }
+// Skorpion pustynny: opancerzony tułów z chitynowymi płytami, potężne kleszcze z przodu, osiem odnóży krocznych
+// i wysoko uniesiony, segmentowany ogon zakończony gruczołem jadowym oraz zakrzywionym żądłem
+function scorpion(L, P = {}) {
+  const root = new THREE.Group(), col = L.fur || '#b86828', plate = L.plates || '#6a3414', stCol = L.stinger || '#2a120a';
+  const t = P.t || 0, walking = P.walk != null, ph = walking ? P.walk * Math.PI * 2 : 0, A = P.atk, hurt = P.hurt ? 1 : 0;
+  const wind = A == null ? 0 : A < 0.45 ? Math.sin(A / 0.45 * Math.PI / 2) : A < 0.65 ? 1 - (A - 0.45) / 0.2 : 0;
+  const hit = A == null ? 0 : A < 0.45 ? 0 : A < 0.65 ? (A - 0.45) / 0.2 : 1 - (A - 0.65) / 0.35;
+  const dark = DK(col, 0.38), light = LT(col, 0.25), glow = L.eyes || '#78ff48', fang = L.fang || '#e8dcc0';
+  const bob = walking ? Math.abs(Math.sin(ph * 2)) * 0.025 : Math.sin(t * 2) * 0.008;
+  const lunge = hit * 0.22 - wind * 0.08, body = joint(root, [lunge, 0.36 + bob, 0], -hit * 0.1 + wind * 0.08 - hurt * 0.15);
+  // opancerzony głowotułów i segmenty przedodwłoka
+  body.add(rbox(0.42, 0.16, 0.34, 0.04, col, 'scale', [0.08, 0.02, 0]));
+  for (let i = 0; i < 6; i++) {
+    const x = 0.18 - i * 0.11, w = 0.36 - Math.abs(i - 2) * 0.03, h = 0.15 - i * 0.008;
+    body.add(rbox(0.13, h, w, 0.025, i % 2 ? plate : col, 'scale', [x, 0.06 - i * 0.004, 0], [0, 0, -0.05]));
+    for (const z of [-1, 1]) body.add(spike(0.014, 0.05, dark, 'horn', [x - 0.02, 0.12 - i * 0.005, z * w * 0.38], [0.3 * z, 0, 0.4]));
+  }
+  const head = headJoint(body, [0.28, 0.03, 0], hit * 0.1);
+  for (const [x, y, z, r] of [[-0.04, 0.07, 0.035, 0.024], [-0.04, 0.07, -0.035, 0.024], [0.02, 0.04, 0.1, 0.018], [0.02, 0.04, -0.1, 0.018], [0.0, 0.04, 0.13, 0.014], [0.0, 0.04, -0.13, 0.014]])
+    head.add(sph(r, glow, 'glow', [x, y, z]));
+  for (const z of [-1, 1]) head.add(spike(0.018, 0.09, fang, 'horn', [0.05, -0.04, 0.045 * z], [0, z * 0.2, -1.35]));
+  marker(head, 'mouth', [0.12, -0.04, 0]);
+  // potężne kleszcze (pedipalpy): ramiona wysunięte do przodu, ruchome palce zaciskają się przy ciosie
+  for (const z of [-1, 1]) {
+    const sh = joint(body, [0.22, -0.01, 0.17 * z], wind * 0.25 - hit * 0.3);
+    sh.rotation.y = -z * (0.42 + wind * 0.22 - hit * 0.32 + Math.sin(t * 1.8) * 0.04);
+    sh.add(rbox(0.24, 0.08, 0.09, 0.02, col, 'scale', [0.11, 0, 0]));
+    sh.add(sph(0.05, plate, 'scale', [0.22, 0, 0]));
+    const el = joint(sh, [0.22, 0, 0], 0); el.rotation.y = z * (0.68 - wind * 0.15 + hit * 0.25);
+    el.add(rbox(0.22, 0.09, 0.1, 0.025, plate, 'scale', [0.1, 0, 0]));
+    const claw = joint(el, [0.22, 0, 0], 0); claw.rotation.y = z * 0.2;
+    claw.add(sph(0.085, col, 'scale', [0.07, 0, 0], [1.45, 0.82, 1.15]));
+    claw.add(rbox(0.16, 0.04, 0.09, 0.015, plate, 'scale', [0.07, 0.05, 0]));
+    // palec nieruchomy (zewnętrzny) i ruchomy (wewnętrzny)
+    claw.add(tube([[0.14, -0.01, 0.045 * z], [0.26, -0.01, 0.035 * z], [0.34, 0.0, 0.005 * z]], 0.032, 0.006, dark, 'horn'));
+    const pincer = joint(claw, [0.13, 0.0, -0.035 * z], 0);
+    pincer.rotation.y = z * (0.18 + wind * 0.45 - hit * 0.32 + Math.sin(t * 2.2) * 0.05);
+    pincer.add(tube([[0, 0, 0], [0.12, 0, -0.015 * z], [0.21, 0, 0.025 * z]], 0.028, 0.006, fang, 'horn'));
+  }
+  // osiem odnóży krocznych z chitynowymi stawami
+  for (const z of [-1, 1]) for (let k = 0; k < 4; k++) {
+    const a = [0.85, 1.32, 1.82, 2.32][k], gait = ((k % 2) ^ (z > 0 ? 1 : 0)) ? 0 : Math.PI;
+    const s = walking ? Math.sin(ph * 2 + gait) : Math.sin(t * 1.2 + k) * 0.05, lift = walking ? Math.max(0, Math.cos(ph * 2 + gait)) * 0.1 : 0;
+    const dx = Math.cos(a), dz = Math.sin(a) * z, sx = 0.1 - k * 0.1, reach = k === 3 ? 0.76 : 0.68;
+    const pts = [[sx + dx * 0.05, -0.02, z * 0.14], [sx + dx * reach * 0.42, 0.2 + lift * 0.4, dz * reach * 0.45],
+      [sx + dx * reach * 0.78 + s * 0.05, 0.06 + lift, dz * reach * 0.8], [sx + dx * reach + s * 0.08, -0.36 - bob + lift, dz * reach]];
+    body.add(tube(pts, 0.036, 0.012, k % 2 ? col : plate, 'scale', 2));
+    body.add(sph(0.032, light, 'scale', pts[1])); body.add(sph(0.024, dark, 'scale', pts[2]));
+  }
+  // wysoko uniesiony, segmentowany ogon (metasoma) z gruczołem jadowym i żądłem; przy ataku smaga nad głową
+  const sw = Math.sin(t * 2.2) * 0.04, strike = hit * 0.62 - wind * 0.25;
+  const tailPts = [[-0.4, 0.04, 0], [-0.62 - wind * 0.08, 0.28, 0], [-0.66 - wind * 0.12 + hit * 0.18, 0.68 + wind * 0.06, 0],
+    [-0.36 + strike * 0.65, 1.02 + sw - hit * 0.08, 0], [0.02 + strike * 0.95, 1.0 + sw - hit * 0.22, 0]];
+  body.add(tube(tailPts, 0.085, 0.042, col, 'scale', 2));
+  for (let i = 1; i < 5; i++) {
+    const p = tailPts[i], r = 0.082 - i * 0.009;
+    body.add(torus(r, 0.016, plate, 'horn', p, [0, 0, Math.PI / 2]));
+    body.add(spike(0.02, 0.09, dark, 'horn', [p[0] - 0.03, p[1] + r * 0.9, 0], [0, 0, 0.4 - i * 0.25]));
+  }
+  const tip = tailPts[4], telson = joint(body, tip, -0.25 - hit * 0.65 + wind * 0.35);
+  telson.add(sph(0.078, stCol, 'horn', [0.04, 0.0, 0], [1.35, 0.95, 0.95]));
+  telson.add(tube([[0.1, 0.0, 0], [0.22, -0.06, 0], [0.18, -0.2, 0]], 0.038, 0.004, stCol, 'horn'));
+  telson.add(sph(0.022, glow, 'glow', [0.18, -0.19, 0])); // kropla jadu na czubku żądła
+  root.scale.setScalar(1.15 * (L.size || 1));
+  return root;
+}
 // Olbrzymi pająk: głowotułów z ośmiorgiem świecących oczu i kłami (chelicery rozwierają się przy ataku), wielki odwłok ze wzorem,
 // osiem nóg w kolanach wysoko nad ciałem; chód naprzemienny (nogi 1 i 3 z jednej strony razem z 2 i 4 z drugiej)
 function spider(L, P = {}) {
+  if (L.scorpion) return scorpion(L, P);
   const root = new THREE.Group(), col = L.fur || '#2a2420', t = P.t || 0, walking = P.walk != null, ph = walking ? P.walk * Math.PI * 2 : 0, A = P.atk;
   const hit = A == null ? 0 : A < 0.45 ? -Math.sin(A / 0.45 * Math.PI / 2) * 0.4 : A < 0.62 ? -0.4 + (A - 0.45) / 0.17 * 1.4 : 1 - (A - 0.62) / 0.38;
   const dark = DK(col, 0.4), light = LT(col, 0.25), bob = walking ? Math.abs(Math.sin(ph * 2)) * 0.03 : Math.sin(t * 2) * 0.01;
