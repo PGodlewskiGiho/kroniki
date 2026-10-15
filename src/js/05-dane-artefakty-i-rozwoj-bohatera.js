@@ -6,14 +6,14 @@ const PRIMARY = [
 ];
 // Cechy startowe i szanse (w %) na wzrost danej cechy przy awansie, osobno dla każdej klasy
 const CLASS_GROWTH = {
-  knight: { base: [2, 2, 1, 1], grow: [35, 45, 10, 10] }, cleric: { base: [1, 0, 2, 2], grow: [20, 15, 30, 35] },
-  ranger: { base: [1, 3, 1, 1], grow: [30, 45, 10, 15] }, druid: { base: [0, 2, 1, 2], grow: [10, 20, 35, 35] },
-  deathKnight: { base: [1, 2, 2, 1], grow: [30, 25, 25, 20] }, necro: { base: [1, 0, 2, 2], grow: [15, 15, 35, 35] },
-  beastmaster: { base: [0, 4, 1, 1], grow: [30, 50, 10, 10] }, witch: { base: [0, 1, 2, 2], grow: [5, 15, 40, 40] },
+  knight: { base: [2, 2, 1, 1], grow: [30, 45, 12, 13] }, cleric: { base: [1, 0, 2, 2], grow: [20, 15, 30, 35] },
+  ranger: { base: [1, 3, 1, 1], grow: [40, 40, 10, 10] }, druid: { base: [0, 2, 1, 2], grow: [10, 20, 35, 35] },
+  deathKnight: { base: [1, 2, 2, 1], grow: [35, 30, 20, 15] }, necro: { base: [1, 0, 2, 2], grow: [15, 15, 35, 35] },
+  beastmaster: { base: [0, 4, 1, 1], grow: [25, 50, 12, 13] }, witch: { base: [0, 1, 2, 2], grow: [5, 15, 40, 40] },
   demoniac: { base: [2, 2, 1, 1], grow: [40, 35, 15, 10] }, heretic: { base: [1, 1, 2, 1], grow: [15, 15, 40, 30] },
   alchemist: { base: [1, 1, 2, 2], grow: [30, 30, 20, 20] }, wizard: { base: [0, 1, 2, 2], grow: [10, 20, 40, 30] },
-  overlord: { base: [2, 2, 1, 1], grow: [35, 35, 15, 15] }, warlock: { base: [0, 0, 3, 2], grow: [10, 10, 50, 30] },
-  barbarian: { base: [4, 0, 1, 1], grow: [55, 35, 5, 5] }, battleMage: { base: [2, 1, 1, 1], grow: [30, 20, 25, 25] },
+  overlord: { base: [2, 2, 1, 1], grow: [40, 35, 15, 10] }, warlock: { base: [0, 0, 3, 2], grow: [10, 10, 50, 30] },
+  barbarian: { base: [4, 0, 1, 1], grow: [45, 35, 10, 10] }, battleMage: { base: [2, 1, 1, 1], grow: [30, 20, 25, 25] },
   engineer: { base: [2, 2, 1, 1], grow: [35, 40, 12, 13] }, inventor: { base: [1, 1, 2, 2], grow: [15, 15, 35, 35] },
 };
 // Umiejętności drugorzędne (jak w oryginale): bohater ma ich najwyżej MAX_SKILLS, każdą na poziomie 1–3.
@@ -54,7 +54,94 @@ const SKILLS = {
   interference: { name: 'Zakłócanie', v: [15, 25, 40], desc: v => `czary wroga w bitwie zadają i leczą o ${v}% mniej` },
   plunder: { name: 'Grabież', v: [10, 20, 30], desc: v => `po zwycięstwie zabierasz złoto: ${v}% ceny poległych wrogów` },
   triage: { name: 'Opatrywanie ran', v: [10, 20, 30], desc: v => `po zwycięskiej bitwie wraca ${v}% twoich poległych (żywych) stworów` },
+  // --- nowe umiejętności (etap 2 rozwoju bohatera) ---
+  bloodMagic: { name: 'Krwawa magia', v: [12, 8, 5], desc: v => `brak many dopłacasz życiem własnych stworów: 1 punkt many = ${v} punktów życia najliczniejszego żywego oddziału` },
+  echo: { name: 'Echo', v: [15, 25, 35], desc: v => `${v}% szans, że czar zadający obrażenia powtórzy się od razu za darmo, z połową mocy` },
+  formation: { name: 'Szyk', v: [1, 2, 3], desc: v => `oddział, który stoi obok sojusznika, ma +${v} do obrony` },
+  alchemy: { name: 'Alchemia polowa', v: [1, 2, 3], desc: v => `na początku bitwy każdy twój oddział pije losowy eliksir (żądza krwi, kamienna skóra albo przyspieszenie) na ${v} ${v === 1 ? 'rundę' : 'rundy'}` },
+  beastTamer: { name: 'Poskramiacz', v: [10, 20, 30], desc: v => `w bitwie z potworami ${v}% najsłabszego stada przechodzi na twoją stronę (do końca bitwy)` },
+  mentor: { name: 'Mentor', v: [10, 20, 30], desc: v => `inni twoi bohaterowie dostają ${v}% doświadczenia, które zdobywa ten bohater` },
+  espionage: { name: 'Szpiegostwo', v: [10, 20, 30], desc: v => `wrogi bohater zaczyna bitwę z ${v}% mniej many i Zapału` },
+  fortify: { name: 'Fortyfikacja', v: [2, 4, 6], desc: v => `gdy twój bohater się broni (zaatakowany albo w mieście), jego oddziały mają +${v} do obrony` },
+  executioner: { name: 'Dobijanie', v: [15, 25, 40], desc: v => `+${v}% obrażeń przeciw wrogim oddziałom, które straciły ponad połowę stworów` },
+  soulHarvest: { name: 'Żniwo dusz', v: [3, 6, 10], desc: v => `+${v} many za każdy wrogi oddział zniszczony w bitwie` },
+  quartermaster: { name: 'Kwatermistrz', v: [25, 50, 100], desc: v => `strzelcy mają o ${v}% więcej strzał` },
 };
+// Specjalizacje (etap 2): umiejętność na poziomie eksperckim daje wybór jednej z dwóch specjalizacji – na zawsze (s.fork w h.skills).
+// Działanie w ZASADY GRY i BITWA: ZASADY (heroFork). ai: wybór komputera.
+const SKILL_FORKS = {
+  leadership: [{ id: 'standard', name: 'Chorąży', desc: 'morale armii nigdy nie spada poniżej zera, Okrzyk bojowy kosztuje połowę Zapału' }, { id: 'inspire', name: 'Natchnienie', desc: 'dodatkowy ruch z wysokiego morale zdarza się dwa razy częściej' }],
+  luck: [{ id: 'lucky', name: 'Fart', desc: 'szczęśliwe ciosy zdarzają się dwa razy częściej' }, { id: 'hex', name: 'Urok', desc: 'wrogie armie mają −2 do szczęścia' }],
+  offense: [{ id: 'breach', name: 'Przełamanie', desc: 'ataki wręcz pomijają 20% obrony wroga' }, { id: 'riposte', name: 'Kontra', desc: 'odwet twoich oddziałów zadaje o 40% więcej obrażeń' }],
+  archery: [{ id: 'sniper', name: 'Snajper', desc: 'strzały nie tracą obrażeń przez odległość ani przeszkody' }, { id: 'hail', name: 'Grad strzał', desc: 'strzał rani też wrogów tuż przy celu (30% obrażeń)' }],
+  armorer: [{ id: 'plate', name: 'Ciężka zbroja', desc: 'strzały zadają armii o kolejne 15% mniej obrażeń' }, { id: 'spikes', name: 'Kolce', desc: '15% obrażeń wręcz wraca do napastnika' }],
+  tactics: [{ id: 'deploy', name: 'Rozstawienie', desc: 'premia Taktyki trwa 3 rundy i Taktyka wroga jej nie znosi' }, { id: 'initiative', name: 'Inicjatywa', desc: 'w pierwszej rundzie wrogie oddziały mają −3 do szybkości' }],
+  artillery: [{ id: 'twinBolt', name: 'Ciężka balista', desc: 'balista strzela dwa razy' }, { id: 'shrapnel', name: 'Odłamki', desc: 'strzał balisty rani też wrogów obok celu (50% obrażeń)' }],
+  ballistics: [{ id: 'breaker', name: 'Burzyciel', desc: 'każde trafienie katapulty kruszy mur podwójnie' }, { id: 'assault', name: 'Szturm', desc: 'w oblężeniu twoje oddziały zadają o 20% więcej obrażeń' }],
+  firstAid: [{ id: 'lazaret', name: 'Lazaret', desc: 'na początku każdej rundy namiot medyka leczy każdy ranny oddział o połowę swojej mocy' }, { id: 'surgeon', name: 'Chirurg', desc: 'po zwycięstwie wraca dodatkowo 10% poległych żywych stworów' }],
+  triage: [{ id: 'medics', name: 'Ratownicy', desc: 'Opatrywanie ran działa też na nieumarłych i konstrukty' }, { id: 'veterans', name: 'Weterani', desc: 'wraca o połowę więcej poległych' }],
+  resistance: [{ id: 'antimagic', name: 'Antymagia', desc: 'szansa odporności na wrogi czar dwa razy większa' }, { id: 'grit', name: 'Hart', desc: 'oddziały są odporne na oślepienie, spowolnienie, osłabienie i klątwę' }],
+  plunder: [{ id: 'raider', name: 'Łupieżca', desc: 'Grabież daje dwa razy więcej złota' }, { id: 'tribute', name: 'Kontrybucja', desc: 'po każdym zwycięstwie 1 losowy rzadki surowiec' }],
+  diplomacy: [{ id: 'envoy', name: 'Ambasador', desc: 'stwory dołączają za połowę ceny' }, { id: 'intimidate', name: 'Zastraszenie', desc: 'stada co najmniej trzy razy słabsze zawsze uciekają, nawet dzikie' }],
+  logistics: [{ id: 'supply', name: 'Zaopatrzenie', desc: 'połowa niewykorzystanego ruchu przechodzi na następny dzień (do 500)' }, { id: 'couriers', name: 'Konni gońcy', desc: 'ruch liczony według najszybszego oddziału, nie najwolniejszego' }],
+  pathfinding: [{ id: 'terrainWise', name: 'Znawca terenu', desc: 'w bitwie twoje oddziały przechodzą przez drzewa i skały (nie mogą na nich stanąć)' }, { id: 'wanderer', name: 'Wędrownik', desc: 'każdy krok po mapie kosztuje o 15% mniej ruchu' }],
+  scouting: [{ id: 'intel', name: 'Wywiad', desc: 'widzisz dokładną liczebność potworów i strażników' }, { id: 'farsight', name: 'Daleki wzrok', desc: '+3 do zasięgu widzenia' }],
+  navigation: [{ id: 'sails', name: 'Wiatr w żagle', desc: 'ruch na wodzie jeszcze o 100% większy' }, { id: 'boarding', name: 'Abordaż', desc: 'w bitwach na wodzie twoje oddziały zadają o 25% więcej obrażeń' }],
+  sorcery: [{ id: 'incinerate', name: 'Spopielenie', desc: 'czary bojowe +15%, a wrogowie nie unikają ich Odpornością' }, { id: 'overload', name: 'Przeciążenie', desc: '20% szans, że czar zada podwójne obrażenia' }],
+  intelligence: [{ id: 'deepWell', name: 'Głęboka studnia', desc: '+50% maksymalnej many więcej' }, { id: 'reclaim', name: 'Odzysk', desc: 'czar, który zabije choć jednego stwora, zwraca 30% many' }],
+  mysticism: [{ id: 'meditation', name: 'Medytacja', desc: 'w bitwie co rundę wraca dwa razy więcej many' }, { id: 'powerCircle', name: 'Krąg mocy', desc: 'czary są o 15% mocniejsze, póki masz co najmniej połowę many' }],
+  wisdom: [{ id: 'fluency', name: 'Biegłość', desc: 'wszystkie czary tańsze o 15%' }, { id: 'warMage', name: 'Mag wojny', desc: 'pierwszy czar w każdej bitwie za darmo' }],
+  eagleSight: [{ id: 'copyist', name: 'Kopista', desc: 'podpatruje każdy wrogi czar (do 5. poziomu)' }, { id: 'foresight', name: 'Przewidywanie', desc: 'wrogie czary zadają twojej armii o 20% mniej obrażeń' }],
+  interference: [{ id: 'jamming', name: 'Zagłuszanie', desc: 'wrogie czary kosztują wroga o połowę więcej many' }, { id: 'silence', name: 'Wyciszenie', desc: 'wrogi bohater nie rzuca czarów ani nie wydaje rozkazów w pierwszej rundzie' }],
+  learning: [{ id: 'quickStudy', name: 'Szybka nauka', desc: 'talent co 3 poziomy zamiast co 4' }, { id: 'erudite', name: 'Erudyta', desc: 'przy awansie cztery umiejętności do wyboru zamiast trzech' }],
+  fireMagic: [{ id: 'blaze', name: 'Pożoga', desc: 'czary Ognia o 25% mocniejsze' }, { id: 'emberArmy', name: 'Żar bojowy', desc: 'cała armia +1 do ataku' }],
+  airMagic: [{ id: 'storm', name: 'Burza', desc: 'czary Powietrza o 25% mocniejsze, łańcuch piorunów skacze raz więcej' }, { id: 'gale', name: 'Wicher', desc: 'cała armia +1 do szybkości' }],
+  waterMagic: [{ id: 'healer', name: 'Uzdrowiciel', desc: 'czary leczą o 40% więcej' }, { id: 'calm', name: 'Spokój', desc: 'cała armia +1 do morale' }],
+  earthMagic: [{ id: 'quake', name: 'Trzęsienie', desc: 'czary Ziemi o 25% mocniejsze' }, { id: 'bastion', name: 'Bastion', desc: 'cała armia +2 do obrony' }],
+  estates: [{ id: 'usury', name: 'Lichwa', desc: 'co tydzień +5% posiadanego złota (najwyżej 2000)' }, { id: 'lands', name: 'Ziemie', desc: '+1 drewna i +1 rudy dziennie' }],
+  necromancy: [{ id: 'horde', name: 'Horda', desc: 'nekromancja wskrzesza o 30% więcej' }, { id: 'boneLord', name: 'Pan kości', desc: 'wskrzeszeni wstają jako legioniści (ulepszeni kościotrupi), ale w liczbie o 1/3 mniejszej' }],
+  bloodMagic: [{ id: 'bloodPact', name: 'Pakt krwi', desc: 'dopłata życiem kosztuje o połowę mniej' }, { id: 'sacrifice', name: 'Ofiara', desc: 'czar opłacony choć w części krwią jest o 30% mocniejszy' }],
+  echo: [{ id: 'resound', name: 'Pogłos', desc: 'echo uderza z pełną mocą zamiast połową' }, { id: 'manyEcho', name: 'Wielokrotne echo', desc: 'echo może się powtórzyć jeszcze raz' }],
+  formation: [{ id: 'phalanx', name: 'Falanga', desc: 'w szyku oddział zadaje też o 10% więcej obrażeń' }, { id: 'shieldRow', name: 'Rząd tarcz', desc: 'w szyku oddział otrzymuje o 15% mniej obrażeń od strzał' }],
+  alchemy: [{ id: 'elixirs', name: 'Mocne eliksiry', desc: 'każdy oddział pije dwa różne eliksiry' }, { id: 'potionHeal', name: 'Mikstury lecznicze', desc: 'co rundę każdy twój ranny oddział odzyskuje 10% życia stwora' }],
+  beastTamer: [{ id: 'packLeader', name: 'Przewodnik stada', desc: 'poskromione stwory zostają w armii po bitwie, jeśli jest miejsce' }, { id: 'wildCall', name: 'Zew dziczy', desc: 'poskromienie działa na dwa najsłabsze stada' }],
+  mentor: [{ id: 'academy', name: 'Akademia', desc: 'nowo najęci bohaterowie zaczynają z 3000 doświadczenia' }, { id: 'drill', name: 'Musztra', desc: 'oddziały w miastach, w których stoi ten bohater, rosną o 10% szybciej' }],
+  espionage: [{ id: 'sabotage', name: 'Sabotaż', desc: 'wroga balista i namiot medyka zaczynają bitwę zniszczone' }, { id: 'informant', name: 'Informator', desc: 'widzisz dokładną armię i umiejętności wrogich bohaterów' }],
+  fortify: [{ id: 'stronghold', name: 'Twierdza', desc: 'w obronie oddziały otrzymują też o 15% mniej obrażeń' }, { id: 'ambushDef', name: 'Pułapki', desc: 'w obronie wrogie oddziały mają −2 do szybkości w pierwszych dwóch rundach' }],
+  executioner: [{ id: 'mercy', name: 'Bez litości', desc: 'dobijanie działa już od 1/3 strat' }, { id: 'terror', name: 'Postrach', desc: 'zniszczenie wrogiego oddziału daje wrogom −1 do morale' }],
+  soulHarvest: [{ id: 'reaper', name: 'Żniwiarz', desc: 'żniwo daje też Zapał (połowę tej wartości)' }, { id: 'soulForge', name: 'Kuźnia dusz', desc: 'za zniszczony oddział twój najsłabszy oddział odzyskuje życie' }],
+  quartermaster: [{ id: 'arrows', name: 'Ostre groty', desc: 'strzelcy zadają o 10% więcej obrażeń' }, { id: 'cartMaster', name: 'Wozownia', desc: 'bohater zawsze ma wóz z amunicją w bitwie' }],
+};
+// Sploty (etap 3): para umiejętności, obie co najmniej na poziomie SYN_LV, sama odblokowuje dodatkowe działanie – nagroda za przemyślane
+// łączenie umiejętności (bez wyboru, bez limitu). Działanie w ZASADY GRY i BITWA: ZASADY (synergy).
+const SYN_LV = 2;
+const SYNERGIES = {
+  burningCharge: { name: 'Płonąca szarża', req: ['tactics', 'fireMagic'], desc: 'cios oddziału pod Szarżą podpala cel: płonie przez 2 rundy (10% obrażeń ciosu co rundę)' },
+  holyHost: { name: 'Święty zastęp', req: ['leadership', 'waterMagic'], desc: 'Okrzyk bojowy leczy też każdy twój oddział (5 × atak bohatera, co najmniej 10)' },
+  thunderArrows: { name: 'Gromowe strzały', req: ['archery', 'airMagic'], desc: '15% szans, że strzał ogłusza cel – traci najbliższy ruch' },
+  stoneWall: { name: 'Kamienny mur', req: ['armorer', 'earthMagic'], desc: 'Mur tarcz osłania też oddziały stojące obok wskazanego' },
+  ironWill: { name: 'Żelazna wola', req: ['leadership', 'resistance'], desc: 'niskie morale nigdy nie odbiera twoim oddziałom tury' },
+  bloodRite: { name: 'Krwawy rytuał', req: ['necromancy', 'bloodMagic'], desc: 'Krwawa magia pobiera życie z najsilniejszego żywego oddziału wroga zamiast z twojego' },
+  fieldCommand: { name: 'Polowe dowództwo', req: ['tactics', 'wisdom'], desc: 'pierwszy rozkaz w każdej bitwie za darmo' },
+  spellbreaker: { name: 'Łamacz zaklęć', req: ['offense', 'interference'], desc: 'cios wręcz zdejmuje z celu jego wzmocnienia (dobre czary)' },
+  siegeMaster: { name: 'Mistrz oblężeń', req: ['ballistics', 'artillery'], desc: 'katapulta i balista strzelają raz więcej' },
+  fieldSurgeon: { name: 'Polowy chirurg', req: ['firstAid', 'triage'], desc: 'namiot medyka przywraca też poległych w tej bitwie' },
+  volleyCaptain: { name: 'Kapitan łuczników', req: ['archery', 'leadership'], desc: 'Salwa na rozkaz kosztuje 3 Zapału mniej' },
+  bladeSpell: { name: 'Ostrze i czar', req: ['offense', 'sorcery'], desc: 'po czarze zadającym obrażenia aktywny oddział zadaje do końca rundy o 25% więcej' },
+  firestorm: { name: 'Burza ognia', req: ['fireMagic', 'airMagic'], desc: 'czary Ognia i Powietrza tańsze o 20%' },
+  riverStone: { name: 'Rzeka i skała', req: ['waterMagic', 'earthMagic'], desc: 'armia +1 do obrony, czary leczą o 20% więcej' },
+  shieldFort: { name: 'Bastion tarcz', req: ['fortify', 'formation'], desc: 'w obronie Szyk daje podwójną premię' },
+  outriders: { name: 'Zwiad konny', req: ['scouting', 'logistics'], desc: 'pierwszego dnia tygodnia +500 ruchu' },
+  resonance: { name: 'Rezonans', req: ['echo', 'sorcery'], desc: 'echo czaru zdarza się półtora raza częściej' },
+  deathHarvest: { name: 'Żniwa śmierci', req: ['necromancy', 'soulHarvest'], desc: 'nekromancja wskrzesza o 10 punktów procentowych więcej' },
+  apothecary: { name: 'Apteka', req: ['alchemy', 'firstAid'], desc: 'eliksiry Alchemii polowej działają rundę dłużej' },
+  warAcademy: { name: 'Akademia wojenna', req: ['mentor', 'learning'], desc: 'bohater zdobywa o 10% więcej doświadczenia' },
+};
+// Wolny punkt cechy co FREE_PT_EVERY poziomów (etap 3): gracz wybiera cechę, komputer najczęstszą w swojej klasie
+const FREE_PT_EVERY = 2;
+const STAT_TIP = { att: 'każdy punkt przewagi nad obroną wroga: +5% obrażeń armii; siła rozkazów (Szarża, Flanka, Pogrom…)', def: 'każdy punkt przewagi nad atakiem wroga: −2,5% obrażeń; pula Zapału (+2 za punkt)',
+  sp: 'siła i czas działania czarów, także Iskry', kn: 'mana: 10 za punkt; skupienie (mana co rundę bitwy)' };
+const FORK = {}; for (const [sk, fs] of Object.entries(SKILL_FORKS)) for (const f of fs) FORK[f.id] = Object.assign(f, { skill: sk }); // specjalizacja po identyfikatorze
 // Talenty: co TALENT_EVERY poziomów bohater wybiera jeden z trzech (heroPerk). req: lista [umiejętność, poziom], wystarczy jedna;
 // bez req dostępne zawsze (Weteran i Arcymag można brać wielokrotnie). Działanie w ZASADY GRY i BITWA: ZASADY.
 const TALENT_EVERY = 4;
@@ -102,6 +189,26 @@ const CLASS_PATHS = {
   witch: ['sage', 'archmage', 'wanderer'], heretic: ['archmage', 'sage', 'governor'], wizard: ['archmage', 'sage', 'wanderer'], warlock: ['archmage', 'sage', 'governor'],
 };
 const PATH_RARE = ['mercury', 'sulfur', 'crystal', 'gems'];
+// Klasy prestiżowe (etap 4 rozwoju bohatera): hybrydy dostępne na 10. poziomie obok ścieżek klasy dla KAŻDEGO bohatera, który ma obie
+// umiejętności z req co najmniej na poziomie PRESTIGE_LV – rycerz z Magią Ognia może zostać Płomiennym paladynem, czarodziej z Atakiem
+// Ostrzem run. Działają jak ścieżki (h.mastery, legenda na 20. poziomie, v: [ścieżka, legenda]): stałe działanie plus zdolność
+// (ability, dane w ORDERS z prestige), którą bohater raz na bitwę wydaje zamiast czaru albo rozkazu, za darmo.
+const PRESTIGE_LV = 2;
+const PRESTIGE = {
+  flamePaladin: { name: 'Płomienny paladyn', legend: 'Płomień Świtu', req: ['leadership', 'fireMagic'], v: [1, 2], ability: 'judgement', desc: v => `cała armia +${v} do ataku` },
+  runeblade: { name: 'Ostrze run', legend: 'Mistrz run', req: ['offense', 'wisdom'], v: [4, 3], ability: 'runeStrike', desc: v => `+1 do mocy czarów za każde ${v} punkty ataku` },
+  warpriest: { name: 'Kapłan wojny', legend: 'Arcykapłan wojny', req: ['armorer', 'waterMagic'], v: [5, 10], ability: 'sanctify', desc: v => `na początku każdej rundy twoje oddziały odzyskują ${v}% życia stwora` },
+  stormhunter: { name: 'Łowca burz', legend: 'Pan piorunów', req: ['archery', 'airMagic'], v: [10, 20], ability: 'thunderVolley', desc: v => `strzelcy zadają o ${v}% więcej obrażeń` },
+  bonecaller: { name: 'Rycerz kości', legend: 'Władca grobów', req: ['necromancy', 'offense'], v: [5, 10], ability: 'raiseLegion', desc: v => `nekromancja wskrzesza o ${v} punktów procentowych więcej` },
+  archdruid: { name: 'Arcydruid', legend: 'Serce puszczy', req: ['earthMagic', 'pathfinding'], v: [5, 10], ability: 'roots', desc: v => `na początku każdej rundy twoje żywe oddziały odzyskują ${v}% życia stwora` },
+  beastlord: { name: 'Władca bestii', legend: 'Król dziczy', req: ['leadership', 'beastTamer'], v: [10, 20], ability: 'packCall', desc: v => `Poskramiacz przeciąga o ${v} punktów procentowych więcej` },
+  bombardier: { name: 'Bombardier', legend: 'Mistrz prochu', req: ['alchemy', 'artillery'], v: [1, 2], ability: 'bomb', desc: v => `eliksiry Alchemii polowej działają o ${v} ${v === 1 ? 'rundę' : 'rundy'} dłużej, balista +25% obrażeń` },
+  shadowmaster: { name: 'Mistrz cienia', legend: 'Książę cieni', req: ['espionage', 'tactics'], v: [30, 60], ability: 'assassinate', desc: v => `w pierwszej rundzie twoje oddziały zadają o ${v}% więcej obrażeń` },
+  bloodmage: { name: 'Krwawy mag', legend: 'Arcymag krwi', req: ['bloodMagic', 'sorcery'], v: [10, 20], ability: 'bloodPactP', desc: v => `czary zadają o ${v}% więcej obrażeń` },
+  warden: { name: 'Strażnik twierdzy', legend: 'Niezłomny', req: ['fortify', 'formation'], v: [2, 3], ability: 'holdLine', desc: v => `cała armia +${v} do obrony` },
+  battleArch: { name: 'Arcymag bitewny', legend: 'Arcymag burzy', req: ['sorcery', 'tactics'], v: [1, 2], ability: 'meteor', desc: v => `Iskra przeskakuje na ${v === 1 ? 'jeszcze jeden oddział' : 'dwa kolejne oddziały'}` },
+};
+for (const [id, P] of Object.entries(PRESTIGE)) HERO_PATHS[id] = Object.assign(P, { prestige: true, icon: P.req[1] }); // ikona: druga umiejętność pary
 // Kolejność wyboru talentów przez SI (wcześniejszy = ważniejszy)
 const AI_TALENT_ORDER = ['doubleCast', 'counter', 'giantSlayer', 'ambush', 'warlord', 'volley', 'deathLord', 'spellWard', 'fortunate', 'fieldMedic', 'forcedMarch', 'treasurer', 'diplomat', 'manaSiphon', 'scholar', 'veteran', 'archmage', 'explorer'];
 // Magowie zaczynają z Mądrością (jak w oryginale): bez niej bohater zna czary najwyżej 2. poziomu
@@ -121,13 +228,13 @@ const CLASS_SKILLS = {
 const NECRO_CLASSES = ['deathKnight', 'necro'];
 const MAGE_CLASSES = ['cleric', 'druid', 'necro', 'witch', 'heretic', 'wizard', 'warlock', 'inventor'];
 // Umiejętności, które klasa dostaje przy awansie częściej (jak w oryginale: rycerz rzadko uczy się magii, mag walki)
-const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance', 'tactics', 'triage', 'plunder'];
-const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting', 'fireMagic', 'airMagic', 'waterMagic', 'earthMagic', 'interference'];
+const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance', 'tactics', 'triage', 'plunder', 'formation', 'fortify', 'executioner', 'quartermaster', 'alchemy', 'beastTamer'];
+const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting', 'fireMagic', 'airMagic', 'waterMagic', 'earthMagic', 'interference', 'bloodMagic', 'echo', 'soulHarvest', 'mentor', 'espionage'];
 const CLASS_SKILL_PREF = {
   knight: ['leadership', 'offense', 'armorer', 'artillery', 'tactics'], cleric: ['wisdom', 'waterMagic', 'mysticism', 'estates', 'triage'],
   ranger: ['archery', 'pathfinding', 'luck', 'scouting', 'diplomacy'], druid: ['wisdom', 'earthMagic', 'waterMagic', 'intelligence', 'diplomacy'],
   deathKnight: ['offense', 'armorer', 'resistance', 'necromancy', 'tactics'], necro: ['wisdom', 'earthMagic', 'intelligence', 'necromancy', 'interference'],
-  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid', 'triage'], witch: ['wisdom', 'eagleSight', 'waterMagic', 'intelligence', 'interference'],
+  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid', 'triage'], witch: ['wisdom', 'fireMagic', 'airMagic', 'intelligence', 'sorcery'],
   demoniac: ['offense', 'artillery', 'ballistics', 'resistance', 'plunder'], heretic: ['wisdom', 'fireMagic', 'sorcery', 'intelligence', 'interference'],
   alchemist: ['artillery', 'ballistics', 'wisdom', 'earthMagic', 'plunder'], wizard: ['wisdom', 'airMagic', 'intelligence', 'sorcery', 'interference'],
   overlord: ['leadership', 'offense', 'resistance', 'scouting', 'tactics'], warlock: ['wisdom', 'fireMagic', 'sorcery', 'intelligence', 'interference'],
@@ -137,8 +244,8 @@ const CLASS_SKILL_PREF = {
 // Waga umiejętności w losowaniu przy awansie: ulubione klasy ×4, magiczne u wojowników i bojowe u magów ×0,5
 const skillWeight = (cls, id) => (CLASS_SKILL_PREF[cls] || []).includes(id) ? 4 : (MAGE_CLASSES.includes(cls) ? MIGHT_SKILLS : MAGIC_SKILLS).includes(id) ? 0.5 : 1;
 // Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
-const AI_SKILL_ORDER = ['offense', 'necromancy', 'wisdom', 'leadership', 'armorer', 'archery', 'tactics', 'logistics', 'resistance', 'luck', 'triage', 'artillery', 'pathfinding', 'estates', 'sorcery',
-  'earthMagic', 'fireMagic', 'airMagic', 'waterMagic', 'interference', 'intelligence', 'plunder', 'diplomacy', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'navigation', 'scouting'];
+const AI_SKILL_ORDER = ['offense', 'necromancy', 'wisdom', 'leadership', 'armorer', 'archery', 'tactics', 'formation', 'executioner', 'logistics', 'resistance', 'echo', 'luck', 'triage', 'artillery', 'pathfinding', 'estates', 'sorcery', 'alchemy', 'soulHarvest', 'fortify', 'quartermaster', 'bloodMagic',
+  'earthMagic', 'fireMagic', 'airMagic', 'waterMagic', 'interference', 'intelligence', 'plunder', 'diplomacy', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'beastTamer', 'espionage', 'mentor', 'navigation', 'scouting'];
 
 // Specjalności bohaterów (jak w oryginale), rosną z poziomem bohatera:
 // dw: stwory z siedliska tego poziomu (i ulepszone) dostają +5% ataku i obrony za każdy poziom bohatera na poziom stwora, +1 szybkości;
@@ -263,6 +370,40 @@ const ARTIFACTS = {
   titanArmor: { name: 'Pancerz Tytana', kind: 'torso', rarity: 'relic', parts: ['titanCuirass', 'titanHammer', 'titanHelm', 'titanGreaves'], bonus: { att: 7, def: 12 }, icon: 'armor', col: '#6ab0d0', gem: '#ffffff' },
   deadKingRegalia: { name: 'Insygnia Króla Umarłych', kind: 'head', rarity: 'relic', parts: ['boneCrown', 'deathShroud', 'vampireFang'], bonus: { sp: 5, kn: 4, def: 3 }, icon: 'crown', col: '#d8d0b8', gem: '#60e0a0' },
   frostKing: { name: 'Regalia Lodowego Króla', kind: 'torso', rarity: 'relic', parts: ['frostMail', 'frostBrand', 'frostCrown'], bonus: { att: 6, def: 6, sp: 4 }, icon: 'armor', col: '#8ac8f0', gem: '#ffffff' },
+  // --- artefakty 2.0 (etap 5 rozwoju bohatera) ---
+  // rosnące (grow): co `every` wygranych bitew, w których bohater je nosi, premia rośnie o `per` (najwyżej `max` razy); stan w h.artXp
+  thirstBlade: { name: 'Ostrze Pragnienia', kind: 'weapon', rarity: 'minor', bonus: { att: 1 }, grow: { key: 'att', per: 1, every: 3, max: 5 }, icon: 'sword', col: '#c8ccd4', gem: '#c8202a' },
+  veteranShield: { name: 'Tarcza Weterana', kind: 'shield', rarity: 'minor', bonus: { def: 1 }, grow: { key: 'def', per: 1, every: 3, max: 5 }, icon: 'shield', col: '#7a6a5a', gem: '#c8a040' },
+  livingTome: { name: 'Żywa Księga', kind: 'misc', rarity: 'minor', bonus: { sp: 1 }, grow: { key: 'sp', per: 1, every: 3, max: 4 }, icon: 'book', col: '#3a6a3a', gem: '#a0f070' },
+  pupilRing: { name: 'Pierścień Ucznia', kind: 'ring', rarity: 'treasure', bonus: { kn: 1 }, grow: { key: 'kn', per: 1, every: 3, max: 4 }, icon: 'ring', col: '#b8c0cc', gem: '#6ab0f0' },
+  trophyNecklace: { name: 'Naszyjnik z Trofeów', kind: 'neck', rarity: 'minor', bonus: { att: 1 }, grow: { key: 'morale', per: 1, every: 4, max: 3 }, icon: 'fang', col: '#e8dcc0', gem: '#8a3a1a' },
+  roadBoots: { name: 'Buty Wielu Dróg', kind: 'feet', rarity: 'treasure', bonus: { mp: 100 }, grow: { key: 'mp', per: 100, every: 2, max: 6 }, icon: 'boots', col: '#6a4a2a', gem: '#a8c8e8' },
+  // przeklęte (cursed): wielka premia i prawdziwa wada; zdjąć je można tylko w mieście z gildią magów
+  berserkAxe: { name: 'Topór Szału', kind: 'weapon', rarity: 'major', cursed: true, bonus: { att: 7, def: -3 }, icon: 'axe', col: '#8a2a24', gem: '#ff3a2a' },
+  greedCrown: { name: 'Korona Chciwości', kind: 'head', rarity: 'major', cursed: true, bonus: { gold: 1500, morale: -2 }, icon: 'crown', col: '#d8a830', gem: '#3aa040' },
+  leadGreaves: { name: 'Ołowiane Nagolenniki', kind: 'feet', rarity: 'major', cursed: true, bonus: { def: 5, mp: -400 }, icon: 'boots', col: '#5a5e66', gem: '#2a2a30' },
+  voidAmulet: { name: 'Amulet Pustki', kind: 'neck', rarity: 'major', cursed: true, bonus: { sp: 5, kn: -2 }, icon: 'amulet', col: '#2a2236', gem: '#a050ff' },
+  hexRing: { name: 'Pierścień Wiedźmy', kind: 'ring', rarity: 'major', cursed: true, bonus: { sp: 3, kn: 3, luck: -2 }, icon: 'ring', col: '#4a5a3a', gem: '#90ff60' },
+  bloodMail: { name: 'Krwawa Kolczuga', kind: 'torso', rarity: 'major', cursed: true, bonus: { att: 3, def: 4, morale: -2 }, icon: 'armor', col: '#8a2a2a', gem: '#ff4a3a' },
+  // aktywne (use): zdolność raz na bitwę z listy Rozkaz, za darmo, także bez księgi czarów (dane zdolności w ORDERS, pole art)
+  thunderRod: { name: 'Różdżka Gromu', kind: 'misc', rarity: 'minor', bonus: { sp: 1 }, use: 'rodBolt', icon: 'staff', col: '#4a5a8a', gem: '#ffe060' },
+  lifeFlask: { name: 'Flakon Żywej Wody', kind: 'misc', rarity: 'treasure', bonus: {}, use: 'flaskHeal', icon: 'orb', col: '#4ac0a0', gem: '#c8a040' },
+  warHorn: { name: 'Róg Wojenny', kind: 'misc', rarity: 'minor', bonus: { morale: 1 }, use: 'hornBlast', icon: 'horn', col: '#e8dcc0', gem: '#c8a040' },
+  mirrorShield: { name: 'Tarcza Zwierciadlana', kind: 'shield', rarity: 'major', bonus: { def: 2 }, use: 'mirror', icon: 'shield', col: '#d8e4f0', gem: '#8ac8ff' },
+  bindingChains: { name: 'Łańcuchy Spętania', kind: 'misc', rarity: 'major', bonus: { def: 1 }, use: 'bind', icon: 'chain', col: '#8a8e98', gem: '#a050ff' },
+  hourglass: { name: 'Klepsydra Czasu', kind: 'misc', rarity: 'major', bonus: { kn: 1 }, use: 'timeSurge', icon: 'hourglass', col: '#c8a040', gem: '#f0e0a0' },
+  manaCrystal: { name: 'Kryształ Many', kind: 'neck', rarity: 'minor', bonus: { kn: 1 }, use: 'manaSurge', icon: 'amulet', col: '#6a8ad8', gem: '#60c0ff' },
+  fireScroll: { name: 'Zwój Ognistej Kuli', kind: 'misc', rarity: 'minor', bonus: {}, use: 'scrollFire', icon: 'scroll', col: '#e8dcc0', gem: '#ff6a2a' },
+  // relikwie rodów (fac): premia dla każdego, a bohaterowi tej frakcji (obu klas) dużo więcej (own)
+  dawnOath: { name: 'Ostrze Przysięgi Świtu', kind: 'weapon', rarity: 'major', fac: 'haven', bonus: { att: 2, def: 1 }, own: { att: 2, morale: 1 }, icon: 'sword', col: '#f0e8c8', gem: '#ffd060' },
+  elderHeart: { name: 'Serce Pradrzewa', kind: 'neck', rarity: 'major', fac: 'sylvan', bonus: { kn: 2 }, own: { sp: 2, luck: 1 }, icon: 'amulet', col: '#6a8a3a', gem: '#a0f070' },
+  lichPhylactery: { name: 'Filakteria Lisza', kind: 'misc', rarity: 'major', fac: 'barrow', bonus: { sp: 2 }, own: { sp: 2, kn: 2 }, icon: 'orb', col: '#3a4a3a', gem: '#60e0a0' },
+  runeHammer: { name: 'Młot Kowala Run', kind: 'weapon', rarity: 'major', fac: 'fortress', bonus: { att: 1, def: 2 }, own: { def: 3, att: 1 }, icon: 'hammer', col: '#a8a098', gem: '#40c0e0' },
+  hellforgeCrown: { name: 'Korona Piekielnej Kuźni', kind: 'head', rarity: 'major', fac: 'inferno', bonus: { att: 2 }, own: { att: 2, sp: 2 }, icon: 'crown', col: '#5a2a1a', gem: '#ff6a2a' },
+  frostLens: { name: 'Soczewka Szronu', kind: 'misc', rarity: 'major', fac: 'academy', bonus: { kn: 2, sp: 1 }, own: { kn: 2, sp: 2 }, icon: 'orb', col: '#bfe8fa', gem: '#ffffff' },
+  abyssMask: { name: 'Maska Otchłani', kind: 'head', rarity: 'major', fac: 'dungeon', bonus: { sp: 2, def: 1 }, own: { sp: 2, att: 1 }, icon: 'mask', col: '#3a2a46', gem: '#c83a5a' },
+  warchiefTotem: { name: 'Totem Wodza', kind: 'misc', rarity: 'major', fac: 'stronghold', bonus: { att: 2 }, own: { att: 3, morale: 1 }, icon: 'banner', col: '#8a5a2a', gem: '#c83a2a' },
+  gearHeart: { name: 'Zębate Serce', kind: 'torso', rarity: 'major', fac: 'forge', bonus: { def: 2, att: 1 }, own: { def: 2, att: 2 }, icon: 'armor', col: '#b8703a', gem: '#ffb040' },
   // Graala nie da się założyć (nie ma pasującego miejsca): leży w plecaku, dopóki bohater nie zbuduje go w mieście
   grail: { name: 'Graal', kind: 'grail', rarity: 'relic', bonus: {}, icon: 'grail', col: '#f0c040', gem: '#fff4c0',
     desc: 'Święty kielich. Zanieś go do własnego miasta, aby wznieść tam budowlę Graala (+5000 złota dziennie, +50% przyrostu stworów).' },
@@ -273,14 +414,34 @@ const relicOf = id => RELICS.find(r => ARTIFACTS[r].parts.includes(id)) || null;
 // Opis premii artefaktu: „+2 do ataku, +200 ruchu”
 function artBonusText(b) {
   const out = [];
-  for (const p of PRIMARY) if (b[p.id]) out.push(`+${b[p.id]} do ${p.gen}`);
+  for (const p of PRIMARY) if (b[p.id]) out.push(`${signed(b[p.id])} do ${p.gen}`);
   if (b.morale) out.push(`${signed(b.morale)} do morale`); if (b.luck) out.push(`${signed(b.luck)} do szczęścia`);
-  if (b.mp) out.push(`+${b.mp} punktów ruchu`); if (b.sight) out.push(`+${b.sight} do zasięgu widzenia`); if (b.gold) out.push(`+${b.gold} złota dziennie`);
+  if (b.mp) out.push(`${signed(b.mp)} punktów ruchu`); if (b.sight) out.push(`${signed(b.sight)} do zasięgu widzenia`); if (b.gold) out.push(`${signed(b.gold)} złota dziennie`);
   if (b.res) out.push(`dziennie ${Object.entries(b.res).map(([r, n]) => `+${n} ${(RESOURCES.find(x => x.id === r) || { name: r }).name.toLowerCase()}`).join(', ')}`);
   return out.join(', ');
 }
-const artInfo = id => { const A = ARTIFACTS[id], r = relicOf(id);
-  return `${A.name} (${RARITY[A.rarity]}): ${A.desc || [artBonusText(A.bonus), A.perk ? `talent ${TALENTS[A.perk].name} (${TALENTS[A.perk].desc})` : ''].filter(Boolean).join('; ') + '.'}` + (A.parts ? ` Złożona z: ${A.parts.map(p => ARTIFACTS[p].name).join(', ')}.` : '') + (r ? ` Część relikwii: ${ARTIFACTS[r].name}.` : ''); };
+// Cechy artefaktów 2.0 jako zdania (karta i podpowiedź): zdolność, klątwa, wzrost, relikwia rodu, runa; h: czyj (stan wzrostu i runy)
+function artTraits(id, h) {
+  const A = ARTIFACTS[id], out = [], k = (KEY_NAMES[A.grow && A.grow.key] || '');
+  if (A.use) out.push(`Raz na bitwę (lista Rozkaz, za darmo, bez księgi): ${ORDERS[A.use].name} – ${ORDERS[A.use].desc()}`);
+  if (A.cursed) out.push('Przeklęty: zdejmiesz go tylko w mieście z gildią magów');
+  if (A.grow) { const G0 = A.grow, n = h ? artGrowth(h, id) : 0, xp = h ? (h.artXp || {})[id] || 0 : 0;
+    out.push(`Rośnie: co ${G0.every} wygrane bitwy ${signed(G0.per)} ${k} (najwyżej ${signed(G0.per * G0.max)})` + (h ? `; teraz ${signed(G0.per * n)}, zwycięstw: ${xp}` : '')); }
+  if (A.fac) out.push(`Relikwia rodu (${factionOf(A.fac).name}): bohaterowi tej frakcji dodatkowo ${artBonusText(A.own)}`);
+  const e = h && (h.ench || {})[id]; if (e) out.push(`Runa: ${ENCHANTS[e].name} (${artBonusText(enchBonus(id, e))})`);
+  return out;
+}
+const KEY_NAMES = { att: 'ataku', def: 'obrony', sp: 'mocy', kn: 'wiedzy', morale: 'morale', luck: 'szczęścia', mp: 'ruchu', sight: 'widzenia', gold: 'złota' };
+const artInfo = (id, h = null) => { const A = ARTIFACTS[id], r = relicOf(id), tr = artTraits(id, h);
+  return `${A.name} (${RARITY[A.rarity]}): ${A.desc || [artBonusText(A.bonus), A.perk ? `talent ${TALENTS[A.perk].name} (${TALENTS[A.perk].desc})` : ''].filter(Boolean).join('; ') + '.'}` + (tr.length ? ` ${tr.join('. ')}.` : '') + (A.parts ? ` Złożona z: ${A.parts.map(p => ARTIFACTS[p].name).join(', ')}.` : '') + (r ? ` Część relikwii: ${ARTIFACTS[r].name}.` : ''); };
+// Zaklinanie w mieście z gildią magów: jedna runa na artefakt (nowa zastępuje starą); siła i koszt rosną z rzadkością
+const ENCHANTS = {
+  att: { name: 'Runa siły', bonus: { att: 1 } }, def: { name: 'Runa osłony', bonus: { def: 1 } }, sp: { name: 'Runa mocy', bonus: { sp: 1 } }, kn: { name: 'Runa wiedzy', bonus: { kn: 1 } },
+  luck: { name: 'Runa szczęścia', bonus: { luck: 1 } }, morale: { name: 'Runa męstwa', bonus: { morale: 1 } }, mp: { name: 'Runa drogi', bonus: { mp: 150 } },
+};
+const ENCH_TIER = { treasure: 1, minor: 1, major: 2, relic: 3 }; // mnożnik premii runy (szczęście i morale zawsze +1)
+const ENCH_COST = { treasure: { gold: 600, crystal: 1, gems: 1 }, minor: { gold: 1000, crystal: 2, gems: 2 }, major: { gold: 2000, crystal: 3, gems: 3 }, relic: { gold: 4000, crystal: 5, gems: 5 } };
+const enchBonus = (id, e) => { const t = ENCH_TIER[ARTIFACTS[id].rarity] || 1, b = ENCHANTS[e].bonus, out = {}; for (const [k, v] of Object.entries(b)) out[k] = k === 'luck' || k === 'morale' ? v : v * t; return out; };
 
 // ==================== WYGLĄD BOHATERÓW (jeździec 3D, każdy inny) ==========================================
 // Każdy bohater z puli frakcji ma własny model jeźdźca: klasa daje barwy (HERO_CLASSES.look), a kolejny bohater tej klasy

@@ -16,7 +16,7 @@ function drawPathRow(ctx, h, x, y) {
   text(ctx, 'Ścieżka:', x, y, { size: 15, weight: 500, color: '#2a1606' });
   if (h.mastery) { const P = HERO_PATHS[h.mastery], cx = x + 80; ctx.fillStyle = 'rgba(200,150,40,.4)'; ctx.beginPath(); ctx.arc(cx, y, 13, 0, TAU); ctx.fill(); skillIcon(ctx, P.icon, cx, y, 24);
     text(ctx, pathTitle(h), cx + 16, y, { size: 14, weight: 700, color: pathLv(h, h.mastery) === 2 ? '#8a3a10' : '#2a1606' }); return [{ x: cx - 12, y: y - 12, w: 120, h: 24, id: h.mastery }]; }
-  return pathOffer(h).map((id, k) => { const cx = x + 80 + k * 26; ctx.save(); ctx.globalAlpha = 0.45; skillIcon(ctx, HERO_PATHS[id].icon, cx, y, 22); ctx.restore(); return { x: cx - 12, y: y - 12, w: 24, h: 24, id }; });
+  return pathOffer(h).slice(0, 6).map((id, k) => { const cx = x + 80 + k * 26; ctx.save(); ctx.globalAlpha = 0.45; skillIcon(ctx, HERO_PATHS[id].icon, cx, y, 22); ctx.restore(); return { x: cx - 12, y: y - 12, w: 24, h: 24, id }; });
 }
 const pathTip = (h, id) => (h.mastery ? `Ścieżka mistrzowska — ${pathText(id, pathLv(h, id))}.${pathLv(h, id) < 2 ? ` Na ${PATH_LEVELS[1]}. poziomie legenda: ${pathText(id, 2)}.` : ''}`
   : `Na ${PATH_LEVELS[0]}. poziomie ${h.name} wybierze jedną z trzech ścieżek mistrzowskich. ${pathText(id, 1)}; legenda (${PATH_LEVELS[1]}. poziom): ${pathText(id, 2)}.`);
@@ -50,9 +50,10 @@ G.screens.hero = {
     this.sel = null; this.bagPage = 0; this.armyRects = []; this.msg = null;
     this.bPrev = new Button(432, 446, 44, 28, 'Poprzednie', () => { this.bagPage--; }, { icon: iconArrowSide(-1), tip: 'Poprzednie artefakty w plecaku.' });
     this.bNext = new Button(728, 446, 44, 28, 'Następne', () => { this.bagPage++; }, { icon: iconArrowSide(1), tip: 'Następne artefakty w plecaku.' });
-    this.buttons = [new Button(32, 500, 170, 44, 'Wróć', () => this.onBack(), { key: 'escape', size: 18, tip: 'Powrót (klawisz Esc).' }), this.bPrev, this.bNext,
-      new Button(216, 500, 172, 44, 'Księga czarów', () => hasBook(this.hero()) ? showSpellbook(this.hero(), 'view', () => {}) : this.say(`Brak księgi czarów: kupisz ją w gildii magów (${SPELLBOOK_COST} złota).`), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C). Wojownicy muszą najpierw kupić księgę w gildii magów.' })];
-    if (this.preview) this.buttons.splice(3, 1, this.bHire = new Button(216, 500, 172, 44, 'Najmij', () => {
+    this.buttons = [new Button(32, 500, 108, 44, 'Wróć', () => this.onBack(), { key: 'escape', size: 18, tip: 'Powrót (klawisz Esc).' }), this.bPrev, this.bNext,
+      new Button(148, 500, 124, 44, 'Księga czarów', () => hasBook(this.hero()) ? showSpellbook(this.hero(), 'view', () => {}) : this.say(`Brak księgi czarów: kupisz ją w gildii magów (${SPELLBOOK_COST} złota).`), { key: 'c', size: 16, tip: 'Czary znane bohaterowi (klawisz C). Wojownicy muszą najpierw kupić księgę w gildii magów.' })];
+    this.buttons.push(new Button(280, 500, 108, 44, 'Rozwój', () => showDevPlanner(this.hero()), { key: 'r', size: 17, tip: 'Planer rozwoju: kolejne awanse, sploty, klasy prestiżowe, cel rozwoju i ołtarz przemiany (klawisz R).' }));
+    if (this.preview) this.buttons.splice(3, 1, this.bHire = new Button(148, 500, 124, 44, 'Najmij', () => {
       const st = G.state, t = st.towns[this.hire.townId], r = hireHero(st, t, this.hire.k); if (r.error) return this.say(r.error);
       G.go('town', { townId: t.id, msg: `${r.hero.name} dołącza do twojej sprawy` });
     }, { key: 'enter', size: 17, sub: `${HERO_COST} złota`, tip: `Najmij bohatera za ${HERO_COST} złota; stanie w bramie miasta (klawisz Enter).` }));
@@ -69,6 +70,10 @@ G.screens.hero = {
     if (clickButtons(this.buttons, x, y)) return;
     if (this.preview) return; // podgląd kandydata: tylko oglądanie
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y);
+    { const p = this.statAt(x, y); if (p && h.freePts > 0 && h.owner === ME) { spendPoint(h, p.id); Sfx.play('click'); return; } } // wolny punkt cechy
+    { const si = this.skillAt(x, y); if (si >= h.skills.length && h.relearn > 0 && h.owner === ME) return offerRelearn(h); } // po ołtarzu: nowy poziom w miejsce zapomnianego
+    { const si = this.skillAt(x, y), sk = si >= 0 && h.skills[si]; if (sk && sk.lv >= 3 && SKILL_FORKS[sk.id] && !sk.fork && h.owner === ME) { // zaległa specjalizacja (np. ze starego zapisu)
+      showChoice(`${SKILLS[sk.id].name}: ${h.name} wybiera specjalizację – na zawsze:`, SKILL_FORKS[sk.id].map((f, k) => ({ label: f.name, sub: `specjalizacja: ${SKILLS[sk.id].name}`, tip: cap1(f.desc) + '.', key: String(k + 1), lead: (ctx, cx, cy) => skillIcon(ctx, sk.id, cx, cy), action: () => chooseFork(h, sk.id, f.id) }))); return; } }
     if (ar) {
       if (this.sel == null) { if (h.army[ar.i]) this.sel = ar.i; return; } // (sel 0 to pierwszy oddział – dawniej uznawany za brak zaznaczenia)
       const from = this.sel; this.sel = null;
@@ -84,10 +89,24 @@ G.screens.hero = {
       showDialog(`${ARTIFACTS[r].name}. Co zrobić z relikwią?`, [
         { label: 'Rozłóż na części', key: 'r', action: () => { disassembleRelic(h, e.id); fixMp(); this.say(`Rozłożono: ${ARTIFACTS[r].name}`); } },
         { label: 'Zdejmij', key: 'z', action: () => { unequip(h, e.id); fixMp(); this.say(`Zdjęto: ${ARTIFACTS[r].name}`); } },
+        ...(curseFree(G.state, h) ? [{ label: 'Zaklnij runą', key: 'e', action: () => this.offerEnchant(h, r) }] : []),
         { label: 'Anuluj', key: 'escape', action: () => {} }]); }
-    else if (e && h.equip[e.id]) { unequip(h, e.id); fixMp(); this.say(`Zdjęto: ${ARTIFACTS[h.bag[h.bag.length - 1]].name}`); }
+    else if (e && h.equip[e.id] && curseFree(G.state, h)) { const id = h.equip[e.id]; // w mieście z gildią: zdjąć albo zakląć
+      showDialog(`${ARTIFACTS[id].name}. Gildia magów może wyryć na nim runę.`, [
+        { label: 'Zaklnij runą', key: 'e', action: () => this.offerEnchant(h, id) },
+        { label: 'Zdejmij', key: 'z', action: () => { unequip(h, e.id); fixMp(); this.say(`Zdjęto: ${ARTIFACTS[id].name}`); } },
+        { label: 'Anuluj', key: 'escape', action: () => {} }]); }
+    else if (e && h.equip[e.id]) { const id = h.equip[e.id], err = unequip(h, e.id); fixMp(); this.say(err || `Zdjęto: ${ARTIFACTS[id].name}`); }
     else if (e) this.say(`Wolne miejsce: ${e.name.toLowerCase()}. Kliknij artefakt w plecaku, aby go założyć.`);
     else if (bi >= 0 && h.bag[bi]) { const id = h.bag[bi], err = equipFromBag(h, bi); fixMp(); this.say(err || `Założono: ${ARTIFACTS[id].name}`); if (!err) this.offerRelic(h); }
+  },
+  // Zaklinanie: wybór runy (jedna na artefakt, nowa zastępuje starą); koszt zależy od rzadkości
+  offerEnchant(h, id) {
+    const st = G.state, cur = (h.ench || {})[id], c = enchCost(id);
+    showChoice(`${ARTIFACTS[id].name}: wybierz runę (koszt: ${costText(c)}).${cur ? ` Teraz: ${ENCHANTS[cur].name} – nowa ją zastąpi.` : ''}`, Object.entries(ENCHANTS).map(([rid, E], k) => ({
+      label: E.name, sub: artBonusText(enchBonus(id, rid)), tip: `${E.name}: ${artBonusText(enchBonus(id, rid))} na stałe, póki artefakt jest założony. Koszt: ${costText(c)}.`, key: String(k + 1),
+      lead: (ctx, cx, cy) => { if (PRIMARY.some(p => p.id === rid)) iconStat(ctx, rid, cx, cy, '#6a4418'); else drawSprite(ctx, artSprite(id), cx, cy, 0.9); },
+      action: () => { const err = enchantArt(st, h, id, rid); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(err || `${ARTIFACTS[id].name}: ${E.name}`); if (!err) Sfx.play('click'); } })));
   },
   // Komplet części założony: propozycja złożenia relikwii
   offerRelic(h) {
@@ -102,9 +121,9 @@ G.screens.hero = {
   },
   rightInfo(x, y) {
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y), p = this.statAt(x, y);
-    if (e && (h.locked || {})[e.id]) return `Miejsce zajęte przez relikwię: ${artInfo(h.locked[e.id])}`;
-    if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id])} ${ARTIFACTS[h.equip[e.id]].parts ? 'Kliknij, aby rozłożyć albo zdjąć.' : 'Kliknij, aby zdjąć.'}` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
-    if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
+    if (e && (h.locked || {})[e.id]) return `Miejsce zajęte przez relikwię: ${artInfo(h.locked[e.id], h)}`;
+    if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id], h)} ${ARTIFACTS[h.equip[e.id]].parts ? 'Kliknij, aby rozłożyć albo zdjąć.' : curseFree(G.state, h) ? 'Kliknij: zdejmij albo zaklnij runą.' : 'Kliknij, aby zdjąć.'}` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
+    if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi], h)} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
     if (inRect(x, y, SPEC_BOX)) return heroSpec(h) ? `Specjalność: ${specText(h)}.` : null;
@@ -112,7 +131,8 @@ G.screens.hero = {
     const tr = hitRect(this.talentRects || [], x, y); if (tr) return `Talent — ${talentText(tr.id)}.`;
     const pr = hitRect(this.pathRects || [], x, y); if (pr) return pathTip(h, pr.id);
     const si = this.skillAt(x, y);
-    if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
+    if (this.synRect && inRect(x, y, this.synRect)) return activeSynergies(h).map(synText).join('. ') + '.'; // sploty
+    if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv, s.fork)}.${synHint(h, s.id)}${s.lv >= 3 && SKILL_FORKS[s.id] && !s.fork ? ' Kliknij, aby wybrać specjalizację.' : ''}` : (si === h.skills.length && h.relearn > 0 ? `Po ołtarzu przemiany: ${h.relearn} do wybrania. Kliknij, aby wybrać umiejętność.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'); }
     if (p) return {
       att: 'Atak: dodaje się do ataku każdego twojego oddziału w bitwie (+5% obrażeń za punkt przewagi).',
       def: 'Obrona: dodaje się do obrony każdego twojego oddziału w bitwie (mniej otrzymywanych obrażeń).',
@@ -144,17 +164,20 @@ G.screens.hero = {
       text(ctx, p.name, bx + 42, 208, { size: 12, weight: 500, align: 'center', color: '#5a3814' });
       text(ctx, String(h.stats[p.id] + b), bx + 42, 230, { size: 20, align: 'center', color: '#2a1606', fam: 'title' });
       if (b) text(ctx, `+${b}`, bx + 78, 230, { size: 12, weight: 700, align: 'right', color: '#2a6a1e' });
+      if (h.freePts > 0 && !this.preview && h.owner === ME) { const pulse = 0.7 + 0.3 * Math.sin(G.time * 5); ctx.fillStyle = `rgba(60,140,40,${pulse})`; ctx.beginPath(); ctx.arc(bx + 72, 176, 9, 0, TAU); ctx.fill(); text(ctx, '+', bx + 72, 176, { size: 16, align: 'center', color: '#f4ffe8', fam: 'title' }); G.dirty = true; } // wolny punkt: kliknij cechę
     });
+    if (h.freePts > 0 && h.owner === ME && !this.preview) text(ctx, `Wolne punkty cech: ${h.freePts} – kliknij cechę`, 388, 142, { size: 13, weight: 700, align: 'right', color: '#2a6a1e' });
     divider(ctx, 32, 388, 262);
     const mpB = heroBonus(h, 'mp'), gold = heroBonus(h, 'gold'), sB = heroBonus(h, 'sight');
     [`Ruch: ${h.mp} z ${heroMaxMP(h)}${mpB ? ` (+${mpB} z artefaktów)` : ''}`,
      `Zasięg widzenia: ${heroSight(h)}${sB ? ` (+${sB})` : ''} · mana ${h.mana} / ${heroMaxMana(h)} · czary: ${(h.spells || []).length}`,
      `Siła armii: ${Math.round(armyPower(h.army) * heroFactor(h))} (premia bohatera +${Math.round((heroFactor(h) - 1) * 100)}%)`,
      `Morale: ${signed(armyMorale(armyStacks(h.army).map(s => s.cid), h, null))} · Szczęście: ${signed(heroLuck(h))}`,
-     gold ? `Złoto z artefaktów: +${gold} dziennie` : null, (h.talents || []).length ? 'Talenty:' : null].filter(Boolean)
+     gold ? `Złoto z artefaktów: +${gold} dziennie` : null, activeSynergies(h).length ? `Sploty: ${activeSynergies(h).map(id => SYNERGIES[id].name).join(', ')}` : null, (h.talents || []).length ? 'Talenty:' : null].filter(Boolean)
       .forEach((l, i, L) => { const y = L.length > 4 && (h.talents || []).length ? 276 + i * 19 : 286 + i * 22; text(ctx, l, 32, y, { size: 15, weight: 500, color: '#2a1606' });
         if (l === 'Talenty:') this.talentRects = (h.talents || []).map((id, k) => { const r = { x: 100 + k * 26, y: y - 12, w: 24, h: 24, id }; skillIcon(ctx, 't_' + id, r.x + 12, y, 24); return r; });
-        if (l.startsWith('Morale')) this.pathRects = drawPathRow(ctx, h, 236, y); }); // ścieżka mistrzowska w wierszu morale (z prawej)
+        if (l.startsWith('Morale')) this.pathRects = drawPathRow(ctx, h, 236, y); if (l.startsWith('Sploty')) this.synRect = { x: 32, y: y - 10, w: 356, h: 20 }; });
+    if (!activeSynergies(h).length) this.synRect = null; // ścieżka mistrzowska w wierszu morale (z prawej)
     if (!(h.talents || []).length) this.talentRects = [];
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });
@@ -188,16 +211,19 @@ G.screens.hero = {
     }
     this.bPrev.disabled = this.bagPage === 0; this.bNext.disabled = this.bagPage >= pages - 1;
     if (pages > 1) text(ctx, `${this.bagPage + 1} / ${pages}`, 602, 461, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
-    const all = {}; for (const id of Object.values(h.equip)) if (id) for (const [k, v] of Object.entries(ARTIFACTS[id].bonus)) all[k] = (all[k] || 0) + v;
+    const all = {}; for (const k of Object.keys(KEY_NAMES)) { const v = heroBonus(h, k); if (v) all[k] = v; } // z wzrostem, runami i relikwiami rodów
+    for (const id of Object.values(h.equip)) if (id && ARTIFACTS[id].bonus.res) for (const [r, n] of Object.entries(ARTIFACTS[id].bonus.res)) (all.res = all.res || {})[r] = (all.res[r] || 0) + n;
     const af = wrapFit(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 236, 2, { size: 13, weight: 600 });
     af.lines.forEach((l, i) => text(ctx, l, 602, 453 + i * 14 * af.k, { size: af.size, weight: 600, align: 'center', color: UI.txt2 })); // między strzałkami plecaka
     for (let i = 0; i < MAX_SKILLS; i++) {
       const r = this.skillRect(i), sk = h.skills[i], hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
       slotBox(ctx, r.x, r.y, r.w, r.h, hot ? 'hover' : sk ? '' : 'off');
+      if (!sk && i === h.skills.length && h.relearn > 0 && !this.preview && h.owner === ME) { const pulse = 0.6 + 0.4 * Math.sin(G.time * 5); ctx.fillStyle = `rgba(60,140,40,${pulse})`; ctx.beginPath(); ctx.arc(r.x + r.w / 2, r.y + 20, 12, 0, TAU); ctx.fill(); text(ctx, '+', r.x + r.w / 2, r.y + 21, { size: 20, align: 'center', color: '#fff', fam: 'title' }); text(ctx, `wybierz (${h.relearn})`, r.x + r.w / 2, r.y + 44, { size: 12, weight: 700, align: 'center', color: UI.goldHi }); G.dirty = true; } // po ołtarzu: wybór w miejsce zapomnianej
       if (!sk) continue;
       skillIcon(ctx, sk.id, r.x + r.w / 2, r.y + 19); // ikona 32 px, obok niej poziom (kreski od dołu)
       for (let k = 0; k < 3; k++) { ctx.fillStyle = k < sk.lv ? '#ffd970' : 'rgba(240,228,192,.2)'; ctx.fillRect(r.x + r.w / 2 + 20, r.y + 27 - k * 8, 5, 6); }
-      text(ctx, SKILLS[sk.id].name, r.x + r.w / 2, r.y + 44, { size: SKILLS[sk.id].name.length > 13 ? 12 : 13, weight: 700, align: 'center', color: UI.txt });
+      text(ctx, sk.fork ? FORK[sk.fork].name : SKILLS[sk.id].name, r.x + r.w / 2, r.y + 44, { size: 13, weight: 700, align: 'center', color: sk.fork ? UI.goldHi : UI.txt, max: r.w - 6 }); // specjalizacja zamiast nazwy
+      if (sk.lv >= 3 && SKILL_FORKS[sk.id] && !sk.fork) { ctx.fillStyle = `rgba(255,200,80,${0.6 + 0.4 * Math.sin(G.time * 5)})`; ctx.beginPath(); ctx.arc(r.x + 10, r.y + 10, 7, 0, TAU); ctx.fill(); text(ctx, '!', r.x + 10, r.y + 11, { size: 12, align: 'center', color: '#2a1606', fam: 'title' }); G.dirty = true; } // do wyboru
     }
     if (!this.preview && assemblable(h).length) { const r = RELIC_BTN, hot = inRect(G.mouse.x, G.mouse.y, r); ctx.fillStyle = hot ? 'rgba(200,150,40,.55)' : 'rgba(200,150,40,.35)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
       ctx.strokeStyle = '#ffd970'; ctx.lineWidth = 1.2; ctx.stroke(); text(ctx, 'Złóż relikwię', r.x + r.w / 2, r.y + 15, { size: 12, weight: 700, align: 'center', color: '#fff4c8' }); }
@@ -210,6 +236,7 @@ G.screens.hero = {
 // Wszystko w px logicznych ekranu; cząsteczki rysowane jako kwadraciki (pixel art), poświaty addytywnie.
 const SPELL_FX = {
   magicArrow: { proj: 'orb', col: '#8ac0ff', burst: '#d8ecff', sig: 'spark' },
+  spark: { proj: 'orb', col: '#ffd27a', burst: '#fff0c0', sig: 'spark' },
   lightningBolt: { strike: true, col: '#e0f0ff', burst: '#ffffff', flash: 0.45, shake: 5, sig: 'scorch' },
   fireball: { proj: 'fireball', col: '#ff8a2a', burst: '#ffd060', boom: true, flash: 0.25, shake: 8, sig: 'flames' },
   bless: { aura: 'fall', col: '#ffe08a', sig: 'beam' }, stoneSkin: { aura: 'orbit', col: '#c8b898', sig: 'stone' }, haste: { aura: 'wind', col: '#a8f0ff', sig: 'speed' },

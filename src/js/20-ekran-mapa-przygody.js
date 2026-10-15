@@ -54,7 +54,7 @@ function drawObjCard(ctx, p) {
 function monsterCard(st, ob) {
   const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], me = hero(st) ? armyPower(hero(st).army) : 0;
   const extra = [...(q && !q.dead && q.taken && q.taken[ME] ? [`Cel zadania: ${siteName(q)}.`] : []), ...(ob.ship ? ['Statek piracki.'] : []), `Nastawienie: ${MONSTER_MOODS[monsterMood(ob)]}.`, `Siła ok. ${monsterPower(ob)} · twoja armia ${me}.`];
-  return { cid: ob.cid, n: 0, qty: qtyName(ob.count), extra };
+  return { cid: ob.cid, n: 0, qty: qtyFor(st, ob.count), extra }; // Wywiad: dokładna liczebność
 }
 const monsterPower = ob => Math.max(100, Math.round(ob.count * CREATURES[ob.cid].value / 100) * 100); // siła potworów w przybliżeniu
 const isMine = (st, owner) => owner === ME || allied(st, owner, ME);
@@ -86,8 +86,19 @@ function cardPower(ctx, label, P, x, y) {
   const st = G.state, me = hero(st) ? armyPower(hero(st).army) : 0;
   text(ctx, `${label} ${P} · twoja armia ${me}`, x, y, { size: 13, weight: 700, align: 'center', color: me > P ? '#a8e070' : '#ff9a7a' });
 }
+// Budowa bohatera w jednym zdaniu (karta na mapie, także wroga): ścieżka albo klasa prestiżowa, specjalizacje, sploty, artefakty 2.0
+function buildSummary(h) {
+  const out = [];
+  if (h.mastery && HERO_PATHS[h.mastery]) out.push(pathLv(h, h.mastery) === 2 ? `legenda: ${HERO_PATHS[h.mastery].legend}` : `${PRESTIGE[h.mastery] ? 'klasa' : 'ścieżka'}: ${HERO_PATHS[h.mastery].name}`);
+  const forks = h.skills.filter(s => s.fork).map(s => FORK[s.fork].name); if (forks.length) out.push(`specjalizacje: ${forks.join(', ')}`);
+  const syn = activeSynergies(h).map(id => SYNERGIES[id].name); if (syn.length) out.push(`sploty: ${syn.join(', ')}`);
+  const arts = Object.values(h.equip || {}).filter(id => id && (ARTIFACTS[id].use || ARTIFACTS[id].rarity === 'relic' || ARTIFACTS[id].fac)).map(id => ARTIFACTS[id].name); if (arts.length) out.push(`artefakty: ${arts.join(', ')}`);
+  return out.join(' · ');
+}
 function drawHeroCard(ctx, p) {
-  const st = G.state, h = p.mapHero, mine = isMine(st, h.owner), W0 = 384, H0 = 152 + (h.skills.length ? 46 : 28) + 4 + (mine ? 46 : 58) + 30, col = ownerColor(st, h.owner);
+  const st = G.state, h = p.mapHero, mine = isMine(st, h.owner), W0 = 384, col = ownerColor(st, h.owner), bs = buildSummary(h);
+  ctx.font = font(12, 600, 'body'); const bl = bs ? wrapText(ctx, bs, W0 - 44).slice(0, 3) : [];
+  const H0 = 152 + (h.skills.length ? 46 : 28) + bl.length * 15 + 4 + (mine ? 46 : 58) + 30;
   ctx.save(); const [x, y] = cardFrame(ctx, p, W0, H0);
   drawHeroMedal(ctx, x + 50, y + 50, 34, h, col);
   goldText(ctx, h.name, x + 96, y + 34, 22, 'left');
@@ -95,7 +106,8 @@ function drawHeroCard(ctx, p) {
   ctx.fillStyle = col; ctx.fillRect(x + 96, y + 66, 10, 10); text(ctx, ownerName(st, h.owner), x + 112, y + 76, { size: 13, weight: 500, color: '#c8b890' });
   cardStats(ctx, h, x + 22, y + 100);
   let yy = cardSkills(ctx, h, x + 22, y + 152, W0 - 44);
-  yy = cardArmy(ctx, h.army, x + 15, yy + 4, mine);
+  bl.forEach((l, i) => text(ctx, l, x + 22, yy + 10 + i * 15, { size: 12, weight: 600, italic: true, color: '#e8c070' })); yy += bl.length * 15; // budowa: ścieżka, specjalizacje, sploty
+  yy = cardArmy(ctx, h.army, x + 15, yy + 4, mine || playerFork(st, ME, 'informant')); // Informator: dokładna armia wroga
   if (mine) text(ctx, `Ruch ${h.mp}/${heroMaxMP(h)} · Mana ${h.mana}/${heroMaxMana(h)} · Doświadczenie ${h.exp}`, x + W0 / 2, yy + 16, { size: 13, weight: 600, align: 'center', color: '#e8d8b0' });
   else cardPower(ctx, 'Siła armii ok.', Math.round(armyPower(h.army) * heroFactor(h) / 100) * 100, x + W0 / 2, yy + 14);
   ctx.restore();
@@ -120,7 +132,7 @@ function drawTownCard(ctx, p) {
   ctx.restore();
 }
 // Obcy bohater (jak w H3): cechy, umiejętności i rodzaje jednostek z przybliżoną liczebnością; bez doświadczenia i punktów ruchu
-const foeHeroInfo = (st, hh) => `${heroTitle(hh)} (${ownerName(st, hh.owner)}). ${PRIMARY.map(p => `${p.name} ${heroStat(hh, p.id)}`).join(', ')}.${hh.skills.length ? ` Umiejętności: ${hh.skills.map(s => `${SKILLS[s.id].name} (${SKILL_LEVELS[s.lv]})`).join(', ')}.` : ''} Armia: ${armyKinds(hh.army) || 'brak'}.`;
+const foeHeroInfo = (st, hh) => `${heroTitle(hh)} (${ownerName(st, hh.owner)}). ${PRIMARY.map(p => `${p.name} ${heroStat(hh, p.id)}`).join(', ')}.${hh.skills.length ? ` Umiejętności: ${hh.skills.map(s => `${SKILLS[s.id].name} (${SKILL_LEVELS[s.lv]})`).join(', ')}.` : ''}${buildSummary(hh) ? ` ${cap1(buildSummary(hh))}.` : ''} Armia: ${armyKinds(hh.army) || 'brak'}.`;
 // Obce miasto (jak w H3): frakcja, mury, gildia, garnizon i bohater w murach z przybliżoną liczebnością, porównanie sił
 const armyKinds = a => a.filter(Boolean).map(s => `${qtyName(s.n).toLowerCase()} ${CREATURES[s.cid].gen}`).join(', ');
 function foeTownInfo(st, t) {

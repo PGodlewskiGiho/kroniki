@@ -36,8 +36,8 @@ const SPELLS = {
   animateDead: { name: 'Ożywienie umarłych', school: 'earth', level: 3, cost: 15, kind: 'battle', target: 'undeadAlly', col: '#a6f0a8', heal: sp => 30 + 50 * sp, raise: true, desc: sp => `przywraca ${30 + 50 * sp} życia nieumarłym, także poległym w tej bitwie` },
   townPortal: { name: 'Powrót do miasta', school: 'earth', level: 3, cost: 16, kind: 'adv', target: 'none', col: '#c8a0ff', desc: () => 'przenosi bohatera do najbliższego własnego miasta (kosztuje 300 punktów ruchu)' },
   meteorShower: { name: 'Deszcz meteorów', school: 'earth', level: 4, cost: 16, kind: 'battle', target: 'hex', col: '#ff6a3a', dmg: sp => 25 + 25 * sp, desc: sp => `${25 + 25 * sp} obrażeń na polu i wokół niego (także swoim!)` },
-  chainLightning: { name: 'Łańcuch piorunów', school: 'air', level: 4, cost: 24, kind: 'battle', target: 'enemy', chain: CHAIN_JUMPS, col: '#e0ecff', dmg: sp => 25 + 40 * sp,
-    desc: sp => `${25 + 40 * sp} obrażeń wrogowi, potem przeskakuje na ${CHAIN_JUMPS} najbliższe oddziały (każdy za połowę poprzednich; także swoje!)` },
+  chainLightning: { name: 'Łańcuch piorunów', school: 'air', level: 4, cost: 24, kind: 'battle', target: 'enemy', chain: CHAIN_JUMPS, col: '#e0ecff', dmg: sp => 25 + 32 * sp,
+    desc: sp => `${25 + 32 * sp} obrażeń wrogowi, potem przeskakuje na ${CHAIN_JUMPS} najbliższe oddziały (każdy za połowę poprzednich; także swoje!)` },
   fireShield: { name: 'Ognista tarcza', school: 'fire', level: 4, cost: 16, kind: 'battle', target: 'ally', col: '#ff9a3a', buff: 'fireShield', desc: sp => `kto uderzy sojusznika wręcz, sam dostaje ${FIRE_SHIELD}% zadanych obrażeń (${roundsTxt(SPELL_ROUNDS(sp))})` },
   prayer: { name: 'Modlitwa', school: 'water', level: 4, cost: 16, kind: 'battle', target: 'ally', col: '#fff0b0', buff: 'prayer', desc: sp => `+2 do ataku, obrony i szybkości sojusznika przez ${roundsTxt(SPELL_ROUNDS(sp))}` },
   resurrection: { name: 'Wskrzeszenie', school: 'earth', level: 4, cost: 20, kind: 'battle', target: 'livingAlly', col: '#fff8d0', heal: sp => 40 + 20 * sp, raise: true, desc: sp => `przywraca ${40 + 20 * sp} życia żywym sojusznikom, także poległym w tej bitwie` },
@@ -58,11 +58,61 @@ const SPELLS = {
   fear: { name: 'Groza', school: 'fire', level: 3, cost: 12, kind: 'adv', target: 'none', col: '#c84a2a', desc: () => 'do końca dnia stada co najmniej dwa razy słabsze od twojej armii uciekają przed bohaterem (nawet dzikie)' },
   dimensionDoor: { name: 'Drzwi wymiarów', school: 'air', level: 5, cost: 25, kind: 'adv', target: 'tile', col: '#b89aff', desc: sp => `bohater przenosi się na wskazane wolne pole lądu w promieniu ${6 + sp} pól (300 punktów ruchu, dwa razy dziennie)` },
   blizzard: { name: 'Zamieć', school: 'water', level: 5, cost: 26, kind: 'battle', target: 'enemies', buff: 'slow', col: '#d8f0ff', dmg: sp => 10 + 10 * sp, desc: sp => `${10 + 10 * sp} obrażeń każdemu wrogowi i spowolnienie (−3 do szybkości) na ${roundsTxt(SPELL_ROUNDS(sp))}` },
+  // Sztuczka (cantrip): darmowy słaby czar każdego bohatera z księgą, rośnie z mocą czarów; nie uczy się go (level 0, cantrip)
+  spark: { name: 'Iskra', level: 0, cantrip: true, cost: 0, kind: 'battle', target: 'enemy', col: '#ffd27a', dmg: sp => SPARK_BASE + SPARK_PER * sp, desc: sp => `${SPARK_BASE + SPARK_PER * sp} obrażeń jednemu wrogowi, bez many (sztuczka)` },
   massCure: { name: 'Źródło życia', school: 'water', level: 5, cost: 22, kind: 'battle', target: 'allies', col: '#7ae8c8', heal: sp => 20 + 15 * sp, desc: sp => `leczy ${20 + 15 * sp} życia wszystkim sojusznikom i zdejmuje z nich złe czary` },
 };
 const BUFF_NAMES = { bless: 'błogosławieństwo', stoneSkin: 'kamienna skóra', haste: 'przyspieszenie', slow: 'spowolnienie', weakness: 'osłabienie', bloodlust: 'żądza krwi', prayer: 'modlitwa',
   shield: 'tarcza', fortune: 'fortuna', curse: 'klątwa', airShield: 'tarcza powietrza', fireShield: 'ognista tarcza', blind: 'oślepienie', poison: 'trucizna', vampiric: 'wampiryzm' };
 const BAD_BUFFS = ['slow', 'weakness', 'curse', 'blind', 'poison'];
+// ==================== DANE: ROZKAZY ======================================================
+// Rozkazy: drugi, równoległy do czarów sposób działania bohatera w bitwie (etap 1 rozwoju bohatera). Płaci się Zapałem: pula na bitwę
+// rośnie z obroną bohatera (jak mana z wiedzą), co rundę wraca VALOR_REGEN; siła rozkazów rośnie z atakiem (jak czary z mocą).
+// W rundzie bohater wydaje jeden rozkaz ALBO rzuca jeden czar, więc hybryda nie działa dwa razy. Szarżę i Mur tarcz zna każdy,
+// resztę odblokowuje dowolna z umiejętności need. target jak w czarach; buff: znacznik na oddziale (siła w u.ordv), rounds: 1 = do końca rundy.
+let SPARK_BASE = 2, SPARK_PER = 3, VALOR_BASE = 6, VALOR_PER_DEF = 2, VALOR_REGEN = 2; // let: strojone pomiarem (tools/balans)
+const orderPct = (a, base, per, cap) => Math.min(cap, Math.round(base + per * a)); // procent zależny od ataku bohatera, z górną granicą
+const ORDERS = {
+  charge: { name: 'Szarża', cost: 4, target: 'ally', col: '#ffb060', buff: 'charge', rounds: 1, pow: a => orderPct(a, 10, 1.5, 50), desc: a => `oddział +2 do szybkości i +${orderPct(a, 10, 1.5, 50)}% obrażeń do końca rundy` },
+  shieldWall: { name: 'Mur tarcz', cost: 4, target: 'ally', col: '#c8d0da', buff: 'wall', rounds: 1, pow: a => orderPct(a, 15, 2, 60), desc: a => `oddział otrzymuje o ${orderPct(a, 15, 2, 60)}% mniej obrażeń do końca rundy` },
+  warCry: { name: 'Okrzyk bojowy', cost: 8, target: 'allies', need: ['leadership'], col: '#ff8a4a', buff: 'cry', rounds: 2, pow: a => Math.max(1, Math.ceil(a / 4)), desc: a => `cała armia +${Math.max(1, Math.ceil(a / 4))} do ataku i obrony przez 2 rundy` },
+  flank: { name: 'Flanka', cost: 5, target: 'enemy', need: ['tactics', 'offense'], col: '#e8c040', buff: 'exposed', rounds: 1, pow: a => orderPct(a, 20, 2, 70), desc: a => `wróg otrzymuje o ${orderPct(a, 20, 2, 70)}% więcej obrażeń i nie oddaje ciosu do końca rundy` },
+  volleyOrder: { name: 'Salwa na rozkaz', cost: 7, target: 'enemy', need: ['archery'], col: '#d8b070', volley: true, pow: a => orderPct(a, 30, 2, 80), desc: a => `wszyscy twoi strzelcy od razu strzelają w cel za ${orderPct(a, 30, 2, 80)}% obrażeń (zużywają strzały)` },
+  rally: { name: 'Do szeregu!', cost: 6, target: 'livingAlly', need: ['firstAid', 'triage', 'armorer'], col: '#8ae0a0', heal: true, raise: true, pow: a => 30 + 15 * a, desc: a => `oddział odzyskuje ${30 + 15 * a} życia, polegli z tej bitwy wracają do szeregu` },
+  regroup: { name: 'Przegrupowanie', cost: 3, target: 'ally', need: ['logistics', 'pathfinding'], col: '#a8c8e8', teleport: true, range: 4, desc: () => 'oddział przechodzi na wolne pole w odległości do 4 (najpierw wskaż oddział, potem miejsce)' },
+  execute: { name: 'Pogrom', cost: 6, target: 'ally', need: ['offense', 'tactics'], col: '#c83a2a', buff: 'exec', rounds: 1, pow: a => orderPct(a, 25, 2, 75), desc: a => `ataki oddziału pomijają ${orderPct(a, 25, 2, 75)}% obrony wroga do końca rundy` },
+};
+// Zdolności klas prestiżowych (PRESTIGE.ability): raz na bitwę, za darmo; siła z ataku i mocy bohatera (a: atak, sp: moc, L: poziom), legenda ×1,5
+const prestigePow = (h, f) => Math.round(f(heroStat(h, 'att'), spellPow(h), h.level) * (pathLv(h, h.mastery) === 2 ? 1.5 : 1));
+Object.assign(ORDERS, {
+  judgement: { name: 'Sąd ognia', prestige: 'flamePaladin', cost: 0, target: 'enemies', col: '#ff7a2a', pow: h => prestigePow(h, (a, sp) => 10 + 4 * (a + sp)), desc: a => 'każdy wróg, który stoi przy twoim oddziale, płonie: obrażenia rosną z atakiem i mocą' },
+  runeStrike: { name: 'Runiczne ostrze', prestige: 'runeblade', cost: 0, target: 'ally', col: '#8ac8ff', desc: () => 'oddział do końca rundy zadaje o 50% więcej i pomija połowę obrony wroga' },
+  sanctify: { name: 'Uświęcona ziemia', prestige: 'warpriest', cost: 0, target: 'allies', col: '#ffe8a0', pow: h => prestigePow(h, (a, sp) => 10 + 8 * sp), desc: () => 'cała armia +3 do obrony na 2 rundy i leczenie (rośnie z mocą)' },
+  thunderVolley: { name: 'Burza', prestige: 'stormhunter', cost: 0, target: 'enemies', col: '#c8e8ff', pow: h => prestigePow(h, (a, sp) => 20 + 8 * sp + 2 * a), desc: () => 'pioruny bija w trzy losowe wrogie oddziały (legenda: pięć)' },
+  raiseLegion: { name: 'Powstańcie!', prestige: 'bonecaller', cost: 0, target: 'allies', col: '#a6f0a8', pow: h => prestigePow(h, (a, sp, L) => 3 * L + a), desc: () => 'z ziemi wstają kościotrupy i walczą do końca bitwy (więcej z poziomem i atakiem)' },
+  roots: { name: 'Korzenie', prestige: 'archdruid', cost: 0, target: 'enemy', col: '#6a9a3a', desc: () => 'wrogi oddział nie może się ruszyć przez 2 rundy (atakuje i strzela z miejsca)' },
+  packCall: { name: 'Zew stada', prestige: 'beastlord', cost: 0, target: 'allies', col: '#a87a4a', pow: h => prestigePow(h, (a, sp, L) => 2 * L + a), desc: () => 'przybywa wataha wilków i walczy do końca bitwy' },
+  bomb: { name: 'Bomba', prestige: 'bombardier', cost: 0, target: 'hex', col: '#ff9a3a', pow: h => prestigePow(h, (a, sp) => 20 + 5 * (a + sp)), desc: () => 'wybuch rani wszystkich na polu i wokół niego (także swoich!)' },
+  assassinate: { name: 'Cios z cienia', prestige: 'shadowmaster', cost: 0, target: 'enemy', col: '#5a4a6a', pow: h => prestigePow(h, (a, sp, L) => 30 * a + 20 * L), desc: () => 'skrytobójca zadaje wrogiemu oddziałowi obrażenia z ataku i poziomu bohatera' },
+  bloodPactP: { name: 'Krwawy pakt', prestige: 'bloodmage', cost: 0, target: 'allies', col: '#c8202a', desc: () => 'najliczniejszy twój żywy oddział oddaje piątą część życia, a bohater odzyskuje całą manę' },
+  holdLine: { name: 'Nie przejdą!', prestige: 'warden', cost: 0, target: 'allies', col: '#c8d0da', desc: () => 'cała armia stawia Mur tarcz na 2 rundy' },
+  meteor: { name: 'Deszcz meteorów', prestige: 'battleArch', cost: 0, target: 'hex', col: '#ff6a3a', desc: () => 'Deszcz meteorów bez many, nawet bez znajomości czaru' },});
+// Zdolności artefaktów aktywnych (ARTIFACTS.use): raz na bitwę każda, za darmo; siła rośnie z poziomem bohatera (tak samo dla maga i wojownika)
+Object.assign(ORDERS, {
+  rodBolt: { name: 'Grom z różdżki', art: 'thunderRod', cost: 0, target: 'enemy', col: '#ffe060', pow: h => 40 + 12 * h.level, desc: () => 'piorun bije we wrogi oddział (obrażenia rosną z poziomem bohatera)' },
+  flaskHeal: { name: 'Żywa woda', art: 'lifeFlask', cost: 0, target: 'livingAlly', col: '#4ac0a0', heal: true, raise: true, pow: h => 30 + 10 * h.level, desc: () => 'oddział odzyskuje życie, polegli z tej bitwy wracają (rośnie z poziomem)' },
+  hornBlast: { name: 'Głos rogu', art: 'warHorn', cost: 0, target: 'allies', col: '#e8c070', pow: h => 2 + Math.floor(h.level / 5), desc: () => 'cała armia dostaje premię do ataku i obrony na 2 rundy (rośnie z poziomem)' },
+  mirror: { name: 'Zwierciadło', art: 'mirrorShield', cost: 0, target: 'ally', col: '#d8e4f0', desc: () => 'oddział stawia Mur tarcz na 2 rundy i jest odporny na wrogie czary' },
+  bind: { name: 'Spętanie', art: 'bindingChains', cost: 0, target: 'enemy', col: '#a050ff', desc: () => 'wrogi oddział nie może się ruszyć przez 2 rundy' },
+  timeSurge: { name: 'Przyspieszony czas', art: 'hourglass', cost: 0, target: 'allies', col: '#f0e0a0', desc: () => 'cała armia +3 do szybkości na 2 rundy' },
+  manaSurge: { name: 'Przypływ many', art: 'manaCrystal', cost: 0, target: 'allies', col: '#60c0ff', pow: h => 8 + 3 * h.level, desc: () => 'bohater odzyskuje manę (rośnie z poziomem)' },
+  scrollFire: { name: 'Ognista kula ze zwoju', art: 'fireScroll', cost: 0, target: 'hex', col: '#ff6a2a', pow: h => 20 + 8 * h.level, desc: () => 'wybuch rani wszystkich na polu i wokół niego, także swoich (rośnie z poziomem)' },
+});
+const onceOrder = id => !!(ORDERS[id] && (ORDERS[id].prestige || ORDERS[id].art)); // zdolność raz na bitwę (klasa prestiżowa, artefakt)
+Object.assign(BUFF_NAMES, { root: 'korzenie' });
+Object.assign(BUFF_NAMES, { charge: 'szarża', wall: 'mur tarcz', cry: 'okrzyk bojowy', exposed: 'odsłonięta flanka', exec: 'pogrom' });
+// Czar albo rozkaz po identyfikatorze (bitwa obsługuje oba tym samym wskazywaniem celu)
+const actDef = id => SPELLS[id] || ORDERS[id];
 // Ile czarów danego poziomu oferuje gildia
 const GUILD_OFFER = { 1: 3, 2: 2, 3: 2, 4: 2, 5: 1 };
 const GUILD_MAX = 5;

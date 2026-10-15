@@ -45,7 +45,7 @@ const aiClaims = new Map();
 function aiFeed(st, h, m) {
   const before = armyPower(m.army); if (!feedArmies(h.army, m.army)) return 0;
   for (const slot of Object.keys(h.equip)) if (h.equip[slot] && !(h.locked || {})[slot]) unequip(h, slot);
-  for (const id of h.bag.splice(0)) { giveArtifact(m, id); if (ARTIFACTS[id].parts) { const bi = m.bag.indexOf(id); if (bi >= 0 && relicSlots(m, id)) equipRelic(m, bi); } }
+  for (const id of h.bag.splice(0)) { giveArtifact(m, id); moveArtData(h, m, id); if (ARTIFACTS[id].parts) { const bi = m.bag.indexOf(id); if (bi >= 0 && relicSlots(m, id)) equipRelic(m, bi); } }
   return armyPower(m.army) - before;
 }
 // Sama wymiana oddziałów (na żywych armiach albo na kopiach, by policzyć, ile naprawdę przejdzie); false = pomocnik nie ma czego oddać
@@ -381,7 +381,8 @@ function advanceDay(st) {
   st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
   if (st.day > 7) { st.day = 1; st.week++; newWeek = true; if (st.week > 4) { st.week = 1; st.month++; newMonth = true; } }
   for (const h of st.heroes) {
-    h.mp = heroMaxMP(h);
+    h.mp = heroMaxMP(h) + (heroFork(h, 'supply') ? Math.min(500, Math.floor(h.mp / 2)) : 0) + (st.day === 1 && synergy(h, 'outriders') ? 500 : 0); // Zaopatrzenie: połowa niewykorzystanego ruchu; splot Zwiad konny
+    if (h.owner !== ME) while (h.freePts > 0) spendPoint(h, aiPickStat(h)); // komputer wydaje zaległe punkty
     const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
     if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
     if (t) { const m = specialVisit(st, t, h); if (m && h.owner !== ME) h.mp = heroMaxMP(h); } // budowla specjalna (stajnie, wir many, klatka, Walhalla)

@@ -504,5 +504,54 @@
    Napisy zawsze się mieszczą: ramki (pergamin, skóra, wnęka, gniazdo, księga) zapisują swój prostokąt w klatce, a text() i goldText
    same zmniejszają za szeroki napis (do ~70%, potem ściśnięcie); wrapFit zamiast ucinać opis po 2–4 wierszach zmniejsza czcionkę,
    a wrapText dzieli słowo dłuższe niż wiersz.
+   Rozwój bohatera, etap 0 (miara): BalanceLab (14z-pomiar-balansu.js) mierzy indeks siły klasy – armia frakcji rośnie z poziomem
+   jak w grze (poziom 10 ≈ 8. tydzień), wróg to armia Twierdzy z tego samego tygodnia; do tego wartość na mapie (ruch, złoto, widzenie).
+   Cel: każda klasa ±10% średniej na każdym poziomie; test balans-klas pilnuje rozrzutu mag/wojownik (dziś ±35%, z etapami bliżej celu).
+   Pomiar wyjściowy: mag/wojownik 1,24 (poziom 1), 0,94 (5), 0,78 (10), 0,70 (20), 0,66 (25) – magowie słabną z rozwojem armii.
+   Rozwój bohatera, etap 1: ROZKAZY (dane ORDERS) – drugi obok czarów sposób działania bohatera w bitwie, płacony Zapałem
+   (pula 6 + 2 × obrona, +2 co rundę), siła z ataku: Szarża i Mur tarcz zna każdy, Okrzyk bojowy (Przywództwo), Flanka (Taktyka
+   albo Atak), Salwa na rozkaz (Łucznictwo), Do szeregu! (Pierwsza pomoc, Opatrywanie ran albo Zbroja), Przegrupowanie (Logistyka
+   albo Znajdowanie drogi), Pogrom (Atak albo Taktyka). W rundzie bohater wydaje rozkaz albo rzuca czar (hybryda nie działa dwa razy).
+   Magowie: sztuczka Iskra (darmowa, w każdej księdze), skupienie (co rundę bitwy wraca mana = wiedza / 3) i czary mocniejsze o 20%
+   za każdy poziom bohatera (atak wojownika rośnie z armią procentowo, czar zadaje stałe obrażenia). SI wydaje rozkazy i rzuca Iskrę.
+   Pomiar: mag/wojownik 1,04 (poziom 5), 0,95 (10), 1,05 (15), 0,95 (20), 1,02 (25); test pilnuje ±20%.
+   Rozwój bohatera, etap 2 (umiejętności 2.0): każda umiejętność na poziomie eksperckim daje wybór jednej z dwóch specjalizacji
+   na zawsze (SKILL_FORKS, h.skills[i].fork: np. Atak → Przełamanie albo Kontra, Łucznictwo → Snajper albo Grad strzał, Logistyka →
+   Zaopatrzenie albo Konni gońcy, Magia Ziemi → Trzęsienie albo Bastion). 11 nowych umiejętności: Krwawa magia (brak many płaci
+   życie oddziału), Echo (czar powtarza się), Szyk, Alchemia polowa, Poskramiacz, Mentor, Szpiegostwo, Fortyfikacja, Dobijanie,
+   Żniwo dusz, Kwatermistrz – każda też z dwiema specjalizacjami. Okno awansu z kartami (pełny opis bez dymków, także na telefonie);
+   zaległą specjalizację (stary zapis) wybiera się kliknięciem świecącej umiejętności na ekranie bohatera. Komputer wybiera sam.
+   build.js sprawdza składnię każdego pliku, a testy przy błędzie wczytywania gry padają od razu (zamiast czekać po 2 minuty).
+   Rozwój bohatera, etap 3: wolny punkt cechy co 2 poziomy (gracz wybiera w oknie awansu albo klikając cechę na ekranie bohatera,
+   komputer – cechę najczęstszą w klasie; stare zapisy dostają zaległe punkty). SPLOTY (SYNERGIES, 20): para umiejętności, obie
+   co najmniej zaawansowane, sama odblokowuje działanie – Płonąca szarża (Taktyka + Magia Ognia), Święty zastęp, Gromowe strzały,
+   Kamienny mur, Żelazna wola, Krwawy rytuał, Polowe dowództwo, Łamacz zaklęć, Mistrz oblężeń, Polowy chirurg, Kapitan łuczników,
+   Ostrze i czar, Burza ognia, Rzeka i skała, Bastion tarcz, Zwiad konny, Rezonans, Żniwa śmierci, Apteka, Akademia wojenna.
+   Nowy splot ogłasza okno awansu; opis umiejętności na ekranie bohatera mówi, z czym tworzy sploty. Talenty zostają (wybór co 4 poziomy).
+   Rozwój bohatera, etap 4: KLASY PRESTIŻOWE (PRESTIGE, 12 hybryd) – na 10. poziomie obok ścieżek klasy dla każdego bohatera, który ma
+   parę umiejętności co najmniej zaawansowaną: Płomienny paladyn (Przywództwo + Magia Ognia), Ostrze run (Atak + Mądrość), Kapłan wojny,
+   Łowca burz, Rycerz kości, Arcydruid, Władca bestii, Bombardier, Mistrz cienia, Krwawy mag, Strażnik twierdzy, Arcymag bitewny.
+   Stałe działanie (legenda na 20. poziomie mocniejsza) i zdolność raz na bitwę za darmo z listy rozkazów: Sąd ognia, Runiczne ostrze,
+   Uświęcona ziemia, Burza, Powstańcie!, Korzenie, Zew stada, Bomba, Cios z cienia, Krwawy pakt, Nie przejdą!, Deszcz meteorów.
+   Komputer woli klasę prestiżową, gdy ją ma, i używa zdolności. Okno wyboru z kartami samo dobiera kolumny i czcionkę (telefon).
+   Rozwój bohatera, etap 5: ARTEFAKTY 2.0 (29 nowych). Rosnące (grow: co kilka wygranych bitew premia rośnie, stan h.artXp idzie
+   z artefaktem do innego bohatera), przeklęte (cursed: duża premia i wada, zdjąć tylko w mieście z gildią magów), aktywne (use: zdolność
+   raz na bitwę z listy Rozkaz, za darmo i bez księgi, siła z poziomu bohatera: Grom z różdżki, Żywa woda, Głos rogu, Zwierciadło,
+   Spętanie, Przyspieszony czas, Przypływ many, Ognista kula ze zwoju), relikwie rodów (fac/own: po jednej na frakcję, bohater tej
+   frakcji dostaje dużo więcej). Zaklinanie (ENCHANTS, h.ench): w mieście z gildią magów runa na założony artefakt za złoto, kryształ
+   i klejnoty (siła i koszt rosną z rzadkością); komputer zaklina sam. Modele 3D nowych artefaktów w arkuszu artefakty.webp.
+   Rozwój bohatera, etap 6: PLANER ROZWOJU (przycisk Rozwój na ekranie bohatera, 21a-planer-rozwoju.js) – zakładki Postęp (kolejny
+   punkt cechy, talent, ścieżka, legenda, umiejętności i specjalizacje), Sploty i Klasy prestiżowe (co działa, czego brakuje). Klik
+   wyznacza cel (h.goal): umiejętność, która do niego prowadzi, jest zawsze w ofercie awansu i ma gwiazdkę. OŁTARZ PRZEMIANY (miasto
+   z gildią magów, za złoto): nowe specjalizacje, punkty cech od nowa (h.ptLog), zapomnienie umiejętności (h.relearn: poziomy do
+   ponownego wyboru kliknięciem wolnego pola). Księga rozkazów w bitwie jako karty z ikonami (niedostępne przygaszone). Karta
+   bohatera na mapie – także wroga – pokazuje budowę: ścieżkę albo klasę prestiżową, specjalizacje, sploty i ważne artefakty.
+   Rozwój bohatera, etap 7 (SI i balans końcowy): komputer ma cel rozwoju (aiGoalId: klasa prestiżowa najlepiej pasująca do klasy)
+   i wybiera umiejętności według celu, splotów i ulubionych klasy (aiPickSkill), ścieżkę – najpierw swój cel. Balans: wzrost czarów
+   z poziomem 0,12 (był 0,2), tempo magii klasy CLASS_SPELL (Kapłan, Wiedźma, Alchemik, Mag bojowy szybciej; Czarodziej, Wynalazca,
+   Czarnoksiężnik wolniej), Łańcuch piorunów 25 + 32 × moc, przyrost cech kilku wojowników, Wiedźma woli Ogień i Powietrze (jak jej
+   gildia). Pomiar (tools/balans/bohaterowie.js sila): mag/wojownik 1,23 / 1,11 / 1,01 / 1,15 / 1,02 / 1,02 na poziomach 1–25
+   (przed: 1,23 / 1,11 / 1,03 / 1,22 / 1,22 / 1,28), rozrzut klas 48 / 19 / 27 / 24 / 22 / 21% (przed: 48 / 23 / 18 / 30 / 41 / 43%).
+   Test balans-klas: 8 klas, średnie magów i wojowników w ±15%.
    ===================================================================================== */
 

@@ -11,7 +11,7 @@ test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'bł�
 
 test('każda klasa ma trzy różne ścieżki z opisem ścieżki i legendy', async () => {
   const r = await page.evaluate(() => ({ classes: Object.keys(CLASS_GROWTH).filter(c => !(CLASS_PATHS[c] && CLASS_PATHS[c].length === 3 && new Set(CLASS_PATHS[c]).size === 3 && CLASS_PATHS[c].every(p => HERO_PATHS[p]))),
-    texts: Object.keys(HERO_PATHS).map(id => [pathText(id, 1), pathText(id, 2)]), used: Object.keys(HERO_PATHS).filter(id => !Object.values(CLASS_PATHS).some(a => a.includes(id))) }));
+    texts: Object.keys(HERO_PATHS).map(id => [pathText(id, 1), pathText(id, 2)]), used: Object.keys(HERO_PATHS).filter(id => !HERO_PATHS[id].prestige && !Object.values(CLASS_PATHS).some(a => a.includes(id))) })); // klasy prestiżowe: dla każdej klasy, przez umiejętności
   assert.deepEqual(r.classes, []); assert.deepEqual(r.used, [], 'każdą ścieżkę ma jakaś klasa');
   for (const [a, b] of r.texts) { assert.ok(a.length > 20 && b.length > 20); assert.notEqual(a, b); }
 });
@@ -19,20 +19,22 @@ test('każda klasa ma trzy różne ścieżki z opisem ścieżki i legendy', asyn
 test('awans gracza na 10. poziom: po umiejętności i talencie okno ścieżki (3 do wyboru); 20. poziom: legenda; SI wybiera sama', async () => {
   await newGame(page, { opponents: 1 });
   await page.evaluate(() => { const st = G.state, h = hero(st); h.exp = expForLevel(9); h.level = 9; window.DONE = false; gainExp(st, h, expForLevel(10) - h.exp, () => { window.DONE = true; }); });
-  let d = await dialog(page); assert.match(d.msg, /osiąga poziom 10!/); await pressDialog(page, d.labels[0]);
-  d = await dialog(page); assert.match(d.msg, /ścieżkę mistrzowską/); assert.equal(d.labels.length, 3);
+  // pomija okna, które nie są tematem testu: wolny punkt cechy (parzyste poziomy) i ogłoszenie nowego splotu
+  const skip = async d => { while (d && /wolny punkt cechy|Nowy splot/.test(d.msg)) { await pressDialog(page, d.labels[0]); d = await dialog(page); } return d; };
+  let d = await skip(await dialog(page)); assert.match(d.msg, /osiąga poziom 10!/); await pressDialog(page, d.labels[0]);
+  d = await skip(await dialog(page)); assert.match(d.msg, /ścieżkę mistrzowską/); assert.equal(d.labels.length, 3);
   const want = await page.evaluate(() => HERO_PATHS[pathOffer(hero(G.state))[1]].name);
   assert.deepEqual(d.labels, await page.evaluate(() => pathOffer(hero(G.state)).map(id => HERO_PATHS[id].name)));
   await frames(page, 2); await pressDialog(page, want);
   let r = await page.evaluate(() => { const h = hero(G.state); return { done: DONE, path: h.mastery, second: pathOffer(h)[1], title: pathTitle(h) }; });
   assert.equal(r.done, true); assert.equal(r.path, r.second); assert.equal(r.title, want);
   await page.evaluate(() => { const st = G.state, h = hero(st); h.exp = expForLevel(19); h.level = 19; gainExp(st, h, expForLevel(20) - h.exp, () => {}); });
-  d = await dialog(page); await pressDialog(page, d.labels[0]); d = await dialog(page);
-  if (d && /talent/.test(d.msg)) { await pressDialog(page, d.labels[0]); d = await dialog(page); }
+  d = await skip(await dialog(page)); await pressDialog(page, d.labels[0]); d = await skip(await dialog(page));
+  if (d && /talent/.test(d.msg)) { await pressDialog(page, d.labels[0]); d = await skip(await dialog(page)); }
   assert.match(d.msg, /staje się legendą/); await pressDialog(page, 'Chwała!');
   r = await page.evaluate(() => { const st = G.state, h = hero(st), ai = st.heroes.find(x => x.owner === 1); ai.exp = 0; ai.level = 1; gainExp(st, ai, expForLevel(12));
-    return { lv: pathLv(h, h.mastery), legend: pathTitle(h) === HERO_PATHS[h.mastery].legend, ai: ai.mastery, aiWant: pathOffer(ai)[0], modal: !!G.modal }; });
-  assert.equal(r.lv, 2); assert.ok(r.legend); assert.equal(r.ai, r.aiWant, 'SI bierze pierwszą ścieżkę klasy'); assert.equal(r.modal, false);
+    return { lv: pathLv(h, h.mastery), legend: pathTitle(h) === HERO_PATHS[h.mastery].legend, ai: ai.mastery, aiWant: aiPath(ai), goal: ai.goal, modal: !!G.modal }; });
+  assert.equal(r.lv, 2); assert.ok(r.legend); assert.equal(r.ai, r.aiWant, 'SI bierze swój cel (klasę prestiżową), gdy go osiągnie, inaczej pierwszą ścieżkę klasy'); assert.ok(r.ai, 'SI ma ścieżkę'); assert.equal(r.modal, false);
 });
 
 test('działanie ścieżek: Czempion, Arcymistrz, Mędrzec, Wędrowiec, Namiestnik (legenda mocniejsza) i zapis', async () => {

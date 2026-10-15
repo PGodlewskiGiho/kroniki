@@ -78,6 +78,10 @@ test('awans gracza: okno wyboru umiejętności po kolei dla każdego poziomu, po
   await newGame(page);
   await page.evaluate(() => { const st = G.state, h = hero(st); window.DONE = false; window.START = h.skills.length; window.OFFERS = [skillOffer(st, h, 2)]; gainExp(st, h, expForLevel(3) - h.exp, () => { window.DONE = true; }); });
   let d = await dialog(page);
+  assert.match(d.msg, /wolny punkt cechy \(poziom 2\)/, 'parzysty poziom: najpierw wolny punkt cechy'); assert.deepEqual(d.labels, ['Atak', 'Obrona', 'Moc czarów', 'Wiedza']);
+  const att0 = await page.evaluate(() => hero(G.state).stats.att); await pressDialog(page, 'Atak');
+  assert.equal(await page.evaluate(() => hero(G.state).stats.att), att0 + 1);
+  d = await dialog(page);
   assert.match(d.msg, /osiąga poziom 2!.*Wybierz umiejętność/);
   const want = await page.evaluate(() => OFFERS[0].map(id => SKILLS[id].name));
   assert.deepEqual(d.labels, want);
@@ -93,15 +97,15 @@ test('awans gracza: okno wyboru umiejętności po kolei dla każdego poziomu, po
   assert.equal(await page.evaluate(() => hero(G.state).skills.length - START), 1, 'nowa umiejętność + ulepszenie znanej');
 });
 
-test('SI wybiera umiejętności sama, według swojej kolejności', async () => {
+test('SI wybiera umiejętności sama: cel (klasa prestiżowa), splot, ulubione klasy, potem wspólna kolejność', async () => {
   await newGame(page, { opponents: 1 });
   const r = await page.evaluate(() => {
-    const st = G.state, h = st.heroes.find(h => h.owner === 1), offer = skillOffer(st, h, 2), before = h.skills.map(s => s.id + s.lv).join();
+    const st = G.state, h = st.heroes.find(h => h.owner === 1), offer = skillOffer(st, h, 2), before = h.skills.map(s => s.id + s.lv).join(), pick = aiPickSkill(offer, h, aiGoalId(h));
     gainExp(st, h, expForLevel(2) - h.exp);
-    return { modal: !!G.modal, pick: aiPickSkill(offer), skills: h.skills, before };
+    return { modal: !!G.modal, pick, skills: h.skills, before, goal: h.goal };
   });
   assert.equal(r.modal, false);
-  assert.ok(r.skills.some(s => s.id === r.pick), JSON.stringify(r));
+  assert.ok(r.skills.some(s => s.id === r.pick), JSON.stringify(r)); assert.match(r.goal || '', /^pre:/, 'komputer ma cel rozwoju');
 });
 
 test('nekromancja: po zwycięstwie z poległych wstają kościotrupy', async () => {

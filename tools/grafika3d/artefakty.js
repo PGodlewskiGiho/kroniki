@@ -252,6 +252,39 @@ function arGrail(A) {
   ['#e03a3a', '#3a80e0', '#40c070', '#e03a3a', '#3a80e0', '#40c070'].forEach((c, i) => { const a = i * Math.PI / 3; g.add(arCab(0.1, c, [Math.sin(a) * 0.92, 0.55, Math.cos(a) * 0.92])); });
   g.add(sph(0.82, A.gem, 'glow', [0, 0.95, 0], [1, 0.1, 1])); return arRot(g, 0.15, 0, 0);
 }
+// --- artefakty 2.0: róg, łańcuchy, klepsydra, zwój, maska ---
+function arHorn(A) {
+  const g = new THREE.Group(), pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push([-1.4 + t * 2.6, -0.6 + Math.sin(t * 2.2) * 1.2, 0]); }
+  g.add(tube(pts, 0.12, 0.42, A.col, 'bone')); for (const t of [0.25, 0.55, 0.85]) { const i = Math.round(t * 10); g.add(torus(0.12 + 0.3 * t, 0.045, A.gem, 'gold', pts[i], [0, Math.PI / 2, 0.2 - t])); }
+  g.add(cyl(0.44, 0.44, 0.08, DK(A.gem, 0.2), 'gold', pts[10], [0, 0, -0.5])); g.add(tube([[-1.2, -0.45, 0], [-0.2, -1.0, 0.1], [0.9, -0.35, 0]], 0.05, 0.05, '#5a3a20', 'leather'));
+  return arRot(g, 0.1, -0.3, 0.1);
+}
+function arChains(A) {
+  const g = new THREE.Group(); for (let i = 0; i < 9; i++) { const t = i / 8, x = -1.6 + t * 3.2, y = Math.sin(t * Math.PI) * -0.6 + 0.4; g.add(torus(0.3, 0.1, A.col, 'iron', [x, y, 0], [0, i % 2 ? Math.PI / 2 : 0, 0.3], [1.35, 1, 1])); }
+  for (const s of [-1, 1]) { g.add(torus(0.42, 0.11, DK(A.col, 0.2), 'iron', [s * 1.9, 0.4, 0], [Math.PI / 2, 0, 0])); g.add(box(0.12, 0.3, 0.12, DK(A.col, 0.3), 'iron', [s * 1.9, 0.82, 0])); }
+  g.add(arGem(0.18, A.gem, [0, -0.15, 0.25])); return arRot(g, 0.3, -0.2, 0);
+}
+function arHourglass(A) {
+  const g = new THREE.Group(); for (const y of [-1.25, 1.25]) g.add(cyl(0.95, 0.95, 0.18, A.col, 'gold', [0, y, 0], null, null, 24));
+  for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; g.add(cyl(0.06, 0.06, 2.4, DK(A.col, 0.2), 'gold', [Math.cos(a) * 0.82, 0, Math.sin(a) * 0.82])); }
+  const glass = lathe([[0.01, -1.15], [0.65, -1.1], [0.6, -0.5], [0.1, -0.05], [0.1, 0.05], [0.6, 0.5], [0.65, 1.1], [0.01, 1.15]], '#dcecff', 'gem'); glass.material = glass.material.clone(); Object.assign(glass.material, { transparent: true, opacity: 0.4 }); g.add(glass);
+  g.add(lathe([[0.01, -1.1], [0.55, -1.05], [0.3, -0.75], [0.01, -0.55]], A.gem, 'cloth')); g.add(lathe([[0.01, 0.35], [0.35, 0.65], [0.55, 1.0], [0.01, 1.0]], A.gem, 'cloth')); g.add(cyl(0.02, 0.02, 0.9, A.gem, 'cloth', [0, -0.1, 0]));
+  return arRot(g, 0.15, 0.3, 0.15);
+}
+function arScroll(A) {
+  const g = new THREE.Group(), pts = []; for (let i = 0; i <= 12; i++) { const t = i / 12; pts.push([-1.1 + t * 2.2, Math.sin(t * 6) * 0.05]); }
+  g.add(slab([[-1.1, -1.3], [1.1, -1.3], [1.1, 1.3], [-1.1, 1.3]], 0.02, A.col, 'cloth', [0, 0, 0]));
+  for (const y of [-1.35, 1.35]) { g.add(cyl(0.2, 0.2, 2.5, LT(A.col, 0.1), 'cloth', [0, y, 0], [0, 0, Math.PI / 2])); for (const s of [-1, 1]) g.add(sph(0.14, '#6a4424', 'wood', [s * 1.32, y, 0])); }
+  g.add(decal(1.6, 1.8, (c, w, h) => { c.fillStyle = '#7a4a2a'; for (let i = 0; i < 6; i++) c.fillRect(w * 0.12, h * (0.12 + i * 0.1), w * (0.5 + (i % 3) * 0.12), 3); c.fillStyle = A.gem; c.beginPath(); c.arc(w * 0.5, h * 0.78, w * 0.14, 0, 7); c.fill(); }, [0, 0, 0.03]));
+  g.children[g.children.length - 1].material.transparent = true; g.children[g.children.length - 1].material.alphaTest = 0.3; g.add(sph(0.2, '#c8202a', 'gem', [0.3, -0.9, 0.06], [1, 1, 0.4]));
+  return arRot(g, 0.1, 0.35, -0.2);
+}
+function arMask(A) {
+  const g = new THREE.Group(), face = sph(1.1, LT(A.col, 0.3), 'metal', [0, 0, 0], [0.85, 1.15, 0.5], 32); g.add(face); g.add(torus(1.0, 0.06, '#c8a040', 'gold', [0, 0, 0.12], null, [0.92, 1.24, 1]));
+  for (const s of [-1, 1]) { g.add(sph(0.22, '#0a0a0e', 'gem', [s * 0.38, 0.22, 0.5], [1.3, 0.7, 0.4])); g.add(cone(0.12, 0.9, DK(A.col, 0.2), 'metal', [s * 0.75, 1.15, -0.05], [0, 0, s * -0.45], 6)); }
+  g.add(arGem(0.15, A.gem, [0, 0.8, 0.45])); g.add(box(0.5, 0.06, 0.1, '#0a0a0e', 'gem', [0, -0.55, 0.5])); g.add(box(0.12, 0.5, 0.18, DK(A.col, 0.2), 'metal', [0, -0.05, 0.53]));
+  return arRot(g, 0.05, -0.3, 0);
+}
 // --- katalog: id -> bryła ---
 const ART3 = {
   noviceSword: A => arSword(A, { len: 2.6, grip: '#8a5a2a' }), dragonfangBlade: A => arSword(A, { len: 3.3, w: 0.32, curve: true, bladeKind: 'bone', wing: true, guardCol: '#3a6a4a', pommelGem: true, grip: '#2a3a2a' }),
@@ -285,6 +318,16 @@ const ART3 = {
   frostMail: A => arArmor({ ...A, col: '#3a8ac4' }, { kind: 'gem', plates: true, glowLines: '#ffffff', ridge: '#bfe8fa', skirt: '#2a74b0', skirtKind: 'gem' }), // lód: półprzezroczysty, świecący
   frostKing: A => arArmor({ ...A, col: '#4a9ad4' }, { kind: 'gem', plates: true, glowLines: '#ffffff', ridge: '#ffffff', skirt: '#2a74b0', skirtKind: 'gem', gem: true, collar: '#e8f4ff', collarKind: 'fur' }),
   owlFeather: A => arFeather(A), silverCoin: A => arCoin(A), battleBanner: A => arBanner(A), grail: A => arGrail(A),
+  // artefakty 2.0
+  thirstBlade: A => arSword(A, { len: 3.0, curve: true, guardCol: '#5a1a1a', grip: '#3a1a1a', pommelGem: true, gemGuard: true }), veteranShield: A => arShield(A, { shape: 'round', planks: true, rim: '#c8a040', studs: true }),
+  livingTome: A => arBook(A), pupilRing: A => arRing(A, { kind: 'steel', gemR: 0.26 }), trophyNecklace: A => arFang(A), roadBoots: A => arBoots(A, { buckles: true }),
+  berserkAxe: A => arAxe(A), greedCrown: A => arCrown(A), leadGreaves: A => arBoots(A, { plate: true, kind: 'iron' }), voidAmulet: A => arAmulet(A, { type: 'raven', chain: '#3a3446', chainKind: 'iron' }),
+  hexRing: A => arRing(A, { twist: true, prongs: 4, gemR: 0.32 }), bloodMail: A => arArmor(A, { kind: 'mail', rep: 2, belt: '#2a1010', collar: A.col }),
+  thunderRod: A => arStaff(A), lifeFlask: A => arOrb(A, { stand: '#c8a040' }), warHorn: A => arHorn(A), mirrorShield: A => arShield(A, { shape: 'round', kind: 'metal', rim: '#c8ccd4', boss: '#8ac8ff' }),
+  bindingChains: A => arChains(A), hourglass: A => arHourglass(A), manaCrystal: A => arAmulet(A, { chain: '#c8ccd4', chainKind: 'steel' }), fireScroll: A => arScroll(A),
+  dawnOath: A => arSword(A, { len: 3.4, w: 0.3, wing: true, guardCol: '#f0c040', pommelGem: true, gemGuard: true }), elderHeart: A => arAmulet(A, { type: 'phoenix' }),
+  lichPhylactery: A => arOrb(A, { stand: '#d8d0b8', standKind: 'bone', ring: true }), runeHammer: A => arHammer(A), hellforgeCrown: A => arCrown(A, { type: 'bone' }),
+  frostLens: A => arOrb(A, { stand: '#c8ccd4', standKind: 'steel', ring: true }), abyssMask: A => arMask(A), warchiefTotem: A => arBanner(A), gearHeart: A => arArmor(A, { kind: 'metal', plates: true, glowLines: A.gem, ridge: '#c8a040' }),
 };
 // Render artefaktu: bryła wyśrodkowana i dopasowana do kwadratu S×S (bez pikselizacji)
 function renderArtifact(id, A, S = 192) {

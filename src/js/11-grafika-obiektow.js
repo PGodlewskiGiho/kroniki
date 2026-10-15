@@ -932,6 +932,7 @@ function drawArtCard(ctx, p) {
   const lines = [];
   if (A.desc) lines.push(A.desc); else { const b = artBonusText(A.bonus); if (b) lines.push(`Premia: ${b}.`); }
   if (A.perk) lines.push(`Talent: ${TALENTS[A.perk].name} – ${TALENTS[A.perk].desc}.`);
+  for (const t of artTraits(id, p.h)) lines.push(`${t}.`); // artefakty 2.0: zdolność, klątwa, wzrost, relikwia rodu, runa
   const has = pid => !!p.h && (Object.values(p.h.equip || {}).includes(pid) || (p.h.bag || []).includes(pid));
   ctx.font = font(14, 500, 'body'); const wrapped = lines.flatMap(l => wrapText(ctx, l, W0 - 40));
   const set = A.parts || (r ? ARTIFACTS[r].parts : null), setH = set ? 26 + set.length * 18 : 0;
@@ -1085,13 +1086,13 @@ function showMeeting(st, a, b, onMsg) {
         const err = armyMove(armies[from.k], from.i, armies[s.k], s.i, keep); if (err) say(err); return;
       }
       if (g && heroes[1 - g.k].outpost) { say('Garnizon nie przechowuje artefaktów.'); return; }
-      if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
+      if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); moveArtData(from, to, id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
       sel = null;
     },
     rightCard(px, py) { const s = armyAt(px, py), g = bagAt(px, py); return s ? unitCard(armies[s.k][s.i], heroes[s.k]) : g ? artCard(heroes[g.k].bag[g.i], heroes[g.k]) : null; },
     rightInfo(px, py) {
       const s = armyAt(px, py); if (s) return armies[s.k][s.i] ? stackInfo(armies[s.k][s.i]) : 'Wolne miejsce.';
-      const g = bagAt(px, py); if (g) return `${artInfo(heroes[g.k].bag[g.i])} Kliknij, aby oddać drugiemu bohaterowi.`;
+      const g = bagAt(px, py); if (g) return `${artInfo(heroes[g.k].bag[g.i], heroes[g.k])} Kliknij, aby oddać drugiemu bohaterowi.`;
       return null;
     },
     draw(ctx) {
@@ -1265,6 +1266,19 @@ function drawArtifact(c, id) {
     case 'book':
       c.fillStyle = '#e8dcc0'; c.fillRect(-8, -9, 17, 19); c.fillStyle = col; c.fillRect(-9, -10, 16, 19); c.fillStyle = dk; c.fillRect(-9, -10, 3, 19);
       c.strokeStyle = gem; c.lineWidth = 1.5; c.beginPath(); c.moveTo(1, -6); c.lineTo(1, 5); c.moveTo(-2, -3); c.lineTo(4, 2); c.moveTo(4, -3); c.lineTo(-2, 2); c.stroke(); break;
+    case 'horn': // róg wojenny
+      c.strokeStyle = col; c.lineWidth = 5; c.beginPath(); c.moveTo(-9, 6); c.quadraticCurveTo(0, 8, 8, -7); c.stroke(); c.strokeStyle = gem; c.lineWidth = 2; for (const t of [0.3, 0.6]) { c.beginPath(); c.arc(-9 + 17 * t, 6 - 13 * t * t, 3, 0, TAU); c.stroke(); } circ(c, 8, -7, 3.5, dk); break;
+    case 'chain': // łańcuchy
+      c.strokeStyle = col; c.lineWidth = 2.2; for (let i = 0; i < 4; i++) { c.beginPath(); c.ellipse(-7 + i * 4.6, 6 - i * 4.4, 3.4, 2, -0.8 + (i % 2) * 1.6, 0, TAU); c.stroke(); } circ(c, 8, -8, 2.2, gem); break;
+    case 'hourglass':
+      c.fillStyle = col; c.fillRect(-8, -10, 16, 2.5); c.fillRect(-8, 8, 16, 2.5); poly([[-6, -8], [6, -8], [1, 0], [6, 8], [-6, 8], [-1, 0]], 'rgba(220,235,255,.55)');
+      poly([[-4, -6], [4, -6], [0, -1]], gem); poly([[-5, 8], [5, 8], [0, 3]], gem); c.fillStyle = dk; c.fillRect(-7, -8, 1.5, 16); c.fillRect(5.5, -8, 1.5, 16); break;
+    case 'scroll':
+      c.fillStyle = col; c.fillRect(-7, -8, 14, 16); circ(c, -7, -8, 2.5, dk); circ(c, 7, -8, 2.5, dk); circ(c, -7, 8, 2.5, dk); circ(c, 7, 8, 2.5, dk);
+      c.fillStyle = shadeHex(col, -0.25); for (const y of [-4, -1, 2]) c.fillRect(-4, y, 8, 1); circ(c, 0, 5, 2.4, gem); break;
+    case 'mask':
+      c.fillStyle = col; c.beginPath(); c.ellipse(0, 0, 9, 11, 0, 0, TAU); c.fill(); c.fillStyle = '#0a0a0e'; c.beginPath(); c.ellipse(-3.6, -2, 2.6, 1.6, 0.3, 0, TAU); c.ellipse(3.6, -2, 2.6, 1.6, -0.3, 0, TAU); c.fill();
+      circ(c, 0, -7, 1.8, gem); c.fillStyle = dk; c.fillRect(-3, 5, 6, 1.4); break;
     case 'grail': // złoty kielich z blaskiem
       circ(c, 0, -3, 10, 'rgba(255,240,160,.35)'); poly([[-6, 10], [6, 10], [3, 7], [-3, 7]], dk); c.fillStyle = col; c.fillRect(-1.5, -1, 3, 8);
       poly([[-8, -9], [8, -9], [6, -3], [2, 0], [-2, 0], [-6, -3]], col); poly([[2, -9], [8, -9], [6, -3], [2, 0]], dk);
@@ -1300,6 +1314,7 @@ function drawSpellIcon(c, id) {
     case 'fear': c.beginPath(); c.arc(0, -1, 6, 0, TAU); c.fill(); c.fillRect(-3.5, 3, 7, 4); c.fillStyle = dk; c.fillRect(-4, -3, 3, 3); c.fillRect(1, -3, 3, 3); break;
     case 'dimensionDoor': c.lineWidth = 2.2; c.beginPath(); c.ellipse(0, 0, 6, 9, 0, 0, TAU); c.stroke(); c.beginPath(); c.arc(0, 0, 2.5, 0, TAU); c.fill(); break;
     case 'blizzard': c.lineWidth = 1.6; for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; c.beginPath(); c.moveTo(Math.cos(a) * 8, Math.sin(a) * 8); c.lineTo(-Math.cos(a) * 8, -Math.sin(a) * 8); c.stroke(); } break;
+    case 'spark': for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, r = i % 2 ? 4 : 8; c.fillRect(Math.cos(a) * r - 1.2, Math.sin(a) * r - 1.2, 2.4, 2.4); } c.beginPath(); c.arc(0, 0, 3, 0, TAU); c.fill(); break;
     case 'magicArrow': c.lineWidth = 2; c.beginPath(); c.moveTo(-6, 6); c.lineTo(5, -5); c.stroke(); poly([[7, -7], [1, -5], [5, -1]]); break;
     case 'bless': for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; c.lineWidth = 1.6; c.beginPath(); c.moveTo(Math.cos(a) * 4, Math.sin(a) * 4); c.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); c.stroke(); } c.beginPath(); c.arc(0, 0, 3.5, 0, TAU); c.fill(); break;
     case 'stoneSkin': poly([[-7, -6], [7, -6], [7, 1], [0, 8], [-7, 1]]); c.fillStyle = dk; c.fillRect(-3, -3, 2, 2); c.fillRect(2, 0, 2, 2); break;
@@ -1348,7 +1363,8 @@ const SKILL_TINT = { might: '#7a2e22', magic: '#2a3e7a', land: '#2e5a2e', gold: 
 const SKILL_GROUP = { leadership: 'might', offense: 'might', archery: 'might', armorer: 'might', artillery: 'might', ballistics: 'might', firstAid: 'might', resistance: 'might',
   sorcery: 'magic', intelligence: 'magic', mysticism: 'magic', wisdom: 'magic', eagleSight: 'magic', learning: 'magic',
   logistics: 'land', pathfinding: 'land', scouting: 'land', navigation: 'land', luck: 'gold', estates: 'gold', necromancy: 'dark',
-  tactics: 'might', triage: 'might', plunder: 'gold', diplomacy: 'gold', interference: 'magic' };
+  tactics: 'might', triage: 'might', plunder: 'gold', diplomacy: 'gold', interference: 'magic',
+  bloodMagic: 'dark', echo: 'magic', formation: 'might', alchemy: 'gold', beastTamer: 'land', mentor: 'magic', espionage: 'land', fortify: 'might', executioner: 'might', soulHarvest: 'dark', quartermaster: 'might' };
 function drawSkillIcon(c, id) {
   const tal = id.startsWith('t_'), sc = !tal && SKILLS[id].school, bg = tal ? SKILL_TINT.talent : sc ? shadeHex(SCHOOLS[sc].col, -0.55) : SKILL_TINT[SKILL_GROUP[id]] || '#4a3e2c', fg = '#f4e8c4', gd = '#ffd060', dk = shadeHex(bg, -0.4);
   c.fillStyle = '#c8a050'; c.fillRect(-15, -15, 30, 30); c.fillStyle = bg; c.fillRect(-13, -13, 26, 26); c.fillStyle = 'rgba(255,240,200,.16)'; c.fillRect(-13, -13, 26, 4);
@@ -1382,6 +1398,19 @@ function drawSkillIcon(c, id) {
     case 'waterMagic': c.fillStyle = '#6ab8ff'; c.beginPath(); c.moveTo(0, -11); c.quadraticCurveTo(9, 2, 7, 5); c.arc(0, 4, 7, 0.14, Math.PI - 0.14); c.quadraticCurveTo(-9, 2, 0, -11); c.fill(); dot(-2.5, 4, 2, '#d8f0ff'); break;
     case 'earthMagic': poly([[-11, 9], [-4, -5], [0, 1], [4, -9], [11, 9]], '#a8864a'); poly([[4, -9], [7, -3], [4, -4], [2, -5]], fg); poly([[-4, -5], [-2, -2], [-5, -1]], fg); c.fillStyle = '#6a8a3a'; c.fillRect(-11, 8, 22, 2); break;
     case 'eagleSight': poly([[-11, -2], [-6, -6], [-2, -3], [0, -7], [2, -3], [6, -6], [11, -2], [5, 0], [2, 6], [0, 9], [-2, 6], [-5, 0]], '#c8a060'); dot(0, -2, 2, gd); poly([[-1, -1], [1, -1], [0, 2]], '#e8c070'); break;
+    // nowe umiejętności (etap 2): kropla krwi z gwiazdą, fale echa, rząd tarcz, kolba, łapa z obrożą, zwój z piórem, oko w kapturze,
+    // blanki, topór katowski, sierp z duszą, kołczan
+    case 'bloodMagic': c.fillStyle = '#c8202a'; c.beginPath(); c.moveTo(0, -11); c.quadraticCurveTo(9, 2, 7, 5); c.arc(0, 4, 7, 0.14, Math.PI - 0.14); c.quadraticCurveTo(-9, 2, 0, -11); c.fill(); for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; line(1.4, '#ffd0d0', [Math.cos(a) * 1, 4 + Math.sin(a) * 1], [Math.cos(a) * 4, 4 + Math.sin(a) * 4]); } break;
+    case 'echo': c.lineWidth = 1.8; for (const [r, a] of [[3, '#ffffff'], [6.5, '#c8d8ff'], [10, '#8aa8e8']]) { c.strokeStyle = a; c.beginPath(); c.arc(-4, 0, r, -0.9, 0.9); c.stroke(); } dot(-5, 0, 2.2, gd); break;
+    case 'formation': for (const x of [-7, 0, 7]) { poly([[x - 3.5, -7], [x + 3.5, -7], [x + 3.5, 2], [x, 7], [x - 3.5, 2]], '#b8c0cc'); dot(x, -2, 1.2, '#6a4a2a'); } line(1.6, gd, [-11, 9], [11, 9]); break;
+    case 'alchemy': poly([[-2.5, -10], [2.5, -10], [2.5, -4], [8, 7], [6, 9], [-6, 9], [-8, 7], [-2.5, -4]], '#d8e8f0'); poly([[-5.5, 2], [5.5, 2], [8, 7], [6, 9], [-6, 9], [-8, 7]], '#7ad04a'); dot(-2, 5, 1.3, '#e8ffb0'); dot(2, 3.5, 1, '#e8ffb0'); c.fillStyle = '#8a5a2a'; c.fillRect(-3, -11, 6, 2.5); break;
+    case 'beastTamer': dot(0, 3, 5, '#a87a4a'); for (const [x, y] of [[-6, -3], [-2, -7], [2, -7], [6, -3]]) dot(x, y, 2.4, '#a87a4a'); c.lineWidth = 1.8; c.strokeStyle = gd; c.beginPath(); c.arc(0, 3, 7.5, 0.3, Math.PI - 0.3); c.stroke(); break;
+    case 'mentor': poly([[-9, -8], [7, -8], [9, -6], [9, 8], [-7, 8], [-9, 6]], '#e8dcb8'); for (const y of [-4, 0, 4]) line(1, '#8a6a3a', [-6, y], [4, y]); line(1.8, '#f0f0f0', [10, -11], [2, 3]); poly([[2, 3], [4, 0], [1, 1]], '#3a3a44'); break;
+    case 'espionage': poly([[-10, 6], [0, -10], [10, 6], [6, 9], [-6, 9]], '#3a3444'); c.fillStyle = '#e8e0c8'; c.beginPath(); c.ellipse(0, 2, 5, 2.6, 0, 0, TAU); c.fill(); dot(0, 2, 1.8, '#3a8a5a'); dot(0, 2, 0.8, '#101010'); break;
+    case 'fortify': c.fillStyle = '#a8a098'; c.fillRect(-10, -2, 20, 11); for (const x of [-10, -3, 4]) c.fillRect(x, -7, 5, 5); c.fillStyle = '#5a5248'; c.fillRect(-2, 3, 4, 6); line(1, '#7a7268', [-10, 3], [10, 3]); break;
+    case 'executioner': line(2.4, '#8a5a2a', [-8, 10], [5, -6]); poly([[3, -11], [11, -5], [9, 1], [1, -4]], '#c8ccd4'); poly([[9, 1], [11, -5], [12, -1]], '#ff6a5a'); break;
+    case 'soulHarvest': c.lineWidth = 2.2; c.strokeStyle = '#c8ccd4'; c.beginPath(); c.arc(1, -2, 8, Math.PI * 0.9, Math.PI * 1.9); c.stroke(); line(2, '#6a4a2a', [-7, -1], [-1, 11]); c.fillStyle = 'rgba(150,240,200,.9)'; c.beginPath(); c.arc(4, 4, 3, 0, TAU); c.fill(); poly([[1, 5], [7, 5], [4, 11]], 'rgba(150,240,200,.7)'); break;
+    case 'quartermaster': poly([[-5, -10], [5, -10], [6, 10], [-6, 10]], '#8a5a2a'); for (const x of [-3, 0, 3]) { line(1.2, '#e8dcb8', [x, -12], [x, -3]); poly([[x - 1.5, -12], [x + 1.5, -12], [x, -14]], '#c8ccd4'); } line(1.4, gd, [-6, 2], [6, 2]); break;
     default: { // talenty i nowe umiejętności bez własnego rysunku: gwiazda (talent) albo pierwsza litera nazwy
       if (tal) { const P = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 4 : 10; P.push([Math.cos(a) * r, Math.sin(a) * r]); } poly(P, gd); }
       else { c.font = 'bold 16px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = fg; c.fillText(SKILLS[id].name[0], 0, 1); } }
@@ -1397,17 +1426,17 @@ function skillSprite(id, size = 32) {
 }
 function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id, size), cx, cy, size / 32); }
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
-function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id)) { // costOf: koszt w bitwie (drugi czar Bitewnego maga droższy)
+function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id), afford = id => costOf(id) <= h.mana) { // costOf: koszt w bitwie (drugi czar Bitewnego maga droższy)
   Sfx.play('book', { vol: 0.6 });
   // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły
-  const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
+  const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || []), ...(hasBook(h) ? ['spark'] : [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
   const BOOK = !PIXEL_ART, cols = BOOK ? 4 : 3, cw = BOOK ? (w - 96) / 4 : (w - 48) / cols, rh = 44, PER = BOOK ? 20 : 18, tabs = [null, ...Object.keys(SCHOOLS)];
   let school = null, page = 0, hover = -1;
   const side = d => iconArrowSide(d), _side = d => (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 4 * d, cy - 8); ctx.lineTo(cx - 4 * d, cy + 8); ctx.lineTo(cx + 5 * d, cy); ctx.closePath(); ctx.fill(); };
   const list = () => all.filter(id => !school || SPELLS[id].school === school), pages = () => Math.max(1, Math.ceil(list().length / PER)), shown = () => list().slice(page * PER, page * PER + PER);
   const cell = i => BOOK ? (k => ({ x: x + 34 + (k >= 10 ? (w - 68) / 2 + 14 : 0) + (k % 2) * cw, y: y + 108 + Math.floor((k % 10) / 2) * rh, w: cw - 10, h: rh - 4 }))(i) // księga: 2 kolumny na stronę, lewa strona, potem prawa
     : ({ x: x + 24 + (i % cols) * cw, y: y + 104 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
-  const usable = id => mode !== 'view' && SPELLS[id].kind === mode && costOf(id) <= h.mana;
+  const usable = id => mode !== 'view' && SPELLS[id].kind === mode && afford(id); // afford: w bitwie także Krwawa magia
   const close = new Button(W / 2 - 70, y + hh - 54, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const prev = new Button(W / 2 - 124, y + hh - 50, 44, 32, 'Poprzednia strona', () => { page = Math.max(0, page - 1); }, { icon: side(-1), key: 'arrowleft', tip: 'Poprzednia strona księgi.' });
   const next = new Button(W / 2 + 80, y + hh - 50, 44, 32, 'Następna strona', () => { page = Math.min(pages() - 1, page + 1); }, { icon: side(1), key: 'arrowright', tip: 'Następna strona księgi.' });
@@ -1417,7 +1446,7 @@ function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id)) { // co
   G.modal = { box: { x, y, w, h: hh },
     buttons: [close, prev, next, ...tabBtns],
     onClick(px, py) { const i = at(px, py), id = shown()[i]; if (i >= 0 && usable(id)) { G.modal = null; onPick(id); } },
-    rightInfo(px, py) { const i = at(px, py); if (i < 0) return null; const id = shown()[i], S = SPELLS[id]; return `${S.name} (magia ${SCHOOLS[S.school].name}, poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${costOf(id)} many): ${S.desc(S.kind === 'adv' ? sp : effSp(sp))}.${schoolNote(h, id)}`; },
+    rightInfo(px, py) { const i = at(px, py); if (i < 0) return null; const id = shown()[i], S = SPELLS[id]; return `${S.name} (${S.cantrip ? 'sztuczka każdej księgi' : `magia ${SCHOOLS[S.school].name}, poziom ${S.level}`}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${costOf(id)} many): ${S.desc(S.kind === 'adv' ? sp : effSp(sp))}.${schoolNote(h, id)}`; },
     draw(ctx) {
       page = Math.min(page, pages() - 1); prev.disabled = page === 0; next.disabled = page >= pages() - 1;
       const L = shown(); hover = at(G.mouse.x, G.mouse.y);
@@ -1430,13 +1459,13 @@ function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id)) { // co
       L.forEach((id, i) => {
         const r = cell(i), S = SPELLS[id], ok = usable(id);
         ctx.fillStyle = ok && hover === i ? 'rgba(160,100,30,.3)' : BOOK ? 'rgba(90,55,20,.07)' : 'rgba(90,55,20,.12)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
-        ctx.fillStyle = SCHOOLS[S.school].col; ctx.fillRect(r.x, r.y + 4, 3, r.h - 8);
+        ctx.fillStyle = S.school ? SCHOOLS[S.school].col : S.col; ctx.fillRect(r.x, r.y + 4, 3, r.h - 8);
         ctx.save(); if (mode !== 'view' && !ok) ctx.globalAlpha = 0.45;
         drawSprite(ctx, spellSprite(id), r.x + 24, r.y + r.h / 2, BOOK ? 1.1 : 1);
         ctx.font = font(13, 700, 'title'); let fs = 13; while (fs > 10 && ctx.measureText(S.name).width > r.w - 50) { fs--; ctx.font = font(fs, 700, 'title'); }
         text(ctx, S.name, r.x + 46, r.y + r.h / 2 - 7, { size: fs, color: '#2a1606', fam: 'title' });
         const c0 = costOf(id);
-        text(ctx, `${S.level} poz. · ${c0} many${c0 < S.cost ? ' ↓' : ''}`, r.x + 46, r.y + r.h / 2 + 11, { size: BOOK ? 14 : 12, weight: 600, color: c0 < S.cost ? '#2a6a1e' : '#5a3814' });
+        text(ctx, S.cantrip ? 'sztuczka · bez many' : `${S.level} poz. · ${c0} many${c0 < S.cost ? ' ↓' : ''}`, r.x + 46, r.y + r.h / 2 + 11, { size: BOOK ? 14 : 12, weight: 600, color: c0 < S.cost ? '#2a6a1e' : '#5a3814' });
         ctx.restore();
       });
       const hs = hover >= 0 ? L[hover] : null;
