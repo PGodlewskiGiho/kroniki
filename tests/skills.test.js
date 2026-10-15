@@ -78,6 +78,10 @@ test('awans gracza: okno wyboru umiejętności po kolei dla każdego poziomu, po
   await newGame(page);
   await page.evaluate(() => { const st = G.state, h = hero(st); window.DONE = false; window.START = h.skills.length; window.OFFERS = [skillOffer(st, h, 2)]; gainExp(st, h, expForLevel(3) - h.exp, () => { window.DONE = true; }); });
   let d = await dialog(page);
+  assert.match(d.msg, /wolny punkt cechy \(poziom 2\)/, 'parzysty poziom: najpierw wolny punkt cechy'); assert.deepEqual(d.labels, ['Atak', 'Obrona', 'Moc czarów', 'Wiedza']);
+  const att0 = await page.evaluate(() => hero(G.state).stats.att); await pressDialog(page, 'Atak');
+  assert.equal(await page.evaluate(() => hero(G.state).stats.att), att0 + 1);
+  d = await dialog(page);
   assert.match(d.msg, /osiąga poziom 2!.*Wybierz umiejętność/);
   const want = await page.evaluate(() => OFFERS[0].map(id => SKILLS[id].name));
   assert.deepEqual(d.labels, want);

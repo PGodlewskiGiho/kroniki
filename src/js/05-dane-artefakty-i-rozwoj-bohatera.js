@@ -112,6 +112,35 @@ const SKILL_FORKS = {
   soulHarvest: [{ id: 'reaper', name: 'Żniwiarz', desc: 'żniwo daje też Zapał (połowę tej wartości)' }, { id: 'soulForge', name: 'Kuźnia dusz', desc: 'za zniszczony oddział twój najsłabszy oddział odzyskuje życie' }],
   quartermaster: [{ id: 'arrows', name: 'Ostre groty', desc: 'strzelcy zadają o 10% więcej obrażeń' }, { id: 'cartMaster', name: 'Wozownia', desc: 'bohater zawsze ma wóz z amunicją w bitwie' }],
 };
+// Sploty (etap 3): para umiejętności, obie co najmniej na poziomie SYN_LV, sama odblokowuje dodatkowe działanie – nagroda za przemyślane
+// łączenie umiejętności (bez wyboru, bez limitu). Działanie w ZASADY GRY i BITWA: ZASADY (synergy).
+const SYN_LV = 2;
+const SYNERGIES = {
+  burningCharge: { name: 'Płonąca szarża', req: ['tactics', 'fireMagic'], desc: 'cios oddziału pod Szarżą podpala cel: płonie przez 2 rundy (10% obrażeń ciosu co rundę)' },
+  holyHost: { name: 'Święty zastęp', req: ['leadership', 'waterMagic'], desc: 'Okrzyk bojowy leczy też każdy twój oddział (5 × atak bohatera, co najmniej 10)' },
+  thunderArrows: { name: 'Gromowe strzały', req: ['archery', 'airMagic'], desc: '15% szans, że strzał ogłusza cel – traci najbliższy ruch' },
+  stoneWall: { name: 'Kamienny mur', req: ['armorer', 'earthMagic'], desc: 'Mur tarcz osłania też oddziały stojące obok wskazanego' },
+  ironWill: { name: 'Żelazna wola', req: ['leadership', 'resistance'], desc: 'niskie morale nigdy nie odbiera twoim oddziałom tury' },
+  bloodRite: { name: 'Krwawy rytuał', req: ['necromancy', 'bloodMagic'], desc: 'Krwawa magia pobiera życie z najsilniejszego żywego oddziału wroga zamiast z twojego' },
+  fieldCommand: { name: 'Polowe dowództwo', req: ['tactics', 'wisdom'], desc: 'pierwszy rozkaz w każdej bitwie za darmo' },
+  spellbreaker: { name: 'Łamacz zaklęć', req: ['offense', 'interference'], desc: 'cios wręcz zdejmuje z celu jego wzmocnienia (dobre czary)' },
+  siegeMaster: { name: 'Mistrz oblężeń', req: ['ballistics', 'artillery'], desc: 'katapulta i balista strzelają raz więcej' },
+  fieldSurgeon: { name: 'Polowy chirurg', req: ['firstAid', 'triage'], desc: 'namiot medyka przywraca też poległych w tej bitwie' },
+  volleyCaptain: { name: 'Kapitan łuczników', req: ['archery', 'leadership'], desc: 'Salwa na rozkaz kosztuje 3 Zapału mniej' },
+  bladeSpell: { name: 'Ostrze i czar', req: ['offense', 'sorcery'], desc: 'po czarze zadającym obrażenia aktywny oddział zadaje do końca rundy o 25% więcej' },
+  firestorm: { name: 'Burza ognia', req: ['fireMagic', 'airMagic'], desc: 'czary Ognia i Powietrza tańsze o 20%' },
+  riverStone: { name: 'Rzeka i skała', req: ['waterMagic', 'earthMagic'], desc: 'armia +1 do obrony, czary leczą o 20% więcej' },
+  shieldFort: { name: 'Bastion tarcz', req: ['fortify', 'formation'], desc: 'w obronie Szyk daje podwójną premię' },
+  outriders: { name: 'Zwiad konny', req: ['scouting', 'logistics'], desc: 'pierwszego dnia tygodnia +500 ruchu' },
+  resonance: { name: 'Rezonans', req: ['echo', 'sorcery'], desc: 'echo czaru zdarza się półtora raza częściej' },
+  deathHarvest: { name: 'Żniwa śmierci', req: ['necromancy', 'soulHarvest'], desc: 'nekromancja wskrzesza o 10 punktów procentowych więcej' },
+  apothecary: { name: 'Apteka', req: ['alchemy', 'firstAid'], desc: 'eliksiry Alchemii polowej działają rundę dłużej' },
+  warAcademy: { name: 'Akademia wojenna', req: ['mentor', 'learning'], desc: 'bohater zdobywa o 10% więcej doświadczenia' },
+};
+// Wolny punkt cechy co FREE_PT_EVERY poziomów (etap 3): gracz wybiera cechę, komputer najczęstszą w swojej klasie
+const FREE_PT_EVERY = 2;
+const STAT_TIP = { att: 'każdy punkt przewagi nad obroną wroga: +5% obrażeń armii; siła rozkazów (Szarża, Flanka, Pogrom…)', def: 'każdy punkt przewagi nad atakiem wroga: −2,5% obrażeń; pula Zapału (+2 za punkt)',
+  sp: 'siła i czas działania czarów, także Iskry', kn: 'mana: 10 za punkt; skupienie (mana co rundę bitwy)' };
 const FORK = {}; for (const [sk, fs] of Object.entries(SKILL_FORKS)) for (const f of fs) FORK[f.id] = Object.assign(f, { skill: sk }); // specjalizacja po identyfikatorze
 // Talenty: co TALENT_EVERY poziomów bohater wybiera jeden z trzech (heroPerk). req: lista [umiejętność, poziom], wystarczy jedna;
 // bez req dostępne zawsze (Weteran i Arcymag można brać wielokrotnie). Działanie w ZASADY GRY i BITWA: ZASADY.

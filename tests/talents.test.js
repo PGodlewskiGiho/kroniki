@@ -29,6 +29,7 @@ test('awans gracza na 4. poziom: po umiejętności okno talentu; SI wybiera sama
   await newGame(page, { opponents: 1 });
   await page.evaluate(() => { const st = G.state, h = hero(st); h.exp = expForLevel(3); h.level = 3; window.DONE = false; gainExp(st, h, expForLevel(4) - h.exp, () => { window.DONE = true; }); });
   let d = await dialog(page);
+  if (/wolny punkt cechy/.test(d.msg)) { await pressDialog(page, 'Obrona'); d = await dialog(page); } // parzysty poziom: najpierw punkt cechy
   assert.match(d.msg, /osiąga poziom 4!.*Wybierz umiejętność/);
   await pressDialog(page, d.labels[0]);
   d = await dialog(page);

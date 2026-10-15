@@ -161,7 +161,9 @@ test('gra korespondencyjna: zasłona tury ma „Wyślij plikiem”, plik wczytan
   const who = await page.evaluate(() => ME);
   await page.evaluate(() => { G.modal = null; G.go('load', { mode: 'load' }); });
   await page.waitForFunction(() => G.screenName === 'load');
-  const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => { G.screen.fromFile(); })]);
+  const fcP = page.waitForEvent('filechooser', { timeout: 60000 }); await page.evaluate(() => { G.screen.fromFile(); }); // jak w savefile: drugi klik, gdy przechwytywanie okna jeszcze nie działało
+  let fc = await Promise.race([fcP, new Promise(r => setTimeout(() => r(null), 8000))]);
+  if (!fc) { await page.evaluate(() => { G.screen.fromFile(); }); fc = await fcP; }
   await fc.setFiles(file);
   await page.waitForFunction(() => G.screenName === 'adventure' && G.modal && /Tura:/.test(G.modal.msg), null, { timeout: 10000 });
   assert.equal(await page.evaluate(() => ME), who);

@@ -69,6 +69,7 @@ G.screens.hero = {
     if (clickButtons(this.buttons, x, y)) return;
     if (this.preview) return; // podgląd kandydata: tylko oglądanie
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y);
+    { const p = this.statAt(x, y); if (p && h.freePts > 0 && h.owner === ME) { spendPoint(h, p.id); Sfx.play('click'); return; } } // wolny punkt cechy
     { const si = this.skillAt(x, y), sk = si >= 0 && h.skills[si]; if (sk && sk.lv >= 3 && SKILL_FORKS[sk.id] && !sk.fork && h.owner === ME) { // zaległa specjalizacja (np. ze starego zapisu)
       showChoice(`${SKILLS[sk.id].name}: ${h.name} wybiera specjalizację – na zawsze:`, SKILL_FORKS[sk.id].map((f, k) => ({ label: f.name, sub: `specjalizacja: ${SKILLS[sk.id].name}`, tip: cap1(f.desc) + '.', key: String(k + 1), lead: (ctx, cx, cy) => skillIcon(ctx, sk.id, cx, cy), action: () => chooseFork(h, sk.id, f.id) }))); return; } }
     if (ar) {
@@ -114,7 +115,8 @@ G.screens.hero = {
     const tr = hitRect(this.talentRects || [], x, y); if (tr) return `Talent — ${talentText(tr.id)}.`;
     const pr = hitRect(this.pathRects || [], x, y); if (pr) return pathTip(h, pr.id);
     const si = this.skillAt(x, y);
-    if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv, s.fork)}.${s.lv >= 3 && SKILL_FORKS[s.id] && !s.fork ? ' Kliknij, aby wybrać specjalizację.' : ''}` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
+    if (this.synRect && inRect(x, y, this.synRect)) return activeSynergies(h).map(synText).join('. ') + '.'; // sploty
+    if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv, s.fork)}.${synHint(h, s.id)}${s.lv >= 3 && SKILL_FORKS[s.id] && !s.fork ? ' Kliknij, aby wybrać specjalizację.' : ''}` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
       att: 'Atak: dodaje się do ataku każdego twojego oddziału w bitwie (+5% obrażeń za punkt przewagi).',
       def: 'Obrona: dodaje się do obrony każdego twojego oddziału w bitwie (mniej otrzymywanych obrażeń).',
@@ -146,17 +148,20 @@ G.screens.hero = {
       text(ctx, p.name, bx + 42, 208, { size: 12, weight: 500, align: 'center', color: '#5a3814' });
       text(ctx, String(h.stats[p.id] + b), bx + 42, 230, { size: 20, align: 'center', color: '#2a1606', fam: 'title' });
       if (b) text(ctx, `+${b}`, bx + 78, 230, { size: 12, weight: 700, align: 'right', color: '#2a6a1e' });
+      if (h.freePts > 0 && !this.preview && h.owner === ME) { const pulse = 0.7 + 0.3 * Math.sin(G.time * 5); ctx.fillStyle = `rgba(60,140,40,${pulse})`; ctx.beginPath(); ctx.arc(bx + 72, 176, 9, 0, TAU); ctx.fill(); text(ctx, '+', bx + 72, 176, { size: 16, align: 'center', color: '#f4ffe8', fam: 'title' }); G.dirty = true; } // wolny punkt: kliknij cechę
     });
+    if (h.freePts > 0 && h.owner === ME && !this.preview) text(ctx, `Wolne punkty cech: ${h.freePts} – kliknij cechę`, 388, 142, { size: 13, weight: 700, align: 'right', color: '#2a6a1e' });
     divider(ctx, 32, 388, 262);
     const mpB = heroBonus(h, 'mp'), gold = heroBonus(h, 'gold'), sB = heroBonus(h, 'sight');
     [`Ruch: ${h.mp} z ${heroMaxMP(h)}${mpB ? ` (+${mpB} z artefaktów)` : ''}`,
      `Zasięg widzenia: ${heroSight(h)}${sB ? ` (+${sB})` : ''} · mana ${h.mana} / ${heroMaxMana(h)} · czary: ${(h.spells || []).length}`,
      `Siła armii: ${Math.round(armyPower(h.army) * heroFactor(h))} (premia bohatera +${Math.round((heroFactor(h) - 1) * 100)}%)`,
      `Morale: ${signed(armyMorale(armyStacks(h.army).map(s => s.cid), h, null))} · Szczęście: ${signed(heroLuck(h))}`,
-     gold ? `Złoto z artefaktów: +${gold} dziennie` : null, (h.talents || []).length ? 'Talenty:' : null].filter(Boolean)
+     gold ? `Złoto z artefaktów: +${gold} dziennie` : null, activeSynergies(h).length ? `Sploty: ${activeSynergies(h).map(id => SYNERGIES[id].name).join(', ')}` : null, (h.talents || []).length ? 'Talenty:' : null].filter(Boolean)
       .forEach((l, i, L) => { const y = L.length > 4 && (h.talents || []).length ? 276 + i * 19 : 286 + i * 22; text(ctx, l, 32, y, { size: 15, weight: 500, color: '#2a1606' });
         if (l === 'Talenty:') this.talentRects = (h.talents || []).map((id, k) => { const r = { x: 100 + k * 26, y: y - 12, w: 24, h: 24, id }; skillIcon(ctx, 't_' + id, r.x + 12, y, 24); return r; });
-        if (l.startsWith('Morale')) this.pathRects = drawPathRow(ctx, h, 236, y); }); // ścieżka mistrzowska w wierszu morale (z prawej)
+        if (l.startsWith('Morale')) this.pathRects = drawPathRow(ctx, h, 236, y); if (l.startsWith('Sploty')) this.synRect = { x: 32, y: y - 10, w: 356, h: 20 }; });
+    if (!activeSynergies(h).length) this.synRect = null; // ścieżka mistrzowska w wierszu morale (z prawej)
     if (!(h.talents || []).length) this.talentRects = [];
     text(ctx, 'Armia', 32, 392, { size: 16, color: '#3a1e08', fam: 'title' });
     this.armyRects = drawArmyRow(ctx, h.army, 32, 404, { light: true, w: 46, gap: 5, h: 58, sel: this.sel == null ? -1 : this.sel });

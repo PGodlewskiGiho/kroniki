@@ -432,6 +432,7 @@ function initHeroProgress(h) {
   if (!h.locked) h.locked = {}; // miejsca zajęte przez relikwię (miejsce -> relikwia)
   if (!h.bag) h.bag = [];
   if (!h.level) h.level = 1;
+  if (h.freePts == null) h.freePts = Math.floor(h.level / FREE_PT_EVERY); // etap 3: zaległe wolne punkty (stary zapis) do wydania na ekranie bohatera
   if (!h.spells) h.spells = [...(CLASS_SPELLS[h.cls] || [])];
   if (!h.skills) h.skills = (CLASS_SKILLS[h.cls] || []).map(([id, lv]) => ({ id, lv }));
   if (!h.machines) h.machines = [];
@@ -444,6 +445,15 @@ const heroFork = (h, f) => !!(f && h && h.skills && h.skills.some(s => s.fork ==
 // Specjalizacja któregokolwiek bohatera gracza (Wywiad, Informator); qtyFor: liczebność dokładna albo opisowa
 const playerFork = (st, owner, f) => !!(st && st.heroes.some(h => h.owner === owner && heroFork(h, f)));
 const qtyFor = (st, n, owner = ME) => (playerFork(st, owner, 'intel') ? String(n) : qtyName(n));
+// Sploty (SYNERGIES): obie umiejętności pary co najmniej na poziomie SYN_LV
+const synergy = (h, id) => !!(h && h.skills && SYNERGIES[id] && SYNERGIES[id].req.every(s => heroSkill(h, s) >= SYN_LV));
+const activeSynergies = h => Object.keys(SYNERGIES).filter(id => synergy(h, id));
+// Podpowiedź na ekranie bohatera: sploty, w których bierze udział umiejętność (działające i czekające na drugą umiejętność)
+const synHint = (h, sk) => { const L = Object.keys(SYNERGIES).filter(id => SYNERGIES[id].req.includes(sk)); return L.length ? ` Sploty: ${L.map(id => `${SYNERGIES[id].name}${synergy(h, id) ? ' (działa)' : ` (z: ${SKILLS[SYNERGIES[id].req.find(r => r !== sk)].name})`}`).join(', ')}.` : ''; };
+const synText = id => `${SYNERGIES[id].name} (${SYNERGIES[id].req.map(s => SKILLS[s].name).join(' + ')}): ${SYNERGIES[id].desc}`;
+// Wolne punkty cech: wydanie punktu i wybór komputera (cecha, która w klasie rośnie najczęściej)
+function spendPoint(h, id) { if (!(h.freePts > 0) || !PRIMARY.some(p => p.id === id)) return false; h.stats[id]++; h.freePts--; h.mana = Math.min(h.mana, heroMaxMana(h)); return true; }
+const aiPickStat = h => { const g = (CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight).grow; return PRIMARY[g.indexOf(Math.max(...g))].id; };
 const pendingFork = h => ((h && h.skills) || []).find(s => s.lv >= 3 && SKILL_FORKS[s.id] && !s.fork) || null;
 const AI_FORK = new Set(['standard', 'lucky', 'breach', 'sniper', 'spikes', 'initiative', 'twinBolt', 'assault', 'surgeon', 'veterans', 'grit', 'tribute', 'envoy', 'couriers', 'wanderer', 'farsight', 'boarding',
   'incinerate', 'deepWell', 'meditation', 'warMage', 'foresight', 'silence', 'quickStudy', 'blaze', 'storm', 'healer', 'quake', 'lands', 'horde', 'sacrifice', 'resound', 'phalanx', 'elixirs', 'packLeader', 'academy', 'sabotage', 'stronghold', 'mercy', 'reaper', 'arrows']);
@@ -465,7 +475,7 @@ const spellSchoolLv = (h, id) => { const S = SPELLS[id]; return S && S.school ? 
 // Moc czarów w bitwie (obrażenia, leczenie, trucizna, czas działania): do SP_SOFT pełna, powyżej każdy punkt liczy się za pół – późni magowie
 // nie rosną bez końca (pomiar tools/balans/bohaterowie.js: bez limitu mag 20. poziomu był o 1/5 silniejszy od wojownika nawet bez Bitewnego maga)
 let SP_SOFT = 6; const effSp = sp => (sp <= SP_SOFT ? sp : SP_SOFT + Math.floor((sp - SP_SOFT) / 2)), spellPow = h => effSp(heroStat(h, 'sp'));
-const spellCost = (h, id) => SPELLS[id].cost === 0 ? 0 : Math.max(1, Math.round(SPELLS[id].cost * (1 - SCHOOL_COST[spellSchoolLv(h, id)] / 100) * (1 - (pathV(h, 'archmage') || [0, 0])[1] / 100) * (heroFork(h, 'fluency') ? 0.85 : 1)));
+const spellCost = (h, id) => SPELLS[id].cost === 0 ? 0 : Math.max(1, Math.round(SPELLS[id].cost * (1 - SCHOOL_COST[spellSchoolLv(h, id)] / 100) * (1 - (pathV(h, 'archmage') || [0, 0])[1] / 100) * (heroFork(h, 'fluency') ? 0.85 : 1) * (synergy(h, 'firestorm') && (SPELLS[id].school === 'fire' || SPELLS[id].school === 'air') ? 0.8 : 1)));
 const SCHOOL_FORK = { fire: 'blaze', air: 'storm', earth: 'quake' }; // specjalizacje szkół: czary tej szkoły +25%
 const schoolMul = (h, id) => 1 + SCHOOL_POWER[spellSchoolLv(h, id)] / 100 + (SPELLS[id] && heroFork(h, SCHOOL_FORK[SPELLS[id].school]) ? 0.25 : 0);
 const skillVal = (h, id) => { const L = heroSkill(h, id); if (!L) return 0; const sp = heroSpec(h), v = SKILLS[id].v[L - 1]; return sp && sp.skill === id ? Math.round(v * (1 + 0.05 * h.level)) : v; };
@@ -541,15 +551,16 @@ const heroFactor = h => 1 + 0.05 * (heroStat(h, 'att') + heroStat(h, 'def'));
 // Każdy awans daje też wybór umiejętności: SI wybiera od razu, człowiek w oknie (po kolei, gdy awansów jest kilka).
 // then(): co zrobić po zamknięciu okien awansu (np. obejrzeć obiekt, na którym stoi bohater)
 function gainExp(st, h, amount, then, silent = false) { // silent: awans bez okien (np. uwolniony więzień)
-  const gain = Math.round(amount * (1 + skillVal(h, 'learning') / 100 + (weekKind(st, 'exp') ? 0.25 : 0))); h.exp += gain; const ups = [];
+  const gain = Math.round(amount * (1 + skillVal(h, 'learning') / 100 + (synergy(h, 'warAcademy') ? 0.1 : 0) + (weekKind(st, 'exp') ? 0.25 : 0))); h.exp += gain; const ups = []; // splot Akademia wojenna
   const mv = skillVal(h, 'mentor'); if (mv && gain > 0 && !h._mentor) for (const o of st.heroes) if (o !== h && o.owner === h.owner) { // Mentor: część doświadczenia dla innych bohaterów gracza
     const g = Math.round(gain * mv / 100); if (o.owner !== ME) { o._mentor = true; gainExp(st, o, g, null, true); delete o._mentor; } else o.exp += g; } // człowiekowi awans przy najbliższym doświadczeniu
   while (h.exp >= expForLevel(h.level + 1)) {
     h.level++; const g = (CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight).grow, r = thash(h.id, h.level, st.seed) % 100;
     let acc = 0, k = 0; for (; k < 3; k++) { acc += g[k]; if (r < acc) break; }
-    h.stats[PRIMARY[k].id]++; ups.push({ level: h.level, stat: PRIMARY[k] });
+    h.stats[PRIMARY[k].id]++; ups.push({ level: h.level, stat: PRIMARY[k] }); if (h.level % FREE_PT_EVERY === 0) h.freePts = (h.freePts || 0) + 1; // wolny punkt cechy
   }
   if (h.owner !== ME || silent || !ups.length) {
+    while (h.freePts > 0) spendPoint(h, aiPickStat(h)); // komputer (i awans bez okien) wydaje punkty od razu
     for (const u of ups) { const offer = skillOffer(st, h, u.level); if (offer.length) learnSkill(h, aiPickSkill(offer)); const pf = pendingFork(h); if (pf) chooseFork(h, pf.id, aiPickFork(pf.id)); /* specjalizacja: komputer od razu */ if (talentLevel(u.level, h)) learnTalent(st, h, aiPickTalent(talentOffer(st, h, u.level))); }
     if (!h.mastery && h.level >= PATH_LEVELS[0] && PATHS_ON) h.mastery = pathOffer(h)[0]; // ścieżka mistrzowska: komputer (i awans bez okien) bierze pierwszą ze swojej klasy
     if (then) then(); return ups.length;
@@ -572,13 +583,28 @@ function gainExp(st, h, amount, then, silent = false) { // silent: awans bez oki
   };
   // specjalizacja: umiejętność doszła do poziomu eksperckiego – wybór jednej z dwóch na zawsze
   const fork = (i, u) => {
-    const pf = pendingFork(h); if (!pf) return talent(i, u);
+    const pf = pendingFork(h); if (!pf) return syn(i, u);
     showChoice(`${SKILLS[pf.id].name} na poziomie eksperckim! ${h.name} wybiera specjalizację – na zawsze:`, SKILL_FORKS[pf.id].map((f, k) => ({ label: f.name, sub: `specjalizacja: ${SKILLS[pf.id].name}`, tip: cap1(f.desc) + '.', key: String(k + 1),
-      lead: (ctx, cx, cy) => skillIcon(ctx, pf.id, cx, cy), action: () => { chooseFork(h, pf.id, f.id); talent(i, u); } })), portrait(true));
+      lead: (ctx, cx, cy) => skillIcon(ctx, pf.id, cx, cy), action: () => { chooseFork(h, pf.id, f.id); syn(i, u); } })), portrait(true));
+  };
+  // nowy splot: para umiejętności właśnie osiągnęła wymagany poziom
+  const syn = (i, u) => {
+    const fresh = activeSynergies(h).filter(id => !(h.synSeen || []).includes(id)); if (!fresh.length) return talent(i, u);
+    h.synSeen = [...(h.synSeen || []), ...fresh];
+    showChoice(`Nowy splot umiejętności! ${h.name} łączy to, czego się nauczył${h.female ? 'a' : ''}:`, fresh.map(id => ({ label: SYNERGIES[id].name, sub: SYNERGIES[id].req.map(s => SKILLS[s].name).join(' + '), tip: cap1(SYNERGIES[id].desc) + '.',
+      lead: (ctx, cx, cy) => skillIcon(ctx, SYNERGIES[id].req[0], cx, cy), key: 'enter', action: () => talent(i, u) })), portrait(true));
+  };
+  // wolny punkt cechy (co FREE_PT_EVERY poziomów)
+  const point = (i, u, go) => {
+    if (u.level % FREE_PT_EVERY || !(h.freePts > 0)) return go();
+    showChoice(`${h.name}: wolny punkt cechy (poziom ${u.level}). Wybierz, w co go włożyć:`, PRIMARY.map((p, k) => ({ label: p.name, sub: `teraz ${heroStat(h, p.id)} → ${heroStat(h, p.id) + 1}`, tip: cap1(STAT_TIP[p.id]) + '.', key: String(k + 1),
+      lead: (ctx, cx, cy) => { if (PIXEL_ART || !drawUiPiece(ctx, { att: 'ic_sword', def: 'ic_shield', sp: 'ic_orb', kn: 'ic_scroll' }[p.id], cx - 14, cy - 14, 28, 28)) iconStat(ctx, p.id, cx, cy, '#6a4418'); },
+      action: () => { spendPoint(h, p.id); go(); } })), portrait(true));
   };
   const next = i => {
     if (i >= ups.length) { if (then) then(); return; }
-    const u = ups[i], offer = skillOffer(st, h, u.level), icon = portrait(offer.length > 0);
+    const u = ups[i]; if (!u.pt) { u.pt = true; return point(i, u, () => next(i)); } // najpierw wolny punkt cechy
+    const offer = skillOffer(st, h, u.level), icon = portrait(offer.length > 0);
     const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`;
     if (!offer.length) { showDialog(msg, [{ label: 'Wspaniale', key: 'enter', action: () => fork(i, u) }], icon); return; }
     showChoice(`${msg} Wybierz umiejętność:`, offer.map((id, k) => {

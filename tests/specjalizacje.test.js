@@ -34,7 +34,7 @@ test('awans: karta umiejętności, potem wybór specjalizacji; komputer wybiera 
   await newGame(page);
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st); h.skills = [{ id: 'offense', lv: 3 }]; G.modal = null;
-    gainExp(st, h, expForLevel(h.level + 1) - h.exp);
+    gainExp(st, h, expForLevel(h.level + 1) - h.exp); if (/wolny punkt/.test(G.modal.msg)) G.modal.buttons[0].action(); // poziom 2: najpierw punkt cechy
     const first = { choice: !!(G.modal && G.modal.choice), cards: G.modal ? G.modal.buttons.length : 0 }; G.modal.buttons[0].action();
     const fork = G.modal ? G.modal.buttons.map(b => b.label) : []; if (G.modal && G.modal.choice && fork.includes('Kontra')) G.modal.buttons.find(b => b.label === 'Kontra').action();
     while (G.modal) G.modal.buttons[0].action(); // ewentualny talent

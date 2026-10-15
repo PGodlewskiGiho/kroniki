@@ -20,7 +20,11 @@ test('gra zapisana do pliku wczytuje się z pliku taka sama', async () => {
   const before = await page.evaluate(() => JSON.stringify(serializeGame(G.state)));
   await page.evaluate(() => { G.state.players[G.state.cur].resources.gold = 1; setScreen('load', { mode: 'load' }); });
   await page.waitForFunction(() => G.screenName === 'load' && G.screen.mode === 'load');
-  const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => { G.screen.fromFile(); })]);
+  // przechwytywanie okna wyboru pliku włącza się asynchronicznie: przy kilku przeglądarkach naraz gra potrafi kliknąć wcześniej
+  // i zdarzenie nie przychodzi – wtedy drugi klik (już przy włączonym przechwytywaniu)
+  const fcP = page.waitForEvent('filechooser', { timeout: 60000 }); await page.evaluate(() => { G.screen.fromFile(); });
+  let fc = await Promise.race([fcP, new Promise(r => setTimeout(() => r(null), 8000))]);
+  if (!fc) { await page.evaluate(() => { G.screen.fromFile(); }); fc = await fcP; }
   await fc.setFiles(file);
   await page.waitForFunction(() => G.screenName === 'adventure', null, { timeout: 30000 }); // przy kilku przeglądarkach naraz (testy równolegle) wczytanie bywa wolne
   const r = await page.evaluate(() => ({ gold: G.state.players[G.state.cur].resources.gold, same: JSON.stringify(serializeGame(G.state)) }));

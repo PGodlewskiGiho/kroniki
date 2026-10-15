@@ -522,5 +522,11 @@
    Żniwo dusz, Kwatermistrz – każda też z dwiema specjalizacjami. Okno awansu z kartami (pełny opis bez dymków, także na telefonie);
    zaległą specjalizację (stary zapis) wybiera się kliknięciem świecącej umiejętności na ekranie bohatera. Komputer wybiera sam.
    build.js sprawdza składnię każdego pliku, a testy przy błędzie wczytywania gry padają od razu (zamiast czekać po 2 minuty).
+   Rozwój bohatera, etap 3: wolny punkt cechy co 2 poziomy (gracz wybiera w oknie awansu albo klikając cechę na ekranie bohatera,
+   komputer – cechę najczęstszą w klasie; stare zapisy dostają zaległe punkty). SPLOTY (SYNERGIES, 20): para umiejętności, obie
+   co najmniej zaawansowane, sama odblokowuje działanie – Płonąca szarża (Taktyka + Magia Ognia), Święty zastęp, Gromowe strzały,
+   Kamienny mur, Żelazna wola, Krwawy rytuał, Polowe dowództwo, Łamacz zaklęć, Mistrz oblężeń, Polowy chirurg, Kapitan łuczników,
+   Ostrze i czar, Burza ognia, Rzeka i skała, Bastion tarcz, Zwiad konny, Rezonans, Żniwa śmierci, Apteka, Akademia wojenna.
+   Nowy splot ogłasza okno awansu; opis umiejętności na ekranie bohatera mówi, z czym tworzy sploty. Talenty zostają (wybór co 4 poziomy).
    ===================================================================================== */
 
