@@ -1185,7 +1185,7 @@ function showRecruitList(st, t, onDone) {
       ctx.fillStyle = 'rgba(90,55,20,.1)'; rr(ctx, sx, sy, cw, ch, 5); ctx.fill();
       text(ctx, 'Przyrost co tydzień', sx + cw / 2, sy + 24, { size: 14, align: 'center', color: '#3a1e08', fam: 'title' });
       wrapText(ctx, `${growMul}. Siedlisk: ${dwellingLevels(t).length} z 7. Koszt stwora pokazuje dymek przycisku Werbuj.`, cw - 16).forEach((l, i) => text(ctx, l, sx + cw / 2, sy + 50 + i * 16, { size: 12, weight: 500, align: 'center', color: '#5a3814' }));
-      if (note) wrapText(ctx, note, cw - 16).slice(0, 4).forEach((l, i) => text(ctx, l, sx + cw / 2, sy + 118 + i * 15, { size: 12, weight: 600, align: 'center', color: '#2a4a14' }));
+      if (note) { const f = wrapFit(ctx, note, cw - 16, 4, { size: 12, weight: 600 }); f.lines.forEach((l, i) => text(ctx, l, sx + cw / 2, sy + 118 + i * 15 * f.k, { size: f.size, weight: 600, align: 'center', color: '#2a4a14' })); }
       all.disabled = !DW_LEVELS.some(L => hasB(t, 'dw' + L) && (t.avail[L] || 0) > 0);
       btns.forEach(b => { b.disabled = false; b.draw(ctx); }); all.draw(ctx); close.draw(ctx);
     },

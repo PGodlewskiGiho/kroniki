@@ -501,5 +501,8 @@
    w klatce bez innego dużego rysowania (teren i obiekty nie w tej samej klatce). Bez publikacji na GitHub Pages.
    Miasto Manufaktury: budowle rozsunięte (gildia magów na lewo w głębi, siedlisko 3 nad rzeką metalu, Graal na prawo w głębi,
    siedlisko 4 i budowla specjalna obok ratusza) – nic już nie chowa się za sąsiadem.
+   Napisy zawsze się mieszczą: ramki (pergamin, skóra, wnęka, gniazdo, księga) zapisują swój prostokąt w klatce, a text() i goldText
+   same zmniejszają za szeroki napis (do ~70%, potem ściśnięcie); wrapFit zamiast ucinać opis po 2–4 wierszach zmniejsza czcionkę,
+   a wrapText dzieli słowo dłuższe niż wiersz.
    ===================================================================================== */
 

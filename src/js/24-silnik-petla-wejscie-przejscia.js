@@ -156,6 +156,7 @@ function update(dt) {
 function render() {
   // przesunięcie wyśrodkowanego ekranu w całych pikselach: przy ułamkowym każdy obraz byłby filtrowany (wolno i nieostro)
   const ctx = G.ctx, center = () => ctx.setTransform(G.rs, 0, 0, G.rs, Math.round(OX * G.rs), Math.round(OY * G.rs)), whole = () => ctx.setTransform(G.rs, 0, 0, G.rs, 0, 0);
+  TextFit.frame++; // ramki napisów z poprzedniej klatki nie obowiązują
   setUnits('ui'); whole(); ctx.clearRect(0, 0, VW, VH); GLMap.shown = false;
   setUnits(screenUnits()); whole();
   if (G.screen.fill || G.screen.ui) G.screen.draw(ctx);

@@ -119,7 +119,7 @@ function showPuzzle(st) {
         ctx.strokeStyle = 'rgba(255,240,200,.35)'; ctx.lineWidth = 3; ctx.stroke(); ctx.strokeStyle = '#3a220c'; ctx.lineWidth = 1.5; ctx.stroke(); // wypukła krawędź
       }
       ctx.restore(); ctx.strokeStyle = '#5a3a14'; ctx.lineWidth = 2; ctx.strokeRect(mx - 1, my - 1, mw * k + 2, mh * k + 2);
-      ctx.font = font(15, 500, 'body'); wrapText(ctx, note, W0 - 60).slice(0, 2).forEach((l, i) => text(ctx, l, W / 2, my + mh * k + 18 + i * 17, { size: 15, weight: 500, italic: true, align: 'center', color: '#3a2410' }));
+      { const f = wrapFit(ctx, note, W0 - 60, 2, { size: 15, weight: 500, italic: true }); f.lines.forEach((l, i) => text(ctx, l, W / 2, my + mh * k + 18 + i * 17 * f.k, { size: f.size, weight: 500, italic: true, align: 'center', color: '#3a2410' })); }
       btn.draw(ctx);
     },
   };
