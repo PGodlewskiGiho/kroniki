@@ -774,6 +774,12 @@ function mimic(L, P = {}) {
   lidC.add(box(W - 0.02, 0.012, D - 0.04, inside, 'skin', [0, 0.002, 0]));
   for (let i = 0; i < 7; i++) lidC.add(cone(0.026, 0.09, fang, 'horn', [W / 2 - 0.02, -0.035, -D / 2 + 0.05 + i * (D - 0.1) / 6], [Math.PI, 0, 0], 5)); // górne kły
   lidC.add(box(0.04, 0.09, 0.09, met, 'metal', [W / 2 + 0.01, -0.03, 0])); lidC.add(sph(0.018, '#2a1a0a', 'metal', [W / 2 + 0.035, -0.035, 0]));
+  if (L.ancient) { // prastary: trzecie oko na wieku, kolce na grzbiecie, klejnoty w okuciach, więcej kłów
+    lidC.add(sph(0.06, L.eyes || '#7affc8', 'glow', [0.02, W / 2 * 0.42 + 0.01, 0])); lidC.add(sph(0.026, '#101010', 'skin', [0.05, W / 2 * 0.42 + 0.03, 0], [0.5, 1.4, 0.6]));
+    for (let i = 0; i < 5; i++) lidC.add(spike(0.03, 0.12, '#e8d8b0', 'horn', [-0.2 + i * 0.1, W / 2 * 0.42 - 0.01 - Math.abs(i - 2) * 0.012, 0], [0, 0, -0.2 + i * 0.1]));
+    for (const z of [-1, 1]) { lidC.add(sph(0.025, '#c83a8a', 'glow', [0.14, 0.09, z * (D / 2 + 0.01)])); body.add(sph(0.022, '#3ac8a8', 'glow', [0.2, H / 2, z * (D / 2 + 0.008)])); }
+    for (let i = 0; i < 6; i++) lidC.add(cone(0.02, 0.07, fang, 'horn', [W / 2 - 0.05, -0.03, -D / 2 + 0.08 + i * (D - 0.16) / 5], [Math.PI, 0, 0], 5));
+  }
   const head = headJoint(body, [0.1, H + 0.05, 0]); marker(head, 'mouth', [0.22, 0, 0]);
   // jęzor: z gardzieli przez przednią krawędź, w spoczynku zwisa i się kołysze, przy ataku smaga do przodu
   const tl = A != null && A > 0.3 && A < 0.7 ? 1 : 0, wag = Math.sin(t * 3) * 0.04;

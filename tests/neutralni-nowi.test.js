@@ -12,7 +12,7 @@ let browser, page, errors;
 test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
-const NEW = ['giantSpider', 'siren', 'yeti', 'stoneGiant', 'kraken', 'ironGuardian', 'sandScorpion', 'mimic'];
+const NEW = ['giantSpider', 'siren', 'yeti', 'stoneGiant', 'kraken', 'ironGuardian', 'sandScorpion', 'mimic', 'ancientMimic'];
 
 test('żelazny strażnik: dane neutralnego konstruktu i lądowe siedlisko', async () => {
   const result = await page.evaluate(() => {
@@ -95,7 +95,7 @@ test('podgląd animacji: desktop i telefon, zmiana pozy, pauza, tempo i odbicie'
 test('nowi neutralni: dane, poziomy, grafika z modelu 3D; syrena i kraken wśród potworów morskich', async () => {
   const r = await page.evaluate(NEW => NEW.map(id => { const c = CREATURES[id]; return { id, ok: !!c && c.hp > 0 && c.value > 0 && !c.faction, art: !!(UNIT_ART && UNIT_ART[id]), land: Object.values(NEUTRALS_BY_LEVEL).some(a => a.includes(id)), sea: Object.values(SEA_MONSTERS).some(a => a.includes(id)), wide: !!c.wide }; }), NEW);
   for (const c of r) { assert.ok(c.ok, c.id); assert.ok(c.art, `grafika ${c.id}`); }
-  assert.deepEqual(r.filter(c => c.land).map(c => c.id), ['giantSpider', 'yeti', 'stoneGiant', 'ironGuardian', 'sandScorpion', 'mimic']); assert.deepEqual(r.filter(c => c.sea).map(c => c.id), ['siren', 'kraken']);
+  assert.deepEqual(r.filter(c => c.land).map(c => c.id), ['giantSpider', 'yeti', 'stoneGiant', 'ironGuardian', 'sandScorpion', 'mimic', 'ancientMimic']); assert.deepEqual(r.filter(c => c.sea).map(c => c.id), ['siren', 'kraken']);
   assert.ok(r.find(c => c.id === 'giantSpider').wide && r.find(c => c.id === 'kraken').wide && r.find(c => c.id === 'sandScorpion').wide);
 });
 
@@ -124,4 +124,24 @@ test('mimik: skrzynia, która gryzie – bez odwetu, pokonany wypluwa złoto zwy
   });
   assert.equal(r.lvl, 3); assert.deepEqual(r.abil, ['noRetal']); assert.ok(r.land);
   assert.equal(r.won, 'win'); assert.equal(r.mimic, 6 * 60); assert.ok(r.gold >= 6 * 60, `złoto ${r.gold}`); assert.match(r.text, /Mimiki wypluwają skarb: \+360 złota/);
+});
+
+test('skrzynie-mimiki: część skrzyń z dala od startów to mimiki; przy otwarciu walka, po zwycięstwie skarb skrzyni i złoto mimików', async () => {
+  const gen = await page.evaluate(() => { let all = 0, mim = 0, anc = 0;
+    for (const seed of [4, 7, 12]) { const st = createNewGame(Object.assign({}, G.settings, { mapSize: 'L', land: 'mixed', slots: null, opponents: 1 }), seed);
+      for (const o of st.objects) if (o.type === 'chest') { all++; if (o.mimic) { mim++; if (o.mimic.cid === 'ancientMimic') anc++; } } }
+    return { all, mim, anc }; });
+  assert.ok(gen.mim >= 2 && gen.mim < gen.all * 0.3, JSON.stringify(gen));
+  await newGame(page, { mapSize: 'S' }, 9);
+  const r = await page.evaluate(async () => {
+    const st = G.state, h = hero(st), n = st.map.n, P = st.players[h.owner]; h.army = [{ cid: 'dawnbringer', n: 10 }, null, null, null, null, null, null];
+    let spot = null; for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1]]) { const x = h.x + dx, y = h.y + dy, i = y * n + x; if (!st.map.obst[i] && st.map.terrain[i] !== TER.WATER && !objectAt(st, i)) { spot = [x, y]; break; } }
+    const ob = { type: 'chest', id: st.objects.length, gold: 3000, exp: 1500, x: spot[0], y: spot[1], mimic: { cid: 'mimic', count: 5 } }; st.objects.push(ob); rebuildObjIndex(st);
+    const g0 = P.resources.gold; visitObject(st, h, ob); const msg = G.modal && G.modal.msg;
+    G.modal.buttons.find(b => b.label === 'Do walki!').action(); const offer = G.modal && G.modal.msg;
+    G.modal.buttons.find(b => b.label === 'Automatycznie').action();
+    return { msg, offer, dead: !!ob.dead, gold: P.resources.gold - g0, result: G.modal && G.modal.msg };
+  });
+  assert.match(r.msg, /Skrzynia ożywa/); assert.match(r.offer, /mimik/i);
+  assert.ok(r.dead, 'skrzynia znika po zwycięstwie'); assert.equal(r.gold, 3000 + 5 * 60, r.result);
 });

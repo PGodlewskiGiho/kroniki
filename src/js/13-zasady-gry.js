@@ -158,7 +158,11 @@ function visitObject(st, h, ob) {
   const R = playerOf(st, h.owner).resources, snd = (n, o) => { if (playerOf(st, h.owner).human) Sfx.play(n, o); };
   if (ob.type === 'outpost') { if (friendlyFort(st, ob, h.owner) && playerOf(st, h.owner).human) showMeeting(st, h, fortParty(st, ob)); return; }
   if (ob.type === 'res') { snd(ob.res === 'gold' ? 'coins' : 'pickup'); R[ob.res] += ob.amount; advFloat(`+${ob.amount}`, h.x, h.y, ob.res); removeObject(st, ob); }
-  else if (ob.type === 'chest') {
+  else if (ob.type === 'chest' && ob.mimic) { // skrzynia-mimik: ożywa przy próbie otwarcia, po zwycięstwie jej skarb (resolveBattle)
+    snd('chest'); const foe = Object.assign(trapMonster(h, ob.mimic), { chest: ob }), c = CREATURES[ob.mimic.cid];
+    showDialog(`Skrzynia ożywa! Wieko rozwiera się w paszczę pełną kłów – to ${ob.mimic.count === 1 ? c.name.toLowerCase() : `${qtyName(ob.mimic.count).toLowerCase()} ${c.gen}`}.`,
+      [{ label: 'Do walki!', key: 'enter', action: () => { h.prev = null; startEncounterFight(st, h, foe); } }], { locked: true, iconH: 70, icon: (ctx, cx, cy) => drawCreatureIcon(ctx, ob.mimic.cid, cx, cy + 26, 2) });
+  } else if (ob.type === 'chest') {
     removeObject(st, ob); snd('chest');
     showDialog('Znajdujesz skrzynię ze skarbem. Możesz zatrzymać złoto albo rozdać je chłopom w zamian za doświadczenie.', [
       { label: `${ob.gold} złota`, key: 'enter', action: () => { R.gold += ob.gold; advFloat(`+${ob.gold}`, h.x, h.y, 'gold'); } },

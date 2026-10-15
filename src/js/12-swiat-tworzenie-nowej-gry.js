@@ -325,7 +325,10 @@ function placeObjects(st) {
   const GUARD_AT = [[1, 1], [0, 1], [-1, 1], [1, 0], [-1, 0], [1, -1], [-1, -1], [0, -1], [2, 1], [-2, 1], [1, 2], [-1, 2], [0, 2], [2, 0], [-2, 0], [2, 2], [-2, 2]];
   // Nagrody skalowane odległością od startów (dd 0..1): skrzynia, artefakt (dalej rzadsze i silniejsze), łup obok potwora
   const chestAt = (x, y, dd) => { const v = Math.floor(rng() * 3), k = (1 + 4 * dd) * rule(st, 'treasure') / 100;
-    return add({ type: 'chest', gold: Math.round((1000 + v * 500) * k) * 100, exp: Math.round((500 + v * 500) * k) * 100, x, y }, [y * n + x]); };
+    const o = { type: 'chest', gold: Math.round((1000 + v * 500) * k) * 100, exp: Math.round((500 + v * 500) * k) * 100, x, y };
+    if (dd >= 0.2 && rng() < 0.15) { const cid = dd > 0.6 ? 'ancientMimic' : 'mimic', power = MONSTER_POWER * Math.exp(dd * 3.4) * 0.7 * (0.6 + 0.4 * diff) * rule(st, 'monsters'); // co ~siódma skrzynia z dala od startów to mimik
+      o.mimic = { cid, count: Math.max(1, Math.round(power / CREATURES[cid].value)) }; }
+    return add(o, [y * n + x]); };
   const artAt = (x, y, dd) => { const r = rng(), rar = dd > 0.75 ? (r < 0.75 ? 'major' : 'minor') : dd > 0.45 ? (r < 0.35 ? 'major' : 'minor') : dd > 0.2 ? 'minor' : 'treasure', pool = ARTS_BY_RARITY(rar);
     return add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x, y }, [y * n + x]); };
   const loot = (m, dd) => { for (const [dx, dy] of [[0, -1], [1, -1], [-1, -1], [1, 0], [-1, 0], [0, 1], [1, 1], [-1, 1]]) { const x = m.x + dx, y = m.y + dy; if (!ok(x, y) || home[y * n + x]) continue;
