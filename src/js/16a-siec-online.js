@@ -40,7 +40,10 @@ const Net = {
   // --- połączenia ---
   close() {
     clearTimeout(this.retry); this.retry = null;
-    if (this.peer) { try { this.peer.destroy(); } catch (e) {} }
+    // gość żegna się jawnie (bye): gospodarz od razu wie, że go nie ma, zamiast czekać, aż połączenie samo wygaśnie (bywa i minuta);
+    // połączenie gaśnie chwilę później, żeby pożegnanie zdążyło wyjść
+    const P = this.peer, bye = this.role === 'guest' && this.host && this.host.open; if (bye) { try { this.host.send({ t: 'bye' }); } catch (e) { /* już zamknięte */ } }
+    if (P) { const kill = () => { try { P.destroy(); } catch (e) { /* już zniszczony */ } }; if (bye) setTimeout(kill, 400); else kill(); }
     Object.assign(this, { peer: null, role: null, host: null, guests: [], inGame: false, status: '', err: '', battleQ: null });
   },
   hostGame(code, resume) {
@@ -59,10 +62,12 @@ const Net = {
   },
   hostConn(conn) {
     conn.on('data', m => this.hostData(conn, m));
-    conn.on('close', () => { const g = this.guests.find(g => g.conn === conn); if (g) { g.conn = null; this.lobbyUpdate(); if (this.inGame) { netFlash(`${g.name} rozłączył się. Może wrócić; jego tury może też rozegrać komputer (Menu).`); netAbsent(g.pid); } } });
+    conn.on('close', () => this.hostGone(conn));
   },
+  hostGone(conn) { const g = this.guests.find(g => g.conn === conn); if (g) { g.conn = null; this.lobbyUpdate(); if (this.inGame) { netFlash(`${g.name} rozłączył się. Może wrócić; jego tury może też rozegrać komputer (Menu).`); netAbsent(g.pid); } } },
   hostData(conn, m) {
     if (!m || typeof m !== 'object' || typeof m.t !== 'string') return; // wiadomości od innych graczy: tylko obiekty naszego protokołu
+    if (m.t === 'bye') { this.hostGone(conn); try { conn.close(); } catch (e) { /* już zamknięte */ } return; } // gość wyszedł (menu, zamknięcie)
     if (m.t === 'hello') {
       const tok = String(m.token).slice(0, 64); let g = this.guests.find(g => g.token === tok);
       if (!g) {

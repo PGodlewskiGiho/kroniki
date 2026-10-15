@@ -495,5 +495,6 @@
    wieko ledwo uchylone, przy ataku rozwiera się i zatrzaskuje); kąsa bez odwetu, a pokonany wypluwa 60 złota za sztukę.
    Prastary mimik (poziom 5: złocone okucia, trzecie oko, kolce, 250 złota za sztukę). Co ~siódma skrzynia z dala od startów to
    mimik (dalej prastary): ożywa przy otwarciu, po zwycięstwie skarb skrzyni i złoto mimików; komputer też trafia na pułapki.
+   Online: gość przy wyjściu żegna się jawnie (bye) – gospodarz od razu wie, że go nie ma (dawniej czekał, aż połączenie wygaśnie).
    ===================================================================================== */
 
