@@ -748,6 +748,45 @@ function spider(L, P = {}) {
   root.scale.setScalar(1.15 * (L.size || 1));
   return root;
 }
+// Mimik: okuta skrzynia na skarby, która żyje – wieko to szczęka z rzędem kłów, w środku ślepia, złoto i długi jęzor,
+// pod spodem cztery pajęcze nogi. W spoczynku wieko ledwo uchylone (z daleka zwykła skrzynia), przy ataku rozwiera się i zatrzaskuje
+function mimic(L, P = {}) {
+  const root = new THREE.Group(), wood = L.wood || '#7a4a24', met = L.metal || '#c8a040', t = P.t || 0, walking = P.walk != null, ph = walking ? P.walk * Math.PI * 2 : 0, A = P.atk;
+  const open = A == null ? 0.12 + Math.max(0, Math.sin(t * 1.3)) * 0.1 : A < 0.45 ? 0.12 + Math.sin(A / 0.45 * Math.PI / 2) * 0.95 : A < 0.62 ? 1.07 - (A - 0.45) / 0.17 * 1.07 : 0.0; // zamach: paszcza otwiera się szeroko, cios: zatrzaśnięcie
+  const lunge = A == null ? 0 : A < 0.45 ? -0.04 : A < 0.62 ? 0.16 : 0.16 * (1 - (A - 0.62) / 0.38), bob = walking ? Math.abs(Math.sin(ph * 2)) * 0.05 : Math.sin(t * 2) * 0.006;
+  const dark = DK(wood, 0.35), inside = '#3a0a12', fang = L.fang || '#f0e8d0', W = 0.62, D = 0.46, H = 0.3;
+  const body = joint(root, [lunge, 0.34 + bob, 0], walking ? Math.sin(ph * 2) * 0.04 : 0);
+  // skrzynia: deski, okucia, narożniki, zamek; wnętrze (gardziel) ciemnoczerwone
+  body.add(rbox(W, H, D, 0.03, wood, 'wood', [0, H / 2, 0]));
+  for (const x of [-0.2, 0.2]) body.add(box(0.05, H + 0.01, D + 0.012, met, 'metal', [x, H / 2, 0]));
+  for (const [x, z] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) body.add(box(0.06, H + 0.02, 0.06, DK(met, 0.2), 'metal', [x * (W / 2 - 0.02), H / 2, z * (D / 2 - 0.02)]));
+  body.add(box(0.5, 0.02, 0.4, inside, 'skin', [0, H - 0.005, 0]));
+  for (let i = 0; i < 6; i++) body.add(cyl(0.035, 0.035, 0.012, '#f0c840', 'metal', [-0.14 + (i % 3) * 0.1, H + 0.01 + (i > 2 ? 0.012 : 0), -0.08 + Math.floor(i / 2) % 2 * 0.14], [0.2 * i, 0, 0.3])); // złoto w gardzieli
+  for (let i = 0; i < 7; i++) body.add(cone(0.026, 0.09, fang, 'horn', [W / 2 - 0.02, H + 0.035, -D / 2 + 0.05 + i * (D - 0.1) / 6], null, 5)); // dolne kły (przód)
+  for (const z of [-1, 1]) for (let i = 0; i < 4; i++) body.add(cone(0.02, 0.07, fang, 'horn', [W / 2 - 0.08 - i * 0.13, H + 0.03, z * (D / 2 - 0.02)], null, 5)); // boczne
+  for (const z of [-0.07, 0.07]) { body.add(sph(0.04, L.eyes || '#ffd84a', 'glow', [0.12, H + 0.04, z])); body.add(sph(0.018, '#101010', 'skin', [0.155, H + 0.045, z], [0.5, 1.4, 0.6])); } // ślepia w ciemnym wnętrzu
+  // wieko na zawiasach z tyłu: łukowate (półwalec), okute, z kłami na przedniej krawędzi i zamkiem-sercem
+  const lid = joint(body, [-W / 2, H, 0], open), lidC = new THREE.Group(); lidC.position.set(W / 2, 0, 0); lid.add(lidC);
+  // półwalec osią w poprzek skrzyni (z), wypukłością w górę, spłaszczony; okucia to jego wąskie plasterki
+  const half = (r, len) => new THREE.CylinderGeometry(r, r, len, 22, 1, false, Math.PI / 2, Math.PI);
+  lidC.add(mesh(half(W / 2, D), wood, 'wood', [0, 0, 0], [Math.PI / 2, 0, 0], [1, 1, 0.42]));
+  for (const z of [-0.14, 0.14]) lidC.add(mesh(half(W / 2 + 0.01, 0.05), met, 'metal', [0, 0, z], [Math.PI / 2, 0, 0], [1, 1, 0.42]));
+  lidC.add(box(W - 0.02, 0.012, D - 0.04, inside, 'skin', [0, 0.002, 0]));
+  for (let i = 0; i < 7; i++) lidC.add(cone(0.026, 0.09, fang, 'horn', [W / 2 - 0.02, -0.035, -D / 2 + 0.05 + i * (D - 0.1) / 6], [Math.PI, 0, 0], 5)); // górne kły
+  lidC.add(box(0.04, 0.09, 0.09, met, 'metal', [W / 2 + 0.01, -0.03, 0])); lidC.add(sph(0.018, '#2a1a0a', 'metal', [W / 2 + 0.035, -0.035, 0]));
+  const head = headJoint(body, [0.1, H + 0.05, 0]); marker(head, 'mouth', [0.22, 0, 0]);
+  // jęzor: z gardzieli przez przednią krawędź, w spoczynku zwisa i się kołysze, przy ataku smaga do przodu
+  const tl = A != null && A > 0.3 && A < 0.7 ? 1 : 0, wag = Math.sin(t * 3) * 0.04;
+  body.add(tube([[0.0, H + 0.01, 0], [0.22, H + 0.05 + open * 0.08, wag], [0.36 + tl * 0.2, H - 0.04 + open * 0.05, -wag], [0.42 + tl * 0.32, H - 0.18 + tl * 0.12, wag * 1.5]], 0.04, 0.018, L.tongue || '#c83a5a', 'skin', 2));
+  // cztery pajęcze nogi spod dna skrzyni
+  for (const z of [-1, 1]) for (const k of [0, 1]) {
+    const gait = (k ^ (z > 0 ? 1 : 0)) ? 0 : Math.PI, s = walking ? Math.sin(ph * 2 + gait) : Math.sin(t * 1.4 + k) * 0.03, lift = walking ? Math.max(0, Math.cos(ph * 2 + gait)) * 0.08 : 0, sx = k ? -0.2 : 0.2;
+    const pts = [[sx, 0.02, z * 0.16], [sx + (k ? -0.12 : 0.12) + s * 0.05, 0.1 + lift, z * 0.36], [sx + (k ? -0.16 : 0.16) + s * 0.1, -0.33 - bob + lift, z * 0.42]];
+    body.add(tube(pts, 0.032, 0.012, dark, 'skin', 2)); body.add(sph(0.03, wood, 'skin', pts[1]));
+  }
+  root.scale.setScalar(1.25 * (L.size || 1));
+  return root;
+}
 // Kraken: płaszcz głowonoga wynurzony z wody (wir piany u podstawy), wielkie oczy, osiem macek z przyssawkami falujących
 // w wodzie; przy ataku dwie przednie macki unoszą się i smagają do przodu
 function kraken(L, P = {}) {

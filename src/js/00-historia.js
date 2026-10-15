@@ -491,5 +491,7 @@
    olbrzymia ~45, z podziemiami więcej), zawsze rodzaj dotąd najrzadszy, więc każdy z 7 jest na każdej mapie. Nagrody rosną
    z odległością od startów jak siła potworów: większe kupki surowców i skrzynie (do 5×), dalej rzadsze artefakty, a silne
    potwory daleko stoją przy łupie (złoto, rzadkie surowce, skrzynia albo artefakt). Lód bez schodkowych szczelin (tylko tekstura).
+   Nowy neutralny: Mimik (poziom 3) – okuta skrzynia z wiekiem-szczęką, kłami, jęzorem i pajęczymi nogami (model 3D: w spoczynku
+   wieko ledwo uchylone, przy ataku rozwiera się i zatrzaskuje); kąsa bez odwetu, a pokonany wypluwa 60 złota za sztukę.
    ===================================================================================== */
 

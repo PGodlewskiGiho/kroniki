@@ -12,7 +12,7 @@ let browser, page, errors;
 test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
-const NEW = ['giantSpider', 'siren', 'yeti', 'stoneGiant', 'kraken', 'ironGuardian', 'sandScorpion'];
+const NEW = ['giantSpider', 'siren', 'yeti', 'stoneGiant', 'kraken', 'ironGuardian', 'sandScorpion', 'mimic'];
 
 test('żelazny strażnik: dane neutralnego konstruktu i lądowe siedlisko', async () => {
   const result = await page.evaluate(() => {
@@ -95,7 +95,7 @@ test('podgląd animacji: desktop i telefon, zmiana pozy, pauza, tempo i odbicie'
 test('nowi neutralni: dane, poziomy, grafika z modelu 3D; syrena i kraken wśród potworów morskich', async () => {
   const r = await page.evaluate(NEW => NEW.map(id => { const c = CREATURES[id]; return { id, ok: !!c && c.hp > 0 && c.value > 0 && !c.faction, art: !!(UNIT_ART && UNIT_ART[id]), land: Object.values(NEUTRALS_BY_LEVEL).some(a => a.includes(id)), sea: Object.values(SEA_MONSTERS).some(a => a.includes(id)), wide: !!c.wide }; }), NEW);
   for (const c of r) { assert.ok(c.ok, c.id); assert.ok(c.art, `grafika ${c.id}`); }
-  assert.deepEqual(r.filter(c => c.land).map(c => c.id), ['giantSpider', 'yeti', 'stoneGiant', 'ironGuardian', 'sandScorpion']); assert.deepEqual(r.filter(c => c.sea).map(c => c.id), ['siren', 'kraken']);
+  assert.deepEqual(r.filter(c => c.land).map(c => c.id), ['giantSpider', 'yeti', 'stoneGiant', 'ironGuardian', 'sandScorpion', 'mimic']); assert.deepEqual(r.filter(c => c.sea).map(c => c.id), ['siren', 'kraken']);
   assert.ok(r.find(c => c.id === 'giantSpider').wide && r.find(c => c.id === 'kraken').wide && r.find(c => c.id === 'sandScorpion').wide);
 });
 
@@ -112,4 +112,16 @@ test('walka z każdym nowym stworem kończy się bez błędów', async () => {
   const r = await page.evaluate(NEW => NEW.map(id => { const st = G.state, h = hero(st); h.army = [{ cid: 'dawnbringer', n: 6 }, { cid: 'marksman', n: 20 }, null, null, null, null, null];
     const m = { type: 'monster', id: 9000 + NEW.indexOf(id), cid: id, count: CREATURES[id].level >= 6 ? 2 : 10, x: h.x, y: h.y }; const B = createBattle(st, h, m); simulateBattle(B); return [id, B.over, B.round]; }), NEW);
   for (const [id, over] of r) assert.ok(['win', 'lose'].includes(over), `${id}: ${over}`);
+});
+
+test('mimik: skrzynia, która gryzie – bez odwetu, pokonany wypluwa złoto zwycięzcy', async () => {
+  await newGame(page, { mapSize: 'S' }, 9);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), P = st.players[h.owner], c = CREATURES.mimic; h.army = [{ cid: 'dawnbringer', n: 8 }, null, null, null, null, null, null];
+    const g0 = P.resources.gold, m = { type: 'monster', id: 9900, cid: 'mimic', count: 6, x: h.x, y: h.y }, B = createBattle(st, h, m); simulateBattle(B);
+    const sp = victorySpoils(B, 0);
+    return { lvl: c.level, abil: c.abil, land: NEUTRALS_BY_LEVEL[3].includes('mimic'), won: B.over, mimic: sp.mimic, gold: P.resources.gold - g0, text: spoilsText(sp) };
+  });
+  assert.equal(r.lvl, 3); assert.deepEqual(r.abil, ['noRetal']); assert.ok(r.land);
+  assert.equal(r.won, 'win'); assert.equal(r.mimic, 6 * 60); assert.ok(r.gold >= 6 * 60, `złoto ${r.gold}`); assert.match(r.text, /Mimiki wypluwają skarb: \+360 złota/);
 });
