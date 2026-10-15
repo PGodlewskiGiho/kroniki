@@ -308,13 +308,20 @@ function showDialog(msg, opts, extra = {}) {
 // opisem, czytelnym bez dymków (telefon). opts: { label, sub, tip (opis), lead (ikona), key, action }; extra jak w showDialog (icon, iconH, locked)
 function showChoice(msg, opts, extra = {}) {
   Sfx.play('page', { vol: 0.4, gap: 0.3 }); setUnits('ui');
-  const n = opts.length, cols = VW < 600 ? Math.min(n, 2) : Math.min(n, 4), rows = Math.ceil(n / cols), w = Math.min(VW - 16, cols >= 4 ? 780 : cols === 3 ? 700 : 520);
-  const cw = (w - 32 - (cols - 1) * 10) / cols, iconH = extra.icon ? (extra.iconH || 56) : 0, c = G.ctx;
-  c.font = font(17, 500, 'body'); const msgL = wrapText(c, msg, w - 60);
-  let fs = 15, lh, descs, ch, h;
-  for (;;) { lh = Math.round(fs * 1.25); c.font = font(fs, 500, 'body'); descs = opts.map(o => wrapText(c, o.tip || '', cw - 18)); ch = 52 + Math.max(...descs.map(d => d.length)) * lh + 8;
-    h = 30 + msgL.length * 22 + iconH + 14 + rows * ch + (rows - 1) * 10 + 22; if (h <= VH - 8 || fs <= 11) break; fs--; }
-  h = Math.min(VH - 8, h); const x = (VW - w) / 2, y = (VH - h) / 2, top = y + 30 + msgL.length * 22 + iconH + 10;
+  const n = opts.length, c = G.ctx;
+  // układ: najpierw więcej kolumn i większa czcionka z portretem; gdy okno się nie mieści – mniej miejsca na portret, mniejsza czcionka,
+  // inna liczba kolumn (5 opcji: 3 + 2); pierwszy wariant, który mieści się w wysokości okna, wygrywa
+  const colsTry = [...new Set([Math.min(n, VW < 600 ? 2 : 4), Math.min(n, 3), Math.min(n, VW >= 900 ? 5 : 4), Math.min(n, 2)])].filter(k => k >= 1);
+  let L = null;
+  for (const withIcon of extra.icon ? [true, false] : [false]) for (let fs = 15; fs >= 11 && !L; fs--) for (const cols of colsTry) {
+    const rows = Math.ceil(n / cols), w = Math.min(VW - 16, cols >= 5 ? 900 : cols >= 4 ? 780 : cols === 3 ? 700 : 520), cw = (w - 32 - (cols - 1) * 10) / cols, iconH = withIcon ? (extra.iconH || 56) : 0;
+    c.font = font(17, 500, 'body'); const msgL = wrapText(c, msg, w - 60), lh = Math.round(fs * 1.25); c.font = font(fs, 500, 'body');
+    const descs = opts.map(o => wrapText(c, o.tip || '', cw - 18)), ch = 52 + Math.max(...descs.map(d => d.length)) * lh + 8, h = 30 + msgL.length * 22 + iconH + 14 + rows * ch + (rows - 1) * 10 + 22;
+    if (h <= VH - 8) { L = { cols, rows, w, cw, iconH, msgL, fs, lh, descs, ch, h }; break; }
+    if (!L && fs === 11 && !withIcon && cols === colsTry[colsTry.length - 1]) L = { cols, rows, w, cw, iconH, msgL, fs, lh, descs, ch, h: VH - 8 }; // nic nie pasuje: najciaśniej
+  }
+  if (!L) { const cols = Math.min(n, 2), w = Math.min(VW - 16, 520), cw = (w - 42) / cols; c.font = font(11, 500, 'body'); L = { cols, rows: Math.ceil(n / cols), w, cw, iconH: 0, msgL: wrapText(c, msg, w - 60), fs: 11, lh: 14, descs: opts.map(o => wrapText(c, o.tip || '', cw - 18)), ch: 120, h: VH - 8 }; }
+  const { cols, w, cw, iconH, msgL, fs, lh, descs, ch, h } = L, x = (VW - w) / 2, y = (VH - h) / 2, top = y + 30 + msgL.length * 22 + iconH + 10;
   const buttons = opts.map((o, i) => {
     const r = Math.floor(i / cols), k = i % cols, inRow = Math.min(cols, n - r * cols), bx = x + (w - inRow * cw - (inRow - 1) * 10) / 2 + k * (cw + 10), by = top + r * (ch + 10);
     const b = new Button(bx, by, cw, ch, o.label, () => { G.modal = null; restUnits(); if (o.action) o.action(); }, { key: o.key, tip: o.tip, lead: o.lead });
@@ -322,8 +329,8 @@ function showChoice(msg, opts, extra = {}) {
       const hov = G.hover === this; ctx.save(); ctx.fillStyle = hov ? 'rgba(200,150,60,.28)' : 'rgba(90,55,20,.1)'; rr(ctx, this.x, this.y, this.w, this.h, 6); ctx.fill();
       ctx.lineWidth = hov ? 2.2 : 1.2; ctx.strokeStyle = hov ? '#b8862a' : 'rgba(120,80,30,.55)'; ctx.stroke(); ctx.restore(); textBox(ctx, this.x, this.y, this.w, this.h);
       if (o.lead) o.lead(ctx, this.x + 24, this.y + 26);
-      text(ctx, o.label, this.x + 46, this.y + 18, { size: 16, color: '#2a1606', fam: 'title' });
-      if (o.sub) text(ctx, o.sub, this.x + 46, this.y + 36, { size: 13, weight: 600, italic: true, color: '#6a3a10' });
+      text(ctx, o.label, this.x + 46, this.y + 18, { size: 16, color: '#2a1606', fam: 'title', max: this.w - 46 - (o.key ? 22 : 8) }); // numer klawisza z prawej
+      if (o.sub) text(ctx, o.sub, this.x + 46, this.y + 36, { size: 13, weight: 600, italic: true, color: '#6a3a10', max: this.w - 52 });
       if (o.key) text(ctx, o.key, this.x + this.w - 10, this.y + 14, { size: 12, weight: 700, align: 'right', color: 'rgba(90,55,20,.6)' });
       descs[i].forEach((l, j) => text(ctx, l, this.x + 10, this.y + 58 + j * lh, { size: fs, weight: 500, color: '#3a2410' }));
     };
@@ -333,7 +340,7 @@ function showChoice(msg, opts, extra = {}) {
     draw(ctx) {
       dimScreen(ctx, 0.5); drawParchment(ctx, x, y, w, h);
       msgL.forEach((l, i) => text(ctx, l, VW / 2, y + 30 + i * 22, { size: 17, weight: 500, align: 'center', color: '#2a1606' }));
-      if (extra.icon) extra.icon(ctx, VW / 2, y + 22 + msgL.length * 22 + iconH / 2);
+      if (extra.icon && iconH) extra.icon(ctx, VW / 2, y + 22 + msgL.length * 22 + iconH / 2);
       buttons.forEach(b => b.draw(ctx));
     } };
   restUnits();

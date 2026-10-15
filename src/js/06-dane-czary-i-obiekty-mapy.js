@@ -82,6 +82,23 @@ const ORDERS = {
   regroup: { name: 'Przegrupowanie', cost: 3, target: 'ally', need: ['logistics', 'pathfinding'], col: '#a8c8e8', teleport: true, range: 4, desc: () => 'oddział przechodzi na wolne pole w odległości do 4 (najpierw wskaż oddział, potem miejsce)' },
   execute: { name: 'Pogrom', cost: 6, target: 'ally', need: ['offense', 'tactics'], col: '#c83a2a', buff: 'exec', rounds: 1, pow: a => orderPct(a, 25, 2, 75), desc: a => `ataki oddziału pomijają ${orderPct(a, 25, 2, 75)}% obrony wroga do końca rundy` },
 };
+// Zdolności klas prestiżowych (PRESTIGE.ability): raz na bitwę, za darmo; siła z ataku i mocy bohatera (a: atak, sp: moc, L: poziom), legenda ×1,5
+const prestigePow = (h, f) => Math.round(f(heroStat(h, 'att'), spellPow(h), h.level) * (pathLv(h, h.mastery) === 2 ? 1.5 : 1));
+Object.assign(ORDERS, {
+  judgement: { name: 'Sąd ognia', prestige: 'flamePaladin', cost: 0, target: 'enemies', col: '#ff7a2a', pow: h => prestigePow(h, (a, sp) => 10 + 4 * (a + sp)), desc: a => 'każdy wróg, który stoi przy twoim oddziale, płonie: obrażenia rosną z atakiem i mocą' },
+  runeStrike: { name: 'Runiczne ostrze', prestige: 'runeblade', cost: 0, target: 'ally', col: '#8ac8ff', desc: () => 'oddział do końca rundy zadaje o 50% więcej i pomija połowę obrony wroga' },
+  sanctify: { name: 'Uświęcona ziemia', prestige: 'warpriest', cost: 0, target: 'allies', col: '#ffe8a0', pow: h => prestigePow(h, (a, sp) => 10 + 8 * sp), desc: () => 'cała armia +3 do obrony na 2 rundy i leczenie (rośnie z mocą)' },
+  thunderVolley: { name: 'Burza', prestige: 'stormhunter', cost: 0, target: 'enemies', col: '#c8e8ff', pow: h => prestigePow(h, (a, sp) => 20 + 8 * sp + 2 * a), desc: () => 'pioruny bija w trzy losowe wrogie oddziały (legenda: pięć)' },
+  raiseLegion: { name: 'Powstańcie!', prestige: 'bonecaller', cost: 0, target: 'allies', col: '#a6f0a8', pow: h => prestigePow(h, (a, sp, L) => 3 * L + a), desc: () => 'z ziemi wstają kościotrupy i walczą do końca bitwy (więcej z poziomem i atakiem)' },
+  roots: { name: 'Korzenie', prestige: 'archdruid', cost: 0, target: 'enemy', col: '#6a9a3a', desc: () => 'wrogi oddział nie może się ruszyć przez 2 rundy (atakuje i strzela z miejsca)' },
+  packCall: { name: 'Zew stada', prestige: 'beastlord', cost: 0, target: 'allies', col: '#a87a4a', pow: h => prestigePow(h, (a, sp, L) => 2 * L + a), desc: () => 'przybywa wataha wilków i walczy do końca bitwy' },
+  bomb: { name: 'Bomba', prestige: 'bombardier', cost: 0, target: 'hex', col: '#ff9a3a', pow: h => prestigePow(h, (a, sp) => 20 + 5 * (a + sp)), desc: () => 'wybuch rani wszystkich na polu i wokół niego (także swoich!)' },
+  assassinate: { name: 'Cios z cienia', prestige: 'shadowmaster', cost: 0, target: 'enemy', col: '#5a4a6a', pow: h => prestigePow(h, (a, sp, L) => 30 * a + 20 * L), desc: () => 'skrytobójca zadaje wrogiemu oddziałowi obrażenia z ataku i poziomu bohatera' },
+  bloodPactP: { name: 'Krwawy pakt', prestige: 'bloodmage', cost: 0, target: 'allies', col: '#c8202a', desc: () => 'najliczniejszy twój żywy oddział oddaje piątą część życia, a bohater odzyskuje całą manę' },
+  holdLine: { name: 'Nie przejdą!', prestige: 'warden', cost: 0, target: 'allies', col: '#c8d0da', desc: () => 'cała armia stawia Mur tarcz na 2 rundy' },
+  meteor: { name: 'Deszcz meteorów', prestige: 'battleArch', cost: 0, target: 'hex', col: '#ff6a3a', desc: () => 'Deszcz meteorów bez many, nawet bez znajomości czaru' },
+});
+Object.assign(BUFF_NAMES, { root: 'korzenie' });
 Object.assign(BUFF_NAMES, { charge: 'szarża', wall: 'mur tarcz', cry: 'okrzyk bojowy', exposed: 'odsłonięta flanka', exec: 'pogrom' });
 // Czar albo rozkaz po identyfikatorze (bitwa obsługuje oba tym samym wskazywaniem celu)
 const actDef = id => SPELLS[id] || ORDERS[id];

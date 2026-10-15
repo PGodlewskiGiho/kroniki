@@ -528,5 +528,11 @@
    Kamienny mur, Żelazna wola, Krwawy rytuał, Polowe dowództwo, Łamacz zaklęć, Mistrz oblężeń, Polowy chirurg, Kapitan łuczników,
    Ostrze i czar, Burza ognia, Rzeka i skała, Bastion tarcz, Zwiad konny, Rezonans, Żniwa śmierci, Apteka, Akademia wojenna.
    Nowy splot ogłasza okno awansu; opis umiejętności na ekranie bohatera mówi, z czym tworzy sploty. Talenty zostają (wybór co 4 poziomy).
+   Rozwój bohatera, etap 4: KLASY PRESTIŻOWE (PRESTIGE, 12 hybryd) – na 10. poziomie obok ścieżek klasy dla każdego bohatera, który ma
+   parę umiejętności co najmniej zaawansowaną: Płomienny paladyn (Przywództwo + Magia Ognia), Ostrze run (Atak + Mądrość), Kapłan wojny,
+   Łowca burz, Rycerz kości, Arcydruid, Władca bestii, Bombardier, Mistrz cienia, Krwawy mag, Strażnik twierdzy, Arcymag bitewny.
+   Stałe działanie (legenda na 20. poziomie mocniejsza) i zdolność raz na bitwę za darmo z listy rozkazów: Sąd ognia, Runiczne ostrze,
+   Uświęcona ziemia, Burza, Powstańcie!, Korzenie, Zew stada, Bomba, Cios z cienia, Krwawy pakt, Nie przejdą!, Deszcz meteorów.
+   Komputer woli klasę prestiżową, gdy ją ma, i używa zdolności. Okno wyboru z kartami samo dobiera kolumny i czcionkę (telefon).
    ===================================================================================== */
 

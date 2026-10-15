@@ -466,9 +466,12 @@ const heroPerk = (h, id) => !!(h && ((h.talents && h.talents.includes(id)) || (h
 const pathLv = (h, id) => (h && h.mastery === id ? (h.level >= PATH_LEVELS[1] ? 2 : 1) : 0);
 const pathV = (h, id) => { const L = pathLv(h, id); return L ? HERO_PATHS[id].v[L - 1] : null; };
 const pathTitle = h => (h && h.mastery ? HERO_PATHS[h.mastery][pathLv(h, h.mastery) === 2 ? 'legend' : 'name'] : '');
-const pathText = (id, L = 1) => `${HERO_PATHS[id][L === 2 ? 'legend' : 'name']}: ${HERO_PATHS[id].desc(HERO_PATHS[id].v[L - 1])}`;
-const pathStat = (h, key) => (key === 'att' || key === 'def' ? pathV(h, 'champion') || 0 : key === 'sp' ? (pathV(h, 'archmage') || [0])[0] : 0);
-const pathOffer = h => CLASS_PATHS[h.cls] || CLASS_PATHS.knight;
+const pathText = (id, L = 1) => `${HERO_PATHS[id][L === 2 ? 'legend' : 'name']}: ${HERO_PATHS[id].desc(HERO_PATHS[id].v[L - 1])}${PRESTIGE[id] ? `; raz na bitwę ${ORDERS[PRESTIGE[id].ability].name} – ${ORDERS[PRESTIGE[id].ability].desc()}` : ''}`;
+const pathStat = (h, key) => (key === 'att' || key === 'def' ? pathV(h, 'champion') || 0 : key === 'sp' ? (pathV(h, 'archmage') || [0])[0] + (pathV(h, 'runeblade') ? Math.floor((h.stats.att + heroBonus(h, 'att')) / pathV(h, 'runeblade')) : 0) : 0); // Ostrze run: moc z ataku
+// Klasy prestiżowe dostępne dla bohatera: obie umiejętności z req co najmniej na poziomie PRESTIGE_LV
+const prestigeReady = h => Object.keys(PRESTIGE).filter(id => PRESTIGE[id].req.every(s => heroSkill(h, s) >= PRESTIGE_LV));
+const pathOffer = h => [...(CLASS_PATHS[h.cls] || CLASS_PATHS.knight), ...prestigeReady(h)];
+const aiPath = h => prestigeReady(h)[0] || pathOffer(h)[0]; // komputer woli klasę prestiżową, gdy ją ma
 const perkCount = (h, id) => (h && h.talents ? h.talents.filter(t => t === id).length : 0); // talenty brane wielokrotnie (Odkrywca)
 // Szkoły magii: poziom umiejętności szkoły czaru u bohatera, koszt many po zniżce, mnożnik obrażeń i leczenia
 const spellSchoolLv = (h, id) => { const S = SPELLS[id]; return S && S.school ? heroSkill(h, SCHOOLS[S.school].skill) : 0; };
@@ -562,7 +565,7 @@ function gainExp(st, h, amount, then, silent = false) { // silent: awans bez oki
   if (h.owner !== ME || silent || !ups.length) {
     while (h.freePts > 0) spendPoint(h, aiPickStat(h)); // komputer (i awans bez okien) wydaje punkty od razu
     for (const u of ups) { const offer = skillOffer(st, h, u.level); if (offer.length) learnSkill(h, aiPickSkill(offer)); const pf = pendingFork(h); if (pf) chooseFork(h, pf.id, aiPickFork(pf.id)); /* specjalizacja: komputer od razu */ if (talentLevel(u.level, h)) learnTalent(st, h, aiPickTalent(talentOffer(st, h, u.level))); }
-    if (!h.mastery && h.level >= PATH_LEVELS[0] && PATHS_ON) h.mastery = pathOffer(h)[0]; // ścieżka mistrzowska: komputer (i awans bez okien) bierze pierwszą ze swojej klasy
+    if (!h.mastery && h.level >= PATH_LEVELS[0] && PATHS_ON) h.mastery = aiPath(h); // ścieżka mistrzowska: komputer (i awans bez okien) bierze pierwszą ze swojej klasy
     if (then) then(); return ups.length;
   }
   const portrait = locked => ({ iconH: 76, locked, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) });
@@ -574,8 +577,8 @@ function gainExp(st, h, amount, then, silent = false) { // silent: awans bez oki
   };
   // etapy rozwoju: na 10. poziomie wybór ścieżki mistrzowskiej, na 20. ścieżka staje się legendą (okno z wieścią)
   const path = (i, u) => {
-    if (PATHS_ON && u.level >= PATH_LEVELS[0] && !h.mastery) return showChoice(`${h.name} osiąga mistrzostwo (poziom ${u.level}). Wybierz ścieżkę mistrzowską – na zawsze; na ${PATH_LEVELS[1]}. poziomie stanie się legendą:`,
-      pathOffer(h).map((id, k) => ({ label: HERO_PATHS[id].name, sub: `ścieżka · legenda: ${HERO_PATHS[id].legend}`, tip: `${cap1(HERO_PATHS[id].desc(HERO_PATHS[id].v[0]))}. Jako legenda (${PATH_LEVELS[1]}. poziom): ${HERO_PATHS[id].desc(HERO_PATHS[id].v[1])}.`, key: String(k + 1),
+    if (PATHS_ON && u.level >= PATH_LEVELS[0] && !h.mastery) return showChoice(`${prestigeReady(h).length ? 'Umiejętności otwierają klasy prestiżowe! ' : ''}${h.name} osiąga mistrzostwo (poziom ${u.level}). Wybierz ścieżkę mistrzowską – na zawsze; na ${PATH_LEVELS[1]}. poziomie stanie się legendą:`,
+      pathOffer(h).map((id, k) => ({ label: HERO_PATHS[id].name, sub: `${PRESTIGE[id] ? 'klasa prestiżowa' : 'ścieżka'} · legenda: ${HERO_PATHS[id].legend}`, tip: `${cap1(HERO_PATHS[id].desc(HERO_PATHS[id].v[0]))}.${PRESTIGE[id] ? ` Raz na bitwę: ${ORDERS[PRESTIGE[id].ability].name} – ${ORDERS[PRESTIGE[id].ability].desc()}.` : ''} Jako legenda (${PATH_LEVELS[1]}. poziom): ${HERO_PATHS[id].desc(HERO_PATHS[id].v[1])}.`, key: String(k + 1),
         lead: (ctx, cx, cy) => skillIcon(ctx, HERO_PATHS[id].icon, cx, cy), action: () => { h.mastery = id; h.mana = Math.min(h.mana, heroMaxMana(h)); next(i + 1); } })), Object.assign(portrait(true), { bw: 200 }));
     if (PATHS_ON && u.level === PATH_LEVELS[1] && h.mastery) return showDialog(`${h.name} staje się legendą! Ścieżka ${HERO_PATHS[h.mastery].name} → ${pathText(h.mastery, 2)}.`, [{ label: 'Chwała!', key: 'enter', action: () => next(i + 1) }],
       { iconH: 76, icon: (ctx, cx, cy) => skillIcon(ctx, HERO_PATHS[h.mastery].icon, cx, cy, 64) });
@@ -670,7 +673,7 @@ const knows = (h, id) => (h.spells || []).includes(id);
 let MANA_REGEN_K = 0.34;
 const battleManaRegen = h => Math.floor(MANA_REGEN_K * heroStat(h, 'kn') * (heroFork(h, 'meditation') ? 2 : 1));
 const heroValorMax = h => (h ? VALOR_BASE + VALOR_PER_DEF * heroStat(h, 'def') : 0);
-const knownOrders = h => (h ? Object.keys(ORDERS).filter(id => !ORDERS[id].need || ORDERS[id].need.some(s => heroSkill(h, s) > 0)) : []);
+const knownOrders = h => (h ? [...Object.keys(ORDERS).filter(id => !ORDERS[id].prestige && (!ORDERS[id].need || ORDERS[id].need.some(s => heroSkill(h, s) > 0))), ...(PATHS_ON && h.mastery && PRESTIGE[h.mastery] ? [PRESTIGE[h.mastery].ability] : [])] : []); // z klasą prestiżową jej zdolność
 // Czary gildii losowane raz, gdy powstaje dany poziom (deterministycznie z ziarna gry i miasta)
 function rollGuildLevel(st, t, L) {
   const pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L), r = mulberry32(st.seed ^ (t.id * 7777) ^ (L * 131)), out = [];

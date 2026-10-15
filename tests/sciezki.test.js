@@ -11,7 +11,7 @@ test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'bł�
 
 test('każda klasa ma trzy różne ścieżki z opisem ścieżki i legendy', async () => {
   const r = await page.evaluate(() => ({ classes: Object.keys(CLASS_GROWTH).filter(c => !(CLASS_PATHS[c] && CLASS_PATHS[c].length === 3 && new Set(CLASS_PATHS[c]).size === 3 && CLASS_PATHS[c].every(p => HERO_PATHS[p]))),
-    texts: Object.keys(HERO_PATHS).map(id => [pathText(id, 1), pathText(id, 2)]), used: Object.keys(HERO_PATHS).filter(id => !Object.values(CLASS_PATHS).some(a => a.includes(id))) }));
+    texts: Object.keys(HERO_PATHS).map(id => [pathText(id, 1), pathText(id, 2)]), used: Object.keys(HERO_PATHS).filter(id => !HERO_PATHS[id].prestige && !Object.values(CLASS_PATHS).some(a => a.includes(id))) })); // klasy prestiżowe: dla każdej klasy, przez umiejętności
   assert.deepEqual(r.classes, []); assert.deepEqual(r.used, [], 'każdą ścieżkę ma jakaś klasa');
   for (const [a, b] of r.texts) { assert.ok(a.length > 20 && b.length > 20); assert.notEqual(a, b); }
 });

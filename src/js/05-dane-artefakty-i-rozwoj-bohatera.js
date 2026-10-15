@@ -189,6 +189,26 @@ const CLASS_PATHS = {
   witch: ['sage', 'archmage', 'wanderer'], heretic: ['archmage', 'sage', 'governor'], wizard: ['archmage', 'sage', 'wanderer'], warlock: ['archmage', 'sage', 'governor'],
 };
 const PATH_RARE = ['mercury', 'sulfur', 'crystal', 'gems'];
+// Klasy prestiżowe (etap 4 rozwoju bohatera): hybrydy dostępne na 10. poziomie obok ścieżek klasy dla KAŻDEGO bohatera, który ma obie
+// umiejętności z req co najmniej na poziomie PRESTIGE_LV – rycerz z Magią Ognia może zostać Płomiennym paladynem, czarodziej z Atakiem
+// Ostrzem run. Działają jak ścieżki (h.mastery, legenda na 20. poziomie, v: [ścieżka, legenda]): stałe działanie plus zdolność
+// (ability, dane w ORDERS z prestige), którą bohater raz na bitwę wydaje zamiast czaru albo rozkazu, za darmo.
+const PRESTIGE_LV = 2;
+const PRESTIGE = {
+  flamePaladin: { name: 'Płomienny paladyn', legend: 'Płomień Świtu', req: ['leadership', 'fireMagic'], v: [1, 2], ability: 'judgement', desc: v => `cała armia +${v} do ataku` },
+  runeblade: { name: 'Ostrze run', legend: 'Mistrz run', req: ['offense', 'wisdom'], v: [4, 3], ability: 'runeStrike', desc: v => `+1 do mocy czarów za każde ${v} punkty ataku` },
+  warpriest: { name: 'Kapłan wojny', legend: 'Arcykapłan wojny', req: ['armorer', 'waterMagic'], v: [5, 10], ability: 'sanctify', desc: v => `na początku każdej rundy twoje oddziały odzyskują ${v}% życia stwora` },
+  stormhunter: { name: 'Łowca burz', legend: 'Pan piorunów', req: ['archery', 'airMagic'], v: [10, 20], ability: 'thunderVolley', desc: v => `strzelcy zadają o ${v}% więcej obrażeń` },
+  bonecaller: { name: 'Rycerz kości', legend: 'Władca grobów', req: ['necromancy', 'offense'], v: [5, 10], ability: 'raiseLegion', desc: v => `nekromancja wskrzesza o ${v} punktów procentowych więcej` },
+  archdruid: { name: 'Arcydruid', legend: 'Serce puszczy', req: ['earthMagic', 'pathfinding'], v: [5, 10], ability: 'roots', desc: v => `na początku każdej rundy twoje żywe oddziały odzyskują ${v}% życia stwora` },
+  beastlord: { name: 'Władca bestii', legend: 'Król dziczy', req: ['leadership', 'beastTamer'], v: [10, 20], ability: 'packCall', desc: v => `Poskramiacz przeciąga o ${v} punktów procentowych więcej` },
+  bombardier: { name: 'Bombardier', legend: 'Mistrz prochu', req: ['alchemy', 'artillery'], v: [1, 2], ability: 'bomb', desc: v => `eliksiry Alchemii polowej działają o ${v} ${v === 1 ? 'rundę' : 'rundy'} dłużej, balista +25% obrażeń` },
+  shadowmaster: { name: 'Mistrz cienia', legend: 'Książę cieni', req: ['espionage', 'tactics'], v: [30, 60], ability: 'assassinate', desc: v => `w pierwszej rundzie twoje oddziały zadają o ${v}% więcej obrażeń` },
+  bloodmage: { name: 'Krwawy mag', legend: 'Arcymag krwi', req: ['bloodMagic', 'sorcery'], v: [10, 20], ability: 'bloodPactP', desc: v => `czary zadają o ${v}% więcej obrażeń` },
+  warden: { name: 'Strażnik twierdzy', legend: 'Niezłomny', req: ['fortify', 'formation'], v: [2, 3], ability: 'holdLine', desc: v => `cała armia +${v} do obrony` },
+  battleArch: { name: 'Arcymag bitewny', legend: 'Arcymag burzy', req: ['sorcery', 'tactics'], v: [1, 2], ability: 'meteor', desc: v => `Iskra przeskakuje na ${v === 1 ? 'jeszcze jeden oddział' : 'dwa kolejne oddziały'}` },
+};
+for (const [id, P] of Object.entries(PRESTIGE)) HERO_PATHS[id] = Object.assign(P, { prestige: true, icon: P.req[1] }); // ikona: druga umiejętność pary
 // Kolejność wyboru talentów przez SI (wcześniejszy = ważniejszy)
 const AI_TALENT_ORDER = ['doubleCast', 'counter', 'giantSlayer', 'ambush', 'warlord', 'volley', 'deathLord', 'spellWard', 'fortunate', 'fieldMedic', 'forcedMarch', 'treasurer', 'diplomat', 'manaSiphon', 'scholar', 'veteran', 'archmage', 'explorer'];
 // Magowie zaczynają z Mądrością (jak w oryginale): bez niej bohater zna czary najwyżej 2. poziomu

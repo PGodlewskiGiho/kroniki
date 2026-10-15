@@ -16,7 +16,7 @@ function drawPathRow(ctx, h, x, y) {
   text(ctx, 'Ścieżka:', x, y, { size: 15, weight: 500, color: '#2a1606' });
   if (h.mastery) { const P = HERO_PATHS[h.mastery], cx = x + 80; ctx.fillStyle = 'rgba(200,150,40,.4)'; ctx.beginPath(); ctx.arc(cx, y, 13, 0, TAU); ctx.fill(); skillIcon(ctx, P.icon, cx, y, 24);
     text(ctx, pathTitle(h), cx + 16, y, { size: 14, weight: 700, color: pathLv(h, h.mastery) === 2 ? '#8a3a10' : '#2a1606' }); return [{ x: cx - 12, y: y - 12, w: 120, h: 24, id: h.mastery }]; }
-  return pathOffer(h).map((id, k) => { const cx = x + 80 + k * 26; ctx.save(); ctx.globalAlpha = 0.45; skillIcon(ctx, HERO_PATHS[id].icon, cx, y, 22); ctx.restore(); return { x: cx - 12, y: y - 12, w: 24, h: 24, id }; });
+  return pathOffer(h).slice(0, 6).map((id, k) => { const cx = x + 80 + k * 26; ctx.save(); ctx.globalAlpha = 0.45; skillIcon(ctx, HERO_PATHS[id].icon, cx, y, 22); ctx.restore(); return { x: cx - 12, y: y - 12, w: 24, h: 24, id }; });
 }
 const pathTip = (h, id) => (h.mastery ? `Ścieżka mistrzowska — ${pathText(id, pathLv(h, id))}.${pathLv(h, id) < 2 ? ` Na ${PATH_LEVELS[1]}. poziomie legenda: ${pathText(id, 2)}.` : ''}`
   : `Na ${PATH_LEVELS[0]}. poziomie ${h.name} wybierze jedną z trzech ścieżek mistrzowskich. ${pathText(id, 1)}; legenda (${PATH_LEVELS[1]}. poziom): ${pathText(id, 2)}.`);
