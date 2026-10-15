@@ -69,6 +69,8 @@ G.screens.hero = {
     if (clickButtons(this.buttons, x, y)) return;
     if (this.preview) return; // podgląd kandydata: tylko oglądanie
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y);
+    { const si = this.skillAt(x, y), sk = si >= 0 && h.skills[si]; if (sk && sk.lv >= 3 && SKILL_FORKS[sk.id] && !sk.fork && h.owner === ME) { // zaległa specjalizacja (np. ze starego zapisu)
+      showChoice(`${SKILLS[sk.id].name}: ${h.name} wybiera specjalizację – na zawsze:`, SKILL_FORKS[sk.id].map((f, k) => ({ label: f.name, sub: `specjalizacja: ${SKILLS[sk.id].name}`, tip: cap1(f.desc) + '.', key: String(k + 1), lead: (ctx, cx, cy) => skillIcon(ctx, sk.id, cx, cy), action: () => chooseFork(h, sk.id, f.id) }))); return; } }
     if (ar) {
       if (this.sel == null) { if (h.army[ar.i]) this.sel = ar.i; return; } // (sel 0 to pierwszy oddział – dawniej uznawany za brak zaznaczenia)
       const from = this.sel; this.sel = null;
@@ -112,7 +114,7 @@ G.screens.hero = {
     const tr = hitRect(this.talentRects || [], x, y); if (tr) return `Talent — ${talentText(tr.id)}.`;
     const pr = hitRect(this.pathRects || [], x, y); if (pr) return pathTip(h, pr.id);
     const si = this.skillAt(x, y);
-    if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv)}.` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
+    if (si >= 0) { const s = h.skills[si]; return s ? `${skillText(s.id, s.lv, s.fork)}.${s.lv >= 3 && SKILL_FORKS[s.id] && !s.fork ? ' Kliknij, aby wybrać specjalizację.' : ''}` : 'Wolne miejsce na umiejętność. Nowe umiejętności bohater wybiera przy awansie.'; }
     if (p) return {
       att: 'Atak: dodaje się do ataku każdego twojego oddziału w bitwie (+5% obrażeń za punkt przewagi).',
       def: 'Obrona: dodaje się do obrony każdego twojego oddziału w bitwie (mniej otrzymywanych obrażeń).',
@@ -197,7 +199,8 @@ G.screens.hero = {
       if (!sk) continue;
       skillIcon(ctx, sk.id, r.x + r.w / 2, r.y + 19); // ikona 32 px, obok niej poziom (kreski od dołu)
       for (let k = 0; k < 3; k++) { ctx.fillStyle = k < sk.lv ? '#ffd970' : 'rgba(240,228,192,.2)'; ctx.fillRect(r.x + r.w / 2 + 20, r.y + 27 - k * 8, 5, 6); }
-      text(ctx, SKILLS[sk.id].name, r.x + r.w / 2, r.y + 44, { size: SKILLS[sk.id].name.length > 13 ? 12 : 13, weight: 700, align: 'center', color: UI.txt });
+      text(ctx, sk.fork ? FORK[sk.fork].name : SKILLS[sk.id].name, r.x + r.w / 2, r.y + 44, { size: 13, weight: 700, align: 'center', color: sk.fork ? UI.goldHi : UI.txt, max: r.w - 6 }); // specjalizacja zamiast nazwy
+      if (sk.lv >= 3 && SKILL_FORKS[sk.id] && !sk.fork) { ctx.fillStyle = `rgba(255,200,80,${0.6 + 0.4 * Math.sin(G.time * 5)})`; ctx.beginPath(); ctx.arc(r.x + 10, r.y + 10, 7, 0, TAU); ctx.fill(); text(ctx, '!', r.x + 10, r.y + 11, { size: 12, align: 'center', color: '#2a1606', fam: 'title' }); G.dirty = true; } // do wyboru
     }
     if (!this.preview && assemblable(h).length) { const r = RELIC_BTN, hot = inRect(G.mouse.x, G.mouse.y, r); ctx.fillStyle = hot ? 'rgba(200,150,40,.55)' : 'rgba(200,150,40,.35)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
       ctx.strokeStyle = '#ffd970'; ctx.lineWidth = 1.2; ctx.stroke(); text(ctx, 'Złóż relikwię', r.x + r.w / 2, r.y + 15, { size: 12, weight: 700, align: 'center', color: '#fff4c8' }); }

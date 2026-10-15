@@ -54,7 +54,65 @@ const SKILLS = {
   interference: { name: 'Zakłócanie', v: [15, 25, 40], desc: v => `czary wroga w bitwie zadają i leczą o ${v}% mniej` },
   plunder: { name: 'Grabież', v: [10, 20, 30], desc: v => `po zwycięstwie zabierasz złoto: ${v}% ceny poległych wrogów` },
   triage: { name: 'Opatrywanie ran', v: [10, 20, 30], desc: v => `po zwycięskiej bitwie wraca ${v}% twoich poległych (żywych) stworów` },
+  // --- nowe umiejętności (etap 2 rozwoju bohatera) ---
+  bloodMagic: { name: 'Krwawa magia', v: [12, 8, 5], desc: v => `brak many dopłacasz życiem własnych stworów: 1 punkt many = ${v} punktów życia najliczniejszego żywego oddziału` },
+  echo: { name: 'Echo', v: [15, 25, 35], desc: v => `${v}% szans, że czar zadający obrażenia powtórzy się od razu za darmo, z połową mocy` },
+  formation: { name: 'Szyk', v: [1, 2, 3], desc: v => `oddział, który stoi obok sojusznika, ma +${v} do obrony` },
+  alchemy: { name: 'Alchemia polowa', v: [1, 2, 3], desc: v => `na początku bitwy każdy twój oddział pije losowy eliksir (żądza krwi, kamienna skóra albo przyspieszenie) na ${v} ${v === 1 ? 'rundę' : 'rundy'}` },
+  beastTamer: { name: 'Poskramiacz', v: [10, 20, 30], desc: v => `w bitwie z potworami ${v}% najsłabszego stada przechodzi na twoją stronę (do końca bitwy)` },
+  mentor: { name: 'Mentor', v: [10, 20, 30], desc: v => `inni twoi bohaterowie dostają ${v}% doświadczenia, które zdobywa ten bohater` },
+  espionage: { name: 'Szpiegostwo', v: [10, 20, 30], desc: v => `wrogi bohater zaczyna bitwę z ${v}% mniej many i Zapału` },
+  fortify: { name: 'Fortyfikacja', v: [2, 4, 6], desc: v => `gdy twój bohater się broni (zaatakowany albo w mieście), jego oddziały mają +${v} do obrony` },
+  executioner: { name: 'Dobijanie', v: [15, 25, 40], desc: v => `+${v}% obrażeń przeciw wrogim oddziałom, które straciły ponad połowę stworów` },
+  soulHarvest: { name: 'Żniwo dusz', v: [3, 6, 10], desc: v => `+${v} many za każdy wrogi oddział zniszczony w bitwie` },
+  quartermaster: { name: 'Kwatermistrz', v: [25, 50, 100], desc: v => `strzelcy mają o ${v}% więcej strzał` },
 };
+// Specjalizacje (etap 2): umiejętność na poziomie eksperckim daje wybór jednej z dwóch specjalizacji – na zawsze (s.fork w h.skills).
+// Działanie w ZASADY GRY i BITWA: ZASADY (heroFork). ai: wybór komputera.
+const SKILL_FORKS = {
+  leadership: [{ id: 'standard', name: 'Chorąży', desc: 'morale armii nigdy nie spada poniżej zera, Okrzyk bojowy kosztuje połowę Zapału' }, { id: 'inspire', name: 'Natchnienie', desc: 'dodatkowy ruch z wysokiego morale zdarza się dwa razy częściej' }],
+  luck: [{ id: 'lucky', name: 'Fart', desc: 'szczęśliwe ciosy zdarzają się dwa razy częściej' }, { id: 'hex', name: 'Urok', desc: 'wrogie armie mają −2 do szczęścia' }],
+  offense: [{ id: 'breach', name: 'Przełamanie', desc: 'ataki wręcz pomijają 20% obrony wroga' }, { id: 'riposte', name: 'Kontra', desc: 'odwet twoich oddziałów zadaje o 40% więcej obrażeń' }],
+  archery: [{ id: 'sniper', name: 'Snajper', desc: 'strzały nie tracą obrażeń przez odległość ani przeszkody' }, { id: 'hail', name: 'Grad strzał', desc: 'strzał rani też wrogów tuż przy celu (30% obrażeń)' }],
+  armorer: [{ id: 'plate', name: 'Ciężka zbroja', desc: 'strzały zadają armii o kolejne 15% mniej obrażeń' }, { id: 'spikes', name: 'Kolce', desc: '15% obrażeń wręcz wraca do napastnika' }],
+  tactics: [{ id: 'deploy', name: 'Rozstawienie', desc: 'premia Taktyki trwa 3 rundy i Taktyka wroga jej nie znosi' }, { id: 'initiative', name: 'Inicjatywa', desc: 'w pierwszej rundzie wrogie oddziały mają −3 do szybkości' }],
+  artillery: [{ id: 'twinBolt', name: 'Ciężka balista', desc: 'balista strzela dwa razy' }, { id: 'shrapnel', name: 'Odłamki', desc: 'strzał balisty rani też wrogów obok celu (50% obrażeń)' }],
+  ballistics: [{ id: 'breaker', name: 'Burzyciel', desc: 'każde trafienie katapulty kruszy mur podwójnie' }, { id: 'assault', name: 'Szturm', desc: 'w oblężeniu twoje oddziały zadają o 20% więcej obrażeń' }],
+  firstAid: [{ id: 'lazaret', name: 'Lazaret', desc: 'na początku każdej rundy namiot medyka leczy każdy ranny oddział o połowę swojej mocy' }, { id: 'surgeon', name: 'Chirurg', desc: 'po zwycięstwie wraca dodatkowo 10% poległych żywych stworów' }],
+  triage: [{ id: 'medics', name: 'Ratownicy', desc: 'Opatrywanie ran działa też na nieumarłych i konstrukty' }, { id: 'veterans', name: 'Weterani', desc: 'wraca o połowę więcej poległych' }],
+  resistance: [{ id: 'antimagic', name: 'Antymagia', desc: 'szansa odporności na wrogi czar dwa razy większa' }, { id: 'grit', name: 'Hart', desc: 'oddziały są odporne na oślepienie, spowolnienie, osłabienie i klątwę' }],
+  plunder: [{ id: 'raider', name: 'Łupieżca', desc: 'Grabież daje dwa razy więcej złota' }, { id: 'tribute', name: 'Kontrybucja', desc: 'po każdym zwycięstwie 1 losowy rzadki surowiec' }],
+  diplomacy: [{ id: 'envoy', name: 'Ambasador', desc: 'stwory dołączają za połowę ceny' }, { id: 'intimidate', name: 'Zastraszenie', desc: 'stada co najmniej trzy razy słabsze zawsze uciekają, nawet dzikie' }],
+  logistics: [{ id: 'supply', name: 'Zaopatrzenie', desc: 'połowa niewykorzystanego ruchu przechodzi na następny dzień (do 500)' }, { id: 'couriers', name: 'Konni gońcy', desc: 'ruch liczony według najszybszego oddziału, nie najwolniejszego' }],
+  pathfinding: [{ id: 'terrainWise', name: 'Znawca terenu', desc: 'w bitwie twoje oddziały przechodzą przez drzewa i skały (nie mogą na nich stanąć)' }, { id: 'wanderer', name: 'Wędrownik', desc: 'każdy krok po mapie kosztuje o 15% mniej ruchu' }],
+  scouting: [{ id: 'intel', name: 'Wywiad', desc: 'widzisz dokładną liczebność potworów i strażników' }, { id: 'farsight', name: 'Daleki wzrok', desc: '+3 do zasięgu widzenia' }],
+  navigation: [{ id: 'sails', name: 'Wiatr w żagle', desc: 'ruch na wodzie jeszcze o 100% większy' }, { id: 'boarding', name: 'Abordaż', desc: 'w bitwach na wodzie twoje oddziały zadają o 25% więcej obrażeń' }],
+  sorcery: [{ id: 'incinerate', name: 'Spopielenie', desc: 'czary bojowe +15%, a wrogowie nie unikają ich Odpornością' }, { id: 'overload', name: 'Przeciążenie', desc: '20% szans, że czar zada podwójne obrażenia' }],
+  intelligence: [{ id: 'deepWell', name: 'Głęboka studnia', desc: '+50% maksymalnej many więcej' }, { id: 'reclaim', name: 'Odzysk', desc: 'czar, który zabije choć jednego stwora, zwraca 30% many' }],
+  mysticism: [{ id: 'meditation', name: 'Medytacja', desc: 'w bitwie co rundę wraca dwa razy więcej many' }, { id: 'powerCircle', name: 'Krąg mocy', desc: 'czary są o 15% mocniejsze, póki masz co najmniej połowę many' }],
+  wisdom: [{ id: 'fluency', name: 'Biegłość', desc: 'wszystkie czary tańsze o 15%' }, { id: 'warMage', name: 'Mag wojny', desc: 'pierwszy czar w każdej bitwie za darmo' }],
+  eagleSight: [{ id: 'copyist', name: 'Kopista', desc: 'podpatruje każdy wrogi czar (do 5. poziomu)' }, { id: 'foresight', name: 'Przewidywanie', desc: 'wrogie czary zadają twojej armii o 20% mniej obrażeń' }],
+  interference: [{ id: 'jamming', name: 'Zagłuszanie', desc: 'wrogie czary kosztują wroga o połowę więcej many' }, { id: 'silence', name: 'Wyciszenie', desc: 'wrogi bohater nie rzuca czarów ani nie wydaje rozkazów w pierwszej rundzie' }],
+  learning: [{ id: 'quickStudy', name: 'Szybka nauka', desc: 'talent co 3 poziomy zamiast co 4' }, { id: 'erudite', name: 'Erudyta', desc: 'przy awansie cztery umiejętności do wyboru zamiast trzech' }],
+  fireMagic: [{ id: 'blaze', name: 'Pożoga', desc: 'czary Ognia o 25% mocniejsze' }, { id: 'emberArmy', name: 'Żar bojowy', desc: 'cała armia +1 do ataku' }],
+  airMagic: [{ id: 'storm', name: 'Burza', desc: 'czary Powietrza o 25% mocniejsze, łańcuch piorunów skacze raz więcej' }, { id: 'gale', name: 'Wicher', desc: 'cała armia +1 do szybkości' }],
+  waterMagic: [{ id: 'healer', name: 'Uzdrowiciel', desc: 'czary leczą o 40% więcej' }, { id: 'calm', name: 'Spokój', desc: 'cała armia +1 do morale' }],
+  earthMagic: [{ id: 'quake', name: 'Trzęsienie', desc: 'czary Ziemi o 25% mocniejsze' }, { id: 'bastion', name: 'Bastion', desc: 'cała armia +2 do obrony' }],
+  estates: [{ id: 'usury', name: 'Lichwa', desc: 'co tydzień +5% posiadanego złota (najwyżej 2000)' }, { id: 'lands', name: 'Ziemie', desc: '+1 drewna i +1 rudy dziennie' }],
+  necromancy: [{ id: 'horde', name: 'Horda', desc: 'nekromancja wskrzesza o 30% więcej' }, { id: 'boneLord', name: 'Pan kości', desc: 'wskrzeszeni wstają jako legioniści (ulepszeni kościotrupi), ale w liczbie o 1/3 mniejszej' }],
+  bloodMagic: [{ id: 'bloodPact', name: 'Pakt krwi', desc: 'dopłata życiem kosztuje o połowę mniej' }, { id: 'sacrifice', name: 'Ofiara', desc: 'czar opłacony choć w części krwią jest o 30% mocniejszy' }],
+  echo: [{ id: 'resound', name: 'Pogłos', desc: 'echo uderza z pełną mocą zamiast połową' }, { id: 'manyEcho', name: 'Wielokrotne echo', desc: 'echo może się powtórzyć jeszcze raz' }],
+  formation: [{ id: 'phalanx', name: 'Falanga', desc: 'w szyku oddział zadaje też o 10% więcej obrażeń' }, { id: 'shieldRow', name: 'Rząd tarcz', desc: 'w szyku oddział otrzymuje o 15% mniej obrażeń od strzał' }],
+  alchemy: [{ id: 'elixirs', name: 'Mocne eliksiry', desc: 'każdy oddział pije dwa różne eliksiry' }, { id: 'potionHeal', name: 'Mikstury lecznicze', desc: 'co rundę każdy twój ranny oddział odzyskuje 10% życia stwora' }],
+  beastTamer: [{ id: 'packLeader', name: 'Przewodnik stada', desc: 'poskromione stwory zostają w armii po bitwie, jeśli jest miejsce' }, { id: 'wildCall', name: 'Zew dziczy', desc: 'poskromienie działa na dwa najsłabsze stada' }],
+  mentor: [{ id: 'academy', name: 'Akademia', desc: 'nowo najęci bohaterowie zaczynają z 3000 doświadczenia' }, { id: 'drill', name: 'Musztra', desc: 'oddziały w miastach, w których stoi ten bohater, rosną o 10% szybciej' }],
+  espionage: [{ id: 'sabotage', name: 'Sabotaż', desc: 'wroga balista i namiot medyka zaczynają bitwę zniszczone' }, { id: 'informant', name: 'Informator', desc: 'widzisz dokładną armię i umiejętności wrogich bohaterów' }],
+  fortify: [{ id: 'stronghold', name: 'Twierdza', desc: 'w obronie oddziały otrzymują też o 15% mniej obrażeń' }, { id: 'ambushDef', name: 'Pułapki', desc: 'w obronie wrogie oddziały mają −2 do szybkości w pierwszych dwóch rundach' }],
+  executioner: [{ id: 'mercy', name: 'Bez litości', desc: 'dobijanie działa już od 1/3 strat' }, { id: 'terror', name: 'Postrach', desc: 'zniszczenie wrogiego oddziału daje wrogom −1 do morale' }],
+  soulHarvest: [{ id: 'reaper', name: 'Żniwiarz', desc: 'żniwo daje też Zapał (połowę tej wartości)' }, { id: 'soulForge', name: 'Kuźnia dusz', desc: 'za zniszczony oddział twój najsłabszy oddział odzyskuje życie' }],
+  quartermaster: [{ id: 'arrows', name: 'Ostre groty', desc: 'strzelcy zadają o 10% więcej obrażeń' }, { id: 'cartMaster', name: 'Wozownia', desc: 'bohater zawsze ma wóz z amunicją w bitwie' }],
+};
+const FORK = {}; for (const [sk, fs] of Object.entries(SKILL_FORKS)) for (const f of fs) FORK[f.id] = Object.assign(f, { skill: sk }); // specjalizacja po identyfikatorze
 // Talenty: co TALENT_EVERY poziomów bohater wybiera jeden z trzech (heroPerk). req: lista [umiejętność, poziom], wystarczy jedna;
 // bez req dostępne zawsze (Weteran i Arcymag można brać wielokrotnie). Działanie w ZASADY GRY i BITWA: ZASADY.
 const TALENT_EVERY = 4;
@@ -121,8 +179,8 @@ const CLASS_SKILLS = {
 const NECRO_CLASSES = ['deathKnight', 'necro'];
 const MAGE_CLASSES = ['cleric', 'druid', 'necro', 'witch', 'heretic', 'wizard', 'warlock', 'inventor'];
 // Umiejętności, które klasa dostaje przy awansie częściej (jak w oryginale: rycerz rzadko uczy się magii, mag walki)
-const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance', 'tactics', 'triage', 'plunder'];
-const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting', 'fireMagic', 'airMagic', 'waterMagic', 'earthMagic', 'interference'];
+const MIGHT_SKILLS = ['offense', 'armorer', 'archery', 'leadership', 'artillery', 'ballistics', 'firstAid', 'logistics', 'pathfinding', 'resistance', 'tactics', 'triage', 'plunder', 'formation', 'fortify', 'executioner', 'quartermaster', 'alchemy', 'beastTamer'];
+const MAGIC_SKILLS = ['wisdom', 'sorcery', 'intelligence', 'mysticism', 'eagleSight', 'learning', 'scouting', 'fireMagic', 'airMagic', 'waterMagic', 'earthMagic', 'interference', 'bloodMagic', 'echo', 'soulHarvest', 'mentor', 'espionage'];
 const CLASS_SKILL_PREF = {
   knight: ['leadership', 'offense', 'armorer', 'artillery', 'tactics'], cleric: ['wisdom', 'waterMagic', 'mysticism', 'estates', 'triage'],
   ranger: ['archery', 'pathfinding', 'luck', 'scouting', 'diplomacy'], druid: ['wisdom', 'earthMagic', 'waterMagic', 'intelligence', 'diplomacy'],
@@ -137,8 +195,8 @@ const CLASS_SKILL_PREF = {
 // Waga umiejętności w losowaniu przy awansie: ulubione klasy ×4, magiczne u wojowników i bojowe u magów ×0,5
 const skillWeight = (cls, id) => (CLASS_SKILL_PREF[cls] || []).includes(id) ? 4 : (MAGE_CLASSES.includes(cls) ? MIGHT_SKILLS : MAGIC_SKILLS).includes(id) ? 0.5 : 1;
 // Kolejność, w jakiej SI wybiera umiejętności przy awansie (wcześniejsza = ważniejsza)
-const AI_SKILL_ORDER = ['offense', 'necromancy', 'wisdom', 'leadership', 'armorer', 'archery', 'tactics', 'logistics', 'resistance', 'luck', 'triage', 'artillery', 'pathfinding', 'estates', 'sorcery',
-  'earthMagic', 'fireMagic', 'airMagic', 'waterMagic', 'interference', 'intelligence', 'plunder', 'diplomacy', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'navigation', 'scouting'];
+const AI_SKILL_ORDER = ['offense', 'necromancy', 'wisdom', 'leadership', 'armorer', 'archery', 'tactics', 'formation', 'executioner', 'logistics', 'resistance', 'echo', 'luck', 'triage', 'artillery', 'pathfinding', 'estates', 'sorcery', 'alchemy', 'soulHarvest', 'fortify', 'quartermaster', 'bloodMagic',
+  'earthMagic', 'fireMagic', 'airMagic', 'waterMagic', 'interference', 'intelligence', 'plunder', 'diplomacy', 'firstAid', 'ballistics', 'learning', 'eagleSight', 'mysticism', 'beastTamer', 'espionage', 'mentor', 'navigation', 'scouting'];
 
 // Specjalności bohaterów (jak w oryginale), rosną z poziomem bohatera:
 // dw: stwory z siedliska tego poziomu (i ulepszone) dostają +5% ataku i obrony za każdy poziom bohatera na poziom stwora, +1 szybkości;

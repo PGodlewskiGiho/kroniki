@@ -2,7 +2,7 @@
 // Ruch, odkrywanie mapy, obiekty, potyczki, dochód, budowanie.
 // Dzienny limit ruchu zależy od najwolniejszej jednostki w armii (jak w oryginale)
 function mpBySpeed(s) { return s <= 3 ? 1500 : s >= 11 ? 2000 : [1560, 1630, 1700, 1760, 1830, 1900, 1960][s - 4]; }
-function heroMaxMP(h) { return Math.round(mpBySpeed(armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp') + (heroPerk(h, 'forcedMarch') ? 300 : 0) + 150 * perkCount(h, 'explorer') + (pathV(h, 'wanderer') || [0])[0] + (G.state && h.stableWeek === weekIndex(G.state) ? STABLE_MP : 0) + (h.boat && G.state ? LIGHTHOUSE_MP * lighthousesOf(G.state, h.owner) : 0); }
+function heroMaxMP(h) { return Math.round(mpBySpeed(heroFork(h, 'couriers') ? armyFastest(h.army) : armySlowest(h.army)) * (1 + skillVal(h, 'logistics') / 100) * seasonMpMul(G.state, h)) + heroBonus(h, 'mp') + (heroPerk(h, 'forcedMarch') ? 300 : 0) + 150 * perkCount(h, 'explorer') + (pathV(h, 'wanderer') || [0])[0] + (G.state && h.stableWeek === weekIndex(G.state) ? STABLE_MP : 0) + (h.boat && G.state ? LIGHTHOUSE_MP * lighthousesOf(G.state, h.owner) : 0); }
 const lighthousesOf = (st, owner) => st.objects.reduce((k, o) => k + (o.kind === 'lighthouse' && !o.dead && o.owner === owner ? 1 : 0), 0);
 // Odkrywa teren wokół punktu dla gracza (domyślnie człowieka). SI też ma własną mgłę wojny.
 function reveal(st, cx, cy, r, owner = ME) {
@@ -65,10 +65,11 @@ function boatSpot(st, h) {
 }
 // Koszt kroku liczony wg terenu, z którego bohater wychodzi; droga działa, gdy oba pola mają drogę.
 // Znajdowanie drogi (h) zmniejsza narzut trudnego terenu ponad 100.
-function baseCost(map, i, j, h) {
+function baseCost(map, i, j, h) { const c0 = baseCost0(map, i, j, h); return h && heroFork(h, 'wanderer') ? Math.round(c0 * 0.85) : c0; } // specjalizacja Wędrownik
+function baseCost0(map, i, j, h) {
   if (map.road[i] && map.road[j]) return ROADS[map.road[i]].cost;
   const t = map.terrain[i]; let c = TERRAINS[t].cost || 100; const pf = h ? skillVal(h, 'pathfinding') : 0; // woda: zwykły krok
-  if (t === TER.WATER && h && skillVal(h, 'navigation')) return Math.round(c / (1 + skillVal(h, 'navigation') / 100)); // Nawigacja
+  if (t === TER.WATER && h && skillVal(h, 'navigation')) return Math.round(c / (1 + (skillVal(h, 'navigation') + (heroFork(h, 'sails') ? 100 : 0)) / 100)); // Nawigacja (i Wiatr w żagle)
   const tb = terBase(t); if (h && ((heroTrait(h, 'fortress') && (tb === TER.SWAMP || tb === TER.ROUGH)) || (heroTrait(h, 'academy') && tb === TER.SNOW))) c = 100; // cechy frakcji (biomy jak teren bazowy: lód jak śnieg)
   return c > 100 && pf ? Math.round(100 + (c - 100) * (1 - pf / 100)) : c;
 }
@@ -235,11 +236,12 @@ function neutralReaction(st, h, m) {
     const need = (mood === 'friendly' ? 1.5 : 3) - 0.4 * lead - 0.6 * dip - (same ? 0.5 : 0);
     if (ratio >= need) {
       const free = ratio >= need * 1.8 || (mood === 'friendly' && lead + dip >= 2) || heroPerk(h, 'diplomat');
-      return { kind: 'join', cost: free ? 0 : Math.round(m.count * ((c.cost && c.cost.gold) || 100) * (1 - 0.15 * lead) * (1 - 0.2 * dip) / 10) * 10 };
+      return { kind: 'join', cost: free ? 0 : Math.round(m.count * ((c.cost && c.cost.gold) || 100) * (1 - 0.15 * lead) * (1 - 0.2 * dip) * (heroFork(h, 'envoy') ? 0.5 : 1) / 10) * 10 };
     }
   }
   if (mood !== 'savage' && ratio >= 6 - 0.5 * lead - (dip >= 2 ? 0.75 * dip : 0)) return { kind: 'flee' };
   if (h.fearDay === st.dayTotal && ratio >= 2) return { kind: 'flee' }; // czar Groza
+  if (heroFork(h, 'intimidate') && ratio >= 3) return { kind: 'flee' }; // specjalizacja Zastraszenie: nawet dzikie
   return null;
 }
 function joinMonsters(st, h, m, cost) {
@@ -247,7 +249,7 @@ function joinMonsters(st, h, m, cost) {
   R.gold -= cost; removeObject(st, m); MapRender.miniDirty = true; return true;
 }
 function offerNeutral(st, h, m, re, fight) {
-  const c = CREATURES[m.cid], q = `${qtyName(m.count)} ${c.gen}`, back = () => { if (h.prev) { h.x = h.prev[0]; h.y = h.prev[1]; h.prev = null; } };
+  const c = CREATURES[m.cid], q = `${qtyFor(st, m.count, h.owner)} ${c.gen}`, back = () => { if (h.prev) { h.x = h.prev[0]; h.y = h.prev[1]; h.prev = null; } };
   const icon = (ctx, cx, cy) => drawCreatureIcon(ctx, m.cid, cx, cy + 34, 2);
   if (re.kind === 'join') {
     const gold = playerOf(st, h.owner).resources.gold, poor = re.cost > gold;
@@ -350,7 +352,7 @@ function innRumor(st, h, ob) {
 }
 // Skarbiec: opis załogi i łupu, potem zwykłe okno przed bitwą (odwrót cofa bohatera o pole)
 const bankPower = ob => ob.guards.reduce((s, [cid, n]) => s + n * CREATURES[cid].value, 0);
-const bankGuardText = ob => ob.guards.map(([cid, n]) => `${qtyName(n).toLowerCase()} ${CREATURES[cid].gen}`).join(', ');
+const bankGuardText = ob => ob.guards.map(([cid, n]) => `${qtyFor(G.state, n).toLowerCase()} ${CREATURES[cid].gen}`).join(', '); // Wywiad: dokładnie
 function bankLootText(kind) {
   const B = BANKS[kind], parts = RESOURCES.filter(r => B.loot[r.id]).map(r => `${B.loot[r.id]} ${r.id === 'gold' ? 'złota' : resName(r.id).toLowerCase()}`);
   for (const [rar, k] of B.arts || []) parts.push(k > 1 ? `${k} artefakty (${{ treasure: 'skarby', minor: 'pomniejsze', major: 'potężne' }[rar]})` : `artefakt (${RARITY[rar]})`);
@@ -437,6 +439,17 @@ function initHeroProgress(h) {
   if (h.mana == null) h.mana = heroMaxMana(h);
 }
 // --- umiejętności drugorzędne ---
+// Specjalizacje (SKILL_FORKS): wybór na poziomie eksperckim, zapisany w h.skills[i].fork
+const heroFork = (h, f) => !!(f && h && h.skills && h.skills.some(s => s.fork === f));
+// Specjalizacja któregokolwiek bohatera gracza (Wywiad, Informator); qtyFor: liczebność dokładna albo opisowa
+const playerFork = (st, owner, f) => !!(st && st.heroes.some(h => h.owner === owner && heroFork(h, f)));
+const qtyFor = (st, n, owner = ME) => (playerFork(st, owner, 'intel') ? String(n) : qtyName(n));
+const pendingFork = h => ((h && h.skills) || []).find(s => s.lv >= 3 && SKILL_FORKS[s.id] && !s.fork) || null;
+const AI_FORK = new Set(['standard', 'lucky', 'breach', 'sniper', 'spikes', 'initiative', 'twinBolt', 'assault', 'surgeon', 'veterans', 'grit', 'tribute', 'envoy', 'couriers', 'wanderer', 'farsight', 'boarding',
+  'incinerate', 'deepWell', 'meditation', 'warMage', 'foresight', 'silence', 'quickStudy', 'blaze', 'storm', 'healer', 'quake', 'lands', 'horde', 'sacrifice', 'resound', 'phalanx', 'elixirs', 'packLeader', 'academy', 'sabotage', 'stronghold', 'mercy', 'reaper', 'arrows']);
+const aiPickFork = sk => (SKILL_FORKS[sk].find(f => AI_FORK.has(f.id)) || SKILL_FORKS[sk][0]).id;
+function chooseFork(h, sk, f) { const s = h.skills.find(s => s.id === sk); if (s && s.lv >= 3 && SKILL_FORKS[sk].some(x => x.id === f)) s.fork = f; h.mana = Math.min(h.mana, heroMaxMana(h)); }
+const forkText = f => `${FORK[f].name}: ${FORK[f].desc}`;
 const heroSkill = (h, id) => { const s = h && h.skills && h.skills.find(s => s.id === id); return s ? s.lv : 0; };
 const heroPerk = (h, id) => !!(h && ((h.talents && h.talents.includes(id)) || (h.equip && Object.values(h.equip).some(a => a && ARTIFACTS[a].perk === id)))); // talent bohatera (TALENTS) albo z założonego artefaktu
 // Ścieżka mistrzowska bohatera (HERO_PATHS): 0 = nie ta, 1 = ścieżka (od 10. poziomu), 2 = legenda (od 20.); pathV = wartość działania
@@ -452,8 +465,9 @@ const spellSchoolLv = (h, id) => { const S = SPELLS[id]; return S && S.school ? 
 // Moc czarów w bitwie (obrażenia, leczenie, trucizna, czas działania): do SP_SOFT pełna, powyżej każdy punkt liczy się za pół – późni magowie
 // nie rosną bez końca (pomiar tools/balans/bohaterowie.js: bez limitu mag 20. poziomu był o 1/5 silniejszy od wojownika nawet bez Bitewnego maga)
 let SP_SOFT = 6; const effSp = sp => (sp <= SP_SOFT ? sp : SP_SOFT + Math.floor((sp - SP_SOFT) / 2)), spellPow = h => effSp(heroStat(h, 'sp'));
-const spellCost = (h, id) => SPELLS[id].cost === 0 ? 0 : Math.max(1, Math.round(SPELLS[id].cost * (1 - SCHOOL_COST[spellSchoolLv(h, id)] / 100) * (1 - (pathV(h, 'archmage') || [0, 0])[1] / 100)));
-const schoolMul = (h, id) => 1 + SCHOOL_POWER[spellSchoolLv(h, id)] / 100;
+const spellCost = (h, id) => SPELLS[id].cost === 0 ? 0 : Math.max(1, Math.round(SPELLS[id].cost * (1 - SCHOOL_COST[spellSchoolLv(h, id)] / 100) * (1 - (pathV(h, 'archmage') || [0, 0])[1] / 100) * (heroFork(h, 'fluency') ? 0.85 : 1)));
+const SCHOOL_FORK = { fire: 'blaze', air: 'storm', earth: 'quake' }; // specjalizacje szkół: czary tej szkoły +25%
+const schoolMul = (h, id) => 1 + SCHOOL_POWER[spellSchoolLv(h, id)] / 100 + (SPELLS[id] && heroFork(h, SCHOOL_FORK[SPELLS[id].school]) ? 0.25 : 0);
 const skillVal = (h, id) => { const L = heroSkill(h, id); if (!L) return 0; const sp = heroSpec(h), v = SKILLS[id].v[L - 1]; return sp && sp.skill === id ? Math.round(v * (1 + 0.05 * h.level)) : v; };
 // --- specjalności bohaterów (HERO_SPECS) ---
 // Stwory specjalności: oba stwory z siedliska danego poziomu w rodzimej frakcji bohatera
@@ -467,7 +481,8 @@ function specBonus(h, cid) {
 // Atak wojownika daje procent obrażeń całej armii, więc rośnie razem z nią; czar zadaje stałe obrażenia, dlatego bez tego mnożnika
 // magowie słabli z każdym tygodniem (pomiar BalanceLab, etap 1 rozwoju bohatera)
 let SPELL_LVL_K = 0.2;
-const specSpellMul = (h, id) => { const sp = heroSpec(h); return (sp && sp.spell === id ? 1 + 0.03 * h.level : 1) * (1 + SPELL_LVL_K * Math.max(0, ((h && h.level) || 1) - 1)); };
+const specSpellMul = (h, id) => { const sp = heroSpec(h); return (sp && sp.spell === id ? 1 + 0.03 * h.level : 1) * (1 + SPELL_LVL_K * Math.max(0, ((h && h.level) || 1) - 1))
+  * (h && heroFork(h, 'powerCircle') && h.mana * 2 >= heroMaxMana(h) ? 1.15 : 1) * ((h && h._echo) || 1) * (h && h._blood ? 1.3 : 1); }; // Krąg mocy; echo czaru; Ofiara (czar opłacony krwią)
 function specText(h) {
   const sp = heroSpec(h); if (!sp) return '';
   if (sp.dw) { const [a] = specUnits(h), bo = specBonus(h, a); return `${CREATURES[a].plural} i ich ulepszenia: +${bo.att} do ataku, +${bo.def} do obrony, +1 do szybkości (rośnie z poziomem)`; }
@@ -476,7 +491,7 @@ function specText(h) {
   return `${SPELLS[sp.spell].name}: o ${3 * h.level}% mocniejszy (3% za poziom)`;
 }
 const specName = h => { const sp = heroSpec(h); return !sp ? '' : sp.dw ? CREATURES[specUnits(h)[0]].plural : sp.res ? resName(sp.res) : sp.skill ? SKILLS[sp.skill].name : SPELLS[sp.spell].name; };
-const skillText = (id, L) => `${SKILLS[id].name} (${SKILL_LEVELS[L]}): ${SKILLS[id].desc(SKILLS[id].v[L - 1])}`;
+const skillText = (id, L, fork) => `${SKILLS[id].name} (${SKILL_LEVELS[L]}): ${SKILLS[id].desc(SKILLS[id].v[L - 1])}${fork ? `; specjalizacja ${forkText(fork)}` : ''}`;
 // Propozycja przy awansie na poziom L: ulepszenie znanej umiejętności, nowa umiejętność i trzecia (nowa albo ulepszenie);
 // gdy którejś grupy brak, reszta z drugiej. Losowanie powtarzalne (ziarno gry, bohater, poziom).
 // Nowe umiejętności losowane z wagami klasy (skillWeight): ulubione częściej, obce rzadziej.
@@ -485,8 +500,8 @@ function skillOffer(st, h, L) {
   const fresh = (h.skills || []).length < MAX_SKILLS ? Object.keys(SKILLS).filter(id => !heroSkill(h, id) && (id !== 'necromancy' || NECRO_CLASSES.includes(h.cls))) : [];
   const r = mulberry32(thash(h.id, L, st.seed) ^ 0x5a1d);
   const pick = a => { if (!a.length) return null; const w = a.map(id => skillWeight(h.cls, id)); let x = r() * w.reduce((s, v) => s + v, 0), i = 0; while (i < a.length - 1 && (x -= w[i]) >= 0) i++; return a.splice(i, 1)[0]; };
-  const a = pick(up) || pick(fresh), b = pick(fresh) || pick(up), c = r() < 0.5 ? pick(fresh) || pick(up) : pick(up) || pick(fresh);
-  return [a, b, c].filter(Boolean);
+  const a = pick(up) || pick(fresh), b = pick(fresh) || pick(up), c = r() < 0.5 ? pick(fresh) || pick(up) : pick(up) || pick(fresh), d = heroFork(h, 'erudite') ? pick(fresh) || pick(up) : null; // Erudyta: czwarta
+  return [a, b, c, d].filter(Boolean);
 }
 function learnSkill(h, id) {
   const s = h.skills.find(s => s.id === id);
@@ -495,7 +510,7 @@ function learnSkill(h, id) {
 }
 // --- talenty (co TALENT_EVERY poziomów, wybór z trzech) ---
 let TALENTS_ON = true, PATHS_ON = true; // wyłączniki do pomiarów balansu (rozgrywka bez talentów / bez ścieżek mistrzowskich)
-const talentLevel = L => TALENTS_ON && L >= TALENT_EVERY && L % TALENT_EVERY === 0;
+const talentLevel = (L, h) => { const e = heroFork(h, 'quickStudy') ? 3 : TALENT_EVERY; return TALENTS_ON && L >= e && L % e === 0; }; // Szybka nauka: co 3 poziomy
 const talentReady = (h, id) => { const T = TALENTS[id]; return (T.again || !heroPerk(h, id)) && (!T.req || T.req.some(([sk, lv]) => heroSkill(h, sk) >= lv)); };
 function talentOffer(st, h, L) {
   const r = mulberry32(thash(h.id, L, st.seed) ^ 0x7a1e), pool = Object.keys(TALENTS).filter(id => !TALENTS[id].again && talentReady(h, id)), out = [];
@@ -519,49 +534,57 @@ const aiPickSkill = offer => offer.slice().sort((a, b) => AI_SKILL_ORDER.indexOf
 // Suma premii z założonych artefaktów (plecak nie działa)
 const heroBonus = (h, key) => Object.values(h.equip || {}).reduce((s, id) => s + (id ? ARTIFACTS[id].bonus[key] || 0 : 0), 0);
 const heroStat = (h, key) => h.stats[key] + heroBonus(h, key) + pathStat(h, key);
-const heroSight = h => h.sight + heroBonus(h, 'sight') + skillVal(h, 'scouting') + perkCount(h, 'explorer') + (heroTrait(h, 'dungeon') ? 2 : 0) + (pathV(h, 'wanderer') || [0, 0])[1];
+const heroSight = h => h.sight + (heroFork(h, 'farsight') ? 3 : 0) + heroBonus(h, 'sight') + skillVal(h, 'scouting') + perkCount(h, 'explorer') + (heroTrait(h, 'dungeon') ? 2 : 0) + (pathV(h, 'wanderer') || [0, 0])[1];
 // Premia bohatera do siły armii w potyczce: +5% za każdy punkt ataku i obrony
 const heroFactor = h => 1 + 0.05 * (heroStat(h, 'att') + heroStat(h, 'def'));
 // Doświadczenie z awansami. Wzrost cechy losowany deterministycznie (ziarno gry, bohater, poziom).
 // Każdy awans daje też wybór umiejętności: SI wybiera od razu, człowiek w oknie (po kolei, gdy awansów jest kilka).
 // then(): co zrobić po zamknięciu okien awansu (np. obejrzeć obiekt, na którym stoi bohater)
 function gainExp(st, h, amount, then, silent = false) { // silent: awans bez okien (np. uwolniony więzień)
-  h.exp += Math.round(amount * (1 + skillVal(h, 'learning') / 100 + (weekKind(st, 'exp') ? 0.25 : 0))); const ups = [];
+  const gain = Math.round(amount * (1 + skillVal(h, 'learning') / 100 + (weekKind(st, 'exp') ? 0.25 : 0))); h.exp += gain; const ups = [];
+  const mv = skillVal(h, 'mentor'); if (mv && gain > 0 && !h._mentor) for (const o of st.heroes) if (o !== h && o.owner === h.owner) { // Mentor: część doświadczenia dla innych bohaterów gracza
+    const g = Math.round(gain * mv / 100); if (o.owner !== ME) { o._mentor = true; gainExp(st, o, g, null, true); delete o._mentor; } else o.exp += g; } // człowiekowi awans przy najbliższym doświadczeniu
   while (h.exp >= expForLevel(h.level + 1)) {
     h.level++; const g = (CLASS_GROWTH[h.cls] || CLASS_GROWTH.knight).grow, r = thash(h.id, h.level, st.seed) % 100;
     let acc = 0, k = 0; for (; k < 3; k++) { acc += g[k]; if (r < acc) break; }
     h.stats[PRIMARY[k].id]++; ups.push({ level: h.level, stat: PRIMARY[k] });
   }
   if (h.owner !== ME || silent || !ups.length) {
-    for (const u of ups) { const offer = skillOffer(st, h, u.level); if (offer.length) learnSkill(h, aiPickSkill(offer)); if (talentLevel(u.level)) learnTalent(st, h, aiPickTalent(talentOffer(st, h, u.level))); }
+    for (const u of ups) { const offer = skillOffer(st, h, u.level); if (offer.length) learnSkill(h, aiPickSkill(offer)); const pf = pendingFork(h); if (pf) chooseFork(h, pf.id, aiPickFork(pf.id)); /* specjalizacja: komputer od razu */ if (talentLevel(u.level, h)) learnTalent(st, h, aiPickTalent(talentOffer(st, h, u.level))); }
     if (!h.mastery && h.level >= PATH_LEVELS[0] && PATHS_ON) h.mastery = pathOffer(h)[0]; // ścieżka mistrzowska: komputer (i awans bez okien) bierze pierwszą ze swojej klasy
     if (then) then(); return ups.length;
   }
   const portrait = locked => ({ iconH: 76, locked, icon: (ctx, cx, cy) => drawHeroPortrait(ctx, cx - 36, cy - 36, h, ownerColor(st, h.owner), 2) });
   // talent po wyborze umiejętności (co TALENT_EVERY poziomów)
   const talent = (i, u) => {
-    if (!talentLevel(u.level)) return path(i, u);
-    showDialog(`${h.name}: poziom ${u.level} odsłania talent. Wybierz jeden:`, talentOffer(st, h, u.level).map((id, k) => ({ label: TALENTS[id].name, sub: 'talent', tip: talentText(id) + '.', key: String(k + 1),
+    if (!talentLevel(u.level, h)) return path(i, u);
+    showChoice(`${h.name}: poziom ${u.level} odsłania talent. Wybierz jeden:`, talentOffer(st, h, u.level).map((id, k) => ({ label: TALENTS[id].name, sub: 'talent', tip: cap1(TALENTS[id].desc) + '.', key: String(k + 1),
       lead: (ctx, cx, cy) => skillIcon(ctx, 't_' + id, cx, cy), action: () => { learnTalent(st, h, id); path(i, u); } })), Object.assign(portrait(true), { bw: 200 }));
   };
   // etapy rozwoju: na 10. poziomie wybór ścieżki mistrzowskiej, na 20. ścieżka staje się legendą (okno z wieścią)
   const path = (i, u) => {
-    if (PATHS_ON && u.level >= PATH_LEVELS[0] && !h.mastery) return showDialog(`${h.name} osiąga mistrzostwo (poziom ${u.level}). Wybierz ścieżkę mistrzowską – na zawsze; na ${PATH_LEVELS[1]}. poziomie stanie się legendą:`,
-      pathOffer(h).map((id, k) => ({ label: HERO_PATHS[id].name, sub: 'ścieżka', tip: `${pathText(id, 1)}. Legenda (${PATH_LEVELS[1]}. poziom) – ${pathText(id, 2)}.`, key: String(k + 1),
+    if (PATHS_ON && u.level >= PATH_LEVELS[0] && !h.mastery) return showChoice(`${h.name} osiąga mistrzostwo (poziom ${u.level}). Wybierz ścieżkę mistrzowską – na zawsze; na ${PATH_LEVELS[1]}. poziomie stanie się legendą:`,
+      pathOffer(h).map((id, k) => ({ label: HERO_PATHS[id].name, sub: `ścieżka · legenda: ${HERO_PATHS[id].legend}`, tip: `${cap1(HERO_PATHS[id].desc(HERO_PATHS[id].v[0]))}. Jako legenda (${PATH_LEVELS[1]}. poziom): ${HERO_PATHS[id].desc(HERO_PATHS[id].v[1])}.`, key: String(k + 1),
         lead: (ctx, cx, cy) => skillIcon(ctx, HERO_PATHS[id].icon, cx, cy), action: () => { h.mastery = id; h.mana = Math.min(h.mana, heroMaxMana(h)); next(i + 1); } })), Object.assign(portrait(true), { bw: 200 }));
     if (PATHS_ON && u.level === PATH_LEVELS[1] && h.mastery) return showDialog(`${h.name} staje się legendą! Ścieżka ${HERO_PATHS[h.mastery].name} → ${pathText(h.mastery, 2)}.`, [{ label: 'Chwała!', key: 'enter', action: () => next(i + 1) }],
       { iconH: 76, icon: (ctx, cx, cy) => skillIcon(ctx, HERO_PATHS[h.mastery].icon, cx, cy, 64) });
     next(i + 1);
   };
+  // specjalizacja: umiejętność doszła do poziomu eksperckiego – wybór jednej z dwóch na zawsze
+  const fork = (i, u) => {
+    const pf = pendingFork(h); if (!pf) return talent(i, u);
+    showChoice(`${SKILLS[pf.id].name} na poziomie eksperckim! ${h.name} wybiera specjalizację – na zawsze:`, SKILL_FORKS[pf.id].map((f, k) => ({ label: f.name, sub: `specjalizacja: ${SKILLS[pf.id].name}`, tip: cap1(f.desc) + '.', key: String(k + 1),
+      lead: (ctx, cx, cy) => skillIcon(ctx, pf.id, cx, cy), action: () => { chooseFork(h, pf.id, f.id); talent(i, u); } })), portrait(true));
+  };
   const next = i => {
     if (i >= ups.length) { if (then) then(); return; }
     const u = ups[i], offer = skillOffer(st, h, u.level), icon = portrait(offer.length > 0);
     const msg = `${h.name} osiąga poziom ${u.level}! +1 do ${u.stat.gen}.`;
-    if (!offer.length) { showDialog(msg, [{ label: 'Wspaniale', key: 'enter', action: () => talent(i, u) }], icon); return; }
-    showDialog(`${msg} Wybierz umiejętność:`, offer.map((id, k) => {
+    if (!offer.length) { showDialog(msg, [{ label: 'Wspaniale', key: 'enter', action: () => fork(i, u) }], icon); return; }
+    showChoice(`${msg} Wybierz umiejętność:`, offer.map((id, k) => {
       const L = heroSkill(h, id) + 1;
-      return { label: SKILLS[id].name, sub: SKILL_LEVELS[L], tip: skillText(id, L) + '.', key: String(k + 1), lead: (ctx, cx, cy) => skillIcon(ctx, id, cx, cy), action: () => { learnSkill(h, id); talent(i, u); } };
-    }), Object.assign(icon, { bw: 200 }));
+      return { label: SKILLS[id].name, sub: `${SKILL_LEVELS[L]}${L === 3 && SKILL_FORKS[id] ? ' · wybór specjalizacji' : L === 1 ? ' · nowa' : ''}`, tip: cap1(SKILLS[id].desc(SKILLS[id].v[L - 1])) + (L === 3 && SKILL_FORKS[id] ? `. Potem do wyboru: ${SKILL_FORKS[id].map(f => f.name).join(' albo ')}.` : '.'), key: String(k + 1), lead: (ctx, cx, cy) => skillIcon(ctx, id, cx, cy), action: () => { learnSkill(h, id); fork(i, u); } };
+    }), icon);
   };
   next(0); return ups.length;
 }
@@ -614,12 +637,12 @@ function giveArtifact(h, id) {
 }
 
 // --- czary: mana, nauka w gildii, czary na mapie -----------------------------------------------
-const heroMaxMana = h => Math.floor(10 * heroStat(h, 'kn') * (1 + skillVal(h, 'intelligence') / 100 + (pathV(h, 'sage') || [0])[0] / 100));
+const heroMaxMana = h => Math.floor(10 * heroStat(h, 'kn') * (1 + (skillVal(h, 'intelligence') + (heroFork(h, 'deepWell') ? 50 : 0)) / 100 + (pathV(h, 'sage') || [0])[0] / 100));
 const knows = (h, id) => (h.spells || []).includes(id);
 // Rozkazy bohatera (dane: ORDERS): pula Zapału na bitwę rośnie z obroną, siła rozkazów z atakiem; znane rozkazy z umiejętności
 // Skupienie: w bitwie co rundę wraca tyle many (z wiedzy, jak Zapał z obrony), nie ponad maksimum
 let MANA_REGEN_K = 0.34;
-const battleManaRegen = h => Math.floor(MANA_REGEN_K * heroStat(h, 'kn'));
+const battleManaRegen = h => Math.floor(MANA_REGEN_K * heroStat(h, 'kn') * (heroFork(h, 'meditation') ? 2 : 1));
 const heroValorMax = h => (h ? VALOR_BASE + VALOR_PER_DEF * heroStat(h, 'def') : 0);
 const knownOrders = h => (h ? Object.keys(ORDERS).filter(id => !ORDERS[id].need || ORDERS[id].need.some(s => heroSkill(h, s) > 0)) : []);
 // Czary gildii losowane raz, gdy powstaje dany poziom (deterministycznie z ziarna gry i miasta)
@@ -702,6 +725,7 @@ const armyStacks = a => a.filter(Boolean);
 const armySize = a => armyStacks(a).reduce((s, x) => s + x.n, 0);
 // Szybkość najwolniejszej jednostki decyduje o dziennym ruchu bohatera (jak w oryginale)
 function armySlowest(a) { const s = armyStacks(a); return s.length ? Math.min(...s.map(x => CREATURES[x.cid].spd)) : 4; }
+function armyFastest(a) { const s = armyStacks(a); return s.length ? Math.max(...s.map(x => CREATURES[x.cid].spd)) : 4; } // specjalizacja Konni gońcy
 // Siła armii = suma wartości bojowych (pole value w CREATURES)
 const armyPower = a => armyStacks(a).reduce((p, x) => p + x.n * CREATURES[x.cid].value, 0);
 // Dokłada jednostki do stosu tego samego typu albo na pierwsze wolne miejsce; false = brak miejsca
@@ -749,8 +773,8 @@ function townUpgrade(st, t, a, i) {
 // Przyrost tygodniowy: bazowy z jednostki, +50% z Cytadelą, +100% z Zamkiem (opisy w BUILDINGS)
 // Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
 function weeklyGrowth(t, L, st) {
-  const cid = factionOf(t.faction).dw['dw' + L][1], base = CREATURES[cid].growth, W = st && weekInfo(st);
-  return Math.floor(base * ((hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) + (hasB(t, 'grail') ? GRAIL_GROWTH : 0)) * (t.faction === 'stronghold' && L <= HORDE_LEVELS ? HORDE_K : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
+  const cid = factionOf(t.faction).dw['dw' + L][1], base = CREATURES[cid].growth, W = st && weekInfo(st), drill = st && st.heroes.some(h => h.owner === t.owner && h.x === t.x && h.y === t.y && heroFork(h, 'drill')) ? 1.1 : 1; // Musztra
+  return Math.floor(base * drill * ((hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) + (hasB(t, 'grail') ? GRAIL_GROWTH : 0)) * (t.faction === 'stronghold' && L <= HORDE_LEVELS ? HORDE_K : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
 }
 // Nowy tydzień: przyrost w siedliskach; w Miesiącu Zarazy zamiast przyrostu pula topnieje o połowę
 function townGrowthWeek(t, st) {
@@ -797,6 +821,7 @@ function startWeek(st, newMonth) {
     if (M && M.kind === 'monsters') o.count = Math.ceil(o.count * 1.5);
   }
   for (const t of st.towns) townGrowthWeek(t, st);
+  for (const P of st.players) if (!P.out && st.heroes.some(h => h.owner === P.id && heroFork(h, 'usury'))) P.resources.gold += Math.min(2000, Math.floor(P.resources.gold * 0.05)); // specjalizacja Lichwa
   weeklyTreasury(st);
   if (W.kind === 'harvest') for (const p of st.players) { p.resources.wood += HARVEST; p.resources.ore += HARVEST; }
   if (W.kind === 'magic') for (const h of st.heroes) h.mana = Math.max(h.mana, heroMaxMana(h));
@@ -895,7 +920,7 @@ function dailyIncomeAll(st, owner = ME) {
     inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; }
     if (autumn) { inc.wood += 1; inc.ore += 1; } if (t.faction === 'inferno') inc.sulfur += 1; // jesienne zbiory, cecha Inferna
   }
-  for (const h of st.heroes) if (h.owner === owner) { inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates') + (heroPerk(h, 'treasurer') ? 500 : 0); const gv = pathV(h, 'governor'); if (gv) { inc.gold += gv[0]; if (gv[1]) inc[PATH_RARE[st.dayTotal % 4]] += gv[1]; } const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; // specjalność: surowiec
+  for (const h of st.heroes) if (h.owner === owner) { if (heroFork(h, 'lands')) { inc.wood++; inc.ore++; } inc.gold += heroBonus(h, 'gold') + skillVal(h, 'estates') + (heroPerk(h, 'treasurer') ? 500 : 0); const gv = pathV(h, 'governor'); if (gv) { inc.gold += gv[0]; if (gv[1]) inc[PATH_RARE[st.dayTotal % 4]] += gv[1]; } const sp = heroSpec(h); if (sp && sp.res) inc[sp.res] += sp.n; // specjalność: surowiec
     for (const id of Object.values(h.equip || {})) if (id && ARTIFACTS[id].bonus.res) for (const [r, n] of Object.entries(ARTIFACTS[id].bonus.res)) inc[r] += n; } // relikwia kupiecka
   return inc;
 }
@@ -1074,6 +1099,7 @@ function hireHero(st, t, k) {
   if (P.resources.gold < HERO_COST) return { error: `Najem kosztuje ${HERO_COST} złota` };
   P.resources.gold -= HERO_COST; P.tavern.offers[k] = null; P.tavern.hired++;
   const h = tavernHero(st, owner, t.x, t.y, o); reveal(st, h.x, h.y, heroSight(h), owner); sfxFor(st, owner, 'coins');
+  if (st.heroes.some(x => x !== h && x.owner === owner && heroFork(x, 'academy'))) gainExp(st, h, 3000); // specjalizacja Akademia
   return { hero: h };
 }
 

@@ -381,7 +381,7 @@ function advanceDay(st) {
   st.day++; st.dayTotal++; let newWeek = false, newMonth = false;
   if (st.day > 7) { st.day = 1; st.week++; newWeek = true; if (st.week > 4) { st.week = 1; st.month++; newMonth = true; } }
   for (const h of st.heroes) {
-    h.mp = heroMaxMP(h);
+    h.mp = heroMaxMP(h) + (heroFork(h, 'supply') ? Math.min(500, Math.floor(h.mp / 2)) : 0); // Zaopatrzenie: połowa niewykorzystanego ruchu
     const t = st.towns.find(t => t.x === h.x && t.y === h.y && t.owner === h.owner); // w mieście z gildią pełna mana, poza nim +1 dziennie
     if (t && guildLevel(t)) visitGuild(st, t, h); else h.mana = Math.min(heroMaxMana(h), h.mana + 1 + skillVal(h, 'mysticism'));
     if (t) { const m = specialVisit(st, t, h); if (m && h.owner !== ME) h.mp = heroMaxMP(h); } // budowla specjalna (stajnie, wir many, klatka, Walhalla)

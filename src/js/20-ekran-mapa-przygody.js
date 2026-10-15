@@ -54,7 +54,7 @@ function drawObjCard(ctx, p) {
 function monsterCard(st, ob) {
   const c = CREATURES[ob.cid], q = ob.quest != null && st.objects[ob.quest], me = hero(st) ? armyPower(hero(st).army) : 0;
   const extra = [...(q && !q.dead && q.taken && q.taken[ME] ? [`Cel zadania: ${siteName(q)}.`] : []), ...(ob.ship ? ['Statek piracki.'] : []), `Nastawienie: ${MONSTER_MOODS[monsterMood(ob)]}.`, `Siła ok. ${monsterPower(ob)} · twoja armia ${me}.`];
-  return { cid: ob.cid, n: 0, qty: qtyName(ob.count), extra };
+  return { cid: ob.cid, n: 0, qty: qtyFor(st, ob.count), extra }; // Wywiad: dokładna liczebność
 }
 const monsterPower = ob => Math.max(100, Math.round(ob.count * CREATURES[ob.cid].value / 100) * 100); // siła potworów w przybliżeniu
 const isMine = (st, owner) => owner === ME || allied(st, owner, ME);
@@ -95,7 +95,7 @@ function drawHeroCard(ctx, p) {
   ctx.fillStyle = col; ctx.fillRect(x + 96, y + 66, 10, 10); text(ctx, ownerName(st, h.owner), x + 112, y + 76, { size: 13, weight: 500, color: '#c8b890' });
   cardStats(ctx, h, x + 22, y + 100);
   let yy = cardSkills(ctx, h, x + 22, y + 152, W0 - 44);
-  yy = cardArmy(ctx, h.army, x + 15, yy + 4, mine);
+  yy = cardArmy(ctx, h.army, x + 15, yy + 4, mine || playerFork(st, ME, 'informant')); // Informator: dokładna armia wroga
   if (mine) text(ctx, `Ruch ${h.mp}/${heroMaxMP(h)} · Mana ${h.mana}/${heroMaxMana(h)} · Doświadczenie ${h.exp}`, x + W0 / 2, yy + 16, { size: 13, weight: 600, align: 'center', color: '#e8d8b0' });
   else cardPower(ctx, 'Siła armii ok.', Math.round(armyPower(h.army) * heroFactor(h) / 100) * 100, x + W0 / 2, yy + 14);
   ctx.restore();

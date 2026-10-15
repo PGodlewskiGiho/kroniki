@@ -395,7 +395,7 @@ G.screens.battle = {
     if (this.phase !== 'input') return; const B = this.B;
     const mh = sideHero(B, this.me); if (!mh) return;
     if (B.cast[this.me]) { B.log.push('W tej rundzie bohater już działał.'); return; }
-    showSpellbook(mh, 'battle', id => { this.casting = id; this.tele = null; this.onPointerMove(G.mouse.x, G.mouse.y); }, id => battleCost(B, casterSide(B), mh, id));
+    showSpellbook(mh, 'battle', id => { this.casting = id; this.tele = null; this.onPointerMove(G.mouse.x, G.mouse.y); }, id => battleCost(B, casterSide(B), mh, id), id => castAffordable(B, casterSide(B), mh, id));
   },
   // Rozkazy: lista znanych rozkazów z kosztem w Zapale; wybrany czeka na wskazanie celu jak czar
   openOrders() {

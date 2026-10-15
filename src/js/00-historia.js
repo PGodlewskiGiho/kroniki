@@ -515,5 +515,12 @@
    Magowie: sztuczka Iskra (darmowa, w każdej księdze), skupienie (co rundę bitwy wraca mana = wiedza / 3) i czary mocniejsze o 20%
    za każdy poziom bohatera (atak wojownika rośnie z armią procentowo, czar zadaje stałe obrażenia). SI wydaje rozkazy i rzuca Iskrę.
    Pomiar: mag/wojownik 1,04 (poziom 5), 0,95 (10), 1,05 (15), 0,95 (20), 1,02 (25); test pilnuje ±20%.
+   Rozwój bohatera, etap 2 (umiejętności 2.0): każda umiejętność na poziomie eksperckim daje wybór jednej z dwóch specjalizacji
+   na zawsze (SKILL_FORKS, h.skills[i].fork: np. Atak → Przełamanie albo Kontra, Łucznictwo → Snajper albo Grad strzał, Logistyka →
+   Zaopatrzenie albo Konni gońcy, Magia Ziemi → Trzęsienie albo Bastion). 11 nowych umiejętności: Krwawa magia (brak many płaci
+   życie oddziału), Echo (czar powtarza się), Szyk, Alchemia polowa, Poskramiacz, Mentor, Szpiegostwo, Fortyfikacja, Dobijanie,
+   Żniwo dusz, Kwatermistrz – każda też z dwiema specjalizacjami. Okno awansu z kartami (pełny opis bez dymków, także na telefonie);
+   zaległą specjalizację (stary zapis) wybiera się kliknięciem świecącej umiejętności na ekranie bohatera. Komputer wybiera sam.
+   build.js sprawdza składnię każdego pliku, a testy przy błędzie wczytywania gry padają od razu (zamiast czekać po 2 minuty).
    ===================================================================================== */
 

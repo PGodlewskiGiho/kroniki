@@ -1349,7 +1349,8 @@ const SKILL_TINT = { might: '#7a2e22', magic: '#2a3e7a', land: '#2e5a2e', gold: 
 const SKILL_GROUP = { leadership: 'might', offense: 'might', archery: 'might', armorer: 'might', artillery: 'might', ballistics: 'might', firstAid: 'might', resistance: 'might',
   sorcery: 'magic', intelligence: 'magic', mysticism: 'magic', wisdom: 'magic', eagleSight: 'magic', learning: 'magic',
   logistics: 'land', pathfinding: 'land', scouting: 'land', navigation: 'land', luck: 'gold', estates: 'gold', necromancy: 'dark',
-  tactics: 'might', triage: 'might', plunder: 'gold', diplomacy: 'gold', interference: 'magic' };
+  tactics: 'might', triage: 'might', plunder: 'gold', diplomacy: 'gold', interference: 'magic',
+  bloodMagic: 'dark', echo: 'magic', formation: 'might', alchemy: 'gold', beastTamer: 'land', mentor: 'magic', espionage: 'land', fortify: 'might', executioner: 'might', soulHarvest: 'dark', quartermaster: 'might' };
 function drawSkillIcon(c, id) {
   const tal = id.startsWith('t_'), sc = !tal && SKILLS[id].school, bg = tal ? SKILL_TINT.talent : sc ? shadeHex(SCHOOLS[sc].col, -0.55) : SKILL_TINT[SKILL_GROUP[id]] || '#4a3e2c', fg = '#f4e8c4', gd = '#ffd060', dk = shadeHex(bg, -0.4);
   c.fillStyle = '#c8a050'; c.fillRect(-15, -15, 30, 30); c.fillStyle = bg; c.fillRect(-13, -13, 26, 26); c.fillStyle = 'rgba(255,240,200,.16)'; c.fillRect(-13, -13, 26, 4);
@@ -1383,6 +1384,19 @@ function drawSkillIcon(c, id) {
     case 'waterMagic': c.fillStyle = '#6ab8ff'; c.beginPath(); c.moveTo(0, -11); c.quadraticCurveTo(9, 2, 7, 5); c.arc(0, 4, 7, 0.14, Math.PI - 0.14); c.quadraticCurveTo(-9, 2, 0, -11); c.fill(); dot(-2.5, 4, 2, '#d8f0ff'); break;
     case 'earthMagic': poly([[-11, 9], [-4, -5], [0, 1], [4, -9], [11, 9]], '#a8864a'); poly([[4, -9], [7, -3], [4, -4], [2, -5]], fg); poly([[-4, -5], [-2, -2], [-5, -1]], fg); c.fillStyle = '#6a8a3a'; c.fillRect(-11, 8, 22, 2); break;
     case 'eagleSight': poly([[-11, -2], [-6, -6], [-2, -3], [0, -7], [2, -3], [6, -6], [11, -2], [5, 0], [2, 6], [0, 9], [-2, 6], [-5, 0]], '#c8a060'); dot(0, -2, 2, gd); poly([[-1, -1], [1, -1], [0, 2]], '#e8c070'); break;
+    // nowe umiejętności (etap 2): kropla krwi z gwiazdą, fale echa, rząd tarcz, kolba, łapa z obrożą, zwój z piórem, oko w kapturze,
+    // blanki, topór katowski, sierp z duszą, kołczan
+    case 'bloodMagic': c.fillStyle = '#c8202a'; c.beginPath(); c.moveTo(0, -11); c.quadraticCurveTo(9, 2, 7, 5); c.arc(0, 4, 7, 0.14, Math.PI - 0.14); c.quadraticCurveTo(-9, 2, 0, -11); c.fill(); for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; line(1.4, '#ffd0d0', [Math.cos(a) * 1, 4 + Math.sin(a) * 1], [Math.cos(a) * 4, 4 + Math.sin(a) * 4]); } break;
+    case 'echo': c.lineWidth = 1.8; for (const [r, a] of [[3, '#ffffff'], [6.5, '#c8d8ff'], [10, '#8aa8e8']]) { c.strokeStyle = a; c.beginPath(); c.arc(-4, 0, r, -0.9, 0.9); c.stroke(); } dot(-5, 0, 2.2, gd); break;
+    case 'formation': for (const x of [-7, 0, 7]) { poly([[x - 3.5, -7], [x + 3.5, -7], [x + 3.5, 2], [x, 7], [x - 3.5, 2]], '#b8c0cc'); dot(x, -2, 1.2, '#6a4a2a'); } line(1.6, gd, [-11, 9], [11, 9]); break;
+    case 'alchemy': poly([[-2.5, -10], [2.5, -10], [2.5, -4], [8, 7], [6, 9], [-6, 9], [-8, 7], [-2.5, -4]], '#d8e8f0'); poly([[-5.5, 2], [5.5, 2], [8, 7], [6, 9], [-6, 9], [-8, 7]], '#7ad04a'); dot(-2, 5, 1.3, '#e8ffb0'); dot(2, 3.5, 1, '#e8ffb0'); c.fillStyle = '#8a5a2a'; c.fillRect(-3, -11, 6, 2.5); break;
+    case 'beastTamer': dot(0, 3, 5, '#a87a4a'); for (const [x, y] of [[-6, -3], [-2, -7], [2, -7], [6, -3]]) dot(x, y, 2.4, '#a87a4a'); c.lineWidth = 1.8; c.strokeStyle = gd; c.beginPath(); c.arc(0, 3, 7.5, 0.3, Math.PI - 0.3); c.stroke(); break;
+    case 'mentor': poly([[-9, -8], [7, -8], [9, -6], [9, 8], [-7, 8], [-9, 6]], '#e8dcb8'); for (const y of [-4, 0, 4]) line(1, '#8a6a3a', [-6, y], [4, y]); line(1.8, '#f0f0f0', [10, -11], [2, 3]); poly([[2, 3], [4, 0], [1, 1]], '#3a3a44'); break;
+    case 'espionage': poly([[-10, 6], [0, -10], [10, 6], [6, 9], [-6, 9]], '#3a3444'); c.fillStyle = '#e8e0c8'; c.beginPath(); c.ellipse(0, 2, 5, 2.6, 0, 0, TAU); c.fill(); dot(0, 2, 1.8, '#3a8a5a'); dot(0, 2, 0.8, '#101010'); break;
+    case 'fortify': c.fillStyle = '#a8a098'; c.fillRect(-10, -2, 20, 11); for (const x of [-10, -3, 4]) c.fillRect(x, -7, 5, 5); c.fillStyle = '#5a5248'; c.fillRect(-2, 3, 4, 6); line(1, '#7a7268', [-10, 3], [10, 3]); break;
+    case 'executioner': line(2.4, '#8a5a2a', [-8, 10], [5, -6]); poly([[3, -11], [11, -5], [9, 1], [1, -4]], '#c8ccd4'); poly([[9, 1], [11, -5], [12, -1]], '#ff6a5a'); break;
+    case 'soulHarvest': c.lineWidth = 2.2; c.strokeStyle = '#c8ccd4'; c.beginPath(); c.arc(1, -2, 8, Math.PI * 0.9, Math.PI * 1.9); c.stroke(); line(2, '#6a4a2a', [-7, -1], [-1, 11]); c.fillStyle = 'rgba(150,240,200,.9)'; c.beginPath(); c.arc(4, 4, 3, 0, TAU); c.fill(); poly([[1, 5], [7, 5], [4, 11]], 'rgba(150,240,200,.7)'); break;
+    case 'quartermaster': poly([[-5, -10], [5, -10], [6, 10], [-6, 10]], '#8a5a2a'); for (const x of [-3, 0, 3]) { line(1.2, '#e8dcb8', [x, -12], [x, -3]); poly([[x - 1.5, -12], [x + 1.5, -12], [x, -14]], '#c8ccd4'); } line(1.4, gd, [-6, 2], [6, 2]); break;
     default: { // talenty i nowe umiejętności bez własnego rysunku: gwiazda (talent) albo pierwsza litera nazwy
       if (tal) { const P = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 4 : 10; P.push([Math.cos(a) * r, Math.sin(a) * r]); } poly(P, gd); }
       else { c.font = 'bold 16px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = fg; c.fillText(SKILLS[id].name[0], 0, 1); } }
@@ -1398,7 +1412,7 @@ function skillSprite(id, size = 32) {
 }
 function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id, size), cx, cy, size / 32); }
 // Księga czarów. mode: 'view' (tylko opis), 'adv' (czary mapy), 'battle' (czary bitwy). onPick(id) po wyborze.
-function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id)) { // costOf: koszt w bitwie (drugi czar Bitewnego maga droższy)
+function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id), afford = id => costOf(id) <= h.mana) { // costOf: koszt w bitwie (drugi czar Bitewnego maga droższy)
   Sfx.play('book', { vol: 0.6 });
   // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły
   const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || []), ...(hasBook(h) ? ['spark'] : [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
@@ -1408,7 +1422,7 @@ function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id)) { // co
   const list = () => all.filter(id => !school || SPELLS[id].school === school), pages = () => Math.max(1, Math.ceil(list().length / PER)), shown = () => list().slice(page * PER, page * PER + PER);
   const cell = i => BOOK ? (k => ({ x: x + 34 + (k >= 10 ? (w - 68) / 2 + 14 : 0) + (k % 2) * cw, y: y + 108 + Math.floor((k % 10) / 2) * rh, w: cw - 10, h: rh - 4 }))(i) // księga: 2 kolumny na stronę, lewa strona, potem prawa
     : ({ x: x + 24 + (i % cols) * cw, y: y + 104 + Math.floor(i / cols) * rh, w: cw - 10, h: rh - 4 });
-  const usable = id => mode !== 'view' && SPELLS[id].kind === mode && costOf(id) <= h.mana;
+  const usable = id => mode !== 'view' && SPELLS[id].kind === mode && afford(id); // afford: w bitwie także Krwawa magia
   const close = new Button(W / 2 - 70, y + hh - 54, 140, 40, 'Zamknij', () => { G.modal = null; }, { key: 'escape', size: 17 });
   const prev = new Button(W / 2 - 124, y + hh - 50, 44, 32, 'Poprzednia strona', () => { page = Math.max(0, page - 1); }, { icon: side(-1), key: 'arrowleft', tip: 'Poprzednia strona księgi.' });
   const next = new Button(W / 2 + 80, y + hh - 50, 44, 32, 'Następna strona', () => { page = Math.min(pages() - 1, page + 1); }, { icon: side(1), key: 'arrowright', tip: 'Następna strona księgi.' });

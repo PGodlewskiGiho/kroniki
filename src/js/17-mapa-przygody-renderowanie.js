@@ -952,7 +952,7 @@ function tileInfo(st, tx, ty) {
   if ((st.holes || []).includes(i)) return 'Wykopany dół: tu już ktoś szukał Graala';
   const ob = uiObjectAt(st, i);
   if (ob) {
-    if (ob.type === 'monster') return `${qtyName(ob.count)} ${CREATURES[ob.cid].gen}`;
+    if (ob.type === 'monster') return `${qtyFor(st, ob.count)} ${CREATURES[ob.cid].gen}`;
     if (ob.type === 'town') { const t = st.towns[ob.townId]; return `${t.name}, ${ob.owner === ME ? 'twoje miasto' : ob.owner < 0 ? 'miasto niezależne' : 'obce miasto'}`; }
     if (ob.type === 'mine') return `${MINES[ob.kind].name} (${ob.owner === ME ? 'należy do ciebie' : 'bez właściciela'})`;
     if (ob.type === 'chest') return 'Skrzynia ze skarbem';

@@ -17,9 +17,13 @@ async function openGame() {
   page.on('console', m => { if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push(`console: ${m.text()}`); });
   await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   page.on('requestfailed', r => { if (!/fonts\.(googleapis|gstatic)\.com/.test(r.url())) errors.push(`requestfailed: ${r.url()}`); });
+  // błąd skryptu przy wczytywaniu (np. składnia): od razu, z treścią błędu – zamiast czekać 2 minuty na grę, która nie wstanie
+  let loadErr = null; const onLoadErr = e => { loadErr = e; }; page.on('pageerror', onLoadErr);
+  const ready = (fn, what) => Promise.race([page.waitForFunction(fn, null, { timeout: 120000 }),
+    new Promise((_, rej) => { const t = setInterval(() => { if (loadErr) { clearInterval(t); rej(new Error(`gra się nie wczytała (${what}): ${loadErr.message}`)); } }, 200); page.once('close', () => clearInterval(t)); })]);
   await page.goto(GAME_URL, { timeout: 120000 }); // plik gry ok. 96 MB: lokalnie ~10 s, na CI bywa ponad domyślne 30 s
-  await page.waitForFunction(() => typeof G !== 'undefined' && G.screen, null, { timeout: 120000 });
-  await page.waitForFunction(() => unitArtReady(), null, { timeout: 120000 }); // wbudowane arkusze jednostek i 56 bohaterów (dekodują się asynchronicznie; na wolnym CI dłużej niż 30 s)
+  await ready(() => typeof G !== 'undefined' && G.screen, 'G.screen');
+  await ready(() => unitArtReady(), 'arkusze jednostek'); page.off('pageerror', onLoadErr); // wbudowane arkusze jednostek i 56 bohaterów (dekodują się asynchronicznie; na wolnym CI dłużej niż 30 s)
   return { browser, page, errors };
 }
 

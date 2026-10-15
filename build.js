@@ -20,6 +20,9 @@ function b85(buf) {
 function build() {
   const dir = path.join(SRC, 'js'), files = fs.readdirSync(dir).filter(f => f.endsWith('.js')).sort();
   const js = files.map(f => { const s = fs.readFileSync(path.join(dir, f), 'utf8'); return s.endsWith('\n') ? s : s + '\n'; }).join('');
+  // składnia: zepsuty plik (np. komentarz // połykający resztę linii) zatrzymuje budowanie z nazwą pliku i numerem linii, zamiast dać grę, która się nie wczyta
+  for (const f of files) { const src = fs.readFileSync(path.join(dir, f), 'utf8'); try { new (require('vm').Script)(`(function(){${src}\n})`, { filename: f }); } catch (e) { throw new Error(`src/js/${f}: ${e.message} (${(e.stack.split('\n')[0] || '').trim()})`); } }
+  try { new (require('vm').Script)(js, { filename: 'gra.js' }); } catch (e) { throw new Error(`kod gry: ${e.message}`); }
   // znacznik kompilacji: skrót kodu gry (ten sam kod = ten sam znacznik), widoczny w menu przy wersji – łatwo sprawdzić, czy aplikacja się zaktualizowała
   const buildId = require('crypto').createHash('sha1').update(js).digest('hex').slice(0, 6);
   const shell = fs.readFileSync(path.join(SRC, 'szablon.html'), 'utf8');
