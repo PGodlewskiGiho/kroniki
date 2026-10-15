@@ -38,8 +38,8 @@ i figurkę mapy, z pauzą, regulacją tempa i odbiciem. Używa wypalonych klatek
 
 ## Publikacja
 
-Po każdej zmianie w `main` workflow „Publikacja (GitHub Pages)” uruchamia testy i publikuje grę
-jako `index.html` (jednorazowo: Settings → Pages → Source: „GitHub Actions”).
+Gra nie jest publikowana na GitHub Pages (repozytorium może być prywatne). Plik `Kroniki Królestw.html`
+działa po otwarciu w przeglądarce; APK na Androida buduje workflow „Aplikacja Android (APK)”.
 
 ## Bezpieczeństwo
 
