@@ -414,7 +414,7 @@ function showGuildView(st, t, scr) {
         drawSprite(ctx, spellSprite(this.sel), tx + 20, ty + 14, 1.5);
         text(ctx, Sp.name, tx + 46, ty + 6, { size: 17, color: '#f3e2b0', fam: 'title' });
         text(ctx, `Poziom ${Sp.level} · ${Sp.cost} many · ${Sp.kind === 'battle' ? 'czar bitewny' : 'czar mapy'}`, tx + 46, ty + 24, { size: 14, weight: 600, color: UI.txt2 });
-        ctx.font = font(15, 600, 'body'); wrapText(ctx, `${cap1(Sp.desc(Sp.kind === 'adv' ? sp : effSp(sp)))}.`, tw).slice(0, 4).forEach((l, i) => text(ctx, l, tx, ty + 50 + i * 17, { size: 15, weight: 600, color: UI.txt }));
+        { const f = wrapFit(ctx, `${cap1(Sp.desc(Sp.kind === 'adv' ? sp : effSp(sp)))}.`, tw, 4, { size: 15, weight: 600 }); f.lines.forEach((l, i) => text(ctx, l, tx, ty + 50 + i * 17 * f.k, { size: f.size, weight: 600, color: UI.txt })); }
         text(ctx, `Moc czarów: ${sp}${h ? ` (${h.name})` : ' (bez bohatera)'}`, tx, ty + 124, { size: 14, weight: 600, color: UI.txt2 });
         text(ctx, h ? (knows(h, this.sel) ? `${h.name} zna ten czar.` : `${h.name} jeszcze go nie zna.`) : 'Bohater pozna go, wchodząc do miasta.', tx, ty + 146, { size: 12, italic: true, weight: 600, color: h && knows(h, this.sel) ? '#8ad080' : '#e0b070' });
       } else {

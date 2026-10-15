@@ -259,8 +259,8 @@ function drawPanel(ctx, st, scr) {
   if (PANEL.compact) return drawCompactInfo(ctx, st, scr);
   text(ctx, `Tydzień ${weekName(st)}`, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 18, { size: 15, align: 'center', color: UI.goldHi, fam: 'title' });
   divider(ctx, INFOBOX.x + 16, INFOBOX.x + INFOBOX.w - 16, INFOBOX.y + 32);
-  const info = panelInfoText(st, scr); ctx.font = font(15, 600, 'body');
-  wrapText(ctx, info.text, INFOBOX.w - 24).slice(0, 4).forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18, { size: 15, weight: 600, align: 'center', color: info.col }));
+  const info = panelInfoText(st, scr), f = wrapFit(ctx, info.text, INFOBOX.w - 24, 4, { size: 15, weight: 600 });
+  f.lines.forEach((l, i) => text(ctx, l, INFOBOX.x + INFOBOX.w / 2, INFOBOX.y + 50 + i * 18 * f.k, { size: f.size, weight: 600, align: 'center', color: info.col }));
 }
 // Środek pola mapy na ekranie (jednostki interfejsu)
 const tileScreen = (st, tx, ty) => [VIEW.x + (tx * T + T / 2 - st.cam.x) * ZOOM, VIEW.y + (ty * T + T / 2 - st.cam.y) * ZOOM];
@@ -268,20 +268,20 @@ const tileScreen = (st, tx, ty) => [VIEW.x + (tx * T + T / 2 - st.cam.x) * ZOOM,
 function drawTapInfo(ctx, st, scr) {
   const I = scr.tapInfo, h = hero(st); if (!I || !h || G.time - I.t > 12 || h.moving || G.modal) return;
   if (I.ok && !(h.dest && h.dest[0] === I.tx && h.dest[1] === I.ty)) { scr.tapInfo = null; return; }
-  const w = Math.min(VIEW.w - 40, 600), x = VIEW.x + (VIEW.w - w) / 2; ctx.font = font(16, 600, 'body');
-  const lines = wrapText(ctx, I.text, w - 36).slice(0, 4), foot = I.ok ? `Stuknij cel jeszcze raz, aby wyruszyć (${I.steps} ${I.steps === 1 ? 'pole' : I.steps % 10 >= 2 && I.steps % 10 <= 4 && (I.steps % 100 < 10 || I.steps % 100 >= 20) ? 'pola' : 'pól'}).` : '', hh = 22 + lines.length * 20 + (foot ? 24 : 0), y = VIEW.y + 10;
+  const w = Math.min(VIEW.w - 40, 600), x = VIEW.x + (VIEW.w - w) / 2, f = wrapFit(ctx, I.text, w - 36, 4, { size: 16, weight: 600 }), lh = 20 * f.k;
+  const lines = f.lines, foot = I.ok ? `Stuknij cel jeszcze raz, aby wyruszyć (${I.steps} ${I.steps === 1 ? 'pole' : I.steps % 10 >= 2 && I.steps % 10 <= 4 && (I.steps % 100 < 10 || I.steps % 100 >= 20) ? 'pola' : 'pól'}).` : '', hh = 22 + lines.length * lh + (foot ? 24 : 0), y = VIEW.y + 10;
   drawParchment(ctx, x, y, w, hh);
-  lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 22 + i * 20, { size: 16, weight: 600, align: 'center', color: '#2a1606' }));
-  if (foot) text(ctx, foot, x + w / 2, y + 22 + lines.length * 20 + 6, { size: 15, weight: 700, italic: true, align: 'center', color: '#6a3a10' });
+  lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 22 + i * lh, { size: f.size, weight: 600, align: 'center', color: '#2a1606' }));
+  if (foot) text(ctx, foot, x + w / 2, y + 22 + lines.length * lh + 6, { size: 15, weight: 700, italic: true, align: 'center', color: '#6a3a10' });
   const [sx, sy] = tileScreen(st, I.tx, I.ty); ctx.save(); ctx.strokeStyle = 'rgba(255,226,140,.9)'; ctx.lineWidth = 2.5; ctx.setLineDash([6, 4]); ctx.lineDashOffset = -G.time * 20; // cel zaznaczony na mapie
   ctx.strokeRect(sx - T * ZOOM / 2 + 1, sy - T * ZOOM / 2 + 1, T * ZOOM - 2, T * ZOOM - 2); ctx.restore(); G.dirty = true;
 }
 // Kompaktowy panel (niskie okno): ważne wieści (tura przeciwnika, komunikaty) jako pasek u dołu mapy zamiast okienka w panelu
 function drawCompactInfo(ctx, st, scr) {
   if (!scr.aiRun && !(scr.flashMsg && G.time - scr.flashMsg.t < (scr.flashMsg.col ? 4 : 2.2))) return;
-  const info = panelInfoText(st, scr); ctx.font = font(16, 600, 'body'); const lines = wrapText(ctx, info.text, VIEW.w - 60).slice(0, 2), h = 14 + lines.length * 20, y = VIEW.y + VIEW.h - h - 10;
+  const info = panelInfoText(st, scr), f = wrapFit(ctx, info.text, VIEW.w - 60, 2, { size: 16, weight: 600 }), lines = f.lines, lh = 20 * f.k, h = 14 + lines.length * lh, y = VIEW.y + VIEW.h - h - 10;
   ctx.save(); ctx.fillStyle = 'rgba(16,10,4,.82)'; ctx.fillRect(VIEW.x + 20, y, VIEW.w - 40, h); ctx.strokeStyle = 'rgba(201,161,74,.7)'; ctx.lineWidth = 1; ctx.strokeRect(VIEW.x + 20.5, y + 0.5, VIEW.w - 41, h - 1); ctx.restore();
-  lines.forEach((l, i) => text(ctx, l, VIEW.x + VIEW.w / 2, y + 17 + i * 20, { size: 16, weight: 600, align: 'center', color: info.col }));
+  lines.forEach((l, i) => text(ctx, l, VIEW.x + VIEW.w / 2, y + 7 + lh / 2 + i * lh, { size: f.size, weight: 600, align: 'center', color: info.col }));
 }
 G.screens.adventure = {
   // Zawsze 60 klatek; _busy: coś się rusza (kamera, bohater, napisy) – drawMapView wybiera warstwy z zapasem albo w widoku

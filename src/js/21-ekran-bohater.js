@@ -189,9 +189,8 @@ G.screens.hero = {
     this.bPrev.disabled = this.bagPage === 0; this.bNext.disabled = this.bagPage >= pages - 1;
     if (pages > 1) text(ctx, `${this.bagPage + 1} / ${pages}`, 602, 461, { size: 13, italic: true, weight: 500, align: 'center', color: '#c8b68a' });
     const all = {}; for (const id of Object.values(h.equip)) if (id) for (const [k, v] of Object.entries(ARTIFACTS[id].bonus)) all[k] = (all[k] || 0) + v;
-    ctx.font = font(13, 500, 'body');
-    wrapText(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 236).slice(0, 2)
-      .forEach((l, i) => text(ctx, l, 602, 453 + i * 14, { size: 13, weight: 600, align: 'center', color: UI.txt2 })); // między strzałkami plecaka
+    const af = wrapFit(ctx, Object.keys(all).length ? `Premie z artefaktów: ${artBonusText(all)}.` : 'Brak założonych artefaktów. Znajdziesz je na mapie, zwykle pod strażą potworów.', 236, 2, { size: 13, weight: 600 });
+    af.lines.forEach((l, i) => text(ctx, l, 602, 453 + i * 14 * af.k, { size: af.size, weight: 600, align: 'center', color: UI.txt2 })); // między strzałkami plecaka
     for (let i = 0; i < MAX_SKILLS; i++) {
       const r = this.skillRect(i), sk = h.skills[i], hot = !G.modal && inRect(G.mouse.x, G.mouse.y, r);
       slotBox(ctx, r.x, r.y, r.w, r.h, hot ? 'hover' : sk ? '' : 'off');

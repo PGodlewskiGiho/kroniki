@@ -24,6 +24,7 @@ function goldRim(c, x, y, w, h, t = 4) {
 }
 // Ciemna skóra (wnętrze paneli): ciepłe plamy, drobne ziarno, przyciemnione brzegi
 function leatherFill(c, x, y, w, h, seed = 1, tone = 0) {
+  textBox(c, x, y, w, h); // skóra = tło panelu, karty albo dymku
   c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); const r = mulberry32(seed * 977 + Math.round(w) * 7 + Math.round(h));
   const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, shadeHex('#3a291c', tone)); g.addColorStop(1, shadeHex('#24180f', tone)); c.fillStyle = g; c.fillRect(x, y, w, h);
   for (let i = 0; i < w * h / 2500 + 4; i++) { const px = x + r() * w, py = y + r() * h, rad = 20 + r() * 70, gg = c.createRadialGradient(px, py, 0, px, py, rad), a = 0.05 + r() * 0.07;
@@ -120,9 +121,9 @@ function paintPanel(c, w, h) {
   c.restore();
 }
 // Panel w już rysowanej warstwie (np. rama ekranu miasta): bez osobnej warstwy
-function paintPanelAt(c, x, y, w, h) { c.save(); c.translate(x - 2, y - 2); paintPanel(c, w, h); c.restore(); }
+function paintPanelAt(c, x, y, w, h) { textBox(c, x, y, w, h); c.save(); c.translate(x - 2, y - 2); paintPanel(c, w, h); c.restore(); }
 // Pergamin (tło okien i paneli): pixel art z pamięci (uiLayer): jasny środek, przypalone brzegi w ditheringu, włókna papieru
-function drawParchment(ctx, x, y, w, h) { drawUi(ctx, uiLayer(`parch_${w}x${h}`, w + 16, h + 16, c => paintParchment(c, 4, 4, w, h)), x - 4, y - 4); drawCorners(ctx, x, y, w, h); }
+function drawParchment(ctx, x, y, w, h) { textBox(ctx, x, y, w, h); drawUi(ctx, uiLayer(`parch_${w}x${h}`, w + 16, h + 16, c => paintParchment(c, 4, 4, w, h)), x - 4, y - 4); drawCorners(ctx, x, y, w, h); }
 function paintParchment(ctx, x, y, w, h) {
   if (!PIXEL_ART) return paintParchmentSmooth(ctx, x, y, w, h);
   ctx.save();
@@ -155,7 +156,7 @@ function paintParchmentSmooth(c, x, y, w, h) {
   c.restore();
 }
 // Rozłożona księga (czary): oprawa z czerwonej skóry w złotej listwie, dwie strony pergaminu z cieniem grzbietu i krawędziami kart
-function drawBook(ctx, x, y, w, h) { drawUi(ctx, uiLayer(`book_${w}x${h}_${uiArtReady() ? 1 : 0}`, w + 16, h + 16, c => paintBook(c, 4, 4, w, h)), x - 4, y - 4); }
+function drawBook(ctx, x, y, w, h) { textBox(ctx, x + 14, y + 10, w - 28, h - 24); drawUi(ctx, uiLayer(`book_${w}x${h}_${uiArtReady() ? 1 : 0}`, w + 16, h + 16, c => paintBook(c, 4, 4, w, h)), x - 4, y - 4); }
 function paintBook(c, x, y, w, h) {
   c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(x + 6, y + 9, w, h);
   leatherFill(c, x, y, w, h, 21, -0.05); c.save(); c.globalCompositeOperation = 'multiply'; c.fillStyle = '#b0402c'; c.fillRect(x, y, w, h); c.restore(); goldRim(c, x, y, w, h, 3);
@@ -185,12 +186,14 @@ function stoneFill(c, x, y, w, h) { drawUi(c, uiLayer(`${PIXEL_ART ? 'stone' : '
 function paintStone(c, w, h) { paintBricks(c, w, h); const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.3)'); c.fillStyle = g; c.fillRect(0, 0, w, h); }
 // Wnęka: wpuszczone pole w ramie (lista, opis, pasek zasobów): ciemniejsza skóra, wewnętrzny cień, cienka złota krawędź
 function insetBox(c, x, y, w, h, seed = 5) {
+  textBox(c, x, y, w, h);
   if (PIXEL_ART) { c.fillStyle = 'rgba(0,0,0,.45)'; rr(c, x, y, w, h, 4); c.fill(); c.strokeStyle = '#8a6d32'; c.lineWidth = 1.2; c.stroke(); return; }
   leatherFill(c, x, y, w, h, seed, -0.35); c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); c.shadowColor = 'rgba(0,0,0,.85)'; c.shadowBlur = 10; c.shadowOffsetY = 3; c.lineWidth = 6; c.strokeStyle = '#000'; c.strokeRect(x - 3, y - 3, w + 6, h + 6); c.restore();
   c.lineWidth = 1; c.strokeStyle = 'rgba(214,174,88,.55)'; c.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1); c.strokeStyle = 'rgba(0,0,0,.8)'; c.strokeRect(x - 1.5, y - 1.5, w + 3, h + 3);
 }
 // Gniazdo (oddział, artefakt, umiejętność, wiersz listy): ciemna wnęka z fazą z brązu; st: '' | 'hover' | 'sel' | 'off'
 function slotBox(c, x, y, w, h, st = '') {
+  textBox(c, x, y, w, h);
   if (PIXEL_ART) { c.fillStyle = st === 'sel' ? 'rgba(210,160,60,.25)' : 'rgba(0,0,0,.25)'; rr(c, x, y, w, h, 3); c.fill(); c.strokeStyle = st === 'sel' ? '#e0b24a' : '#6a5a3a'; c.lineWidth = 1.2; c.stroke(); return; }
   c.save(); const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, st === 'sel' ? '#3e2a12' : '#120c07'); g.addColorStop(1, st === 'sel' ? '#2a1c0c' : '#21170e'); c.fillStyle = g; c.fillRect(x, y, w, h);
   const ig = c.createLinearGradient(0, y, 0, y + Math.min(14, h / 2)); ig.addColorStop(0, 'rgba(0,0,0,.6)'); ig.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = ig; c.fillRect(x, y, w, Math.min(14, h / 2)); // cień od górnej krawędzi
@@ -334,7 +337,7 @@ function drawPopup(ctx, p) {
   const w = clamp(tw + 36, 140, 286), h = 26 + lines.length * 20;
   const x = clamp(p.x + 14, 8, VW - w - 8), y = clamp(p.y + 14, 8, VH - h - 8);
   if (PIXEL_ART) { drawParchment(ctx, x, y, w, h); lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 21 + i * 20, { size: 16, weight: 500, align: 'center', color: '#2a1606' })); return; }
-  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x + 3, y + 5, w, h); leatherFill(ctx, x, y, w, h, 9, -0.1); goldRim(ctx, x, y, w, h, 2); ctx.restore(); // podpowiedź: ciemna skóra (okno to pergamin)
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x + 3, y + 5, w, h); leatherFill(ctx, x, y, w, h, 9, -0.1); goldRim(ctx, x, y, w, h, 2); ctx.restore(); textBox(ctx, x, y, w, h); // podpowiedź: ciemna skóra (okno to pergamin)
   lines.forEach((l, i) => text(ctx, l, x + w / 2, y + 22 + i * 20, { size: 17, weight: 600, align: 'center', color: UI.txt }));
 }
 // Karta oddziału pod prawym przyciskiem (okno albo ekran z metodą rightCard), inaczej zwykły dymek z rightInfoAt

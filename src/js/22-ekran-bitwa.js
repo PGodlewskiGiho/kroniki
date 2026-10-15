@@ -723,8 +723,8 @@ G.screens.battle = {
     battleQueue(B, qn).forEach((u, i) => { const qx = qx0 + (i % perRow) * 41, qy = qy0 + Math.floor(i / perRow) * 42, own = u.side === 0 ? col : foeCol;
       slotBox(ctx, qx, qy, 38, 36, i === 0 ? 'sel' : ''); ctx.save(); ctx.beginPath(); ctx.rect(qx + 1, qy + 1, 36, 34); ctx.clip(); { const bs = battleSprite(lookCid(u), u.side === 0 ? 1 : -1, 'idle', 0), k = clamp(30 / (bs.c.height * bs.u), 0.3, 0.6); drawSprite(ctx, bs, qx + 19, qy + 35, k); } /* cała postać w kratce */ ctx.restore();
       ctx.fillStyle = own; ctx.fillRect(qx + 2, qy + 32, 34, 3); text(ctx, String(u.n), qx + 36, qy + 25, { size: 11, align: 'right', color: '#fff4cc', fam: 'title' }); });
-    ctx.font = font(15, 700, 'body'); const tipL = L.side ? wrapText(ctx, tip, tw).slice(0, 3) : [tip];
-    let tfs = 15; if (!L.side) while (tfs > 11 && ctx.measureText(tip).width > tw) { tfs--; ctx.font = font(tfs, 700, 'body'); }
+    const tf = L.side ? wrapFit(ctx, tip, tw, 3, { size: 15, weight: 700 }) : null, tipL = tf ? tf.lines : [tip]; ctx.font = font(15, 700, 'body');
+    let tfs = tf ? tf.size : 15; if (!L.side) while (tfs > 11 && ctx.measureText(tip).width > tw) { tfs--; ctx.font = font(tfs, 700, 'body'); }
     tipL.forEach((l, i) => text(ctx, l, tx, ty + i * 18, { size: tfs, weight: 700, color: UI.goldHi }));
     const ly = ty + tipL.length * 18, logN = L.side ? Math.max(1, Math.min(10, Math.floor((P.y + P.h - 14 - ly) / 16))) : 2;
     B.log.slice(-logN).forEach((l, i, a) => text(ctx, L.side ? fitText(ctx, l, tw, 13) : l, tx, ly + i * 16, { size: 13, weight: 600, color: i === a.length - 1 ? UI.txt : UI.txt2 }));

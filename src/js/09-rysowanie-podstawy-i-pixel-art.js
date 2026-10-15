@@ -33,18 +33,64 @@ function rrStairs(r) {
   for (let i = 0; i < n; i++) { const yy = i * u, d = k - Math.sqrt(Math.max(0, k * k - (k - yy - u / 2) ** 2)), ix = Math.max(0, Math.round(d / u) * u); out.push([ix, yy], [ix, yy + u]); }
   return (_stairs[k] = out);
 }
-function text(ctx, str, x, y, o = {}) {
-  ctx.font = font(o.size || 16, o.weight || 700, o.fam || 'body', o.italic);
-  ctx.fillStyle = o.color || '#2a1606'; ctx.textAlign = o.align || 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(str, x, y);
+// Napisy zawsze się mieszczą: ramki (pergamin, wnęka, gniazdo, księga, dymek) zapisują swój prostokąt w tej klatce (textBox),
+// a text() sprawdza, w której ramce leży napis i ile ma miejsca do jej brzegu (zależnie od wyrównania). Za szeroki napis
+// dostaje mniejszą czcionkę (do ~70%), a gdy i to za mało – jest ściśnięty w poziomie. Prostokąty w pikselach płótna
+// (po przekształceniu), więc przesunięcia i skala ekranu nie przeszkadzają; nowa ramka zasłania starsze, które całe przykrywa
+// (okno nad ekranem). Własna szerokość: o.max (0 = bez ograniczenia). Poza ramkami granicą jest brzeg płótna.
+const TextFit = { boxes: new WeakMap(), frame: 0, log: null };
+function textBox(ctx, x, y, w, h) {
+  const m = ctx.getTransform(), x0 = m.a * x + m.e, y0 = m.d * y + m.f, x1 = x0 + m.a * w, y1 = y0 + m.d * h;
+  let B = TextFit.boxes.get(ctx); if (!B || B.f !== TextFit.frame) TextFit.boxes.set(ctx, (B = { f: TextFit.frame, list: [] }));
+  B.list = B.list.filter(b => !(b[0] >= x0 && b[1] >= y0 && b[2] <= x1 && b[3] <= y1)); B.list.push([x0, y0, x1, y1]);
 }
+function textRoom(ctx, x, y, align) {
+  const m = ctx.getTransform(), px = m.a * x + m.c * y + m.e, py = m.b * x + m.d * y + m.f, k = Math.hypot(m.a, m.b) || 1, B = TextFit.boxes.get(ctx);
+  const room = (b, pad) => { const L = px - b[0] - pad, R = b[2] - px - pad; return align === 'center' ? 2 * Math.min(L, R) : align === 'right' || align === 'end' ? L : R; };
+  if (B && B.f === TextFit.frame) for (let i = B.list.length - 1; i >= 0; i--) { const b = B.list[i];
+    if (px > b[0] && px < b[2] && py > b[1] && py < b[3]) { const r = room(b, Math.min(6 * k, (b[2] - b[0]) * 0.06)); if (r >= (b[2] - b[0]) * 0.25) return r / k; } } // napis przy samym brzegu ramki do niej nie należy (np. tytuł nad dwiema stronami)
+  return Math.max(0, room([0, 0, ctx.canvas.width, ctx.canvas.height], 2 * k)) / k;
+}
+// Dopasowuje bieżącą czcionkę ctx do szerokości: zwraca maxWidth dla fillText (ściśnięcie) albo undefined
+function fitFont(ctx, str, room, size, mk) {
+  let w = ctx.measureText(str).width; if (w <= room + 0.5) return undefined;
+  const s0 = size, min = Math.max(9, Math.floor(size * 0.7));
+  while (size > min && w > room + 0.5) { size = Math.max(min, Math.min(size - 1, Math.floor(size * room / w))); ctx.font = mk(size); w = ctx.measureText(str).width; }
+  if (TextFit.log) TextFit.log.push({ str: String(str), size: s0, to: size, room: Math.round(room), squeeze: w > room + 0.5 });
+  return w > room + 0.5 ? room : undefined;
+}
+function text(ctx, str, x, y, o = {}) {
+  const size = o.size || 16, mk = s => font(s, o.weight || 700, o.fam || 'body', o.italic);
+  ctx.font = mk(size); ctx.fillStyle = o.color || '#2a1606'; ctx.textAlign = o.align || 'left'; ctx.textBaseline = 'middle';
+  const room = o.max === 0 ? 0 : o.max || textRoom(ctx, x, y, ctx.textAlign), mw = room > 0 ? fitFont(ctx, str, room, size, mk) : undefined;
+  if (mw === undefined) ctx.fillText(str, x, y); else ctx.fillText(str, x, y, mw);
+}
+// Zawijanie po słowach; słowo dłuższe niż cały wiersz jest dzielone na kawałki
 function wrapText(ctx, str, maxW) {
   const lines = []; let cur = '';
-  for (const w of str.split(' ')) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  for (let w of String(str).split(' ')) {
+    while (w.length > 1 && ctx.measureText(w).width > maxW) {
+      if (cur) { lines.push(cur); cur = ''; }
+      let n = w.length - 1; while (n > 1 && ctx.measureText(w.slice(0, n)).width > maxW) n--;
+      lines.push(w.slice(0, n)); w = w.slice(n);
+    }
+    const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t;
+  }
   if (cur) lines.push(cur); return lines;
+}
+// Akapit w limicie n wierszy: zawija i zmniejsza czcionkę (do ~70%), aż cały tekst się zmieści; mniejsza czcionka mieści
+// więcej wierszy w tej samej wysokości (k: mnożnik odstępu wierszy). Gdy i tak za długi – ostatni wiersz kończy „…”.
+function wrapFit(ctx, str, maxW, n, o = {}) {
+  const size = o.size || 16, min = Math.max(9, Math.floor(size * 0.7)), mk = s => font(s, o.weight || 700, o.fam || 'body', o.italic);
+  let s = size, lines, cap = n;
+  for (;;) { ctx.font = mk(s); lines = wrapText(ctx, str, maxW); cap = Math.max(n, Math.floor(n * size / s + 0.01)); if (lines.length <= cap || s <= min) break; s--; }
+  if (lines.length > cap) { lines = lines.slice(0, cap); let l = lines[cap - 1]; while (l.length > 1 && ctx.measureText(l + '…').width > maxW) l = l.slice(0, -1); lines[cap - 1] = l.replace(/[\s,.;:]+$/, '') + '…'; }
+  return { lines, size: s, k: s / size };
 }
 // Złoty napis (tytuły): duże napisy w pixel arcie — malowane raz w buforze o połowie rozdzielczości (uiLayer) i powiększane bez wygładzania
 function goldText(ctx, str, x, y, size, align = 'center') {
+  ctx.save(); ctx.font = font(size, 700, 'title'); const room = textRoom(ctx, x, y, align), tw0 = ctx.measureText(str).width; ctx.restore();
+  if (tw0 > room && room > 0) size = Math.max(12, Math.floor(size * room / tw0)); // za długi tytuł: mniejsza czcionka
   if (size < 22 || typeof uiLayer !== 'function') return goldTextPaint(ctx, str, x, y, size, align);
   ctx.save(); ctx.font = font(size, 700, 'title'); const tw = ctx.measureText(str).width; ctx.restore();
   const pad = Math.ceil(size * 0.3), w = Math.ceil(tw) + pad * 2, h = Math.ceil(size * 1.5);
