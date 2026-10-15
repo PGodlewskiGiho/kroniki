@@ -194,7 +194,7 @@ function landColorSmooth(t, ax, ay) {
       col = mixRgb(col, pl % 3 === 0 ? P[3] : pl % 3 === 1 ? P[2] : P[0], 0.35); if (rw > 0.55) col = shadeRgb(col, 0.86); break; }
     case TER.JUNGLE: { const m = vnoise2(ax / 5, ay / 5, 73); if (m > 0.6) col = mixRgb(col, P[3], (m - 0.6) * 1.6); else if (m < 0.25) col = mixRgb(col, P[0], 0.5); break; } // paprocie i cień liści
     case TER.SAVANNA: { const m = vnoise2(ax / 12, ay / 12, 77); if (m > 0.64) col = mixRgb(col, [176, 150, 70], (m - 0.64) * 2.4); else if (m < 0.3) col = mixRgb(col, [138, 110, 60], (0.3 - m) * 1.8); break; } // płowa trawa i czerwona ziemia
-    case TER.ICE: { const cr = Math.abs(vnoise2(ax / 7, ay / 7, 57) - 0.5); if (cr < 0.04) col = mixRgb(col, [60, 100, 150], 1 - cr / 0.04 * 0.6); else if (vnoise2(ax / 2, ay / 2, 59) > 0.8) col = mixRgb(col, [240, 250, 255], 0.6); break; } // szczeliny w lodzie i połysk
+    // lód: bez własnych szczelin i połysku – liczone w węzłach siatki grafiki z ostrym progiem dawały schodkowe kwadraty; szczeliny ma tekstura
     case TER.CRYSTAL: { const g = vnoise2(ax / 3, ay / 3, 61); if (g > 0.8) col = mixRgb(col, P[3], (g - 0.8) * 4); break; } // iskry kryształów w dnie groty
     case TER.FUNGUS: { const g = vnoise2(ax / 5, ay / 5, 63); if (g > 0.72) col = mixRgb(col, P[3], (g - 0.72) * 2.2); break; } // świecący mech i grzybnia
   }

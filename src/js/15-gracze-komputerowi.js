@@ -305,6 +305,7 @@ function* aiVisit(st, h, i, news) {
   if (other && !allied(st, other.owner, h.owner)) { yield* aiBattle(st, h, other, news); return; }
   if (!ob) return;
   if (ob.type === 'res') { R[ob.res] += ob.amount; removeObject(st, ob); }
+  else if (ob.type === 'chest' && ob.mimic) yield* aiBattle(st, h, Object.assign(trapMonster(h, ob.mimic), { chest: ob }), news); // skrzynia-mimik: walka, skarb po zwycięstwie
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
   else if (ob.type === 'site' && ob.kind === 'witchHut' && skillWeight(h.cls, ob.skill) < 1) siteDiscover(ob, h.owner); // odmawia wiedźmie

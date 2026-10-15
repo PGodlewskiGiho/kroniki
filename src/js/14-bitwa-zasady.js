@@ -749,6 +749,8 @@ function victorySpoils(B, side) {
   const h = sideHero(B, side), out = { gold: 0, healed: 0, mana: 0 }; if (!h) return out;
   const pv = skillVal(h, 'plunder'); if (pv && B.st) { out.gold = Math.round(B.units.filter(u => u.side !== side && u.src !== 'siege' && u.src !== 'clone' && !isMachine(u)).reduce((s, u) => s + (u.n0 - (u.dead ? 0 : u.n)) * ((CREATURES[u.cid].cost && CREATURES[u.cid].cost.gold) || CREATURES[u.cid].value), 0) * pv / 100);
     const P = B.st.players[h.owner]; if (P && out.gold) P.resources.gold += out.gold; }
+  const mg = B.units.filter(u => u.side !== side && MIMIC_GOLD[u.cid]).reduce((s, u) => s + (u.n0 - (u.dead ? 0 : u.n)) * MIMIC_GOLD[u.cid], 0); // pokonane mimiki wypluwają złoto
+  if (mg && B.st) { out.mimic = mg; const P = B.st.players[h.owner]; if (P) P.resources.gold += mg; }
   const tv = skillVal(h, 'triage'); if (tv) for (const u of B.units) {
     if (u.side !== side || isMachine(u) || notLiving(u) || (u.src !== 'hero' && u.src !== 'garrison')) continue;
     const back = Math.floor((u.n0 - (u.dead ? 0 : u.n)) * tv / 100), a = u.src === 'garrison' ? B.sides[side].town && B.sides[side].town.garrison : h.army; if (!back || !a) continue;
@@ -762,7 +764,7 @@ function victorySpoils(B, side) {
   if (heroPerk(h, 'manaSiphon')) { const mx = heroMaxMana(h), before = h.mana; h.mana = Math.min(mx, h.mana + Math.ceil(mx / 3)); out.mana = h.mana - before; }
   return out;
 }
-const spoilsText = sp => !sp ? '' : [sp.gold ? ` Grabież: +${sp.gold} złota.` : '', sp.healed ? ` Opatrywanie ran: wraca ${sp.healed} ${sp.healed === 1 ? 'stwór' : 'stworów'}.` : '', sp.salvaged ? ` Polowy warsztat: odbudowano ${sp.salvaged} ${sp.salvaged === 1 ? 'konstrukt' : 'konstruktów'}.` : '', sp.mana ? ` Wysysanie many: +${sp.mana} many.` : ''].join('');
+const spoilsText = sp => !sp ? '' : [sp.chest ? ` Skrzynia już nie gryzie: +${sp.chest} złota.` : '', sp.mimic ? ` Mimiki wypluwają skarb: +${sp.mimic} złota.` : '', sp.gold ? ` Grabież: +${sp.gold} złota.` : '', sp.healed ? ` Opatrywanie ran: wraca ${sp.healed} ${sp.healed === 1 ? 'stwór' : 'stworów'}.` : '', sp.salvaged ? ` Polowy warsztat: odbudowano ${sp.salvaged} ${sp.salvaged === 1 ? 'konstrukt' : 'konstruktów'}.` : '', sp.mana ? ` Wysysanie many: +${sp.mana} many.` : ''].join('');
 const raisedText = n => (n ? ` Nekromancja: ${n === 1 ? 'wstaje 1 kościotrup' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? `wstają ${n} kościotrupy` : `wstaje ${n} kościotrupów`}.` : '');
 function resolveBattle(B, fled) {
   const { st, h } = B, D = B.sides[1], outcome = fled ? 'fled' : B.over;
@@ -772,6 +774,7 @@ function resolveBattle(B, fled) {
   if (outcome === 'win') {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0); res.spoils = victorySpoils(B, 0);
     if (D.monster) removeObject(st, D.monster);
+    if (D.monster && D.monster.chest && !D.monster.chest.dead) { const c = D.monster.chest, P = st.players[h.owner]; removeObject(st, c); if (P) P.resources.gold += c.gold; res.spoils.chest = c.gold; } // skrzynia-mimik pokonana: jej skarb dla zwycięzcy
     if (D.bank) res.bankText = lootBank(st, h, D.bank);
     if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) res.grail = true; res.loot = lootHero(h, D.hero); retireHero(st, D.hero, false); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }
