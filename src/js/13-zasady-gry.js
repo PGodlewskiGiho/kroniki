@@ -525,7 +525,7 @@ const goalSkills = h => (goalReq(h) || []).filter(id => heroSkill(h, id) < (h.go
 const goalDone = h => !!goalReq(h) && !goalSkills(h).length;
 function setGoal(h, goal) { h.goal = h.goal === goal ? null : goal; return h.goal; } // drugi klik zdejmuje cel
 // --- ołtarz przemiany (miasto z gildią magów): za złoto nowe specjalizacje, rozdanie punktów od nowa, zapomnienie umiejętności ---
-const ALTAR_COST = { fork: 750, point: 250, skill: 500 }; // za specjalizację, za punkt, za poziom umiejętności
+const ALTAR_COST = { fork: 7500, point: 2500, skill: 5000 }; // za specjalizację, za punkt, za poziom umiejętności
 const altarCost = (h, what, id) => what === 'forks' ? ALTAR_COST.fork * h.skills.filter(s => s.fork).length : what === 'points' ? ALTAR_COST.point * Object.values(h.ptLog || {}).reduce((a, b) => a + b, 0) : ALTAR_COST.skill * heroSkill(h, id);
 function altar(st, h, what, id) {
   if (!curseFree(st, h)) return 'Ołtarz przemiany stoi w gildii magów: wejdź bohaterem do takiego miasta';

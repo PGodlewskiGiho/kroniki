@@ -41,14 +41,14 @@ test('ołtarz przemiany: tylko w mieście z gildią; specjalizacje, punkty i umi
   const r = await page.evaluate(() => {
     const st = G.state, h = hero(st), t = st.towns.find(t => t.owner === h.owner), R = playerOf(st, h.owner).resources;
     h.skills = [{ id: 'offense', lv: 3, fork: SKILL_FORKS.offense[0].id }, { id: 'archery', lv: 2 }]; h.freePts = 2; spendPoint(h, 'att'); spendPoint(h, 'att'); const att = h.stats.att;
-    h.x = 0; h.y = 0; const away = altar(st, h, 'forks'); t.built = ['hall1', 'guild1']; h.x = t.x; h.y = t.y; R.gold = 5000;
+    h.x = 0; h.y = 0; const away = altar(st, h, 'forks'); t.built = ['hall1', 'guild1']; h.x = t.x; h.y = t.y; R.gold = 7000; const poor = altar(st, h, 'forks'); R.gold = 50000;
     const e1 = altar(st, h, 'forks'), pend = pendingFork(h) && pendingFork(h).id, g1 = R.gold;
     const e2 = altar(st, h, 'points'), back = [att - h.stats.att, h.freePts], g2 = R.gold;
     const e3 = altar(st, h, 'skill', 'archery'), relearnN = h.relearn, g3 = R.gold;
-    return { away, e1, pend, e2, back, e3, relearnN, skills: h.skills.map(s => s.id), paid: [5000 - g1, g1 - g2, g2 - g3] };
+    return { away, e1, pend, e2, back, e3, relearnN, skills: h.skills.map(s => s.id), poor, paid: [50000 - g1, g1 - g2, g2 - g3] };
   });
   assert.match(r.away, /gildii magów/); assert.equal(r.e1, null); assert.equal(r.pend, 'offense'); assert.equal(r.e2, null); assert.deepEqual(r.back, [2, 2]);
-  assert.equal(r.e3, null); assert.equal(r.relearnN, 2); assert.deepEqual(r.skills, ['offense']); assert.deepEqual(r.paid, [750, 500, 1000]);
+  assert.equal(r.e3, null); assert.equal(r.relearnN, 2); assert.deepEqual(r.skills, ['offense']); assert.deepEqual(r.paid, [7500, 5000, 10000]); assert.match(r.poor, /kosztuje 7500 złota/);
   // ekran bohatera: wolne pole umiejętności świeci, klik daje wybór, wybór zmniejsza dług
   await page.evaluate(() => setScreen('hero', {})); await frames(page, 2);
   await page.evaluate(() => { const S = G.screens.hero, r = S.skillRect(1); S.onClick(r.x + 20, r.y + 20); });
