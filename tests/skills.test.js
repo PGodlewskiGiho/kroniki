@@ -97,15 +97,15 @@ test('awans gracza: okno wyboru umiejętności po kolei dla każdego poziomu, po
   assert.equal(await page.evaluate(() => hero(G.state).skills.length - START), 1, 'nowa umiejętność + ulepszenie znanej');
 });
 
-test('SI wybiera umiejętności sama, według swojej kolejności', async () => {
+test('SI wybiera umiejętności sama: cel (klasa prestiżowa), splot, ulubione klasy, potem wspólna kolejność', async () => {
   await newGame(page, { opponents: 1 });
   const r = await page.evaluate(() => {
-    const st = G.state, h = st.heroes.find(h => h.owner === 1), offer = skillOffer(st, h, 2), before = h.skills.map(s => s.id + s.lv).join();
+    const st = G.state, h = st.heroes.find(h => h.owner === 1), offer = skillOffer(st, h, 2), before = h.skills.map(s => s.id + s.lv).join(), pick = aiPickSkill(offer, h, aiGoalId(h));
     gainExp(st, h, expForLevel(2) - h.exp);
-    return { modal: !!G.modal, pick: aiPickSkill(offer), skills: h.skills, before };
+    return { modal: !!G.modal, pick, skills: h.skills, before, goal: h.goal };
   });
   assert.equal(r.modal, false);
-  assert.ok(r.skills.some(s => s.id === r.pick), JSON.stringify(r));
+  assert.ok(r.skills.some(s => s.id === r.pick), JSON.stringify(r)); assert.match(r.goal || '', /^pre:/, 'komputer ma cel rozwoju');
 });
 
 test('nekromancja: po zwycięstwie z poległych wstają kościotrupy', async () => {

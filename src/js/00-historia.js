@@ -546,5 +546,12 @@
    z gildią magów, za złoto): nowe specjalizacje, punkty cech od nowa (h.ptLog), zapomnienie umiejętności (h.relearn: poziomy do
    ponownego wyboru kliknięciem wolnego pola). Księga rozkazów w bitwie jako karty z ikonami (niedostępne przygaszone). Karta
    bohatera na mapie – także wroga – pokazuje budowę: ścieżkę albo klasę prestiżową, specjalizacje, sploty i ważne artefakty.
+   Rozwój bohatera, etap 7 (SI i balans końcowy): komputer ma cel rozwoju (aiGoalId: klasa prestiżowa najlepiej pasująca do klasy)
+   i wybiera umiejętności według celu, splotów i ulubionych klasy (aiPickSkill), ścieżkę – najpierw swój cel. Balans: wzrost czarów
+   z poziomem 0,12 (był 0,2), tempo magii klasy CLASS_SPELL (Kapłan, Wiedźma, Alchemik, Mag bojowy szybciej; Czarodziej, Wynalazca,
+   Czarnoksiężnik wolniej), Łańcuch piorunów 25 + 32 × moc, przyrost cech kilku wojowników, Wiedźma woli Ogień i Powietrze (jak jej
+   gildia). Pomiar (tools/balans/bohaterowie.js sila): mag/wojownik 1,23 / 1,11 / 1,01 / 1,15 / 1,02 / 1,02 na poziomach 1–25
+   (przed: 1,23 / 1,11 / 1,03 / 1,22 / 1,22 / 1,28), rozrzut klas 48 / 19 / 27 / 24 / 22 / 21% (przed: 48 / 23 / 18 / 30 / 41 / 43%).
+   Test balans-klas: 8 klas, średnie magów i wojowników w ±15%.
    ===================================================================================== */
 

@@ -33,8 +33,8 @@ test('awans gracza na 10. poziom: po umiejętności i talencie okno ścieżki (3
   if (d && /talent/.test(d.msg)) { await pressDialog(page, d.labels[0]); d = await skip(await dialog(page)); }
   assert.match(d.msg, /staje się legendą/); await pressDialog(page, 'Chwała!');
   r = await page.evaluate(() => { const st = G.state, h = hero(st), ai = st.heroes.find(x => x.owner === 1); ai.exp = 0; ai.level = 1; gainExp(st, ai, expForLevel(12));
-    return { lv: pathLv(h, h.mastery), legend: pathTitle(h) === HERO_PATHS[h.mastery].legend, ai: ai.mastery, aiWant: pathOffer(ai)[0], modal: !!G.modal }; });
-  assert.equal(r.lv, 2); assert.ok(r.legend); assert.equal(r.ai, r.aiWant, 'SI bierze pierwszą ścieżkę klasy'); assert.equal(r.modal, false);
+    return { lv: pathLv(h, h.mastery), legend: pathTitle(h) === HERO_PATHS[h.mastery].legend, ai: ai.mastery, aiWant: aiPath(ai), goal: ai.goal, modal: !!G.modal }; });
+  assert.equal(r.lv, 2); assert.ok(r.legend); assert.equal(r.ai, r.aiWant, 'SI bierze swój cel (klasę prestiżową), gdy go osiągnie, inaczej pierwszą ścieżkę klasy'); assert.ok(r.ai, 'SI ma ścieżkę'); assert.equal(r.modal, false);
 });
 
 test('działanie ścieżek: Czempion, Arcymistrz, Mędrzec, Wędrowiec, Namiestnik (legenda mocniejsza) i zapis', async () => {

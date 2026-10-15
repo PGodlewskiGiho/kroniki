@@ -6,14 +6,14 @@ const PRIMARY = [
 ];
 // Cechy startowe i szanse (w %) na wzrost danej cechy przy awansie, osobno dla każdej klasy
 const CLASS_GROWTH = {
-  knight: { base: [2, 2, 1, 1], grow: [35, 45, 10, 10] }, cleric: { base: [1, 0, 2, 2], grow: [20, 15, 30, 35] },
-  ranger: { base: [1, 3, 1, 1], grow: [30, 45, 10, 15] }, druid: { base: [0, 2, 1, 2], grow: [10, 20, 35, 35] },
-  deathKnight: { base: [1, 2, 2, 1], grow: [30, 25, 25, 20] }, necro: { base: [1, 0, 2, 2], grow: [15, 15, 35, 35] },
-  beastmaster: { base: [0, 4, 1, 1], grow: [30, 50, 10, 10] }, witch: { base: [0, 1, 2, 2], grow: [5, 15, 40, 40] },
+  knight: { base: [2, 2, 1, 1], grow: [30, 45, 12, 13] }, cleric: { base: [1, 0, 2, 2], grow: [20, 15, 30, 35] },
+  ranger: { base: [1, 3, 1, 1], grow: [40, 40, 10, 10] }, druid: { base: [0, 2, 1, 2], grow: [10, 20, 35, 35] },
+  deathKnight: { base: [1, 2, 2, 1], grow: [35, 30, 20, 15] }, necro: { base: [1, 0, 2, 2], grow: [15, 15, 35, 35] },
+  beastmaster: { base: [0, 4, 1, 1], grow: [25, 50, 12, 13] }, witch: { base: [0, 1, 2, 2], grow: [5, 15, 40, 40] },
   demoniac: { base: [2, 2, 1, 1], grow: [40, 35, 15, 10] }, heretic: { base: [1, 1, 2, 1], grow: [15, 15, 40, 30] },
   alchemist: { base: [1, 1, 2, 2], grow: [30, 30, 20, 20] }, wizard: { base: [0, 1, 2, 2], grow: [10, 20, 40, 30] },
-  overlord: { base: [2, 2, 1, 1], grow: [35, 35, 15, 15] }, warlock: { base: [0, 0, 3, 2], grow: [10, 10, 50, 30] },
-  barbarian: { base: [4, 0, 1, 1], grow: [55, 35, 5, 5] }, battleMage: { base: [2, 1, 1, 1], grow: [30, 20, 25, 25] },
+  overlord: { base: [2, 2, 1, 1], grow: [40, 35, 15, 10] }, warlock: { base: [0, 0, 3, 2], grow: [10, 10, 50, 30] },
+  barbarian: { base: [4, 0, 1, 1], grow: [45, 35, 10, 10] }, battleMage: { base: [2, 1, 1, 1], grow: [30, 20, 25, 25] },
   engineer: { base: [2, 2, 1, 1], grow: [35, 40, 12, 13] }, inventor: { base: [1, 1, 2, 2], grow: [15, 15, 35, 35] },
 };
 // Umiejętności drugorzędne (jak w oryginale): bohater ma ich najwyżej MAX_SKILLS, każdą na poziomie 1–3.
@@ -234,7 +234,7 @@ const CLASS_SKILL_PREF = {
   knight: ['leadership', 'offense', 'armorer', 'artillery', 'tactics'], cleric: ['wisdom', 'waterMagic', 'mysticism', 'estates', 'triage'],
   ranger: ['archery', 'pathfinding', 'luck', 'scouting', 'diplomacy'], druid: ['wisdom', 'earthMagic', 'waterMagic', 'intelligence', 'diplomacy'],
   deathKnight: ['offense', 'armorer', 'resistance', 'necromancy', 'tactics'], necro: ['wisdom', 'earthMagic', 'intelligence', 'necromancy', 'interference'],
-  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid', 'triage'], witch: ['wisdom', 'eagleSight', 'waterMagic', 'intelligence', 'interference'],
+  beastmaster: ['armorer', 'offense', 'navigation', 'firstAid', 'triage'], witch: ['wisdom', 'fireMagic', 'airMagic', 'intelligence', 'sorcery'],
   demoniac: ['offense', 'artillery', 'ballistics', 'resistance', 'plunder'], heretic: ['wisdom', 'fireMagic', 'sorcery', 'intelligence', 'interference'],
   alchemist: ['artillery', 'ballistics', 'wisdom', 'earthMagic', 'plunder'], wizard: ['wisdom', 'airMagic', 'intelligence', 'sorcery', 'interference'],
   overlord: ['leadership', 'offense', 'resistance', 'scouting', 'tactics'], warlock: ['wisdom', 'fireMagic', 'sorcery', 'intelligence', 'interference'],

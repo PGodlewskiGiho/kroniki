@@ -471,7 +471,7 @@ const pathStat = (h, key) => (key === 'att' || key === 'def' ? pathV(h, 'champio
 // Klasy prestiżowe dostępne dla bohatera: obie umiejętności z req co najmniej na poziomie PRESTIGE_LV
 const prestigeReady = h => Object.keys(PRESTIGE).filter(id => PRESTIGE[id].req.every(s => heroSkill(h, s) >= PRESTIGE_LV));
 const pathOffer = h => [...(CLASS_PATHS[h.cls] || CLASS_PATHS.knight), ...prestigeReady(h)];
-const aiPath = h => prestigeReady(h)[0] || pathOffer(h)[0]; // komputer woli klasę prestiżową, gdy ją ma
+const aiPath = h => { const g = (h.goal || '').startsWith('pre:') && h.goal.slice(4), ready = prestigeReady(h); return (g && ready.includes(g) ? g : ready[0]) || pathOffer(h)[0]; }; // komputer woli klasę prestiżową (najpierw swój cel), gdy ją ma
 const perkCount = (h, id) => (h && h.talents ? h.talents.filter(t => t === id).length : 0); // talenty brane wielokrotnie (Odkrywca)
 // Szkoły magii: poziom umiejętności szkoły czaru u bohatera, koszt many po zniżce, mnożnik obrażeń i leczenia
 const spellSchoolLv = (h, id) => { const S = SPELLS[id]; return S && S.school ? heroSkill(h, SCHOOLS[S.school].skill) : 0; };
@@ -493,8 +493,10 @@ function specBonus(h, cid) {
 // Mnożnik obrażeń, leczenia i trucizny czaru: specjalność bohatera (+3% za poziom) i doświadczenie (SPELL_LVL_K za każdy poziom ponad 1.).
 // Atak wojownika daje procent obrażeń całej armii, więc rośnie razem z nią; czar zadaje stałe obrażenia, dlatego bez tego mnożnika
 // magowie słabli z każdym tygodniem (pomiar BalanceLab, etap 1 rozwoju bohatera)
-let SPELL_LVL_K = 0.2;
-const specSpellMul = (h, id) => { const sp = heroSpec(h); return (sp && sp.spell === id ? 1 + 0.03 * h.level : 1) * (1 + SPELL_LVL_K * Math.max(0, ((h && h.level) || 1) - 1))
+// SPELL_LVL_BASE: mnożnik na 1. poziomie; CLASS_SPELL: tempo wzrostu magii klasy (mnoży SPELL_LVL_K; pomiar etapu 7, tools/balans/bohaterowie.js sila)
+let SPELL_LVL_K = 0.12, SPELL_LVL_BASE = 1;
+const CLASS_SPELL = { cleric: 1.8, witch: 2.0, heretic: 1.15, wizard: 0.9, inventor: 0.9, druid: 1.0, warlock: 0.9, alchemist: 1.6, battleMage: 1.5 }; // czarodzieje od Powietrza wolniej, magowie wsparcia i hybrydy szybciej
+const specSpellMul = (h, id) => { const sp = heroSpec(h); return (sp && sp.spell === id ? 1 + 0.03 * h.level : 1) * (SPELL_LVL_BASE + SPELL_LVL_K * ((h && CLASS_SPELL[h.cls]) || 1) * Math.max(0, ((h && h.level) || 1) - 1))
   * (h && heroFork(h, 'powerCircle') && h.mana * 2 >= heroMaxMana(h) ? 1.15 : 1) * ((h && h._echo) || 1) * (h && h._blood ? 1.3 : 1); }; // Krąg mocy; echo czaru; Ofiara (czar opłacony krwią)
 function specText(h) {
   const sp = heroSpec(h); if (!sp) return '';
@@ -573,7 +575,23 @@ function learnTalent(st, h, id) {
 }
 const talentText = id => `${TALENTS[id].name}: ${TALENTS[id].desc}`;
 const aiPickTalent = offer => offer.slice().sort((a, b) => AI_TALENT_ORDER.indexOf(a) - AI_TALENT_ORDER.indexOf(b))[0];
-const aiPickSkill = offer => offer.slice().sort((a, b) => AI_SKILL_ORDER.indexOf(a) - AI_SKILL_ORDER.indexOf(b))[0];
+// SI: wybór umiejętności – najpierw ta, która prowadzi do celu (klasa prestiżowa), potem dopełniająca splot, potem ulubiona klasy,
+// na końcu wspólna kolejność AI_SKILL_ORDER; bez bohatera (stare wywołania) sama kolejność
+function aiPickSkill(offer, h = null, goal = h && h.goal) {
+  const need = h ? (() => { const keep = h.goal; h.goal = goal; const g = goalSkills(h); h.goal = keep; return g; })() : [];
+  const rank = id => AI_SKILL_ORDER.indexOf(id) - (need.includes(id) ? 100 : 0) - (h && completesSyn(h, id) ? 40 : 0) - (h && (CLASS_SKILL_PREF[h.cls] || []).includes(id) ? 12 : 0);
+  return offer.slice().sort((a, b) => rank(a) - rank(b))[0];
+}
+// czy kolejny poziom umiejętności id uruchomi splot (druga umiejętność pary już co najmniej zaawansowana)
+const completesSyn = (h, id) => heroSkill(h, id) + 1 === SYN_LV && Object.values(SYNERGIES).some(S => S.req.includes(id) && S.req.every(r => r === id || heroSkill(h, r) >= SYN_LV));
+// SI: cel rozwoju – klasa prestiżowa, której para najlepiej pasuje do klasy (ulubione umiejętności, już znane); bez nekromancji u nie-nekromantów
+function aiGoalId(h) {
+  if (goalReq(h) && !goalDone(h)) return h.goal;
+  const ok = id => PRESTIGE[id].req.every(s => s !== 'necromancy' || NECRO_CLASSES.includes(h.cls)) && !goalDoneFor(h, id);
+  const score = id => PRESTIGE[id].req.reduce((t, s) => t + skillWeight(h.cls, s) + (heroSkill(h, s) ? 3 : 0), 0);
+  const best = Object.keys(PRESTIGE).filter(ok).sort((a, b) => score(b) - score(a))[0]; return best ? 'pre:' + best : null;
+}
+const goalDoneFor = (h, id) => PRESTIGE[id].req.every(s => heroSkill(h, s) >= PRESTIGE_LV);
 // Suma premii z założonych artefaktów (plecak nie działa)
 // Premia jednego artefaktu bohatera: stała + wzrost (rosnące) + relikwia rodu (własna frakcja) + runa (zaklinanie)
 const artGrowth = (h, id) => { const G0 = ARTIFACTS[id].grow; return G0 ? Math.min(G0.max, Math.floor(((h.artXp || {})[id] || 0) / G0.every)) : 0; };
@@ -603,7 +621,7 @@ function gainExp(st, h, amount, then, silent = false) { // silent: awans bez oki
   }
   if (h.owner !== ME || silent || !ups.length) {
     while (h.freePts > 0) spendPoint(h, aiPickStat(h)); // komputer (i awans bez okien) wydaje punkty od razu
-    for (const u of ups) { const offer = skillOffer(st, h, u.level); if (offer.length) learnSkill(h, aiPickSkill(offer)); const pf = pendingFork(h); if (pf) chooseFork(h, pf.id, aiPickFork(pf.id)); /* specjalizacja: komputer od razu */ if (talentLevel(u.level, h)) learnTalent(st, h, aiPickTalent(talentOffer(st, h, u.level))); }
+    for (const u of ups) { const goal = aiGoalId(h); if (h.owner !== ME) h.goal = goal; /* komputer zmierza do klasy prestiżowej */ const offer = skillOffer(st, h, u.level); if (offer.length) learnSkill(h, aiPickSkill(offer, h, goal)); const pf = pendingFork(h); if (pf) chooseFork(h, pf.id, aiPickFork(pf.id)); /* specjalizacja: komputer od razu */ if (talentLevel(u.level, h)) learnTalent(st, h, aiPickTalent(talentOffer(st, h, u.level))); }
     if (!h.mastery && h.level >= PATH_LEVELS[0] && PATHS_ON) h.mastery = aiPath(h); // ścieżka mistrzowska: komputer (i awans bez okien) bierze pierwszą ze swojej klasy
     if (then) then(); return ups.length;
   }

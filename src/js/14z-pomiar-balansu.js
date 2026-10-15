@@ -6,8 +6,9 @@
 // wybiera SI, magowie znają czary z gildii swojej frakcji (poziom gildii rośnie z poziomem bohatera).
 // Używają tego tools/balans/bohaterowie.js (pełny pomiar) i tests/balans-klas.test.js (krótki, pilnuje celu w CI).
 // Cel: na każdym poziomie każda klasa w granicach ±BALANCE_TARGET średniej, magowie i wojownicy średnio równo.
-// BALANCE_GUARD to granica, którą test pilnuje dziś; zbliża się do celu z kolejnymi etapami rozwoju bohatera.
-const BALANCE_TARGET = 0.10, BALANCE_GUARD = 0.20;
+// BALANCE_GUARD to granica, którą test pilnuje (średnia magów do średniej wojowników). Etap 7: mag/wojownik 0,99–1,13 od 5. poziomu,
+// rozrzut klas 19–28% (poziom 1: magowie silniejsi, 48%); dalsze zbliżanie do ±10% wymaga dokładniejszego pomiaru (więcej prób).
+const BALANCE_TARGET = 0.10, BALANCE_GUARD = 0.15;
 const BalanceLab = {
   UNLOCK: [0, 1, 1, 2, 2, 3, 4, 5], // tydzień, od którego armia ma stwory danego poziomu
   week: L => 1 + 0.7 * (L - 1),
