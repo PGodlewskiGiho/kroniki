@@ -504,5 +504,9 @@
    Napisy zawsze się mieszczą: ramki (pergamin, skóra, wnęka, gniazdo, księga) zapisują swój prostokąt w klatce, a text() i goldText
    same zmniejszają za szeroki napis (do ~70%, potem ściśnięcie); wrapFit zamiast ucinać opis po 2–4 wierszach zmniejsza czcionkę,
    a wrapText dzieli słowo dłuższe niż wiersz.
+   Rozwój bohatera, etap 0 (miara): BalanceLab (14z-pomiar-balansu.js) mierzy indeks siły klasy – armia frakcji rośnie z poziomem
+   jak w grze (poziom 10 ≈ 8. tydzień), wróg to armia Twierdzy z tego samego tygodnia; do tego wartość na mapie (ruch, złoto, widzenie).
+   Cel: każda klasa ±10% średniej na każdym poziomie; test balans-klas pilnuje rozrzutu mag/wojownik (dziś ±35%, z etapami bliżej celu).
+   Pomiar wyjściowy: mag/wojownik 1,24 (poziom 1), 0,94 (5), 0,78 (10), 0,70 (20), 0,66 (25) – magowie słabną z rozwojem armii.
    ===================================================================================== */
 
