@@ -1300,6 +1300,7 @@ function drawSpellIcon(c, id) {
     case 'fear': c.beginPath(); c.arc(0, -1, 6, 0, TAU); c.fill(); c.fillRect(-3.5, 3, 7, 4); c.fillStyle = dk; c.fillRect(-4, -3, 3, 3); c.fillRect(1, -3, 3, 3); break;
     case 'dimensionDoor': c.lineWidth = 2.2; c.beginPath(); c.ellipse(0, 0, 6, 9, 0, 0, TAU); c.stroke(); c.beginPath(); c.arc(0, 0, 2.5, 0, TAU); c.fill(); break;
     case 'blizzard': c.lineWidth = 1.6; for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; c.beginPath(); c.moveTo(Math.cos(a) * 8, Math.sin(a) * 8); c.lineTo(-Math.cos(a) * 8, -Math.sin(a) * 8); c.stroke(); } break;
+    case 'spark': for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, r = i % 2 ? 4 : 8; c.fillRect(Math.cos(a) * r - 1.2, Math.sin(a) * r - 1.2, 2.4, 2.4); } c.beginPath(); c.arc(0, 0, 3, 0, TAU); c.fill(); break;
     case 'magicArrow': c.lineWidth = 2; c.beginPath(); c.moveTo(-6, 6); c.lineTo(5, -5); c.stroke(); poly([[7, -7], [1, -5], [5, -1]]); break;
     case 'bless': for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; c.lineWidth = 1.6; c.beginPath(); c.moveTo(Math.cos(a) * 4, Math.sin(a) * 4); c.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); c.stroke(); } c.beginPath(); c.arc(0, 0, 3.5, 0, TAU); c.fill(); break;
     case 'stoneSkin': poly([[-7, -6], [7, -6], [7, 1], [0, 8], [-7, 1]]); c.fillStyle = dk; c.fillRect(-3, -3, 2, 2); c.fillRect(2, 0, 2, 2); break;
@@ -1400,7 +1401,7 @@ function skillIcon(ctx, id, cx, cy, size = 32) { drawSprite(ctx, skillSprite(id,
 function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id)) { // costOf: koszt w bitwie (drugi czar Bitewnego maga droższy)
   Sfx.play('book', { vol: 0.6 });
   // Zakładki szkół jak w Heroes 3 (wszystkie, Ognia, Powietrza, Wody, Ziemi) i strony po PER czarów; pasek z lewej = kolor szkoły
-  const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
+  const x = 110, y = 60, w = 580, hh = 460, sp = heroStat(h, 'sp'), all = [...(h.spells || []), ...(hasBook(h) ? ['spark'] : [])].sort((a, b) => SPELLS[a].level - SPELLS[b].level || SPELLS[a].name.localeCompare(SPELLS[b].name));
   const BOOK = !PIXEL_ART, cols = BOOK ? 4 : 3, cw = BOOK ? (w - 96) / 4 : (w - 48) / cols, rh = 44, PER = BOOK ? 20 : 18, tabs = [null, ...Object.keys(SCHOOLS)];
   let school = null, page = 0, hover = -1;
   const side = d => iconArrowSide(d), _side = d => (ctx, cx, cy, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 4 * d, cy - 8); ctx.lineTo(cx - 4 * d, cy + 8); ctx.lineTo(cx + 5 * d, cy); ctx.closePath(); ctx.fill(); };
@@ -1417,7 +1418,7 @@ function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id)) { // co
   G.modal = { box: { x, y, w, h: hh },
     buttons: [close, prev, next, ...tabBtns],
     onClick(px, py) { const i = at(px, py), id = shown()[i]; if (i >= 0 && usable(id)) { G.modal = null; onPick(id); } },
-    rightInfo(px, py) { const i = at(px, py); if (i < 0) return null; const id = shown()[i], S = SPELLS[id]; return `${S.name} (magia ${SCHOOLS[S.school].name}, poziom ${S.level}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${costOf(id)} many): ${S.desc(S.kind === 'adv' ? sp : effSp(sp))}.${schoolNote(h, id)}`; },
+    rightInfo(px, py) { const i = at(px, py); if (i < 0) return null; const id = shown()[i], S = SPELLS[id]; return `${S.name} (${S.cantrip ? 'sztuczka każdej księgi' : `magia ${SCHOOLS[S.school].name}, poziom ${S.level}`}, ${S.kind === 'battle' ? 'w bitwie' : 'na mapie'}, koszt ${costOf(id)} many): ${S.desc(S.kind === 'adv' ? sp : effSp(sp))}.${schoolNote(h, id)}`; },
     draw(ctx) {
       page = Math.min(page, pages() - 1); prev.disabled = page === 0; next.disabled = page >= pages() - 1;
       const L = shown(); hover = at(G.mouse.x, G.mouse.y);
@@ -1430,13 +1431,13 @@ function showSpellbook(h, mode, onPick, costOf = id => spellCost(h, id)) { // co
       L.forEach((id, i) => {
         const r = cell(i), S = SPELLS[id], ok = usable(id);
         ctx.fillStyle = ok && hover === i ? 'rgba(160,100,30,.3)' : BOOK ? 'rgba(90,55,20,.07)' : 'rgba(90,55,20,.12)'; rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fill();
-        ctx.fillStyle = SCHOOLS[S.school].col; ctx.fillRect(r.x, r.y + 4, 3, r.h - 8);
+        ctx.fillStyle = S.school ? SCHOOLS[S.school].col : S.col; ctx.fillRect(r.x, r.y + 4, 3, r.h - 8);
         ctx.save(); if (mode !== 'view' && !ok) ctx.globalAlpha = 0.45;
         drawSprite(ctx, spellSprite(id), r.x + 24, r.y + r.h / 2, BOOK ? 1.1 : 1);
         ctx.font = font(13, 700, 'title'); let fs = 13; while (fs > 10 && ctx.measureText(S.name).width > r.w - 50) { fs--; ctx.font = font(fs, 700, 'title'); }
         text(ctx, S.name, r.x + 46, r.y + r.h / 2 - 7, { size: fs, color: '#2a1606', fam: 'title' });
         const c0 = costOf(id);
-        text(ctx, `${S.level} poz. · ${c0} many${c0 < S.cost ? ' ↓' : ''}`, r.x + 46, r.y + r.h / 2 + 11, { size: BOOK ? 14 : 12, weight: 600, color: c0 < S.cost ? '#2a6a1e' : '#5a3814' });
+        text(ctx, S.cantrip ? 'sztuczka · bez many' : `${S.level} poz. · ${c0} many${c0 < S.cost ? ' ↓' : ''}`, r.x + 46, r.y + r.h / 2 + 11, { size: BOOK ? 14 : 12, weight: 600, color: c0 < S.cost ? '#2a6a1e' : '#5a3814' });
         ctx.restore();
       });
       const hs = hover >= 0 ? L[hover] : null;

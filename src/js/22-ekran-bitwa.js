@@ -242,7 +242,7 @@ function battleSound(fx, sp) {
   else if (fx.kind === 'spell') Sfx.play(sndOr(SPELL_SND[fx.id] ? SPELL_SND[fx.id][0] : 'cast'), { vol: 0.8 });
 }
 // Czar: [dźwięk rzucenia, dźwięk trafienia]; brzmienia żywiołów i szkół (wiatr, ziemia, chór, trucizna…), a gdy którejś próbki brak – zastępcza
-const SPELL_SND = { magicArrow: ['zap', 'zaphit'], lightningBolt: ['cast', 'thunder'], chainLightning: ['cast', 'thunder'], fireball: ['fireball', 'explode'], meteorShower: ['earth', 'explode'], armageddon: ['dark', 'explode'],
+const SPELL_SND = { magicArrow: ['zap', 'zaphit'], spark: ['zap', 'zaphit'], lightningBolt: ['cast', 'thunder'], chainLightning: ['cast', 'thunder'], fireball: ['fireball', 'explode'], meteorShower: ['earth', 'explode'], armageddon: ['dark', 'explode'],
   implosion: ['drain', 'explode'], iceBolt: ['frost', 'ice'], frostRing: ['frost', 'ice'], blizzard: ['wind', 'ice'], cure: ['cast', 'heal'], massCure: ['holy', 'heal'], resurrection: ['holy', 'heal'], animateDead: ['dark', 'holy'],
   curse: ['dark', 'curse'], weakness: ['dark', 'curse'], slow: ['cast', 'slowdn'], deathRipple: ['dark', 'curse'], haste: ['cast', 'haste'], massHaste: ['wind', 'haste'], bless: ['cast', 'holy'], prayer: ['holy', 'buff'],
   blind: ['cast', 'curse'], poison: ['cast', 'poison'], fireWall: ['fireball', 'firebreath'], lifeSteal: ['drain', 'heal'], holyLight: ['holy', 'thunder'], vampirism: ['dark', 'drain'], stoneSkin: ['cast', 'earth'],
@@ -291,8 +291,8 @@ G.screens.battle = {
     L.fieldBottom = side ? VH : VH - 110;
     // przyciski: pod polem – trzy kolumny przy prawej krawędzi; z boku – dwie kolumny u góry panelu
     const P = L.panel, place = (b, i, j) => { b.x = side ? P.x + 38 + i * 116 : VW - 330 + i * 108; b.y = side ? P.y + 12 + j * 46 : P.y + 10 + j * 46; b.w = side ? 108 : 100; };
-    if (this.bWait) { if (side) { place(this.bWait, 0, 0); place(this.bDef, 1, 0); place(this.bCast, 0, 1); place(this.bInfo, 1, 1); place(this.bAuto, 0, 2); place(this.bFlee, 1, 2); }
-      else { place(this.bWait, 0, 0); place(this.bDef, 1, 0); place(this.bCast, 2, 0); place(this.bAuto, 0, 1); place(this.bFlee, 1, 1); place(this.bInfo, 2, 1); } }
+    if (this.bWait) { if (side) { place(this.bWait, 0, 0); place(this.bDef, 1, 0); place(this.bCast, 0, 1); place(this.bOrder, 1, 1); place(this.bAuto, 0, 2); place(this.bFlee, 1, 2); }
+      else { place(this.bWait, 0, 0); place(this.bDef, 1, 0); place(this.bCast, 2, 0); place(this.bAuto, 0, 1); place(this.bFlee, 1, 1); place(this.bOrder, 2, 1); } }
     return L;
   },
   toField(x, y) { const L = this.lay(); return [(x - L.fx) / L.fs, (y - L.fy) / L.fs]; },
@@ -331,11 +331,11 @@ G.screens.battle = {
     this.bAuto = mk(0, 1, 'Auto', () => { if (this.net) { this.myAuto = !this.myAuto; if (this.myAuto && this.phase === 'input') this.order({ a: 'ai' }); return; } B.auto = !B.auto; if (B.auto && this.phase === 'input') this.startTurnFor(B.active); }, { key: 'a', selected: () => (this.net ? this.myAuto : B.auto), tip: 'Walka automatyczna: twoje oddziały dowodzą się same (klawisz A).' });
     this.bFlee = mk(1, 1, 'Ucieczka', () => this.onBack(), { key: 'u', tip: 'Wycofanie się z bitwy: ocalałe oddziały zostają, ale bohater traci resztę ruchu na dziś (klawisz U).' });
     this.bCast = mk(2, 0, 'Czar', () => this.openBook(), { key: 'c', tip: 'Księga czarów bohatera: jeden czar na rundę, przed ruchem oddziału (klawisz C).' });
-    this.bInfo = mk(2, 1, 'Mana', null, { disabled: true, display: true, tip: 'Mana bohatera. Odnawia się o 1 dziennie, a w pełni w mieście z gildią magów.' });
+    this.bOrder = mk(2, 1, 'Rozkaz', () => this.openOrders(), { key: 'r', tip: 'Rozkazy bohatera za Zapał (klawisz R): pula rośnie z obroną bohatera, siła z atakiem, co rundę wraca trochę Zapału. W rundzie bohater wydaje rozkaz albo rzuca czar.' });
     this.casting = null; this.resume = false;
     this.fleeTip = this.bFlee.tip;
     if (this.me === 1) { this.bFlee.disabled = true; this.bFlee.tip = 'Obrońca nie może uciec z pola bitwy.'; }
-    this.buttons = [this.bWait, this.bDef, this.bAuto, this.bFlee, this.bCast, this.bInfo]; this.L = null; this.lay();
+    this.buttons = [this.bWait, this.bDef, this.bAuto, this.bFlee, this.bCast, this.bOrder]; this.L = null; this.lay();
     this.phase = 'intro';
   },
   onBack() {
@@ -394,8 +394,17 @@ G.screens.battle = {
   openBook() {
     if (this.phase !== 'input') return; const B = this.B;
     const mh = sideHero(B, this.me); if (!mh) return;
-    if (B.cast[this.me]) { B.log.push('W tej rundzie bohater już rzucił czar.'); return; }
+    if (B.cast[this.me]) { B.log.push('W tej rundzie bohater już działał.'); return; }
     showSpellbook(mh, 'battle', id => { this.casting = id; this.tele = null; this.onPointerMove(G.mouse.x, G.mouse.y); }, id => battleCost(B, casterSide(B), mh, id));
+  },
+  // Rozkazy: lista znanych rozkazów z kosztem w Zapale; wybrany czeka na wskazanie celu jak czar
+  openOrders() {
+    if (this.phase !== 'input') return; const B = this.B, s = this.me, mh = sideHero(B, s); if (!mh) return;
+    if (B.cast[s]) { B.log.push('W tej rundzie bohater już działał.'); return; }
+    const a = heroStat(mh, 'att'), list = knownOrders(mh);
+    showDialog(`Rozkazy bohatera ${mh.name}. Zapał: ${B.valor[s]} z ${heroValorMax(mh)} (wraca ${VALOR_REGEN} na rundę). Siła rozkazów rośnie z atakiem (${a}).`,
+      [...list.map(id => { const O = ORDERS[id], c = battleCost(B, s, mh, id); return { label: O.name, sub: `${c} zapału`, disabled: c > B.valor[s], tip: `${O.name}: ${O.desc(a)}.`,
+        action: () => { this.casting = id; this.tele = null; this.onPointerMove(G.mouse.x, G.mouse.y); } }; }), { label: 'Anuluj', key: 'escape' }], { bw: 150 });
   },
   // Koniec bitwy: zwycięzcy wiwatują przez chwilę, potem okno wyniku nad polem bitwy (jak w Heroes 3). Klik albo klawisz przyspiesza.
   startEnding() {
@@ -559,7 +568,7 @@ G.screens.battle = {
     const u = B.active, hx = hexAt(x, y); if (!hx) return;
     if (this.casting && this.tele) { // Teleportacja, krok 2: wolne pole dla wskazanego oddziału
       const T = this.tele, tu = unitAt(B, T.x, T.y);
-      this.preview = tu && teleportOk(B, tu, hx.x, hx.y) ? { kind: 'cast', id: this.casting, x: T.x, y: T.y, x2: hx.x, y2: hx.y, target: tu, tele: true } : { kind: 'nocast', id: this.casting }; return;
+      this.preview = tu && actTeleOk(B, this.casting, tu, hx.x, hx.y) ? { kind: 'cast', id: this.casting, x: T.x, y: T.y, x2: hx.x, y2: hx.y, target: tu, tele: true } : { kind: 'nocast', id: this.casting }; return;
     }
     if (this.casting) {
       const id = this.casting, tu = spellUnitAt(B, id, hx.x, hx.y);
@@ -596,7 +605,7 @@ G.screens.battle = {
     }
     const B = this.B, p = this.preview; if (this.phase !== 'input' || !p) return;
     const ix = v => B.units.indexOf(v), u = B.active;
-    if (p.kind === 'cast' && SPELLS[p.id].teleport && !p.tele) { this.tele = { x: p.x, y: p.y }; this.preview = null; return; } // najpierw oddział, potem miejsce
+    if (p.kind === 'cast' && actDef(p.id).teleport && !p.tele) { this.tele = { x: p.x, y: p.y }; this.preview = null; return; } // najpierw oddział, potem miejsce
     if (p.kind === 'cast') this.order(p.tele ? { a: 'cast', id: p.id, x: p.x, y: p.y, x2: p.x2, y2: p.y2 } : { a: 'cast', id: p.id, x: p.x, y: p.y });
     else if (p.kind === 'heal') this.order({ a: 'heal', t: ix(p.target) });
     else if (p.kind === 'siege') this.order({ a: 'cat', x: p.x, y: p.y });
@@ -707,8 +716,9 @@ G.screens.battle = {
     // panel dolny: podpowiedź i dziennik
     const pv = this.preview, cu = u0 && CREATURES[u0.cid];
     let tip = this.phase === 'remote' && u0 ? `Ruch gracza ${playerName(st, B.sides[u0.side].owner)}: ${cu.plural.toLowerCase()}…` : this.phase === 'input' && u0 ? `Ruch: ${cu.plural} (${u0.n}). Kliknij pole albo wroga.` : B.auto ? 'Walka automatyczna…' : u0 && !humanSide(B, u0.side) ? 'Ruch przeciwnika…' : '';
-    if (this.casting && SPELLS[this.casting].teleport) tip = this.tele ? (pv && pv.kind === 'cast' ? 'Teleportacja: kliknij, aby przenieść oddział tutaj.' : 'Teleportacja: wskaż wolne pole (Esc anuluje).') : 'Teleportacja: wskaż swój oddział do przeniesienia (Esc anuluje).';
-    else if (this.casting) tip = pv && pv.kind === 'cast' ? `${SPELLS[pv.id].name}: ${SPELLS[pv.id].desc(spellPow(sideHero(B, this.me) || B.h))}. Kliknij, aby rzucić.` : `${SPELLS[this.casting].name}: wskaż właściwy cel (Esc anuluje).`;
+    const cD = this.casting && actDef(this.casting), cA = cD && (ORDERS[this.casting] ? heroStat(sideHero(B, this.me) || B.h, 'att') : spellPow(sideHero(B, this.me) || B.h)); // czar albo rozkaz
+    if (cD && cD.teleport) tip = this.tele ? (pv && pv.kind === 'cast' ? `${cD.name}: kliknij, aby przenieść oddział tutaj.` : `${cD.name}: wskaż wolne pole${cD.range ? ` (do ${cD.range} pól)` : ''} (Esc anuluje).`) : `${cD.name}: wskaż swój oddział do przeniesienia (Esc anuluje).`;
+    else if (cD) tip = pv && pv.kind === 'cast' ? `${cD.name}: ${cD.desc(cA)}. Kliknij, aby ${ORDERS[this.casting] ? 'wydać rozkaz' : 'rzucić'}.` : `${cD.name}: wskaż właściwy cel (Esc anuluje).`;
     else if (pv && pv.est) tip = `${pv.kind === 'shoot' ? `Strzał (zostało ${u0.shots}${shotPenaltyText(B, u0, pv.target)})` : 'Atak'}: ${pv.est.min}–${pv.est.max} obrażeń, zabitych ${pv.est.kmin === pv.est.kmax ? pv.est.kmin : `${pv.est.kmin}–${pv.est.kmax}`} (${CREATURES[pv.target.cid].plural.toLowerCase()}).`;
     else if (pv && pv.kind === 'far') tip = 'Ten oddział jest poza zasięgiem w tej turze.';
     if (this.touchKey && pv && G.mouse.type !== 'mouse') tip += ' Stuknij jeszcze raz, aby wykonać.';
@@ -728,7 +738,8 @@ G.screens.battle = {
     tipL.forEach((l, i) => text(ctx, l, tx, ty + i * 18, { size: tfs, weight: 700, color: UI.goldHi }));
     const ly = ty + tipL.length * 18, logN = L.side ? Math.max(1, Math.min(10, Math.floor((P.y + P.h - 14 - ly) / 16))) : 2;
     B.log.slice(-logN).forEach((l, i, a) => text(ctx, L.side ? fitText(ctx, l, tw, 13) : l, tx, ly + i * 16, { size: 13, weight: 600, color: i === a.length - 1 ? UI.txt : UI.txt2 }));
-    this.bCast.disabled = this.phase !== 'input' || !canCastNow(B); this.bInfo.label = sideHero(B, this.me) ? `Mana ${sideHero(B, this.me).mana}` : 'Bez bohatera'; this.bInfo.dispCol = UI.mana;
+    { const mh = sideHero(B, this.me); this.bCast.disabled = this.phase !== 'input' || !canCastNow(B); this.bOrder.disabled = this.phase !== 'input' || !canOrderNow(B);
+      this.bCast.sub = mh && hasBook(mh) ? `mana ${mh.mana}` : null; this.bOrder.sub = mh ? `zapał ${(B.valor || [0, 0])[this.me]}` : null; }
     this.buttons.forEach(b => b.draw(ctx));
     if (pv && pv.est && this.phase === 'input' && !G.modal && G.mouse.type === 'mouse') drawStrikeTip(ctx, B, u0, pv, L.side ? P.x : VW, L.fieldBottom);
   },

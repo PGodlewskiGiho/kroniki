@@ -7,7 +7,7 @@
 // Używają tego tools/balans/bohaterowie.js (pełny pomiar) i tests/balans-klas.test.js (krótki, pilnuje celu w CI).
 // Cel: na każdym poziomie każda klasa w granicach ±BALANCE_TARGET średniej, magowie i wojownicy średnio równo.
 // BALANCE_GUARD to granica, którą test pilnuje dziś; zbliża się do celu z kolejnymi etapami rozwoju bohatera.
-const BALANCE_TARGET = 0.10, BALANCE_GUARD = 0.35;
+const BALANCE_TARGET = 0.10, BALANCE_GUARD = 0.20;
 const BalanceLab = {
   UNLOCK: [0, 1, 1, 2, 2, 3, 4, 5], // tydzień, od którego armia ma stwory danego poziomu
   week: L => 1 + 0.7 * (L - 1),

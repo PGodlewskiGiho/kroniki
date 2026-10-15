@@ -58,11 +58,33 @@ const SPELLS = {
   fear: { name: 'Groza', school: 'fire', level: 3, cost: 12, kind: 'adv', target: 'none', col: '#c84a2a', desc: () => 'do końca dnia stada co najmniej dwa razy słabsze od twojej armii uciekają przed bohaterem (nawet dzikie)' },
   dimensionDoor: { name: 'Drzwi wymiarów', school: 'air', level: 5, cost: 25, kind: 'adv', target: 'tile', col: '#b89aff', desc: sp => `bohater przenosi się na wskazane wolne pole lądu w promieniu ${6 + sp} pól (300 punktów ruchu, dwa razy dziennie)` },
   blizzard: { name: 'Zamieć', school: 'water', level: 5, cost: 26, kind: 'battle', target: 'enemies', buff: 'slow', col: '#d8f0ff', dmg: sp => 10 + 10 * sp, desc: sp => `${10 + 10 * sp} obrażeń każdemu wrogowi i spowolnienie (−3 do szybkości) na ${roundsTxt(SPELL_ROUNDS(sp))}` },
+  // Sztuczka (cantrip): darmowy słaby czar każdego bohatera z księgą, rośnie z mocą czarów; nie uczy się go (level 0, cantrip)
+  spark: { name: 'Iskra', level: 0, cantrip: true, cost: 0, kind: 'battle', target: 'enemy', col: '#ffd27a', dmg: sp => SPARK_BASE + SPARK_PER * sp, desc: sp => `${SPARK_BASE + SPARK_PER * sp} obrażeń jednemu wrogowi, bez many (sztuczka)` },
   massCure: { name: 'Źródło życia', school: 'water', level: 5, cost: 22, kind: 'battle', target: 'allies', col: '#7ae8c8', heal: sp => 20 + 15 * sp, desc: sp => `leczy ${20 + 15 * sp} życia wszystkim sojusznikom i zdejmuje z nich złe czary` },
 };
 const BUFF_NAMES = { bless: 'błogosławieństwo', stoneSkin: 'kamienna skóra', haste: 'przyspieszenie', slow: 'spowolnienie', weakness: 'osłabienie', bloodlust: 'żądza krwi', prayer: 'modlitwa',
   shield: 'tarcza', fortune: 'fortuna', curse: 'klątwa', airShield: 'tarcza powietrza', fireShield: 'ognista tarcza', blind: 'oślepienie', poison: 'trucizna', vampiric: 'wampiryzm' };
 const BAD_BUFFS = ['slow', 'weakness', 'curse', 'blind', 'poison'];
+// ==================== DANE: ROZKAZY ======================================================
+// Rozkazy: drugi, równoległy do czarów sposób działania bohatera w bitwie (etap 1 rozwoju bohatera). Płaci się Zapałem: pula na bitwę
+// rośnie z obroną bohatera (jak mana z wiedzą), co rundę wraca VALOR_REGEN; siła rozkazów rośnie z atakiem (jak czary z mocą).
+// W rundzie bohater wydaje jeden rozkaz ALBO rzuca jeden czar, więc hybryda nie działa dwa razy. Szarżę i Mur tarcz zna każdy,
+// resztę odblokowuje dowolna z umiejętności need. target jak w czarach; buff: znacznik na oddziale (siła w u.ordv), rounds: 1 = do końca rundy.
+let SPARK_BASE = 2, SPARK_PER = 3, VALOR_BASE = 6, VALOR_PER_DEF = 2, VALOR_REGEN = 2; // let: strojone pomiarem (tools/balans)
+const orderPct = (a, base, per, cap) => Math.min(cap, Math.round(base + per * a)); // procent zależny od ataku bohatera, z górną granicą
+const ORDERS = {
+  charge: { name: 'Szarża', cost: 4, target: 'ally', col: '#ffb060', buff: 'charge', rounds: 1, pow: a => orderPct(a, 10, 1.5, 50), desc: a => `oddział +2 do szybkości i +${orderPct(a, 10, 1.5, 50)}% obrażeń do końca rundy` },
+  shieldWall: { name: 'Mur tarcz', cost: 4, target: 'ally', col: '#c8d0da', buff: 'wall', rounds: 1, pow: a => orderPct(a, 15, 2, 60), desc: a => `oddział otrzymuje o ${orderPct(a, 15, 2, 60)}% mniej obrażeń do końca rundy` },
+  warCry: { name: 'Okrzyk bojowy', cost: 8, target: 'allies', need: ['leadership'], col: '#ff8a4a', buff: 'cry', rounds: 2, pow: a => Math.max(1, Math.ceil(a / 4)), desc: a => `cała armia +${Math.max(1, Math.ceil(a / 4))} do ataku i obrony przez 2 rundy` },
+  flank: { name: 'Flanka', cost: 5, target: 'enemy', need: ['tactics', 'offense'], col: '#e8c040', buff: 'exposed', rounds: 1, pow: a => orderPct(a, 20, 2, 70), desc: a => `wróg otrzymuje o ${orderPct(a, 20, 2, 70)}% więcej obrażeń i nie oddaje ciosu do końca rundy` },
+  volleyOrder: { name: 'Salwa na rozkaz', cost: 7, target: 'enemy', need: ['archery'], col: '#d8b070', volley: true, pow: a => orderPct(a, 30, 2, 80), desc: a => `wszyscy twoi strzelcy od razu strzelają w cel za ${orderPct(a, 30, 2, 80)}% obrażeń (zużywają strzały)` },
+  rally: { name: 'Do szeregu!', cost: 6, target: 'livingAlly', need: ['firstAid', 'triage', 'armorer'], col: '#8ae0a0', heal: true, raise: true, pow: a => 30 + 15 * a, desc: a => `oddział odzyskuje ${30 + 15 * a} życia, polegli z tej bitwy wracają do szeregu` },
+  regroup: { name: 'Przegrupowanie', cost: 3, target: 'ally', need: ['logistics', 'pathfinding'], col: '#a8c8e8', teleport: true, range: 4, desc: () => 'oddział przechodzi na wolne pole w odległości do 4 (najpierw wskaż oddział, potem miejsce)' },
+  execute: { name: 'Pogrom', cost: 6, target: 'ally', need: ['offense', 'tactics'], col: '#c83a2a', buff: 'exec', rounds: 1, pow: a => orderPct(a, 25, 2, 75), desc: a => `ataki oddziału pomijają ${orderPct(a, 25, 2, 75)}% obrony wroga do końca rundy` },
+};
+Object.assign(BUFF_NAMES, { charge: 'szarża', wall: 'mur tarcz', cry: 'okrzyk bojowy', exposed: 'odsłonięta flanka', exec: 'pogrom' });
+// Czar albo rozkaz po identyfikatorze (bitwa obsługuje oba tym samym wskazywaniem celu)
+const actDef = id => SPELLS[id] || ORDERS[id];
 // Ile czarów danego poziomu oferuje gildia
 const GUILD_OFFER = { 1: 3, 2: 2, 3: 2, 4: 2, 5: 1 };
 const GUILD_MAX = 5;

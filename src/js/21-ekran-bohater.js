@@ -210,6 +210,7 @@ G.screens.hero = {
 // Wszystko w px logicznych ekranu; cząsteczki rysowane jako kwadraciki (pixel art), poświaty addytywnie.
 const SPELL_FX = {
   magicArrow: { proj: 'orb', col: '#8ac0ff', burst: '#d8ecff', sig: 'spark' },
+  spark: { proj: 'orb', col: '#ffd27a', burst: '#fff0c0', sig: 'spark' },
   lightningBolt: { strike: true, col: '#e0f0ff', burst: '#ffffff', flash: 0.45, shake: 5, sig: 'scorch' },
   fireball: { proj: 'fireball', col: '#ff8a2a', burst: '#ffd060', boom: true, flash: 0.25, shake: 8, sig: 'flames' },
   bless: { aura: 'fall', col: '#ffe08a', sig: 'beam' }, stoneSkin: { aura: 'orbit', col: '#c8b898', sig: 'stone' }, haste: { aura: 'wind', col: '#a8f0ff', sig: 'speed' },

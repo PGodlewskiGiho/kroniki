@@ -508,5 +508,12 @@
    jak w grze (poziom 10 ≈ 8. tydzień), wróg to armia Twierdzy z tego samego tygodnia; do tego wartość na mapie (ruch, złoto, widzenie).
    Cel: każda klasa ±10% średniej na każdym poziomie; test balans-klas pilnuje rozrzutu mag/wojownik (dziś ±35%, z etapami bliżej celu).
    Pomiar wyjściowy: mag/wojownik 1,24 (poziom 1), 0,94 (5), 0,78 (10), 0,70 (20), 0,66 (25) – magowie słabną z rozwojem armii.
+   Rozwój bohatera, etap 1: ROZKAZY (dane ORDERS) – drugi obok czarów sposób działania bohatera w bitwie, płacony Zapałem
+   (pula 6 + 2 × obrona, +2 co rundę), siła z ataku: Szarża i Mur tarcz zna każdy, Okrzyk bojowy (Przywództwo), Flanka (Taktyka
+   albo Atak), Salwa na rozkaz (Łucznictwo), Do szeregu! (Pierwsza pomoc, Opatrywanie ran albo Zbroja), Przegrupowanie (Logistyka
+   albo Znajdowanie drogi), Pogrom (Atak albo Taktyka). W rundzie bohater wydaje rozkaz albo rzuca czar (hybryda nie działa dwa razy).
+   Magowie: sztuczka Iskra (darmowa, w każdej księdze), skupienie (co rundę bitwy wraca mana = wiedza / 3) i czary mocniejsze o 20%
+   za każdy poziom bohatera (atak wojownika rośnie z armią procentowo, czar zadaje stałe obrażenia). SI wydaje rozkazy i rzuca Iskrę.
+   Pomiar: mag/wojownik 1,04 (poziom 5), 0,95 (10), 1,05 (15), 0,95 (20), 1,02 (25); test pilnuje ±20%.
    ===================================================================================== */
 

@@ -16,13 +16,13 @@ const battle = (army, garrison) => page.evaluate(([army, garrison]) => {
   h.mana = 999; h.stats.sp = 2; h.skills = []; window.__B = createBattle(st, h, t); __B.rng = () => 0.5; __B.obst.clear(); __B.active = __B.units.find(u => u.side === 0); return true;
 }, [army, garrison]);
 
-test('każdy czar ma szkołę, ikonę i efekt; w każdej szkole są czary od 1. do 5. poziomu', async () => {
+test('każdy czar ma szkołę (poza sztuczką), ikonę i efekt; w każdej szkole są czary od 1. do 5. poziomu', async () => {
   const r = await page.evaluate(() => {
     const bad = [], levels = {};
     for (const [id, S] of Object.entries(SPELLS)) {
-      if (!SCHOOLS[S.school]) bad.push(`${id}: szkoła`); if (S.kind === 'battle' && !SPELL_FX[id]) bad.push(`${id}: efekt`);
+      if (!SCHOOLS[S.school] && !S.cantrip) bad.push(`${id}: szkoła`); // sztuczka (Iskra) nie należy do szkoły if (S.kind === 'battle' && !SPELL_FX[id]) bad.push(`${id}: efekt`);
       const c = spriteCanvasOf(id); if (!c) bad.push(`${id}: ikona`);
-      (levels[S.school] = levels[S.school] || new Set()).add(S.level);
+      if (!S.cantrip) (levels[S.school] = levels[S.school] || new Set()).add(S.level);
     }
     return { bad, levels: Object.fromEntries(Object.entries(levels).map(([k, v]) => [k, [...v].sort()])), skills: Object.values(SCHOOLS).every(s => SKILLS[s.skill] && MAGIC_SKILLS.includes(s.skill)) };
     function spriteCanvasOf(id) { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.translate(16, 16); drawSpellIcon(g, id);

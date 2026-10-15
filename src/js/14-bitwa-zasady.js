@@ -147,6 +147,7 @@ function createBattle(st, h, foe) {
   placeSide(B, 1, D.stacks);
   if (D.town) setupSiege(B, D.town);
   placeMachines(B, 0, h); placeMachines(B, 1, D.hero);
+  B.valor = [heroValorMax(h), heroValorMax(D.hero)]; // Zapał na rozkazy: pełna pula na początku bitwy
   for (const u of B.units) { const sb = specBonus(B.sides[u.side].hero, u.cid); if (sb) u.spec = sb; const mv = pathV(B.sides[u.side].hero, 'marshal'); if (mv && !isMachine(u)) u.pathSpd = mv[0]; } // specjalność bohatera, Marszałek: szybkość
   // Taktyka (przewaga nad Taktyką wroga): premia w dwóch pierwszych rundach (u.tac), talent Zasadzka w pierwszej (u.amb); zdejmuje je nextActive
   const tac = [0, 1].map(s => skillVal(B.sides[s].hero, 'tactics')), amb = [0, 1].map(s => heroPerk(B.sides[s].hero, 'ambush'));
@@ -256,7 +257,7 @@ function pathTo({ prev }, u, x, y) {
 // Premie bohatera do ataku i obrony swoich oddziałów (strona bez bohatera: 0)
 const sideHero = (B, side) => B.sides[side].hero;
 // Czy oddział może jeszcze oddać cios w tej rundzie (raz, z talentem Kontruderzenie dwa razy, bez limitu z umiejętnością stwora)
-const canRetal = (B, u) => !u.buffs.blind && (hasAb(u, 'unlimitedRetal') || (u.retaliated || 0) < (heroPerk(sideHero(B, u.side), 'counter') ? 2 : 1));
+const canRetal = (B, u) => !u.buffs.blind && !u.buffs.exposed && (hasAb(u, 'unlimitedRetal') || (u.retaliated || 0) < (heroPerk(sideHero(B, u.side), 'counter') ? 2 : 1));
 const sideAtt = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'att') : 0);
 const sideDef = (B, side) => (sideHero(B, side) ? heroStat(sideHero(B, side), 'def') : 0); // mury miasta chronią fizycznie (oblężenie)
 // Którą stroną dowodzi człowiek (resztą SI). Na razie człowiek zawsze atakuje, więc to strona 0.
@@ -268,13 +269,14 @@ function damageRoll(B, a, t, ranged, moved = 0) {
   const ca = CREATURES[a.cid], ct = CREATURES[t.cid];
   let base = a.n * (a.buffs.bless || hasAb(a, 'maxDamage') ? ca.dmax : a.buffs.curse ? ca.dmin : ca.dmin + B.rng() * (ca.dmax - ca.dmin)); // Klątwa: najniższe obrażenia
   if (a.cid === 'ballista') base *= (sideAtt(B, a.side) + 1) * (1 + skillVal(sideHero(B, a.side), 'artillery') / 100); // balista: podstawa × (atak bohatera + 1), Artyleria
-  const A = unitAtt(a) + sideAtt(B, a.side), D = (unitDef(t) + sideDef(B, t.side) + (t.defending ? Math.ceil(ct.def * 0.2) + 1 : 0)) * (hasAb(a, 'armorPierce') ? 1 - ARMOR_PIERCE / 100 : 1); // Przebicie: część obrony celu się nie liczy
+  const A = unitAtt(a) + sideAtt(B, a.side), D = (unitDef(t) + sideDef(B, t.side) + (t.defending ? Math.ceil(ct.def * 0.2) + 1 : 0)) * (hasAb(a, 'armorPierce') ? 1 - ARMOR_PIERCE / 100 : 1) * (a.buffs.exec ? 1 - a.ordv.exec / 100 : 1); // Przebicie i rozkaz Pogrom: część obrony celu się nie liczy
   let mult = A >= D ? Math.min(4, 1 + 0.05 * (A - D)) : Math.max(0.3, 1 - 0.025 * (D - A));
   if (!ranged && ca.shots > 0 && !hasAb(a, 'noMeleePenalty')) mult *= 0.5;
   if (!ranged && hasAb(a, 'jousting')) mult *= 1 + 0.05 * moved;
   // strzał atakującego zza muru w obrońcę za murem: połowa obrażeń, dopóki ten fragment muru stoi
   if (ranged && B.walls && a.side === 0 && beforeWall(a.x, a.y) && behindWall(t.x, t.y)) { const w = wallAt(B, wallX(t.y), t.y); if (w && w.hp > 0) mult *= 0.5; }
   if (t.buffs[ranged ? 'airShield' : 'shield']) mult *= 1 - SHIELD_CUT / 100; // Tarcza (wręcz) i Tarcza powietrza (strzały)
+  if (a.buffs.charge) mult *= 1 + a.ordv.charge / 100; if (t.buffs.wall) mult *= 1 - t.ordv.wall / 100; if (t.buffs.exposed) mult *= 1 + t.ordv.exposed / 100; if (a.volleyMul) mult *= a.volleyMul; // rozkazy: Szarża, Mur tarcz, Flanka, Salwa
   const ha = sideHero(B, a.side), volley = heroPerk(ha, 'volley') || pathLv(ha, 'hunter') > 0; // talent Salwa i ścieżka Łowca: bez kary za odległość
   if (ranged && a.cid !== 'ballista') mult *= 1 + (pathV(ha, 'hunter') || 0) / 100; // Łowca: mocniejsi strzelcy
   if (ranged && !volley && farShot(a, t)) mult *= 0.5; if (ranged && shotBlocked(B, a, t)) mult *= 0.5; // odległość i przeszkody na torze lotu
@@ -499,6 +501,7 @@ function nextActive(B) {
     if (!B.order.length && B.waitQ.length) { B.order = B.waitQ.filter(u => !u.dead).sort((a, b) => unitSpd(a) - unitSpd(b)); B.waitQ = []; }
     if (!B.order.length) {
       B.round++; B.cast = [false, false]; B.casts = [0, 0];
+      if (B.valor && B.round >= 2) for (const s of [0, 1]) { const h = sideHero(B, s); B.valor[s] = Math.min(heroValorMax(h), B.valor[s] + VALOR_REGEN); if (h && hasBook(h) && B.round >= 2) h.mana = Math.min(heroMaxMana(h), h.mana + battleManaRegen(h)); } // co rundę wraca Zapał i trochę many (skupienie maga)
       for (const u of B.units) {
         u.retaliated = false; u.defending = false; u.waited = false; u.moraleBonus = false; u.moraleRolled = false;
         if (B.round >= 2) delete u.amb; if (B.round >= 3) delete u.tac; // Zasadzka: pierwsza runda, Taktyka: dwie pierwsze
@@ -524,28 +527,30 @@ function nextActive(B) {
   }
 }
 // --- czary w bitwie: bohater rzuca jeden czar na rundę, zanim ruszy oddział ---
-const unitAtt = u => CREATURES[u.cid].att + (u.tac || 0) + (u.spec ? u.spec.att : 0) + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
-const unitDef = u => CREATURES[u.cid].def + (u.tac || 0) + (u.spec ? u.spec.def : 0) + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
-const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.tac || 0) + (u.spec ? u.spec.spd : 0) + (u.pathSpd || 0) + (u.buffs.haste ? 3 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
-const battleSpells = h => (hasBook(h) ? h.spells || [] : []).filter(id => SPELLS[id].kind === 'battle'); // bez księgi nie ma czarów
+const unitAtt = u => CREATURES[u.cid].att + (u.buffs.cry ? u.ordv.cry : 0) + (u.tac || 0) + (u.spec ? u.spec.att : 0) + (u.buffs.bloodlust ? 3 : 0) - (u.buffs.weakness ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
+const unitDef = u => CREATURES[u.cid].def + (u.buffs.cry ? u.ordv.cry : 0) + (u.tac || 0) + (u.spec ? u.spec.def : 0) + (u.buffs.stoneSkin ? 3 : 0) + (u.buffs.prayer ? 2 : 0);
+const unitSpd = u => (isMachine(u) ? 0 : Math.max(1, CREATURES[u.cid].spd + (u.tac || 0) + (u.spec ? u.spec.spd : 0) + (u.pathSpd || 0) + (u.buffs.haste ? 3 : 0) + (u.buffs.charge ? 2 : 0) - (u.buffs.slow ? 3 : 0) + (u.buffs.prayer ? 2 : 0)));
+const battleSpells = h => (hasBook(h) ? [...(h.spells || []).filter(id => SPELLS[id].kind === 'battle'), 'spark'] : []); // bez księgi nie ma czarów; z księgą zawsze sztuczka Iskra
 // Czar rzuca bohater strony, której oddział właśnie ma ruch (jeden czar na rundę na stronę)
 const casterSide = B => (B.active ? B.active.side : 0);
 // Koszt czaru w tej rundzie: drugi czar Bitewnego maga kosztuje DOUBLE_CAST_COST razy więcej (pomiar tools/balans/bohaterowie.js: dwa pełne
 // czary na rundę czyniły maga 20. poziomu o 1/3 silniejszym od wojownika; przy potrójnym koszcie różnica mieści się w kilku procentach)
 let DOUBLE_CAST_COST = 3;
-const battleCost = (B, s, h, id) => Math.round(spellCost(h, id) * ((B.casts || [0, 0])[s] >= 1 ? DOUBLE_CAST_COST : 1));
+const battleCost = (B, s, h, id) => Math.round((ORDERS[id] ? ORDERS[id].cost : spellCost(h, id)) * ((B.casts || [0, 0])[s] >= 1 ? DOUBLE_CAST_COST : 1));
+// Rozkaz w tej rundzie: bohater jeszcze nie działał i ma Zapał na któryś ze znanych rozkazów
+const canOrderNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && knownOrders(h).some(id => battleCost(B, s, h, id) <= (B.valor || [0, 0])[s])); };
 const canCastNow = B => { const s = casterSide(B), h = sideHero(B, s); return !!(B.active && h && !B.cast[s] && battleSpells(h).some(id => battleCost(B, s, h, id) <= h.mana)); };
 // Czary bez celu: działają na całe pole (armagedon) albo na wszystkich swoich (przyspieszenie armii)
 const MASS_TARGETS = ['all', 'allies', 'enemies'];
 // Żywy (nie nieumarły, nie machina) oddział rzucającego, także poległy: cel wskrzeszenia
 const livingAlly = (u, s) => u.side === s && !notLiving(u) && !isMachine(u) && u.src !== 'siege';
 // Oddział na polu jako cel czaru: żywy, a dla czarów wskrzeszających także poległy (gdy pole jest wolne)
-const spellUnitAt = (B, id, x, y) => unitAt(B, x, y) || (SPELLS[id].raise && B.units.find(u => u.dead && u.x === x && u.y === y)) || null;
+const spellUnitAt = (B, id, x, y) => unitAt(B, x, y) || (actDef(id).raise && B.units.find(u => u.dead && u.x === x && u.y === y)) || null;
 // Czy cel pasuje do czaru (u = oddział albo null dla czaru na pole); „swoi” = strona rzucającego
 function spellTargetOk(B, id, u) {
-  const t = SPELLS[id].target, s = casterSide(B); if (u && isConstruct(u) && CONSTRUCT_IMMUNE.includes(id)) return false; if (t === 'hex' || t === 'ring' || t === 'wall' || MASS_TARGETS.includes(t)) return true; if (u && !targetable(u)) return false;
+  const t = actDef(id).target, s = casterSide(B); if (u && isConstruct(u) && CONSTRUCT_IMMUNE.includes(id)) return false; if (u && ORDERS[id] && isMachine(u)) return false; /* rozkazy nie dla machin */ if (t === 'hex' || t === 'ring' || t === 'wall' || MASS_TARGETS.includes(t)) return true; if (u && !targetable(u)) return false;
   if (!u || u.dead && !(t === 'undeadAlly' && u.side === s && hasAb(u, 'undead') || t === 'livingAlly' && livingAlly(u, s))) return false;
-  return t === 'any' ? true : t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s && (!SPELLS[id].clone || !isMachine(u) && u.src !== 'clone') : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : t === 'livingAlly' ? livingAlly(u, s) : false;
+  return t === 'any' ? true : t === 'enemy' ? u.side !== s : t === 'ally' ? u.side === s && (!actDef(id).clone || !isMachine(u) && u.src !== 'clone') : t === 'undeadAlly' ? u.side === s && hasAb(u, 'undead') : t === 'livingAlly' ? livingAlly(u, s) : false;
 }
 // Obrażenia czaru z Czarnoksięstwem bohatera
 const spellDamage = (h, S, sp) => Math.floor(S.dmg(sp) * (1 + skillVal(h, 'sorcery') / 100) * specSpellMul(h, spellId(S)) * schoolMul(h, spellId(S)));
@@ -554,6 +559,7 @@ const spellId = S => Object.keys(SPELLS).find(id => SPELLS[id] === S);
 const holyMul = (S, v) => (S.holy && hasAb(v, 'undead') ? 2 : 1);
 // Teleportacja: wolne pole dla całego oddziału; w oblężeniu napastnik nie przenosi się za mur
 const teleportOk = (B, u, x, y) => inField(x, y) && canStand(B, u, x, y) && !(B.walls && u.side === 0 && !beforeWall(x, y));
+const actTeleOk = (B, id, u, x, y) => teleportOk(B, u, x, y) && (!actDef(id).range || hexDistance(u, { x, y }) <= actDef(id).range); // Przegrupowanie: tylko blisko
 // Klon: najbliższe wolne pole obok oddziału
 function cloneSpot(B, u) { for (let r = 1; r <= 3; r++) { const c = []; for (let y = u.y - r; y <= u.y + r; y++) for (let x = u.x - r; x <= u.x + r; x++) if (canStand(B, u, x, y) && hexDistance(u, { x, y }) === r) c.push([x, y]); if (c.length) return c.sort((a, b) => (u.side ? b[0] - a[0] : a[0] - b[0]))[0]; } return null; }
 // Zakłócanie bohatera strony przeciwnej: mnożnik obrażeń i leczenia czarów rzucanych przez stronę s
@@ -564,11 +570,11 @@ const hostileSpell = (B, id, s, area) => { const S = SPELLS[id]; return (!!S.dmg
 // Odporność bohatera strony oddziału: szansa, że wrogi czar go nie tknie (sprawdzana osobno dla każdego oddziału)
 const resists = (B, v, s) => { const r = v.side !== s ? skillVal(sideHero(B, v.side), 'resistance') : 0; return r > 0 && B.rng() * 100 < r; };
 // Czar na jeden oddział rzucony przez eksperta szkoły działa na wszystkie oddziały tej strony (jak w Heroes 3)
-const massBuff = (B, id) => { const S = SPELLS[id]; return !!(B && S.buff && (S.target === 'ally' || S.target === 'enemy') && spellSchoolLv(sideHero(B, casterSide(B)), id) >= 3); };
+const massBuff = (B, id) => { const S = actDef(id); return !!(B && S.buff && (S.target === 'ally' || S.target === 'enemy') && spellSchoolLv(sideHero(B, casterSide(B)), id) >= 3); };
 // Pola trafione czarem (kula ognia: pole + sąsiedzi; pierścień mrozu: same sąsiedzi; armagedon: każdy oddział; czary armii: wszyscy swoi;
 // łańcuch piorunów: cel, potem kolejno najbliższy jeszcze nietrafiony oddział; czar eksperta: cała strona)
 function spellArea(id, x, y, B) {
-  const S = SPELLS[id], t = S.target;
+  const S = actDef(id), t = S.target;
   if (MASS_TARGETS.includes(t)) return B ? B.units.filter(u => !u.dead && targetable(u) && (t === 'all' || (t === 'enemies') === (u.side !== casterSide(B))) && !(S.spare && (hasAb(u, S.spare) || (S.spare === 'undead' && isConstruct(u))))).map(u => [u.x, u.y]) : []; // Fala śmierci oszczędza nieumarłych
   if (t === 'wall') return [[x, y], [x, y - 1], [x, y + 1]].filter(([a, b]) => inField(a, b)); // Ściana ognia: pole i sąsiednie w pionie
   if (massBuff(B, id)) { const u0 = unitAt(B, x, y); return u0 ? B.units.filter(u => !u.dead && targetable(u) && u.side === u0.side).map(u => [u.x, u.y]) : [[x, y]]; }
@@ -590,6 +596,7 @@ function learnBySight(B, s, id) {
   if (B.rng() * 100 < v) { o.spells.push(id); B.log.push(`${o.name} podpatruje czar „${SPELLS[id].name}” (Orle oko).`); }
 }
 function castBattle(B, id, x, y, x2, y2) {
+  if (ORDERS[id]) return issueOrder(B, id, x, y, x2, y2);
   const s = casterSide(B), h = sideHero(B, s), S = SPELLS[id], sp = spellPow(h), tu = spellUnitAt(B, id, x, y);
   const area = spellArea(id, x, y, B);
   h.mana -= battleCost(B, s, h, id); B.casts = B.casts || [0, 0]; B.casts[s]++; B.cast[s] = B.casts[s] >= (heroPerk(h, 'doubleCast') ? 2 : 1); B.log.push(`${h.name} rzuca: ${S.name}.`); // Bitewny mag: dwa czary na rundę
@@ -635,6 +642,40 @@ function castBattle(B, id, x, y, x2, y2) {
       if (S.dot) u.psn = Math.max(1, Math.floor(S.dot(sp) * specSpellMul(h, id) * schoolMul(h, id) * im)); /* Trucizna: obrażenia co rundę */ if (B.fx) B.fx.push({ kind: 'heal', u, amount: 0, label: SPELLS[id].name }); }
   }
 }
+// Rozkaz bohatera (dane: ORDERS): płaci Zapałem, zajmuje akcję bohatera w tej rundzie (jak czar), siła z ataku bohatera
+function issueOrder(B, id, x, y, x2, y2) {
+  const s = casterSide(B), h = sideHero(B, s), O = ORDERS[id], pow = O.pow ? O.pow(heroStat(h, 'att')) : 0, tu = spellUnitAt(B, id, x, y);
+  B.valor[s] -= battleCost(B, s, h, id); B.casts = B.casts || [0, 0]; B.casts[s]++; B.cast[s] = B.casts[s] >= (heroPerk(h, 'doubleCast') ? 2 : 1);
+  B.log.push(`${h.name}: rozkaz „${O.name}”.`);
+  if (O.buff) for (const u of MASS_TARGETS.includes(O.target) ? alive(B, s).filter(u => !isMachine(u) && targetable(u)) : tu ? [tu] : []) {
+    u.buffs[O.buff] = O.rounds; u.ordv = Object.assign({}, u.ordv, { [O.buff]: pow }); if (B.fx) B.fx.push({ kind: 'heal', u, amount: 0, label: O.name }); }
+  if (O.volley && tu) for (const a of alive(B, s).filter(u => !isMachine(u) && canShoot(B, u))) { // Salwa: każdy strzelec od razu strzela w cel
+    if (tu.dead) break; if (!endlessShots(a) && !hasCart(B, s)) a.shots--; a.volleyMul = pow / 100; strike(B, a, tu, true); delete a.volleyMul; }
+  if (O.heal && tu) { if (tu.dead) { tu.dead = false; tu.n = 1; tu.hp = 0; tu.dieT = null; } const back = healUnit(tu, pow); // Do szeregu!: leczy i przywraca poległych
+    B.log.push(`${CREATURES[tu.cid].plural} odzyskują siły${back ? `, wraca ${back}` : ''}.`); if (B.fx) B.fx.push({ kind: 'heal', u: tu, amount: pow, label: O.name }); }
+  if (O.teleport && tu && x2 != null && actTeleOk(B, id, tu, x2, y2)) { tu.x = x2; tu.y = y2; B.log.push(`${CREATURES[tu.cid].plural} zmieniają szyk.`); if (B.fx) B.fx.push({ kind: 'heal', u: tu, amount: 0, label: O.name, jump: true }); }
+}
+// SI: ile wart jest każdy dostępny rozkaz (w punktach wartości stworów, jak czary): wzmocnienie oddziału, który jeszcze w tej rundzie
+// uderzy, osłona zagrożonego, odsłonięcie groźnego wroga, salwa (przewidywani zabici), przywrócenie poległych
+const AI_ORDER_W = { charge: 0.22, shieldWall: 0.12, warCry: 0.035, flank: 0.2, execute: 0.12 };
+function aiOrderOptions(B, s, h) {
+  const out = [], val = u => u.n * CREATURES[u.cid].value, a = heroStat(h, 'att'), valor = (B.valor || [0, 0])[s];
+  const soon = u => u === B.active || B.order.includes(u) || B.waitQ.includes(u), foes = fighters(B, 1 - s), mine = fighters(B, s).filter(u => u.src !== 'siege');
+  const threatened = u => foes.some(e => hexDistance(u, e) <= unitSpd(e) + 1 || e.shots > 0);
+  for (const id of knownOrders(h)) {
+    const O = ORDERS[id], pct = O.pow ? O.pow(a) / 100 : 0; if (battleCost(B, s, h, id) > valor) continue;
+    if (id === 'charge' || id === 'execute') for (const u of mine) { if (soon(u) && !u.buffs[O.buff]) out.push({ id, val: val(u) * pct * AI_ORDER_W[id], x: u.x, y: u.y }); }
+    else if (id === 'shieldWall') for (const u of mine) { if (!u.buffs.wall && threatened(u)) out.push({ id, val: val(u) * pct * AI_ORDER_W[id], x: u.x, y: u.y }); }
+    else if (id === 'warCry') { const v = mine.filter(u => !u.buffs.cry).reduce((t, u) => t + val(u), 0); if (mine.length) out.push({ id, val: v * O.pow(a) * AI_ORDER_W.warCry, x: mine[0].x, y: mine[0].y }); }
+    else if (id === 'flank') { if (mine.some(soon)) for (const e of foes) if (targetable(e) && !e.buffs.exposed) out.push({ id, val: val(e) * pct * AI_ORDER_W.flank, x: e.x, y: e.y }); }
+    else if (id === 'volleyOrder') { const sh = mine.filter(u => canShoot(B, u)); if (sh.length) for (const e of foes) { if (!targetable(e)) continue;
+      const hp = CREATURES[e.cid].hp, pool = (e.n - 1) * hp + e.hp, d = sh.reduce((t, u) => { const r = estimateStrike(B, u, e, true); return t + (r.min + r.max) / 2 * pct; }, 0);
+      out.push({ id, val: Math.min(e.n, d >= pool ? e.n : d / hp) * CREATURES[e.cid].value, x: e.x, y: e.y }); } }
+    else if (id === 'rally') for (const u of B.units.filter(u => u.side === s && !isMachine(u) && u.src !== 'siege' && u.src !== 'clone' && spellTargetOk(B, id, u))) {
+      const hp = CREATURES[u.cid].hp, lost = (u.n0 - (u.dead ? 0 : u.n)) * hp + (u.dead ? 0 : hp - u.hp); if (lost > 0) out.push({ id, val: Math.min(O.pow(a), lost) / hp * CREATURES[u.cid].value, x: u.x, y: u.y }); }
+  }
+  return out;
+}
 // Ile wart jest czar wsparcia (w punktach wartości stworów, jak obrażenia): uleczenie albo wskrzeszenie strat, wzmocnienie silnego
 // oddziału, klątwa na groźnego wroga. Waga = jaką część siły oddziału czar zmienia na kilka rund.
 const AI_BUFF_W = { blind: 0.4, poison: 0.15, vampiric: 0.15, haste: 0.22, bloodlust: 0.18, bless: 0.18, prayer: 0.3, stoneSkin: 0.14, shield: 0.14, airShield: 0.14, fortune: 0.08, fireShield: 0.1, slow: 0.25, weakness: 0.18, curse: 0.18 };
@@ -662,7 +703,7 @@ function aiSupportOptions(B, s, h, id, sp) {
 }
 // SI bohatera (tryb Auto i walka automatyczna): czar zadający najwięcej wartości, jeśli jakiś się opłaca
 function aiHeroCast(B) {
-  if (!canCastNow(B)) return false;
+  if (!canCastNow(B) && !canOrderNow(B)) return false;
   const s = casterSide(B), h = sideHero(B, s), sp = spellPow(h); let best = null;
   for (const id of battleSpells(h)) {
     const S = SPELLS[id]; if (!S.dmg || battleCost(B, s, h, id) > h.mana) continue;
@@ -680,6 +721,7 @@ function aiHeroCast(B) {
     const S = SPELLS[id]; if (S.dmg || battleCost(B, s, h, id) > h.mana) continue;
     for (const c of aiSupportOptions(B, s, h, id, sp)) if (c.val > 0 && (!best || c.val > best.val)) best = { ...c, id };
   }
+  for (const c of aiOrderOptions(B, s, h)) if (c.val > 0 && (!best || c.val > best.val)) best = c; // rozkazy (Zapał)
   if (!best) return false; castBattle(B, best.id, best.x, best.y); return true;
 }
 // Cała bitwa bez ekranu (przycisk „Automatycznie” i testy)

@@ -320,7 +320,7 @@ function pandoraOpen(st, h, ob) {
   if (roll < 0.42) { const e = Math.round(2500 * k / 100) * 100; return { text: `Z puszki wydobywa się świetlista mgła pełna wspomnień dawnych bohaterów: ${e} doświadczenia.`, exp: e, float: `+${e} dośw.` }; }
   if (roll < 0.58) { const pool = ARTS_BY_RARITY(r() < 0.35 ? 'major' : 'minor'), art = pool[Math.floor(r() * pool.length)]; giveArtifact(h, art); return { text: `Na aksamitnej poduszce leży artefakt: ${ARTIFACTS[art].name}.`, float: ARTIFACTS[art].name }; }
   if (roll < 0.7) { const res = RARE[Math.floor(r() * RARE.length)], n = Math.round(6 * k); R[res] += n; R.wood += n; R.ore += n; return { text: `Puszka jest pełna surowców: po ${n} drewna, rudy i ${resName(res).toLowerCase()}.`, float: `+${n}` }; }
-  if (roll < 0.78 && hasBook(h)) { const L = Math.min(spellCap(h), 2 + Math.floor(r() * 2)), pool = Object.keys(SPELLS).filter(id => SPELLS[id].level <= L && !h.spells.includes(id)); if (pool.length) { const id = pool[Math.floor(r() * pool.length)]; h.spells.push(id); return { text: `Z puszki wylatuje zwój z zaklęciem. ${h.name} poznaje czar „${SPELLS[id].name}”.`, float: SPELLS[id].name }; } }
+  if (roll < 0.78 && hasBook(h)) { const L = Math.min(spellCap(h), 2 + Math.floor(r() * 2)), pool = Object.keys(SPELLS).filter(id => !SPELLS[id].cantrip && SPELLS[id].level <= L && !h.spells.includes(id)); if (pool.length) { const id = pool[Math.floor(r() * pool.length)]; h.spells.push(id); return { text: `Z puszki wylatuje zwój z zaklęciem. ${h.name} poznaje czar „${SPELLS[id].name}”.`, float: SPELLS[id].name }; } }
   const lvl = clamp(2 + Math.floor((st.month - 1) * 1.2 + st.week * 0.4 + r() * 2), 2, 7), all = NEUTRALS_BY_LEVEL[lvl], cid = all[Math.floor(r() * all.length)], gold = Math.round(1500 * k / 100) * 100;
   const count = Math.max(2, Math.round(armyPower(h.army) * (0.45 + r() * 0.3) / CREATURES[cid].value)); R.gold += gold;
   return { text: `Na dnie puszki leży ${gold} złota – ale z wnętrza wypełza ${qtyName(count).toLowerCase()} ${CREATURES[cid].gen}! Trzeba walczyć.`, float: `+${gold}`, res: 'gold', bad: true, trap: { cid, count } };
@@ -452,7 +452,7 @@ const spellSchoolLv = (h, id) => { const S = SPELLS[id]; return S && S.school ? 
 // Moc czarów w bitwie (obrażenia, leczenie, trucizna, czas działania): do SP_SOFT pełna, powyżej każdy punkt liczy się za pół – późni magowie
 // nie rosną bez końca (pomiar tools/balans/bohaterowie.js: bez limitu mag 20. poziomu był o 1/5 silniejszy od wojownika nawet bez Bitewnego maga)
 let SP_SOFT = 6; const effSp = sp => (sp <= SP_SOFT ? sp : SP_SOFT + Math.floor((sp - SP_SOFT) / 2)), spellPow = h => effSp(heroStat(h, 'sp'));
-const spellCost = (h, id) => Math.max(1, Math.round(SPELLS[id].cost * (1 - SCHOOL_COST[spellSchoolLv(h, id)] / 100) * (1 - (pathV(h, 'archmage') || [0, 0])[1] / 100)));
+const spellCost = (h, id) => SPELLS[id].cost === 0 ? 0 : Math.max(1, Math.round(SPELLS[id].cost * (1 - SCHOOL_COST[spellSchoolLv(h, id)] / 100) * (1 - (pathV(h, 'archmage') || [0, 0])[1] / 100)));
 const schoolMul = (h, id) => 1 + SCHOOL_POWER[spellSchoolLv(h, id)] / 100;
 const skillVal = (h, id) => { const L = heroSkill(h, id); if (!L) return 0; const sp = heroSpec(h), v = SKILLS[id].v[L - 1]; return sp && sp.skill === id ? Math.round(v * (1 + 0.05 * h.level)) : v; };
 // --- specjalności bohaterów (HERO_SPECS) ---
@@ -463,7 +463,11 @@ function specBonus(h, cid) {
   if (!specUnits(h).includes(cid)) return null; const c = CREATURES[cid], k = 0.05 * h.level / c.level;
   return { att: Math.max(1, Math.round(c.att * k)), def: Math.max(1, Math.round(c.def * k)), spd: 1 };
 }
-const specSpellMul = (h, id) => { const sp = heroSpec(h); return sp && sp.spell === id ? 1 + 0.03 * h.level : 1; };
+// Mnożnik obrażeń, leczenia i trucizny czaru: specjalność bohatera (+3% za poziom) i doświadczenie (SPELL_LVL_K za każdy poziom ponad 1.).
+// Atak wojownika daje procent obrażeń całej armii, więc rośnie razem z nią; czar zadaje stałe obrażenia, dlatego bez tego mnożnika
+// magowie słabli z każdym tygodniem (pomiar BalanceLab, etap 1 rozwoju bohatera)
+let SPELL_LVL_K = 0.2;
+const specSpellMul = (h, id) => { const sp = heroSpec(h); return (sp && sp.spell === id ? 1 + 0.03 * h.level : 1) * (1 + SPELL_LVL_K * Math.max(0, ((h && h.level) || 1) - 1)); };
 function specText(h) {
   const sp = heroSpec(h); if (!sp) return '';
   if (sp.dw) { const [a] = specUnits(h), bo = specBonus(h, a); return `${CREATURES[a].plural} i ich ulepszenia: +${bo.att} do ataku, +${bo.def} do obrony, +1 do szybkości (rośnie z poziomem)`; }
@@ -504,7 +508,7 @@ function learnTalent(st, h, id) {
   if (id === 'veteran') { h.stats.att += 2; h.stats.def += 2; }
   if (id === 'archmage') { h.stats.sp += 2; h.stats.kn += 2; }
   if (id === 'scholar') { // dwa losowe czary, których bohater nie zna (do limitu Mądrości), powtarzalnie
-    const r = mulberry32(thash(h.id, h.level, st.seed) ^ 0x5c01), pool = Object.keys(SPELLS).filter(s => SPELLS[s].level <= spellCap(h) && !knows(h, s));
+    const r = mulberry32(thash(h.id, h.level, st.seed) ^ 0x5c01), pool = Object.keys(SPELLS).filter(s => !SPELLS[s].cantrip && SPELLS[s].level <= spellCap(h) && !knows(h, s));
     for (let k = 0; k < 2 && pool.length; k++) h.spells.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
   }
   h.mana = Math.min(h.mana, heroMaxMana(h));
@@ -612,6 +616,12 @@ function giveArtifact(h, id) {
 // --- czary: mana, nauka w gildii, czary na mapie -----------------------------------------------
 const heroMaxMana = h => Math.floor(10 * heroStat(h, 'kn') * (1 + skillVal(h, 'intelligence') / 100 + (pathV(h, 'sage') || [0])[0] / 100));
 const knows = (h, id) => (h.spells || []).includes(id);
+// Rozkazy bohatera (dane: ORDERS): pula Zapału na bitwę rośnie z obroną, siła rozkazów z atakiem; znane rozkazy z umiejętności
+// Skupienie: w bitwie co rundę wraca tyle many (z wiedzy, jak Zapał z obrony), nie ponad maksimum
+let MANA_REGEN_K = 0.34;
+const battleManaRegen = h => Math.floor(MANA_REGEN_K * heroStat(h, 'kn'));
+const heroValorMax = h => (h ? VALOR_BASE + VALOR_PER_DEF * heroStat(h, 'def') : 0);
+const knownOrders = h => (h ? Object.keys(ORDERS).filter(id => !ORDERS[id].need || ORDERS[id].need.some(s => heroSkill(h, s) > 0)) : []);
 // Czary gildii losowane raz, gdy powstaje dany poziom (deterministycznie z ziarna gry i miasta)
 function rollGuildLevel(st, t, L) {
   const pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L), r = mulberry32(st.seed ^ (t.id * 7777) ^ (L * 131)), out = [];
