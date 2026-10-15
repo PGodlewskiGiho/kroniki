@@ -534,5 +534,11 @@
    Stałe działanie (legenda na 20. poziomie mocniejsza) i zdolność raz na bitwę za darmo z listy rozkazów: Sąd ognia, Runiczne ostrze,
    Uświęcona ziemia, Burza, Powstańcie!, Korzenie, Zew stada, Bomba, Cios z cienia, Krwawy pakt, Nie przejdą!, Deszcz meteorów.
    Komputer woli klasę prestiżową, gdy ją ma, i używa zdolności. Okno wyboru z kartami samo dobiera kolumny i czcionkę (telefon).
+   Rozwój bohatera, etap 5: ARTEFAKTY 2.0 (29 nowych). Rosnące (grow: co kilka wygranych bitew premia rośnie, stan h.artXp idzie
+   z artefaktem do innego bohatera), przeklęte (cursed: duża premia i wada, zdjąć tylko w mieście z gildią magów), aktywne (use: zdolność
+   raz na bitwę z listy Rozkaz, za darmo i bez księgi, siła z poziomu bohatera: Grom z różdżki, Żywa woda, Głos rogu, Zwierciadło,
+   Spętanie, Przyspieszony czas, Przypływ many, Ognista kula ze zwoju), relikwie rodów (fac/own: po jednej na frakcję, bohater tej
+   frakcji dostaje dużo więcej). Zaklinanie (ENCHANTS, h.ench): w mieście z gildią magów runa na założony artefakt za złoto, kryształ
+   i klejnoty (siła i koszt rosną z rzadkością); komputer zaklina sam. Modele 3D nowych artefaktów w arkuszu artefakty.webp.
    ===================================================================================== */
 

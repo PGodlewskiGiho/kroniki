@@ -932,6 +932,7 @@ function drawArtCard(ctx, p) {
   const lines = [];
   if (A.desc) lines.push(A.desc); else { const b = artBonusText(A.bonus); if (b) lines.push(`Premia: ${b}.`); }
   if (A.perk) lines.push(`Talent: ${TALENTS[A.perk].name} – ${TALENTS[A.perk].desc}.`);
+  for (const t of artTraits(id, p.h)) lines.push(`${t}.`); // artefakty 2.0: zdolność, klątwa, wzrost, relikwia rodu, runa
   const has = pid => !!p.h && (Object.values(p.h.equip || {}).includes(pid) || (p.h.bag || []).includes(pid));
   ctx.font = font(14, 500, 'body'); const wrapped = lines.flatMap(l => wrapText(ctx, l, W0 - 40));
   const set = A.parts || (r ? ARTIFACTS[r].parts : null), setH = set ? 26 + set.length * 18 : 0;
@@ -1085,13 +1086,13 @@ function showMeeting(st, a, b, onMsg) {
         const err = armyMove(armies[from.k], from.i, armies[s.k], s.i, keep); if (err) say(err); return;
       }
       if (g && heroes[1 - g.k].outpost) { say('Garnizon nie przechowuje artefaktów.'); return; }
-      if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
+      if (g) { const from = heroes[g.k], to = heroes[1 - g.k], [id] = from.bag.splice(g.i, 1); to.bag.push(id); moveArtData(from, to, id); say(`${ARTIFACTS[id].name} → ${to.name}`); return; }
       sel = null;
     },
     rightCard(px, py) { const s = armyAt(px, py), g = bagAt(px, py); return s ? unitCard(armies[s.k][s.i], heroes[s.k]) : g ? artCard(heroes[g.k].bag[g.i], heroes[g.k]) : null; },
     rightInfo(px, py) {
       const s = armyAt(px, py); if (s) return armies[s.k][s.i] ? stackInfo(armies[s.k][s.i]) : 'Wolne miejsce.';
-      const g = bagAt(px, py); if (g) return `${artInfo(heroes[g.k].bag[g.i])} Kliknij, aby oddać drugiemu bohaterowi.`;
+      const g = bagAt(px, py); if (g) return `${artInfo(heroes[g.k].bag[g.i], heroes[g.k])} Kliknij, aby oddać drugiemu bohaterowi.`;
       return null;
     },
     draw(ctx) {
@@ -1265,6 +1266,19 @@ function drawArtifact(c, id) {
     case 'book':
       c.fillStyle = '#e8dcc0'; c.fillRect(-8, -9, 17, 19); c.fillStyle = col; c.fillRect(-9, -10, 16, 19); c.fillStyle = dk; c.fillRect(-9, -10, 3, 19);
       c.strokeStyle = gem; c.lineWidth = 1.5; c.beginPath(); c.moveTo(1, -6); c.lineTo(1, 5); c.moveTo(-2, -3); c.lineTo(4, 2); c.moveTo(4, -3); c.lineTo(-2, 2); c.stroke(); break;
+    case 'horn': // róg wojenny
+      c.strokeStyle = col; c.lineWidth = 5; c.beginPath(); c.moveTo(-9, 6); c.quadraticCurveTo(0, 8, 8, -7); c.stroke(); c.strokeStyle = gem; c.lineWidth = 2; for (const t of [0.3, 0.6]) { c.beginPath(); c.arc(-9 + 17 * t, 6 - 13 * t * t, 3, 0, TAU); c.stroke(); } circ(c, 8, -7, 3.5, dk); break;
+    case 'chain': // łańcuchy
+      c.strokeStyle = col; c.lineWidth = 2.2; for (let i = 0; i < 4; i++) { c.beginPath(); c.ellipse(-7 + i * 4.6, 6 - i * 4.4, 3.4, 2, -0.8 + (i % 2) * 1.6, 0, TAU); c.stroke(); } circ(c, 8, -8, 2.2, gem); break;
+    case 'hourglass':
+      c.fillStyle = col; c.fillRect(-8, -10, 16, 2.5); c.fillRect(-8, 8, 16, 2.5); poly([[-6, -8], [6, -8], [1, 0], [6, 8], [-6, 8], [-1, 0]], 'rgba(220,235,255,.55)');
+      poly([[-4, -6], [4, -6], [0, -1]], gem); poly([[-5, 8], [5, 8], [0, 3]], gem); c.fillStyle = dk; c.fillRect(-7, -8, 1.5, 16); c.fillRect(5.5, -8, 1.5, 16); break;
+    case 'scroll':
+      c.fillStyle = col; c.fillRect(-7, -8, 14, 16); circ(c, -7, -8, 2.5, dk); circ(c, 7, -8, 2.5, dk); circ(c, -7, 8, 2.5, dk); circ(c, 7, 8, 2.5, dk);
+      c.fillStyle = shadeHex(col, -0.25); for (const y of [-4, -1, 2]) c.fillRect(-4, y, 8, 1); circ(c, 0, 5, 2.4, gem); break;
+    case 'mask':
+      c.fillStyle = col; c.beginPath(); c.ellipse(0, 0, 9, 11, 0, 0, TAU); c.fill(); c.fillStyle = '#0a0a0e'; c.beginPath(); c.ellipse(-3.6, -2, 2.6, 1.6, 0.3, 0, TAU); c.ellipse(3.6, -2, 2.6, 1.6, -0.3, 0, TAU); c.fill();
+      circ(c, 0, -7, 1.8, gem); c.fillStyle = dk; c.fillRect(-3, 5, 6, 1.4); break;
     case 'grail': // złoty kielich z blaskiem
       circ(c, 0, -3, 10, 'rgba(255,240,160,.35)'); poly([[-6, 10], [6, 10], [3, 7], [-3, 7]], dk); c.fillStyle = col; c.fillRect(-1.5, -1, 3, 8);
       poly([[-8, -9], [8, -9], [6, -3], [2, 0], [-2, 0], [-6, -3]], col); poly([[2, -9], [8, -9], [6, -3], [2, 0]], dk);

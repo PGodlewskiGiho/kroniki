@@ -545,7 +545,16 @@ const talentText = id => `${TALENTS[id].name}: ${TALENTS[id].desc}`;
 const aiPickTalent = offer => offer.slice().sort((a, b) => AI_TALENT_ORDER.indexOf(a) - AI_TALENT_ORDER.indexOf(b))[0];
 const aiPickSkill = offer => offer.slice().sort((a, b) => AI_SKILL_ORDER.indexOf(a) - AI_SKILL_ORDER.indexOf(b))[0];
 // Suma premii z założonych artefaktów (plecak nie działa)
-const heroBonus = (h, key) => Object.values(h.equip || {}).reduce((s, id) => s + (id ? ARTIFACTS[id].bonus[key] || 0 : 0), 0);
+// Premia jednego artefaktu bohatera: stała + wzrost (rosnące) + relikwia rodu (własna frakcja) + runa (zaklinanie)
+const artGrowth = (h, id) => { const G0 = ARTIFACTS[id].grow; return G0 ? Math.min(G0.max, Math.floor(((h.artXp || {})[id] || 0) / G0.every)) : 0; };
+function artBonusOf(h, id, key) {
+  const A = ARTIFACTS[id]; let v = A.bonus[key] || 0;
+  if (A.grow && A.grow.key === key) v += A.grow.per * artGrowth(h, id);
+  if (A.own && A.own[key] && heroFaction(h) === A.fac) v += A.own[key];
+  const e = h.ench && h.ench[id], b = e && ENCHANTS[e].bonus[key]; if (b) v += key === 'luck' || key === 'morale' ? b : b * (ENCH_TIER[A.rarity] || 1);
+  return v;
+}
+const heroBonus = (h, key) => Object.values(h.equip || {}).reduce((s, id) => s + (id ? artBonusOf(h, id, key) : 0), 0);
 const heroStat = (h, key) => h.stats[key] + heroBonus(h, key) + pathStat(h, key);
 const heroSight = h => h.sight + (heroFork(h, 'farsight') ? 3 : 0) + heroBonus(h, 'sight') + skillVal(h, 'scouting') + perkCount(h, 'explorer') + (heroTrait(h, 'dungeon') ? 2 : 0) + (pathV(h, 'wanderer') || [0, 0])[1];
 // Premia bohatera do siły armii w potyczce: +5% za każdy punkt ataku i obrony
@@ -620,12 +629,16 @@ function gainExp(st, h, amount, then, silent = false) { // silent: awans bez oki
 // Zakłada artefakt z plecaka (indeks) na pasujące miejsce: najpierw wolne, inaczej zamiana z pierwszym pasującym.
 // Miejsca zajęte przez relikwię (h.locked) są niedostępne. Relikwia zajmuje swoje miejsce i miejsca wszystkich części.
 const freeSlots = (h, kind) => EQUIP_SLOTS.filter(s => s.kind === kind && !(h.locked || {})[s.id]);
+// Artefakty przeklęte: zdjąć (albo zastąpić innym) da się tylko w mieście z gildią magów (bohater w bramie własnego miasta)
+const curseFree = (st, h) => !!st && st.towns.some(t => t.x === h.x && t.y === h.y && t.owner === h.owner && guildLevel(t) > 0);
+const stuck = (h, slotId) => { const id = h.equip[slotId]; return !!(id && ARTIFACTS[id].cursed && !curseFree(G.state, h)); };
+const CURSE_MSG = id => `${ARTIFACTS[id].name} jest przeklęty: zdejmiesz go dopiero w mieście z gildią magów`;
 function equipFromBag(h, bi) {
   const id = h.bag[bi]; if (!id) return 'Brak artefaktu';
   const A = ARTIFACTS[id]; if (!EQUIP_SLOTS.some(s => s.kind === A.kind)) return `${A.name} nie da się założyć`;
   if (A.parts) return equipRelic(h, bi);
   const slots = freeSlots(h, A.kind); if (!slots.length) return `Miejsce zajmuje relikwia: ${ARTIFACTS[h.locked[EQUIP_SLOTS.find(s => s.kind === A.kind).id]].name}`;
-  const free = slots.find(s => !h.equip[s.id]) || slots[0];
+  const free = slots.find(s => !h.equip[s.id]) || slots.find(s => !stuck(h, s.id)); if (!free) return CURSE_MSG(h.equip[slots[0].id]);
   const old = h.equip[free.id]; h.equip[free.id] = id; h.bag.splice(bi, 1); if (old) { if (ARTIFACTS[old].parts) releaseLocks(h, old); h.bag.splice(bi, 0, old); }
   return null;
 }
@@ -637,11 +650,11 @@ function relicSlots(h, id, prefer = {}) {
 }
 function releaseLocks(h, relic) { for (const k of Object.keys(h.locked || {})) if (h.locked[k] === relic) delete h.locked[k]; }
 function equipRelic(h, bi) {
-  const id = h.bag[bi], { main, others } = relicSlots(h, id); h.bag.splice(bi, 1);
+  const id = h.bag[bi], { main, others } = relicSlots(h, id), cur = [main, ...others].find(s => stuck(h, s.id)); if (cur) return CURSE_MSG(h.equip[cur.id]); h.bag.splice(bi, 1);
   for (const s of [main, ...others]) { const old = h.equip[s.id]; if (old) { if (ARTIFACTS[old].parts) releaseLocks(h, old); h.bag.push(old); } h.equip[s.id] = null; if (h.locked[s.id]) { const r = h.locked[s.id]; for (const [k, v] of Object.entries(h.equip)) if (v === r) { h.equip[k] = null; h.bag.push(r); } releaseLocks(h, r); } }
   h.equip[main.id] = id; for (const s of others) h.locked[s.id] = id; return null;
 }
-function unequip(h, slotId) { const id = h.equip[slotId]; if (id) { h.equip[slotId] = null; h.bag.push(id); if (ARTIFACTS[id].parts) releaseLocks(h, id); } }
+function unequip(h, slotId) { const id = h.equip[slotId]; if (stuck(h, slotId)) return CURSE_MSG(id); if (id) { h.equip[slotId] = null; h.bag.push(id); if (ARTIFACTS[id].parts) releaseLocks(h, id); } }
 // Relikwie, które bohater może złożyć (wszystkie części założone)
 const assemblable = h => RELICS.filter(r => ARTIFACTS[r].parts.every(p => Object.values(h.equip).includes(p)));
 function assembleRelic(h, r) {
@@ -664,6 +677,35 @@ function giveArtifact(h, id) {
   const pl = G.state && G.state.players[h.owner]; if (pl && !pl.human) for (const r of assemblable(h)) assembleRelic(h, r);
   return !!s;
 }
+// Stan artefaktu 2.0 (wzrost h.artXp, runa h.ench) idzie za artefaktem, gdy przechodzi do innego bohatera
+function moveArtData(from, to, id) {
+  if (!from || !to || from === to) return;
+  for (const k of ['artXp', 'ench']) { const v = (from[k] || {})[id]; if (v == null) continue; to[k] = to[k] || {}; if (k === 'artXp' ? v > (to[k][id] || 0) : !to[k][id]) to[k][id] = v; if (![...Object.values(from.equip || {}), ...(from.bag || [])].includes(id)) delete from[k][id]; }
+}
+// Wygrana bitwa: artefakty rosnące, które bohater nosi, zbierają zwycięstwa; zwraca opisy nowych stopni
+function growArtifacts(h) {
+  const out = []; h.artXp = h.artXp || {};
+  for (const id of new Set(Object.values(h.equip || {}).filter(id => id && ARTIFACTS[id].grow))) {
+    const before = artGrowth(h, id); h.artXp[id] = (h.artXp[id] || 0) + 1; const now = artGrowth(h, id);
+    if (now > before) { const G0 = ARTIFACTS[id].grow; out.push(`${ARTIFACTS[id].name} rośnie w siłę: ${signed(G0.per * now)} ${KEY_NAMES[G0.key]}`); }
+  }
+  return out;
+}
+// Zaklinanie: runa na założony artefakt w mieście z gildią magów (bohater w bramie); zwraca tekst błędu albo null
+const enchCost = id => ENCH_COST[ARTIFACTS[id].rarity] || ENCH_COST.minor;
+function enchantArt(st, h, id, rune) {
+  if (!curseFree(st, h)) return 'Zaklinać można w mieście z gildią magów (bohater w bramie)';
+  if (!Object.values(h.equip || {}).includes(id)) return 'Zaklinać można tylko założony artefakt'; if (!ENCHANTS[rune]) return 'Nie ma takiej runy';
+  const c = enchCost(id), R = playerOf(st, h.owner).resources; if (Object.entries(c).some(([r, n]) => (R[r] || 0) < n)) return `Runa kosztuje: ${costText(c)}`;
+  for (const [r, n] of Object.entries(c)) R[r] -= n; h.ench = h.ench || {}; h.ench[id] = rune; return null;
+}
+// Komputer w mieście z gildią zaklina najcenniejszy założony artefakt bez runy, gdy ma spory zapas (atak wojownikom, moc magom)
+function aiEnchant(st, h) {
+  const R = playerOf(st, h.owner).resources, rank = { relic: 4, major: 3, minor: 2, treasure: 1 };
+  const id = Object.values(h.equip || {}).filter(id => id && !(h.ench || {})[id]).sort((a, b) => rank[ARTIFACTS[b].rarity] - rank[ARTIFACTS[a].rarity])[0]; if (!id) return null;
+  const c = enchCost(id); if (Object.entries(c).some(([r, n]) => (R[r] || 0) < n * 2 + (r === 'gold' ? 6000 : 3))) return null;
+  return enchantArt(st, h, id, MAGE_CLASSES.includes(h.cls) ? 'sp' : 'att') ? null : id;
+}
 
 // --- czary: mana, nauka w gildii, czary na mapie -----------------------------------------------
 const heroMaxMana = h => Math.floor(10 * heroStat(h, 'kn') * (1 + (skillVal(h, 'intelligence') + (heroFork(h, 'deepWell') ? 50 : 0)) / 100 + (pathV(h, 'sage') || [0])[0] / 100));
@@ -673,7 +715,8 @@ const knows = (h, id) => (h.spells || []).includes(id);
 let MANA_REGEN_K = 0.34;
 const battleManaRegen = h => Math.floor(MANA_REGEN_K * heroStat(h, 'kn') * (heroFork(h, 'meditation') ? 2 : 1));
 const heroValorMax = h => (h ? VALOR_BASE + VALOR_PER_DEF * heroStat(h, 'def') : 0);
-const knownOrders = h => (h ? [...Object.keys(ORDERS).filter(id => !ORDERS[id].prestige && (!ORDERS[id].need || ORDERS[id].need.some(s => heroSkill(h, s) > 0))), ...(PATHS_ON && h.mastery && PRESTIGE[h.mastery] ? [PRESTIGE[h.mastery].ability] : [])] : []); // z klasą prestiżową jej zdolność
+const knownOrders = h => (h ? [...Object.keys(ORDERS).filter(id => !onceOrder(id) && (!ORDERS[id].need || ORDERS[id].need.some(s => heroSkill(h, s) > 0))), ...(PATHS_ON && h.mastery && PRESTIGE[h.mastery] ? [PRESTIGE[h.mastery].ability] : []), ...artAbilities(h)] : []); // z klasą prestiżową jej zdolność, z artefaktami aktywnymi ich zdolności
+const artAbilities = h => [...new Set(Object.values(h.equip || {}).filter(id => id && ARTIFACTS[id].use).map(id => ARTIFACTS[id].use))];
 // Czary gildii losowane raz, gdy powstaje dany poziom (deterministycznie z ziarna gry i miasta)
 function rollGuildLevel(st, t, L) {
   const pool = Object.keys(SPELLS).filter(id => SPELLS[id].level === L), r = mulberry32(st.seed ^ (t.id * 7777) ^ (L * 131)), out = [];
@@ -701,6 +744,7 @@ function buyBook(st, t, h) {
 function visitGuild(st, t, h) {
   const L = guildLevel(t); if (!L) return [];
   if (!hasBook(h) && !playerOf(st, h.owner).human && playerOf(st, h.owner).resources.gold >= SPELLBOOK_COST * 3) buyBook(st, t, h);
+  if (!playerOf(st, h.owner).human && t.x === h.x && t.y === h.y) aiEnchant(st, h);
   if (!hasBook(h)) { h.mana = Math.max(h.mana, heroMaxMana(h)); return []; }
   const learned = [];
   for (let k = 1; k <= Math.min(L, spellCap(h)); k++) for (const id of (t.guild && t.guild[k]) || []) if (!knows(h, id)) { h.spells.push(id); learned.push(id); } // wyżej tylko z Mądrością

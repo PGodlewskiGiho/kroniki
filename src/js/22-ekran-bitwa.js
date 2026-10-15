@@ -403,7 +403,7 @@ G.screens.battle = {
     if (B.cast[s]) { B.log.push('W tej rundzie bohater już działał.'); return; }
     const a = heroStat(mh, 'att'), list = knownOrders(mh);
     showDialog(`Rozkazy bohatera ${mh.name}. Zapał: ${B.valor[s]} z ${heroValorMax(mh)} (wraca ${VALOR_REGEN} na rundę). Siła rozkazów rośnie z atakiem (${a}).`,
-      [...list.map(id => { const O = ORDERS[id], c = battleCost(B, s, mh, id); return { label: O.name, sub: O.prestige ? ((B.usedOnce || [])[s] ? 'już użyta' : 'raz na bitwę') : `${c} zapału`, disabled: !orderAvail(B, s, mh, id), tip: `${O.name}: ${O.desc(a)}.`,
+      [...list.map(id => { const O = ORDERS[id], c = battleCost(B, s, mh, id); return { label: O.name, sub: onceOrder(id) ? (onceUsed(B, s, id) ? 'już użyta' : 'raz na bitwę') : `${c} zapału`, disabled: !orderAvail(B, s, mh, id), tip: `${O.name}: ${O.desc(a)}.`,
         action: () => { this.casting = id; this.tele = null; this.onPointerMove(G.mouse.x, G.mouse.y); } }; }), { label: 'Anuluj', key: 'escape' }], { bw: 150 });
   },
   // Koniec bitwy: zwycięzcy wiwatują przez chwilę, potem okno wyniku nad polem bitwy (jak w Heroes 3). Klik albo klawisz przyspiesza.

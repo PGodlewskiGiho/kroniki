@@ -87,10 +87,24 @@ G.screens.hero = {
       showDialog(`${ARTIFACTS[r].name}. Co zrobić z relikwią?`, [
         { label: 'Rozłóż na części', key: 'r', action: () => { disassembleRelic(h, e.id); fixMp(); this.say(`Rozłożono: ${ARTIFACTS[r].name}`); } },
         { label: 'Zdejmij', key: 'z', action: () => { unequip(h, e.id); fixMp(); this.say(`Zdjęto: ${ARTIFACTS[r].name}`); } },
+        ...(curseFree(G.state, h) ? [{ label: 'Zaklnij runą', key: 'e', action: () => this.offerEnchant(h, r) }] : []),
         { label: 'Anuluj', key: 'escape', action: () => {} }]); }
-    else if (e && h.equip[e.id]) { unequip(h, e.id); fixMp(); this.say(`Zdjęto: ${ARTIFACTS[h.bag[h.bag.length - 1]].name}`); }
+    else if (e && h.equip[e.id] && curseFree(G.state, h)) { const id = h.equip[e.id]; // w mieście z gildią: zdjąć albo zakląć
+      showDialog(`${ARTIFACTS[id].name}. Gildia magów może wyryć na nim runę.`, [
+        { label: 'Zaklnij runą', key: 'e', action: () => this.offerEnchant(h, id) },
+        { label: 'Zdejmij', key: 'z', action: () => { unequip(h, e.id); fixMp(); this.say(`Zdjęto: ${ARTIFACTS[id].name}`); } },
+        { label: 'Anuluj', key: 'escape', action: () => {} }]); }
+    else if (e && h.equip[e.id]) { const id = h.equip[e.id], err = unequip(h, e.id); fixMp(); this.say(err || `Zdjęto: ${ARTIFACTS[id].name}`); }
     else if (e) this.say(`Wolne miejsce: ${e.name.toLowerCase()}. Kliknij artefakt w plecaku, aby go założyć.`);
     else if (bi >= 0 && h.bag[bi]) { const id = h.bag[bi], err = equipFromBag(h, bi); fixMp(); this.say(err || `Założono: ${ARTIFACTS[id].name}`); if (!err) this.offerRelic(h); }
+  },
+  // Zaklinanie: wybór runy (jedna na artefakt, nowa zastępuje starą); koszt zależy od rzadkości
+  offerEnchant(h, id) {
+    const st = G.state, cur = (h.ench || {})[id], c = enchCost(id);
+    showChoice(`${ARTIFACTS[id].name}: wybierz runę (koszt: ${costText(c)}).${cur ? ` Teraz: ${ENCHANTS[cur].name} – nowa ją zastąpi.` : ''}`, Object.entries(ENCHANTS).map(([rid, E], k) => ({
+      label: E.name, sub: artBonusText(enchBonus(id, rid)), tip: `${E.name}: ${artBonusText(enchBonus(id, rid))} na stałe, póki artefakt jest założony. Koszt: ${costText(c)}.`, key: String(k + 1),
+      lead: (ctx, cx, cy) => { if (PRIMARY.some(p => p.id === rid)) iconStat(ctx, rid, cx, cy, '#6a4418'); else drawSprite(ctx, artSprite(id), cx, cy, 0.9); },
+      action: () => { const err = enchantArt(st, h, id, rid); h.mp = Math.min(h.mp, heroMaxMP(h)); this.say(err || `${ARTIFACTS[id].name}: ${E.name}`); if (!err) Sfx.play('click'); } })));
   },
   // Komplet części założony: propozycja złożenia relikwii
   offerRelic(h) {
@@ -105,9 +119,9 @@ G.screens.hero = {
   },
   rightInfo(x, y) {
     const h = this.hero(), e = this.equipAt(x, y), bi = this.bagAt(x, y), ar = hitRect(this.armyRects, x, y), p = this.statAt(x, y);
-    if (e && (h.locked || {})[e.id]) return `Miejsce zajęte przez relikwię: ${artInfo(h.locked[e.id])}`;
-    if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id])} ${ARTIFACTS[h.equip[e.id]].parts ? 'Kliknij, aby rozłożyć albo zdjąć.' : 'Kliknij, aby zdjąć.'}` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
-    if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi])} Kliknij, aby założyć.` : null;
+    if (e && (h.locked || {})[e.id]) return `Miejsce zajęte przez relikwię: ${artInfo(h.locked[e.id], h)}`;
+    if (e) return h.equip[e.id] ? `${artInfo(h.equip[e.id], h)} ${ARTIFACTS[h.equip[e.id]].parts ? 'Kliknij, aby rozłożyć albo zdjąć.' : curseFree(G.state, h) ? 'Kliknij: zdejmij albo zaklnij runą.' : 'Kliknij, aby zdjąć.'}` : `Wolne miejsce: ${e.name.toLowerCase()}.`;
+    if (bi >= 0) return h.bag[bi] ? `${artInfo(h.bag[bi], h)} Kliknij, aby założyć.` : null;
     if (ar) return h.army[ar.i] ? stackInfo(h.army[ar.i]) : 'Wolne miejsce w armii.';
     if (h.machines.length && y >= 470 && y <= 490 && x >= 32 && x <= 388) return `Machiny wojenne (stają za armią i działają same): ${h.machines.map(id => stackInfo({ cid: id, n: 1 })).join(' ')} Kupisz je w kuźni.`;
     if (inRect(x, y, SPEC_BOX)) return heroSpec(h) ? `Specjalność: ${specText(h)}.` : null;

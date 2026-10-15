@@ -370,6 +370,40 @@ const ARTIFACTS = {
   titanArmor: { name: 'Pancerz Tytana', kind: 'torso', rarity: 'relic', parts: ['titanCuirass', 'titanHammer', 'titanHelm', 'titanGreaves'], bonus: { att: 7, def: 12 }, icon: 'armor', col: '#6ab0d0', gem: '#ffffff' },
   deadKingRegalia: { name: 'Insygnia Króla Umarłych', kind: 'head', rarity: 'relic', parts: ['boneCrown', 'deathShroud', 'vampireFang'], bonus: { sp: 5, kn: 4, def: 3 }, icon: 'crown', col: '#d8d0b8', gem: '#60e0a0' },
   frostKing: { name: 'Regalia Lodowego Króla', kind: 'torso', rarity: 'relic', parts: ['frostMail', 'frostBrand', 'frostCrown'], bonus: { att: 6, def: 6, sp: 4 }, icon: 'armor', col: '#8ac8f0', gem: '#ffffff' },
+  // --- artefakty 2.0 (etap 5 rozwoju bohatera) ---
+  // rosnące (grow): co `every` wygranych bitew, w których bohater je nosi, premia rośnie o `per` (najwyżej `max` razy); stan w h.artXp
+  thirstBlade: { name: 'Ostrze Pragnienia', kind: 'weapon', rarity: 'minor', bonus: { att: 1 }, grow: { key: 'att', per: 1, every: 3, max: 5 }, icon: 'sword', col: '#c8ccd4', gem: '#c8202a' },
+  veteranShield: { name: 'Tarcza Weterana', kind: 'shield', rarity: 'minor', bonus: { def: 1 }, grow: { key: 'def', per: 1, every: 3, max: 5 }, icon: 'shield', col: '#7a6a5a', gem: '#c8a040' },
+  livingTome: { name: 'Żywa Księga', kind: 'misc', rarity: 'minor', bonus: { sp: 1 }, grow: { key: 'sp', per: 1, every: 3, max: 4 }, icon: 'book', col: '#3a6a3a', gem: '#a0f070' },
+  pupilRing: { name: 'Pierścień Ucznia', kind: 'ring', rarity: 'treasure', bonus: { kn: 1 }, grow: { key: 'kn', per: 1, every: 3, max: 4 }, icon: 'ring', col: '#b8c0cc', gem: '#6ab0f0' },
+  trophyNecklace: { name: 'Naszyjnik z Trofeów', kind: 'neck', rarity: 'minor', bonus: { att: 1 }, grow: { key: 'morale', per: 1, every: 4, max: 3 }, icon: 'fang', col: '#e8dcc0', gem: '#8a3a1a' },
+  roadBoots: { name: 'Buty Wielu Dróg', kind: 'feet', rarity: 'treasure', bonus: { mp: 100 }, grow: { key: 'mp', per: 100, every: 2, max: 6 }, icon: 'boots', col: '#6a4a2a', gem: '#a8c8e8' },
+  // przeklęte (cursed): wielka premia i prawdziwa wada; zdjąć je można tylko w mieście z gildią magów
+  berserkAxe: { name: 'Topór Szału', kind: 'weapon', rarity: 'major', cursed: true, bonus: { att: 7, def: -3 }, icon: 'axe', col: '#8a2a24', gem: '#ff3a2a' },
+  greedCrown: { name: 'Korona Chciwości', kind: 'head', rarity: 'major', cursed: true, bonus: { gold: 1500, morale: -2 }, icon: 'crown', col: '#d8a830', gem: '#3aa040' },
+  leadGreaves: { name: 'Ołowiane Nagolenniki', kind: 'feet', rarity: 'major', cursed: true, bonus: { def: 5, mp: -400 }, icon: 'boots', col: '#5a5e66', gem: '#2a2a30' },
+  voidAmulet: { name: 'Amulet Pustki', kind: 'neck', rarity: 'major', cursed: true, bonus: { sp: 5, kn: -2 }, icon: 'amulet', col: '#2a2236', gem: '#a050ff' },
+  hexRing: { name: 'Pierścień Wiedźmy', kind: 'ring', rarity: 'major', cursed: true, bonus: { sp: 3, kn: 3, luck: -2 }, icon: 'ring', col: '#4a5a3a', gem: '#90ff60' },
+  bloodMail: { name: 'Krwawa Kolczuga', kind: 'torso', rarity: 'major', cursed: true, bonus: { att: 3, def: 4, morale: -2 }, icon: 'armor', col: '#8a2a2a', gem: '#ff4a3a' },
+  // aktywne (use): zdolność raz na bitwę z listy Rozkaz, za darmo, także bez księgi czarów (dane zdolności w ORDERS, pole art)
+  thunderRod: { name: 'Różdżka Gromu', kind: 'misc', rarity: 'minor', bonus: { sp: 1 }, use: 'rodBolt', icon: 'staff', col: '#4a5a8a', gem: '#ffe060' },
+  lifeFlask: { name: 'Flakon Żywej Wody', kind: 'misc', rarity: 'treasure', bonus: {}, use: 'flaskHeal', icon: 'orb', col: '#4ac0a0', gem: '#c8a040' },
+  warHorn: { name: 'Róg Wojenny', kind: 'misc', rarity: 'minor', bonus: { morale: 1 }, use: 'hornBlast', icon: 'horn', col: '#e8dcc0', gem: '#c8a040' },
+  mirrorShield: { name: 'Tarcza Zwierciadlana', kind: 'shield', rarity: 'major', bonus: { def: 2 }, use: 'mirror', icon: 'shield', col: '#d8e4f0', gem: '#8ac8ff' },
+  bindingChains: { name: 'Łańcuchy Spętania', kind: 'misc', rarity: 'major', bonus: { def: 1 }, use: 'bind', icon: 'chain', col: '#8a8e98', gem: '#a050ff' },
+  hourglass: { name: 'Klepsydra Czasu', kind: 'misc', rarity: 'major', bonus: { kn: 1 }, use: 'timeSurge', icon: 'hourglass', col: '#c8a040', gem: '#f0e0a0' },
+  manaCrystal: { name: 'Kryształ Many', kind: 'neck', rarity: 'minor', bonus: { kn: 1 }, use: 'manaSurge', icon: 'amulet', col: '#6a8ad8', gem: '#60c0ff' },
+  fireScroll: { name: 'Zwój Ognistej Kuli', kind: 'misc', rarity: 'minor', bonus: {}, use: 'scrollFire', icon: 'scroll', col: '#e8dcc0', gem: '#ff6a2a' },
+  // relikwie rodów (fac): premia dla każdego, a bohaterowi tej frakcji (obu klas) dużo więcej (own)
+  dawnOath: { name: 'Ostrze Przysięgi Świtu', kind: 'weapon', rarity: 'major', fac: 'haven', bonus: { att: 2, def: 1 }, own: { att: 2, morale: 1 }, icon: 'sword', col: '#f0e8c8', gem: '#ffd060' },
+  elderHeart: { name: 'Serce Pradrzewa', kind: 'neck', rarity: 'major', fac: 'sylvan', bonus: { kn: 2 }, own: { sp: 2, luck: 1 }, icon: 'amulet', col: '#6a8a3a', gem: '#a0f070' },
+  lichPhylactery: { name: 'Filakteria Lisza', kind: 'misc', rarity: 'major', fac: 'barrow', bonus: { sp: 2 }, own: { sp: 2, kn: 2 }, icon: 'orb', col: '#3a4a3a', gem: '#60e0a0' },
+  runeHammer: { name: 'Młot Kowala Run', kind: 'weapon', rarity: 'major', fac: 'fortress', bonus: { att: 1, def: 2 }, own: { def: 3, att: 1 }, icon: 'hammer', col: '#a8a098', gem: '#40c0e0' },
+  hellforgeCrown: { name: 'Korona Piekielnej Kuźni', kind: 'head', rarity: 'major', fac: 'inferno', bonus: { att: 2 }, own: { att: 2, sp: 2 }, icon: 'crown', col: '#5a2a1a', gem: '#ff6a2a' },
+  frostLens: { name: 'Soczewka Szronu', kind: 'misc', rarity: 'major', fac: 'academy', bonus: { kn: 2, sp: 1 }, own: { kn: 2, sp: 2 }, icon: 'orb', col: '#bfe8fa', gem: '#ffffff' },
+  abyssMask: { name: 'Maska Otchłani', kind: 'head', rarity: 'major', fac: 'dungeon', bonus: { sp: 2, def: 1 }, own: { sp: 2, att: 1 }, icon: 'mask', col: '#3a2a46', gem: '#c83a5a' },
+  warchiefTotem: { name: 'Totem Wodza', kind: 'misc', rarity: 'major', fac: 'stronghold', bonus: { att: 2 }, own: { att: 3, morale: 1 }, icon: 'banner', col: '#8a5a2a', gem: '#c83a2a' },
+  gearHeart: { name: 'Zębate Serce', kind: 'torso', rarity: 'major', fac: 'forge', bonus: { def: 2, att: 1 }, own: { def: 2, att: 2 }, icon: 'armor', col: '#b8703a', gem: '#ffb040' },
   // Graala nie da się założyć (nie ma pasującego miejsca): leży w plecaku, dopóki bohater nie zbuduje go w mieście
   grail: { name: 'Graal', kind: 'grail', rarity: 'relic', bonus: {}, icon: 'grail', col: '#f0c040', gem: '#fff4c0',
     desc: 'Święty kielich. Zanieś go do własnego miasta, aby wznieść tam budowlę Graala (+5000 złota dziennie, +50% przyrostu stworów).' },
@@ -380,14 +414,34 @@ const relicOf = id => RELICS.find(r => ARTIFACTS[r].parts.includes(id)) || null;
 // Opis premii artefaktu: „+2 do ataku, +200 ruchu”
 function artBonusText(b) {
   const out = [];
-  for (const p of PRIMARY) if (b[p.id]) out.push(`+${b[p.id]} do ${p.gen}`);
+  for (const p of PRIMARY) if (b[p.id]) out.push(`${signed(b[p.id])} do ${p.gen}`);
   if (b.morale) out.push(`${signed(b.morale)} do morale`); if (b.luck) out.push(`${signed(b.luck)} do szczęścia`);
-  if (b.mp) out.push(`+${b.mp} punktów ruchu`); if (b.sight) out.push(`+${b.sight} do zasięgu widzenia`); if (b.gold) out.push(`+${b.gold} złota dziennie`);
+  if (b.mp) out.push(`${signed(b.mp)} punktów ruchu`); if (b.sight) out.push(`${signed(b.sight)} do zasięgu widzenia`); if (b.gold) out.push(`${signed(b.gold)} złota dziennie`);
   if (b.res) out.push(`dziennie ${Object.entries(b.res).map(([r, n]) => `+${n} ${(RESOURCES.find(x => x.id === r) || { name: r }).name.toLowerCase()}`).join(', ')}`);
   return out.join(', ');
 }
-const artInfo = id => { const A = ARTIFACTS[id], r = relicOf(id);
-  return `${A.name} (${RARITY[A.rarity]}): ${A.desc || [artBonusText(A.bonus), A.perk ? `talent ${TALENTS[A.perk].name} (${TALENTS[A.perk].desc})` : ''].filter(Boolean).join('; ') + '.'}` + (A.parts ? ` Złożona z: ${A.parts.map(p => ARTIFACTS[p].name).join(', ')}.` : '') + (r ? ` Część relikwii: ${ARTIFACTS[r].name}.` : ''); };
+// Cechy artefaktów 2.0 jako zdania (karta i podpowiedź): zdolność, klątwa, wzrost, relikwia rodu, runa; h: czyj (stan wzrostu i runy)
+function artTraits(id, h) {
+  const A = ARTIFACTS[id], out = [], k = (KEY_NAMES[A.grow && A.grow.key] || '');
+  if (A.use) out.push(`Raz na bitwę (lista Rozkaz, za darmo, bez księgi): ${ORDERS[A.use].name} – ${ORDERS[A.use].desc()}`);
+  if (A.cursed) out.push('Przeklęty: zdejmiesz go tylko w mieście z gildią magów');
+  if (A.grow) { const G0 = A.grow, n = h ? artGrowth(h, id) : 0, xp = h ? (h.artXp || {})[id] || 0 : 0;
+    out.push(`Rośnie: co ${G0.every} wygrane bitwy ${signed(G0.per)} ${k} (najwyżej ${signed(G0.per * G0.max)})` + (h ? `; teraz ${signed(G0.per * n)}, zwycięstw: ${xp}` : '')); }
+  if (A.fac) out.push(`Relikwia rodu (${factionOf(A.fac).name}): bohaterowi tej frakcji dodatkowo ${artBonusText(A.own)}`);
+  const e = h && (h.ench || {})[id]; if (e) out.push(`Runa: ${ENCHANTS[e].name} (${artBonusText(enchBonus(id, e))})`);
+  return out;
+}
+const KEY_NAMES = { att: 'ataku', def: 'obrony', sp: 'mocy', kn: 'wiedzy', morale: 'morale', luck: 'szczęścia', mp: 'ruchu', sight: 'widzenia', gold: 'złota' };
+const artInfo = (id, h = null) => { const A = ARTIFACTS[id], r = relicOf(id), tr = artTraits(id, h);
+  return `${A.name} (${RARITY[A.rarity]}): ${A.desc || [artBonusText(A.bonus), A.perk ? `talent ${TALENTS[A.perk].name} (${TALENTS[A.perk].desc})` : ''].filter(Boolean).join('; ') + '.'}` + (tr.length ? ` ${tr.join('. ')}.` : '') + (A.parts ? ` Złożona z: ${A.parts.map(p => ARTIFACTS[p].name).join(', ')}.` : '') + (r ? ` Część relikwii: ${ARTIFACTS[r].name}.` : ''); };
+// Zaklinanie w mieście z gildią magów: jedna runa na artefakt (nowa zastępuje starą); siła i koszt rosną z rzadkością
+const ENCHANTS = {
+  att: { name: 'Runa siły', bonus: { att: 1 } }, def: { name: 'Runa osłony', bonus: { def: 1 } }, sp: { name: 'Runa mocy', bonus: { sp: 1 } }, kn: { name: 'Runa wiedzy', bonus: { kn: 1 } },
+  luck: { name: 'Runa szczęścia', bonus: { luck: 1 } }, morale: { name: 'Runa męstwa', bonus: { morale: 1 } }, mp: { name: 'Runa drogi', bonus: { mp: 150 } },
+};
+const ENCH_TIER = { treasure: 1, minor: 1, major: 2, relic: 3 }; // mnożnik premii runy (szczęście i morale zawsze +1)
+const ENCH_COST = { treasure: { gold: 600, crystal: 1, gems: 1 }, minor: { gold: 1000, crystal: 2, gems: 2 }, major: { gold: 2000, crystal: 3, gems: 3 }, relic: { gold: 4000, crystal: 5, gems: 5 } };
+const enchBonus = (id, e) => { const t = ENCH_TIER[ARTIFACTS[id].rarity] || 1, b = ENCHANTS[e].bonus, out = {}; for (const [k, v] of Object.entries(b)) out[k] = k === 'luck' || k === 'morale' ? v : v * t; return out; };
 
 // ==================== WYGLĄD BOHATERÓW (jeździec 3D, każdy inny) ==========================================
 // Każdy bohater z puli frakcji ma własny model jeźdźca: klasa daje barwy (HERO_CLASSES.look), a kolejny bohater tej klasy

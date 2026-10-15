@@ -45,7 +45,7 @@ const aiClaims = new Map();
 function aiFeed(st, h, m) {
   const before = armyPower(m.army); if (!feedArmies(h.army, m.army)) return 0;
   for (const slot of Object.keys(h.equip)) if (h.equip[slot] && !(h.locked || {})[slot]) unequip(h, slot);
-  for (const id of h.bag.splice(0)) { giveArtifact(m, id); if (ARTIFACTS[id].parts) { const bi = m.bag.indexOf(id); if (bi >= 0 && relicSlots(m, id)) equipRelic(m, bi); } }
+  for (const id of h.bag.splice(0)) { giveArtifact(m, id); moveArtData(h, m, id); if (ARTIFACTS[id].parts) { const bi = m.bag.indexOf(id); if (bi >= 0 && relicSlots(m, id)) equipRelic(m, bi); } }
   return armyPower(m.army) - before;
 }
 // Sama wymiana oddziałów (na żywych armiach albo na kopiach, by policzyć, ile naprawdę przejdzie); false = pomocnik nie ma czego oddać

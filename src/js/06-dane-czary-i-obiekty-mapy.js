@@ -96,8 +96,19 @@ Object.assign(ORDERS, {
   assassinate: { name: 'Cios z cienia', prestige: 'shadowmaster', cost: 0, target: 'enemy', col: '#5a4a6a', pow: h => prestigePow(h, (a, sp, L) => 30 * a + 20 * L), desc: () => 'skrytobójca zadaje wrogiemu oddziałowi obrażenia z ataku i poziomu bohatera' },
   bloodPactP: { name: 'Krwawy pakt', prestige: 'bloodmage', cost: 0, target: 'allies', col: '#c8202a', desc: () => 'najliczniejszy twój żywy oddział oddaje piątą część życia, a bohater odzyskuje całą manę' },
   holdLine: { name: 'Nie przejdą!', prestige: 'warden', cost: 0, target: 'allies', col: '#c8d0da', desc: () => 'cała armia stawia Mur tarcz na 2 rundy' },
-  meteor: { name: 'Deszcz meteorów', prestige: 'battleArch', cost: 0, target: 'hex', col: '#ff6a3a', desc: () => 'Deszcz meteorów bez many, nawet bez znajomości czaru' },
+  meteor: { name: 'Deszcz meteorów', prestige: 'battleArch', cost: 0, target: 'hex', col: '#ff6a3a', desc: () => 'Deszcz meteorów bez many, nawet bez znajomości czaru' },});
+// Zdolności artefaktów aktywnych (ARTIFACTS.use): raz na bitwę każda, za darmo; siła rośnie z poziomem bohatera (tak samo dla maga i wojownika)
+Object.assign(ORDERS, {
+  rodBolt: { name: 'Grom z różdżki', art: 'thunderRod', cost: 0, target: 'enemy', col: '#ffe060', pow: h => 40 + 12 * h.level, desc: () => 'piorun bije we wrogi oddział (obrażenia rosną z poziomem bohatera)' },
+  flaskHeal: { name: 'Żywa woda', art: 'lifeFlask', cost: 0, target: 'livingAlly', col: '#4ac0a0', heal: true, raise: true, pow: h => 30 + 10 * h.level, desc: () => 'oddział odzyskuje życie, polegli z tej bitwy wracają (rośnie z poziomem)' },
+  hornBlast: { name: 'Głos rogu', art: 'warHorn', cost: 0, target: 'allies', col: '#e8c070', pow: h => 2 + Math.floor(h.level / 5), desc: () => 'cała armia dostaje premię do ataku i obrony na 2 rundy (rośnie z poziomem)' },
+  mirror: { name: 'Zwierciadło', art: 'mirrorShield', cost: 0, target: 'ally', col: '#d8e4f0', desc: () => 'oddział stawia Mur tarcz na 2 rundy i jest odporny na wrogie czary' },
+  bind: { name: 'Spętanie', art: 'bindingChains', cost: 0, target: 'enemy', col: '#a050ff', desc: () => 'wrogi oddział nie może się ruszyć przez 2 rundy' },
+  timeSurge: { name: 'Przyspieszony czas', art: 'hourglass', cost: 0, target: 'allies', col: '#f0e0a0', desc: () => 'cała armia +3 do szybkości na 2 rundy' },
+  manaSurge: { name: 'Przypływ many', art: 'manaCrystal', cost: 0, target: 'allies', col: '#60c0ff', pow: h => 8 + 3 * h.level, desc: () => 'bohater odzyskuje manę (rośnie z poziomem)' },
+  scrollFire: { name: 'Ognista kula ze zwoju', art: 'fireScroll', cost: 0, target: 'hex', col: '#ff6a2a', pow: h => 20 + 8 * h.level, desc: () => 'wybuch rani wszystkich na polu i wokół niego, także swoich (rośnie z poziomem)' },
 });
+const onceOrder = id => !!(ORDERS[id] && (ORDERS[id].prestige || ORDERS[id].art)); // zdolność raz na bitwę (klasa prestiżowa, artefakt)
 Object.assign(BUFF_NAMES, { root: 'korzenie' });
 Object.assign(BUFF_NAMES, { charge: 'szarża', wall: 'mur tarcz', cry: 'okrzyk bojowy', exposed: 'odsłonięta flanka', exec: 'pogrom' });
 // Czar albo rozkaz po identyfikatorze (bitwa obsługuje oba tym samym wskazywaniem celu)
