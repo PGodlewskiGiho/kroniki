@@ -485,5 +485,7 @@
    Wszędzie 60 klatek: bez ograniczenia mapy w spoczynku do 30 (20) i bez połowy klatek przy niskiej jakości (niska jakość
    obniża tylko rozdzielczość); ekrany bez animacji też 60. Tło interfejsu pod oknem mapy już się nie rysuje (zakrywa je mapa),
    a zmiana jakości grafiki od razu rysuje nową klatkę (bez pustej klatki po zmianie rozmiaru płótna).
+   Bez warczenia w bitwie: usunięte próbki growl, głosy demonów (warczenie), wilkołak u wilków i ogarów, bekające zombie
+   u nieumarłych; demony atakują bez głosu.
    ===================================================================================== */
 

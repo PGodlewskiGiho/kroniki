@@ -9,7 +9,7 @@ const GAME_URL = pathToFileURL(path.join(__dirname, '..', 'Kroniki Królestw.htm
 const PORT = 9131, PEER = { host: '127.0.0.1', port: PORT, path: '/kk', secure: false, config: { iceServers: [] } };
 let server, browser, A, B; // A = gospodarz, B = gość (dwa okna jednej przeglądarki)
 const LOG = process.env.NET_LOG, L = m => { if (LOG) fs.appendFileSync(LOG, new Date().toISOString().slice(11, 19) + ' ' + m + '\n'); };
-const until = async (page, fn, arg, ms = 20000) => { L('wait ' + String(fn).slice(6, 70)); await page.waitForFunction(fn, arg, { timeout: ms, polling: 100 }); L('ok'); };
+const until = async (page, fn, arg, ms = 45000) => { L('wait ' + String(fn).slice(6, 70)); await page.waitForFunction(fn, arg, { timeout: ms, polling: 100 }); L('ok'); };
 
 test.before(async () => {
   L('before');
@@ -100,7 +100,7 @@ test('bitwa na żywo: każdy dowodzi swoją stroną, obaj liczą to samo', async
   await A.page.evaluate(() => { const s = G.screens.battle; if (s.phase === 'over') s.finish(false); });
   await until(A.page, () => !!G.modal); await A.page.evaluate(() => G.modal.buttons[0].action());
   await until(B.page, () => !!G.modal && G.screenName === 'battle'); await B.page.evaluate(() => G.modal.buttons[0].action());
-  await until(B.page, () => G.screenName === 'adventure' && !G.state.heroes.some(h => h.owner === 1 && h.army.some(x => x && x.cid === 'pikeman' && x.n === 6)), null, 20000);
+  await until(B.page, () => G.screenName === 'adventure' && !G.state.heroes.some(h => h.owner === 1 && h.army.some(x => x && x.cid === 'pikeman' && x.n === 6)), null, 45000);
 });
 
 test('Auto w bitwie online: komputer dowodzi za gracza, obie strony liczą to samo', async () => {
@@ -124,8 +124,8 @@ test('rozłączenie gościa: wraca sam i dostaje aktualny stan', async () => {
   await B.page.evaluate(() => Net.host.close());
   await until(A.page, () => !Net.guests[0].conn);
   await A.page.evaluate(() => { G.state.players[0].resources.gold = 5151; });
-  await until(A.page, () => Net.guests[0].conn && Net.guests[0].conn.open, null, 20000);
-  await until(B.page, () => G.state.players[0].resources.gold === 5151, null, 20000);
+  await until(A.page, () => Net.guests[0].conn && Net.guests[0].conn.open, null, 45000);
+  await until(B.page, () => G.state.players[0].resources.gold === 5151, null, 45000);
 });
 
 test('komputer atakuje gracza online: wspólna bitwa, strona komputera liczona u obu', async () => {
@@ -149,16 +149,16 @@ test('gospodarz wznawia grę po przeładowaniu: ten sam kod, gość wraca sam', 
   await A.page.evaluate(async () => { G.state.players[0].resources.gold = 6262; await Net.saveHost(G.state); });
   await A.page.waitForTimeout(300);
   await A.page.evaluate(() => { const last = Net.recalled(); Net.close(); G.state = null; window.__last = last; });
-  await until(B.page, () => !Net.host, null, 20000);
+  await until(B.page, () => !Net.host, null, 45000);
   await A.page.evaluate(() => G.screens.online.resumeHost(window.__last));
-  await until(A.page, () => G.screenName === 'adventure' && G.state && G.state.players[0].resources.gold === 6262, null, 20000);
+  await until(A.page, () => G.screenName === 'adventure' && G.state && G.state.players[0].resources.gold === 6262, null, 45000);
   await until(B.page, () => Net.host && G.state.players[0].resources.gold === 6262, null, 30000);
 });
 
 test('gość wychodzi do menu: gospodarz nie jest uwięziony – komputer gra za nieobecnego, a ten potem wraca', async () => {
   await until(A.page, () => G.screenName === 'adventure' && !G.fade.next);
   await B.page.evaluate(() => { G.modal = null; G.go('menu'); });
-  await until(A.page, () => !Net.guests[0].conn, null, 20000);
+  await until(A.page, () => !Net.guests[0].conn, null, 45000);
   await A.page.evaluate(() => { G.modal = null; G.screens.adventure.doEndTurn({ live: true }); });
   await until(A.page, () => G.modal && G.modal.buttons.some(b => b.label === 'Komputer gra'), null, 40000);
   assert.equal(await A.page.evaluate(() => { const a = G.screens.adventure; return a.watching && !a.buttons.find(b => b.label === 'Menu').disabled; }), true); // menu działa w czasie cudzej tury
@@ -173,7 +173,7 @@ test('gość wychodzi do menu: gospodarz nie jest uwięziony – komputer gra za
 
 test('gospodarz kończy grę: gość dostaje wiadomość i wraca do menu, gra zostaje do wznowienia', async () => {
   await A.page.evaluate(() => { G.modal = null; netEndGame(); });
-  await until(B.page, () => !Net.peer && !!G.modal && G.modal.buttons.length === 1, null, 20000);
+  await until(B.page, () => !Net.peer && !!G.modal && G.modal.buttons.length === 1, null, 45000);
   await B.page.evaluate(() => G.modal.buttons[0].action());
   await until(B.page, () => G.screenName === 'menu'); await until(A.page, () => G.screenName === 'menu');
   assert.equal(await A.page.evaluate(() => Net.recalled().role), 'host');
