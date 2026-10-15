@@ -316,36 +316,56 @@ function placeObjects(st) {
       for (const [dx, dy] of [[-1, 0], [-1, -1], [0, -1]]) { const j = (y + dy) * n + x + dx; if (map.terrain[j] === TER.WATER || map.obst[j] || occ[j] || map.road[j]) return false; }
       const f = (y + 1) * n + x; return map.terrain[f] !== TER.WATER && !map.obst[f];
     }, 800);
-  const placeMine = (kind, near, dmin, dmax) => {
-    const p = footprint(near, dmin, dmax);
+  const placeMine = (kind, near, dmin, dmax, extra) => {
+    const p = footprint(near, dmin, dmax, extra);
     if (!p) return null; const [x, y] = p, blocks = [y * n + x - 1, (y - 1) * n + x - 1, (y - 1) * n + x];
     const m = add({ type: 'mine', kind, x, y, owner: -1, blocks }, [y * n + x, ...blocks]); occ[(y + 1) * n + x] = 1; return m;
   };
   // Strażnik obok obiektu: najchętniej przed wejściem (pola poniżej i z boku), w razie potrzeby dwa pola dalej; nie w okolicy startu
   const GUARD_AT = [[1, 1], [0, 1], [-1, 1], [1, 0], [-1, 0], [1, -1], [-1, -1], [0, -1], [2, 1], [-2, 1], [1, 2], [-1, 2], [0, 2], [2, 0], [-2, 0], [2, 2], [-2, 2]];
+  // Nagrody skalowane odległością od startów (dd 0..1): skrzynia, artefakt (dalej rzadsze i silniejsze), łup obok potwora
+  const chestAt = (x, y, dd) => { const v = Math.floor(rng() * 3), k = (1 + 4 * dd) * rule(st, 'treasure') / 100;
+    return add({ type: 'chest', gold: Math.round((1000 + v * 500) * k) * 100, exp: Math.round((500 + v * 500) * k) * 100, x, y }, [y * n + x]); };
+  const artAt = (x, y, dd) => { const r = rng(), rar = dd > 0.75 ? (r < 0.75 ? 'major' : 'minor') : dd > 0.45 ? (r < 0.35 ? 'major' : 'minor') : dd > 0.2 ? 'minor' : 'treasure', pool = ARTS_BY_RARITY(rar);
+    return add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x, y }, [y * n + x]); };
+  const loot = (m, dd) => { for (const [dx, dy] of [[0, -1], [1, -1], [-1, -1], [1, 0], [-1, 0], [0, 1], [1, 1], [-1, 1]]) { const x = m.x + dx, y = m.y + dy; if (!ok(x, y) || home[y * n + x]) continue;
+      const r = rng(); if (r < 0.3) return artAt(x, y, dd); if (r < 0.55) return chestAt(x, y, dd);
+      const res = r < 0.78 ? 'gold' : RARE[Math.floor(rng() * 4)], amt = res === 'gold' ? Math.round((1000 + rng() * 1000) * (1 + 4 * dd) * rule(st, 'treasure') / 100) * 100 : Math.max(1, Math.round((5 + rng() * 4) * (1 + 3 * dd) * rule(st, 'treasure')));
+      return add({ type: 'res', res, amount: amt, x, y }, [y * n + x]); } return null; };
   const guard = (m, boost) => { for (const [dx, dy] of GUARD_AT) { const x = m.x + dx, y = m.y + dy; if (ok(x, y) && dStart(x, y) >= 5 && !home[y * n + x] && monster(x, y, boost)) return; } };
+  // Kopalnie: przy każdym mieście tartak, kopalnia rudy i jedna rzadka (kolejne miasta dostają kolejne rodzaje, gdy ciasno – trochę dalej),
+  // w grotach podziemi rzadkie; potem reszta mapy do liczby zależnej od jej wielkości, zawsze rodzaj dotąd najrzadszy (każdy rodzaj jest,
+  // drewna i rudy trochę więcej), z dala od startów – za strażnikiem tym mocniejszym, im dalej
+  const MINE_W = { wood: 1.4, ore: 1.4, gold: 1, mercury: 1, sulfur: 1, crystal: 1, gems: 1 }, mines = () => objs.filter(o => o.type === 'mine');
+  const placeMineWide = (kind, near, dmin, dmax) => placeMine(kind, near, dmin, dmax) || placeMine(kind, near, dmin, dmax * 1.7);
+  const r0 = Math.floor(rng() * 4);
   map.sites.forEach((s, k) => {
-    for (const kind of ['wood', 'ore']) { const m = placeMine(kind, s, 4, 9); if (m && k >= starts.length) guard(m, 0); }
-    const m = placeMine(RARE[Math.floor(rng() * 4)], s, 6, 14); if (m) guard(m, 0);
+    for (const kind of ['wood', 'ore']) { const m = placeMineWide(kind, s, 4, 9); if (m && k >= starts.length) guard(m, 0); }
+    const m = placeMineWide(RARE[(r0 + k) % 4], s, 6, 14); if (m) guard(m, 0);
   });
   for (const c of map.caves || []) { const m = placeMine(RARE[Math.floor(rng() * 4)], c, 1, 8); if (m) guard(m, 1); const g2 = rng() < 0.5 && placeMine(rng() < 0.5 ? 'gold' : 'ore', c, 2, 10); if (g2) guard(g2, 1); }
-  for (let g = 0; g < Math.max(1, Math.floor(map.sites.length / 2)); g++) { const m = placeMine('gold', map.start, n * 0.25, n * 2); if (m) guard(m, 1); }
+  for (let fails = 0, want = Math.round(6 + Math.sqrt(NL) * 0.27); mines().length < want && fails < 30;) {
+    const cnt = k => mines().filter(o => o.kind === k).length, kind = Object.keys(MINE_W).sort((a, b) => cnt(a) / MINE_W[a] - cnt(b) / MINE_W[b] || rng() - 0.5)[0];
+    const m = placeMine(kind, map.start, 0, n * 2, (x, y) => d01(x, y) >= 0.3 && !home[y * n + x] && !mines().some(o => Math.hypot(o.x - x, o.y - y) < 6)); // kopalnie rozłożone, nie w gromadach
+    if (!m) { fails++; continue; } guard(m, d01(m.x, m.y) > 0.65 ? 1 : 0); }
   // surowce: rzadziej niż dawniej (co ~190 pól), ale większe kupki; skrzynie w zakamarkach
   for (let k = Math.round(NL / 190); k > 0; k--) {
     const p = best((x, y) => dStart(x, y) >= 2, rng() < 0.5 ? FIT.hidden : FIT.road, 30); if (!p) continue; const res = RESOURCES[Math.floor(rng() * 7)].id;
-    const amount = res === 'gold' ? 800 + Math.floor(rng() * 6) * 100 : (res === 'wood' || res === 'ore') ? 8 + Math.floor(rng() * 6) : 4 + Math.floor(rng() * 4);
+    const amount = (res === 'gold' ? 800 + Math.floor(rng() * 6) * 100 : (res === 'wood' || res === 'ore') ? 8 + Math.floor(rng() * 6) : 4 + Math.floor(rng() * 4)) * (1 + 2 * d01(p[0], p[1])); // dalej od startów większe kupki
     add({ type: 'res', res, amount: Math.max(1, Math.round(amount * rule(st, 'treasure') / (res === 'gold' ? 100 : 1)) * (res === 'gold' ? 100 : 1)), x: p[0], y: p[1] }, [p[1] * n + p[0]]); // surowce zawsze widać (ukryte bywają tylko skrzynie i artefakty)
   }
   for (let k = Math.round(NL / 480); k > 0; k--) {
-    const p = best((x, y) => dStart(x, y) >= 3, FIT.hidden, 40); if (!p) continue; const v = Math.floor(rng() * 3);
-    guard(add({ type: 'chest', gold: Math.round((1000 + v * 500) * rule(st, 'treasure') / 100) * 100, exp: Math.round((500 + v * 500) * rule(st, 'treasure') / 100) * 100, x: p[0], y: p[1] }, [p[1] * n + p[0]]), 0); // skrzynia na widoku, ale pilnowana
+    const p = best((x, y) => dStart(x, y) >= 3, FIT.hidden, 40); if (!p) continue;
+    guard(chestAt(p[0], p[1], d01(p[0], p[1])), 0); // skrzynia na widoku, ale pilnowana
   }
   // potwory: część pilnuje przejść (przełęcze, brody, wąskie gardła dróg), reszta krąży przy drogach
   for (const [fx, fy] of map.fords || []) { if (rng() < 0.65 && okRoad(fx, fy) && dStart(fx, fy) >= 8) monster(fx, fy); }
   { const narrow = (x, y) => map.road[y * n + x] && around(x, y, 1, j => map.obst[j] === OBST.MOUNT || map.terrain[j] === TER.WATER) >= 4; // droga ściśnięta górami albo wodą
     const cand = []; for (let y = 1; y < n - 1; y++) for (let x = 1; x < n - 1; x++) if (okRoad(x, y) && dStart(x, y) >= 8 && narrow(x, y)) cand.push([x, y]);
     for (let k = Math.round(NL / 650); k > 0 && cand.length; k--) { const [x, y] = cand.splice(Math.floor(rng() * cand.length), 1)[0]; monster(x, y); } }
-  for (let k = Math.round(NL / 340); k > 0; k--) { const p = best((x, y) => dStart(x, y) >= 6, (x, y) => (dRoad[y * n + x] <= 2 ? 1.5 : 0), 25); if (p) monster(p[0], p[1]); }
+  // dalej od startów potwór stoi przy łupie (kupka złota lub rzadkich surowców, skrzynia albo artefakt) – im dalej, tym cenniejszym
+  for (let k = Math.round(NL / 340); k > 0; k--) { const p = best((x, y) => dStart(x, y) >= 6, (x, y) => (dRoad[y * n + x] <= 2 ? 1.5 : 0), 25); const m = p && monster(p[0], p[1]);
+    const dd = m ? d01(m.x, m.y) : 0; if (m && dd >= 0.35 && rng() < 0.75) loot(m, dd); }
   // Bramy graniczne na wąskich drogach (z dala od startów) i namioty klucznika: w każdej części mapy odciętej bramami, w której jest start,
   // stoi namiot każdego koloru – każdy gracz zdobędzie przepustkę, nie przechodząc przez bramę tego koloru
   { const want = BORDER_GATES[(MAP_SIZES.find(m => m.n === levelSize(map)) || MAP_SIZES[1]).id] || 1, cand = [];
@@ -387,8 +407,7 @@ function placeObjects(st) {
   // artefakty: im dalej od startu, tym rzadsze; każdego pilnuje potwór
   for (let k = Math.max(3, Math.round(NL / 600)); k > 0; k--) {
     const p = best((x, y) => dStart(x, y) >= 7, FIT.hidden, 40); if (!p) continue;
-    const dd = d01(p[0], p[1]), rar = dd > 0.6 && rng() < 0.5 ? 'major' : dd > 0.3 ? 'minor' : 'treasure', pool = ARTS_BY_RARITY(rar);
-    const a = add({ type: 'art', art: pool[Math.floor(rng() * pool.length)], x: p[0], y: p[1] }, [p[1] * n + p[0]]); // artefakt na widoku, zawsze pilnowany
+    const a = artAt(p[0], p[1], d01(p[0], p[1])), rar = ARTIFACTS[a.art].rarity; // artefakt na widoku, zawsze pilnowany
     guard(a, rar === 'major' ? 2 : rar === 'minor' ? 1 : 0);
   }
   // skarbce: jedna na tyle pól (co najmniej min), dalej od startu niż BANKS[].dd; Smocza Utopia możliwie na krańcu mapy
