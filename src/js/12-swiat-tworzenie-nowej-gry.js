@@ -348,7 +348,8 @@ function placeObjects(st) {
   });
   for (const c of map.caves || []) { const m = placeMine(RARE[Math.floor(rng() * 4)], c, 1, 8); if (m) guard(m, 1); const g2 = rng() < 0.5 && placeMine(rng() < 0.5 ? 'gold' : 'ore', c, 2, 10); if (g2) guard(g2, 1); }
   for (let fails = 0, want = Math.round(6 + Math.sqrt(NL) * 0.27); mines().length < want && fails < 30;) {
-    const cnt = k => mines().filter(o => o.kind === k).length, kind = Object.keys(MINE_W).sort((a, b) => cnt(a) / MINE_W[a] - cnt(b) / MINE_W[b] || rng() - 0.5)[0];
+    const cnt = k => mines().filter(o => o.kind === k).length, sc = Object.keys(MINE_W).map(k => [k, cnt(k) / MINE_W[k] + rng() * 1e-3]); // rodzaj dotąd najrzadszy (remis: losowo); bez losowania w porównaniu sortowania
+    let kind = sc[0][0], low = sc[0][1]; for (const [k, v] of sc) if (v < low) { low = v; kind = k; }
     const m = placeMine(kind, map.start, 0, n * 2, (x, y) => d01(x, y) >= 0.3 && !home[y * n + x] && !mines().some(o => Math.hypot(o.x - x, o.y - y) < 6)); // kopalnie rozłożone, nie w gromadach
     if (!m) { fails++; continue; } guard(m, d01(m.x, m.y) > 0.65 ? 1 : 0); }
   // surowce: rzadziej niż dawniej (co ~190 pól), ale większe kupki; skrzynie w zakamarkach
