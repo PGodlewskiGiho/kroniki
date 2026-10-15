@@ -818,27 +818,28 @@ function mapLight(w, h) {
 // Gładko: bufor świata w rozdzielczości ekranu (najwyżej 3 piksele na piksel logiczny), żeby świat był ostry
 const mapBufScale = () => Math.min(G.rs, 3);
 // Warstwy mapy: teren (z falami osobno) i obiekty z mgłą rysują się do zapamiętanych warstw, a każda klatka tylko je składa.
-// W spoczynku warstwy mają rozmiar widoku: teren raz, obiekty ~7 razy na sekundę (stwory i flagi mają animację kilku klatek
-// na sekundę) albo gdy kursor przejdzie na inne pole; co klatkę tylko fale i pogoda. W ruchu (kamera, idący bohater) warstwy
-// mają zapas M wokół widoku i przesuwają się razem z kamerą: teren maluje się od nowa dopiero po wyjściu poza zapas, obiekty
-// ~7 razy na sekundę, a idących bohaterów (bez nich w warstwie) co klatkę rysuje drawMovers. Karta graficzna trzyma warstwy
-// u siebie (GLMap.target), procesor na zwykłych płótnach.
+// Warstwy mają zapas M wokół widoku i przesuwają się razem z kamerą: teren maluje się od nowa dopiero przy brzegu zapasu,
+// obiekty (w TOP_BANDS pasach) ~7 razy na sekundę – stwory i flagi mają animację kilku klatek na sekundę – po jednym pasie
+// na klatkę, a pasy z rzędami pola pod kursorem albo ruszającego / stającego bohatera od razu; co klatkę tylko fale i pogoda.
+// Idących bohaterów (bez nich w warstwie) co klatkę rysuje drawMovers. Karta graficzna trzyma warstwy u siebie
+// (GLMap.target), procesor na zwykłych płótnach.
+const TOP_BANDS = 4; // warstwa obiektów w pasach odświeżanych w kolejnych klatkach
 const MapLayers = {
   on: true, partial: false,
   snap(name, w, h) { let c = this[name]; if (!c || c.width !== w || c.height !== h) { c = this[name] = document.createElement('canvas'); c.width = w; c.height = h; c._ver = 0; c._noAtlas = 1; } c._ver++; return c; },
   drop() { for (const k of ['ground', 'top', 'groundG', 'topG']) if (this[k]) this[k]._key = ''; },
 };
-// Idący bohaterowie na złożonym obrazie warstw (lay: warstwa obiektów, jej obrazki w lay._recs): bohater bez tego, co stoi przed
+// Idący bohaterowie na złożonym obrazie warstw (lays: pasy warstwy obiektów, ich obrazki w _recs): bohater bez tego, co stoi przed
 // nim (obiekty niżej na mapie, drzewa i skały terenu 1–2 rzędy niżej), i jego ciemna sylwetka tam, gdzie jest zasłonięty
-function drawMovers(b, st, movers, lay, mt) {
+function drawMovers(b, st, movers, lays, mt) {
   const map = st.map, n = map.n, ex = human(st).explored, SN = MapRender.season || 0, camX = Math.round(st.cam.x / PIX) * PIX, camY = Math.round(st.cam.y / PIX) * PIX;
-  const ox = VIEW.x - camX, oy = VIEW.y - camY, sx = lay._cx - camX, sy = lay._cy - camY, T0 = b.getTransform(), k = T0.a;
+  const ox = VIEW.x - camX, oy = VIEW.y - camY, T0 = b.getTransform(), k = T0.a;
   for (const h of movers) {
     const [hx, hy] = heroDrawPos(h), rx = Math.round(hx), ry = Math.round(hy); if (rx < 0 || ry < 0 || rx >= n || ry >= n || !ex[ry * n + rx]) continue; // w nieodkrytym (pod mgłą) nie widać
     const ops = heroOps(st, h, ox + hx * T + 16, oy + hy * T + 16), main = ops.filter(q => q[3] >= 1).map(q => q.slice(0, 3));
     let R = sprRect(ops[0]); for (const q of ops) { const r = sprRect(q), x0 = Math.min(R[0], r[0]), y0 = Math.min(R[1], r[1]); R = [x0, y0, Math.max(R[0] + R[2], r[0] + r[2]) - x0, Math.max(R[1] + R[3], r[1] + r[3]) - y0]; }
     const y0 = hy + 0.5, occ = [], seen = new Set();
-    for (const r of lay._recs || []) { if (r.y <= y0 || r.y - y0 > 5) continue; if (r.occ != null) seen.add(r.occ); for (const q of r.sp) { const s = [q[0], q[1] + sx, q[2] + sy]; if (rectHit(R, sprRect(s))) occ.push(s); } }
+    for (const lay of lays) { const sx = lay._cx - camX, sy = lay._cy - camY; for (const r of lay._recs || []) { if (r.y <= y0 || r.y - y0 > 5) continue; if (r.occ != null) seen.add(r.occ); for (const q of r.sp) { const s = [q[0], q[1] + sx, q[2] + sy]; if (rectHit(R, sprRect(s))) occ.push(s); } } }
     for (let dy = 1; dy <= 2; dy++) for (let dx = -1; dx <= 1; dx++) { const x = rx + dx, y = ry + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const i = y * n + x, ug = levelOf(map, x, y);
       if (!map.obst[i] || seen.has(i) || (map.obst[i] === OBST.MOUNT && ug)) continue;
       const s = [gradedSprite(obstacleSprite(map.obst[i], map.terrain[i], thash(x, y, map.seed + 2) % (map.obst[i] === OBST.TREE ? 4 : 8), SN, ug)), ox + x * T + 16, oy + y * T + 16]; if (rectHit(R, sprRect(s))) occ.push(s); }
@@ -868,34 +869,50 @@ function drawMapView(ctx, st, scr) {
     if (!lay) { MapLayers.drop(); b = begin(); world(b); drawWorldPixel(b, st); Weather.draw(b, st, wox, woy); b.save(); b.setTransform(1, 0, 0, 1, 0, 0); b.drawImage(mapLight(bw, bh), 0, 0); b.restore(); }
     else {
       const L = MapLayers, camR = v => Math.round(v / PIX) * PIX, cx = camR(st.cam.x), cy = camR(st.cam.y);
-      // zapas w ruchu (piksele logiczne świata): ~3 pola albo 12% widoku; w spoczynku warstwy dokładnie w widoku
-      const M = scr._busy ? Math.max(3 * T, 0.12 * Math.max(VIEW.w, VIEW.h)) : 0;
+      // zapas (piksele logiczne świata): ~3 pola albo 12% widoku, także w spoczynku – ruszenie bohatera nie rysuje warstw od nowa
+      const M = Math.max(3 * T, 0.12 * Math.max(VIEW.w, VIEW.h));
       const base = [ZOOM, bw, bh, sc, MapRender.season, MapRender.D, G.settings.quality, M, st.view || 0].join('|'), gN = gpu ? 'groundG' : 'ground', tN = gpu ? 'topG' : 'top';
       const mt = G.mouse.type === 'mouse' && inRect(G.mouse.x, G.mouse.y, { x: VIEW.x, y: VIEW.y, w: RW, h: RH }) ? screenToTile(st, G.mouse.x, G.mouse.y) : null, pt = mt && pickTile(st, G.mouse.x, G.mouse.y), hv = pt ? pt.tx + ',' + pt.ty : '';
       const movers = scr._busy ? st.heroes.filter(h => h.anim && h.garrison == null) : [], mk = movers.map(h => h.id).join(',');
       const fits = c => c && c._key === base && cx - c._cx >= -0.01 && cx - c._cx <= 2 * ML + 0.01 && cy - c._cy >= -0.01 && cy - c._cy <= 2 * ML + 0.01; // widok mieści się w warstwie
+      // blisko brzegu zapasu, do którego idzie kamera: warstwę można odświeżyć zawczasu, w klatce bez innego dużego rysowania
+      const near = c => M > 0 && [[(cx - c._cx) / (2 * ML), lead(L._vx)], [(cy - c._cy) / (2 * ML), lead(L._vy)]].some(([u, d]) => d > 0 ? u > 0.88 : d < 0 ? u < 0.12 : u < 0.12 || u > 0.88); // od strony ruchu
       // pass: rysuje warstwę z zapasem M (widok powiększony, kamera przesunięta) kartą graficzną albo procesorem
       // (zapas to całe piksele bufora: w nieruchomym widoku warstwa leży dokładnie na pikselach, bez przesunięcia o ułamek)
       const Mb = Math.round(M * sc), ML = Mb / sc;
-      const pass = (name, part, o = {}) => {
-        const w = bw + 2 * Mb, h = bh + 2 * Mb; o.cam = [cx - ML, cy - ML];
+      // początek nowej warstwy: w ruchu przesunięty pod prąd, żeby zapas był głównie przed kamerą (rzadsze odświeżanie);
+      // kierunek z wygładzonej prędkości kamery
+      if (L._pc && M) { L._vx = 0.8 * (L._vx || 0) + 0.2 * (cx - L._pc[0]); L._vy = 0.8 * (L._vy || 0) + 0.2 * (cy - L._pc[1]); } else L._vx = L._vy = 0; L._pc = [cx, cy];
+      const lead = v => Math.abs(v) < 0.05 ? 0 : Math.sign(v), org = [cx - (Mb - Math.round(0.8 * Mb * lead(L._vx))) / sc, cy - (Mb - Math.round(0.8 * Mb * lead(L._vy))) / sc];
+      const pass = (name, part, o = {}, at = org, k = -1) => { // k ≥ 0: pas k warstwy obiektów (TOP_BANDS pasów jednej wysokości)
+        const w = bw + 2 * Mb, H = bh + 2 * Mb, h = k < 0 ? H : Math.ceil(H / TOP_BANDS), yb = k < 0 ? 0 : k * h; o.cam = [at[0], at[1] + yb / sc];
         const c = gpu ? (L[name] = GLMap.target(w, h, L[name])) : L.snap(name, w, h), g = gpu ? GLMap.into(c) : c.getContext('2d'); if (!gpu) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); }
-        const cam = st.cam, vw = VIEW.w, vh = VIEW.h; st.cam = { x: cx - ML, y: cy - ML }; VIEW.w += 2 * ML; VIEW.h += 2 * ML;
+        const cam = st.cam, vw = VIEW.w, vh = VIEW.h; st.cam = { x: o.cam[0], y: o.cam[1] }; VIEW.w += 2 * ML; VIEW.h = k < 0 ? VIEW.h + 2 * ML : h / sc;
         try { world(g); drawWorldPixel(g, st, part, o); } finally { st.cam = cam; VIEW.w = vw; VIEW.h = vh; }
-        if (o.light) { g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(mapLight(bw, bh), 0, 0); g.restore(); }
-        if (gpu) GLMap.out(); c._key = base; c._cx = cx - ML; c._cy = cy - ML; return c;
+        if (gpu) GLMap.out(); c._key = base; c._cx = o.cam[0]; c._cy = o.cam[1]; c._t = G.time; c._recs = o.recs; return c;
       };
       MapRender.warm(st); // tło dalej maluje kawałki terenu i obrazki obiektów
-      if (!fits(L[gN])) { L.partial = false; const c = pass(gN, 'ground'); if (L.partial) c._key = ''; } // brakujące kawałki (zastępczy rysunek): od nowa w następnej klatce
-      const tl = L[tN];
-      if (!fits(tl) || tl._mk !== mk || !(G.time - tl._t < 1 / 7) || tl._hv !== hv) { const o = { mt, pt, skip: new Set(movers), recs: [], light: !M }, c = pass(tN, 'top', o); c._mk = mk; c._t = G.time; c._hv = hv; c._recs = o.recs; c._lit = !M; }
-      const gl0 = L[gN], tl0 = L[tN];
+      let heavy = 0; // duże rysowanie w tej klatce (cała warstwa): drugie tylko, gdy konieczne
+      if (!fits(L[gN]) || near(L[gN])) { L.partial = false; const c = pass(gN, 'ground'); if (L.partial) c._key = ''; heavy++; } // brakujące kawałki (zastępczy rysunek): od nowa w następnej klatce
+      // warstwa obiektów w pasach: całość, gdy widok wyszedł poza zapas albo zmienili się idący / pole pod kursorem; poza tym
+      // (animacje ~7 razy na sekundę) co klatkę najwyżej jeden najstarszy pas, więc koszt rozkłada się na kilka klatek zamiast skoku
+      const tl = L[tN] || (L[tN] = { bands: [], width: 0, height: 0, _key: '' }), top = (k, at) => pass(tN + k, 'top', { mt, pt, skip: new Set(movers), recs: [] }, at, k);
+      if (!fits(tl) || (!heavy && near(tl))) {
+        tl.bands = Array.from({ length: TOP_BANDS }, (_, k) => top(k, org)); Object.assign(tl, { _key: base, _cx: org[0], _cy: org[1], _mk: mk, _hv: hv, width: bw + 2 * Mb, height: bh + 2 * Mb });
+      } else { // ruszył / stanął bohater albo kursor na innym polu: tylko pasy z ich rzędami (postać sięga ~3 pola w górę)
+        const want = new Set(), span = (a, z) => tl.bands.forEach((c, k) => { if (c._cy < (z + 1.5) * T && c._cy + c.height / sc > (a - 3) * T) want.add(k); });
+        if (tl._mk !== mk) { const was = (tl._mk || '').split(','), now = mk.split(','); for (const h of st.heroes) if (was.includes(String(h.id)) !== now.includes(String(h.id))) { const hy = heroDrawPos(h)[1]; span(Math.min(h.y, hy), Math.max(h.y, hy)); } }
+        if (tl._hv !== hv) for (const v of [tl._hv, hv]) if (v) { const y = +v.split(',')[1]; span(y, y); }
+        if (!want.size && !heavy) { let k = 0; tl.bands.forEach((c, i) => { if (c._t < tl.bands[k]._t) k = i; }); if (!(G.time - tl.bands[k]._t < 1 / 7)) want.add(k); }
+        for (const k of want) tl.bands[k] = top(k, [tl._cx, tl._cy]); tl._mk = mk; tl._hv = hv;
+      }
+      const gl0 = L[gN];
       b = begin(); const id = () => b.setTransform(1, 0, 0, 1, 0, 0), wd = () => world(b);
       id(); b.drawImage(gl0, Math.round((gl0._cx - cx) * sc), Math.round((gl0._cy - cy) * sc)); wd(); drawWorldPixel(b, st, 'water');
-      id(); b.drawImage(tl0, Math.round((tl0._cx - cx) * sc), Math.round((tl0._cy - cy) * sc)); wd(); // całe piksele: bez rozmycia przy przesunięciu
-      if (movers.length) drawMovers(b, st, movers, tl0, mt);
+      id(); for (const c of tl.bands) b.drawImage(c, Math.round((c._cx - cx) * sc), Math.round((c._cy - cy) * sc)); wd(); // całe piksele: bez rozmycia przy przesunięciu
+      if (movers.length) drawMovers(b, st, movers, tl.bands, mt);
       Weather.draw(b, st, wox, woy);
-      if (!tl0._lit) { id(); b.drawImage(mapLight(bw, bh), 0, 0); } // w ruchu nakładka światła osobno (stała na ekranie, warstwy się przesuwają)
+      id(); b.drawImage(mapLight(bw, bh), 0, 0); // nakładka światła osobno (stała na ekranie, warstwy się przesuwają)
     }
     const wb = gpu ? GLMap.end() : b.canvas;
     if (gpu) { ctx.clearRect(VIEW.x, VIEW.y, RW, RH); GLMap.place(ctx, VIEW.x, VIEW.y, RW, RH); } else { ctx.save(); ctx.imageSmoothingEnabled = ZOOM < 1 || !PIXEL_ART; ctx.drawImage(wb, VIEW.x, VIEW.y, RW, RH); ctx.restore(); } // karta graficzna: okno mapy w płótnie gry przezroczyste, pod nim płótno WebGL (bez kopiowania obrazu) // oddalenie: pomniejszenie z wygładzaniem
