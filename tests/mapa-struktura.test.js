@@ -43,7 +43,7 @@ test('obiektów mniej niż dawniej i pasują do okolicy (młyn nad wodą, studni
     return { perLand: st.objects.length / land, roadSites: avg(['well', 'stables', 'temple', 'market', 'camp', 'post'], roadD), mills: avg(['waterMill'], wetD),
       hidden: st.objects.filter(o => o.hid).length };
   });
-  assert.ok(r.perLand < 1 / 16, `obiekt na ${(1 / r.perLand).toFixed(1)} pól lądu (dawniej ~13)`);
+  assert.ok(r.perLand < 1 / 14.5, `obiekt na ${(1 / r.perLand).toFixed(1)} pól lądu (dawniej ~13; kopalnie i łupy przy dalekich potworach dokładają trochę)`);
   assert.ok(r.roadSites != null && r.roadSites <= 2.5, `miejsca przydrożne średnio ${r.roadSites} pola od drogi`);
   assert.ok(r.mills == null || r.mills <= 2.5, `młyny wodne średnio ${r.mills} pola od wody`);
   assert.ok(r.hidden >= 3, `ukrytych skarbów: ${r.hidden}`);
