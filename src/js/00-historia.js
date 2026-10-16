@@ -581,5 +581,9 @@
    3 cenny, 4 bardzo cenny; obcy zaczyna od zera, znalezisko raz na grę. Turniej rycerski – raz w tygodniu walka z czempionem
    (krzyżowcy → kawalerzyści → czempioni, liczniej z każdą wygraną i z czasem gry), nagroda rośnie, co trzecie zwycięstwo artefakt.
    Komputer przejmuje spichlerze, kopie (od razu bierze złoto) i staje do turnieju tylko z dwukrotną przewagą.
+   Kolejne budynki mapy (modele 3D): Pomnik bohatera (do przejęcia, pilnowany: +1 morale dla wszystkich bohaterów właściciela,
+   kilka się nie sumuje), Port rybacki (na brzegu, do przejęcia: +250 złota dziennie i łodzie w stoczniach za pół ceny), Zbrojownia
+   polowa (machiny wojenne poza miastem, ceny z kuźni), Prom (para przystani przez wąską wodę – rzekę, cieśninę, na wyspę – tylko
+   tam, gdzie lądem daleko; przeprawa za 200 złota), Kartograf (mapy wód, lądów i podziemi za złoto, każda raz na gracza).
    ===================================================================================== */
 

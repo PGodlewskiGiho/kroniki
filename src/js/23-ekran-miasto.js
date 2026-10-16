@@ -35,7 +35,7 @@ G.screens.town = {
   },
   showShipyard() {
     const st = G.state, t = this.town();
-    showDialog(`Stocznia. Łódź kosztuje ${BOAT_COST.gold} złota i ${BOAT_COST.wood} drewna i czeka na wodzie przy mieście. Bohater wsiada, wchodząc na nią z brzegu.`, [
+    const bc = boatCost(st, t.owner); showDialog(`Stocznia. Łódź kosztuje ${bc.gold} złota i ${bc.wood} drewna${bc !== BOAT_COST ? ' (połowa ceny dzięki portowi rybackiemu)' : ''} i czeka na wodzie przy mieście. Bohater wsiada, wchodząc na nią z brzegu.`, [
       { label: 'Kup łódź', key: 'enter', action: () => { const e = buyBoat(st, t); this.say(e || 'Łódź czeka na wodzie przy mieście'); } },
       { label: 'Wyjdź', key: 'escape' }]);
   },

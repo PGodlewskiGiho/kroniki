@@ -238,6 +238,7 @@ function armyMorale(cids, hero, town) {
   if (cids.some(cid => (CREATURES[cid].abil || []).includes('undead'))) m -= 1;
   if (hero) m += heroBonus(hero, 'morale') + skillVal(hero, 'leadership') + ((hero.boost || {}).morale || 0); // boost: świątynia do następnej bitwy
   if (heroTrait(hero, 'haven')) m += 1; // cecha Przystani
+  if (hero && G.state && G.state.objects && hasMonument(G.state, hero.owner)) m += 1; // pomnik bohatera (jeden wystarczy)
   if (town && hasB(town, 'tavern')) m += 1;
   if (heroFork(hero, 'calm')) m += 1; if (heroFork(hero, 'standard')) m = Math.max(0, m); // specjalizacje Spokój, Chorąży
   if (heroPerk(hero, 'warlord')) m = Math.max(0, m) + 1; // talent Wódz

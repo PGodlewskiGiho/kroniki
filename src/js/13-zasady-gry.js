@@ -32,6 +32,10 @@ function passableTile(st, x, y, h = null) {
 }
 // --- statki: łódź to obiekt na wodzie; bohater wsiada, wchodząc na nią, a wysiada na brzeg (koniec ruchu na dziś) ---
 const BOAT_COST = { gold: 1000, wood: 10 };
+// Pomnik i port do przejęcia: czy gracz ma choć jeden; łódź w stoczni o połowę taniej z portem rybackim
+const ownsSite = (st, owner, kind) => owner >= 0 && st.objects.some(o => o.kind === kind && !o.dead && o.owner === owner);
+const hasMonument = (st, owner) => ownsSite(st, owner, 'monument');
+const boatCost = (st, owner) => (ownsSite(st, owner, 'fishPort') ? { gold: BOAT_COST.gold / 2, wood: BOAT_COST.wood / 2 } : BOAT_COST);
 const boatAt = (st, i) => { const o = objectAt(st, i); return !!(o && o.type === 'boat'); };
 function addBoat(st, x, y) { const ob = { id: st.objects.length, type: 'boat', x, y }; st.objects.push(ob); rebuildObjIndex(st); return ob; }
 // Krok po wodzie: w łodzi tylko po wodzie, brzeg wyłącznie jako cel; pieszo woda tylko jako cel (łódź)
@@ -52,9 +56,9 @@ function shipyardSpot(st, t) {
 function townCoastal(st, t) { const map = st.map, n = map.n; for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = t.x + dx, y = t.y + dy; if (x >= 0 && y >= 0 && x < n && y < n && map.terrain[y * n + x] === TER.WATER) return true; } return false; }
 // Kupno łodzi w stoczni. Zwraca błąd albo null.
 function buyBoat(st, t) {
-  if (!hasB(t, 'shipyard')) return 'Brak stoczni'; if (!canAfford(st, BOAT_COST, t.owner)) return 'Brakuje zasobów na łódź';
+  const cost = boatCost(st, t.owner); if (!hasB(t, 'shipyard')) return 'Brak stoczni'; if (!canAfford(st, cost, t.owner)) return 'Brakuje zasobów na łódź';
   const p = shipyardSpot(st, t); if (!p) return 'Przy stoczni nie ma wolnego miejsca na wodzie';
-  const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (BOAT_COST[r.id]) R[r.id] -= BOAT_COST[r.id];
+  const R = playerOf(st, t.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id];
   addBoat(st, p.x, p.y); return null;
 }
 // Przywołanie łodzi: wolne pole wody obok bohatera (najpierw w linii prostej)
@@ -190,6 +194,9 @@ function visitObject(st, h, ob) {
   }
   else if (ob.type === 'site' && ob.kind === 'excavation') excavationDialog(st, h, ob);
   else if (ob.type === 'site' && ob.kind === 'tournament') tourneyDialog(st, h, ob);
+  else if (ob.type === 'site' && ob.kind === 'armory') armoryDialog(st, h, ob);
+  else if (ob.type === 'site' && ob.kind === 'cartographer') cartoDialog(st, h, ob);
+  else if (ob.type === 'site' && ob.kind === 'ferry') ferryDialog(st, h, ob);
   else if (ob.type === 'site' && QUIET_SITES.includes(ob.kind)) { // drobne nagrody: napis nad bohaterem i komunikat w ramce, bez okna do klikania
     const r = useSite(st, h, ob), S = SITES[ob.kind]; snd(r.res === 'gold' ? 'coins' : 'shrine'); advFloat(r.float || (r.text.length < 34 ? r.text : S.name), h.x, h.y, r.res);
     if (G.screens.adventure && playerOf(st, h.owner).human) G.screens.adventure.flash(`${S.name}: ${r.text}`, '#ffd970');
@@ -384,6 +391,30 @@ function tourneyDialog(st, h, ob) {
   showDialog(`${SITES.tournament.name}: heroldowie ogłaszają ${n}. turniej. Czempionem jest ${qtyName(C.count).toLowerCase()} ${c.gen} (${c.plural.toLowerCase()}, poziom ${c.level}). Zwycięzca dostanie ${tourneyText(ob)}. Stajesz w szranki?`,
     [{ label: 'Stań do pojedynku', key: 'enter', action: () => { h.prev = null; startEncounterFight(st, h, Object.assign(trapMonster(h, C), { tourney: ob })); } }, { label: 'Odejdź', key: 'escape' }],
     { iconH: 84, icon: (ctx, cx, cy) => { icon(ctx, cx - 40, cy); drawCreatureIcon(ctx, C.cid, cx + 52, cy + 34, 2); } });
+}
+// Zbrojownia polowa: okno jak w kuźni miasta (karty machin, których bohater jeszcze nie ma)
+function armoryDialog(st, h, ob) {
+  const offer = MACHINES.filter(id => !h.machines.includes(id)), R = playerOf(st, h.owner).resources;
+  if (!offer.length) return showDialog(`${SITES.armory.name}: ${h.name} ma już wszystkie machiny wojenne.`, [{ label: 'OK', key: 'enter' }], { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_armory', cx, cy, 90, 74) });
+  const bw = 150, gap = 24, total = offer.length * bw + (offer.length - 1) * gap;
+  showDialog(`${SITES.armory.name}: kwatermistrz sprzedaje machiny wojenne prosto z wozów (masz ${R.gold} złota). Balista strzela co rundę, namiot medyka leczy rannych, wóz z amunicją daje strzelcom niekończące się strzały.`, [
+    ...offer.map(id => ({ label: CREATURES[id].name, sub: `${CREATURES[id].cost.gold} złota`, tip: stackInfo({ cid: id, n: 1 }), action: () => { const e = buyMachineField(st, h, id); G.screens.adventure.flash(e || `Kupiono: ${CREATURES[id].name.toLowerCase()}`, e ? '#ff9a8a' : '#ffd970'); if (!e) advFloat(CREATURES[id].name, h.x, h.y); } })),
+    { label: 'Wyjdź', key: 'escape' },
+  ], { bw, iconH: 70, icon: (ctx, cx, cy) => offer.forEach((id, i) => drawSprite(ctx, battleSprite(id, 1, 'idle', 0), cx - total / 2 + i * (bw + gap) + bw / 2, cy + 26, 1)) });
+}
+// Kartograf: mapy do kupienia (każda raz na gracza; bez tych, które nic by już nie odsłoniły)
+function cartoDialog(st, h, ob) {
+  const R = playerOf(st, h.owner).resources, av = cartoAvail(st, ob, h.owner), icon = { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_cartographer', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('cartographer'), cx, cy + 30, 1.5) };
+  if (!av.length) return showDialog(`${SITES.cartographer.name}: „Nie mam już map, które by ci się przydały – znasz te okolice równie dobrze jak ja.”`, [{ label: 'OK', key: 'enter' }], icon);
+  showDialog(`${SITES.cartographer.name}: „Moje mapy pokażą ci krainę od krańca do krańca.” Masz ${R.gold} złota. ${av.map(m => `${m.name} (${m.cost} złota): ${m.what}.`).join(' ')}`,
+    [...av.map((m, k) => ({ label: `${m.name} – ${m.cost}`, key: String(k + 1), disabled: R.gold < m.cost, action: () => { const e = cartoBuy(st, h, ob, m.id); G.screens.adventure.flash(e || `${m.name}: odsłonięto ${m.what}`, e ? '#ff9a8a' : '#ffd970'); } })), { label: 'Wyjdź', key: 'escape' }], icon);
+}
+// Prom: przeprawa do przystani na drugim brzegu za opłatą (jak portal: bohater staje na przystani po drugiej stronie)
+function ferryDialog(st, h, ob) {
+  const to = st.objects[ob.pair], R = playerOf(st, h.owner).resources, icon = { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_ferry', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('ferry'), cx, cy + 30, 1.5) };
+  if (!to || to.dead) return showDialog(`${SITES.ferry.name}: przystań po drugiej stronie zniknęła – prom nie kursuje.`, [{ label: 'OK', key: 'enter' }], icon);
+  showDialog(`${SITES.ferry.name}: przewoźnik przewiezie ${h.name} z całą armią na drugi brzeg (pole ${to.x}, ${to.y}) za ${FERRY_GOLD} złota. Masz ${R.gold}.`,
+    [...(R.gold >= FERRY_GOLD ? [{ label: 'Przepraw się', key: 'enter', action: () => { const r = useSite(st, h, ob); if (r.float) advFloat(r.float, h.x, h.y, r.res); if (r.err) G.screens.adventure.flash(r.text, '#ff9a8a'); else Sfx.play('oar'); } }] : []), { label: 'Odejdź', key: 'escape' }], icon);
 }
 // Plotka z karczmy: najbliższe nieodkryte cenne miejsce (skarbiec, więzienie, kurhan, sfinks…) albo ukryty skarb na tym samym poziomie świata;
 // odsłania jego okolicę graczowi (ukryty skarb staje się widoczny). Zwraca zdanie albo null.
@@ -1085,6 +1116,7 @@ function armySplit(fromA, i, toA, j, n, heroArmies = []) {
 function dailyIncomeAll(st, owner = ME) {
   const inc = Object.fromEntries(RESOURCES.map(r => [r.id, 0]));
   for (const ob of st.objects) if (ob.type === 'mine' && !ob.dead && ob.owner === owner) inc[ob.kind] += MINES[ob.kind].income * (weekKind(st, 'mines') ? 2 : 1);
+  for (const ob of st.objects) if (ob.kind === 'fishPort' && !ob.dead && ob.owner === owner) inc.gold += PORT_GOLD; // port rybacki
   const autumn = seasonIdx(st) === 2;
   for (const t of st.towns) if (t.owner === owner) {
     inc.gold += Math.round(townGold(t) * (weekKind(st, 'gold') ? 1.25 : 1)); if (hasB(t, 'silo')) { inc.wood += 1; inc.ore += 1; }
@@ -1282,6 +1314,22 @@ function buyMachine(st, t, h, id) {
   const R = playerOf(st, h.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id];
   h.machines.push(id); sfxFor(st, h.owner, 'coins'); return null;
 }
+// Zbrojownia polowa: ta sama oferta co kuźnia, ale bez miasta (bohater stoi przy zbrojowni). Zwraca błąd albo null.
+function buyMachineField(st, h, id) {
+  if (h.machines.includes(id)) return 'Bohater ma już tę machinę';
+  const cost = CREATURES[id].cost; if (!canAfford(st, cost, h.owner)) return 'Brakuje złota';
+  const R = playerOf(st, h.owner).resources; for (const r of RESOURCES) if (cost[r.id]) R[r.id] -= cost[r.id];
+  h.machines.push(id); sfxFor(st, h.owner, 'coins'); return null;
+}
+// Kartograf: pola, które odsłania mapa danego rodzaju (wody: na obu poziomach; lądy: powierzchnia; podziemia: cały dolny poziom)
+function cartoTiles(st, kind) { const map = st.map, n = map.n, out = [];
+  for (let i = 0; i < n * n; i++) { const x = i % n, y = (i / n) | 0, L = map.ln ? levelOf(map, x, y) : 0;
+    if (kind === 'sea' ? map.terrain[i] === TER.WATER : kind === 'land' ? L === 0 && map.terrain[i] !== TER.WATER : L === 1) out.push(i); }
+  return out; }
+const cartoAvail = (st, ob, owner) => CARTO_MAPS.filter(m => !(ob.sold && ob.sold[owner + ':' + m.id]) && (m.id !== 'under' || st.map.ln) && cartoTiles(st, m.id).some(i => !playerOf(st, owner).explored[i]));
+function cartoBuy(st, h, ob, id) { const m = CARTO_MAPS.find(m => m.id === id), R = playerOf(st, h.owner).resources; if (!m || R.gold < m.cost) return 'Brakuje złota';
+  R.gold -= m.cost; (ob.sold = ob.sold || {})[h.owner + ':' + id] = 1; const team = st.players.filter(q => q.explored && allied(st, h.owner, q.id));
+  for (const i of cartoTiles(st, id)) for (const q of team) q.explored[i] = 1; MapRender.miniDirty = true; MapRender.dirty = true; sfxFor(st, h.owner, 'coins'); return null; }
 // --- miejsca na mapie (SITES) ---
 // Znacznik odwiedzin: dla kogo (bohater, gracz albo cały świat) i do kiedy nagroda jest wykorzystana
 function siteStamp(st, ob, h) {
@@ -1471,6 +1519,17 @@ function useSite(st, h, ob, choice) {
     case 'granary': { const t = granaryTown(st, ob); if (ob.owner === h.owner) return { text: 'Spichlerz już należy do ciebie.' }; if (ob.owner >= 0 && allied(st, h.owner, ob.owner)) return { text: 'Spichlerz należy do sojusznika.' };
       ob.owner = h.owner; MapRender.miniDirty = true; sfxFor(st, h.owner, 'flag');
       return { text: `Spichlerz przechodzi w twoje ręce. Zaopatruje miasto ${t ? t.name : '–'}: ${t && t.owner === h.owner ? `przyrost stworów w nim rośnie o ${GRANARY_PCT}% (co najmniej o 1 na siedlisko).` : `gdy to miasto będzie twoje, przyrost stworów w nim wzrośnie o ${GRANARY_PCT}%.`}`, float: 'spichlerz' }; }
+    case 'monument': case 'fishPort': { const S2 = SITES[ob.kind]; if (ob.owner === h.owner) return { text: `${S2.name} już należy do ciebie.` }; if (ob.owner >= 0 && allied(st, h.owner, ob.owner)) return { text: `${S2.name} należy do sojusznika.` };
+      ob.owner = h.owner; MapRender.miniDirty = true; sfxFor(st, h.owner, 'flag');
+      return ob.kind === 'monument' ? { text: 'Pod pomnikiem dawnego bohatera wojsko składa przysięgę: wszyscy twoi bohaterowie mają +1 do morale.', float: 'morale +1' }
+        : { text: `Rybacy płacą odtąd daninę tobie: +${PORT_GOLD} złota dziennie, a łodzie w twoich stoczniach kosztują połowę.`, float: `+${PORT_GOLD}/dzień`, res: 'gold' }; }
+    case 'ferry': { const to = st.objects[ob.pair]; if (!to || to.dead) return { text: 'Prom nie kursuje.', err: true }; if (heroAt(st, to.x, to.y)) return { text: 'Na drugiej przystani stoi inny bohater. Spróbuj później.', err: true };
+      if (R.gold < FERRY_GOLD) return { text: `Przeprawa kosztuje ${FERRY_GOLD} złota.`, err: true }; R.gold -= FERRY_GOLD;
+      h.x = to.x; h.y = to.y; h.path = null; h.dest = null; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); MapRender.miniDirty = true;
+      if (h.owner === ME && G.state === st) centerCam(st, h.x, h.y); return { text: 'Prom przybija do drugiego brzegu.', float: `−${FERRY_GOLD}`, res: 'gold' }; }
+    case 'armory': { const bought = []; for (const id of MACHINES) if (!h.machines.includes(id) && R.gold >= CREATURES[id].cost.gold + 3000 && !buyMachineField(st, h, id)) bought.push(CREATURES[id].name); // komputer: jak w kuźni
+      return { text: bought.length ? `Kupiono: ${bought.join(', ')}.` : 'Kwatermistrz nie ma nic, na co by cię było stać.' }; }
+    case 'cartographer': return { text: 'Kartograf rozkłada mapy.' };
     case 'excavation': { // komputer: dzień kopania i od razu znalezisko (człowiek decyduje w excavationDialog)
       if (ob.done != null) return { text: 'Wykop jest pusty.' }; if (canDig(st, h, ob)) digOnce(st, h, ob); return digTake(st, h, ob) || { text: 'Dziś już tu kopano.' }; }
     case 'tournament': { if (siteUsed(st, ob, h)) return { text: 'W tym tygodniu turniej już rozstrzygnięto.' }; const C = tourneyChamp(st, ob); // komputer: walka z czempionem (aiVisit)
@@ -1500,6 +1559,9 @@ function siteInfo(st, ob, h) {
 function adventureInfo(st, ob, viewer) {
   if (ob.kind === 'lighthouse') return ob.owner >= 0 ? `${SITES.lighthouse.desc}; świeci dla: ${ownerName(st, ob.owner)}` : SITES.lighthouse.desc;
   if (ob.kind === 'granary') { const t = granaryTown(st, ob); return `zaopatruje miasto ${t ? t.name : '–'}: gdy oba należą do jednego gracza, przyrost stworów w mieście +${GRANARY_PCT}%; ${ob.owner >= 0 ? `należy do: ${ownerName(st, ob.owner)}${t && t.owner === ob.owner ? ' (premia działa)' : ''}` : 'niczyj'}`; }
+  if (ob.kind === 'monument' || ob.kind === 'fishPort') return `${SITES[ob.kind].desc}; ${ob.owner >= 0 ? `należy do: ${ownerName(st, ob.owner)}` : 'niczyj'}`;
+  if (ob.kind === 'ferry') { const to = st.objects[ob.pair]; return to && !to.dead ? `${SITES.ferry.desc} (drugi brzeg: pole ${to.x}, ${to.y})` : 'prom nie kursuje: druga przystań zniknęła'; }
+  if (ob.kind === 'cartographer') { const av = cartoAvail(st, ob, viewer); return av.length ? `${SITES.cartographer.desc}; w ofercie: ${av.map(m => `${m.name.toLowerCase()} (${m.cost} złota)`).join(', ')}` : 'kartograf nie ma już map, które by ci się przydały'; }
   if (ob.kind === 'excavation') { if (ob.done != null) return 'wykop pusty, znalezisko już zabrane'; const d = digDays(ob, viewer); return `${SITES.excavation.desc}${d ? `; twoi ludzie odkopali ${d} z ${DIG_DAYS} warstw (teraz: ${digPrize(d)})` : ob.by != null && ob.dug ? `; kopie tu: ${ownerName(st, ob.by)}` : ''}`; }
   if (ob.kind === 'tournament') { const C = tourneyChamp(st, ob); return `${(ob.wins || 0) + 1}. turniej: czempion ${qtyName(C.count).toLowerCase()} ${CREATURES[C.cid].gen}, nagroda ${tourneyText(ob)} (raz w tygodniu, dla pierwszego zwycięzcy)`; }
   if (ob.kind === 'whirlpool' && st.objects[ob.pair]) return `${SITES.whirlpool.desc} (drugi wir: pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})`;

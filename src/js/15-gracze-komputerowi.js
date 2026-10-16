@@ -274,6 +274,8 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'borderGate') return 0;
   if (ob.kind === 'lighthouse') return ob.owner === h.owner ? 0 : S.ai;
   if (ob.kind === 'granary') { if (ob.owner === h.owner || (ob.owner >= 0 && allied(st, h.owner, ob.owner))) return 0; const t = granaryTown(st, ob); return t && t.owner === h.owner ? S.ai * 2 : S.ai; } // przy własnym mieście cenniejszy
+  if (ob.kind === 'monument' || ob.kind === 'fishPort') return ob.owner === h.owner || (ob.owner >= 0 && allied(st, h.owner, ob.owner)) ? 0 : (ob.kind === 'monument' && hasMonument(st, h.owner) ? 600 : S.ai); // drugi pomnik nic nie daje (tylko odbiera go wrogowi)
+  if (ob.kind === 'armory') { const g = playerOf(st, h.owner).resources.gold; return MACHINES.some(id => !h.machines.includes(id) && g >= CREATURES[id].cost.gold + 3000) ? 900 : 0; }
   if (ob.kind === 'excavation') return canDig(st, h, ob) || digDays(ob, h.owner) ? S.ai : 0;
   if (ob.kind === 'tournament') { if (siteUsed(st, ob, h)) return 0; const C = tourneyChamp(st, ob); return armyPower(h.army) >= C.count * CREATURES[C.cid].value * 2 ? S.ai + tourneyPrize(ob).gold : 0; } // tylko z wyraźną przewagą
   if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o && playerOf(st, h.owner).resources.gold >= o.price + 4000 ? 2000 : 0; }
