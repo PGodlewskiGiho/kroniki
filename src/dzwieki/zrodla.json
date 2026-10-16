@@ -135,9 +135,27 @@
  ],
  "march": [
   {
-   "freesound": 571952,
-   "title": "Footsteps Gravel+Dirt 4.",
-   "user": "Joao_Janz",
+   "freesound": 556002,
+   "title": "Footsteps MountainBoots Gravel Mono NTG4.",
+   "user": "Nox_Sound",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 452628,
+   "title": "footsteps boots gravel dirt quick but separated.",
+   "user": "kyles",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 511501,
+   "title": "knight-walking-on-lawn.",
+   "user": "fabian13cz",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 511503,
+   "title": "knight-walking-on-hard-ground.",
+   "user": "fabian13cz",
    "license": "CC0-1.0"
   }
  ],
@@ -307,15 +325,15 @@
  ],
  "thunder": [
   {
-   "freesound": 534023,
-   "title": "Thunderclap.",
-   "user": "Fission9",
+   "freesound": 574042,
+   "title": "very loud thunder crack.",
+   "user": "space_veggies",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 505113,
-   "title": "Thunder, Close.",
-   "user": "Fission9",
+   "freesound": 434359,
+   "title": "Close lightning strike 2018 07 07.",
+   "user": "csengeri",
    "license": "CC0-1.0"
   }
  ],
@@ -335,23 +353,29 @@
  ],
  "explode": [
   {
-   "freesound": 523783,
-   "title": "Boom Explosion.",
-   "user": "BennettFilmTeacher",
+   "freesound": 439270,
+   "title": "Large Explosion.",
+   "user": "Mozfoo",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 516914,
-   "title": "Explosion, Medium Blast.",
-   "user": "Kinoton",
+   "freesound": 418970,
+   "title": "explosion.",
+   "user": "WhaTThes",
    "license": "CC0-1.0"
   }
  ],
  "firebreath": [
   {
-   "freesound": 592572,
-   "title": "Flame Burst.",
-   "user": "magnuswaker",
+   "freesound": 323496,
+   "title": "Dragon Breathing Fire.",
+   "user": "Spennnyyy",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 157616,
+   "title": "Fire Breath.",
+   "user": "bspiller5",
    "license": "CC0-1.0"
   }
  ],
@@ -415,9 +439,21 @@
    "license": "CC0-1.0"
   },
   {
-   "freesound": 569502,
-   "title": "Stone Impact Rubble Debris 6.",
+   "freesound": 569500,
+   "title": "Stone Impact Rubble Debris 4.",
    "user": "Sheyvan",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 418970,
+   "title": "explosion.",
+   "user": "WhaTThes",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 439270,
+   "title": "Large Explosion.",
+   "user": "Mozfoo",
    "license": "CC0-1.0"
   }
  ],
@@ -445,9 +481,9 @@
  ],
  "gallop": [
   {
-   "freesound": 434804,
-   "title": "Hooves, Hard Muddy Surface / Layer 03.",
-   "user": "kalhan",
+   "freesound": 368583,
+   "title": "horse galloping.",
+   "user": "telezon",
    "license": "CC0-1.0"
   }
  ],
@@ -717,21 +753,21 @@
  ],
  "v_human": [
   {
-   "freesound": 521831,
-   "title": "Middle Ages War Cry 3.",
-   "user": "joelcarrsound",
-   "license": "CC0-1.0"
-  },
-  {
    "freesound": 521832,
    "title": "Middle Ages War Cry 2.",
    "user": "joelcarrsound",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 621348,
-   "title": "Male Yelling out a War Cry 5 - WITH reverb.",
+   "freesound": 621335,
+   "title": "Male Yelling out a War Cry 4  - WITHOUT reverb.",
    "user": "WelvynZPorterSamples",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 474650,
+   "title": "Voice Male Grunt.",
+   "user": "Nox_Sound",
    "license": "CC0-1.0"
   }
  ],
@@ -887,15 +923,21 @@
  ],
  "hit_metal": [
   {
-   "freesound": 359141,
-   "title": "Low Metal Hit 1.",
-   "user": "sunnyflower",
+   "freesound": 614062,
+   "title": "Heavy Metal Impact.",
+   "user": "magnuswaker",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 556708,
-   "title": "Metal Hit.",
-   "user": "NachtmahrTV",
+   "freesound": 614063,
+   "title": "Heavy Metal Impact 2.",
+   "user": "magnuswaker",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 583306,
+   "title": "FX SaSc Low Heavy Metal Impacts 02 Hits Metallic Geofon.",
+   "user": "Profispiesser",
    "license": "CC0-1.0"
   }
  ],
@@ -915,15 +957,21 @@
  ],
  "scream": [
   {
-   "freesound": 492764,
-   "title": "Wilhelm scream alternative Death scream human shout agony KT CsG .",
-   "user": "csaszi",
+   "freesound": 432058,
+   "title": "Death Scream 2.",
+   "user": "areischen",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 536719,
-   "title": "Death scream in mask.",
-   "user": "Hoggington",
+   "freesound": 540454,
+   "title": "Male Scream.",
+   "user": "bananplyte",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 523216,
+   "title": "Death Scream.",
+   "user": "Gemesil",
    "license": "CC0-1.0"
   }
  ],
@@ -952,6 +1000,96 @@
    "freesound": 624074,
    "title": "martian electric spark reverbant.",
    "user": "martian",
+   "license": "CC0-1.0"
+  }
+ ],
+ "burn": [
+  {
+   "freesound": 260584,
+   "title": "Basic Fire whoosh 3.",
+   "user": "Niedec",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 262478,
+   "title": "Burning arrow 05.",
+   "user": "Introspectral",
+   "license": "CC0-1.0"
+  }
+ ],
+ "pierce": [
+  {
+   "freesound": 417192,
+   "title": "Stabbing.",
+   "user": "WhiteLineFever",
+   "license": "CC0-1.0"
+  }
+ ],
+ "lightning": [
+  {
+   "freesound": 393067,
+   "title": "Electric Zap - Electricity.",
+   "user": "Wakerone",
+   "license": "CC0-1.0"
+  }
+ ],
+ "v_demon": [
+  {
+   "freesound": 400631,
+   "title": "Monster Growl 2.",
+   "user": "EathanMarkson",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 397240,
+   "title": "Demon roars.",
+   "user": "Dasgoat",
+   "license": "CC0-1.0"
+  }
+ ],
+ "horn": [
+  {
+   "freesound": 539956,
+   "title": "war horn.",
+   "user": "adharca",
+   "license": "CC0-1.0"
+  }
+ ],
+ "order": [
+  {
+   "freesound": 235453,
+   "title": "Bass Drum Hit single.",
+   "user": "jcdecha",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 164446,
+   "title": "Drum Hit 1 FF038.",
+   "user": "martinimeniscus",
+   "license": "CC0-1.0"
+  }
+ ],
+ "power": [
+  {
+   "freesound": 172631,
+   "title": "Power Up Charge [Remix of LegoLunatic's Charged laser 151243].",
+   "user": "qubodup",
+   "license": "CC0-1.0"
+  }
+ ],
+ "luck": [
+  {
+   "freesound": 521886,
+   "title": "Shimmery.",
+   "user": "opticaillusions",
+   "license": "CC0-1.0"
+  }
+ ],
+ "waver": [
+  {
+   "freesound": 449438,
+   "title": "Man Sighing.",
+   "user": "purplereptar",
    "license": "CC0-1.0"
   }
  ]

@@ -754,8 +754,8 @@ function issueOrder(B, id, x, y, x2, y2) {
   const s = casterSide(B), h = sideHero(B, s), O = ORDERS[id], pow = O.pow && !onceOrder(id) ? O.pow(heroStat(h, 'att')) : 0, tu = spellUnitAt(B, id, x, y);
   const cost = battleCost(B, s, h, id); if (synergy(h, 'fieldCommand') && !(B.freeOrder || [])[s]) { B.freeOrder = B.freeOrder || [false, false]; B.freeOrder[s] = true; } // darmowy był tylko pierwszy
   B.valor[s] -= cost; B.casts = B.casts || [0, 0]; B.casts[s]++; B.cast[s] = B.casts[s] >= (heroPerk(h, 'doubleCast') ? 2 : 1);
-  if (onceOrder(id)) { B.usedOnce = B.usedOnce || [[], []]; B.usedOnce[s] = [...(B.usedOnce[s] || []), id]; B.log.push(`${h.name}: ${O.name}!`); return prestigeAct(B, id, s, h, tu, x, y); }
-  B.log.push(`${h.name}: rozkaz „${O.name}”.`);
+  if (onceOrder(id)) { B.usedOnce = B.usedOnce || [[], []]; B.usedOnce[s] = [...(B.usedOnce[s] || []), id]; B.log.push(`${h.name}: ${O.name}!`); if (B.fx && B.active) B.fx.push({ kind: 'heal', u: B.active, amount: 0, label: O.name }); return prestigeAct(B, id, s, h, tu, x, y); } // napis i dźwięk zdolności
+  B.log.push(`${h.name}: rozkaz „${O.name}”.`); if (B.fx && B.active && !O.buff && !O.heal) B.fx.push({ kind: 'heal', u: B.active, amount: 0, label: O.name }); // Salwa, Przegrupowanie: napis i dźwięk rozkazu
   const wallMates = id === 'shieldWall' && tu && synergy(h, 'stoneWall') ? alive(B, s).filter(v => v !== tu && !isMachine(v) && hexAdjacent(v, tu)) : []; // splot Kamienny mur
   if (O.buff) for (const u of MASS_TARGETS.includes(O.target) ? alive(B, s).filter(u => !isMachine(u) && targetable(u)) : tu ? [tu, ...wallMates] : []) {
     u.buffs[O.buff] = O.rounds; u.ordv = Object.assign({}, u.ordv, { [O.buff]: pow }); if (B.fx) B.fx.push({ kind: 'heal', u, amount: 0, label: O.name }); }
