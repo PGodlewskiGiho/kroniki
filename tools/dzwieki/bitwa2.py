@@ -38,11 +38,11 @@ EV = {
  'march':     ([lambda k=k: mix((seg(556002 if k % 2 else 452628, k=2 + k, dur=0.3, strongest=True), 0, 0), (seg(511501 if k < 2 else 511503, k=2 + k % 2 * 3, dur=0.3, strongest=True), -5, 0.01)) for k in range(4)], 0.3, 0, [556002, 452628, 511501, 511503]), # but w żwirze + brzęk zbroi
  'gallop':    ([lambda k=k: seg(368583, k=k * 2, dur=0.32, strongest=True) for k in range(4)], 0.32, 1, [368583]),
  'pierce':    ([lambda: seg(417192, dur=0.45, strongest=True), lambda: seg(417192, k=1, dur=0.45, strongest=True)], 0.45, 1, [417192]),
- 'explode':   ([lambda: peak(565490, pre=0.0, dur=1.3), lambda: peak(516914, dur=1.4)], 1.4, 0, [565490, 516914]), # średni wybuch (duży był przesadzony)
- 'lightning': ([lambda: hp(peak(242048, dur=0.35), 900), lambda: hp(peak(437243, dur=0.35), 900)], 0.35, 0, [242048, 437243]), # trzask wyładowania wycięty z bliskiego uderzenia pioruna
- 'thunder':   ([lambda: peak(242048, dur=1.6), lambda: peak(397952, dur=1.8)], 1.8, 3, [242048, 397952]), # bliski piorun: trzask + grzmot, bez deszczu przed uderzeniem
- 'crash':     ([lambda: peak(522099, pre=0.01, dur=1.3), lambda: mix((peak(109360, pre=0.0, dur=0.8), 0, 0), (peak(232396, pre=0.0, dur=0.6), -4, 0.03), (lp(peak(522099, pre=0.0, dur=1.2), 250), -4, 0))], 1.3, 3, [522099, 109360, 232396]), # głaz rozbija kamień/mur
- 'v_demon':   ([lambda: peak(580772, dur=0.9), lambda: peak(267453, dur=1.1)], 1.1, 1, [580772, 267453]),
+ 'explode':   ([lambda: peak(516914, dur=1.4)], 1.4, 0, [516914]), # wybrany przy odsłuchu (wersja B): trzask i krótkie dudnienie
+ 'lightning': ([lambda: hp(peak(242048, dur=0.35), 900)], 0.35, 0, [242048]), # trzask wyładowania wycięty z bliskiego uderzenia pioruna
+ 'thunder':   ([lambda: peak(242048, dur=1.6)], 1.6, 3, [242048]), # wybrany przy odsłuchu (wersja C): bliskie uderzenie, ostry trzask i krótki pogłos
+ 'crash':     ([lambda: peak(522099, pre=0.01, dur=1.3)], 1.3, 3, [522099]), # wybrany przy odsłuchu (wersja A): głaz rozbija beton
+ 'v_demon':   ([lambda: peak(580772, dur=0.9)], 0.9, 1, [580772]), # wybrany przy odsłuchu (wersja D): demoniczne chrząknięcie
  'horn':      ([lambda: seg(539956, dur=1.8)], 1.8, 0, [539956]),
  'order':     ([lambda: seg(235453, dur=1.1), lambda: seg(164446, dur=1.0, strongest=True)], 1.1, 1, [235453, 164446]),
  'power':     ([lambda: seg(172631, dur=1.0)], 1.0, 0, [172631]),

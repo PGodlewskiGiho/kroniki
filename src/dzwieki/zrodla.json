@@ -329,12 +329,6 @@
    "title": "Lightning Strike.",
    "user": "Turrus",
    "license": "CC0-1.0"
-  },
-  {
-   "freesound": 397952,
-   "title": "Thunder Clap And Rumble #1.",
-   "user": "Kinoton",
-   "license": "CC0-1.0"
   }
  ],
  "fireball": [
@@ -352,12 +346,6 @@
   }
  ],
  "explode": [
-  {
-   "freesound": 565490,
-   "title": "Medium Explosion.",
-   "user": "JakeGwizdak",
-   "license": "CC0-1.0"
-  },
   {
    "freesound": 516914,
    "title": "Explosion, Medium Blast.",
@@ -436,18 +424,6 @@
    "freesound": 522099,
    "title": "Concrete SMASH 2.",
    "user": "magnuswaker",
-   "license": "CC0-1.0"
-  },
-  {
-   "freesound": 109360,
-   "title": "stone falls and breaks low pitch.",
-   "user": "SoundCollectah",
-   "license": "CC0-1.0"
-  },
-  {
-   "freesound": 232396,
-   "title": "Bricks.",
-   "user": "cejordi84",
    "license": "CC0-1.0"
   }
  ],
@@ -1025,12 +1001,6 @@
    "title": "Lightning Strike.",
    "user": "Turrus",
    "license": "CC0-1.0"
-  },
-  {
-   "freesound": 437243,
-   "title": "Very close lightning strike.",
-   "user": "Simon Spiers",
-   "license": "CC0-1.0"
   }
  ],
  "v_demon": [
@@ -1038,12 +1008,6 @@
    "freesound": 580772,
    "title": "demon grunt.",
    "user": "jvmyka@gmail.com",
-   "license": "CC0-1.0"
-  },
-  {
-   "freesound": 267453,
-   "title": "Beast Roar lvl3.",
-   "user": "cylon8472",
    "license": "CC0-1.0"
   }
  ],
