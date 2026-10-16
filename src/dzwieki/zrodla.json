@@ -183,9 +183,9 @@
  ],
  "paws": [
   {
-   "freesound": 446823,
-   "title": "creature steps.",
-   "user": "mateozugi19",
+   "freesound": 436505,
+   "title": "Small Creature Scamper on Carpet.",
+   "user": "clgood",
    "license": "CC0-1.0"
   }
  ],
@@ -1132,6 +1132,14 @@
    "freesound": 449438,
    "title": "Man Sighing.",
    "user": "purplereptar",
+   "license": "CC0-1.0"
+  }
+ ],
+ "skitter": [
+  {
+   "freesound": 528191,
+   "title": "Hedgehog patter 1.",
+   "user": "fthgurdy",
    "license": "CC0-1.0"
   }
  ]
