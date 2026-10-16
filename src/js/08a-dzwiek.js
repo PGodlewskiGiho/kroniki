@@ -45,7 +45,7 @@ const sfxPan = x => clamp((x / W - 0.5) * 1.2, -0.6, 0.6);
 const AMB_SITE = { waterMill: 'amb_mill', windmill: 'amb_wind', dwarfForge: 'amb_forge', hillFort: 'amb_forge', camp: 'amb_fire', campfire: 'amb_fire', dwelling: 'amb_fire', sacrifice: 'amb_fire',
   fountain: 'amb_water', magicSpring: 'amb_water', oasis: 'amb_water', inn: 'amb_tavern', caravanserai: 'amb_tavern', market: 'amb_tavern', witchHut: 'amb_bubble', graveyard: 'amb_crows', barrow: 'amb_crows',
   shrine: 'amb_magic', altar: 'amb_magic', obelisk: 'amb_magic', portal: 'amb_portal', sphinx: 'amb_magic', wishingWell: 'amb_magic', stone: 'amb_magic', library: 'amb_magic',
-  garden: 'amb_birds', tree: 'amb_birds', questHut: 'amb_birds', buoy: 'amb_waves', wreck: 'amb_waves', sirens: 'amb_waves', flotsam: 'amb_waves', whirlpool: 'amb_waves', lighthouse: 'amb_waves' };
+  garden: 'amb_birds', tree: 'amb_birds', questHut: 'amb_birds', buoy: 'amb_waves', wreck: 'amb_waves', sirens: 'amb_waves', flotsam: 'amb_waves', whirlpool: 'amb_waves', lighthouse: 'amb_waves', granary: 'amb_birds', tournament: 'amb_town' };
 const AMB_MINE = { wood: 'amb_saw', ore: 'amb_mine', gold: 'amb_mine', gems: 'amb_mine', crystal: 'amb_mine', sulfur: 'amb_bubble', mercury: 'amb_bubble' };
 const AMB_R = 5, AMB_MAX = 3, AMB_VOL = 0.55, AMB_GAIN = { amb_magic: 0.5, amb_crows: 0.8, amb_portal: 0.6, amb_town_dungeon: 1.8, amb_town_haven: 0.8, amb_town_stronghold: 0.8 }; // magia (ołtarze) i portal (niski szum wiru) cicho, w tle; krople w jaskini głośniej
 // Miasto brzmi jak jego frakcja: Przystań – dzwony, Knieja – las, Kurhan – upiorny wiatr, Cytadela – żaby na bagnach, Inferno – lawa, Akademia – mechanizmy, Loch – krople w jaskini, Twierdza – bębny

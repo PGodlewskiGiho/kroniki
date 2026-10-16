@@ -188,6 +188,8 @@ function visitObject(st, h, ob) {
       { label: 'Odmów', key: 'escape', action: () => {} },
     ], { iconH: 76, icon: (ctx, cx, cy) => { drawMap3dIcon(ctx, 'site_witchHut', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('witchHut'), cx, cy + 30, 1.5); skillIcon(ctx, sk, cx + 64, cy + 8, 48); } });
   }
+  else if (ob.type === 'site' && ob.kind === 'excavation') excavationDialog(st, h, ob);
+  else if (ob.type === 'site' && ob.kind === 'tournament') tourneyDialog(st, h, ob);
   else if (ob.type === 'site' && QUIET_SITES.includes(ob.kind)) { // drobne nagrody: napis nad bohaterem i komunikat w ramce, bez okna do klikania
     const r = useSite(st, h, ob), S = SITES[ob.kind]; snd(r.res === 'gold' ? 'coins' : 'shrine'); advFloat(r.float || (r.text.length < 34 ? r.text : S.name), h.x, h.y, r.res);
     if (G.screens.adventure && playerOf(st, h.owner).human) G.screens.adventure.flash(`${S.name}: ${r.text}`, '#ffd970');
@@ -337,6 +339,51 @@ const bazaarMonth = st => Math.floor(weekIndex(st) / 4); // karawana przybywa co
 function bazaarOffer(st, ob) {
   const wk = bazaarMonth(st); if (ob.sold === wk) return null; const r = mulberry32(st.seed ^ (ob.id * 4099) ^ (wk * 7919)), q = r(), rar = q < 0.55 ? 'treasure' : q < 0.88 ? 'minor' : 'major', pool = ARTS_BY_RARITY(rar);
   return { art: pool[Math.floor(r() * pool.length)], price: BAZAAR_PRICE[rar] };
+}
+// --- Wykopalisko: każdy dzień kopania (cały ruch bohatera, raz dziennie) to warstwa bliżej skarbu; postęp należy do gracza, który kopie
+// (obcy zaczyna od nowa), zabrać znalezisko można w każdej chwili – wtedy wykopalisko jest puste ---
+const digDays = (ob, owner) => (ob.by === owner ? ob.dug || 0 : 0);
+const digPrize = d => (DIG_REWARD[Math.min(d, DIG_DAYS)] === 'gold' ? `${DIG_GOLD} złota` : d >= 2 ? `artefakt (${RARITY[DIG_REWARD[Math.min(d, DIG_DAYS)]].toLowerCase()})` : 'nic');
+const canDig = (st, h, ob) => ob.done == null && ob.day !== st.dayTotal && h.mp > 0 && digDays(ob, h.owner) < DIG_DAYS;
+function digOnce(st, h, ob) { const d = digDays(ob, h.owner) + 1; ob.by = h.owner; ob.dug = d; ob.day = st.dayTotal; h.mp = 0; h.path = null; h.dest = null; siteDiscover(ob, h.owner); return d; }
+function digTake(st, h, ob) {
+  const d = digDays(ob, h.owner), kind = DIG_REWARD[Math.min(d, DIG_DAYS)]; if (!kind || ob.done != null) return null; ob.done = h.owner; MapRender.miniDirty = true;
+  if (kind === 'gold') { playerOf(st, h.owner).resources.gold += DIG_GOLD; return { text: `Wśród skorup i kości leży gliniany dzban pełen monet: ${DIG_GOLD} złota.`, float: `+${DIG_GOLD}`, res: 'gold' }; }
+  const pool = ARTS_BY_RARITY(kind), art = pool[thash(ob.id, st.seed, d) % pool.length]; giveArtifact(h, art);
+  return { text: `Na dnie wykopu, pod ${d} warstwami ziemi, spoczywa ${ARTIFACTS[art].name}!`, float: ARTIFACTS[art].name, art };
+}
+function excavationDialog(st, h, ob) {
+  const icon = { iconH: 76, icon: (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_excavation', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('excavation'), cx, cy + 30, 1.5) };
+  if (ob.done != null) return showDialog(`${SITES.excavation.name}: wykop jest pusty – znalezisko zabrał już ${ob.done === h.owner ? 'twój bohater' : ownerName(st, ob.done)}.`, [{ label: 'OK', key: 'enter' }], icon);
+  const d = digDays(ob, h.owner), rival = ob.by != null && ob.by !== h.owner && ob.dug > 0, take = () => { const r = digTake(st, h, ob); if (!r) return; Sfx.play(r.res === 'gold' ? 'coins' : 'artifact'); advFloat(r.float, h.x, h.y, r.res); showDialog(`${SITES.excavation.name}. ${r.text}`, [{ label: 'OK', key: 'enter' }], icon); };
+  const dig = () => { const k = digOnce(st, h, ob); Sfx.play('earth', { vol: 0.8 }); advFloat(`dzień kopania ${k}`, h.x, h.y);
+    showDialog(`${SITES.excavation.name}: ${k === 1 ? 'pierwszy dzień pracy' : `${k}. dzień kopania`} – odsłonięto ${k} z ${DIG_DAYS} warstw. Teraz można zabrać: ${digPrize(k)}.${k < DIG_DAYS ? ` Kolejny dzień kopania da: ${digPrize(k + 1)}. Zostań tu i jutro kliknij bohatera (albo naciśnij spację), żeby kopać dalej.` : ' Głębiej już nic nie ma.'}`,
+      [{ label: `Zabierz: ${digPrize(k)}`, key: 'enter', action: take }, { label: k < DIG_DAYS ? 'Kop jutro dalej' : 'Później', key: 'escape' }], icon); };
+  const why = ob.day === st.dayTotal ? 'Dziś już tu kopano – wróć do pracy jutro.' : !h.mp ? `${h.name} nie ma już dziś sił na kopanie.` : '';
+  showDialog(`${SITES.excavation.name}: ruiny dawnej osady. Każdy dzień kopania zabiera bohaterowi cały ruch: po 1 dniu ${digPrize(1)}, po 2 ${digPrize(2)}, po 3 ${digPrize(3)}, po 4 ${digPrize(4)}.${rival ? ` Ktoś (${ownerName(st, ob.by)}) zaczął tu kopać – twoi ludzie zaczną od nowa.` : ''}${d ? ` Odkopano już ${d} z ${DIG_DAYS} warstw.` : ''} ${why}`.trim(),
+    [...(canDig(st, h, ob) ? [{ label: 'Kop (cały dzień)', key: 'enter', action: dig }] : []), ...(d ? [{ label: `Zabierz: ${digPrize(d)}`, key: canDig(st, h, ob) ? 't' : 'enter', action: take }] : []), { label: 'Odejdź', key: 'escape' }], icon);
+}
+// --- Turniej rycerski: raz w tygodniu walka z czempionem (pierwszy zwycięzca w tygodniu kończy turniej); każde zwycięstwo nad czempionem
+// czyni następnego silniejszym (inny stwór, więcej żołnierzy, rośnie też z czasem gry), a nagrodę większą; co trzecie zwycięstwo – artefakt ---
+function tourneyChamp(st, ob) {
+  const w = ob.wins || 0, cid = TOURNEY_CHAMPS.reduce((c, [k, id]) => (w >= k ? id : c), TOURNEY_CHAMPS[0][1]);
+  return { cid, count: Math.max(2, Math.round((2400 + 1600 * w + 200 * weekIndex(st)) * rule(st, 'monsters') / 100 / CREATURES[cid].value)) };
+}
+function tourneyPrize(ob) { const w = (ob.wins || 0) + 1; return { gold: Math.min(6000, 1000 * w), exp: Math.min(5000, 750 * w), art: w % 3 === 0 ? (w >= 6 ? 'major' : 'minor') : null }; }
+const tourneyText = ob => { const P = tourneyPrize(ob); return `${P.gold} złota, ${P.exp} doświadczenia${P.art ? ` i artefakt (${RARITY[P.art].toLowerCase()})` : ''}`; };
+// Zwycięstwo nad czempionem (wywołuje resolveBattle): nagroda, turniej rozstrzygnięty w tym tygodniu, następny czempion silniejszy
+function tourneyWin(st, h, ob) {
+  const P = tourneyPrize(ob), R = playerOf(st, h.owner).resources; R.gold += P.gold; ob.wins = (ob.wins || 0) + 1; (ob.seen = ob.seen || {}).all = weekIndex(st); let art = '';
+  if (P.art) { const pool = ARTS_BY_RARITY(P.art), id = pool[thash(ob.id, ob.wins, st.seed) % pool.length]; giveArtifact(h, id); art = ` i ${ARTIFACTS[id].name}`; }
+  return { gold: P.gold, exp: P.exp, text: ` Turniej wygrany: ${P.gold} złota, ${P.exp} doświadczenia${art}.` };
+}
+function tourneyDialog(st, h, ob) {
+  const icon = (ctx, cx, cy) => drawMap3dIcon(ctx, 'site_tournament', cx, cy, 90, 74) || drawSprite(ctx, siteSprite('tournament'), cx, cy + 30, 1.5);
+  if (siteUsed(st, ob, h)) return showDialog(`${SITES.tournament.name}: w tym tygodniu turniej już rozstrzygnięto. Heroldowie zapowiadają następny w przyszłym tygodniu – czempion będzie silniejszy.`, [{ label: 'OK', key: 'enter' }], { iconH: 76, icon });
+  const C = tourneyChamp(st, ob), c = CREATURES[C.cid], n = (ob.wins || 0) + 1;
+  showDialog(`${SITES.tournament.name}: heroldowie ogłaszają ${n}. turniej. Czempionem jest ${qtyName(C.count).toLowerCase()} ${c.gen} (${c.plural.toLowerCase()}, poziom ${c.level}). Zwycięzca dostanie ${tourneyText(ob)}. Stajesz w szranki?`,
+    [{ label: 'Stań do pojedynku', key: 'enter', action: () => { h.prev = null; startEncounterFight(st, h, Object.assign(trapMonster(h, C), { tourney: ob })); } }, { label: 'Odejdź', key: 'escape' }],
+    { iconH: 84, icon: (ctx, cx, cy) => { icon(ctx, cx - 40, cy); drawCreatureIcon(ctx, C.cid, cx + 52, cy + 34, 2); } });
 }
 // Plotka z karczmy: najbliższe nieodkryte cenne miejsce (skarbiec, więzienie, kurhan, sfinks…) albo ukryty skarb na tym samym poziomie świata;
 // odsłania jego okolicę graczowi (ukryty skarb staje się widoczny). Zwraca zdanie albo null.
@@ -892,8 +939,13 @@ function townUpgrade(st, t, a, i) {
 // Tydzień stworzenia dodaje +5 do przyrostu jego siedliska (zwykła i ulepszona jednostka dzielą pulę)
 function weeklyGrowth(t, L, st) {
   const cid = factionOf(t.faction).dw['dw' + L][1], base = CREATURES[cid].growth, W = st && weekInfo(st), drill = st && st.heroes.some(h => h.owner === t.owner && h.x === t.x && h.y === t.y && heroFork(h, 'drill')) ? 1.1 : 1; // Musztra
-  return Math.floor(base * drill * ((hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) + (hasB(t, 'grail') ? GRAIL_GROWTH : 0)) * (t.faction === 'stronghold' && L <= HORDE_LEVELS ? HORDE_K : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0);
+  return Math.floor(base * drill * ((hasB(t, 'castle') ? 2 : hasB(t, 'citadel') ? 1.5 : 1) + (hasB(t, 'grail') ? GRAIL_GROWTH : 0)) * (t.faction === 'stronghold' && L <= HORDE_LEVELS ? HORDE_K : 1)) + (W && W.kind === 'creature' && W.cid === cid ? 5 : 0)
+    + (st ? granariesFor(st, t) * Math.max(1, Math.round(base * GRANARY_PCT / 100)) : 0); // spichlerz: +20% przyrostu bazowego, co najmniej +1
 }
+// Spichlerz zaopatruje najbliższe miasto (na tym samym poziomie świata); premia, gdy oba mają tego samego właściciela
+function granaryTown(st, ob) { let best = null, bd = 1e9; const L = levelOf(st.map, ob.x, ob.y);
+  for (const t of st.towns) { if (levelOf(st.map, t.x, t.y) !== L) continue; const d = Math.hypot(t.x - ob.x, t.y - ob.y); if (d < bd) { bd = d; best = t; } } return best; }
+const granariesFor = (st, t) => st.objects.reduce((k, o) => k + (o.kind === 'granary' && !o.dead && o.owner >= 0 && o.owner === t.owner && granaryTown(st, o) === t ? 1 : 0), 0);
 // Nowy tydzień: przyrost w siedliskach; w Miesiącu Zarazy zamiast przyrostu pula topnieje o połowę
 function townGrowthWeek(t, st) {
   const plague = st && st.week === 1 && monthInfo(st).kind === 'plague';
@@ -1299,6 +1351,7 @@ const siteUsed = (st, ob, h) => { const [k, v] = siteStamp(st, ob, h); return (o
 // Skutek odwiedzin (człowiek i SI). Zwraca { text, float?, res?, exp? }; doświadczenie dolicza wołający (okno awansu).
 function useSite(st, h, ob, choice) {
   const S = SITES[ob.kind], R = playerOf(st, h.owner).resources;
+  if (siteUsed(st, ob, h) && ob.kind === 'tournament') return { text: 'W tym tygodniu turniej już rozstrzygnięto.' };
   if (siteUsed(st, ob, h)) return { text: { hero: `${h.name} już tu był${h.female ? 'a' : ''}.`, day: 'Dziś już stąd korzystano. Wróć jutro.', heroWeek: 'W tym tygodniu już stąd korzystano.', week: 'W tym tygodniu plon już zebrano. Wróć w następnym.', player: 'Okolica jest już odsłonięta.' , once: 'Z tego miejsca już skorzystano – drugi raz nic tu nie znajdziesz.'}[S.use] };
   const [k, v] = siteStamp(st, ob, h); const mark = () => { ob.seen = ob.seen || {}; ob.seen[k] = v; };
   siteDiscover(ob, h.owner);
@@ -1415,6 +1468,13 @@ function useSite(st, h, ob, choice) {
       return { text: `Wir wciąga łódź w głębinę i wyrzuca ją daleko stąd, przy drugim wirze.${lost}`, bad: !!lost }; }
     case 'lighthouse': { if (ob.owner === h.owner) return { text: 'Latarnia już świeci dla twoich statków.' }; if (ob.owner >= 0 && allied(st, h.owner, ob.owner)) return { text: 'Latarnia należy do sojusznika i świeci także dla niego.' }; ob.owner = h.owner; MapRender.miniDirty = true; sfxFor(st, h.owner, 'flag');
       return { text: `Latarnik zapala światło dla twoich statków: każdy twój bohater w łodzi ma +${LIGHTHOUSE_MP} punktów ruchu na morzu.`, float: 'latarnia' }; }
+    case 'granary': { const t = granaryTown(st, ob); if (ob.owner === h.owner) return { text: 'Spichlerz już należy do ciebie.' }; if (ob.owner >= 0 && allied(st, h.owner, ob.owner)) return { text: 'Spichlerz należy do sojusznika.' };
+      ob.owner = h.owner; MapRender.miniDirty = true; sfxFor(st, h.owner, 'flag');
+      return { text: `Spichlerz przechodzi w twoje ręce. Zaopatruje miasto ${t ? t.name : '–'}: ${t && t.owner === h.owner ? `przyrost stworów w nim rośnie o ${GRANARY_PCT}% (co najmniej o 1 na siedlisko).` : `gdy to miasto będzie twoje, przyrost stworów w nim wzrośnie o ${GRANARY_PCT}%.`}`, float: 'spichlerz' }; }
+    case 'excavation': { // komputer: dzień kopania i od razu znalezisko (człowiek decyduje w excavationDialog)
+      if (ob.done != null) return { text: 'Wykop jest pusty.' }; if (canDig(st, h, ob)) digOnce(st, h, ob); return digTake(st, h, ob) || { text: 'Dziś już tu kopano.' }; }
+    case 'tournament': { if (siteUsed(st, ob, h)) return { text: 'W tym tygodniu turniej już rozstrzygnięto.' }; const C = tourneyChamp(st, ob); // komputer: walka z czempionem (aiVisit)
+      return { text: `Czempion turnieju: ${qtyName(C.count).toLowerCase()} ${CREATURES[C.cid].gen}.`, trap: C, trapX: { tourney: ob } }; }
     case 'obelisk': { mark(); const k = obelisksSeen(st, h.owner), N = obelisksTotal(st);
       return { puzzle: true, text: k >= N ? 'Ostatni obelisk! Mapa zagadki jest kompletna: krzyżyk wskazuje, gdzie zakopano Graala.' : `Runy na obelisku odsłaniają kolejny fragment mapy zagadki (${k} z ${N}).` }; }
   }
@@ -1433,12 +1493,15 @@ function siteInfo(st, ob, h) {
   const what = ob.kind === 'shrine' ? `uczy czaru „${SPELLS[ob.spell].name}” (poziom ${SPELLS[ob.spell].level})` : ob.kind === 'windmill' ? `co tydzień 3–6 jednostek surowca (${resName(ob.res).toLowerCase()}) dla pierwszego gościa`
     : ob.kind === 'witchHut' ? `uczy umiejętności ${skillText(ob.skill, 1)}` : ob.kind === 'dwelling' ? `${CREATURES[ob.cid].plural.toLowerCase()} do werbunku: ${ob.avail} (po ${costText(CREATURES[ob.cid].cost)}), co tydzień przybywa ${CREATURES[ob.cid].growth}`
     : ob.kind === 'campfire' ? `porzucony obóz: 400–600 złota i 4–6 jednostek surowca (${resName(ob.res || 'wood').toLowerCase()})` : ob.kind === 'portal' && st.objects[ob.pair] ? `${S.desc} (pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})` : ob.kind === 'gate' ? `${S.desc}: ${levelOf(st.map, ob.x, ob.y) ? 'wyjście na powierzchnię' : 'zejście do podziemi'}` : S.desc;
-  const used = h && siteUsed(st, ob, h) ? { hero: ' Ten bohater już tu był.', day: ' Dziś już wykorzystane.', heroWeek: ' W tym tygodniu już wykorzystane.', week: ' Plon z tego tygodnia już zebrany.', player: ' Już odwiedzone.' }[S.use] : '';
+  const used = h && siteUsed(st, ob, h) ? { hero: ' Ten bohater już tu był.', day: ' Dziś już wykorzystane.', heroWeek: ' W tym tygodniu już wykorzystane.', week: ob.kind === 'tournament' ? ' W tym tygodniu turniej już rozstrzygnięto.' : ' Plon z tego tygodnia już zebrany.', player: ' Już odwiedzone.' }[S.use] : '';
   return `${siteName(ob)}: ${adventureInfo(st, ob, viewer) || what}.${used}${st.guard[ob.y * st.map.n + ob.x] ? ' Pilnuje go potwór.' : ''}`;
 }
 // Stan miejsc przygody w dymku (null: zwykły opis)
 function adventureInfo(st, ob, viewer) {
   if (ob.kind === 'lighthouse') return ob.owner >= 0 ? `${SITES.lighthouse.desc}; świeci dla: ${ownerName(st, ob.owner)}` : SITES.lighthouse.desc;
+  if (ob.kind === 'granary') { const t = granaryTown(st, ob); return `zaopatruje miasto ${t ? t.name : '–'}: gdy oba należą do jednego gracza, przyrost stworów w mieście +${GRANARY_PCT}%; ${ob.owner >= 0 ? `należy do: ${ownerName(st, ob.owner)}${t && t.owner === ob.owner ? ' (premia działa)' : ''}` : 'niczyj'}`; }
+  if (ob.kind === 'excavation') { if (ob.done != null) return 'wykop pusty, znalezisko już zabrane'; const d = digDays(ob, viewer); return `${SITES.excavation.desc}${d ? `; twoi ludzie odkopali ${d} z ${DIG_DAYS} warstw (teraz: ${digPrize(d)})` : ob.by != null && ob.dug ? `; kopie tu: ${ownerName(st, ob.by)}` : ''}`; }
+  if (ob.kind === 'tournament') { const C = tourneyChamp(st, ob); return `${(ob.wins || 0) + 1}. turniej: czempion ${qtyName(C.count).toLowerCase()} ${CREATURES[C.cid].gen}, nagroda ${tourneyText(ob)} (raz w tygodniu, dla pierwszego zwycięzcy)`; }
   if (ob.kind === 'whirlpool' && st.objects[ob.pair]) return `${SITES.whirlpool.desc} (drugi wir: pole ${st.objects[ob.pair].x}, ${st.objects[ob.pair].y})`;
   if (ob.kind === 'barrow' && ob.looted != null) return 'rozkopany, komora grobowa jest pusta';
   if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o ? `kupcy sprzedają w tym miesiącu: ${ARTIFACTS[o.art].name} (${RARITY[ARTIFACTS[o.art].rarity]}) za ${o.price} złota` : 'towar wyprzedany, nowa karawana w przyszłym miesiącu'; }

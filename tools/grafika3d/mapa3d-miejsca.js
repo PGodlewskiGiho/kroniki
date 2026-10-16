@@ -363,6 +363,45 @@ Object.assign(SITE3, {
     for (let i = 0; i < 9; i++) { const a = i / 9 * 6.28; g.add(sph(1.3 / PXU, '#f0c040', 'gold', P(Math.cos(a) * (8 + (i % 3) * 2), 14.4, Math.sin(a) * (8 + (i % 3) * 2)), [1, 0.3, 1])); }
     for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28 + 0.2, c = ['#f0a0c0', '#ffffff', '#f0d060'][i % 3]; g.add(sph(1.6 / PXU, c, 'cloth', P(Math.cos(a) * 21, 2.4, Math.sin(a) * 21))); g.add(sph(2 / PXU, '#4a7a2a', 'fur', P(Math.cos(a) * 21, 1, Math.sin(a) * 21), [1.3, 0.6, 1.3])); }
     return g; },
+  granary() { // spichlerz: drewniany budynek z bali na kamiennych grzybkach (przed myszami), strzecha, schodki, worki i snopki zboża, wóz z sianem, maszt z flagą właściciela
+    const g = new THREE.Group(), W = '#8a5a30', WD = '#5a3a1e';
+    for (const x of [-15, 0, 15]) for (const z of [-9, 9]) { g.add(cyl3(1.8, 1.2, 6, ST.stone, 'rubble', x, 0, z, 8)); g.add(cyl3(3.6, 3.2, 1.6, ST.stone, 'ashlar', x, 6, z, 10)); }
+    g.add(blk(40, 18, 24, W, 'wood', 0, 7.6, 0)); for (const y of [12, 17, 22]) g.add(blk(40.6, 0.8, 24.6, WD, 'wood', 0, y, 0)); // bale
+    for (const x of [-20, 20]) for (const z of [-12, 12]) g.add(blk(2.4, 18, 2.4, WD, 'wood', x, 7.6, z));
+    g.add(gable(44, 28, 15, '#c8a456', 'thatch', 0, 25.6, 0, 4, W, 'wood')); g.add(sph(1, '#b89448', 'thatch', P(0, 41, 0), [24 / PXU, 2 / PXU, 3 / PXU]));
+    g.add(door(8, 12, 4, 7.6, 12.4, '#4a2e18', WD, 'wood')); g.add(opening(5, 5, -12, 16, 12.4, { frame: WD, inner: '#2a1a0c' }));
+    for (let i = 0; i < 3; i++) g.add(blk(9, 1.4, 3, WD, 'wood', 4, i * 2.6, 15.5 + (2 - i) * 2.4)); // schodki do drzwi
+    for (const [x, z, r] of [[-18, 18, 3.2], [-13, 20, 2.8], [-16, 22, 2.6], [16, 20, 3]]) g.add(sph(r / PXU, '#d8c8a0', 'cloth', P(x, r * 0.9, z), [1, 1.15, 0.9])); // worki zboża
+    for (const [x, z] of [[24, 4], [26, 10], [23, 14]]) { g.add(cyl3(2.2, 1.4, 9, '#d8b048', 'thatch', x, 0, z, 8)); g.add(cyl3(2.4, 2.4, 0.8, '#8a6a28', 'cloth', x, 3.5, z, 8)); } // snopki
+    g.add(blk(14, 4, 9, W, 'wood', -26, 3, -4)); g.add(sph(1, '#d8c060', 'thatch', P(-26, 8, -4), [7 / PXU, 4 / PXU, 4.6 / PXU])); for (const z of [-9, 1]) g.add(cyl3(3.4, 3.4, 1, WD, 'wood', -26, 0.4, z, 12)); // wóz z sianem
+    g.add(mast(-20, 0, 14, 44)); return g; },
+  excavation() { // wykopalisko: wykop w ziemi z ciemnym dnem, odsłonięte fundamenty i złamane kolumny dawnej osady, drabina, łopaty i kilof, kosz i sito, kupy ziemi, latarnia, namiot badaczy
+    const g = new THREE.Group(), E = '#7a5a3a', ED = '#4a3420';
+    g.add(blk(40, 1.2, 30, ED, 'stone', 0, -0.6, 2)); g.add(blk(34, 0.8, 24, '#1e140c', 'stone', 0, 0, 2)); // wykop (ciemne dno)
+    for (const [x, z, w, d] of [[0, -11, 38, 3], [0, 15, 38, 3], [-19, 2, 3, 26], [19, 2, 3, 26]]) g.add(blk(w, 3, d, E, 'rubble', x, 0, z)); // brzegi z ziemi
+    for (const [x, z, w, d] of [[-8, -2, 14, 2.4], [-14, 4, 2.4, 12], [6, 6, 10, 2.4]]) g.add(blk(w, 4, d, '#a49a88', 'rubble', x, 0, z)); // odsłonięte fundamenty
+    g.add(cyl3(3, 2.8, 14, '#d8d0c0', 'marble', 8, 0, -4, 12)); g.add(blk(8, 2, 8, '#c8c0b0', 'ashlar', 8, 0, -4)); g.add(cyl3(2.8, 2.8, 10, '#d0c8b8', 'marble', -4, 1.6, 8, 12)); g.children[g.children.length - 1].rotation.z = Math.PI / 2; // kolumna stojąca i przewrócona
+    g.add(blk(6, 4, 4, '#c8b088', 'ashlar', 13, 0, 9, [0, 0.5, 0.15])); g.add(sph(2.4 / PXU, '#b06a3a', 'stone', P(-10, 1, 0), [1, 1.2, 1])); g.add(sph(1.8 / PXU, '#c8a040', 'gold', P(-2, 0.8, 2), [1, 0.5, 1])); // urna, złoty błysk
+    for (const sx of [-1, 1]) g.add(blk(1.2, 18, 1.2, '#6a4a2a', 'wood', 14 + sx * 3, 0, -9, [0.35, 0, 0])); for (let i = 0; i < 5; i++) g.add(blk(7, 0.8, 1, '#6a4a2a', 'wood', 14, 2 + i * 3.2, -9 + i * 1.1)); // drabina
+    for (const [x, z, r] of [[-10, -22, 8], [26, -14, 7], [-28, 12, 6]]) g.add(sph(r / PXU, '#8a6a42', 'rubble', P(x, 0, z), [1.3, 0.55, 1])); // kupy wybranej ziemi
+    g.add(blk(1, 16, 1, '#6a4a2a', 'wood', -24, 4, -12, [0, 0, 0.35])); g.add(blk(4, 5, 0.6, '#8a8a90', 'steel', -27, 3, -12, [0, 0, 0.35])); // łopata w ziemi
+    g.add(blk(1, 12, 1, '#6a4a2a', 'wood', 25, 4, -8, [0, 0, -0.5])); g.add(blk(9, 1.2, 1.2, '#7a7a80', 'iron', 28, 13, -8, [0, 0, -0.5])); // kilof
+    g.add(cyl3(4, 3, 5, '#a8844a', 'wood', 24, 0, 16, 10)); g.add(cyl3(5, 5, 1, '#6a4a2a', 'wood', 16, 6, 22, 14)); g.add(blk(1, 6, 1, '#6a4a2a', 'wood', 16, 0, 22)); // kosz i sito
+    g.add(cyl3(9, 9, 11, '#d8ccaa', 'cloth', -24, 0, -20, 4)); g.add(cone(11 / PXU, 9 / PXU, '#c8b48a', 'cloth', P(-24, 15.5, -20), [0, Math.PI / 4, 0], 4)); // namiot badaczy
+    g.add(cyl3(0.8, 0.8, 16, '#4a3020', 'wood', -22, 0, 18, 6)); g.add(blk(4, 4, 4, '#3a3a40', 'iron', -22, 16, 18)); g.add(mqGlow(2.2, '#ffd070', -22, 18, 18)); return g; },
+  tournament() { // turniej rycerski: szranki (płot przez środek), trybuna pod daszkiem w pasy z chorągwiami, dwa namioty rycerzy, tarcze herbowe na słupach, kopie na stojaku
+    const g = new THREE.Group(), WD = '#5a3a1e';
+    g.add(blk(60, 0.6, 30, '#c8b07a', 'plaster', 0, 0, 0)); // ubity plac
+    for (let i = 0; i <= 10; i++) g.add(blk(1.2, 6, 1.2, WD, 'wood', -27 + i * 5.4, 0, 2)); for (const y of [3, 5.5]) g.add(blk(56, 1, 1.2, '#e8dcc0', 'wood', 0, y, 2)); // szranki
+    for (let i = 0; i < 5; i++) g.add(blk(10.8, 1.4, 0.8, i % 2 ? '#2a4a9a' : '#c83a2a', 'cloth', -21.6 + i * 10.8, 5.5, 2.8)); // pasy na barierze
+    g.add(blk(40, 8, 10, WD, 'wood', 0, 0, -16)); for (const [y, z] of [[8, -18], [11, -15], [14, -12]]) g.add(blk(40, 1.6, 4, '#7a5230', 'wood', 0, y - 8 + (z + 18), z)); // trybuna (schodki)
+    for (const x of [-19, 19]) g.add(blk(1.6, 24, 1.6, WD, 'wood', x, 0, -11)); g.add(blk(44, 1.2, 14, '#c83a2a', 'cloth', 0, 24, -16, [0.12, 0, 0]));
+    for (let i = 0; i < 6; i++) g.add(blk(7.3, 1.3, 14.2, i % 2 ? '#f0e8d0' : '#c83a2a', 'cloth', -18.3 + i * 7.3, 24.1, -16, [0.12, 0, 0])); // daszek w pasy
+    for (const x of [-14, 0, 14]) g.add(hangBanner(x, 22, -9, 6, 10, x ? '#2a4a9a' : '#d8b040', '#f0e8d0'));
+    for (const [x, c] of [[-26, '#2a4a9a'], [26, '#c83a2a']]) { g.add(cyl3(8, 8, 10, '#f0e8d8', 'cloth', x, 0, 14, 10)); g.add(cone(9.5 / PXU, 10 / PXU, c, 'cloth', P(x, 15, 14), null, 10)); g.add(finial(x, 20, 14)); g.add(opening(5, 7, x, 0, 21.8, { frame: c, frameKind: 'cloth', arch: false, sill: false })); } // namioty rycerzy
+    for (const [x, c] of [[-10, '#2a4a9a'], [10, '#c83a2a']]) { g.add(blk(1, 14, 1, WD, 'wood', x, 0, 13)); g.add(sph(1, c, 'iron', P(x, 13, 13.8), [3.4 / PXU, 4.2 / PXU, 0.8 / PXU])); g.add(blk(1.2, 5, 0.4, '#e0b040', 'gold', x, 11, 14.6)); } // tarcze herbowe
+    for (let i = 0; i < 4; i++) g.add(blk(0.8, 22, 0.8, i % 2 ? '#e8dcc0' : '#c83a2a', 'wood', 1 + i * 2, 0, 18, [0, 0, -0.08])); g.add(blk(10, 1, 2, WD, 'wood', 4, 8, 18)); // kopie na stojaku
+    return g; },
 });
 // Kadłub łodzi: obrys burty (z boku) wyciągnięty na szerokość, potem zwężony ku dziobowi, rufie i stępce
 function mqHull(L, B, H, col) {

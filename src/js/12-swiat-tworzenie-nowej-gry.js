@@ -278,7 +278,7 @@ function placeObjects(st) {
   const SITE_FIT = { well: 'road', stables: 'road', temple: 'road', market: 'road', school: 'road', hillFort: 'road', camp: 'road', post: 'road', dwelling: 'road', fountain: 'road',
     waterMill: 'water', magicSpring: 'water', windmill: 'open', arena: 'open', oasis: 'open', lookout: 'mountain', altar: 'mountain', stone: 'mountain', crystalCave: 'mountain', dwarfForge: 'mountain',
     witchHut: 'swamp', graveyard: 'swamp', shrine: 'forest', garden: 'forest', tree: 'forest', mushroomRing: 'forest', campfire: 'forest', library: 'hidden', sacrifice: 'hidden', prison: 'hidden',
-    sphinx: 'desert', questHut: 'forest', inn: 'road', barrow: 'open', caravanserai: 'road', wishingWell: 'forest', pandora: 'hidden' };
+    sphinx: 'desert', questHut: 'forest', inn: 'road', barrow: 'open', caravanserai: 'road', wishingWell: 'forest', pandora: 'hidden', excavation: 'hidden', tournament: 'open' };
   // Budynek nie dotyka drogi: w prostokącie x0..x1, y0..y1 (budynek z marginesem pola; pod wejściem droga może biec) nie ma drogi
   const roadFree = (x0, y0, x1, y1) => { for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (map.road[y * n + x]) return false; return true; };
   // Najlepsze z kilkudziesięciu losowych miejsc: dopasowanie do okolicy i odstęp od innych obiektów (bez zbitych gromad)
@@ -430,6 +430,10 @@ function placeObjects(st) {
     let land = false; for (let d = 0; d < 8; d++) { const j = (y + DY8[d]) * n + x + DX8[d]; if (reach[j] && !occ[j]) land = true; }
     if (land) return add({ type: 'boat', x, y }, [i]); } return null; };
   if (!coastBoat(n * 0.3)) coastBoat(0); for (let k = Math.round(NL / 3000); k > 0; k--) coastBoat(0);
+  // spichlerze: jeden przy każdym mieście (4–10 pól od niego, na otwartym terenie), bez strażnika – do przejęcia jak latarnia
+  for (const s0 of map.sites) { const within = (a, b, free) => (x, y) => { const d = Math.hypot(x - s0.x, y - s0.y); return d >= a && d <= b && (!free || roadFree(x - 1, y - 1, x + 1, y)); };
+    const p = best(within(4, 10, true), FIT.open, 60) || best(within(3, 10, false), null, 80) || pick(within(3, 10, false), 3000); // ciasno przy mieście: bliżej drogi
+    if (p) add({ type: 'site', kind: 'granary', x: p[0], y: p[1], owner: -1, seen: {} }, [p[1] * n + p[0]]); }
   // miejsca (SITES): liczba wg gęstości, na małej mapie rzadsze z losowaniem; część pilnują potwory
   for (const [kind, S] of Object.entries(SITES)) {
     if (!S.per) continue; // obeliski rozmieszcza placeGrail
@@ -447,6 +451,7 @@ function placeObjects(st) {
       if (kind === 'dwelling') { const lv = 2 + Math.floor(rng() * 3), pool = NEUTRALS_BY_LEVEL[lv].filter(c => CREATURES[c].cost); o.cid = pool[Math.floor(rng() * pool.length)]; o.avail = CREATURES[o.cid].growth; o.week = 0; }
       if (kind === 'inn') o.title = `Karczma „${INN_NAMES[Math.floor(rng() * INN_NAMES.length)]}”`;
       if (kind === 'barrow') o.title = `Kurhan ${BARROW_NAMES[Math.floor(rng() * BARROW_NAMES.length)]}`;
+      if (kind === 'tournament') o.wins = 0;
       if (kind === 'questHut') { // pustelnik wskazuje groźne stwory kilka dni drogi dalej (silniejsze niż okolica); bez celu nie ma chaty
         o.title = `Chata pustelnika ${HERMIT_NAMES[Math.floor(rng() * HERMIT_NAMES.length)]}a`; o.taken = {};
         const q = best((x, y) => { const d = Math.hypot(x - p[0], y - p[1]); return d >= 7 && d <= 16 && !home[y * n + x] && !map.road[y * n + x]; }, FIT.hidden, 30); if (!q) continue;

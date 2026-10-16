@@ -273,6 +273,9 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'keyTent') return (playerOf(st, h.owner).keys || {})[ob.color] ? 0 : S.ai; // przepustka raz na gracza
   if (ob.kind === 'borderGate') return 0;
   if (ob.kind === 'lighthouse') return ob.owner === h.owner ? 0 : S.ai;
+  if (ob.kind === 'granary') { if (ob.owner === h.owner || (ob.owner >= 0 && allied(st, h.owner, ob.owner))) return 0; const t = granaryTown(st, ob); return t && t.owner === h.owner ? S.ai * 2 : S.ai; } // przy własnym mieście cenniejszy
+  if (ob.kind === 'excavation') return canDig(st, h, ob) || digDays(ob, h.owner) ? S.ai : 0;
+  if (ob.kind === 'tournament') { if (siteUsed(st, ob, h)) return 0; const C = tourneyChamp(st, ob); return armyPower(h.army) >= C.count * CREATURES[C.cid].value * 2 ? S.ai + tourneyPrize(ob).gold : 0; } // tylko z wyraźną przewagą
   if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o && playerOf(st, h.owner).resources.gold >= o.price + 4000 ? 2000 : 0; }
   if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
   return S.ai;
@@ -309,7 +312,7 @@ function* aiVisit(st, h, i, news) {
   else if (ob.type === 'chest') { R.gold += ob.gold; removeObject(st, ob); }
   else if (ob.type === 'art') { giveArtifact(h, ob.art); removeObject(st, ob); }
   else if (ob.type === 'site' && ob.kind === 'witchHut' && skillWeight(h.cls, ob.skill) < 1) siteDiscover(ob, h.owner); // odmawia wiedźmie
-  else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); if (r.trap) yield* aiBattle(st, h, trapMonster(h, r.trap), news); } // puszka Pandory z potworami
+  else if (ob.type === 'site') { const r = useSite(st, h, ob); if (r.exp) gainExp(st, h, r.exp); if (r.trap) yield* aiBattle(st, h, Object.assign(trapMonster(h, r.trap), r.trapX || {}), news); } // puszka Pandory z potworami, czempion turnieju
   else if (ob.type === 'bank') { if (!ob.cleared) yield* aiBattle(st, h, ob, news); }
   else if (ob.type === 'outpost') { if (!friendlyFort(st, ob, h.owner)) { if (armySize(ob.army)) { if (!(yield* aiBattle(st, h, ob, news))) return; } else captureOutpost(st, ob, h.owner); } if (ob.owner === h.owner) aiGarrisonFort(st, h, ob); }
   else if (ob.type === 'mine' && ob.owner >= 0 && ob.owner !== h.owner && allied(st, h.owner, ob.owner)) return;
