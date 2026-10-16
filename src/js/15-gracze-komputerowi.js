@@ -120,9 +120,12 @@ const AI_LINKS = { portal: 0, gate: 0, ferry: 150 };
 // pobocznym, o ile gracz ich ma; poboczny nie bierze doświadczenia z ołtarza ofiarnego (lepiej, żeby trafiło do głównego)
 const AI_MAIN_K = { excavation: 0, cartographer: 0, granary: 0.3, monument: 0.5, fishPort: 0.3, lighthouse: 0.3, wishingWell: 0, market: 0 }, AI_HELPER_K = { sacrifice: 0.2 };
 const aiChoreK = (st, h, kind, helper) => (helper ? AI_HELPER_K[kind] ?? 1 : st.heroes.some(o => o.owner === h.owner && o !== h) ? AI_MAIN_K[kind] ?? 1 : 1);
+const AI_SUMMON_MIN = 1500; // najmniejsza wartość celu, dla którego warto przywołać łódź
 const AI_DIG_DAYS = 4; // poboczny kopie aż do najcenniejszego znaleziska (chyba że zbliża się wróg)
 const RELIC_PARTS = new Set(Object.values(ARTIFACTS).flatMap(a => a.parts || []));
-// Woda: łódź tylko na mapach z dużą ilością wody (stocznia, kupno łodzi); wysiadka na ląd kończy dzień – w planie trasy kosztuje pół dnia ruchu
+// Woda: łódź tylko na mapach z dużą ilością wody (stocznia, kupno łodzi); wysiadka na ląd kończy dzień – w planie trasy kosztuje pół dnia ruchu.
+// Przywołanie łodzi (mag z zapasem many): w planie trasy wejście z brzegu na wolną wodę za 30% dnia ruchu, raz na trasę; trasa z czarem
+// prowadzi tylko do wartościowych celów (nie do zwiadu i drobiazgów) – i tylko gdy jest krótsza niż lądem albo jedyna.
 const aiWatery = st => (st.map._wet ??= st.map.terrain.reduce((k, t) => k + (t === TER.WATER ? 1 : 0), 0) / st.map.terrain.length) >= 0.12;
 // Mapa odległości od bohatera (Dijkstra, koszty ruchu jak u człowieka) tylko po terenie odkrytym przez jego
 // gracza. Pola z obiektem, strażnikiem albo bohaterem są przystankami: można na nie wejść, ale nie przejść dalej.
@@ -146,24 +149,26 @@ function aiReach(st, h) {
   // na drugim końcu); ścieżka ma wtedy w tym miejscu skok, który aiMoveHero wykonuje przez useSite. Drugi koniec może być nieodkryty
   // (człowiek też zna położenie drugiego portalu z opisu), ale dalej od niego idzie się tylko po odkrytym terenie.
   const gold = playerOf(st, h.owner).resources.gold, hop = new Uint8Array(N), board = new Uint8Array(N), landK = Math.round(heroMaxMP(h) * 0.5);
+  const sum = new Uint8Array(N), canSum = !h.boat && aiCan(h, 'summonBoat'), sumK = Math.round(heroMaxMP(h) * 0.3); // sum: trasa wymaga przywołania łodzi
   const link = i => { const o = st.objAt[i] && st.objects[st.objAt[i] - 1]; if (!o || o.type !== 'site' || !(o.kind in AI_LINKS) || st.guard[i] || !objSeen(st, o, h.owner)) return -1;
     const to = st.objects[o.pair]; if (!to || to.dead || (o.kind === 'ferry' && gold < FERRY_GOLD)) return -1; const j = to.y * n + to.x; return heroCell[j] ? -1 : j; };
   dist[start] = 0; push(0, start);
   while (hn) {
     const d = hk[0], i = hv[0]; pop(); if (d > dist[i]) continue;
-    if (i !== start && !hop[i]) { const j = link(i); if (j >= 0) { const nd = d + AI_LINKS[st.objects[st.objAt[i] - 1].kind]; if (nd < dist[j]) { dist[j] = nd; prev[j] = i; hop[j] = 1; push(nd, j); } continue; } }
+    if (i !== start && !hop[i]) { const j = link(i); if (j >= 0) { const nd = d + AI_LINKS[st.objects[st.objAt[i] - 1].kind]; if (nd < dist[j]) { dist[j] = nd; prev[j] = i; hop[j] = 1; sum[j] = sum[i]; push(nd, j); } continue; } }
     if (i !== start && stop(i) && !hop[i] && !board[i]) continue; // na łódź się wsiada i płynie dalej
     const x = i % n, y = (i / n) | 0;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX8[k], ny = y + DY8[k]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
-      const j = ny * n + nx; if (!ex[j] || map.obst[j]) continue; const wi = map.terrain[i] === TER.WATER, wj = map.terrain[j] === TER.WATER; let extra = 0, onBoat = false;
-      if (wj && !wi) { const bo = st.objAt[j] && st.objects[st.objAt[j] - 1]; if (!bo || bo.type !== 'boat' || heroCell[j]) continue; onBoat = true; } // z lądu na wodę tylko na wolną łódź
+      const j = ny * n + nx; if (!ex[j] || map.obst[j]) continue; const wi = map.terrain[i] === TER.WATER, wj = map.terrain[j] === TER.WATER; let extra = 0, onBoat = false, summon = 0;
+      if (wj && !wi) { const bo = st.objAt[j] && st.objects[st.objAt[j] - 1]; // z lądu na wodę tylko na wolną łódź albo na wolną wodę z przywołaną łodzią
+        if (heroCell[j] || (bo ? bo.type !== 'boat' : !canSum || sum[i])) continue; if (bo) onBoat = true; else { summon = 1; extra = sumK; } }
       else if (!wj && wi) extra = landK; // wysiadka: reszta dnia stracona
       const ob = objectAt(st, j); if (ob && ob.blocks && j !== ob.y * n + ob.x) continue; // bok miasta/kopalni: tylko przez wejście
-      const nd = d + stepCost(map, x, y, nx, ny, h) + extra; if (nd < dist[j]) { dist[j] = nd; prev[j] = i; board[j] = onBoat ? 1 : 0; push(nd, j); }
+      const nd = d + stepCost(map, x, y, nx, ny, h) + extra; if (nd < dist[j]) { dist[j] = nd; prev[j] = i; board[j] = onBoat ? 1 : 0; sum[j] = sum[i] | summon; push(nd, j); }
     }
   }
-  return { dist, prev, path(j) { const out = []; while (j !== start && j >= 0) { out.unshift([j % n, (j / n) | 0]); j = prev[j]; } return out; } };
+  return { dist, prev, sum, path(j) { const out = []; while (j !== start && j >= 0) { out.unshift([j % n, (j / n) | 0]); j = prev[j]; } return out; } };
 }
 // Czy walka się opłaca: bitwa jest powtarzalna (to samo ziarno co w prawdziwej walce tego dnia),
 // więc SI rozgrywa ją na próbę i atakuje tylko, gdy wygra, tracąc najwyżej część armii.
@@ -194,7 +199,7 @@ function aiFightLoss(st, h, foe) {
 function aiPickTarget(st, h, R) {
   const n = st.map.n, ex = playerOf(st, h.owner).explored, cands = [], start = h.y * n + h.x, helper = aiRole(st, h) === 'helper';
   const danger = aiDanger(st, h);
-  const add = (i, value, what, foe) => { const c = aiClaims.get(i); if (value > 0 && i !== start && R.dist[i] < Infinity && (!danger[i] || what === 'reinforce' || what === 'feed') && (c == null || c === h.id)) cands.push({ i, score: value / (1 + R.dist[i] / 1500), what, foe }); };
+  const add = (i, value, what, foe) => { const c = aiClaims.get(i); if (value > 0 && i !== start && (!R.sum[i] || value >= AI_SUMMON_MIN) && R.dist[i] < Infinity && (!danger[i] || what === 'reinforce' || what === 'feed') && (c == null || c === h.id)) cands.push({ i, score: value / (1 + R.dist[i] / 1500), what, foe }); };
   const hasArmy = armySize(h.army) > 0, power = armyStrength(h), fightK = helper ? 2.5 : 1;
   if (helper) { // dowóz armii do głównego bohatera: tym cenniejszy, im więcej (i im bliżej)
     const m = aiMain(st, playerOf(st, h.owner)), give = m ? feedGain(h, m) : 0; // tylko to, co główny naprawdę przyjmie (inaczej pomocnik stał obok bez końca i zagradzał drogę)
@@ -233,7 +238,7 @@ function aiPickTarget(st, h, R) {
     const r = 3, m = n + 1, S = new Int32Array(m * m); let best = -1, bestScore = 0; // sumy prefiksowe nieodkrytych pól
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) S[(y + 1) * m + x + 1] = (ex[y * n + x] ? 0 : 1) + S[y * m + x + 1] + S[(y + 1) * m + x] - S[y * m + x];
     for (let i = 0; i < n * n; i++) {
-      if (R.dist[i] === Infinity || i === start || st.objAt[i] || st.guard[i] || danger[i]) continue;
+      if (R.dist[i] === Infinity || i === start || st.objAt[i] || st.guard[i] || danger[i] || R.sum[i]) continue; // zwiad nie jest wart czaru
       const x = i % n, y = (i / n) | 0, x0 = Math.max(0, x - r), y0 = Math.max(0, y - r), x1 = Math.min(n, x + r + 1), y1 = Math.min(n, y + r + 1);
       const fog = S[y1 * m + x1] - S[y0 * m + x1] - S[y1 * m + x0] + S[y0 * m + x0]; if (fog < 4) continue;
       const score = (300 + fog * 40) / (1 + R.dist[i] / 1500); if (score > bestScore) { bestScore = score; best = i; }
@@ -394,7 +399,9 @@ function* aiMoveHero(st, h, news) {
         const lo = objectAt(st, h.y * st.map.n + h.x); if (!lo || lo.type !== 'site' || !AI_LINKS.hasOwnProperty(lo.kind)) return;
         useSite(st, h, lo); if (h.x !== nx || h.y !== ny) return; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); continue; }
       const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
-      const ji = ny * st.map.n + nx, toWater = st.map.terrain[ji] === TER.WATER, boat0 = !h.boat && toWater ? objectAt(st, ji) : null; if (!h.boat && toWater && (!boat0 || boat0.type !== 'boat')) return; // na wodę tylko łodzią
+      const ji = ny * st.map.n + nx, toWater = st.map.terrain[ji] === TER.WATER; let boat0 = !h.boat && toWater ? objectAt(st, ji) : null;
+      if (!h.boat && toWater && !boat0 && aiCan(h, 'summonBoat') && !castAdventure(st, h, 'summonBoat', { x: nx, y: ny })) boat0 = objectAt(st, ji); // trasa z przywołaniem łodzi
+      if (!h.boat && toWater && (!boat0 || boat0.type !== 'boat')) return; // na wodę tylko łodzią
       const blocker = heroAt(st, nx, ny); if (blocker && blocker !== h && allied(st, blocker.owner, h.owner) && blocker.garrison == null) return; // pole zajmuje własny bohater (np. stoi w kapliczce): nie wchodzimy na niego
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
       if (boat0) { h.boat = true; removeObject(st, boat0); } else if (h.boat && !toWater) { h.boat = false; addBoat(st, fx, fy); h.mp = 0; } // wsiadanie na łódź, wysiadka (łódź zostaje przy brzegu, koniec ruchu na dziś)

@@ -90,3 +90,29 @@ test('stocznia i łódź: stocznia w kolejce budowy na mapie z wodą; komputer k
   assert.equal(r.coastal, true); assert.equal(r.wet, true); assert.equal(r.order, true);
   assert.equal(r.boats, 1, 'kupiona łódź'); assert.equal(r.boats2, 1, 'druga nie, gdy łódź stoi przy mieście'); assert.equal(r.dry, false);
 });
+
+test('przywołanie łodzi: mag bez łodzi rzuca czar tylko dla wartościowego celu za wodą; mostem lądowym albo bez many nie', async () => {
+  await newGame(page, { mapSize: 'M' }, 36);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), n = st.map.n, P = playerOf(st, h.owner), y = h.y; if (h.x + 14 >= n) h.x = n - 15; const cx = h.x + 2;
+    for (const o of st.objects) if (o.type !== 'town') o.dead = true;
+    for (let yy = 0; yy < n; yy++) for (let k = 0; k < 6; k++) { const i = yy * n + cx + k; st.map.terrain[i] = TER.WATER; st.map.obst[i] = 0; st.map.road[i] = 0; }
+    for (let x = h.x; x <= cx + 10; x++) for (let yy = y - 1; yy <= y + 1; yy++) { const i = yy * n + x; if (x < cx || x > cx + 5) { st.map.terrain[i] = TER.GRASS; st.map.obst[i] = 0; } }
+    st.guard.fill(0); P.explored.fill(1); h.boat = false; h.army[0] = { cid: 'champion', n: 20 };
+    st.towns = st.towns.filter(t => t.owner === h.owner); for (const o of st.objects) if (o.type === 'town' && !st.towns.includes(o)) o.dead = true;
+    const chest = { id: st.objects.length, type: 'chest', gold: 3000, exp: 1000, x: cx + 8, y }; st.objects.push(chest); rebuildObjIndex(st); const ci = chest.y * n + chest.x;
+    h.book = true; h.spells = []; const noSpell = aiReach(st, h).dist[ci];
+    h.spells = ['summonBoat']; h.mana = 2; const noMana = aiReach(st, h).dist[ci];
+    h.mana = heroMaxMana(h); const R = aiReach(st, h), viaSpell = R.sum[ci];
+    const bridge = [cx, cx + 1, cx + 2, cx + 3, cx + 4, cx + 5].map(x => (y + 1) * n + x); bridge.forEach(i => { st.map.terrain[i] = TER.GRASS; }); const land = aiReach(st, h).sum[ci]; bridge.forEach(i => { st.map.terrain[i] = TER.WATER; });
+    chest.dead = true; rebuildObjIndex(st); for (let yy = 0; yy < n; yy++) for (let x = cx + 6; x < n; x++) P.explored[yy * n + x] = 0; // za wodą tylko mgła: zwiad
+    aiClaims.clear(); const R2 = aiReach(st, h), T = aiPickTarget(st, h, R2), low = { fog: R2.sum[y * n + cx + 5], sum: T ? R2.sum[T.i] : 0 };
+    P.explored.fill(1); chest.dead = false; rebuildObjIndex(st);
+    const mana0 = h.mana; h.mp = heroMaxMP(h) * 3; for (const _ of aiMoveHero(st, h, []));
+    const spent = mana0 - h.mana, day1 = [h.x, h.boat]; h.mp = heroMaxMP(h); for (const _ of aiMoveHero(st, h, []));
+    return { noSpell, noMana, viaSpell, land, spent, cost: spellCost(h, 'summonBoat'), day1, chest: !!chest.dead, shore: cx + 6, low, boats: st.objects.filter(o => o.type === 'boat' && !o.dead).length }; });
+  assert.ok(!Number.isFinite(r.noSpell), 'bez czaru nieosiągalna'); assert.ok(!Number.isFinite(r.noMana), 'bez zapasu many nieosiągalna');
+  assert.equal(r.viaSpell, 1); assert.equal(r.land, 0, 'mostem lądowym bez czaru');
+  assert.equal(r.spent, r.cost, 'jeden czar'); assert.equal(r.day1[0], r.shore); assert.equal(r.day1[1], false); assert.equal(r.boats, 1, 'łódź przy brzegu');
+  assert.equal(r.chest, true); assert.equal(r.low.fog, 1, 'woda przy mgle osiągalna czarem'); assert.equal(r.low.sum, 0, 'zwiad bez czaru');
+});
