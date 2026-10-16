@@ -572,5 +572,6 @@
    szelest zamiast „łańcuchów”), pchnięcie (ostrze z ciężarem ciosu), krzyk umierających, spowolnienie (głośniejsze, opadające),
    ryk bestii (bez „bekania”, nowy ryk bizona), głos demonów (4 warianty), kula magii i jej trafienie (bez lasera i „łuku”).
    Kroki na łapach jeszcze raz: czyste kroki stwora z nagrania foley (w poprzednim było słychać rozmowę w tle).
+   Kroki na łapach wybrane z 14 wersji: mały stwór drepczący (wilki, jaszczury, owady, gryfy, ptaki); pająki mają własne drobne kroczki (skitter).
    ===================================================================================== */
 

@@ -28,6 +28,10 @@ def tight(fid, at, dur):
     # od podanej sekundy nagrania, przycięte do początku uderzenia (pierwsza próbka > 10% szczytu fragmentu)
     x = load(os.path.join(CACHE, f'{fid}.flac'))[int(at * SR):]; w = x[: int(0.2 * SR)]; i = int(np.argmax(np.abs(w) > np.abs(w).max() * 0.1))
     i = max(0, i - int(0.003 * SR)); return x[i: i + int(dur * SR)]
+def strong(fid, n=3):
+    # początki n najgłośniejszych uderzeń nagrania (s), z 20 ms zapasu
+    x = load(os.path.join(CACHE, f'{fid}.flac')); on = sorted(onsets(x, 0.12), key=lambda i: -np.abs(x[i: i + int(0.1 * SR)]).max())[:n]
+    return [max(0, i / SR - 0.02) for i in on]
 S = lambda fid, k=0, dur=0.5: seg(fid, k=k, dur=dur, strongest=True)
 def mix(*parts): # (sygnał, dB, opóźnienie s)
     n = max(len(p) + int(d * SR) for p, _, d in parts); y = np.zeros(n, np.float32)
@@ -59,7 +63,8 @@ EV = {
  'haste':     ([lambda: peak(558736, dur=1.0), lambda: peak(445963, dur=0.7)], 1.0, 0, [558736, 445963]), # dłuższy, narastający świst
  'heal':      ([lambda: mix((peak(436128, dur=1.4), 0, 0), (hp(peak(521883, dur=1.2), 2000), -8, 0.15)), lambda: peak(61521, dur=1.4)], 1.4, 0, [436128, 521883, 61521]), # harfa z migotaniem, anielski dźwięk
  'hit':       ([lambda: S(586841, 0, 0.45), lambda: S(586841, 2, 0.45), lambda: peak(587270, dur=0.5)], 0.5, 0, [586841, 587270]), # mocne uderzenie w ciało zamiast klapsa
- 'paws':      ([lambda at=at: lp(hp(tight(446823, at, 0.25), 60), 5000) for at in (0.0, 0.27, 0.55)], 0.25, 0, [446823]), # czyste kroki stwora (foley), bez szumu i głosów w tle
+ 'paws':      ([lambda at=at: hp(tight(436505, at, 0.25), 60) for at in strong(436505)], 0.25, 0, [436505]), # wybrane przy odsłuchu (wersja C): mały stwór drepcze po dywanie
+ 'skitter':   ([lambda at=at: hp(tight(528191, at, 0.25), 60) for at in strong(528191)], 0.25, 0, [528191]), # wybrane przy odsłuchu (wersja D): drobne kroczki – pająki
  'pierce':    ([lambda: mix((S(395373, 0, 0.5), 0, 0), (lp(peak(522091, pre=0, dur=0.5), 400), -3, 0)), lambda: mix((S(399617, 0, 0.5), 0, 0), (lp(S(586841, 3, 0.5), 300), -3, 0.01)), lambda: mix((S(399614, 0, 0.5), 0, 0), (lp(peak(522091, pre=0, dur=0.5), 400), -4, 0))], 0.5, 1, [395373, 399617, 399614, 522091, 586841]), # pchnięcie ostrza z ciężarem ciosu
  'scream':    ([lambda: peak(492764, dur=1.2), lambda: peak(243380, dur=1.2), lambda: peak(178313, dur=1.2)], 1.2, 1, [492764, 243380, 178313]),
  'slowdn':    ([lambda: peak(577960, dur=0.9), lambda: peak(366092, dur=1.2)], 1.2, 3, [577960, 366092]), # opadający dźwięk, głośniej
