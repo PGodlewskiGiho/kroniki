@@ -1,5 +1,6 @@
 # Muzyka gry: utwory.py -> MIDI -> render (spessasynth_core + GeneralUser GS) -> pętla bez szwu -> MP3 w src/muzyka/.
 #   python3 tools/muzyka/wypal.py [nazwa ...]
+#   python3 tools/muzyka/wypal.py --z-cache   -> tylko ponowne kodowanie MP3 z nagrań w .cache (bez renderu; długości pętli z petle.json)
 # Wymaga: pip mido numpy soundfile imageio-ffmpeg; npm (w $MUZ_DIR, domyślnie /home/user/muzyka): spessasynth_core generaluser
 # Pętla: ogon po końcu utworu (pogłos, wybrzmienia) jest dodawany na początek, a plik ma dokładnie długość utworu.
 import os, sys, io, json, subprocess, numpy as np, soundfile as sf
@@ -16,19 +17,26 @@ TAIL = 5.0
 def build(fn):
     S = fn(); mid = os.path.join(TMP, S.name + '.mid'); wav = os.path.join(TMP, S.name + '.wav'); S.save(mid)
     subprocess.run(['node', os.path.join(HERE, 'render.mjs'), SF2, mid, wav, str(TAIL)], check=True, env={**os.environ, 'MUZ_NODE': os.path.join(MUZ, 'package.json')}, capture_output=True)
-    x, sr = sf.read(wav, always_2d=True); L = int(round(S.seconds * sr))
+    return encode(S.name, S.seconds)
+
+def encode(name, seconds):
+    x, sr = sf.read(os.path.join(TMP, name + '.wav'), always_2d=True); L = int(round(seconds * sr))
     y = x[:L].copy(); t = x[L:L + int(TAIL * sr)]; y[:len(t)] += t  # ogon na początek: pętla bez szwu
     rms = np.sqrt(np.mean(y ** 2)); y *= min(10 ** (-18 / 20) / (rms + 1e-9), 10 ** (-1 / 20) / (np.abs(y).max() + 1e-9))  # -18 dB RMS, szczyt maks. -1 dBFS
     buf = io.BytesIO(); sf.write(buf, y.astype(np.float32), sr, format='WAV', subtype='PCM_16')
-    ff = __import__('imageio_ffmpeg').get_ffmpeg_exe(); mp3 = os.path.join(OUT, S.name + '.mp3')
-    subprocess.run([ff, '-y', '-loglevel', 'error', '-f', 'wav', '-i', 'pipe:0', '-ac', '2', '-ar', '44100', '-b:a', '160k', mp3], input=buf.getvalue(), check=True)
+    ff = __import__('imageio_ffmpeg').get_ffmpeg_exe(); mp3 = os.path.join(OUT, name + '.mp3')
+    # LAME VBR V5 (średnio ~130 kb/s): brzmi jak dawne 160 kb/s stałe, a pliki są o ~27% mniejsze
+    subprocess.run([ff, '-y', '-loglevel', 'error', '-f', 'wav', '-i', 'pipe:0', '-ac', '2', '-ar', '44100', '-q:a', '5', mp3], input=buf.getvalue(), check=True)
     peak = 20 * np.log10(np.abs(y).max() + 1e-9)
-    print(f'{S.name}: {S.seconds:.1f}s, szczyt {peak:.1f} dB, {os.path.getsize(mp3) // 1024} KB')
-    return S.name, round(S.seconds, 4)
+    print(f'{name}: {seconds:.1f}s, szczyt {peak:.1f} dB, {os.path.getsize(mp3) // 1024} KB')
+    return name, round(seconds, 4)
 
 if __name__ == '__main__':
     want = set(sys.argv[1:]); meta_p = os.path.join(OUT, 'petle.json')
     meta = json.load(open(meta_p)) if os.path.exists(meta_p) else {}
+    if '--z-cache' in want:
+        for n, sec in meta.items(): encode(n, sec)
+        sys.exit(0)
     for fn in SONGS:
         if want and fn.__name__ not in want and fn().name not in want: continue
         n, sec = build(fn); meta[n] = sec

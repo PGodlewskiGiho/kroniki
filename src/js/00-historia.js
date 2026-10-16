@@ -573,5 +573,7 @@
    ryk bestii (bez „bekania”, nowy ryk bizona), głos demonów (4 warianty), kula magii i jej trafienie (bez lasera i „łuku”).
    Kroki na łapach jeszcze raz: czyste kroki stwora z nagrania foley (w poprzednim było słychać rozmowę w tle).
    Kroki na łapach wybrane z 14 wersji: mały stwór drepczący (wilki, jaszczury, owady, gryfy, ptaki); pająki mają własne drobne kroczki (skitter).
+   Odchudzenie: muzyka zakodowana od nowa z oryginalnych nagrań (LAME VBR V5 zamiast stałych 160 kb/s, pętle bez zmian) –
+   plik gry 88,4 → 81,5 MB. Grafiki zostają (już skompresowane; ponowne kodowanie dawało ≤5% przy widocznej stracie).
    ===================================================================================== */
 
