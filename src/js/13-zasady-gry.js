@@ -898,7 +898,7 @@ function castAdventure(st, h, id, tgt) {
     const t = st.towns.filter(t => t.owner === h.owner && !heroAt(st, t.x, t.y)).sort((a, b) => Math.hypot(a.x - h.x, a.y - h.y) - Math.hypot(b.x - h.x, b.y - h.y))[0];
     if (!t) return 'Brak wolnego własnego miasta';
     if (h.boat) { h.boat = false; addBoat(st, h.x, h.y); } // łódź zostaje na wodzie
-    h.x = t.x; h.y = t.y; h.mp -= 300; h.path = null; h.dest = null; reveal(st, h.x, h.y, heroSight(h)); centerCam(st, h.x, h.y);
+    h.x = t.x; h.y = t.y; h.mp -= 300; h.path = null; h.dest = null; reveal(st, h.x, h.y, heroSight(h), h.owner); if (h.owner === ME && playerOf(st, h.owner).human) centerCam(st, h.x, h.y);
   }
   else if (id === 'dimensionDoor') {
     const err = doorCheck(st, h, tgt ? tgt.x : null, tgt ? tgt.y : null); if (err) return err; if (!tgt) return 'Wskaż pole';
@@ -1530,8 +1530,10 @@ function useSite(st, h, ob, choice) {
     case 'armory': { const bought = []; for (const id of MACHINES) if (!h.machines.includes(id) && R.gold >= CREATURES[id].cost.gold + 3000 && !buyMachineField(st, h, id)) bought.push(CREATURES[id].name); // komputer: jak w kuźni
       return { text: bought.length ? `Kupiono: ${bought.join(', ')}.` : 'Kwatermistrz nie ma nic, na co by cię było stać.' }; }
     case 'cartographer': { const m = aiCartoPick(st, h, ob); if (!m) return { text: 'Kartograf rozkłada mapy.' }; cartoBuy(st, h, ob, m.id); return { text: `Kupiono: ${m.name.toLowerCase()}.` }; } // komputer (człowiek wybiera w cartoDialog)
-    case 'excavation': { // komputer: dzień kopania i od razu znalezisko (człowiek decyduje w excavationDialog)
-      if (ob.done != null) return { text: 'Wykop jest pusty.' }; if (canDig(st, h, ob)) digOnce(st, h, ob); return digTake(st, h, ob) || { text: 'Dziś już tu kopano.' }; }
+    case 'excavation': { // komputer: poboczny kopie i zostaje (kolejne dni w aiMoveHero), główny bierze od razu (człowiek decyduje w excavationDialog)
+      if (ob.done != null) return { text: 'Wykop jest pusty.' }; if (canDig(st, h, ob)) digOnce(st, h, ob);
+      if (!playerOf(st, h.owner).human && aiRole(st, h) === 'helper' && digDays(ob, h.owner) < AI_DIG_DAYS) return { text: `Kopanie trwa (${digDays(ob, h.owner)} z ${DIG_DAYS} warstw).` };
+      return digTake(st, h, ob) || { text: 'Dziś już tu kopano.' }; }
     case 'tournament': { if (siteUsed(st, ob, h)) return { text: 'W tym tygodniu turniej już rozstrzygnięto.' }; const C = tourneyChamp(st, ob); // komputer: walka z czempionem (aiVisit)
       return { text: `Czempion turnieju: ${qtyName(C.count).toLowerCase()} ${CREATURES[C.cid].gen}.`, trap: C, trapX: { tourney: ob } }; }
     case 'obelisk': { mark(); const k = obelisksSeen(st, h.owner), N = obelisksTotal(st);

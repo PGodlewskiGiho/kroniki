@@ -4,7 +4,7 @@
 // z mapy odległości (aiReach) i idą do nich, dopóki starcza ruchu. Jak zawodowi gracze H3: jeden główny bohater (aiMain)
 // walczy i rośnie, pomocnicy (do limitu bohaterów) zbierają mapę i dowożą mu armię (aiFeed); nikt nie wchodzi pod silniejszego wroga (aiDanger). Wieści ważne dla człowieka trafiają do jego skrzynki (tell), zobaczy je na początku swojej tury.
 const AI_BUILD_ORDER = ['dw1', 'dw2', 'hall2', 'market', 'fort', 'dw3', 'tavern', 'dw4', 'citadel', 'guild1', 'dw1u', 'dw2u', 'hall3', 'dw5', 'dw3u',
-  'castle', 'smith', 'special', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u',
+  'castle', 'smith', 'shipyard', 'special', 'dw4u', 'dw6', 'dw5u', 'hall4', 'dw6u', 'guild2', 'dw7', 'silo', 'guild3', 'dw7u',
   'dw3x', 'dw4x', 'dw5x', 'dw1x', 'dw2x', 'dw6x', 'dw7x', 'guild4', 'guild5'];
 // Dokupuje brakujące surowce na koszt cost (po kursie rynku gracza), jeśli starczy złota. Zwraca, czy kupił.
 function buyMissing(st, owner, cost) {
@@ -87,7 +87,7 @@ function takeableArmy(from, to) {
 function aiManageTown(st, p, t) {
   // pierwsza osiągalna z trzech kolejnych budowli z listy (żeby brak rudy na Fort nie wstrzymał wszystkiego)
   if (!t.builtToday) {
-    const next = AI_BUILD_ORDER.map(id => BUILD_BY_ID[id]).filter(B => !hasB(t, B.id) && bAllowed(t, B) && reqMet(t, B)).slice(0, 3);
+    const next = AI_BUILD_ORDER.map(id => BUILD_BY_ID[id]).filter(B => B && !hasB(t, B.id) && bAllowed(t, B) && reqMet(t, B) && (B.id !== 'shipyard' || (aiWatery(st) && townCoastal(st, t)))).slice(0, 3);
     const B = next.find(B => canAfford(st, B.cost, p.id)) || (next[0] && buyMissing(st, p.id, next[0].cost) ? next[0] : null); if (B) buildIn(st, t, B);
   }
   const heroes = st.heroes.filter(h => h.owner === p.id);
@@ -100,6 +100,9 @@ function aiManageTown(st, p, t) {
       const n = Math.min(t.avail[L], maxAffordable(st, unitCost(cid), p.id)); if (n > 0) { recruit(st, t, L, cid, n); break; }
     }
   }
+  // łódź: na mapach z wodą, gdy żaden bohater gracza nie płynie i przy mieście nie czeka wolna łódź (najwyżej co dwa tygodnie)
+  if (hasB(t, 'shipyard') && aiWatery(st) && !st.heroes.some(o => o.owner === p.id && o.boat) && !st.objects.some(o => o.type === 'boat' && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) <= 8)
+    && p.resources.gold >= boatCost(st, p.id).gold + 4000 && (p.boatWeek == null || weekIndex(st) - p.boatWeek >= 2) && !buyBoat(st, t)) p.boatWeek = weekIndex(st);
   const h = heroInTown(st, t);
   // ulepszanie kupionych stworów (garnizon i bohater w mieście), gdy po opłacie zostaje zapas złota
   for (const a of [t.garrison, h && h.army].filter(Boolean)) for (let i = 0; i < a.length; i++) {
@@ -113,6 +116,14 @@ function aiManageTown(st, p, t) {
 }
 // Koszt przeskoku przez parę obiektów w planie trasy (w punktach ruchu): portal i brama za darmo, prom z „karą” za złoto
 const AI_LINKS = { portal: 0, gate: 0, ferry: 150 };
+// Role w zbieraniu: główny bohater walczy i rośnie w siłę – drobiazgi (wykopalisko, mapy, przejmowanie budowli bez walki, hazard) zostawia
+// pobocznym, o ile gracz ich ma; poboczny nie bierze doświadczenia z ołtarza ofiarnego (lepiej, żeby trafiło do głównego)
+const AI_MAIN_K = { excavation: 0, cartographer: 0, granary: 0.3, monument: 0.5, fishPort: 0.3, lighthouse: 0.3, wishingWell: 0, market: 0 }, AI_HELPER_K = { sacrifice: 0.2 };
+const aiChoreK = (st, h, kind, helper) => (helper ? AI_HELPER_K[kind] ?? 1 : st.heroes.some(o => o.owner === h.owner && o !== h) ? AI_MAIN_K[kind] ?? 1 : 1);
+const AI_DIG_DAYS = 4; // poboczny kopie aż do najcenniejszego znaleziska (chyba że zbliża się wróg)
+const RELIC_PARTS = new Set(Object.values(ARTIFACTS).flatMap(a => a.parts || []));
+// Woda: łódź tylko na mapach z dużą ilością wody (stocznia, kupno łodzi); wysiadka na ląd kończy dzień – w planie trasy kosztuje pół dnia ruchu
+const aiWatery = st => (st.map._wet ??= st.map.terrain.reduce((k, t) => k + (t === TER.WATER ? 1 : 0), 0) / st.map.terrain.length) >= 0.12;
 // Mapa odległości od bohatera (Dijkstra, koszty ruchu jak u człowieka) tylko po terenie odkrytym przez jego
 // gracza. Pola z obiektem, strażnikiem albo bohaterem są przystankami: można na nie wejść, ale nie przejść dalej.
 function aiReach(st, h) {
@@ -134,20 +145,22 @@ function aiReach(st, h) {
   // Przeskoki: portal, brama podziemi i prom (gdy stać na przeprawę) prowadzą z pola obiektu na pole jego pary (bez strażnika i bez bohatera
   // na drugim końcu); ścieżka ma wtedy w tym miejscu skok, który aiMoveHero wykonuje przez useSite. Drugi koniec może być nieodkryty
   // (człowiek też zna położenie drugiego portalu z opisu), ale dalej od niego idzie się tylko po odkrytym terenie.
-  const gold = playerOf(st, h.owner).resources.gold, hop = new Uint8Array(N);
+  const gold = playerOf(st, h.owner).resources.gold, hop = new Uint8Array(N), board = new Uint8Array(N), landK = Math.round(heroMaxMP(h) * 0.5);
   const link = i => { const o = st.objAt[i] && st.objects[st.objAt[i] - 1]; if (!o || o.type !== 'site' || !(o.kind in AI_LINKS) || st.guard[i] || !objSeen(st, o, h.owner)) return -1;
     const to = st.objects[o.pair]; if (!to || to.dead || (o.kind === 'ferry' && gold < FERRY_GOLD)) return -1; const j = to.y * n + to.x; return heroCell[j] ? -1 : j; };
   dist[start] = 0; push(0, start);
   while (hn) {
     const d = hk[0], i = hv[0]; pop(); if (d > dist[i]) continue;
     if (i !== start && !hop[i]) { const j = link(i); if (j >= 0) { const nd = d + AI_LINKS[st.objects[st.objAt[i] - 1].kind]; if (nd < dist[j]) { dist[j] = nd; prev[j] = i; hop[j] = 1; push(nd, j); } continue; } }
-    if (i !== start && stop(i) && !hop[i]) continue;
+    if (i !== start && stop(i) && !hop[i] && !board[i]) continue; // na łódź się wsiada i płynie dalej
     const x = i % n, y = (i / n) | 0;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX8[k], ny = y + DY8[k]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
-      const j = ny * n + nx; if (!ex[j] || map.terrain[j] === TER.WATER || map.obst[j]) continue;
+      const j = ny * n + nx; if (!ex[j] || map.obst[j]) continue; const wi = map.terrain[i] === TER.WATER, wj = map.terrain[j] === TER.WATER; let extra = 0, onBoat = false;
+      if (wj && !wi) { const bo = st.objAt[j] && st.objects[st.objAt[j] - 1]; if (!bo || bo.type !== 'boat' || heroCell[j]) continue; onBoat = true; } // z lądu na wodę tylko na wolną łódź
+      else if (!wj && wi) extra = landK; // wysiadka: reszta dnia stracona
       const ob = objectAt(st, j); if (ob && ob.blocks && j !== ob.y * n + ob.x) continue; // bok miasta/kopalni: tylko przez wejście
-      const nd = d + stepCost(map, x, y, nx, ny, h); if (nd < dist[j]) { dist[j] = nd; prev[j] = i; push(nd, j); }
+      const nd = d + stepCost(map, x, y, nx, ny, h) + extra; if (nd < dist[j]) { dist[j] = nd; prev[j] = i; board[j] = onBoat ? 1 : 0; push(nd, j); }
     }
   }
   return { dist, prev, path(j) { const out = []; while (j !== start && j >= 0) { out.unshift([j % n, (j / n) | 0]); j = prev[j]; } return out; } };
@@ -209,7 +222,7 @@ function aiPickTarget(st, h, R) {
       if (ob.type === 'res') add(i, ob.res === 'gold' ? ob.amount : ob.amount * (RARE.includes(ob.res) ? 250 : 120), 'res');
       else if (ob.type === 'chest') add(i, 1500, 'chest');
       else if (ob.type === 'art') add(i, 2500, 'art');
-      else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob); if (v > 0) add(i, v, 'site'); }
+      else if (ob.type === 'site' && !siteUsed(st, ob, h)) { const v = aiSiteValue(st, h, ob) * aiChoreK(st, h, ob.kind, helper); if (v > 0) add(i, v, 'site'); }
       else if (ob.type === 'mine' && ob.owner !== h.owner && !aiPeace(st, ob.owner, h.owner)) add(i, ob.kind === 'gold' ? 8000 : 3500, 'mine');
       else if (ob.type === 'bank' && !ob.cleared && !helper && power > bankPower(ob) * 1.3) add(i, 2000 + bankPower(ob) * 0.4, 'bank', ob);
       else if (ob.type === 'outpost' && !friendlyFort(st, ob, h.owner) && !aiPeace(st, ob.owner, h.owner)) { const fp = armyPower(ob.army); // garnizon: otwiera drogę dalej
@@ -291,7 +304,9 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'monument' || ob.kind === 'fishPort') return ob.owner === h.owner || (ob.owner >= 0 && allied(st, h.owner, ob.owner)) ? 0 : (ob.kind === 'monument' && hasMonument(st, h.owner) ? 600 : S.ai); // drugi pomnik nic nie daje (tylko odbiera go wrogowi)
   if (ob.kind === 'cartographer') return aiCartoPick(st, h, ob) ? 1500 : 0;
   if (ob.kind === 'armory') { const g = playerOf(st, h.owner).resources.gold; return MACHINES.some(id => !h.machines.includes(id) && g >= CREATURES[id].cost.gold + 3000) ? 900 : 0; }
-  if (ob.kind === 'excavation') return canDig(st, h, ob) || digDays(ob, h.owner) ? S.ai : 0;
+  if (ob.kind === 'excavation') return ob.done == null && (canDig(st, h, ob) || digDays(ob, h.owner)) ? (aiRole(st, h) === 'helper' ? 4000 : S.ai) : 0; // poboczny kopie do artefaktu
+  if (ob.kind === 'sacrifice') { const bag = h.bag.filter(id => id !== 'grail'), exp = bag.reduce((k, id) => k + (SACRIFICE_EXP[ARTIFACTS[id].rarity] || 0), 0); // tylko gdy w plecaku nie ma części relikwii
+    return exp >= 1000 && !bag.some(id => RELIC_PARTS.has(id)) ? exp * 0.4 : 0; }
   if (ob.kind === 'tournament') { if (siteUsed(st, ob, h)) return 0; const C = tourneyChamp(st, ob); return armyPower(h.army) >= C.count * CREATURES[C.cid].value * 2 ? S.ai + tourneyPrize(ob).gold : 0; } // tylko z wyraźną przewagą
   if (ob.kind === 'caravanserai') { const o = bazaarOffer(st, ob); return o && playerOf(st, h.owner).resources.gold >= o.price + 4000 ? 2000 : 0; }
   if (ob.kind === 'dwelling' && (!dwellMax(st, h, ob) || !h.army.includes(null) && !h.army.some(x => x && x.cid === ob.cid))) return 0;
@@ -347,9 +362,25 @@ function aiMapSpells(st, h, R, target) {
   for (let k = path.length - 1; k >= 0; k--) { const [x, y] = path[k]; if (R.dist[y * n + x] - 300 < 300) break; if (!doorCheck(st, h, x, y)) { castAdventure(st, h, 'dimensionDoor', { x, y }); reveal(st, x, y, heroSight(h), h.owner); return true; } }
   return false;
 }
+// Powrót do miasta: obrona (wróg silniejszy od załogi idzie na najbliższe wolne własne miasto, a bohater go pokona) albo wzmocnienie
+// głównego bohatera (w mieście czeka co najmniej 40% siły jego armii, a pieszo to ponad dwa dni drogi). Zwraca true, gdy rzucił.
+function aiTownPortal(st, h) {
+  if (!aiCan(h, 'townPortal') || h.mp < 300) return false;
+  const n = st.map.n, t = st.towns.filter(t => t.owner === h.owner && !heroAt(st, t.x, t.y)).sort((a, b) => Math.hypot(a.x - h.x, a.y - h.y) - Math.hypot(b.x - h.x, b.y - h.y))[0];
+  if (!t || Math.hypot(t.x - h.x, t.y - h.y) < 12) return false;
+  const ex = playerOf(st, h.owner).explored, power = armyStrength(h);
+  const threat = st.heroes.some(o => o.owner !== h.owner && !aiPeace(st, o.owner, h.owner) && ex[o.y * n + o.x] && Math.hypot(o.x - t.x, o.y - t.y) <= 14 && armyStrength(o) > townPower(st, t) && power > armyStrength(o) * 0.9);
+  const reinforce = aiRole(st, h) === 'main' && armyPower(takeableArmy(t.garrison, h.army)) >= armyPower(h.army) * 0.4 && Math.hypot(t.x - h.x, t.y - h.y) > 24;
+  if ((!threat && !reinforce) || castAdventure(st, h, 'townPortal')) return false;
+  armyTransfer(t.garrison, h.army); return true;
+}
 function* aiMoveHero(st, h, news) {
   const G2 = st.grail; // stoi na miejscu Graala od wczoraj: kopie z pełnymi punktami ruchu
   if (G2 && G2.found < 0 && h.x === G2.x && h.y === G2.y && aiKnowsGrail(st, h.owner) && digGrail(st, h).found) tell(st, -1, `${h.name} (${ownerName(st, h.owner)}) wykopuje Graala!`);
+  { const n = st.map.n, here = objectAt(st, h.y * n + h.x); // wykopalisko: poboczny zostaje i kopie kolejne dni; zabiera skarb na końcu albo gdy zbliża się wróg
+    if (here && here.kind === 'excavation' && here.done == null && here.by === h.owner && digDays(here, h.owner) > 0) {
+      if (digDays(here, h.owner) >= AI_DIG_DAYS || aiRole(st, h) !== 'helper' || aiDanger(st, h)[h.y * n + h.x] || !canDig(st, h, here)) digTake(st, h, here); else { digOnce(st, h, here); return; } } }
+  aiTownPortal(st, h);
   for (let plan = 0; plan < 12 && st.heroes.includes(h); plan++) {
     const R = aiReach(st, h), target = aiPickTarget(st, h, R); if (!target) return;
     aiClaims.set(target.i, h.id);
@@ -363,8 +394,10 @@ function* aiMoveHero(st, h, news) {
         const lo = objectAt(st, h.y * st.map.n + h.x); if (!lo || lo.type !== 'site' || !AI_LINKS.hasOwnProperty(lo.kind)) return;
         useSite(st, h, lo); if (h.x !== nx || h.y !== ny) return; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); continue; }
       const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
+      const ji = ny * st.map.n + nx, toWater = st.map.terrain[ji] === TER.WATER, boat0 = !h.boat && toWater ? objectAt(st, ji) : null; if (!h.boat && toWater && (!boat0 || boat0.type !== 'boat')) return; // na wodę tylko łodzią
       const blocker = heroAt(st, nx, ny); if (blocker && blocker !== h && allied(st, blocker.owner, h.owner) && blocker.garrison == null) return; // pole zajmuje własny bohater (np. stoi w kapliczce): nie wchodzimy na niego
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
+      if (boat0) { h.boat = true; removeObject(st, boat0); } else if (h.boat && !toWater) { h.boat = false; addBoat(st, fx, fy); h.mp = 0; } // wsiadanie na łódź, wysiadka (łódź zostaje przy brzegu, koniec ruchu na dziś)
       reveal(st, nx, ny, heroSight(h), h.owner); const ev = eventAt(st, ny * st.map.n + nx); if (ev) runEvent(st, h, ev); // zdarzenie na drodze: komputer wybiera sam
       { const fo = objectAt(st, ny * st.map.n + nx); if (fo && fo.type === 'outpost' && fo.owner === h.owner) aiGarrisonFort(st, h, fo); } // przejazd przez własny fort: uzupełnia załogę
       yield { kind: 'step', h, fx, fy };

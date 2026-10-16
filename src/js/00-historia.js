@@ -588,5 +588,11 @@
    Komputer korzysta z przeskoków: w planie trasy (aiReach) portal, brama podziemi i prom (gdy stać na przeprawę) łączą pole obiektu
    z polem jego pary, a ruch (aiMoveHero) wykonuje skok przez useSite – komputer przeprawia się na wyspy i przechodzi przez portale
    do celów; u kartografa kupuje mapę lądów albo podziemi, gdy ma zapas złota i nieodkrytą co najmniej czwartą część obszaru.
+   Role bohaterów komputera: główny walczy i rośnie w siłę, drobiazgi (wykopalisko, kartograf, studnia życzeń, przejmowanie budowli
+   bez walki) zostawia pobocznym (AI_MAIN_K, aiChoreK) – samotny bohater robi wszystko; poboczny kopie wykopalisko 4 dni do
+   najcenniejszego artefaktu (zabiera wcześniej, gdy zbliża się wróg). Ołtarz ofiarny: oddaje zbędne artefakty za doświadczenie
+   (nie, gdy w plecaku jest część relikwii). Powrót do miasta (aiTownPortal): obrona miasta przed silniejszym wrogiem albo po
+   wzmocnienie z załogi dla głównego bohatera. Żegluga: stocznia w nadmorskim mieście na mapach z dużą ilością wody, zakup łodzi;
+   plan trasy (aiReach) wsiada na wolną łódź, płynie i wysiada (wysiadka kończy ruch, łódź zostaje przy brzegu).
    ===================================================================================== */
 
