@@ -565,5 +565,6 @@
    nagrania (wcześniej fragment zaczynał się od deszczu przed uderzeniem, a wystrzał był syntetycznym „bzyczeniem”); łoskot
    katapulty i głazu – kamień rozbijany o beton/mur zamiast drobnego gruzu; głos demonów – niski pomruk i ryk; wybuch średni
    i krótszy (duży był przesadzony).
+   Po wyborze właściciela gry na stronie odsłuchu zostaje po jednej wersji: piorun C, łoskot A, demon D, wybuch B.
    ===================================================================================== */
 
