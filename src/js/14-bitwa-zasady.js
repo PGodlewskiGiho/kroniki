@@ -975,7 +975,7 @@ function victorySpoils(B, side) {
   if (B.st) { const g = growArtifacts(h); if (g.length) out.grown = g; } // artefakty rosnące
   return out;
 }
-const spoilsText = sp => !sp ? '' : [sp.chest ? ` Skrzynia już nie gryzie: +${sp.chest} złota.` : '', sp.mimic ? ` Mimiki wypluwają skarb: +${sp.mimic} złota.` : '', sp.gold ? ` Grabież: +${sp.gold} złota.` : '', sp.healed ? ` Opatrywanie ran: wraca ${sp.healed} ${sp.healed === 1 ? 'stwór' : 'stworów'}.` : '', sp.salvaged ? ` Polowy warsztat: odbudowano ${sp.salvaged} ${sp.salvaged === 1 ? 'konstrukt' : 'konstruktów'}.` : '', sp.mana ? ` Wysysanie many: +${sp.mana} many.` : '', ...(sp.grown || []).map(g => ` ${g}.`)].join('');
+const spoilsText = sp => !sp ? '' : [sp.chest ? ` Skrzynia już nie gryzie: +${sp.chest} złota.` : '', sp.mimic ? ` Mimiki wypluwają skarb: +${sp.mimic} złota.` : '', sp.gold ? ` Grabież: +${sp.gold} złota.` : '', sp.healed ? ` Opatrywanie ran: wraca ${sp.healed} ${sp.healed === 1 ? 'stwór' : 'stworów'}.` : '', sp.salvaged ? ` Polowy warsztat: odbudowano ${sp.salvaged} ${sp.salvaged === 1 ? 'konstrukt' : 'konstruktów'}.` : '', sp.mana ? ` Wysysanie many: +${sp.mana} many.` : '', ...(sp.grown || []).map(g => ` ${g}.`), sp.tourney || ''].join('');
 const raisedText = n => (n ? ` Nekromancja: ${n === 1 ? 'wstaje 1 kościotrup' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? `wstają ${n} kościotrupy` : `wstaje ${n} kościotrupów`}.` : '');
 function resolveBattle(B, fled) {
   const { st, h } = B, D = B.sides[1], outcome = fled ? 'fled' : B.over;
@@ -986,6 +986,7 @@ function resolveBattle(B, fled) {
     res.exp = killedHp(B, 1); res.raised = raiseDead(B, 0); res.spoils = victorySpoils(B, 0);
     if (D.monster) removeObject(st, D.monster);
     if (D.monster && D.monster.chest && !D.monster.chest.dead) { const c = D.monster.chest, P = st.players[h.owner]; removeObject(st, c); if (P) P.resources.gold += c.gold; res.spoils.chest = c.gold; } // skrzynia-mimik pokonana: jej skarb dla zwycięzcy
+    if (D.monster && D.monster.tourney) { const T = tourneyWin(st, h, D.monster.tourney); res.spoils.tourney = T.text; res.exp += T.exp; } // czempion turnieju pokonany: nagroda
     if (D.bank) res.bankText = lootBank(st, h, D.bank);
     if (D.hero) { res.heroDefeated = { name: D.hero.name, female: D.hero.female }; if (hasGrail(D.hero)) res.grail = true; res.loot = lootHero(h, D.hero); retireHero(st, D.hero, false); }
     if (D.town) { captureTown(st, D.town, h.owner); res.captured = D.town.name; }

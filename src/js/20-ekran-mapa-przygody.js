@@ -494,7 +494,7 @@ G.screens.adventure = {
     if (other && other !== h && other.owner === ME && Math.max(Math.abs(other.x - h.x), Math.abs(other.y - h.y)) === 1) { showMeeting(st, h, other); return; }
     if (tx === h.x && ty === h.y) {
       const here = uiObjectAt(st, ty * n + tx);
-      if (here && here.type === 'town' && here.owner === h.owner) G.go('town', { townId: here.townId }); else this.heroInfo();
+      if (here && here.type === 'town' && here.owner === h.owner) G.go('town', { townId: here.townId }); else if (here && here.kind === 'excavation' && here.done == null) this.useHere(h); else this.heroInfo(); // na wykopalisku: kolejny dzień kopania
       return;
     }
     if (h.path && h.dest && h.dest[0] === tx && h.dest[1] === ty) { this.tapInfo = null; this.startMove(); return; }

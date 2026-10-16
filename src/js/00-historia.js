@@ -575,5 +575,11 @@
    Kroki na łapach wybrane z 14 wersji: mały stwór drepczący (wilki, jaszczury, owady, gryfy, ptaki); pająki mają własne drobne kroczki (skitter).
    Odchudzenie: muzyka zakodowana od nowa z oryginalnych nagrań (LAME VBR V5 zamiast stałych 160 kb/s, pętle bez zmian) –
    plik gry 88,4 → 81,5 MB. Grafiki zostają (już skompresowane; ponowne kodowanie dawało ≤5% przy widocznej stracie).
+   Nowe budynki mapy (modele 3D): Spichlerz – jeden przy każdym mieście, do przejęcia jak latarnia (flaga właściciela); gdy
+   najbliższe miasto też jest właściciela, przyrost w nim +20% (co najmniej +1 na siedlisko). Wykopalisko – każdy dzień kopania
+   zabiera cały ruch bohatera (raz dziennie; klik w bohatera albo spacja kopie dalej): 1 dzień 1000 złota, 2 drobny artefakt,
+   3 cenny, 4 bardzo cenny; obcy zaczyna od zera, znalezisko raz na grę. Turniej rycerski – raz w tygodniu walka z czempionem
+   (krzyżowcy → kawalerzyści → czempioni, liczniej z każdą wygraną i z czasem gry), nagroda rośnie, co trzecie zwycięstwo artefakt.
+   Komputer przejmuje spichlerze, kopie (od razu bierze złoto) i staje do turnieju tylko z dwukrotną przewagą.
    ===================================================================================== */
 
