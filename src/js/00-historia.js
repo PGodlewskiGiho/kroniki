@@ -596,5 +596,8 @@
    plan trasy (aiReach) wsiada na wolną łódź, płynie i wysiada (wysiadka kończy ruch, łódź zostaje przy brzegu).
    Przywołanie łodzi u komputera: mag z zapasem many wchodzi w planie trasy z brzegu na wolną wodę (czar raz na trasę, koszt 30% dnia
    ruchu) – tylko po wartościowy cel (od AI_SUMMON_MIN), nigdy dla zwiadu, i tylko gdy to krótsze niż lądem albo istniejącą łodzią.
+   Nowy neutralny: Grzybołak (poziom 3, grzybowe jaskinie, bagna, dżungla) – chodzący muchomor z ślepiami w cieniu kapelusza i rękami-
+   korzeniami (model 3D: kapelusz „oddycha”, przy ataku wypuszcza zielony obłok zarodników); zdolność Zarodniki: trafiony wręcz
+   oddział zwalnia (−3 szybkości) na 2 rundy, konstrukty i nieumarli odporni.
    ===================================================================================== */
 

@@ -793,6 +793,43 @@ function mimic(L, P = {}) {
   root.scale.setScalar(1.25 * (L.size || 1));
   return root;
 }
+// Grzybołak: chodzący grzyb z podziemnych jaskiń – gruby trzon z pierścieniem, szeroki kapelusz w jasne cętki, świecące blaszki
+// pod spodem i ślepia w cieniu kapelusza; krótkie ręce-korzenie i stopy jak bulwy. Przy ataku zamach rękami, kapelusz się kurczy
+// i wypuszcza obłok zarodników (świecące kulki), w spoczynku kapelusz lekko „oddycha”
+function myconid(L, P = {}) {
+  const root = new THREE.Group(), t = P.t || 0, walking = P.walk != null, ph = walking ? P.walk * Math.PI * 2 : 0, A = P.atk;
+  const stem = L.stem || '#e4d6b8', capC = L.cap || '#c8404a', spot = L.spots || '#f4ead0', gill = L.gills || '#8affc8';
+  const swing = A == null ? 0 : A < 0.45 ? -Math.sin(A / 0.45 * Math.PI / 2) * 0.9 : A < 0.62 ? -0.9 + (A - 0.45) / 0.17 * 2.1 : 1.2 * (1 - (A - 0.62) / 0.38);
+  const lunge = A == null ? 0 : A < 0.45 ? -0.03 : A < 0.62 ? 0.12 : 0.12 * (1 - (A - 0.62) / 0.38), puff = A != null && A > 0.45 && A < 0.85 ? (A - 0.45) / 0.4 : 0;
+  const breathe = 1 + Math.sin(t * 1.6) * 0.025 - (A != null && A > 0.45 && A < 0.62 ? 0.08 : 0), bob = walking ? Math.abs(Math.sin(ph * 2)) * 0.05 : 0;
+  const body = joint(root, [lunge, 0.18 + bob, 0], walking ? Math.sin(ph * 2) * 0.06 : 0);
+  // trzon: zwężający się ku górze, z bulwiastą podstawą i postrzępionym pierścieniem
+  body.add(lathe([[0.001, 0], [0.21, 0.02], [0.23, 0.1], [0.2, 0.25], [0.18, 0.45], [0.16, 0.66], [0.001, 0.68]], stem, 'skin', [0, 0, 0]));
+  body.add(torus(0.17, 0.035, DK(stem, 0.12), 'skin', [0, 0.42, 0], [Math.PI / 2, 0, 0], [1, 1, 0.6]));
+  for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; body.add(cone(0.03, 0.06, DK(stem, 0.15), 'skin', [Math.cos(a) * 0.18, 0.38, Math.sin(a) * 0.18], [Math.PI, 0, 0], 5)); } // strzępy pierścienia
+  // twarz w cieniu kapelusza: ślepia i szpara ust (przód = +x)
+  const head = headJoint(body, [0.19, 0.5, 0]);
+  for (const z of [-0.07, 0.07]) { head.add(sph(0.05, DK(stem, 0.5), 'skin', [0, 0.005, z], [0.5, 1, 1])); head.add(sph(0.036, L.eyes || '#ffe98a', 'glow', [0.03, 0, z])); } // ślepia w oczodołach
+  head.add(box(0.03, 0.02, 0.1, DK(stem, 0.6), 'skin', [0.01, -0.09, 0])); marker(head, 'mouth', [0.08, -0.08, 0]);
+  // kapelusz: szeroka czasza z podwiniętym brzegiem, cętki, świecące blaszki od spodu
+  const capJ = joint(body, [0, 0.7, 0], walking ? Math.sin(ph * 2 + 0.6) * 0.05 : Math.sin(t * 0.9) * 0.02); capJ.scale.set(breathe, 1 / breathe, breathe);
+  capJ.add(lathe([[0.001, 0.24], [0.14, 0.23], [0.27, 0.16], [0.36, 0.06], [0.38, -0.01], [0.33, -0.03], [0.001, 0.0]], capC, 'skin', [0, 0, 0]));
+  capJ.add(lathe([[0.001, -0.005], [0.31, -0.026], [0.35, -0.022]], gill, 'glow', [0, -0.006, 0]));
+  for (let i = 0; i < 16; i++) { const a = i * 2.4, r = 0.05 + (i % 4) * 0.075, y = 0.235 - r * r * 1.45; capJ.add(sph(0.038 + (i % 3) * 0.014, spot, 'skin', [Math.cos(a) * r, y, Math.sin(a) * r], [1, 0.5, 1], 12)); }
+  // ręce-korzenie: z boków trzonu, zakończone sękatymi palcami; przy ataku zamach do przodu
+  for (const z of [-1, 1]) {
+    const arm = joint(body, [0.03, 0.4, z * 0.19], 0); arm.rotation.z = swing * (z > 0 ? 1 : 0.8) + (walking ? Math.sin(ph * 2 + (z > 0 ? 0 : Math.PI)) * 0.4 : Math.sin(t * 1.2 + z) * 0.05);
+    const armC = DK(stem, 0.18), pts = [[0, 0, 0], [0.04, -0.12, z * 0.08], [0.08, -0.24, z * 0.1]]; arm.add(tube(pts, 0.055, 0.04, armC, 'skin', 2));
+    for (const k of [-1, 0, 1]) arm.add(tube([[0.08, -0.24, z * 0.1], [0.11 + k * 0.015, -0.32, z * 0.1 + k * 0.035]], 0.022, 0.01, DK(stem, 0.32), 'skin', 1));
+  }
+  // stopy-bulwy
+  for (const z of [-1, 1]) { const s = walking ? Math.sin(ph * 2 + (z > 0 ? 0 : Math.PI)) : 0, lift = walking ? Math.max(0, Math.cos(ph * 2 + (z > 0 ? 0 : Math.PI))) * 0.06 : 0;
+    root.add(sph(0.1, DK(stem, 0.1), 'skin', [s * 0.08, 0.06 + lift, z * 0.12], [1.3, 0.7, 1])); }
+  // obłok zarodników przy ataku
+  if (puff) for (let i = 0; i < 14; i++) { const a = i * 2.39, r = 0.1 + puff * (0.25 + (i % 5) * 0.06); root.add(sph(0.032 * (1.2 - puff * 0.5), L.spore || '#9ad850', 'skin', [0.25 + Math.cos(a) * r * 0.8 + puff * 0.2, 0.75 + Math.sin(a * 1.7) * r * 0.5, Math.sin(a) * r])); }
+  root.scale.setScalar(1.2 * (L.size || 1));
+  return root;
+}
 // Kraken: płaszcz głowonoga wynurzony z wody (wir piany u podstawy), wielkie oczy, osiem macek z przyssawkami falujących
 // w wodzie; przy ataku dwie przednie macki unoszą się i smagają do przodu
 function kraken(L, P = {}) {
