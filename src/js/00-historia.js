@@ -555,5 +555,11 @@
    Test balans-klas: 8 klas, średnie magów i wojowników w ±15%.
    Poprawka: menu główne na telefonie (8 przycisków z „Zainstaluj grę”) wystawało poza dół ekranu i nie dało się pobrać aplikacji –
    przyciski same się ścieśniają, a gdy i to nie wystarcza, układają się w dwie kolumny (test w layout).
+   Dźwięki bitwy 2 (po odsłuchu właściciela gry, tools/dzwieki/bitwa2.py): nowe próbki CC0 wybrane ręcznie i z analizą (wysokość
+   głosu, ciężar, wybrzmienie) – cios w zbroję (metal + niskie uderzenie), krzyk umierających i okrzyk bojowy (dorośli mężczyźni),
+   zianie smoka i płomień na celu (zamiast ciosu pięścią), marsz (but w żwirze + brzęk zbroi), galop, pchnięcie włóczni i lancy
+   (jeździec dokłada ciężki cios), wybuch, piorun z ręki i grzmot (bez podwyższania), łoskot (gruz + niski huk), głos demonów
+   (wcześniej cisza). Nowe dźwięki tam, gdzie była cisza: róg (Szarża, Okrzyk bojowy, Głos rogu), bęben pozostałych rozkazów,
+   moc zdolności klas i artefaktów, szczęście, wahanie z niskiego morale. Ludzie brzmią w naturalnej wysokości (było +22%).
    ===================================================================================== */
 

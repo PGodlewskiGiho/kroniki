@@ -201,7 +201,7 @@ const WEAPON_SND = { sword: 'blade', greatsword: 'blade', scimitar: 'blade', dag
   axe: 'axe', labrys: 'axe', club: 'blunt', mace: 'blunt', wrench: 'blunt', none: 'claw' };
 const unitSound = cid => { const C = CREATURES[cid], L = C.look, k = L.kind, ab = C.abil || [], fly = ab.includes('fly'), size = L.size || 1, armed = k === 'hum' || k === 'rider' || k === 'centaur';
   const undead = ab.includes('undead') || !!L.bony, metal = ab.includes('construct') || !!L.beast, demon = C.faction === 'inferno' && !undead;
-  return { fly, size, undead, metal, rate: clamp(1.22 - (size - 1) * 0.28, 0.55, 1.35), // wysokość: małe gremliny piszczą, olbrzymy dudnią
+  return { fly, size, undead, metal, rate: clamp(1 - (size - 1) * 0.3, 0.55, 1.25), rider: ['rider', 'centaur'].includes(k), // wysokość: człowiek naturalnie, małe gremliny piszczą, olbrzymy dudnią
     step: fly ? 'wings' : metal && size > 1.3 ? 'stomp' : ['rider', 'centaur', 'unicorn'].includes(k) ? 'gallop' : ['dragon', 'hydra', 'treant', 'bull', 'tower', 'kraken'].includes(k) || size >= 1.8 ? 'stomp' : ['wolf', 'lizard', 'insect', 'griffin', 'bird', 'spider'].includes(k) ? 'paws' : 'march',
     voice: k === 'dragon' || k === 'hydra' || k === 'kraken' ? 'v_dragon' : k === 'wolf' ? 'v_dog' : k === 'lizard' || k === 'spider' ? 'v_hiss' : k === 'insect' ? 'v_insect'
       : k === 'bird' || k === 'phoenix' || k === 'griffin' ? 'v_bird' : k === 'bull' ? 'v_beast' : k === 'ghost' || k === 'eye' ? 'v_ghost' : k === 'treant' ? 'v_giant' : k === 'unicorn' ? 'v_horse'
@@ -222,9 +222,11 @@ const SHOT_HIT_SND = { arrow: 'arrowhit', bolt: 'arrowhit', bullet: 'hit', orb: 
 function impactSound(p, tg) {
   const pan = sfxPan(tg.px), a = p && p.a, shot = p && p.kind === 'shot', S = a ? unitSound(a.cid) : null, T = unitSound(tg.cid), side = p && p.tg && p.tg !== tg; // odłamki i przeskoki: bez drugiego huku
   if (side) Sfx.play('hit', { vol: 0.5, pan, rate: 1.2 });
-  else if (shot) { const sk = p.shotKind || shotKind(a.cid); Sfx.play(sndOr(SHOT_HIT_SND[sk] || 'arrowhit'), { vol: sk === 'bomb' || sk === 'lightning' ? 0.75 : 0.85, pan, rate: sk === 'bolt' ? 0.8 : sk === 'pebble' ? 1.4 : sk === 'lightning' ? 1.3 : 1 }); }
-  else if (S) { const m = S.melee; Sfx.play(T.plate && m !== 'claw' ? sndOr('hit_metal') : m === 'blade' || m === 'axe' ? 'clash' : m === 'blunt' ? 'thud' : 'hit', { vol: 0.85, pan, rate: m === 'axe' ? 0.75 * S.rate : S.rate }); // w pancerz płytowy i maszynę: metaliczny brzęk
-    if ((m === 'blunt' || m === 'claw') && S.size >= 1.4) Sfx.play(sndOr('hit_heavy'), { vol: 0.7, pan, rate: 0.8 }); }
+  else if (shot) { const sk = p.shotKind || shotKind(a.cid); Sfx.play(sndOr(SHOT_HIT_SND[sk] || 'arrowhit'), { vol: sk === 'bomb' || sk === 'lightning' ? 0.85 : 0.85, pan, rate: sk === 'bolt' ? 0.8 : sk === 'pebble' ? 1.4 : 1 }); }
+  else if (S && a && hasAb(a, 'breath')) Sfx.play(sndOr('burn'), { vol: 0.9, pan }); // zianie ogniem: płomień na celu, nie cios
+  else if (S) { const m = S.melee; Sfx.play(T.plate && m !== 'claw' ? sndOr('hit_metal') : m === 'blade' || m === 'axe' ? 'clash' : m === 'blunt' ? 'thud' : m === 'pole' ? sndOr('pierce') : 'hit', { vol: 0.9, pan, rate: m === 'axe' ? 0.8 : m === 'blade' || m === 'pole' ? 1 : S.rate }); // w pancerz płytowy i maszynę: metaliczny brzęk; drzewce: pchnięcie
+    if (T.plate && m === 'pole') Sfx.play(sndOr('pierce'), { vol: 0.6, pan, delay: 0.02 });
+    if (((m === 'blunt' || m === 'claw') && S.size >= 1.4) || (S.rider && m === 'pole')) Sfx.play(sndOr('hit_heavy'), { vol: 0.75, pan, rate: 0.85 }); } // lanca jeźdźca uderza z impetem
   else Sfx.play('hit', { vol: 0.85, pan });
   if (T.metal && !shot) Sfx.play('clash', { vol: 0.45, pan, rate: 0.6, delay: 0.03 }); // cios w pancerz maszyny
   if (tg.dead) { if (T.death === 'bones') Sfx.play(sndOr('bones'), { vol: 0.7, pan, delay: 0.15 }); else if (T.metal) Sfx.play('crash', { vol: 0.75, pan, delay: 0.15, rate: 0.8 });
@@ -232,7 +234,7 @@ function impactSound(p, tg) {
     Sfx.play('death', { vol: 0.6, pan, delay: 0.2, rate: T.rate }); if (T.size >= 1.8) Sfx.play('stomp', { vol: 0.8, pan, delay: 0.3, rate: 0.7 }); }
 }
 // Wystrzał: cięciwa, szczęk kuszy, huk muszkietu, trzask iskry, świst rzutu, pieśń syreny – w chwili, gdy pocisk opuszcza broń
-const SHOT_SND = { arrow: ['bow', 1], bolt: ['bow', 0.75], bullet: ['gunshot', 1], orb: ['zap', 1], fireball: ['fireball', 1], lightning: ['spark', 1], ray: ['zap', 0.6], wave: ['shrine', 1.3], rock: ['swing', 0.6], pebble: ['swing', 1.3], bomb: ['swing', 0.9], axe: ['swing', 1] };
+const SHOT_SND = { arrow: ['bow', 1], bolt: ['bow', 0.75], bullet: ['gunshot', 1], orb: ['zap', 1], fireball: ['fireball', 1], lightning: ['lightning', 1], ray: ['zap', 0.6], wave: ['shrine', 1.3], rock: ['swing', 0.6], pebble: ['swing', 1.3], bomb: ['swing', 0.9], axe: ['swing', 1] };
 function shotSound(kind, x, size) { const [n, r] = SHOT_SND[kind] || SHOT_SND.arrow; Sfx.play(sndOr(n), { vol: kind === 'bullet' ? 0.55 : kind === 'lightning' ? 0.6 : 0.85, pan: sfxPan(x), rate: r * (['rock', 'pebble', 'axe', 'bomb'].includes(kind) ? clamp(1.2 - (size - 1) * 0.3, 0.6, 1.3) : 1) }); }
 function battleSound(fx, sp) {
   if (fx.kind === 'move') { const S = unitSound(fx.u.cid), x = fx.u.px; if (S.fly) Sfx.play('wings', { vol: 0.7, pan: sfxPan(x), rate: S.rate });
@@ -247,7 +249,7 @@ const SPELL_SND = { magicArrow: ['zap', 'zaphit'], spark: ['zap', 'zaphit'], lig
   curse: ['dark', 'curse'], weakness: ['dark', 'curse'], slow: ['cast', 'slowdn'], deathRipple: ['dark', 'curse'], haste: ['cast', 'haste'], massHaste: ['wind', 'haste'], bless: ['cast', 'holy'], prayer: ['holy', 'buff'],
   blind: ['cast', 'curse'], poison: ['cast', 'poison'], fireWall: ['fireball', 'firebreath'], lifeSteal: ['drain', 'heal'], holyLight: ['holy', 'thunder'], vampirism: ['dark', 'drain'], stoneSkin: ['cast', 'earth'],
   shield: ['cast', 'shield'], airShield: ['wind', 'shield'], fireShield: ['fireball', 'shield'], teleport: ['teleport', 'teleport'], clone: ['teleport', 'shield'], dispel: ['cast', 'drain'], bloodlust: ['cast', 'haste'], fortune: ['cast', 'artifact'], tailwind: ['wind', 'haste'], fear: ['dark', 'curse'] };
-const SND_FALLBACK = { v_human: 'swing', v_dragon: 'roar', v_bird: 'wings', v_undead: 'dark', v_ghost: 'dark', bones: 'crash', v_machine: 'build', v_insect: 'wings', v_horse: 'gallop', v_giant: 'roar', hit_metal: 'clash', hit_heavy: 'thud', scream: 'death', gunshot: 'explode', spark: 'zap', wind: 'cast', earth: 'thud', holy: 'heal', poison: 'curse', teleport: 'cast', shield: 'buff', drain: 'curse', frost: 'ice', slowdn: 'curse', haste: 'buff', dark: 'curse' };
+const SND_FALLBACK = { v_demon: 'roar', burn: 'fireball', pierce: 'hit', lightning: 'spark', horn: 'battlestart', order: 'thud', power: 'buff', luck: 'artifact', waver: 'curse', v_human: 'swing', v_dragon: 'roar', v_bird: 'wings', v_undead: 'dark', v_ghost: 'dark', bones: 'crash', v_machine: 'build', v_insect: 'wings', v_horse: 'gallop', v_giant: 'roar', hit_metal: 'clash', hit_heavy: 'thud', scream: 'death', gunshot: 'explode', spark: 'zap', wind: 'cast', earth: 'thud', holy: 'heal', poison: 'curse', teleport: 'cast', shield: 'buff', drain: 'curse', frost: 'ice', slowdn: 'curse', haste: 'buff', dark: 'curse' };
 const sndOr = n => (Sfx.has(n) ? n : SND_FALLBACK[n] || n);
 const spellLandSound = (id, x) => Sfx.play(sndOr(SPELL_SND[id] ? SPELL_SND[id][1] : 'buff'), { vol: 0.9, pan: sfxPan(x) });
 // Pole bitwy morskiej (współrzędne pola): rysowany obraz (tools/tla-ai/szkic-morska.js) dwóch żaglowców burta w burtę (pokłady pod kolumnami 0–4 i 8–12, kładki w rzędach NAVAL_PLANKS),
@@ -510,7 +512,7 @@ G.screens.battle = {
       }
       if (p.hitAt) p.dur = Math.max(p.dur, p.hitAt + 0.2);
     } else if (p.kind === 'heal') {
-      if (!p.landed) { p.landed = true; const u = p.u; if (!p.label) Sfx.play('heal', { vol: 0.6, pan: sfxPan(u.px) });
+      if (!p.landed) { p.landed = true; const u = p.u; if (!p.label) Sfx.play('heal', { vol: 0.6, pan: sfxPan(u.px) }); else { const n = labelSound(p.label); if (n) Sfx.play(sndOr(n), { vol: 0.8, pan: sfxPan(u.px), gap: 0.9 }); }
         if (p.label) this.floats.push({ x: u.px, y: u.py - 50, text: p.label, t: G.time, col: '#ffe08a', small: true });
         else { this.floats.push({ x: u.px, y: u.py - 44, text: `+${p.amount}`, t: G.time, col: '#8af07a' }); spellAura(u.px, u.py, { aura: 'rise', col: '#8af07a' }); } }
     } else if (p.kind === 'spell') {
@@ -814,4 +816,15 @@ function orderIcon(ctx, id, cx, cy) {
   if (O.prestige) return skillIcon(ctx, HERO_PATHS[O.prestige].icon, cx, cy);
   if (O.need) return skillIcon(ctx, O.need[0], cx, cy);
   iconStat(ctx, id === 'shieldWall' ? 'def' : 'att', cx, cy, '#6a4418');
+}
+
+// Dźwięk napisu nad oddziałem: rozkaz (róg przy okrzyku, bęben przy pozostałych), zdolność klasy prestiżowej i artefaktu, szczęście,
+// wahanie z niskiego morale; przy rozkazie na całą armię gra raz (gap)
+const ORDER_SND = { warCry: 'horn', hornBlast: 'horn', charge: 'horn', rodBolt: 'lightning', flaskHeal: 'heal', mirror: 'shield', bind: 'curse', timeSurge: 'haste', manaSurge: 'buff', scrollFire: 'fireball', raiseLegion: 'dark', packCall: 'v_dog', sanctify: 'holy', judgement: 'burn', thunderVolley: 'thunder', roots: 'earth' };
+let ORDER_BY_NAME = null;
+function labelSound(label) {
+  if (label === 'Szczęście!') return 'luck'; if (label === 'Wahanie') return 'waver';
+  if (!ORDER_BY_NAME) { ORDER_BY_NAME = {}; for (const [id, O] of Object.entries(ORDERS)) ORDER_BY_NAME[O.name] = id; }
+  const id = ORDER_BY_NAME[label]; if (!id) return null; const O = ORDERS[id];
+  return ORDER_SND[id] || (O.prestige ? 'power' : O.art ? 'artifact' : 'order');
 }
