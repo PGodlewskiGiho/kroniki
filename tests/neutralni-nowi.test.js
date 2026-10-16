@@ -12,7 +12,7 @@ let browser, page, errors;
 test.before(async () => { ({ browser, page, errors } = await openGame()); });
 test.after(async () => { if (browser) await browser.close(); });
 test.afterEach(() => { const e = errors.splice(0); assert.deepEqual(e, [], 'błędy strony'); });
-const NEW = ['giantSpider', 'siren', 'yeti', 'stoneGiant', 'kraken', 'ironGuardian', 'sandScorpion', 'mimic', 'ancientMimic'];
+const NEW = ['giantSpider', 'siren', 'yeti', 'stoneGiant', 'kraken', 'ironGuardian', 'sandScorpion', 'mimic', 'ancientMimic', 'myconid'];
 
 test('żelazny strażnik: dane neutralnego konstruktu i lądowe siedlisko', async () => {
   const result = await page.evaluate(() => {
@@ -95,7 +95,7 @@ test('podgląd animacji: desktop i telefon, zmiana pozy, pauza, tempo i odbicie'
 test('nowi neutralni: dane, poziomy, grafika z modelu 3D; syrena i kraken wśród potworów morskich', async () => {
   const r = await page.evaluate(NEW => NEW.map(id => { const c = CREATURES[id]; return { id, ok: !!c && c.hp > 0 && c.value > 0 && !c.faction, art: !!(UNIT_ART && UNIT_ART[id]), land: Object.values(NEUTRALS_BY_LEVEL).some(a => a.includes(id)), sea: Object.values(SEA_MONSTERS).some(a => a.includes(id)), wide: !!c.wide }; }), NEW);
   for (const c of r) { assert.ok(c.ok, c.id); assert.ok(c.art, `grafika ${c.id}`); }
-  assert.deepEqual(r.filter(c => c.land).map(c => c.id), ['giantSpider', 'yeti', 'stoneGiant', 'ironGuardian', 'sandScorpion', 'mimic', 'ancientMimic']); assert.deepEqual(r.filter(c => c.sea).map(c => c.id), ['siren', 'kraken']);
+  assert.deepEqual(r.filter(c => c.land).map(c => c.id), ['giantSpider', 'yeti', 'stoneGiant', 'ironGuardian', 'sandScorpion', 'mimic', 'ancientMimic', 'myconid']); assert.deepEqual(r.filter(c => c.sea).map(c => c.id), ['siren', 'kraken']);
   assert.ok(r.find(c => c.id === 'giantSpider').wide && r.find(c => c.id === 'kraken').wide && r.find(c => c.id === 'sandScorpion').wide);
 });
 
@@ -144,4 +144,19 @@ test('skrzynie-mimiki: część skrzyń z dala od startów to mimiki; przy otwar
   });
   assert.match(r.msg, /Skrzynia ożywa/); assert.match(r.offer, /mimik/i);
   assert.ok(r.dead, 'skrzynia znika po zwycięstwie'); assert.equal(r.gold, 3000 + 5 * 60, r.result);
+});
+
+test('grzybołak: zarodniki spowalniają trafiony oddział na 2 rundy (konstrukty i nieumarli odporni); żyje w grzybowych jaskiniach i na bagnach', async () => {
+  await newGame(page, { mapSize: 'S' }, 9);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), c = CREATURES.myconid; h.army = [{ cid: 'pikeman', n: 20 }, null, null, null, null, null, null];
+    const B = createBattle(st, h, { type: 'monster', id: 9901, cid: 'myconid', count: 8, x: h.x, y: h.y }), a = B.units.find(u => u.cid === 'myconid'), t = B.units.find(u => u.cid === 'pikeman');
+    const s0 = unitSpd(t); B.rng = () => 0.5; strike(B, a, t, false); const slowed = t.buffs.slow, s1 = unitSpd(t);
+    const imm = ['ironGuardian', 'skeleton'].map(cid => { const B2 = createBattle(st, { ...h, army: [{ cid, n: 5 }, null, null, null, null, null, null] }, { type: 'monster', id: 9902, cid: 'myconid', count: 8, x: h.x, y: h.y });
+      const a2 = B2.units.find(u => u.cid === 'myconid'), t2 = B2.units.find(u => u.cid === cid); strike(B2, a2, t2, false); return !t2.buffs.slow; });
+    const B3 = createBattle(st, h, { type: 'monster', id: 9903, cid: 'myconid', count: 8, x: h.x, y: h.y }); simulateBattle(B3);
+    return { lvl: c.level, abil: c.abil, land: NEUTRALS_BY_LEVEL[3].includes('myconid'), habitat: c.habitat.includes(TER.FUNGUS) && c.habitat.includes(TER.SWAMP), slowed, d: s0 - s1, imm, over: B3.over, log: B.log.some(l => /Zarodniki spowalniają/.test(l)) };
+  });
+  assert.equal(r.lvl, 3); assert.deepEqual(r.abil, ['spores']); assert.ok(r.land && r.habitat);
+  assert.equal(r.slowed, 2); assert.equal(r.d, 3); assert.ok(r.log); assert.deepEqual(r.imm, [true, true]); assert.ok(['win', 'lose'].includes(r.over));
 });

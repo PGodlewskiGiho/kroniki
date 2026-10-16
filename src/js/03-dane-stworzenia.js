@@ -26,6 +26,7 @@ const ABILITIES = {
   construct: { name: 'Konstrukt', desc: 'maszyna: nie zna morale, odporna na oślepienie, truciznę i falę śmierci; czary nie leczą jej ran – naprawiają ją mechanicy' },
   repair: { name: 'Naprawa', desc: 'na początku rundy naprawia najbardziej uszkodzony sojuszniczy konstrukt (i odbudowuje zniszczone)' },
   chain: { name: 'Łańcuch iskier', desc: 'piorun przeskakuje na najbliższy następny oddział wroga za połowę obrażeń' },
+  spores: { name: 'Zarodniki', desc: 'oddział trafiony w walce wręcz zwalnia (−3 do szybkości) na 2 rundy; konstrukty i nieumarli są odporni' },
   splash: { name: 'Wybuch', desc: 'rani też za połowę wszystkie wrogie oddziały stojące tuż przy celu' },
 };
 // Stworzenia neutralne (statystyki własne, w duchu oryginału).
@@ -40,7 +41,7 @@ const CREATURES = {
 // Potwory na mapie: własne stwory neutralne i podstawowe (nieulepszone) jednostki wszystkich frakcji; uzupełnia je
 // fillNeutrals() po wczytaniu wszystkich frakcji (poziomy 6 i 7 to wyłącznie jednostki frakcji).
 const MIMIC_GOLD = { mimic: 60, ancientMimic: 250 }; // złoto wyplute przez każdego pokonanego mimika (victorySpoils)
-const NEUTRALS_BY_LEVEL = { 1: ['goblin', 'skeleton', 'peasant', 'halfling'], 2: ['wolf', 'rogue', 'giantSpider'], 3: ['orc', 'mummy', 'nomad', 'mimic'], 4: ['troll', 'sharpshooter', 'yeti', 'sandScorpion'], 5: ['ogre', 'goldGolem', 'faerieDragon', 'ironGuardian', 'ancientMimic'], 6: ['enchanter', 'diamondGolem', 'stoneGiant'], 7: ['rustDragon', 'crystalDragon', 'azureDragon'] };
+const NEUTRALS_BY_LEVEL = { 1: ['goblin', 'skeleton', 'peasant', 'halfling'], 2: ['wolf', 'rogue', 'giantSpider'], 3: ['orc', 'mummy', 'nomad', 'mimic', 'myconid'], 4: ['troll', 'sharpshooter', 'yeti', 'sandScorpion'], 5: ['ogre', 'goldGolem', 'faerieDragon', 'ironGuardian', 'ancientMimic'], 6: ['enchanter', 'diamondGolem', 'stoneGiant'], 7: ['rustDragon', 'crystalDragon', 'azureDragon'] };
 function fillNeutrals() { for (const [id, c] of Object.entries(CREATURES)) if (c.faction && c.up && !NEUTRALS_BY_LEVEL[c.level].includes(id)) NEUTRALS_BY_LEVEL[c.level].push(id); }
 const QTY = [[1, 'Kilka'], [5, 'Grupa'], [10, 'Oddział'], [20, 'Mnóstwo'], [50, 'Horda'], [100, 'Tłum'], [250, 'Rój'], [500, 'Zatrzęsienie'], [1000, 'Legion']];
 function qtyName(c) { let s = QTY[0][1]; for (const [m, nm] of QTY) if (c >= m) s = nm; return s; }
@@ -407,6 +408,8 @@ Object.assign(CREATURES, {
     desc: `skrzynia ze skarbem, która gryzie: kąsa znienacka (bez odwetu), a pokonany wypluwa złoto (${MIMIC_GOLD.mimic} za każdego)`, look: { kind: 'mimic', wood: '#7a4a24', metal: '#c8a040', tongue: '#c83a5a', eyes: '#ffd84a', fang: '#f0e8d0', size: 1.0 } }),
   ancientMimic: mkU('Prastary mimik', 'Prastare mimiki', 'prastarych mimików', 5, 15, 16, 9, 15, 80, 5, 2, 1300, null, { abil: ['noRetal', 'deathBlow'], habitat: [TER.GRASS, TER.DIRT, TER.ROUGH, TER.SAND, TER.SNOW, TER.SWAMP, TER.FIELD, TER.CRYSTAL, TER.FUNGUS],
     desc: `stuletni mimik ze skarbca: złocona skrzynia z trzecim okiem na wieku i kolcami; kąsa bez odwetu, czasem śmiertelnie, a pokonany wypluwa ${MIMIC_GOLD.ancientMimic} złota za każdego`, look: { kind: 'mimic', ancient: true, wood: '#3a2238', metal: '#e8b84a', tongue: '#7a2a8a', eyes: '#7affc8', fang: '#fff4dc', size: 1.35 } }),
+  myconid: mkU('Grzybołak', 'Grzybołaki', 'grzybołaków', 3, 7, 10, 3, 6, 34, 4, 6, 340, null, { abil: ['spores'], habitat: [TER.FUNGUS, TER.SWAMP, TER.JUNGLE],
+    desc: 'chodzący grzyb z podziemnych jaskiń: powolny i twardy, a każde uderzenie sypie zarodnikami, które spowalniają wroga', look: { kind: 'myconid', stem: '#e4d6b8', cap: '#c8404a', spots: '#f6eedc', gills: '#8affc8', spore: '#9ad850', eyes: '#ffe98a', size: 1.15 } }),
   kraken: mkU('Kraken', 'Krakeny', 'krakenów', 7, 26, 24, 40, 60, 380, 7, 1, 9800, null, { abil: ['noRetal', 'doubleStrike'], habitat: [],
     desc: 'władca głębin: macki smagają dwa razy i nikt nie zdąży oddać', look: { kind: 'kraken', fur: '#7a2a3a', water: '#3a7a9a', size: 1.25 } }),
 });
