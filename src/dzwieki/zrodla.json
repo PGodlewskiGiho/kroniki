@@ -325,15 +325,15 @@
  ],
  "thunder": [
   {
-   "freesound": 574042,
-   "title": "very loud thunder crack.",
-   "user": "space_veggies",
+   "freesound": 242048,
+   "title": "Lightning Strike.",
+   "user": "Turrus",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 434359,
-   "title": "Close lightning strike 2018 07 07.",
-   "user": "csengeri",
+   "freesound": 397952,
+   "title": "Thunder Clap And Rumble #1.",
+   "user": "Kinoton",
    "license": "CC0-1.0"
   }
  ],
@@ -353,15 +353,15 @@
  ],
  "explode": [
   {
-   "freesound": 439270,
-   "title": "Large Explosion.",
-   "user": "Mozfoo",
+   "freesound": 565490,
+   "title": "Medium Explosion.",
+   "user": "JakeGwizdak",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 418970,
-   "title": "explosion.",
-   "user": "WhaTThes",
+   "freesound": 516914,
+   "title": "Explosion, Medium Blast.",
+   "user": "Kinoton",
    "license": "CC0-1.0"
   }
  ],
@@ -433,27 +433,21 @@
  ],
  "crash": [
   {
-   "freesound": 569507,
-   "title": "Stone Impact Rubble Debris 11.",
-   "user": "Sheyvan",
+   "freesound": 522099,
+   "title": "Concrete SMASH 2.",
+   "user": "magnuswaker",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 569500,
-   "title": "Stone Impact Rubble Debris 4.",
-   "user": "Sheyvan",
+   "freesound": 109360,
+   "title": "stone falls and breaks low pitch.",
+   "user": "SoundCollectah",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 418970,
-   "title": "explosion.",
-   "user": "WhaTThes",
-   "license": "CC0-1.0"
-  },
-  {
-   "freesound": 439270,
-   "title": "Large Explosion.",
-   "user": "Mozfoo",
+   "freesound": 232396,
+   "title": "Bricks.",
+   "user": "cejordi84",
    "license": "CC0-1.0"
   }
  ],
@@ -1027,23 +1021,29 @@
  ],
  "lightning": [
   {
-   "freesound": 393067,
-   "title": "Electric Zap - Electricity.",
-   "user": "Wakerone",
+   "freesound": 242048,
+   "title": "Lightning Strike.",
+   "user": "Turrus",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 437243,
+   "title": "Very close lightning strike.",
+   "user": "Simon Spiers",
    "license": "CC0-1.0"
   }
  ],
  "v_demon": [
   {
-   "freesound": 400631,
-   "title": "Monster Growl 2.",
-   "user": "EathanMarkson",
+   "freesound": 580772,
+   "title": "demon grunt.",
+   "user": "jvmyka@gmail.com",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 397240,
-   "title": "Demon roars.",
-   "user": "Dasgoat",
+   "freesound": 267453,
+   "title": "Beast Roar lvl3.",
+   "user": "cylon8472",
    "license": "CC0-1.0"
   }
  ],
