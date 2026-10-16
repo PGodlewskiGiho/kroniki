@@ -183,9 +183,15 @@
  ],
  "paws": [
   {
-   "freesound": 461522,
-   "title": "dog running on stone tiles 2.",
-   "user": "15GPanskaBokstefflova_Nicola",
+   "freesound": 235932,
+   "title": "paws on carpet.",
+   "user": "KFerentchak",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 628400,
+   "title": "Animal footsteps on dry leaves.",
+   "user": "melle_teich",
    "license": "CC0-1.0"
   }
  ],
@@ -227,15 +233,15 @@
  ],
  "hit": [
   {
-   "freesound": 439747,
-   "title": "Punch Hit 1.",
-   "user": "joe_anderson22",
+   "freesound": 586841,
+   "title": "Power Kick, Body Impact, 7x.",
+   "user": "Kinoton",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 369326,
-   "title": "CLARKS BIG Punches  Hits Impacts.",
-   "user": "cryanrautha",
+   "freesound": 587270,
+   "title": "gore hit 2.",
+   "user": "rubberduckie",
    "license": "CC0-1.0"
   }
  ],
@@ -283,42 +289,42 @@
  ],
  "zap": [
   {
-   "freesound": 375162,
-   "title": "zap (zap14.",
-   "user": "Samulis",
+   "freesound": 249817,
+   "title": "Magic Missiles.",
+   "user": "spookymodem",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 375164,
-   "title": "zap (zap3.",
-   "user": "Samulis",
+   "freesound": 105016,
+   "title": "JM FX Fireball 01.",
+   "user": "Julien Matthey",
    "license": "CC0-1.0"
   }
  ],
  "zaphit": [
   {
-   "freesound": 413224,
-   "title": "Energy impact 4.",
-   "user": "ihitokage",
+   "freesound": 500911,
+   "title": "Spell impact.",
+   "user": "Bertsz",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 413218,
-   "title": "Energy impact 2.",
-   "user": "ihitokage",
+   "freesound": 500905,
+   "title": "Spell explosion 2.",
+   "user": "Bertsz",
    "license": "CC0-1.0"
   }
  ],
  "cast": [
   {
-   "freesound": 455206,
-   "title": "Magic Spell 01.",
-   "user": "MATRIXXX_",
+   "freesound": 500908,
+   "title": "Spell shoot.",
+   "user": "Bertsz",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 442774,
-   "title": "Magic Spell.",
+   "freesound": 159725,
+   "title": "Fire Magic Spell Sound Effect.",
    "user": "qubodup",
    "license": "CC0-1.0"
   }
@@ -383,15 +389,21 @@
  ],
  "heal": [
   {
-   "freesound": 483608,
-   "title": "Improvement/Healing Chime.",
-   "user": "Raclure",
+   "freesound": 436128,
+   "title": "Harp Glissando Up.",
+   "user": "Cunningar0807",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 562292,
-   "title": "Heal - Rpg.",
-   "user": "colorsCrimsonTears",
+   "freesound": 521883,
+   "title": "Shimmering Object 2.",
+   "user": "opticaillusions",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 61521,
+   "title": "Final angelic sound.",
+   "user": "hjohnl",
    "license": "CC0-1.0"
   }
  ],
@@ -467,9 +479,21 @@
  ],
  "earth": [
   {
-   "freesound": 529244,
-   "title": "FX - Earthquake.",
-   "user": "bolkmar",
+   "freesound": 590096,
+   "title": "Rock collapse or destruction.",
+   "user": "Vozme",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 438685,
+   "title": "G43-06-Rocks Fall in Heavy Slide.",
+   "user": "craigsmith",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 524307,
+   "title": "Earthquake in cave.",
+   "user": "Bertsz",
    "license": "CC0-1.0"
   }
  ],
@@ -523,17 +547,29 @@
  ],
  "slowdn": [
   {
-   "freesound": 101118,
-   "title": "slowdown.",
-   "user": "DarkoZL",
+   "freesound": 577960,
+   "title": "Power down - Rpg.",
+   "user": "colorsCrimsonTears",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 366092,
+   "title": "Quick Zoom / Slow Down.",
+   "user": "bevibeldesign",
    "license": "CC0-1.0"
   }
  ],
  "haste": [
   {
-   "freesound": 590615,
-   "title": "SFX WHOOSHYKORN rising 15.",
-   "user": "MrFossy",
+   "freesound": 558736,
+   "title": "brush-rising-woosh-muffle-000212 0029S3 D 057-062 069-100 003-007.",
+   "user": "Gerent",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 445963,
+   "title": "FX - Swoosh Swirl.",
+   "user": "Breviceps",
    "license": "CC0-1.0"
   }
  ],
@@ -869,9 +905,15 @@
    "license": "CC0-1.0"
   },
   {
-   "freesound": 547525,
-   "title": "Lion roaring like Burping.",
-   "user": "Alexadiaz12",
+   "freesound": 418394,
+   "title": "Beast Roar.",
+   "user": "TheBuilder15",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 519594,
+   "title": "Bison bellowing - Yellowstone National Park.",
+   "user": "Nivatius",
    "license": "CC0-1.0"
   }
  ],
@@ -927,35 +969,35 @@
  ],
  "scream": [
   {
-   "freesound": 432058,
-   "title": "Death Scream 2.",
-   "user": "areischen",
+   "freesound": 492764,
+   "title": "Wilhelm scream alternative Death scream human shout agony KT CsG .",
+   "user": "csaszi",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 540454,
-   "title": "Male Scream.",
-   "user": "bananplyte",
+   "freesound": 243380,
+   "title": "human male scream 4.",
+   "user": "JohnsonBrandEditing",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 523216,
-   "title": "Death Scream.",
-   "user": "Gemesil",
+   "freesound": 178313,
+   "title": "Male Death Scream.",
+   "user": "Thanra",
    "license": "CC0-1.0"
   }
  ],
  "gunshot": [
   {
-   "freesound": 341258,
-   "title": "Gunshot01.",
-   "user": "jeremysykes",
+   "freesound": 234869,
+   "title": "Musket Shot.",
+   "user": "mlsulli",
    "license": "CC0-1.0"
   },
   {
-   "freesound": 518181,
-   "title": "FX - Gunshot.",
-   "user": "bolkmar",
+   "freesound": 396316,
+   "title": "Meaty Gunshot.",
+   "user": "morganpurkis",
    "license": "CC0-1.0"
   }
  ],
@@ -989,9 +1031,33 @@
  ],
  "pierce": [
   {
-   "freesound": 417192,
-   "title": "Stabbing.",
-   "user": "WhiteLineFever",
+   "freesound": 395373,
+   "title": "Sword stab 2.",
+   "user": "ihitokage",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 399617,
+   "title": "Knife/sword stab #2.",
+   "user": "SoundsForHim",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 399614,
+   "title": "Knife/sword stab #1.",
+   "user": "SoundsForHim",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 522091,
+   "title": "Pound of Flesh 1.",
+   "user": "magnuswaker",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 586841,
+   "title": "Power Kick, Body Impact, 7x.",
+   "user": "Kinoton",
    "license": "CC0-1.0"
   }
  ],
@@ -1007,6 +1073,24 @@
   {
    "freesound": 580772,
    "title": "demon grunt.",
+   "user": "jvmyka@gmail.com",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 580774,
+   "title": "zombie demon.",
+   "user": "jvmyka@gmail.com",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 580766,
+   "title": "demon dragon.",
+   "user": "jvmyka@gmail.com",
+   "license": "CC0-1.0"
+  },
+  {
+   "freesound": 580770,
+   "title": "demonic creature.",
    "user": "jvmyka@gmail.com",
    "license": "CC0-1.0"
   }
