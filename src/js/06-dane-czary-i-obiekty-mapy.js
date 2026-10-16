@@ -144,6 +144,9 @@ const CLASS_SPELLS = { cleric: ['bless'], druid: ['cure'], necro: ['magicArrow']
 // Spichlerz: premia do przyrostu miasta, które zaopatruje; wykopalisko: nagroda za dni kopania (indeks = dni); turniej: czempioni wg liczby wygranych
 const GRANARY_PCT = 20, DIG_DAYS = 4, DIG_REWARD = [null, 'gold', 'treasure', 'minor', 'major'], DIG_GOLD = 1000;
 const TOURNEY_CHAMPS = [[0, 'crusader'], [2, 'cavalier'], [4, 'champion']];
+// Port rybacki (złoto dziennie, jeden na tyle pól wody), prom (opłata, liczba par wg mapy), kartograf (ceny map)
+const PORT_GOLD = 250, PORT_PER = 1600, FERRY_GOLD = 200, FERRIES = { S: 1, M: 2, L: 2, XL: 3, XXL: 4, G: 5, B: 5 };
+const CARTO_MAPS = [{ id: 'sea', name: 'Mapa wód', cost: 1000, what: 'wszystkie morza, jeziora i rzeki' }, { id: 'land', name: 'Mapa lądów', cost: 2500, what: 'cały ląd na powierzchni' }, { id: 'under', name: 'Mapa podziemi', cost: 2500, what: 'całe podziemia' }];
 const SITES = {
   shrine: { name: 'Kapliczka magii', use: 'hero', per: 700, ai: 1500, desc: 'uczy czaru' },
   well: { name: 'Studnia', use: 'day', per: 900, ai: 400, desc: 'odnawia całą manę bohatera (raz dziennie)' },
@@ -198,13 +201,19 @@ const SITES = {
   granary: { name: 'Spichlerz', use: 'free', per: 0, ai: 1500, desc: `zaopatruje najbliższe miasto: gdy należy ono do właściciela spichlerza, przyrost stworów w nim rośnie o ${GRANARY_PCT}% (co najmniej o 1 na siedlisko)` },
   excavation: { name: 'Wykopalisko', use: 'free', per: 3600, ai: 1000, desc: 'ruiny dawnej osady: każdy dzień kopania (cały ruch bohatera) przybliża do skarbu – po 1 dniu złoto, po 2 drobny artefakt, po 3 cenny, po 4 bardzo cenny (raz na grę)' },
   tournament: { name: 'Turniej rycerski', use: 'week', per: 4200, ai: 2500, desc: 'raz w tygodniu pojedynek z czempionem turnieju; po każdej jego porażce następny czempion jest silniejszy, a nagroda większa' },
+  // pomnik i port do przejęcia, zbrojownia polowa (machiny poza miastem), prom (para przystani na dwóch brzegach), kartograf (mapy za złoto)
+  monument: { name: 'Pomnik bohatera', use: 'free', per: 5200, ai: 2200, guard: true, desc: 'właściciel: wszyscy jego bohaterowie mają +1 do morale (kilka pomników się nie sumuje)' },
+  fishPort: { name: 'Port rybacki', use: 'free', per: 0, ai: 1600, desc: `właściciel: +${PORT_GOLD} złota dziennie, a łodzie w jego stoczniach kosztują połowę` },
+  armory: { name: 'Zbrojownia polowa', use: 'free', per: 4600, ai: 0, desc: 'sprzedaje machiny wojenne (balistę, namiot medyka, wóz z amunicją) bohaterowi w polu, po cenach z kuźni' },
+  ferry: { name: 'Prom', use: 'free', per: 0, ai: 0, desc: `przewoźnik przewozi bohatera z armią do przystani na drugim brzegu za ${FERRY_GOLD} złota` },
+  cartographer: { name: 'Kartograf', use: 'free', per: 4800, ai: 0, desc: 'sprzedaje mapy: wód, lądów i podziemi – każda odsłania cały obszar swojego rodzaju' },
 };
 // Morze: potwory na wodzie wg poziomu (piraci płyną statkiem, reszta to morskie stwory), wiry w parach wg rozmiaru mapy,
 // latarnie (jedna na tyle pól wody) i dodatkowy ruch łodzi za każdą posiadaną latarnię
 const SEA_MONSTERS = { 1: ['rusalka', 'rogue'], 2: ['rogue', 'lizardWarrior'], 3: ['siren', 'nomad', 'lizardSlayer'], 4: ['siren', 'sharpshooter'], 5: ['naga', 'sharpshooter'], 6: ['nagaQueen', 'nagaEmpress'], 7: ['kraken', 'hydra', 'chaosHydra', 'primeHydra'] };
 const PIRATES = ['rogue', 'nomad', 'sharpshooter'], WHIRL_PAIRS = { S: 1, M: 1, L: 2, XL: 3, XXL: 4, G: 5 }, LIGHTHOUSE_PER = 1300, LIGHTHOUSE_MP = 400, SEA_MONSTER_PER = 380;
 // Miejsca bez strażnika (drobne, przydrożne albo same są wyzwaniem); resztę pilnuje potwór obok (placeObjects)
-const UNGUARDED_SITES = ['granary', 'excavation', 'tournament', 'well', 'stables', 'temple', 'fountain', 'market', 'inn', 'caravanserai', 'questHut', 'sphinx', 'oasis', 'mushroomRing', 'campfire', 'pandora', 'keyTent', 'borderGate'];
+const UNGUARDED_SITES = ['granary', 'excavation', 'tournament', 'fishPort', 'armory', 'ferry', 'cartographer', 'well', 'stables', 'temple', 'fountain', 'market', 'inn', 'caravanserai', 'questHut', 'sphinx', 'oasis', 'mushroomRing', 'campfire', 'pandora', 'keyTent', 'borderGate'];
 // Klucznicy i bramy graniczne (jak w H3): kolor bramy = kolor namiotu, którego odwiedziny otwierają ją graczowi na zawsze; liczba bram wg mapy
 const KEY_COLORS = [{ id: 'azure', name: 'błękitny', f: 'błękitna', hex: '#3aa8f0' }, { id: 'green', name: 'zielony', f: 'zielona', hex: '#3ab040' }, { id: 'red', name: 'czerwony', f: 'czerwona', hex: '#e03a2a' }, { id: 'violet', name: 'fioletowy', f: 'fioletowa', hex: '#a04ae0' }];
 const BORDER_GATES = { S: 1, M: 2, L: 2, XL: 3, XXL: 4, G: 4, B: 4 };

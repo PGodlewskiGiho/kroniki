@@ -402,6 +402,49 @@ Object.assign(SITE3, {
     for (const [x, c] of [[-10, '#2a4a9a'], [10, '#c83a2a']]) { g.add(blk(1, 14, 1, WD, 'wood', x, 0, 13)); g.add(sph(1, c, 'iron', P(x, 13, 13.8), [3.4 / PXU, 4.2 / PXU, 0.8 / PXU])); g.add(blk(1.2, 5, 0.4, '#e0b040', 'gold', x, 11, 14.6)); } // tarcze herbowe
     for (let i = 0; i < 4; i++) g.add(blk(0.8, 22, 0.8, i % 2 ? '#e8dcc0' : '#c83a2a', 'wood', 1 + i * 2, 0, 18, [0, 0, -0.08])); g.add(blk(10, 1, 2, WD, 'wood', 4, 8, 18)); // kopie na stojaku
     return g; },
+  monument() { // pomnik bohatera: brązowy rycerz z uniesionym mieczem na schodkowym cokole z tablicą, wieniec i znicze, maszt z flagą właściciela
+    const g = new THREE.Group(), BR = '#7a6a48', BRL = '#a8925e';
+    g.add(blk(36, 4, 36, '#8a8478', 'ashlar')); g.add(blk(28, 4, 28, '#9a948a', 'ashlar', 0, 4, 0)); g.add(blk(16, 20, 16, '#b0aa9c', 'marble', 0, 8, 0)); g.add(blk(18, 2, 18, '#9a948a', 'ashlar', 0, 28, 0));
+    g.add(blk(10, 6, 0.6, '#5a5040', 'gold', 0, 14, 8.2)); for (const y of [15.5, 17.5]) g.add(blk(7, 0.6, 0.4, '#d8b040', 'gold', 0, y, 8.6)); // tablica
+    g.add(blk(5, 9, 3, BR, 'bronze', -2, 30, 0)); g.add(blk(5, 9, 3, BR, 'bronze', 2, 30, 0)); g.add(blk(10, 12, 6, BR, 'bronze', 0, 39, 0)); g.add(sph(3.6 / PXU, BRL, 'bronze', P(0, 54, 0))); // nogi, tułów, głowa
+    g.add(blk(14, 2, 7, BR, 'bronze', 0, 50, 0)); g.add(cone(3.8 / PXU, 3 / PXU, BRL, 'bronze', P(0, 58, 0), null, 10)); // naramienniki, hełm
+    g.add(blk(3, 11, 3, BR, 'bronze', 7, 50, 0, [0, 0, -0.5])); g.add(blk(1.4, 22, 0.8, BRL, 'steel', 12, 60, 0, [0, 0, -0.25])); g.add(blk(6, 1.2, 1.4, BRL, 'bronze', 10.6, 54, 0, [0, 0, -0.25])); // ramię i miecz w górze
+    g.add(blk(3, 10, 3, BR, 'bronze', -7, 39, 2)); g.add(sph(1, BR, 'bronze', P(-9, 38, 4), [1 / PXU, 8 / PXU, 6 / PXU])); // tarcza
+    for (const [x, z] of [[-12, 12], [12, 12]]) { g.add(cyl3(1.6, 1.4, 4, '#4a4a50', 'iron', x, 8, z, 8)); g.add(mqGlow(1.8, '#ffb040', x, 13, z)); }
+    g.add(torus(4 / PXU, 1.2 / PXU, '#3a6a2a', 'fur', P(0, 12, 9.2), [0, 0, 0])); g.add(mast(-15, 8, -12, 34)); return g; },
+  fishPort() { // port rybacki (stoi na brzegu, woda jest obok na mapie): drewniany pomost na palach, chata rybaka z wędzarnią, sieci na stojakach, łódka, beczki z rybą, maszt z flagą właściciela
+    const g = new THREE.Group(), W = '#7a5230', WD = '#4a3020';
+    g.add(blk(34, 1.4, 8, W, 'wood', 14, 3, 18)); for (const x of [0, 10, 20, 30]) for (const z of [14, 22]) g.add(cyl3(1, 1, 4, WD, 'wood', x, 0, z, 6)); // pomost
+    g.add(blk(26, 16, 18, '#8a6a42', 'wood', -12, 0, -6)); g.add(gable(26, 18, 10, '#6a6a5a', 'shingle', -12, 16, -6, 3, '#8a6a42', 'wood')); g.add(door(7, 11, -14, 0, 3.2, '#4a3020', WD, 'wood')); g.add(chimney(-4, 22, -10, 8));
+    for (const x of [-30, -24]) g.add(cyl3(0.8, 0.8, 14, WD, 'wood', x, 0, 8, 6)); g.add(blk(8, 9, 0.4, '#a89870', 'cloth', -27, 4, 8)); for (let i = 0; i < 4; i++) g.add(blk(8, 0.3, 0.6, '#5a4a30', 'cloth', -27, 5 + i * 2, 8.3)); // sieci
+    for (const [x, z] of [[-4, 10], [0, 12]]) { g.add(cyl3(3, 3.4, 6, '#7a4a24', 'wood', x, 0, z, 10)); g.add(sph(1, '#a8b8c0', 'stone', P(x, 6.5, z), [2.2 / PXU, 0.8 / PXU, 1 / PXU])); } // beczki z rybą
+    const boat = new THREE.Group(); boat.add(blk(16, 3, 6, '#6a4224', 'wood', 0, 0, 0)); boat.add(blk(12, 1, 4, '#3a2414', 'wood', 0, 2.4, 0)); boat.add(cyl3(0.6, 0.6, 14, WD, 'wood', 0, 2, 0, 6)); boat.position.set(...P(26, 1, 30)); boat.rotation.y = 0.3; g.add(boat);
+    g.add(mast(-26, 0, -18, 36)); return g; },
+  armory() { // zbrojownia polowa: obóz kwatermistrza – namiot z daszkiem, balista na kołach, wóz z amunicją pod plandeką, stojak z bronią, kowadło, skrzynie
+    const g = new THREE.Group(), WD = '#4a3020', W = '#7a5230';
+    g.add(cyl3(11, 11, 12, '#c8b488', 'cloth', -14, 0, -14, 4)); g.add(cone(14 / PXU, 10 / PXU, '#7a2a22', 'cloth', P(-14, 17, -14), [0, Math.PI / 4, 0], 4)); g.add(opening(6, 8, -14, 0, -6, { frame: '#7a2a22', frameKind: 'cloth', arch: false, sill: false }));
+    g.add(blk(20, 4, 9, W, 'wood', 14, 4, -12)); g.add(sph(1, '#b8a878', 'cloth', P(14, 9, -12), [10 / PXU, 6 / PXU, 5 / PXU])); for (const x of [6, 22]) for (const z of [-17, -7]) { const wh = cyl(4 / PXU, 4 / PXU, 1 / PXU, WD, 'wood', P(x, 4, z), [Math.PI / 2, 0, 0], null, 12); g.add(wh); } // wóz z plandeką
+    g.add(blk(14, 3, 6, W, 'wood', 6, 4, 14)); g.add(blk(1.6, 1.6, 22, '#5a3a20', 'wood', 6, 9, 12, [0.25, 0, 0])); g.add(blk(18, 1.2, 1.2, WD, 'wood', 6, 10, 18)); g.add(blk(0.4, 0.4, 20, '#e8e0c8', 'cloth', 6, 9.6, 14)); // balista
+    for (const x of [0, 12]) g.add(cyl(3 / PXU, 3 / PXU, 1 / PXU, WD, 'wood', P(x, 3, 14), [0, 0, Math.PI / 2], null, 12));
+    for (let i = 0; i < 5; i++) g.add(blk(0.8, 16, 0.8, i % 2 ? '#c8ccd4' : W, i % 2 ? 'steel' : 'wood', -24 + i * 2.6, 0, 10, [0, 0, -0.12])); g.add(blk(14, 1, 2, WD, 'wood', -19, 9, 10)); // stojak z bronią
+    g.add(blk(5, 4, 3, '#4a4a50', 'iron', -6, 0, 18)); g.add(blk(8, 2, 4, '#5a5a62', 'iron', -6, 4, 18)); for (const [x, z] of [[20, 6], [24, 10]]) g.add(blk(6, 5, 5, W, 'wood', x, 0, z));
+    g.add(cyl3(1, 1, 30, WD, 'wood', -26, 0, -4, 8)); g.add(hangBanner(-26, 28, -4, 7, 12, '#7a2a22', '#e0b040')); return g; },
+  ferry() { // prom (przystań na brzegu, woda obok na mapie): drewniany pomost, tratwa-prom z barierkami przy pomoście, gruby słup z liną przez wodę, dzwon na przewoźnika, latarnia
+    const g = new THREE.Group(), W = '#7a5230', WD = '#4a3020';
+    g.add(blk(22, 1.4, 12, W, 'wood', -6, 2, 0)); for (const x of [-16, -6, 4]) for (const z of [-5, 5]) g.add(cyl3(1, 1, 3, WD, 'wood', x, 0, z, 6)); // przystań
+    g.add(blk(24, 2, 16, '#8a6238', 'wood', 16, 1, 16)); for (let i = 0; i < 6; i++) g.add(blk(1.2, 5, 1.2, WD, 'wood', 5 + i * 4.4, 3, 8.6)); g.add(blk(24, 0.8, 0.8, WD, 'wood', 16, 7, 8.6)); for (let i = 0; i < 6; i++) g.add(blk(1.2, 5, 1.2, WD, 'wood', 5 + i * 4.4, 3, 23.4)); g.add(blk(24, 0.8, 0.8, WD, 'wood', 16, 7, 23.4)); // tratwa z barierkami
+    g.add(cyl3(2.2, 2, 22, WD, 'wood', -14, 0, -8, 10)); g.add(blk(0.6, 0.6, 50, '#c8b480', 'cloth', 10, 14, 4, [0, 0.9, 0.1])); // słup i lina
+    g.add(blk(10, 1.2, 1.2, WD, 'wood', -10, 20, -8)); g.add(cone(2.6 / PXU, 3.4 / PXU, '#c8a040', 'gold', P(-6, 17, -8), null, 10)); // dzwon
+    g.add(cyl3(0.8, 0.8, 16, WD, 'wood', -16, 2, 6, 6)); g.add(blk(4, 4, 4, '#3a3a40', 'iron', -16, 18, 6)); g.add(mqGlow(2, '#ffd070', -16, 20, 6)); return g; },
+  cartographer() { // kartograf: kamienna wieżyczka z oknem obserwacyjnym i lunetą, przybudówka, stół z rozłożoną mapą i globusem, róża wiatrów na bruku
+    const g = new THREE.Group();
+    g.add(cyl3(10, 11, 40, '#a49a88', 'ashlar', -10, 0, -10, 14)); g.add(coneRoof(12, 22, '#4a4a58', 'slate', -10, 40, -10, 14)); g.add(opening(5, 7, -10, 28, 1, { glow: '#ffd890', frame: '#5a5040', frameKind: 'ashlar' }));
+    g.add(cyl(1.4 / PXU, 1 / PXU, 14 / PXU, '#c8a040', 'gold', P(-4, 33, 2), [0.9, 0.4, 0], null, 10)); // luneta
+    g.add(blk(24, 16, 16, '#c8bca0', 'plaster', 8, 0, -8)); g.add(gable(24, 16, 9, '#7a3a22', 'tiles', 8, 16, -8, 3, '#c8bca0')); g.add(door(7, 11, 8, 0, 0.2, '#4a3020', '#6a6458'));
+    g.add(blk(16, 6, 9, '#6a4a2a', 'wood', 10, 0, 14)); g.add(blk(14, 0.4, 7, '#e8dcb0', 'cloth', 10, 6, 14)); for (const [x, z, w] of [[7, 13, 6], [12, 15, 4], [10, 12, 3]]) g.add(blk(w, 0.2, 0.4, '#7a4a2a', 'cloth', x, 6.4, z)); // mapa na stole
+    g.add(cyl3(0.8, 0.8, 4, '#c8a040', 'gold', 16, 6, 12, 8)); g.add(sph(2.6 / PXU, '#3a7ab0', 'stone', P(16, 12.4, 12))); g.add(torus(2.9 / PXU, 0.3 / PXU, '#c8a040', 'gold', P(16, 12.4, 12), [0.4, 0, 0.3])); // globus
+    g.add(cyl(9 / PXU, 9 / PXU, 0.4 / PXU, '#b8b0a0', 'ashlar', P(-12, 0.2, 14), null, null, 20)); for (let i = 0; i < 4; i++) g.add(blk(1.4, 0.3, 16, i % 2 ? '#2a4a8a' : '#a82a20', 'cloth', -12, 0.5, 14, [0, i * Math.PI / 4, 0])); // róża wiatrów
+    return g; },
 });
 // Kadłub łodzi: obrys burty (z boku) wyciągnięty na szerokość, potem zwężony ku dziobowi, rufie i stępce
 function mqHull(L, B, H, col) {

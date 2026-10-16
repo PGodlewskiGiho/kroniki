@@ -278,7 +278,7 @@ function placeObjects(st) {
   const SITE_FIT = { well: 'road', stables: 'road', temple: 'road', market: 'road', school: 'road', hillFort: 'road', camp: 'road', post: 'road', dwelling: 'road', fountain: 'road',
     waterMill: 'water', magicSpring: 'water', windmill: 'open', arena: 'open', oasis: 'open', lookout: 'mountain', altar: 'mountain', stone: 'mountain', crystalCave: 'mountain', dwarfForge: 'mountain',
     witchHut: 'swamp', graveyard: 'swamp', shrine: 'forest', garden: 'forest', tree: 'forest', mushroomRing: 'forest', campfire: 'forest', library: 'hidden', sacrifice: 'hidden', prison: 'hidden',
-    sphinx: 'desert', questHut: 'forest', inn: 'road', barrow: 'open', caravanserai: 'road', wishingWell: 'forest', pandora: 'hidden', excavation: 'hidden', tournament: 'open' };
+    sphinx: 'desert', questHut: 'forest', inn: 'road', barrow: 'open', caravanserai: 'road', wishingWell: 'forest', pandora: 'hidden', excavation: 'hidden', tournament: 'open', monument: 'open', armory: 'road', cartographer: 'road' };
   // Budynek nie dotyka drogi: w prostokącie x0..x1, y0..y1 (budynek z marginesem pola; pod wejściem droga może biec) nie ma drogi
   const roadFree = (x0, y0, x1, y1) => { for (let y = Math.max(0, y0); y <= Math.min(n - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(n - 1, x1); x++) if (map.road[y * n + x]) return false; return true; };
   // Najlepsze z kilkudziesięciu losowych miejsc: dopasowanie do okolicy i odstęp od innych obiektów (bez zbitych gromad)
@@ -503,6 +503,26 @@ function placeObjects(st) {
     const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (!ok(x, y) || dStart(x, y) < 4 || !roadFree(x - 1, y - 1, x + 1, y)) continue; let wet = 0, open = false;
     for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (map.terrain[Y * n + X] === TER.WATER) { wet++; if (openWater(X, Y, 6)) open = true; } } if (wet < 3 || !open || objs.some(o => o.kind === 'lighthouse' && Math.hypot(o.x - x, o.y - y) < 14)) continue;
     add({ type: 'site', kind: 'lighthouse', x, y, owner: -1, seen: {} }, [y * n + x]); k--; }
+  // porty rybackie: na brzegu (co najmniej 2 pola wody obok, z wyjściem na otwartą wodę), z dala od latarni i innych portów
+  for (let k = water > 300 ? Math.max(1, Math.round(water / PORT_PER)) : 0, tries = 0; k > 0 && tries < 3000; tries++) {
+    const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (!ok(x, y) || dStart(x, y) < 4 || !roadFree(x - 1, y - 1, x + 1, y)) continue; let wet = 0, open = false;
+    for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d]; if (map.terrain[Y * n + X] === TER.WATER) { wet++; if (openWater(X, Y, 5)) open = true; } }
+    if (wet < 2 || !open || objs.some(o => (o.kind === 'fishPort' || o.kind === 'lighthouse') && Math.hypot(o.x - x, o.y - y) < 12)) continue;
+    add({ type: 'site', kind: 'fishPort', x, y, owner: -1, seen: {} }, [y * n + x]); k--; }
+  // promy: dwie przystanie naprzeciw siebie przez wąską wodę (2–5 pól, rzeka, cieśnina) – tylko gdy lądem na drugi brzeg nie da się dojść
+  // albo droga jest długa; drugi brzeg może być wyspą
+  { const land = i => map.terrain[i] !== TER.WATER && !map.obst[i], comp = new Int32Array(N).fill(-1); let nc = 0;
+    for (let i0 = 0; i0 < N; i0++) { if (comp[i0] >= 0 || !land(i0)) continue; const q = [i0]; comp[i0] = nc;
+      while (q.length) { const i = q.pop(), x = i % n, y = (i / n) | 0; for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X >= 0 && Y >= 0 && X < n && Y < n && comp[j] < 0 && land(j)) { comp[j] = nc; q.push(j); } } } nc++; }
+    const landDist = (a, b, lim) => { const dist = new Map([[a, 0]]), q = [a]; for (let k = 0; k < q.length; k++) { const i = q[k], dd = dist.get(i); if (i === b) return dd; if (dd >= lim) continue; const x = i % n, y = (i / n) | 0;
+      for (let d = 0; d < 8; d++) { const X = x + DX8[d], Y = y + DY8[d], j = Y * n + X; if (X >= 0 && Y >= 0 && X < n && Y < n && !dist.has(j) && land(j)) { dist.set(j, dd + 1); q.push(j); } } } return 1e9; };
+    const free = (x, y) => x >= 1 && y >= 1 && x < n - 1 && y < n - 1 && land(y * n + x) && !occ[y * n + x] && !map.road[y * n + x];
+    for (let k = FERRIES[size] || 1, tries = 0; k > 0 && tries < 4000; tries++) {
+      const x = 1 + Math.floor(rng() * (n - 2)), y = 1 + Math.floor(rng() * (n - 2)); if (!ok(x, y) || dStart(x, y) < 3) continue; const d = Math.floor(rng() * 8);
+      let w = 0, X = x + DX8[d], Y = y + DY8[d]; while (w < 6 && X >= 0 && Y >= 0 && X < n && Y < n && map.terrain[Y * n + X] === TER.WATER) { w++; X += DX8[d]; Y += DY8[d]; }
+      if (w < 2 || w > 5 || !free(X, Y) || objs.some(o => o.kind === 'ferry' && Math.hypot(o.x - x, o.y - y) < 15)) continue;
+      const a = y * n + x, b = Y * n + X; if (comp[a] === comp[b] && landDist(a, b, w * 4 + 12) < 1e9) continue; // obok jest bród albo krótka droga lądem
+      const fa = add({ type: 'site', kind: 'ferry', x, y, seen: {} }, [a]), fb = add({ type: 'site', kind: 'ferry', x: X, y: Y, seen: {} }, [b]); fa.pair = fb.id; fb.pair = fa.id; k--; } }
   const seaMonster = (x, y, boost = 0) => { const i = y * n + x; if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1 || map.terrain[i] !== TER.WATER || occ[i]) return null;
     const dd = d01(x, y), lvl = clamp(1 + Math.floor(dd * 4.6 + rng() * 1.8) + boost, 1, 7), pool = SEA_MONSTERS[lvl], cid = pool[Math.floor(rng() * pool.length)];
     const power = MONSTER_POWER * Math.exp(dd * 3.4) * (0.75 + rng() * 0.5) * (1 + boost * 0.35) * (0.6 + 0.4 * diff) * rule(st, 'monsters');
