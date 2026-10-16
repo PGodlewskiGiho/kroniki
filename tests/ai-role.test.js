@@ -116,3 +116,20 @@ test('przywołanie łodzi: mag bez łodzi rzuca czar tylko dla wartościowego ce
   assert.equal(r.spent, r.cost, 'jeden czar'); assert.equal(r.day1[0], r.shore); assert.equal(r.day1[1], false); assert.equal(r.boats, 1, 'łódź przy brzegu');
   assert.equal(r.chest, true); assert.equal(r.low.fog, 1, 'woda przy mgle osiągalna czarem'); assert.equal(r.low.sum, 0, 'zwiad bez czaru');
 });
+
+test('morze: komputer atakuje potwory morskie i piratów jak lądowe – z łodzi przy brzegu albo z przywołanej; bez łodzi nie', async () => {
+  await newGame(page, { mapSize: 'M' }, 34);
+  const r = await page.evaluate(() => {
+    const st = G.state, h = hero(st), n = st.map.n, P = playerOf(st, h.owner), y = h.y; if (h.x + 14 >= n) h.x = n - 15; const cx = h.x + 2;
+    for (const o of st.objects) if (o.type !== 'town') o.dead = true;
+    for (let yy = 0; yy < n; yy++) for (let k = 0; k < 8; k++) { const i = yy * n + cx + k; st.map.terrain[i] = TER.WATER; st.map.obst[i] = 0; st.map.road[i] = 0; }
+    st.guard.fill(0); P.explored.fill(1); h.army[0] = { cid: 'champion', n: 30 };
+    st.towns = st.towns.filter(t => t.owner === h.owner); for (const o of st.objects) if (o.type === 'town' && !st.towns.includes(o)) o.dead = true;
+    return [['kraken', 'boat'], [PIRATES[0], 'boat'], ['kraken', 'spell'], ['kraken', 'none']].map(([cid, mode]) => {
+      h.x = cx - 1; h.y = y; h.boat = false; for (const o of st.objects) if (o.type === 'monster' || o.type === 'boat') o.dead = true;
+      if (mode === 'boat') addBoat(st, cx, y); h.book = true; h.spells = mode === 'spell' ? ['summonBoat'] : []; h.mana = heroMaxMana(h);
+      const m = { id: st.objects.length, type: 'monster', cid, count: 3, x: cx + 5, y: y + 4, dir: 1, sea: 1, ...(PIRATES.includes(cid) ? { ship: 1 } : {}) }; st.objects.push(m); rebuildObjIndex(st);
+      aiClaims.clear(); h.mp = heroMaxMP(h); for (const _ of aiMoveHero(st, h, []));
+      return [mode, cid, !!m.dead, !!h.boat]; }); });
+  assert.deepEqual(r.map(x => x[2]), [true, true, true, false], JSON.stringify(r)); assert.ok(r.slice(0, 3).every(x => x[3]), 'po walce dalej w łodzi');
+});
