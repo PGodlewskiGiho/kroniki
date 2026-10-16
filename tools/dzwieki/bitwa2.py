@@ -18,6 +18,12 @@ def seg(fid, k=0, dur=1.0, at=None, strongest=False):
             on = sorted(on, key=lambda i: -np.abs(x[i: i + int(0.15 * SR)]).max())
         s = max(0, on[min(k, len(on) - 1)] - int(0.004 * SR))
     return x[s: s + int(dur * SR)]
+def peak(fid, pre=0.05, dur=1.0):
+    # okno przy najgłośniejszym miejscu nagrania (długie nagrania burzy, ryków): cofamy się do początku narastania (> szczyt-24 dB, maks. 1.5 s)
+    x = load(os.path.join(CACHE, f'{fid}.flac')); hop = 220; n = len(x) // hop
+    e = 20 * np.log10(np.sqrt((x[:n * hop].reshape(n, hop) ** 2).mean(1)) + 1e-9); ip = j = int(np.argmax(e))
+    while j > 0 and e[j - 1] > e[ip] - 24 and (ip - j) * hop < 1.5 * SR: j -= 1
+    s = max(0, j * hop - int(pre * SR)); return x[s: s + int(dur * SR)]
 def mix(*parts): # (sygnał, dB, opóźnienie s)
     n = max(len(p) + int(d * SR) for p, _, d in parts); y = np.zeros(n, np.float32)
     for p, db, d in parts: o = int(d * SR); y[o: o + len(p)] += p / (np.abs(p).max() + 1e-9) * 10 ** (db / 20)
@@ -32,11 +38,11 @@ EV = {
  'march':     ([lambda k=k: mix((seg(556002 if k % 2 else 452628, k=2 + k, dur=0.3, strongest=True), 0, 0), (seg(511501 if k < 2 else 511503, k=2 + k % 2 * 3, dur=0.3, strongest=True), -5, 0.01)) for k in range(4)], 0.3, 0, [556002, 452628, 511501, 511503]), # but w żwirze + brzęk zbroi
  'gallop':    ([lambda k=k: seg(368583, k=k * 2, dur=0.32, strongest=True) for k in range(4)], 0.32, 1, [368583]),
  'pierce':    ([lambda: seg(417192, dur=0.45, strongest=True), lambda: seg(417192, k=1, dur=0.45, strongest=True)], 0.45, 1, [417192]),
- 'explode':   ([lambda: seg(439270, dur=2.4), lambda: seg(418970, dur=2.4)], 2.4, 4, [439270, 418970]),
- 'lightning': ([lambda: seg(393067, dur=0.6), lambda: seg(393067, k=1, dur=0.6)], 0.6, 0, [393067]),
- 'thunder':   ([lambda: seg(574042, dur=2.2), lambda: seg(434359, dur=2.2)], 2.2, 3, [574042, 434359]),
- 'crash':     ([lambda: mix((seg(569507, dur=1.0), 0, 0), (lp(seg(418970, dur=1.4), 300), -3, 0)), lambda: mix((seg(569500, dur=1.0), 0, 0), (lp(seg(439270, dur=1.4), 300), -3, 0))], 1.4, 3, [569507, 569500, 418970, 439270]),
- 'v_demon':   ([lambda: seg(400631, dur=1.2), lambda: seg(397240, k=0, dur=1.3, strongest=True)], 1.3, 1, [400631, 397240]),
+ 'explode':   ([lambda: peak(565490, pre=0.0, dur=1.3), lambda: peak(516914, dur=1.4)], 1.4, 0, [565490, 516914]), # średni wybuch (duży był przesadzony)
+ 'lightning': ([lambda: hp(peak(242048, dur=0.35), 900), lambda: hp(peak(437243, dur=0.35), 900)], 0.35, 0, [242048, 437243]), # trzask wyładowania wycięty z bliskiego uderzenia pioruna
+ 'thunder':   ([lambda: peak(242048, dur=1.6), lambda: peak(397952, dur=1.8)], 1.8, 3, [242048, 397952]), # bliski piorun: trzask + grzmot, bez deszczu przed uderzeniem
+ 'crash':     ([lambda: peak(522099, pre=0.01, dur=1.3), lambda: mix((peak(109360, pre=0.0, dur=0.8), 0, 0), (peak(232396, pre=0.0, dur=0.6), -4, 0.03), (lp(peak(522099, pre=0.0, dur=1.2), 250), -4, 0))], 1.3, 3, [522099, 109360, 232396]), # głaz rozbija kamień/mur
+ 'v_demon':   ([lambda: peak(580772, dur=0.9), lambda: peak(267453, dur=1.1)], 1.1, 1, [580772, 267453]),
  'horn':      ([lambda: seg(539956, dur=1.8)], 1.8, 0, [539956]),
  'order':     ([lambda: seg(235453, dur=1.1), lambda: seg(164446, dur=1.0, strongest=True)], 1.1, 1, [235453, 164446]),
  'power':     ([lambda: seg(172631, dur=1.0)], 1.0, 0, [172631]),

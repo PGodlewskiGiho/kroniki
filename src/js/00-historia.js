@@ -561,5 +561,9 @@
    (jeździec dokłada ciężki cios), wybuch, piorun z ręki i grzmot (bez podwyższania), łoskot (gruz + niski huk), głos demonów
    (wcześniej cisza). Nowe dźwięki tam, gdzie była cisza: róg (Szarża, Okrzyk bojowy, Głos rogu), bęben pozostałych rozkazów,
    moc zdolności klas i artefaktów, szczęście, wahanie z niskiego morale. Ludzie brzmią w naturalnej wysokości (było +22%).
+   Dźwięki bitwy 3 (drugi odsłuch): tytan – trzask wyładowania i bliski piorun z grzmotem wycięte przy najgłośniejszym miejscu
+   nagrania (wcześniej fragment zaczynał się od deszczu przed uderzeniem, a wystrzał był syntetycznym „bzyczeniem”); łoskot
+   katapulty i głazu – kamień rozbijany o beton/mur zamiast drobnego gruzu; głos demonów – niski pomruk i ryk; wybuch średni
+   i krótszy (duży był przesadzony).
    ===================================================================================== */
 
