@@ -17,7 +17,7 @@ const days = (n) => page.evaluate(n => {
 const invariants = () => page.evaluate(() => {
   const st = G.state, bad = [];
   for (const p of st.players) for (const r of RESOURCES) if (!(p.resources[r.id] >= 0)) bad.push(`gracz ${p.id}: ${r.id} ${p.resources[r.id]}`);
-  for (const h of st.heroes) { if (st.map.terrain[h.y * st.map.n + h.x] === TER.WATER) bad.push(`${h.name} na wodzie`); for (const s of armyStacks(h.army)) if (!(s.n > 0)) bad.push(`${h.name}: ${JSON.stringify(s)}`); }
+  for (const h of st.heroes) { if (st.map.terrain[h.y * st.map.n + h.x] === TER.WATER && !h.boat) bad.push(`${h.name} na wodzie bez łodzi`); for (const s of armyStacks(h.army)) if (!(s.n > 0)) bad.push(`${h.name}: ${JSON.stringify(s)}`); }
   const spots = st.heroes.map(h => h.x + ',' + h.y); if (new Set(spots).size !== spots.length) bad.push('dwóch bohaterów na jednym polu');
   for (const t of st.towns) for (const s of armyStacks(t.garrison)) if (!(s.n > 0)) bad.push(`${t.name}: ${JSON.stringify(s)}`);
   return bad;

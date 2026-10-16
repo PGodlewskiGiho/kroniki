@@ -594,5 +594,7 @@
    (nie, gdy w plecaku jest część relikwii). Powrót do miasta (aiTownPortal): obrona miasta przed silniejszym wrogiem albo po
    wzmocnienie z załogi dla głównego bohatera. Żegluga: stocznia w nadmorskim mieście na mapach z dużą ilością wody, zakup łodzi;
    plan trasy (aiReach) wsiada na wolną łódź, płynie i wysiada (wysiadka kończy ruch, łódź zostaje przy brzegu).
+   Przywołanie łodzi u komputera: mag z zapasem many wchodzi w planie trasy z brzegu na wolną wodę (czar raz na trasę, koszt 30% dnia
+   ruchu) – tylko po wartościowy cel (od AI_SUMMON_MIN), nigdy dla zwiadu, i tylko gdy to krótsze niż lądem albo istniejącą łodzią.
    ===================================================================================== */
 

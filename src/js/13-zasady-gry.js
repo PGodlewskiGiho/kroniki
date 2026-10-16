@@ -62,9 +62,9 @@ function buyBoat(st, t) {
   addBoat(st, p.x, p.y); return null;
 }
 // Przywołanie łodzi: wolne pole wody obok bohatera (najpierw w linii prostej)
+const freeWater = (st, x, y) => { const n = st.map.n, i = y * n + x; return x >= 0 && y >= 0 && x < n && y < n && st.map.terrain[i] === TER.WATER && !st.objAt[i] && !heroAt(st, x, y); };
 function boatSpot(st, h) {
-  const map = st.map, n = map.n;
-  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d], i = y * n + x; if (x >= 0 && y >= 0 && x < n && y < n && map.terrain[i] === TER.WATER && !st.objAt[i] && !heroAt(st, x, y)) return { x, y }; }
+  for (let d = 0; d < 8; d++) { const x = h.x + DX8[d], y = h.y + DY8[d]; if (freeWater(st, x, y)) return { x, y }; }
   return null;
 }
 // Koszt kroku liczony wg terenu, z którego bohater wychodzi; droga działa, gdy oba pola mają drogę.
@@ -890,7 +890,7 @@ function castAdventure(st, h, id, tgt) {
   if (id === 'eagleEye') { reveal(st, h.x, h.y, 5 + sp); }
   else if (id === 'summonBoat') {
     if (h.boat) return 'Bohater już płynie łodzią';
-    const p = boatSpot(st, h); if (!p) return 'Przy bohaterze nie ma wolnej wody';
+    const p = tgt && Math.max(Math.abs(tgt.x - h.x), Math.abs(tgt.y - h.y)) === 1 && freeWater(st, tgt.x, tgt.y) ? tgt : boatSpot(st, h); if (!p) return 'Przy bohaterze nie ma wolnej wody'; // tgt: wskazane pole obok (komputer)
     addBoat(st, p.x, p.y);
   }
   else if (id === 'townPortal') {
