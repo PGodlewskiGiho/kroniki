@@ -20,7 +20,7 @@ const checkInvariants = () => page.evaluate(() => {
   };
   for (const h of st.heroes) {
     if (!inMap(h.x, h.y)) bad.push(`${h.name} poza mapą`);
-    else if (st.map.terrain[h.y * n + h.x] === TER.WATER) bad.push(`${h.name} na wodzie`);
+    else if (st.map.terrain[h.y * n + h.x] === TER.WATER && !h.boat) bad.push(`${h.name} na wodzie bez łodzi`);
     checkArmy(h.army, h.name);
     if (h.mana < 0 || h.mana > heroMaxMana(h)) bad.push(`${h.name}: mana ${h.mana}`);
   }
