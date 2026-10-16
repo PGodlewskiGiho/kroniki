@@ -253,17 +253,21 @@ G.screens.menu = {
   onBack() { askQuit(); },
   // Ekran ładowania: dopóki grafiki się wczytują (najwyżej 30 s), zamiast menu pasek postępu i porady; przyciski czekają
   loading() { if (this.ready) return false; if (unitArtReady() || G.time > 30) { this.ready = true; if (this._btns) { this.buttons = this._btns; this._btns = null; } return false; } if (this.buttons.length) { this._btns = this.buttons; this.buttons = []; } return true; },
-  // Układ: kolumna przycisków na prawo od środka; w niskim oknie mniejszy tytuł i gęstsze przyciski (7 przycisków mieści się w 440)
+  // Układ: kolumna przycisków na prawo od środka; w niskim oknie mniejszy tytuł i gęstsze przyciski, a gdy i tak się nie mieszczą
+  // (telefon w poziomie, 8 przycisków z „Zainstaluj grę”) – niższe przyciski, w ostateczności dwie kolumny. Żaden nie wystaje poza ekran.
   lay() {
-    const compact = VH < 560, step = compact ? 46 : 50, bh = compact ? 40 : 44, by = compact ? 92 : Math.round(180 + (VH - 600) * 0.3), bx = Math.min(VW - 250, Math.round(VW / 2 + 140));
-    const list = this._btns || this.buttons; list.forEach((b, i) => { b.x = bx; b.y = by + i * step; b.h = bh; });
-    return { compact, bx, by, step, bh, n: list.length };
+    const list = this._btns || this.buttons, n = list.length, compact = VH < 560, by = compact ? 92 : Math.round(180 + (VH - 600) * 0.3), room = VH - by - 22;
+    let step = compact ? 46 : 50, cols = 1; if (n * step > room) step = Math.floor(room / n);
+    if (step < 38) { cols = 2; step = Math.min(compact ? 46 : 50, Math.floor(room / Math.ceil(n / 2))); }
+    const rows = Math.ceil(n / cols), bh = Math.min(compact ? 40 : 44, step - 6), colW = 236, bx = Math.min(VW - 250 - (cols - 1) * colW, Math.round(VW / 2 + 140 - (cols - 1) * colW / 2));
+    list.forEach((b, i) => { b.x = bx + Math.floor(i / rows) * colW; b.y = by + (i % rows) * step; b.h = bh; });
+    return { compact, bx, by, step, bh, n, rows, cols, colW };
   },
   draw(ctx) {
     if (this.loading()) return drawLoadingScreen(ctx);
     const L = this.lay();
     drawMenuScene(ctx);
-    drawStone(ctx, L.bx - 20, L.by - 16, 260, (L.n - 1) * L.step + L.bh + 34);
+    drawStone(ctx, L.bx - 20, L.by - 16, 260 + (L.cols - 1) * L.colW, (L.rows - 1) * L.step + L.bh + 34);
     this.buttons.forEach(b => b.draw(ctx));
     goldText(ctx, 'KRONIKI KRÓLESTW', VW / 2, L.compact ? 38 : 62, L.compact ? 36 : 44);
     text(ctx, 'Czas bohaterów', VW / 2, L.compact ? 70 : 104, { size: L.compact ? 18 : 22, weight: 500, italic: true, align: 'center', color: '#f3dca0' });

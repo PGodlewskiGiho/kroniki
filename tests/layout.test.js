@@ -141,3 +141,17 @@ test('dotyk na mapie: pierwsze stuknięcie pokazuje opis celu, drugie wysyła bo
     S.tileClick(ob.x, ob.y); const second = !!(h.moving || h.anim) || h.path === null; G.mouse.type = 'mouse'; return { first, second, tap: S.tapInfo }; });
   assert.match(r.first.info, /Właściciel: nikt/); assert.equal(r.first.moving, false); assert.ok(r.second); assert.equal(r.tap, null);
 });
+
+test('telefon: menu główne z przyciskiem „Zainstaluj grę” mieści się w całości (ostatni przycisk klikalny), przy 9 przyciskach dwie kolumny', async () => {
+  for (const [w, h] of [[740, 360], [640, 360], [800, 600]]) {
+    await size(w, h);
+    const r = await page.evaluate(() => { App.canInstall = () => true; G.modal = null; G.go('menu'); G.screens.menu.setMode('main'); G.screens.menu.ready = true; G.screens.menu.lay(); const bs = G.screens.menu.buttons;
+      return { VH, VW, out: bs.filter(b => b.y < 0 || b.y + b.h > VH || b.x + b.w > VW).map(b => b.label), last: bs[bs.length - 1].label, n: bs.length }; });
+    assert.equal(r.last, 'Zainstaluj grę'); assert.deepEqual(r.out, [], `${w}×${h}: przyciski poza ekranem (VH ${r.VH})`);
+  }
+  // więcej przycisków niż zmieści jedna kolumna: druga kolumna, nic nie wystaje
+  const r2 = await page.evaluate(() => { const S = G.screens.menu; for (let k = 0; k < 4; k++) S.buttons.push(new Button(0, 0, 220, 44, `Dodatkowy ${k}`, () => {})); const L = S.lay();
+    const out = S.buttons.filter(b => b.y + b.h > VH || b.x + b.w > VW).length; S.setMode('main'); return { cols: L.cols, out }; });
+  assert.deepEqual(r2, { cols: 2, out: 0 });
+  await size(800, 600);
+});

@@ -553,5 +553,7 @@
    gildia). Pomiar (tools/balans/bohaterowie.js sila): mag/wojownik 1,23 / 1,11 / 1,01 / 1,15 / 1,02 / 1,02 na poziomach 1–25
    (przed: 1,23 / 1,11 / 1,03 / 1,22 / 1,22 / 1,28), rozrzut klas 48 / 19 / 27 / 24 / 22 / 21% (przed: 48 / 23 / 18 / 30 / 41 / 43%).
    Test balans-klas: 8 klas, średnie magów i wojowników w ±15%.
+   Poprawka: menu główne na telefonie (8 przycisków z „Zainstaluj grę”) wystawało poza dół ekranu i nie dało się pobrać aplikacji –
+   przyciski same się ścieśniają, a gdy i to nie wystarcza, układają się w dwie kolumny (test w layout).
    ===================================================================================== */
 
