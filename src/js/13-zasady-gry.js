@@ -1529,7 +1529,7 @@ function useSite(st, h, ob, choice) {
       if (h.owner === ME && G.state === st) centerCam(st, h.x, h.y); return { text: 'Prom przybija do drugiego brzegu.', float: `−${FERRY_GOLD}`, res: 'gold' }; }
     case 'armory': { const bought = []; for (const id of MACHINES) if (!h.machines.includes(id) && R.gold >= CREATURES[id].cost.gold + 3000 && !buyMachineField(st, h, id)) bought.push(CREATURES[id].name); // komputer: jak w kuźni
       return { text: bought.length ? `Kupiono: ${bought.join(', ')}.` : 'Kwatermistrz nie ma nic, na co by cię było stać.' }; }
-    case 'cartographer': return { text: 'Kartograf rozkłada mapy.' };
+    case 'cartographer': { const m = aiCartoPick(st, h, ob); if (!m) return { text: 'Kartograf rozkłada mapy.' }; cartoBuy(st, h, ob, m.id); return { text: `Kupiono: ${m.name.toLowerCase()}.` }; } // komputer (człowiek wybiera w cartoDialog)
     case 'excavation': { // komputer: dzień kopania i od razu znalezisko (człowiek decyduje w excavationDialog)
       if (ob.done != null) return { text: 'Wykop jest pusty.' }; if (canDig(st, h, ob)) digOnce(st, h, ob); return digTake(st, h, ob) || { text: 'Dziś już tu kopano.' }; }
     case 'tournament': { if (siteUsed(st, ob, h)) return { text: 'W tym tygodniu turniej już rozstrzygnięto.' }; const C = tourneyChamp(st, ob); // komputer: walka z czempionem (aiVisit)

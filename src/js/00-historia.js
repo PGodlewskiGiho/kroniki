@@ -585,5 +585,8 @@
    kilka się nie sumuje), Port rybacki (na brzegu, do przejęcia: +250 złota dziennie i łodzie w stoczniach za pół ceny), Zbrojownia
    polowa (machiny wojenne poza miastem, ceny z kuźni), Prom (para przystani przez wąską wodę – rzekę, cieśninę, na wyspę – tylko
    tam, gdzie lądem daleko; przeprawa za 200 złota), Kartograf (mapy wód, lądów i podziemi za złoto, każda raz na gracza).
+   Komputer korzysta z przeskoków: w planie trasy (aiReach) portal, brama podziemi i prom (gdy stać na przeprawę) łączą pole obiektu
+   z polem jego pary, a ruch (aiMoveHero) wykonuje skok przez useSite – komputer przeprawia się na wyspy i przechodzi przez portale
+   do celów; u kartografa kupuje mapę lądów albo podziemi, gdy ma zapas złota i nieodkrytą co najmniej czwartą część obszaru.
    ===================================================================================== */
 

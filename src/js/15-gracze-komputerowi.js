@@ -111,6 +111,8 @@ function aiManageTown(st, p, t) {
   // kuźnia: machiny po werbunku, gdy zostaje zapas złota
   if (hasB(t, 'smith')) for (const id of MACHINES) if (!h.machines.includes(id) && p.resources.gold >= CREATURES[id].cost.gold + 3000) buyMachine(st, t, h, id);
 }
+// Koszt przeskoku przez parę obiektów w planie trasy (w punktach ruchu): portal i brama za darmo, prom z „karą” za złoto
+const AI_LINKS = { portal: 0, gate: 0, ferry: 150 };
 // Mapa odległości od bohatera (Dijkstra, koszty ruchu jak u człowieka) tylko po terenie odkrytym przez jego
 // gracza. Pola z obiektem, strażnikiem albo bohaterem są przystankami: można na nie wejść, ale nie przejść dalej.
 function aiReach(st, h) {
@@ -129,9 +131,17 @@ function aiReach(st, h) {
   const heroCell = new Uint8Array(N); for (const o of st.heroes) if (o.garrison == null) heroCell[o.y * n + o.x] = 1;
   const openGate = o => (o.kind === 'borderGate' && hasGateKey(st, h.owner, o)) || (o.type === 'outpost' && friendlyFort(st, o, h.owner)); // brama z przepustką, własny garnizon: zwykła droga
   const stop = i => !!((st.objAt[i] && objSeen(st, st.objects[st.objAt[i] - 1], h.owner) && !openGate(st.objects[st.objAt[i] - 1])) || st.guard[i] || heroCell[i]); // nieznany ukryty skarb: przechodzi (i go znajduje)
+  // Przeskoki: portal, brama podziemi i prom (gdy stać na przeprawę) prowadzą z pola obiektu na pole jego pary (bez strażnika i bez bohatera
+  // na drugim końcu); ścieżka ma wtedy w tym miejscu skok, który aiMoveHero wykonuje przez useSite. Drugi koniec może być nieodkryty
+  // (człowiek też zna położenie drugiego portalu z opisu), ale dalej od niego idzie się tylko po odkrytym terenie.
+  const gold = playerOf(st, h.owner).resources.gold, hop = new Uint8Array(N);
+  const link = i => { const o = st.objAt[i] && st.objects[st.objAt[i] - 1]; if (!o || o.type !== 'site' || !(o.kind in AI_LINKS) || st.guard[i] || !objSeen(st, o, h.owner)) return -1;
+    const to = st.objects[o.pair]; if (!to || to.dead || (o.kind === 'ferry' && gold < FERRY_GOLD)) return -1; const j = to.y * n + to.x; return heroCell[j] ? -1 : j; };
   dist[start] = 0; push(0, start);
   while (hn) {
-    const d = hk[0], i = hv[0]; pop(); if (d > dist[i]) continue; if (i !== start && stop(i)) continue;
+    const d = hk[0], i = hv[0]; pop(); if (d > dist[i]) continue;
+    if (i !== start && !hop[i]) { const j = link(i); if (j >= 0) { const nd = d + AI_LINKS[st.objects[st.objAt[i] - 1].kind]; if (nd < dist[j]) { dist[j] = nd; prev[j] = i; hop[j] = 1; push(nd, j); } continue; } }
+    if (i !== start && stop(i) && !hop[i]) continue;
     const x = i % n, y = (i / n) | 0;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX8[k], ny = y + DY8[k]; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
@@ -252,6 +262,10 @@ function* aiBattle(st, h, foe, news) {
   if (res.outcome === 'win') gainExp(st, h, res.exp);
   return res.outcome === 'win';
 }
+// Kartograf dla komputera: mapa lądów (albo podziemi), gdy zostaje zapas złota, a nieodkryta jest co najmniej czwarta część jej obszaru
+// (mapa wód mu się nie przyda: komputer nie pływa)
+function aiCartoPick(st, h, ob) { const P = playerOf(st, h.owner);
+  return cartoAvail(st, ob, h.owner).find(m => m.id !== 'sea' && P.resources.gold >= m.cost + 5000 && (T => T.filter(i => !P.explored[i]).length >= T.length / 4)(cartoTiles(st, m.id))) || null; }
 // Ile warte jest dla SI miejsce na mapie (0 = nie warto iść): kapliczka ze znanym czarem, pełna mana itp.
 function aiSiteValue(st, h, ob) {
   const S = SITES[ob.kind];
@@ -275,6 +289,7 @@ function aiSiteValue(st, h, ob) {
   if (ob.kind === 'lighthouse') return ob.owner === h.owner ? 0 : S.ai;
   if (ob.kind === 'granary') { if (ob.owner === h.owner || (ob.owner >= 0 && allied(st, h.owner, ob.owner))) return 0; const t = granaryTown(st, ob); return t && t.owner === h.owner ? S.ai * 2 : S.ai; } // przy własnym mieście cenniejszy
   if (ob.kind === 'monument' || ob.kind === 'fishPort') return ob.owner === h.owner || (ob.owner >= 0 && allied(st, h.owner, ob.owner)) ? 0 : (ob.kind === 'monument' && hasMonument(st, h.owner) ? 600 : S.ai); // drugi pomnik nic nie daje (tylko odbiera go wrogowi)
+  if (ob.kind === 'cartographer') return aiCartoPick(st, h, ob) ? 1500 : 0;
   if (ob.kind === 'armory') { const g = playerOf(st, h.owner).resources.gold; return MACHINES.some(id => !h.machines.includes(id) && g >= CREATURES[id].cost.gold + 3000) ? 900 : 0; }
   if (ob.kind === 'excavation') return canDig(st, h, ob) || digDays(ob, h.owner) ? S.ai : 0;
   if (ob.kind === 'tournament') { if (siteUsed(st, ob, h)) return 0; const C = tourneyChamp(st, ob); return armyPower(h.army) >= C.count * CREATURES[C.cid].value * 2 ? S.ai + tourneyPrize(ob).gold : 0; } // tylko z wyraźną przewagą
@@ -343,6 +358,10 @@ function* aiMoveHero(st, h, news) {
     if (target.what === 'feed' && !path.length) { const m = st.heroes.find(o => o.owner === h.owner && o.y * st.map.n + o.x === target.i); if (!m || !aiFeed(st, h, m)) return; continue; }
     if (!path.length) return;
     for (const [nx, ny] of path) {
+      if (nx === h.x && ny === h.y) continue;
+      if (Math.max(Math.abs(nx - h.x), Math.abs(ny - h.y)) > 1) { // przeskok (portal, brama, prom): bohater stoi na obiekcie, który przenosi go na pole pary
+        const lo = objectAt(st, h.y * st.map.n + h.x); if (!lo || lo.type !== 'site' || !AI_LINKS.hasOwnProperty(lo.kind)) return;
+        useSite(st, h, lo); if (h.x !== nx || h.y !== ny) return; h.prev = null; reveal(st, h.x, h.y, heroSight(h), h.owner); continue; }
       const c = stepCost(st.map, h.x, h.y, nx, ny, h); if (c > h.mp) return;
       const blocker = heroAt(st, nx, ny); if (blocker && blocker !== h && allied(st, blocker.owner, h.owner) && blocker.garrison == null) return; // pole zajmuje własny bohater (np. stoi w kapliczce): nie wchodzimy na niego
       const fx = h.x, fy = h.y; h.mp -= c; h.prev = [fx, fy]; h.x = nx; h.y = ny; if (nx !== fx) h.dir = nx > fx ? 1 : -1;
