@@ -566,5 +566,10 @@
    katapulty i głazu – kamień rozbijany o beton/mur zamiast drobnego gruzu; głos demonów – niski pomruk i ryk; wybuch średni
    i krótszy (duży był przesadzony).
    Po wyborze właściciela gry na stronie odsłuchu zostaje po jednej wersji: piorun C, łoskot A, demon D, wybuch B.
+   Dźwięki bitwy 4 (pełny odsłuch, wszystkie „do poprawy” wymienione): rzucenie czaru (świst zamiast „kosmicznych” syntezatorów),
+   ziemia (pękająca skała i osuwisko, słychać też w telefonie), muszkiet (bez „lasera”), przyspieszenie (dłuższy narastający świst),
+   leczenie (harfa z migotaniem), uderzenie pazurem/kulą (mocny cios w ciało zamiast klapsa), kroki na łapach (miękkie łapy +
+   szelest zamiast „łańcuchów”), pchnięcie (ostrze z ciężarem ciosu), krzyk umierających, spowolnienie (głośniejsze, opadające),
+   ryk bestii (bez „bekania”, nowy ryk bizona), głos demonów (4 warianty), kula magii i jej trafienie (bez lasera i „łuku”).
    ===================================================================================== */
 
