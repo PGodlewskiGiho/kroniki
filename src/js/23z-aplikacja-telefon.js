@@ -58,9 +58,12 @@ const App = {
     const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen; if (!req || document.fullscreenElement || document.webkitFullscreenElement) return;
     try { const p = req.call(el, { navigationUI: 'hide' }); if (p && p.then) p.then(() => { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); }).catch(() => {}); } catch (e) { /* przeglądarka odmówiła: gra działa dalej w oknie */ }
   },
-  // Przycisk w menu: na stronie, poza zainstalowaną aplikacją, na urządzeniu dotykowym albo gdy przeglądarka proponuje instalację
-  canInstall() { return onWeb() && !isStandalone() && !this.installed && (!!this.prompt || isTouchDevice()); },
+  // Przycisk w menu: na stronie, poza zainstalowaną aplikacją, na urządzeniu dotykowym albo gdy przeglądarka proponuje instalację;
+  // z pobranego pliku HTML na Androidzie (bez strony nie ma instalacji z przeglądarki) przycisk prowadzi do pobrania APK
+  canInstall() { return !inApp() && !this.installed && (onWeb() ? !isStandalone() && (!!this.prompt || isTouchDevice()) : isAndroid()); },
   install() {
+    if (!onWeb() && isAndroid()) return showDialog(`Pobierz grę jako aplikację na Androida (plik APK): działa bez internetu i bez przeglądarki, na pełnym ekranie. Po pobraniu otwórz plik – telefon zapyta o zgodę na instalację z tego źródła. Gdyby pobieranie się nie zaczęło, wpisz w przeglądarce: ${APK_URL}`,
+      [{ label: 'Pobierz APK', key: 'enter', primary: true, action: () => { try { window.open(APK_URL, '_blank') || (location.href = APK_URL); } catch (e) { location.href = APK_URL; } } }, { label: 'Anuluj', key: 'escape' }]);
     if (this.prompt) { const p = this.prompt; this.prompt = null; p.prompt(); if (p.userChoice) p.userChoice.then(r => { if (r && r.outcome === 'accepted') this.installed = true; G.dirty = true; }).catch(() => {}); return; }
     if (isAndroid()) return showDialog('Na Androidzie możesz zainstalować grę jako aplikację z przeglądarki (ikona na ekranie głównym) albo pobrać osobną aplikację (plik APK): działa bez internetu i bez przeglądarki. Przy instalacji APK telefon zapyta o zgodę na instalację z tego źródła.',
       [{ label: 'Pobierz APK', key: 'enter', primary: true, action: () => { location.href = APK_URL; } }, { label: 'Z przeglądarki', key: 'p', action: () => showDialog('W menu przeglądarki (⋮) wybierz „Zainstaluj aplikację” albo „Dodaj do ekranu głównego”.', [{ label: 'OK', key: 'enter' }]) }, { label: 'Anuluj', key: 'escape' }], { bw: 150 });
