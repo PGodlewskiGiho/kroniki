@@ -187,6 +187,19 @@ test('telefon: w pionie prośba o obrót, na komputerze i z pliku bez przycisku 
   await page.evaluate(() => { drawRotateHint(G.ctx); });
 });
 
+test('Android z pobranego pliku HTML: w menu przycisk „Zainstaluj grę” prowadzi do pobrania APK (z adresem do przepisania)', async () => {
+  const r = await page.evaluate(() => {
+    const ua = Object.getOwnPropertyDescriptor(Navigator.prototype, 'userAgent'); Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/126 Mobile', configurable: true });
+    const out = { file: location.protocol, inst: App.canInstall(), menu: (setScreen('menu'), G.screen.buttons.map(b => b.label)) };
+    const opened = []; const wo = window.open; window.open = u => { opened.push(u); return {}; };
+    G.modal = null; App.install(); out.msg = G.modal.msg; out.btns = G.modal.buttons.map(b => b.label); G.modal.buttons[0].action(); G.modal = null; out.opened = opened;
+    window.open = wo; delete navigator.userAgent; Object.defineProperty(Navigator.prototype, 'userAgent', ua); out.after = App.canInstall(); return out;
+  });
+  assert.equal(r.file, 'file:'); assert.equal(r.inst, true); assert.ok(r.menu.includes('Zainstaluj grę'), r.menu.join(', '));
+  assert.deepEqual(r.btns, ['Pobierz APK', 'Anuluj']); assert.match(r.msg, /releases\/latest\/download\/kroniki-krolestw\.apk/); assert.equal(r.opened.length, 1); assert.match(r.opened[0], /kroniki-krolestw\.apk$/);
+  assert.equal(r.after, false, 'na komputerze z pliku dalej bez przycisku');
+});
+
 test('aplikacja na Androida (most KronikiApp): bez instalacji, zapis pliku przez most, Wyjście zamyka aplikację', async () => {
   const r = await page.evaluate(() => {
     const calls = []; window.KronikiApp = { saveFile: (n, c) => calls.push(['save', n, c.length > 100]), exit: () => calls.push(['exit']) };

@@ -599,5 +599,6 @@
    Nowy neutralny: Grzybołak (poziom 3, grzybowe jaskinie, bagna, dżungla) – chodzący muchomor z ślepiami w cieniu kapelusza i rękami-
    korzeniami (model 3D: kapelusz „oddycha”, przy ataku wypuszcza zielony obłok zarodników); zdolność Zarodniki: trafiony wręcz
    oddział zwalnia (−3 szybkości) na 2 rundy, konstrukty i nieumarli odporni.
+   Android z pobranego pliku HTML: w menu przycisk „Zainstaluj grę” prowadzi do pobrania APK (z adresem do przepisania).
    ===================================================================================== */
 
